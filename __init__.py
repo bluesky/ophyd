@@ -7,5 +7,5 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-from .signal import (Signal, )
-from .positioner import (EpicsMotor, PVPositioner)
+from .controls import *
+from .context import get_session_manager
