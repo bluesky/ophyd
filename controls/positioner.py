@@ -5,8 +5,10 @@
 
 from __future__ import print_function
 import logging
-from ..context import get_session_manager
 from .signal import (EpicsSignal, SignalGroup)
+
+import time
+
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +23,13 @@ class Positioner(SignalGroup):
 
     def move(self, position, wait=True,
              moved_cb=None):
-        pass
+        if wait:
+            while self._moving:
+                time.sleep(0.05)
 
-    def _stopped(self, status):
-        self._run_sub(self.SUB_DONE, status)
+    def _done_moving(self, timestamp=None, value=None, **kwargs):
+        self._run_sub(self.SUB_DONE, timestamp=timestamp,
+                      value=value, **kwargs)
 
     def stop(self):
         pass
@@ -57,6 +62,7 @@ class EpicsMotor(Positioner):
         for signal in signals:
             self.add_signal(signal)
 
+        self.is_moving.subscribe(self._move_changed)
         self._moving = False
 
     def _field_pv(self, field):
@@ -64,12 +70,21 @@ class EpicsMotor(Positioner):
 
     def move(self, position):
         self.user_request.request = position
-        self._stopped(True)
 
     def __str__(self):
         return 'EpicsMotor(record={0}, val={1}, rbv={2}, egu={3})'.format(
             self._record, self.user_request.readback, self.user_readback.readback,
             self.egu.readback)
+
+    def _move_changed(self, sub_type, timestamp=None, value=None,
+                      **kwargs):
+        was_moving = self._moving
+        self._moving = (value != 1)
+
+        logger.debug('[%s] %s moving: %s' % (timestamp, self, self._moving))
+
+        if was_moving and not self._moving:
+            self._done_moving(timestamp=timestamp, value=value)
 
 
 class PVPositioner(Positioner):
@@ -102,12 +117,17 @@ class PVPositioner(Positioner):
     def _field_pv(self, field):
         return '%s.%s' % (self._record, field.upper())
 
-    def move(self, position):
+    def move(self, position, wait=True):
         self.user_request.request = position
 
-    def _move_changed(self, pvname=None, value=None, timestamp=None,
-                      **kwargs):
-        logger.debug('Stopped ')
-        self._moving = (value != self._stop_value)
+        Positioner.move(self, position, wait=True)
 
-        self._stopped(self._moving, (timestamp, value))
+    def _move_changed(self, sub_type, timestamp=None, value=None,
+                      **kwargs):
+        was_moving = self._moving
+        self._moving = (value != 0)
+
+        logger.debug('[%s] %s moving: %s' % (timestamp, self, self._moving))
+
+        if was_moving and not self._moving:
+            self._done_moving(timestamp=timestamp, value=value)

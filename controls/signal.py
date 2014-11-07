@@ -4,8 +4,12 @@
 '''
 
 from __future__ import print_function
+
 import logging
+import time
+
 import epics
+
 from ..context import get_session_manager
 
 
@@ -93,7 +97,7 @@ class Signal(SessionAware):
     def _get_request(self):
         return self._request
 
-    def _set_request(self, value, allow_cb=True):
+    def _set_request(self, value, allow_cb=True, **kwargs):
         old_value = self._request
         self._request = value
 
@@ -101,8 +105,10 @@ class Signal(SessionAware):
             self._set_readback(value)
 
         if allow_cb:
+            timestamp = kwargs.pop('timestamp', time.time())
             self._run_sub(Signal.SUB_REQUEST,
-                          old_value, value)
+                          old_value=old_value, value=value,
+                          timestamp=timestamp, **kwargs)
 
     request = property(lambda self: self._get_request(),
                        lambda self, value: self._set_request(value),
@@ -113,13 +119,15 @@ class Signal(SessionAware):
     def readback(self):
         return self._readback
 
-    def _set_readback(self, value, allow_cb=True):
+    def _set_readback(self, value, allow_cb=True, **kwargs):
         old_value = self._readback
         self._readback = value
 
         if allow_cb:
+            timestamp = kwargs.pop('timestamp', time.time())
             self._run_sub(Signal.SUB_READBACK,
-                          old_value, value)
+                          old_value=old_value, value=value,
+                          timestamp=timestamp, **kwargs)
 
     def subscribe(self, callback, event_type=None):
         if event_type is None:
@@ -229,10 +237,10 @@ class EpicsSignal(Signal):
                             allow_cb=allow_cb)
 
     def _read_changed(self, value=None, **kwargs):
-        self._set_readback(value)
+        self._set_readback(value, **kwargs)
 
     def _write_changed(self, value=None, **kwargs):
-        self.request = value
+        self._set_request(value, **kwargs)
 
     @property
     def readback(self):
