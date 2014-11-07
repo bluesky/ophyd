@@ -81,13 +81,14 @@ class Signal(SessionAware):
             return 'Signal(alias=%s, readback=%s)' % \
                 (self._alias, self.readback)
 
-    def _run_sub(self, type_, *args, **kwargs):
-        for cb in self._subs[type_]:
+    def _run_sub(self, *args, **kwargs):
+        sub_type = kwargs.get('sub_type')
+        for cb in self._subs[sub_type]:
             try:
-                cb(type_, *args, **kwargs)
+                cb(*args, **kwargs)
             except Exception as ex:
                 self._ses_logger.error('Subscription %s callback exception (%s)' %
-                                       (type_, self), exc_info=ex)
+                                       (sub_type, self), exc_info=ex)
 
     @property
     def alias(self):
@@ -106,7 +107,7 @@ class Signal(SessionAware):
 
         if allow_cb:
             timestamp = kwargs.pop('timestamp', time.time())
-            self._run_sub(Signal.SUB_REQUEST,
+            self._run_sub(sub_type=Signal.SUB_REQUEST,
                           old_value=old_value, value=value,
                           timestamp=timestamp, **kwargs)
 
@@ -115,9 +116,15 @@ class Signal(SessionAware):
                        doc='')
 
     # - Readback value
+    def _get_readback(self):
+        return self._readback
+
     @property
     def readback(self):
-        return self._readback
+        return self._get_readback()
+
+    # - Value is the same thing as the readback for simplicity
+    value = readback
 
     def _set_readback(self, value, allow_cb=True, **kwargs):
         old_value = self._readback
@@ -125,7 +132,7 @@ class Signal(SessionAware):
 
         if allow_cb:
             timestamp = kwargs.pop('timestamp', time.time())
-            self._run_sub(Signal.SUB_READBACK,
+            self._run_sub(sub_type=Signal.SUB_READBACK,
                           old_value=old_value, value=value,
                           timestamp=timestamp, **kwargs)
 
@@ -242,9 +249,12 @@ class EpicsSignal(Signal):
     def _write_changed(self, value=None, **kwargs):
         self._set_request(value, **kwargs)
 
+    def _get_readback(self):
+        return self._read_pv.get()
+
     @property
     def readback(self):
-        return self._read_pv.get()
+        return self._get_readback()
 
     def read(self):
         ret = Signal.read(self)
@@ -268,13 +278,14 @@ class SignalGroup(SessionAware):
         self._signals = []
         self._alias = alias
 
-    def _run_sub(self, type_, *args, **kwargs):
-        for cb in self._subs[type_]:
+    def _run_sub(self, *args, **kwargs):
+        sub_type = kwargs.get('sub_type')
+        for cb in self._subs[sub_type]:
             try:
-                cb(type_, *args, **kwargs)
+                cb(*args, **kwargs)
             except Exception as ex:
                 self._ses_logger.error('Subscription %s callback exception (%s)' %
-                                       (type_, self), exc_info=ex)
+                                       (sub_type, self), exc_info=ex)
 
     def add_signal(self, signal, prop_name=None):
         if signal not in self._signals:
@@ -295,11 +306,11 @@ class SignalGroup(SessionAware):
         if event_type is None:
             for event_type, cbs in self._subs.items():
                 try:
-                    cbs.remove(callback)
+                    cbs.remove(cb)
                 except ValueError:
                     pass
         else:
-            self._subs[event_type].remove(callback)
+            self._subs[event_type].remove(cb)
 
     def read(self):
         return dict((signal.alias, signal.read())

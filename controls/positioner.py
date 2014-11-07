@@ -5,7 +5,7 @@
 
 from __future__ import print_function
 import logging
-from .signal import (EpicsSignal, SignalGroup)
+from .signal import (EpicsSignal, SignalGroup, OpTimeoutError)
 
 import time
 
@@ -20,16 +20,33 @@ class Positioner(SignalGroup):
         SignalGroup.__init__(self, *args, **kwargs)
 
         self._default_sub = None
+        self._moved_callbacks = []
 
     def move(self, position, wait=True,
-             moved_cb=None):
+             moved_cb=None, timeout=10.0):
+        # TODO session manager handles ctrl-C to stop move?
+
         if wait:
+            t0 = time.time()
             while self._moving:
                 time.sleep(0.05)
 
+                if timeout is not None and (time.time() - t0) > timeout:
+                    raise OpTimeoutError('Failed to move %s to %s in %s s' %
+                                         (self, position, timeout))
+
+        elif moved_cb is not None:
+            self._moved_callbacks.append(moved_cb)
+
     def _done_moving(self, timestamp=None, value=None, **kwargs):
-        self._run_sub(self.SUB_DONE, timestamp=timestamp,
+        self._run_sub(sub_type=self.SUB_DONE, timestamp=timestamp,
                       value=value, **kwargs)
+
+        if self._moved_callbacks:
+            for cb in self._moved_callbacks:
+                cb(timestamp=timestamp, value=value, **kwargs)
+
+            del self._moved_callbacks[:]
 
     def stop(self):
         pass
@@ -57,6 +74,7 @@ class EpicsMotor(Positioner):
                    EpicsSignal(self._field_pv('VAL'), alias='user_request'),
                    EpicsSignal(self._field_pv('MOVN'), alias='is_moving'),
                    EpicsSignal(self._field_pv('EGU'), alias='egu'),
+                   EpicsSignal(self._field_pv('RDBD'), alias='retry_deadband'),
                    ]
 
         for signal in signals:
@@ -68,20 +86,31 @@ class EpicsMotor(Positioner):
     def _field_pv(self, field):
         return '%s.%s' % (self._record, field.upper())
 
-    def move(self, position):
+    def move(self, position, wait=True,
+             **kwargs):
         self.user_request.request = position
+
+        time.sleep(0.05)
+
+        deadband = self.retry_deadband.value
+        if not self._moving and abs(position - self.user_readback.value) <= deadband:
+            self._move_changed(timestamp=time.time(), value=0)
+            ## TODO better handling
+
+        Positioner.move(self, position, wait=wait,
+                        **kwargs)
 
     def __str__(self):
         return 'EpicsMotor(record={0}, val={1}, rbv={2}, egu={3})'.format(
-            self._record, self.user_request.readback, self.user_readback.readback,
-            self.egu.readback)
+            self._record, self.user_request.value, self.user_readback.value,
+            self.egu.value)
 
-    def _move_changed(self, sub_type, timestamp=None, value=None,
+    def _move_changed(self, timestamp=None, value=None,
                       **kwargs):
         was_moving = self._moving
-        self._moving = (value != 1)
+        self._moving = (value != 0)
 
-        logger.debug('[%s] %s moving: %s' % (timestamp, self, self._moving))
+        logger.debug('[%s] %s moving: %s (value=%s)' % (timestamp, self, self._moving, value))
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
@@ -109,7 +138,7 @@ class PVPositioner(Positioner):
         if done is not None:
             signals.append(EpicsSignal(done, alias='done'))
 
-            self.done.readback.subscribe(self._move_changed)
+            self.done.subscribe(self._move_changed)
 
         for signal in signals:
             self.add_signal(signal)
@@ -117,17 +146,19 @@ class PVPositioner(Positioner):
     def _field_pv(self, field):
         return '%s.%s' % (self._record, field.upper())
 
-    def move(self, position, wait=True):
+    def move(self, position, wait=True,
+             **kwargs):
         self.user_request.request = position
 
-        Positioner.move(self, position, wait=True)
+        Positioner.move(self, position, wait=wait,
+                        **kwargs)
 
-    def _move_changed(self, sub_type, timestamp=None, value=None,
+    def _move_changed(self, timestamp=None, value=None,
                       **kwargs):
         was_moving = self._moving
         self._moving = (value != 0)
 
-        logger.debug('[%s] %s moving: %s' % (timestamp, self, self._moving))
+        logger.debug('[%s] %s moving: %s (value=%s)' % (timestamp, self, self._moving, value))
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
