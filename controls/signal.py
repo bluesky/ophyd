@@ -131,7 +131,13 @@ class Signal(SessionAware):
         '''
         Remove subscription
         '''
-        if event_type is not None:
+        if event_type is None:
+            for event_type, cbs in self._subs.items():
+                try:
+                    cbs.remove(callback)
+                except ValueError:
+                    pass
+        else:
             self._subs[event_type].remove(callback)
 
     def read(self):
@@ -277,13 +283,15 @@ class SignalGroup(SessionAware):
 
         self._subs[event_type].append(cb)
 
-    def clear_sub(self, cb):
-        for signal in self._signals:
-            signal.clear_sub(cb)
-
-        for sub_type, subs in self._subs.items():
-            if cb in subs:
-                subs.remove(cb)
+    def clear_sub(self, cb, event_type=None):
+        if event_type is None:
+            for event_type, cbs in self._subs.items():
+                try:
+                    cbs.remove(callback)
+                except ValueError:
+                    pass
+        else:
+            self._subs[event_type].remove(callback)
 
     def read(self):
         return dict((signal.alias, signal.read())
