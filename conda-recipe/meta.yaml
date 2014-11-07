@@ -13,6 +13,7 @@ source:
 
 build:
   number: 0
+  string: {{ environ.get('GIT_BUILD_STR', '') }}_{{ py }}_np{{ np }}
   #preserve_egg_dir: True
   #entry_points:
     # Put any entry points (scripts to be generated automatically) here. The
