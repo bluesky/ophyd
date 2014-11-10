@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class Positioner(SignalGroup):
     SUB_DONE = 'done_moving'
+    SUB_READBACK = 'readback'
 
     def __init__(self, *args, **kwargs):
         '''
@@ -96,6 +97,17 @@ class Positioner(SignalGroup):
         '''
         return self._position
 
+    def _set_position(self, value, **kwargs):
+        '''
+        Set the current internal position and run the
+        SUB_READBACK subscription
+        '''
+        self._position = value
+
+        timestamp = kwargs.pop('timestamp', time.time())
+        self._run_sub(sub_type=self.SUB_READBACK, timestamp=timestamp,
+                      value=value, **kwargs)
+
     @property
     def moving(self):
         '''
@@ -123,11 +135,11 @@ class EpicsMotor(Positioner):
 
         Positioner.__init__(self, record, **kwargs)
 
-        signals = [EpicsSignal(self._field_pv('RBV'), rw=False, alias='user_readback'),
-                   EpicsSignal(self._field_pv('VAL'), alias='user_request'),
-                   EpicsSignal(self._field_pv('MOVN'), alias='is_moving'),
-                   EpicsSignal(self._field_pv('DMOV'), alias='done_moving'),
-                   EpicsSignal(self._field_pv('EGU'), alias='egu'),
+        signals = [EpicsSignal(self._field_pv('RBV'), rw=False, alias='_user_readback'),
+                   EpicsSignal(self._field_pv('VAL'), alias='_user_request'),
+                   EpicsSignal(self._field_pv('MOVN'), alias='_is_moving'),
+                   EpicsSignal(self._field_pv('DMOV'), alias='_done_move'),
+                   EpicsSignal(self._field_pv('EGU'), alias='_egu'),
                    EpicsSignal(self._field_pv('STOP'), alias='_stop'),
                    # EpicsSignal(self._field_pv('RDBD'), alias='retry_deadband'),
                    ]
@@ -135,9 +147,9 @@ class EpicsMotor(Positioner):
         for signal in signals:
             self.add_signal(signal)
 
-        self._moving = bool(self.is_moving.value)
-        self.done_moving.subscribe(self._move_changed)
-        self.user_readback.subscribe(self._pos_changed)
+        self._moving = bool(self._is_moving.value)
+        self._done_move.subscribe(self._move_changed)
+        self._user_readback.subscribe(self._pos_changed)
 
     def stop(self):
         self._stop.request = 1
@@ -151,23 +163,23 @@ class EpicsMotor(Positioner):
     def move(self, position, wait=True,
              **kwargs):
 
-        # self.user_request.request = position
-        self.user_request._set_request(position, wait=wait)
+        # self._user_request.request = position
+        self._user_request._set_request(position, wait=wait)
 
         Positioner.move(self, position, wait=wait,
                         **kwargs)
 
     def __str__(self):
         return 'EpicsMotor(record={0}, val={1}, rbv={2}, egu={3})'.format(
-            self._record, self.user_request.value, self.user_readback.value,
-            self.egu.value)
+            self._record, self._user_request.value, self._user_readback.value,
+            self._egu.value)
 
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
         '''
         Callback from EPICS, indicating a change in position
         '''
-        self._position = value
+        self._set_position(value)
 
     def _move_changed(self, timestamp=None, value=None,
                       **kwargs):
@@ -210,6 +222,11 @@ class PVPositioner(Positioner):
 
         Positioner.__init__(self, **kwargs)
 
+        self._stop_val = stop_val
+        self._done_val = done_val
+        self._act_val = act_val
+        self._put_compl = use_put_complete
+
         signals = [EpicsSignal(setpoint, alias='setpoint')]
 
         if readback is not None:
@@ -223,7 +240,7 @@ class PVPositioner(Positioner):
             signals.append(EpicsSignal(act, alias='actuate'))
 
         if stop is not None:
-            signals.append(EpicsSignal(stop, alias='stop'))
+            signals.append(EpicsSignal(stop, alias='_stop'))
 
         if done is not None:
             signals.append(EpicsSignal(done, alias='done'))
@@ -238,7 +255,13 @@ class PVPositioner(Positioner):
 
     def move(self, position, wait=True,
              **kwargs):
-        self.setpoint.request = position
+
+        if wait:
+            if self._put_compl:
+                self.setpoint.request = position
+                self._done_moving(timestamp=self.setpoint.readback_timestamp)
+            else:
+                self.setpoint._set_request(position)
 
         Positioner.move(self, position, wait=wait,
                         **kwargs)
@@ -251,16 +274,17 @@ class PVPositioner(Positioner):
         logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
                                                            self, self._moving, value))
 
-        if was_moving and not self._moving:
-            self._done_moving(timestamp=timestamp, value=value)
+        if not self._put_compl:
+            # In the case of put completion, motion complete
+            if was_moving and not self._moving:
+                self._done_moving(timestamp=timestamp, value=value)
 
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
         '''
         Callback from EPICS, indicating a change in position
         '''
-        self._position = value
+        self._set_position(value)
 
     def stop(self):
-        # TODO
-        pass
+        self._stop.request = self.stop_value

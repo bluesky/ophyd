@@ -256,6 +256,25 @@ class EpicsSignal(Signal):
                         **kwargs)
 
     @property
+    def request_ts(self):
+        '''
+        Timestamp of request PV, according to EPICS
+        '''
+        if self._write_pv is None:
+            raise RuntimeError('Read-only EPICS signal')
+
+        return self._write_pv.timestamp
+
+    @property
+    def readback_ts(self):
+        '''
+        Timestamp of readback PV, according to EPICS
+        '''
+        return self._read_pv.timestamp
+
+    value_ts = readback_ts
+
+    @property
     def read_pvname(self):
         '''
         The readback PV name

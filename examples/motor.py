@@ -30,7 +30,7 @@ def test():
     # m2 = EpicsMotor('MLL:bad_record')
     m1.subscribe(callback, event_type=m1.SUB_DONE)
 
-    m1.user_readback.subscribe(callback)
+    m1.subscribe(callback, event_type=m1.SUB_READBACK)
     # print(m1.user_readback.read())
     # print(m1.read())
 
@@ -51,7 +51,6 @@ def test():
     logger.info('--> move to 0')
     m1.move(0, wait=False, moved_cb=done_moving)
     time.sleep(2)
-
     # m2.move(1)
 
 
