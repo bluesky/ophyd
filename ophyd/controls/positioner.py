@@ -75,15 +75,16 @@ class EpicsMotor(Positioner):
         signals = [EpicsSignal(self._field_pv('RBV'), rw=False, alias='user_readback'),
                    EpicsSignal(self._field_pv('VAL'), alias='user_request'),
                    EpicsSignal(self._field_pv('MOVN'), alias='is_moving'),
+                   EpicsSignal(self._field_pv('DMOV'), alias='done_moving'),
                    EpicsSignal(self._field_pv('EGU'), alias='egu'),
-                   EpicsSignal(self._field_pv('RDBD'), alias='retry_deadband'),
+                   # EpicsSignal(self._field_pv('RDBD'), alias='retry_deadband'),
                    ]
 
         for signal in signals:
             self.add_signal(signal)
 
-        self.is_moving.subscribe(self._move_changed)
-        self._moving = False
+        self._moving = bool(self.is_moving.value)
+        self.done_moving.subscribe(self._move_changed)
 
     def _field_pv(self, field):
         return '%s.%s' % (self._record, field.upper())
@@ -91,13 +92,6 @@ class EpicsMotor(Positioner):
     def move(self, position, wait=True,
              **kwargs):
         self.user_request.request = position
-
-        time.sleep(0.05)
-
-        deadband = self.retry_deadband.value
-        if not self._moving and abs(position - self.user_readback.value) <= deadband:
-            self._move_changed(timestamp=time.time(), value=0)
-            ## TODO better handling
 
         Positioner.move(self, position, wait=wait,
                         **kwargs)
@@ -110,7 +104,7 @@ class EpicsMotor(Positioner):
     def _move_changed(self, timestamp=None, value=None,
                       **kwargs):
         was_moving = self._moving
-        self._moving = (value != 0)
+        self._moving = (value != 1)
 
         logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
                                                            self, self._moving, value))
