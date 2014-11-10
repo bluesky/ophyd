@@ -11,10 +11,10 @@ from ophyd.controls import EpicsMotor
 
 def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-        config.logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
+        logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
 
     def done_moving(**kwargs):
-        config.logger.info('Done moving %s' % (kwargs, ))
+        logger.info('Done moving %s' % (kwargs, ))
 
     loggers = ('ophyd.controls.signal',
                'ophyd.controls.positioner',
@@ -34,14 +34,25 @@ def test():
     # print(m1.user_readback.read())
     # print(m1.read())
 
+    logger.info('---- test #1 ----')
     logger.info('--> move to 1')
     m1.move(1)
+    logger.info('--> move to 0')
+    m1.move(0)
+
+    logger.info('---- test #2 ----')
+    logger.info('--> move to 1')
+    m1.move(1, wait=False)
+    time.sleep(0.2)
+    logger.info('--> stop')
+    m1.stop()
+    logger.info('--> sleep')
     time.sleep(1)
     logger.info('--> move to 0')
-    m1.move(0, moved_cb=done_moving)
+    m1.move(0, wait=False, moved_cb=done_moving)
+    time.sleep(2)
 
     # m2.move(1)
-    # time.sleep(1)
 
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ class Positioner(SignalGroup):
         :param position: Position to move to
         :param bool wait: Wait for move completion
         :param callable moved_cb: Call this callback when movement has
-            finished
+            finished (not applicable if `wait` is set)
         :param float timeout: Timeout in seconds
 
         :raises: OpTimeoutError
@@ -128,6 +128,7 @@ class EpicsMotor(Positioner):
                    EpicsSignal(self._field_pv('MOVN'), alias='is_moving'),
                    EpicsSignal(self._field_pv('DMOV'), alias='done_moving'),
                    EpicsSignal(self._field_pv('EGU'), alias='egu'),
+                   EpicsSignal(self._field_pv('STOP'), alias='_stop'),
                    # EpicsSignal(self._field_pv('RDBD'), alias='retry_deadband'),
                    ]
 
@@ -139,8 +140,7 @@ class EpicsMotor(Positioner):
         self.user_readback.subscribe(self._pos_changed)
 
     def stop(self):
-        # TODO
-        pass
+        self._stop.request = 1
 
     def _field_pv(self, field):
         '''
@@ -150,7 +150,9 @@ class EpicsMotor(Positioner):
 
     def move(self, position, wait=True,
              **kwargs):
-        self.user_request.request = position
+
+        # self.user_request.request = position
+        self.user_request._set_request(position, wait=wait)
 
         Positioner.move(self, position, wait=wait,
                         **kwargs)
