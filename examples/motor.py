@@ -9,15 +9,13 @@ import config
 from ophyd.controls import EpicsMotor
 
 
-def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-    config.logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
-
-
-def done_moving(**kwargs):
-    config.logger.info('Done moving %s' % (kwargs, ))
-
-
 def test():
+    def callback(sub_type=None, timestamp=None, value=None, **kwargs):
+        config.logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
+
+    def done_moving(**kwargs):
+        config.logger.info('Done moving %s' % (kwargs, ))
+
     loggers = ('ophyd.controls.signal',
                'ophyd.controls.positioner',
                'ophyd.session',
