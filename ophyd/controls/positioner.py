@@ -1,5 +1,10 @@
 # vi: ts=4 sw=4
 '''
+:mod:`ophyd.control.positioner` - Ophyd positioners
+===========================================
+
+.. module:: ophyd.control.positioner
+   :synopsis:
 
 '''
 
