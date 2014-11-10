@@ -4,6 +4,9 @@
 
 import logging
 
+# from .sessionmgr import SessionManager
+
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
@@ -34,7 +37,7 @@ def register_object(obj, set_vars=True):
         # TODO setup additional logger when no session present?
         ses_logger = logger
     else:
-        ses_logger = ses.register(obj, metadata=metadata)
+        ses_logger = ses.register(obj)
 
     if set_vars:
         obj._session = ses

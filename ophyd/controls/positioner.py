@@ -112,8 +112,8 @@ class EpicsMotor(Positioner):
         was_moving = self._moving
         self._moving = (value != 0)
 
-        logger.debug('[%s] %s moving: %s (value=%s)' % (dt.fromtimestamp(timestamp),
-                                                        self, self._moving, value))
+        logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
+                                                           self, self._moving, value))
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
@@ -161,8 +161,8 @@ class PVPositioner(Positioner):
         was_moving = self._moving
         self._moving = (value != 0)
 
-        logger.debug('[%s] %s moving: %s (value=%s)' % (dt.fromtimestamp(timestamp),
-                                                        self, self._moving, value))
+        logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
+                                                           self, self._moving, value))
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)

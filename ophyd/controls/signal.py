@@ -10,7 +10,7 @@ import time
 
 import epics
 
-from ..context import register_object
+from ..session import register_object
 
 
 logger = logging.getLogger(__name__)
