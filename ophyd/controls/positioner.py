@@ -1,7 +1,7 @@
 # vi: ts=4 sw=4
 '''
 :mod:`ophyd.control.positioner` - Ophyd positioners
-===========================================
+===================================================
 
 .. module:: ophyd.control.positioner
    :synopsis:
@@ -24,13 +24,32 @@ class Positioner(SignalGroup):
     SUB_DONE = 'done_moving'
 
     def __init__(self, *args, **kwargs):
+        '''
+        A soft positioner. Subclass from this to implement your own
+        positioners.
+        '''
+
         SignalGroup.__init__(self, *args, **kwargs)
 
         self._default_sub = None
         self._moved_callbacks = []
+        self._position = None
 
     def move(self, position, wait=True,
              moved_cb=None, timeout=10.0):
+        '''
+        Move to a specified position, optionally waiting for motion to
+        complete.
+
+        :param position: Position to move to
+        :param bool wait: Wait for move completion
+        :param callable moved_cb: Call this callback when movement has
+            finished
+        :param float timeout: Timeout in seconds
+
+        :raises: OpTimeoutError
+        '''
+
         # TODO session manager handles ctrl-C to stop move?
 
         if wait:
@@ -39,6 +58,8 @@ class Positioner(SignalGroup):
                 time.sleep(0.05)
 
                 if timeout is not None and (time.time() - t0) > timeout:
+                    del self._moved_callbacks[:]
+
                     raise OpTimeoutError('Failed to move %s to %s in %s s' %
                                          (self, position, timeout))
 
@@ -46,6 +67,11 @@ class Positioner(SignalGroup):
             self._moved_callbacks.append(moved_cb)
 
     def _done_moving(self, timestamp=None, value=None, **kwargs):
+        '''
+        Called when motion has completed.
+        Runs SUB_DONE subscription.
+        '''
+
         self._run_sub(sub_type=self.SUB_DONE, timestamp=timestamp,
                       value=value, **kwargs)
 
@@ -56,13 +82,27 @@ class Positioner(SignalGroup):
             del self._moved_callbacks[:]
 
     def stop(self):
-        pass
+        '''
+        Stops motion
+        '''
+        raise NotImplementedError('')
 
-    def get_position(self):
-        pass
+    @property
+    def position(self):
+        '''
+        The current position of the motor in its engineering units
+
+        :returns: float
+        '''
+        return self._position
 
     @property
     def moving(self):
+        '''
+        Whether or not the motor is moving
+
+        :returns: bool
+        '''
         return self._moving
 
 
@@ -73,6 +113,12 @@ class EpicsMotor(Positioner):
     # properly is another story though...)
 
     def __init__(self, record, **kwargs):
+        '''
+        An EPICS motor record, wrapped in a :class:`Positioner`
+
+        :param str record: The record to use
+        '''
+
         self._record = record
 
         Positioner.__init__(self, record, **kwargs)
@@ -90,8 +136,16 @@ class EpicsMotor(Positioner):
 
         self._moving = bool(self.is_moving.value)
         self.done_moving.subscribe(self._move_changed)
+        self.user_readback.subscribe(self._pos_changed)
+
+    def stop(self):
+        # TODO
+        pass
 
     def _field_pv(self, field):
+        '''
+        Return a full PV from the field name
+        '''
         return '%s.%s' % (self._record, field.upper())
 
     def move(self, position, wait=True,
@@ -106,8 +160,18 @@ class EpicsMotor(Positioner):
             self._record, self.user_request.value, self.user_readback.value,
             self.egu.value)
 
+    def _pos_changed(self, timestamp=None, value=None,
+                     **kwargs):
+        '''
+        Callback from EPICS, indicating a change in position
+        '''
+        self._position = value
+
     def _move_changed(self, timestamp=None, value=None,
                       **kwargs):
+        '''
+        Callback from EPICS, indicating that movement status has changed
+        '''
         was_moving = self._moving
         self._moving = (value != 1)
 
@@ -119,17 +183,39 @@ class EpicsMotor(Positioner):
 
 
 class PVPositioner(Positioner):
+    # TODO implementation incomplete
     def __init__(self, setpoint, readback=None,
                  act=None, act_val=1,
                  stop=None, stop_val=1,
                  done=None, done_val=1,
+                 use_put_complete=False,
                  **kwargs):
+        '''
+        A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
+
+        :param str setpoint: The setpoint (request) PV
+        :param str readback: The readback PV (e.g., encoder position PV)
+        :param str act: The actuation PV to set when movement is requested
+        :param act_val: The actuation value
+        :param str stop: The stop PV to set when motion should be stopped
+        :param stop_val: The stop value
+        :param str done: A readback value indicating whether motion is finished
+        :param done_val: The value of the done pv when motion has completed
+        :param bool use_put_complete: If set, the setpoint PV should allow
+            for asynchronous put completion to indicate motion has finished.
+            See the `-c` option from `caput` for more information.
+        '''
+
         Positioner.__init__(self, **kwargs)
 
         signals = [EpicsSignal(setpoint, alias='setpoint')]
 
         if readback is not None:
             signals.append(EpicsSignal(readback, alias='readback'))
+
+            self.readback.subscribe(self._position_changed)
+        else:
+            self.setpoint.subscribe(self._position_changed)
 
         if act is not None:
             signals.append(EpicsSignal(act, alias='actuate'))
@@ -150,7 +236,7 @@ class PVPositioner(Positioner):
 
     def move(self, position, wait=True,
              **kwargs):
-        self.user_request.request = position
+        self.setpoint.request = position
 
         Positioner.move(self, position, wait=wait,
                         **kwargs)
@@ -165,3 +251,14 @@ class PVPositioner(Positioner):
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
+
+    def _pos_changed(self, timestamp=None, value=None,
+                     **kwargs):
+        '''
+        Callback from EPICS, indicating a change in position
+        '''
+        self._position = value
+
+    def stop(self):
+        # TODO
+        pass
