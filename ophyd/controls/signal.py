@@ -10,7 +10,7 @@ import time
 
 import epics
 
-from ..context import get_session_manager
+from ..context import register_object
 
 
 logger = logging.getLogger(__name__)
@@ -25,44 +25,12 @@ class OpTimeoutError(OpException):
     pass
 
 
-# TODO: not sure if i like this
-class SessionAware(object):
-    def __init__(self, session=None):
-        self._session = None
-        self._ses_logger = logger
-        if session is not None:
-            self._register_session(session)
-        else:
-            self._auto_register_session()
-
-    def _register_session(self, session):
-        if session is self._session:
-            return
-        elif self._session is not None:
-            self._session.unregister(self)
-
-        if session is None:
-            self._session = None
-            self._ses_logger = None
-        else:
-            self._ses_logger = session.register(self)
-            self._session = session
-
-    def _auto_register_session(self):
-        session = get_session_manager()
-        if session is not None:
-            self._register_session(session)
-
-
-class Signal(SessionAware):
+class Signal(object):
     # TODO: no enums in Python 2.x -- if you have a better way, let me know:
     SUB_REQUEST = 'request'
     SUB_READBACK = 'readback'
 
-    def __init__(self, alias=None, session=None,
-                 separate_readback=False):
-        SessionAware.__init__(self, session=session)
-
+    def __init__(self, alias=None, separate_readback=False):
         self._default_sub = self.SUB_READBACK
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_'))
@@ -72,6 +40,8 @@ class Signal(SessionAware):
         self._readback = None
 
         self._separate_readback = separate_readback
+
+        register_object(self)
 
     def __str__(self):
         if self._separate_readback:
@@ -267,16 +237,16 @@ class EpicsSignal(Signal):
         return ret
 
 
-class SignalGroup(SessionAware):
-    def __init__(self, alias=None, session=None):
-        SessionAware.__init__(self, session=session)
-
+class SignalGroup(object):
+    def __init__(self, alias=None):
         self._default_sub = None
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_'))
 
         self._signals = []
         self._alias = alias
+
+        register_object(self)
 
     def _run_sub(self, *args, **kwargs):
         sub_type = kwargs.get('sub_type')

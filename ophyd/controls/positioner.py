@@ -5,9 +5,11 @@
 
 from __future__ import print_function
 import logging
-from .signal import (EpicsSignal, SignalGroup, OpTimeoutError)
-
 import time
+
+from epics.pv import fmt_time
+
+from .signal import (EpicsSignal, SignalGroup, OpTimeoutError)
 
 
 logger = logging.getLogger(__name__)
@@ -110,7 +112,8 @@ class EpicsMotor(Positioner):
         was_moving = self._moving
         self._moving = (value != 0)
 
-        logger.debug('[%s] %s moving: %s (value=%s)' % (timestamp, self, self._moving, value))
+        logger.debug('[%s] %s moving: %s (value=%s)' % (dt.fromtimestamp(timestamp),
+                                                        self, self._moving, value))
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
@@ -158,7 +161,8 @@ class PVPositioner(Positioner):
         was_moving = self._moving
         self._moving = (value != 0)
 
-        logger.debug('[%s] %s moving: %s (value=%s)' % (timestamp, self, self._moving, value))
+        logger.debug('[%s] %s moving: %s (value=%s)' % (dt.fromtimestamp(timestamp),
+                                                        self, self._moving, value))
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
