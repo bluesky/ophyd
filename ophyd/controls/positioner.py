@@ -38,6 +38,7 @@ class Positioner(SignalGroup):
         self._default_sub = None
         self._moved_callbacks = []
         self._position = None
+        self._move_timeout = kwargs.get('move_timeout', 0.0)
 
     def move(self, position, wait=True,
              moved_cb=None, timeout=10.0):
@@ -211,17 +212,20 @@ class EpicsMotor(Positioner):
         logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
                                                            self, self._moving, value))
 
+        if self._started_moving:
+            self._run_sub(sub_type=self.SUB_START, timestamp=timestamp,
+                          value=value, **kwargs)
+
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
 
 
 class PVPositioner(Positioner):
-    # TODO implementation incomplete
     def __init__(self, setpoint, readback=None,
                  act=None, act_val=1,
                  stop=None, stop_val=1,
                  done=None, done_val=1,
-                 use_put_complete=False,
+                 put_complete=False,
                  **kwargs):
         '''
         A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
@@ -234,8 +238,11 @@ class PVPositioner(Positioner):
         :param stop_val: The stop value
         :param str done: A readback value indicating whether motion is finished
         :param done_val: The value of the done pv when motion has completed
-        :param bool use_put_complete: If set, the setpoint PV should allow
+        :param bool put_complete: If set, the specified PV should allow
             for asynchronous put completion to indicate motion has finished.
+            If `act` is specified, it will be used for put completion.
+            Otherwise, the `setpoint` will be used.
+
             See the `-c` option from `caput` for more information.
         '''
 
@@ -244,7 +251,7 @@ class PVPositioner(Positioner):
         self._stop_val = stop_val
         self._done_val = done_val
         self._act_val = act_val
-        self._put_compl = use_put_complete
+        self._put_complete = bool(put_complete)
 
         self._actuate = None
         self._stop = None
@@ -277,27 +284,64 @@ class PVPositioner(Positioner):
     def _field_pv(self, field):
         return '%s.%s' % (self._record, field.upper())
 
+    def _move_wait(self, position, **kwargs):
+        self._started_moving = False
+
+        if self._put_complete:
+            # TODO timeout setting with put completion; untested
+            if self._put_complete:
+                if self._act is None:
+                    self._setpoint._set_request(position, wait=True,
+                                                timeout=self._move_timeout)
+                else:
+                    self._setpoint._set_request(position, wait=False)
+                    self._actuate._set_request(self._act_val, wait=True,
+                                               timeout=self._move_timeout)
+
+            if self._started_moving and not self._moving:
+                self._done_moving(timestamp=self._setpoint.readback_timestamp)
+            elif self._started_moving and self._moving:
+                # TODO better exceptions
+                raise OpTimeoutError('Failed to move %s to %s s (put complete done, still moving)' %
+                                     (self, position))
+            else:
+                raise OpTimeoutError('Failed to move %s to %s s (no motion, put complete)' %
+                                     (self, position))
+        else:
+            self._setpoint._set_request(position, wait=True)
+            logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
+                                                    position))
+
+            if self._actuate is not None:
+                self._actuate._set_request(self._act_val, wait=True)
+                logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
+                                                     self._act_val))
+
+        Positioner.move(self, position, wait=True,
+                        **kwargs)
+
+    def _move_async(self, position, **kwargs):
+        self._started_moving = False
+
+        self._setpoint.request = position
+
+        logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
+                                                self._act_val))
+        if self._actuate is not None:
+            self._actuate._set_request(position, wait=False)
+            logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
+                                                 self._act_val))
+
+        Positioner.move(self, position, wait=False,
+                        **kwargs)
+
     def move(self, position, wait=True,
              **kwargs):
-
         if wait:
-            if self._put_compl:
-                self._setpoint.request = position
-                self._done_moving(timestamp=self._setpoint.readback_timestamp)
-            else:
-                self._started_moving = False
+            self._move_wait(position, **kwargs)
 
-                self._setpoint._set_request(position)
-                logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
-                                                        self._act_val))
-
-                if self._actuate is not None:
-                    self._actuate.request = self._act_val
-                    logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
-                                                         self._act_val))
-
-        Positioner.move(self, position, wait=wait,
-                        **kwargs)
+        else:
+            self._move_async(position, **kwargs)
 
     def _move_changed(self, timestamp=None, value=None,
                       **kwargs):
@@ -311,10 +355,15 @@ class PVPositioner(Positioner):
                                                            self, self._moving, value))
 
         if self._started_moving:
-            self._run_sub(sub_type=self.SUB_STARTED, timestamp=timestamp,
+            try:
+                kwargs.pop('sub_type')
+            except IndexError:
+                pass
+
+            self._run_sub(sub_type=self.SUB_START, timestamp=timestamp,
                           value=value, **kwargs)
 
-        if not self._put_compl:
+        if not self._put_complete:
             # In the case of put completion, motion complete
             if was_moving and not self._moving:
                 self._done_moving(timestamp=timestamp, value=value)

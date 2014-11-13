@@ -4,6 +4,7 @@ A simple test for :class:`EpicsMotor`
 '''
 
 import time
+import epics
 
 import config
 from ophyd.controls import PVPositioner
@@ -26,12 +27,17 @@ def test():
 
     fm = config.fake_motors[0]
 
+    # ensure we start at 0 for this simple test
+    epics.caput(fm['setpoint'], 0)
+    epics.caput(fm['actuate'], 1)
+    time.sleep(2)
+
     pos = PVPositioner(fm['setpoint'],
                        readback=fm['readback'],
                        act=fm['actuate'], act_val=1,
                        stop=fm['stop'], stop_val=1,
                        done=fm['moving'], done_val=1,
-                       use_put_complete=False,
+                       put_complete=False,
                        )
 
     pos.subscribe(callback, event_type=pos.SUB_DONE)
@@ -47,7 +53,7 @@ def test():
     logger.info('---- test #2 ----')
     logger.info('--> move to 1')
     pos.move(1, wait=False)
-    time.sleep(0.2)
+    time.sleep(0.5)
     logger.info('--> stop')
     pos.stop()
     logger.info('--> sleep')

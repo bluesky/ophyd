@@ -231,7 +231,7 @@ class EpicsSignal(Signal):
         self._read_pv = None
         self._write_pv = None
 
-        separate_readback = True
+        Signal.__init__(self, **kwargs)
 
         if rw and write_pv is not None:
             self._write_pv = epics.PV(write_pv, form='time',
@@ -243,6 +243,7 @@ class EpicsSignal(Signal):
             self._read_pv = epics.PV(read_pv, form='time',
                                      callback=self._read_changed,
                                      connection_callback=self._connected,
+
                                      **pv_kw)
         else:
             self._read_pv = self._write_pv
@@ -252,8 +253,9 @@ class EpicsSignal(Signal):
             self._write_pv = self._read_pv
             separate_readback = False
 
-        Signal.__init__(self, separate_readback=separate_readback,
-                        **kwargs)
+        # TODO structure this better -- logger needs to be set
+        # by the time we create epics pvs (for connection callback logging)
+        self._separate_readback = separate_readback
 
     @property
     def request_ts(self):
