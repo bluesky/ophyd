@@ -290,7 +290,7 @@ class PVPositioner(Positioner):
         if self._put_complete:
             # TODO timeout setting with put completion; untested
             if self._put_complete:
-                if self._act is None:
+                if self._actuate is None:
                     self._setpoint._set_request(position, wait=True,
                                                 timeout=self._move_timeout)
                 else:

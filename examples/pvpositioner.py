@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 '''
-A simple test for :class:`EpicsMotor`
+A simple test for :class:`PVPositioner`
 '''
 
 import time
