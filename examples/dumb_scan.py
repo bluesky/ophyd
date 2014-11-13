@@ -1,13 +1,13 @@
 #!/usr/bin/env python2.7
 '''
-A simple test for :class:`EpicsMotor`
+A simple, dumb scan test which only uses the basic signals
 '''
 
 import time
 import numpy as np
 
 import config
-from ophyd.controls import (PVPositioner, EpicsSignal)
+from ophyd.controls import (PVPositioner, EpicsSignal, EpicsMotor)
 
 
 def simple_scan(motors=[],
@@ -102,19 +102,23 @@ def test():
 
     fm = config.fake_motors[0]
 
-    # ensure we start at 0 for this simple test
-    pos0 = PVPositioner(fm['setpoint'],
-                        readback=fm['readback'],
-                        act=fm['actuate'], act_val=1,
-                        stop=fm['stop'], stop_val=1,
-                        done=fm['moving'], done_val=1,
-                        put_complete=False,
-                        )
+    if 0:
+        pos0 = PVPositioner(fm['setpoint'],
+                            readback=fm['readback'],
+                            act=fm['actuate'], act_val=1,
+                            stop=fm['stop'], stop_val=1,
+                            done=fm['moving'], done_val=1,
+                            put_complete=False,
+                            )
+    else:
+        motor_record = config.motor_recs[0]
+        pos0 = EpicsMotor(motor_record)
 
     det = [EpicsSignal(pv, rw=False)
            for pv in config.fake_sensors]
 
-    pos0_traj = [0, 1, 2]
+    # pos0_traj = [0, 0.1, 0.2]
+    pos0_traj = np.linspace(0, 1, 5)
     traj, data = simple_scan(motors=[pos0],
                              trajectories=[pos0_traj],
                              triggers=[],

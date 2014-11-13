@@ -239,7 +239,7 @@ class EpicsMotor(Positioner):
         '''
         self._set_position(value)
 
-    def _move_changed(self, timestamp=None, value=None,
+    def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
         '''
         Callback from EPICS, indicating that movement status has changed
@@ -384,7 +384,7 @@ class PVPositioner(Positioner):
         else:
             self._move_async(position, **kwargs)
 
-    def _move_changed(self, timestamp=None, value=None,
+    def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
         was_moving = self._moving
         self._moving = (value != self._done_val)
@@ -396,11 +396,6 @@ class PVPositioner(Positioner):
                                                            self, self._moving, value))
 
         if self._started_moving:
-            try:
-                kwargs.pop('sub_type')
-            except IndexError:
-                pass
-
             self._run_sub(sub_type=self.SUB_START, timestamp=timestamp,
                           value=value, **kwargs)
 
