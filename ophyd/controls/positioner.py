@@ -39,6 +39,47 @@ class Positioner(SignalGroup):
         self._moved_callbacks = []
         self._position = None
         self._move_timeout = kwargs.get('move_timeout', 0.0)
+        self._trajectory = None
+        self._trajectory_idx = None
+        self._followed = []
+
+    def set_trajectory(self, traj):
+        '''
+        Set the trajectory of the motion
+
+        :param iterable traj: Iterable sequence
+        '''
+        self._trajectory = iter(traj)
+        self._followed = []
+
+    @property
+    def next_pos(self):
+        '''
+        Get the next point in the trajectory
+        '''
+
+        if self._trajectory is None:
+            raise ValueError('Trajectory unset')
+
+        try:
+            next_pos = next(self._trajectory)
+        except StopIteration:
+            return None
+
+        self._followed.append(next_pos)
+        return next_pos
+
+    def move_next(self, **kwargs):
+        '''
+        Move to the next point in the trajectory
+        '''
+        pos = self.next_pos
+        if pos is None:
+            raise StopIteration('End of trajectory')
+
+        self.move(pos, **kwargs)
+
+        return pos
 
     def move(self, position, wait=True,
              moved_cb=None, timeout=10.0):

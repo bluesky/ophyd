@@ -47,3 +47,11 @@ fake_motors = [{'readback': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}-I',
                 },
 
                ]
+
+fake_sensors = ['XF:31IDA-BI{Dev:1}E-I',
+                'XF:31IDA-BI{Dev:2}E-I',
+                'XF:31IDA-BI{Dev:3}E-I',
+                'XF:31IDA-BI{Dev:4}E-I',
+                'XF:31IDA-BI{Dev:5}E-I',
+                'XF:31IDA-BI{Dev:6}E-I',
+                ]

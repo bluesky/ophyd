@@ -231,6 +231,8 @@ class EpicsSignal(Signal):
         self._read_pv = None
         self._write_pv = None
 
+        separate_readback = True
+
         Signal.__init__(self, **kwargs)
 
         if rw and write_pv is not None:
