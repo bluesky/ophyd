@@ -4,7 +4,7 @@ from setuptools import setup
 setup(name='ophyd',
       version='0.0.0',
       license='BSD',
-      packages=['ophyd.context',
+      packages=['ophyd.session',
                 'ophyd.controls',
                 'ophyd.runengine',
                 'ophyd.userapi',
