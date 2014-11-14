@@ -10,10 +10,10 @@ import config
 from ophyd.controls import (PVPositioner, EpicsSignal, EpicsMotor)
 
 
-def simple_scan(motors=[],
-                trajectories=[],
-                triggers=[],
-                detectors=[],
+def simple_scan(motors=None,
+                trajectories=None,
+                triggers=None,
+                detectors=None,
                 pos_settle_time=0.01,
                 trigger_settle_time=0.01,
                 dwell_time=1.0):
@@ -25,6 +25,17 @@ def simple_scan(motors=[],
     detectors: pvs to record after the dwell time
     dwell_time: time to dwell per point of scan
     '''
+    if motors is None:
+        motors = []
+
+    if trajectories is None:
+        trajectories = []
+
+    if triggers is None:
+        triggers = []
+
+    if detectors is None:
+        detectors = []
 
     logger = config.logger
 
