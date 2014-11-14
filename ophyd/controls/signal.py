@@ -389,6 +389,13 @@ class SignalGroup(object):
 
         register_object(self)
 
+    @property
+    def alias(self):
+        '''
+        An alternative name for the signal
+        '''
+        return self._alias
+
     def _run_sub(self, *args, **kwargs):
         '''
         Run a set of callback subscriptions
