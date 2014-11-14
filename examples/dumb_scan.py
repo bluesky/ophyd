@@ -3,6 +3,7 @@
 A simple, dumb scan test which only uses the basic signals
 '''
 
+from __future__ import print_function
 import time
 import numpy as np
 
@@ -10,12 +11,13 @@ import config
 from ophyd.controls import (PVPositioner, EpicsSignal, EpicsMotor)
 
 
-def simple_scan(motors=None,
-                trajectories=None,
-                triggers=None,
-                detectors=None,
+def simple_scan(motors=[],
+                trajectories=[],
+                triggers=[],
+                detectors=[],
                 pos_settle_time=0.01,
                 trigger_settle_time=0.01,
+                det_settle_time=0.01,
                 dwell_time=1.0):
     '''
     motors: a list of positioners
@@ -25,17 +27,6 @@ def simple_scan(motors=None,
     detectors: pvs to record after the dwell time
     dwell_time: time to dwell per point of scan
     '''
-    if motors is None:
-        motors = []
-
-    if trajectories is None:
-        trajectories = []
-
-    if triggers is None:
-        triggers = []
-
-    if detectors is None:
-        detectors = []
 
     logger = config.logger
 
@@ -75,7 +66,9 @@ def simple_scan(motors=None,
     def collect_data():
         logger.debug('Collecting data')
         # return [det.read() for det in detectors]
-        return [det.readback for det in detectors]
+        a = [det.readback for det in detectors]
+        print(a)
+        return a
 
     for motor, pos in zip(motors, trajectories):
         logger.debug('Setting trajectory for motor %s' % motor)
@@ -90,7 +83,9 @@ def simple_scan(motors=None,
             time.sleep(pos_settle_time)
             do_triggers()
             time.sleep(trigger_settle_time)
+
             time.sleep(dwell_time)
+            time.sleep(det_settle_time)
             all_data.append(collect_data())
 
     except KeyboardInterrupt:
@@ -113,26 +108,35 @@ def test():
 
     fm = config.fake_motors[0]
 
-    if 0:
-        pos0 = PVPositioner(fm['setpoint'],
-                            readback=fm['readback'],
-                            act=fm['actuate'], act_val=1,
-                            stop=fm['stop'], stop_val=1,
-                            done=fm['moving'], done_val=1,
+    if 1:
+        mono = 'XF:23ID1-OP{Mono}'
+        pos0 = PVPositioner('%sEnrgy-SP' % mono,
+                            readback='%sEnrgy-I' % mono,
+                            # act=actuate_pv, act_val=1,
+                            stop='%sCmd:Stop-Cmd.PROC' % mono, stop_val=1,
+                            done='%sSts:Scan-Sts', done_val=0,
                             put_complete=False,
+                            alias='mono',
                             )
+        pos0_traj = np.linspace(500, 530, 5)
     else:
-        motor_record = config.motor_recs[0]
+        motor_record = 'XF:23ID1-OP{Slt:1-Ax:T}Mtr'
         pos0 = EpicsMotor(motor_record)
+        pos0_traj = np.linspace(5, 6, 5)
 
-    det = [EpicsSignal(pv, rw=False)
-           for pv in config.fake_sensors]
+    # det = [EpicsSignal(pv, rw=False)
+    #        for pv in config.fake_sensors]
+    scaler_prefix = 'XF:23ID1-ES{Sclr:1}'
+
+    scaler_count = EpicsSignal('%s.CNT' % scaler_prefix)
+    det = [EpicsSignal('%s.S%d' % (scaler_prefix, i), rw=False)
+           for i in range(1, 8)]
 
     # pos0_traj = [0, 0.1, 0.2]
-    pos0_traj = np.linspace(0, 1, 5)
     traj, data = simple_scan(motors=[pos0],
                              trajectories=[pos0_traj],
-                             triggers=[],
+                             triggers=[(scaler_count, 1),
+                                       ],
                              detectors=det,
                              dwell_time=1.0)
 

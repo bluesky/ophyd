@@ -99,7 +99,7 @@ def simple_scan(motors,
         raise ValueError("you must pass in at least one motor to scan")
 
     traj_len = len(trajectories[0])
-    if not all(len(t) == traj_len for t in traj_len[1:]):
+    if not all(len(t) == traj_len for t in trajectories[1:]):
         t_lens = [len(t) for t in trajectories]
         raise ValueError("All trajectories must be the same length. "
                          "Your trajectories have lengths {}".format(t_lens))
@@ -117,7 +117,7 @@ def simple_scan(motors,
     # closure over detectors
     def collect_data():
         logger.debug('Collecting data')
-        return {(n, det.readback) for n, det
+        return {n: det.readback for n, det
                 in six.iteritems(detectors)}
 
     # closure over motors
@@ -132,7 +132,9 @@ def simple_scan(motors,
             positions to move the motors to, must be same
             length as motors
         """
+        print('positions: {}'.format(positions))
         for m, p in zip(motors, positions):
+            print('p: {}'.format(p))
             logger.debug('Moving motor %s to %s', m, p)
             m.move(p, wait=False)
 
@@ -146,7 +148,8 @@ def simple_scan(motors,
     all_data = deque()
     try:
         # loop over all of the positions
-        for positions in zip(trajectories):
+        for j, positions in enumerate(zip(*trajectories)):
+            print(j, positions)
             # move the motors
             move_motors(positions)
             # sleep for a bit to make sure they are settled
@@ -157,12 +160,17 @@ def simple_scan(motors,
             time.sleep(trigger_settle_time + dwell_time)
             # collect the data from the detectors
             data = collect_data()
+            p = {"p{}".format(j):_p for j, _p in enumerate(positions)}
+            data.update(p)
             # grab the time stamp
-            ts = datetime.now()
+            ts = datetime.now().isoformat()
             # make a list of tuples (time_stamp, data_dict)
             a = [(ts, data)]
             # push data across the wire
-            write_json_to_socket(a, host, port)
+            print('a', a)
+            write_json_to_socket(a, host, port, json_encoder=None)
+
+            time.sleep(1)
             all_data.append((ts, data))
 
     except KeyboardInterrupt:
@@ -180,26 +188,23 @@ def test():
     """
     fm = config.fake_motors[0]
 
-    if 0:
-        pos0 = PVPositioner(fm['setpoint'],
-                            readback=fm['readback'],
-                            act=fm['actuate'], act_val=1,
-                            stop=fm['stop'], stop_val=1,
-                            done=fm['moving'], done_val=1,
-                            put_complete=False,
-                            )
-    else:
-        motor_record = config.motor_recs[0]
-        pos0 = EpicsMotor(motor_record)
 
-    dets = [EpicsSignal(pv, rw=False)
-           for pv in config.fake_sensors]
+    motor_record = 'XF:23ID1-OP{Slt:3-Ax:X}Mtr'
+    pos0 = EpicsMotor(motor_record)
+    pos0_traj = np.linspace(5.75, 5.95, 51)
 
-    # pos0_traj = [0, 0.1, 0.2]
-    pos0_traj = np.linspace(0, 1, 5)
+    #scaler_prefix = 'XF:23ID1-ES{Sclr:1}'
+    ad_prefix = 'XF:23ID1-ES{Dif-Cam:Beam}'
+    ad_count = EpicsSignal('%scam1:Acquire' % ad_prefix)
+    #scaler_count = EpicsSignal('%s.CNT' % scaler_prefix)
+    #dets = {"s{}".format(i): EpicsSignal('%s.S%d' % (scaler_prefix, i), rw=False)
+    #       for i in range(1, 8)}
+    dets = {"s{}".format(i): EpicsSignal('%sStats%d:Total_RBV' % (ad_prefix, i), rw=False)
+           for i in range(1, 6)}
+
     data = simple_scan(motors=[pos0],
                              trajectories=[pos0_traj],
-                             triggers=[],
+                             triggers=[(ad_count, 1),],
                              detectors=dets,
                              dwell_time=1.0)
 
