@@ -36,12 +36,14 @@ requirements:
   run:
     - python
     - broker
+    - pyepics
 
 test:
   # Python imports
   imports:
     - ophyd
     - ophyd.controls
+    - ophyd.session
     - ophyd.runengine
     - ophyd.userapi
     - ophyd.utils
