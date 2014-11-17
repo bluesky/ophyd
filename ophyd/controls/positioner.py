@@ -325,6 +325,7 @@ class PVPositioner(Positioner):
     def _field_pv(self, field):
         return '%s.%s' % (self._record, field.upper())
 
+
     def _move_wait(self, position, **kwargs):
         self._started_moving = False
 
