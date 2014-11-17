@@ -1,5 +1,8 @@
 from __future__ import (absolute_import, division,
-                        unicode_literals, print_function)
+                        print_function)
+import os
+# this must appear before the cothread import
+os.environ['EPICS_BASE'] = '/usr/lib/epics'
 import six
 from six.moves import zip
 
@@ -12,6 +15,8 @@ from collections import deque
 from datetime import datetime
 from broker import config as cfg
 from broker.client import write_json_to_socket
+
+from cothread import catools as ca
 
 # just to set up the loggers
 
@@ -136,14 +141,17 @@ def simple_scan(motors,
         for m, p in zip(motors, positions):
             print('p: {}'.format(p))
             logger.debug('Moving motor %s to %s', m, p)
-            m.move(p, wait=False)
-
+            m.move(p, wait=True)
+        #time.sleep(1)
         # this will catch on the slowest one
         for m in motors:
+            print('i think my move state is pre loop', m.moving)
+            print('='*45)
             logger.debug('Waiting on motor %s', m)
             while m.moving:
+                # print('i think my move state is ', m.moving)
                 time.sleep(0.01)
-
+            print('i think my move state is post loop', m.moving)
     # collection point for the data
     all_data = deque()
     try:
@@ -165,10 +173,9 @@ def simple_scan(motors,
             # grab the time stamp
             ts = datetime.now().isoformat()
             # make a list of tuples (time_stamp, data_dict)
-            a = [(ts, data)]
+            # a = [(ts, data)]
             # push data across the wire
-            print('a', a)
-            write_json_to_socket(a, host, port, json_encoder=None)
+            # write_json_to_socket(a, host, port, json_encoder=None)
 
             time.sleep(1)
             all_data.append((ts, data))
@@ -182,7 +189,7 @@ def simple_scan(motors,
     return list(all_data)
 
 
-def test():
+def test_motor():
     """
     Keeping this function around for reference
     """
@@ -191,17 +198,107 @@ def test():
 
     motor_record = 'XF:23ID1-OP{Slt:3-Ax:X}Mtr'
     pos0 = EpicsMotor(motor_record)
-    pos0_traj = np.linspace(5.75, 5.95, 51)
+    pos0_traj = np.linspace(6.7, 7, 51)
 
     #scaler_prefix = 'XF:23ID1-ES{Sclr:1}'
     ad_prefix = 'XF:23ID1-ES{Dif-Cam:Beam}'
     ad_count = EpicsSignal('%scam1:Acquire' % ad_prefix)
+    #                       read_pv = '%scam1:Acquire' % ad_prefix)
     #scaler_count = EpicsSignal('%s.CNT' % scaler_prefix)
     #dets = {"s{}".format(i): EpicsSignal('%s.S%d' % (scaler_prefix, i), rw=False)
     #       for i in range(1, 8)}
     dets = {"s{}".format(i): EpicsSignal('%sStats%d:Total_RBV' % (ad_prefix, i), rw=False)
            for i in range(1, 6)}
+    ca.caput("XF:23ID-CT{Replay}Val:0-I",
+             "XF:23ID1-OP{Slt:3-Ax:X}Mtr.RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:1-I",
+             "XF:23ID1-BI{Diag:6-Cam:1}Stats5:Total_RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:2-I",
+             "SR:C23-ID:G1A{EPU:2-Ax:Gap}-Mtr.RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:3-I",
+             "{}Stats5:Total_RBV".format(ad_prefix), datatype=ca.DBR_CHAR_STR)
+    data = simple_scan(motors=[pos0],
+                             trajectories=[pos0_traj],
+                             triggers=[(ad_count, 1),],
+                             detectors=dets,
+                             dwell_time=1.0)
 
+    print(data)
+
+def test_mono():
+    """
+    Keeping this function around for reference
+    """
+    fm = config.fake_motors[0]
+
+
+    mono = 'XF:23ID1-OP{Mono}'
+    pos0 = PVPositioner('%sEnrgy-SP' % mono,
+                        readback='%sEnrgy-I' % mono,
+                        # act=actuate_pv, act_val=1,
+                        stop='%sCmd:Stop-Cmd.PROC' % mono, stop_val=1,
+                        done='%sSts:Scan-Sts' % mono, done_val=0,
+                        put_complete=False,
+                        alias='mono',)
+    pos0_traj = np.linspace(500, 530, 61)
+
+    scaler_prefix = 'XF:23ID1-ES{Sclr:1}'
+    scaler_count = EpicsSignal('%s.CNT' % scaler_prefix)
+    dets = {"s{}".format(i): EpicsSignal('%s.S%d' % (scaler_prefix, i), rw=False)
+          for i in range(1, 8)}
+    # dets = {"s{}".format(i): EpicsSignal('%sStats%d:Total_RBV' % (ad_prefix, i), rw=False)
+    #        for i in range(1, 6)}
+    ca.caput("XF:23ID-CT{Replay}Val:0-I",
+             "XF:23ID1-OP{Mono}Enrgy-I", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:1-I",
+             "XF:23ID1-BI{Diag:6-Cam:1}Stats5:Total_RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:2-I",
+             "SR:C23-ID:G1A{EPU:2-Ax:Gap}-Mtr.RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:3-I",
+             "{}_cts1.H".format(scaler_prefix), datatype=ca.DBR_CHAR_STR)
+    data = simple_scan(motors=[pos0],
+                             trajectories=[pos0_traj],
+                             triggers=[(scaler_count, 1),],
+                             detectors=dets,
+                             dwell_time=1.0)
+
+
+def test_undulator():
+    """
+    Keeping this function around for reference
+    """
+    fm = config.fake_motors[0]
+
+
+    # motor_record = 'XF:23ID1-OP{Slt:3-Ax:X}Mtr'
+    undulator = 'SR:C23-ID:G1A{EPU:2-Ax:Gap}-Mtr'
+    pos0 = PVPositioner('%s-SP' % undulator,
+                        readback='%s.RBV' % undulator,
+                        # act=actuate_pv, act_val=1,
+                        stop='%s.STOP' % undulator,
+                        done='%s.MOVN' % undulator,
+                        done_val=0,
+                            put_complete=True,
+                            alias='mono',
+                            )
+
+    pos0_traj = np.linspace(20000, 25000, 26)
+
+    #scaler_prefix = 'XF:23ID1-ES{Sclr:1}'
+    ad_prefix = 'XF:23ID1-BI{Diag:6-Cam:1}'
+    ad_count = EpicsSignal('%scam1:Acquire' % ad_prefix)
+    #                       read_pv = '%scam1:Acquire' % ad_prefix)
+    #scaler_count = EpicsSignal('%s.CNT' % scaler_prefix)
+    #dets = {"s{}".format(i): EpicsSignal('%s.S%d' % (scaler_prefix, i), rw=False)
+    #       for i in range(1, 8)}
+    dets = {"s{}".format(i): EpicsSignal('%sStats%d:Total_RBV' % (ad_prefix, i), rw=False)
+           for i in range(1, 6)}
+    ca.caput("XF:23ID-CT{Replay}Val:0-I",
+             "XF:23ID1-OP{Mono}Enrgy-I", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:1-I",
+             "XF:23ID1-BI{Diag:6-Cam:1}Stats5:Total_RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:2-I",
+             "SR:C23-ID:G1A{EPU:2-Ax:Gap}-Mtr.RBV", datatype=ca.DBR_CHAR_STR)
     data = simple_scan(motors=[pos0],
                              trajectories=[pos0_traj],
                              triggers=[(ad_count, 1),],
@@ -212,7 +309,7 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    test_mono()
 
 # this is here in case I really don't understand something
 if 0:

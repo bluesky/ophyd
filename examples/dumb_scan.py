@@ -124,6 +124,13 @@ def test():
         pos0 = EpicsMotor(motor_record)
         pos0_traj = np.linspace(5, 6, 5)
 
+    ca.caput("XF:23ID-CT{Replay}Val:0-I",
+             "XF:23ID1-OP{Mono}Enrgy-I", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:1-I",
+             "XF:23ID1-BI{Diag:6-Cam:1}Stats5:Total_RBV", datatype=ca.DBR_CHAR_STR)
+    ca.caput("XF:23ID-CT{Replay}Val:2-I",
+             "SR:C23-ID:G1A{EPU:2-Ax:Gap}-Mtr.RBV", datatype=ca.DBR_CHAR_STR)
+
     # det = [EpicsSignal(pv, rw=False)
     #        for pv in config.fake_sensors]
     scaler_prefix = 'XF:23ID1-ES{Sclr:1}'
@@ -132,10 +139,13 @@ def test():
     det = [EpicsSignal('%s.S%d' % (scaler_prefix, i), rw=False)
            for i in range(1, 8)]
 
+    ad_prefix = 'XF:23ID1-BI{Diag:6-Cam:1}'
+    ad_count = EpicsSignal('%scam1:Acquire' % ad_prefix)
+
     # pos0_traj = [0, 0.1, 0.2]
     traj, data = simple_scan(motors=[pos0],
                              trajectories=[pos0_traj],
-                             triggers=[(scaler_count, 1),
+                             triggers=[(scaler_count, 1), (ad_count, 1)
                                        ],
                              detectors=det,
                              dwell_time=1.0)
