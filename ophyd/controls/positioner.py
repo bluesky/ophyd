@@ -14,7 +14,8 @@ import time
 
 from epics.pv import fmt_time
 
-from .signal import (EpicsSignal, SignalGroup, OpTimeoutError)
+from .signal import (EpicsSignal, SignalGroup)
+from ..utils import TimeoutError
 
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class Positioner(SignalGroup):
             finished (not applicable if `wait` is set)
         :param float timeout: Timeout in seconds
 
-        :raises: OpTimeoutError
+        :raises: TimeoutError
         '''
 
         # TODO session manager handles ctrl-C to stop move?
@@ -110,8 +111,8 @@ class Positioner(SignalGroup):
                 if check_timeout():
                     del self._moved_callbacks[:]
 
-                    raise OpTimeoutError('Failed to move %s to %s in %s s (no motion)' %
-                                         (self, position, timeout))
+                    raise TimeoutError('Failed to move %s to %s in %s s (no motion)' %
+                                       (self, position, timeout))
 
             while self._moving:
                 time.sleep(0.05)
@@ -119,8 +120,8 @@ class Positioner(SignalGroup):
                 if check_timeout():
                     del self._moved_callbacks[:]
 
-                    raise OpTimeoutError('Failed to move %s to %s in %s s' %
-                                         (self, position, timeout))
+                    raise TimeoutError('Failed to move %s to %s in %s s' %
+                                       (self, position, timeout))
 
         elif moved_cb is not None:
             self._moved_callbacks.append(moved_cb)
@@ -343,11 +344,11 @@ class PVPositioner(Positioner):
                 self._done_moving(timestamp=self._setpoint.readback_timestamp)
             elif self._started_moving and self._moving:
                 # TODO better exceptions
-                raise OpTimeoutError('Failed to move %s to %s s (put complete done, still moving)' %
-                                     (self, position))
+                raise TimeoutError('Failed to move %s to %s s (put complete done, still moving)' %
+                                   (self, position))
             else:
-                raise OpTimeoutError('Failed to move %s to %s s (no motion, put complete)' %
-                                     (self, position))
+                raise TimeoutError('Failed to move %s to %s s (no motion, put complete)' %
+                                   (self, position))
         else:
             self._setpoint._set_request(position, wait=True)
             logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,

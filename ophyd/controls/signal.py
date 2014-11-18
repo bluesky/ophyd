@@ -16,18 +16,9 @@ import time
 import epics
 
 from ..session import register_object
-
+from ..utils import TimeoutError
 
 logger = logging.getLogger(__name__)
-
-
-# TODO: where do our exceptions go?
-class OpException(Exception):
-    pass
-
-
-class OpTimeoutError(OpException):
-    pass
 
 
 class Signal(object):
@@ -138,8 +129,10 @@ class Signal(object):
         '''
         return self._get_readback()
 
-    # - Value is the same thing as the readback for simplicity
-    value = readback
+    # - Value reads from readback, and writes to request
+    value = property(lambda self: self._get_readback(),
+                     lambda self, value: self._set_request(value),
+                     doc='The requested value for the signal')
 
     def _set_readback(self, value, allow_cb=True, **kwargs):
         old_value = self._readback
@@ -166,6 +159,7 @@ class Signal(object):
         if event_type is None:
             event_type = self._default_sub
 
+        assert callable(callback), 'The callback must be callable'
         self._subs[event_type].append(callback)
 
     def clear_sub(self, callback, event_type=None):
@@ -209,6 +203,7 @@ class Signal(object):
 class EpicsSignal(Signal):
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw={},
+                 put_complete=False,
                  **kwargs):
         '''
         An EPICS signal, comprised of either one or two EPICS PVs
@@ -230,6 +225,7 @@ class EpicsSignal(Signal):
 
         self._read_pv = None
         self._write_pv = None
+        self._put_complete = put_complete
 
         separate_readback = True
 
@@ -245,7 +241,6 @@ class EpicsSignal(Signal):
             self._read_pv = epics.PV(read_pv, form='time',
                                      callback=self._read_changed,
                                      connection_callback=self._connected,
-
                                      **pv_kw)
         else:
             self._read_pv = self._write_pv
@@ -329,24 +324,32 @@ class EpicsSignal(Signal):
 
         if not self._write_pv.connected:
             if not self._write_pv.wait_for_connection():
-                raise OpTimeoutError('Failed to connect to %s' %
-                                     self._write_pv.pvname)
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._write_pv.pvname)
 
-        self._write_pv.put(value, wait=wait, **kwargs)
+        use_complete = kwargs.get('use_complete', self._put_complete)
+        self._write_pv.put(value, wait=wait, use_complete=use_complete,
+                           **kwargs)
 
         Signal._set_request(self, value)
 
-    def _read_changed(self, value=None, **kwargs):
+    def _read_changed(self, value=None, timestamp=None, **kwargs):
         '''
         A callback indicating that the read value has changed
         '''
-        self._set_readback(value, **kwargs)
+        if timestamp is None:
+            timestamp = time.time()
 
-    def _write_changed(self, value=None, **kwargs):
+        self._set_readback(value, timestamp=timestamp)
+
+    def _write_changed(self, value=None, timestamp=None, **kwargs):
         '''
         A callback indicating that the write value has changed
         '''
-        self._set_request(value, **kwargs)
+        if timestamp is None:
+            timestamp = time.time()
+
+        Signal._set_request(self, value, timestamp=timestamp)
 
     def _get_readback(self):
         return self._read_pv.get()
