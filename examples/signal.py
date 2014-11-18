@@ -7,8 +7,10 @@ import time
 
 import config
 from ophyd.controls import EpicsSignal
-from ophyd.utils.epics import record_field
+from ophyd.utils.epics_pvs import record_field
+import ophyd
 
+import epics
 
 def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
@@ -34,7 +36,6 @@ def test():
     time.sleep(1.)
     rw_signal.value = 1
     time.sleep(1.)
-
 
 if __name__ == '__main__':
     test()

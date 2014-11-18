@@ -1,5 +1,17 @@
-import epics
+import ctypes
+import threading
+import Queue as queue
+
 from . import errors
+import epics
+
+__all__ = ['split_record_field',
+           'strip_field',
+           'record_field',
+           'check_alarm',
+           'install_monitor_dispatcher',
+           'restore_monitor',
+           ]
 
 
 def split_record_field(pv):
@@ -67,3 +79,44 @@ def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
             raise error_class(message)
 
     return True
+
+
+# TODO this needs to be setup by the session manager.
+# TODO ** call epics.ca.use_initial_context() at startup in main thread
+def monitor_dispatcher(monitor_queue, stop_event,
+                       timeout=0.1):
+    while True:
+        try:
+            args = monitor_queue.get(True, timeout)
+        except queue.Empty:
+            pass
+        else:
+            epics.ca._onMonitorEvent(args)
+
+        if stop_event.is_set():
+            break
+
+
+def install_monitor_dispatcher():
+    monitor_queue = queue.Queue()
+
+    def monitor_event(args):
+        monitor_queue.put(args)
+
+    stop_event = threading.Event()
+    epics.ca._CB_EVENT = ctypes.CFUNCTYPE(None, epics.dbr.event_handler_args)(monitor_event)
+    dispatcher_thread = epics.ca.CAThread(target=monitor_dispatcher,
+                                          name='monitor_dispatcher',
+                                          args=(monitor_queue, stop_event))
+
+    dispatcher_thread.daemon = True
+    dispatcher_thread.queue = monitor_queue
+    dispatcher_thread.stop_event = stop_event
+    dispatcher_thread.start()
+
+    return dispatcher_thread
+
+
+def restore_monitor():
+    epics.ca._CB_EVENT = ctypes.CFUNCTYPE(None,
+                                          epics.dbr.event_handler_args)(epics.ca._onMonitorEvent)
