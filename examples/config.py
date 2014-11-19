@@ -19,7 +19,7 @@ EXAMPLE_LOGGER = 'ophyd_examples'
 def setup_epics():
     # TODO in place of session setup
     import atexit
-    from ophyd.utils.epics_pvs import install_monitor_dispatcher
+    from ophyd.utils.epics_pvs import MonitorDispatcher
 
     def stop_dispatcher():
         dispatcher.stop_event.set()
@@ -28,7 +28,7 @@ def setup_epics():
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
     epics.ca.use_initial_context()
-    dispatcher = install_monitor_dispatcher()
+    dispatcher = MonitorDispatcher()
 
     atexit.register(stop_dispatcher)
 
