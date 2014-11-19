@@ -8,9 +8,7 @@ import time
 import config
 from ophyd.controls import EpicsSignal
 from ophyd.utils.epics_pvs import record_field
-import ophyd
 
-import epics
 
 def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):

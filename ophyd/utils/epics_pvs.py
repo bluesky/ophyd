@@ -1,3 +1,4 @@
+from __future__ import print_function
 import ctypes
 import threading
 import Queue as queue
@@ -87,24 +88,47 @@ def monitor_dispatcher(monitor_queue, stop_event,
                        timeout=0.1):
     while True:
         try:
-            args = monitor_queue.get(True, timeout)
+            callback, args, kwargs = monitor_queue.get(True, timeout)
         except queue.Empty:
             pass
         else:
-            epics.ca._onMonitorEvent(args)
+            callback(*args, **kwargs)
 
         if stop_event.is_set():
             break
 
 
-def install_monitor_dispatcher():
+def install_monitor_dispatcher(all_contexts=False):
+    '''
+    The monitor dispatcher works around having callbacks from libca threads.
+    Using epics CA calls (caget, caput, etc.) from those callbacks is not possible
+    without this dispatcher workaround.
+
+    ... note:: Without `all_contexts` set, only the callbacks that are run with the
+        same context as the the main thread are affected.
+
+    :param all_contexts: re-route _all_ callbacks from _any_ context to
+        the dispatcher callback thread [default: False]
+
+    '''
+    def monitor_event(args):
+        if all_contexts or dispatcher_thread.main_context == epics.ca.current_context():
+            if callable(args.usr):
+                args.usr = lambda orig_cb=args.usr, **kwargs: \
+                    monitor_queue.put((orig_cb, [], kwargs))
+
+        epics.ca._onMonitorEvent(args)
+
+    # The dispatcher thread will stop if this event is set
+    stop_event = threading.Event()
     monitor_queue = queue.Queue()
 
-    def monitor_event(args):
-        monitor_queue.put(args)
-
-    stop_event = threading.Event()
+    # Re-route monitor events to our new handler
     epics.ca._CB_EVENT = ctypes.CFUNCTYPE(None, epics.dbr.event_handler_args)(monitor_event)
+
+    # TODO this whole implementation should probably be a subclass of CAThread
+
+    # Start up the dispatcher thread
     dispatcher_thread = epics.ca.CAThread(target=monitor_dispatcher,
                                           name='monitor_dispatcher',
                                           args=(monitor_queue, stop_event))
@@ -112,6 +136,7 @@ def install_monitor_dispatcher():
     dispatcher_thread.daemon = True
     dispatcher_thread.queue = monitor_queue
     dispatcher_thread.stop_event = stop_event
+    dispatcher_thread.main_context = epics.ca.current_context()
     dispatcher_thread.start()
 
     return dispatcher_thread
