@@ -16,7 +16,7 @@ from epics.pv import fmt_time
 
 from .signal import (EpicsSignal, SignalGroup)
 from ..utils import TimeoutError
-
+from ..utils.epics_pvs import record_field
 
 logger = logging.getLogger(__name__)
 
@@ -194,13 +194,13 @@ class EpicsMotor(Positioner):
 
         Positioner.__init__(self, record, **kwargs)
 
-        signals = [EpicsSignal(self._field_pv('RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(self._field_pv('VAL'), alias='_user_request'),
-                   EpicsSignal(self._field_pv('MOVN'), alias='_is_moving'),
-                   EpicsSignal(self._field_pv('DMOV'), alias='_done_move'),
-                   EpicsSignal(self._field_pv('EGU'), alias='_egu'),
-                   EpicsSignal(self._field_pv('STOP'), alias='_stop'),
-                   # EpicsSignal(self._field_pv('RDBD'), alias='retry_deadband'),
+        signals = [EpicsSignal(record_field(record, 'RBV'), rw=False, alias='_user_readback'),
+                   EpicsSignal(record_field(record, 'VAL'), alias='_user_request'),
+                   EpicsSignal(record_field(record, 'MOVN'), alias='_is_moving'),
+                   EpicsSignal(record_field(record, 'DMOV'), alias='_done_move'),
+                   EpicsSignal(record_field(record, 'EGU'), alias='_egu'),
+                   EpicsSignal(record_field(record, 'STOP'), alias='_stop'),
+                   # EpicsSignal(record_field(record, 'RDBD'), alias='retry_deadband'),
                    ]
 
         for signal in signals:
@@ -217,7 +217,7 @@ class EpicsMotor(Positioner):
         '''
         Return a full PV from the field name
         '''
-        return '%s.%s' % (self._record, field.upper())
+        return record_field(self._record, field)
 
     def move(self, position, wait=True,
              **kwargs):
@@ -322,9 +322,6 @@ class PVPositioner(Positioner):
 
         for signal in signals:
             self.add_signal(signal)
-
-    def _field_pv(self, field):
-        return '%s.%s' % (self._record, field.upper())
 
     def _move_wait(self, position, **kwargs):
         self._started_moving = False

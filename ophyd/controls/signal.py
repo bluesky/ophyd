@@ -21,6 +21,11 @@ from ..utils import TimeoutError
 logger = logging.getLogger(__name__)
 
 
+# TODO: read -> report
+#       * report() reports current state
+#       * read() performs action on the signal and returns something similar to
+#           report()
+
 class Signal(object):
     '''
     This class represents a signal, which can potentially be a read-write
@@ -349,6 +354,7 @@ class EpicsSignal(Signal):
 
         Signal._set_request(self, value, timestamp=timestamp)
 
+    # TODO: monitor updates self._readback - this shouldn't be necessary
     def _get_readback(self):
         return self._read_pv.get()
 
@@ -366,13 +372,15 @@ class EpicsSignal(Signal):
 
         ret = Signal.read(self)
         if self._read_pv is not None:
-            ret['read_pv'] = self._read_pv.pvname
+            ret['read_pv'] = self.read_pvname
 
         if self._write_pv is not None:
-            ret['write_pv'] = self._write_pv.pvname
+            ret['write_pv'] = self.write_pvname
 
         return ret
 
+
+# TODO uniform interface to Signal and SignalGroup
 
 class SignalGroup(object):
     def __init__(self, alias=None):
