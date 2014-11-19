@@ -29,6 +29,7 @@ __all__ = ['AreaDetector',
            'ColorConvPlugin',
            'ProcessPlugin',
            'OverlayPlugin',
+           'NexusPlugin',
            'ROIPlugin',
            'FilePlugin',
            'NetCDFPlugin',
@@ -50,11 +51,10 @@ def ADSignal(pv, has_rbv=False, doc='', **kwargs):
         try:
             return self._ad_signals[pv]
         except KeyError:
+            read_ = write = ''.join([self._prefix, pv])
             if has_rbv:
-                read_ = ''.join([self._prefix, pv, '_RBV'])
-                write = ''.join([self._prefix, pv])
+                read_ += '_RBV'
             else:
-                read_ = pv
                 write = None
 
             self._ad_signals[pv] = EpicsSignal(read_, write_pv=write,
@@ -169,10 +169,13 @@ class PluginBase(SignalGroup):
     queue_use_high = ADSignal('QueueUseHIGH')
     queue_use_hihi = ADSignal('QueueUseHIHI')
 
-    def __init__(self, prefix, suffix=''):
-        if not suffix:
+    def __init__(self, prefix, suffix=None, **kwargs):
+        SignalGroup.__init__(self, **kwargs)
+
+        if suffix is None:
             suffix = self._default_suffix
-        self._prefix = str(prefix)
+
+        self._prefix = ''.join([prefix, suffix])
         self._ad_signals = {}
 
 
@@ -412,7 +415,6 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
 
     # HDF5 includes version number, remove it
     type_ = type_.split(' ')[0]
-    print(type_rbv, type_)
 
     class_ = type_map[type_]
     return class_(''.join([prefix, suffix]), **kwargs)
