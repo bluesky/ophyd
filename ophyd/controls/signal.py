@@ -355,6 +355,8 @@ class EpicsSignal(Signal):
         Signal._set_request(self, value, timestamp=timestamp)
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
+    #       ... but, there should be a mode of operation without using
+    #           monitor updates, e.g., for large arrays
     def _get_readback(self):
         return self._read_pv.get()
 

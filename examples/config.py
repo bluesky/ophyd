@@ -74,3 +74,20 @@ fake_sensors = ['XF:31IDA-BI{Dev:1}E-I',
                 'XF:31IDA-BI{Dev:5}E-I',
                 'XF:31IDA-BI{Dev:6}E-I',
                 ]
+
+ad_plugins = {'image': ['image1:', ],
+              'roi': ['ROI1:', 'ROI2:', 'ROI3:', 'ROI4:'],
+              'file': ['netCDF1:', 'TIFF1:', 'JPEG1:', 'Nexus1:', 'HDF1:', 'Magick1:', ],
+              'proc': ['Proc1:', ],
+              'stats': ['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
+              'overlay': [('Over1:', '1:', '2:', '3:', '4:', '5:', '6:', '7:', '8:', ), ],
+              'cc': ['CC1:', 'CC2:', ],
+              }
+
+sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
+                     'cam': ['cam1:', ],
+                     },
+                    {'prefix': 'XF:31IDA-BI{Cam:Tbl}',
+                     'cam': ['cam1:', ],
+                     }
+                    ]
