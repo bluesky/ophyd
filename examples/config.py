@@ -88,6 +88,6 @@ sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
                      'cam': ['cam1:', ],
                      },
                     {'prefix': 'XF:31IDA-BI{Cam:Tbl}',
-                     'cam': ['cam1:', ],
+                     'cam': ['cam2:', ],
                      }
                     ]
