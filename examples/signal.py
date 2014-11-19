@@ -14,6 +14,10 @@ def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
         logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
 
+        # Test that the monitor dispatcher works (there is an implicit
+        # caget in the following line when accessing rw_signal.value)
+        logger.info('[callback] caget=%s' % rw_signal.value)
+
     loggers = ('ophyd.controls.signal',
                'ophyd.session',
                )
