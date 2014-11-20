@@ -74,3 +74,6 @@ fake_sensors = ['XF:31IDA-BI{Dev:1}E-I',
                 'XF:31IDA-BI{Dev:5}E-I',
                 'XF:31IDA-BI{Dev:6}E-I',
                 ]
+
+# this is a real instrument - it is not currently used, but be cautious!
+scalers = ['XF:23ID2-ES{Sclr:1}']
