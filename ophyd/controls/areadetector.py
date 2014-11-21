@@ -11,6 +11,7 @@
 '''
 
 from __future__ import print_function
+import re
 import logging
 import numpy as np
 
@@ -206,11 +207,32 @@ class AreaDetector(ADBase):
     time_remaining = ADSignal('TimeRemaining_RBV', rw=False)
     trigger_mode = ADSignal('TriggerMode', has_rbv=True)
 
-    def __init__(self, prefix, cam='cam1:', **kwargs):
+    def __init__(self, prefix, cam='cam1:',
+                 images=['image1:', ],
+                 rois=['ROI1:', 'ROI2:', 'ROI3:', 'ROI4:'],
+                 files=['TIFF1:', ],
+                 procs=['Proc1:', ],
+                 stats=['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
+                 ccs=['CC1:', 'CC2:', ],
+                 **kwargs):
+
+        self._base_prefix = prefix
+
         if cam and not prefix.endswith(cam):
             prefix = ''.join([prefix, cam])
 
         ADBase.__init__(self, prefix=prefix, **kwargs)
+
+        self.images = [ImagePlugin(self._base_prefix, suffix=im)
+                       for im in images]
+        self.files = [get_areadetector_plugin(self._base_prefix, suffix=fn)
+                      for fn in files]
+        self.procs = [ProcessPlugin(self._base_prefix, suffix=proc)
+                      for proc in procs]
+        self.stats = [StatsPlugin(self._base_prefix, suffix=stat)
+                      for stat in stats]
+        self.ccs = [ColorConvPlugin(self._base_prefix, suffix=cc)
+                    for cc in ccs]
 
 
 class PluginBase(ADBase):
@@ -272,6 +294,7 @@ class PluginBase(ADBase):
 
 class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
+    _suffix_re = 'image\d:'
 
     array_data = ADSignal('ArrayData')
 
@@ -291,6 +314,7 @@ class ImagePlugin(PluginBase):
 
 class StatsPlugin(PluginBase):
     _default_suffix = 'Stats1:'
+    _suffix_re = 'Stats\d:'
 
     bgd_width = ADSignal('BgdWidth', has_rbv=True)
     centroid_threshold = ADSignal('CentroidThreshold', has_rbv=True)
@@ -394,6 +418,7 @@ class StatsPlugin(PluginBase):
 
 class ColorConvPlugin(PluginBase):
     _default_suffix = 'CC1:'
+    _suffix_re = 'CC\d:'
 
     color_mode_out = ADSignal('ColorModeOut', has_rbv=True)
     false_color = ADSignal('FalseColor', has_rbv=True)
@@ -401,6 +426,7 @@ class ColorConvPlugin(PluginBase):
 
 class ProcessPlugin(PluginBase):
     _default_suffix = 'Proc1:'
+    _suffix_re = 'Proc\d:'
 
     auto_offset_scale = ADSignal('AutoOffsetScale')
     auto_reset_filter = ADSignal('AutoResetFilter', has_rbv=True)
@@ -464,6 +490,7 @@ class ProcessPlugin(PluginBase):
 
 class OverlayPlugin(PluginBase):
     _default_suffix = 'Over1:'
+    _suffix_re = 'Over\d:'
 
     # TODO a bit different from other plugins
     _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
@@ -473,6 +500,7 @@ class OverlayPlugin(PluginBase):
 
 class ROIPlugin(PluginBase):
     _default_suffix = 'ROI1:'
+    _suffix_re = 'ROI\d:'
 
     _auto_size_x = ADSignal('AutoSizeX', has_rbv=True)
     _auto_size_y = ADSignal('AutoSizeY', has_rbv=True)
@@ -526,6 +554,7 @@ class ROIPlugin(PluginBase):
 
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
+    _suffix_re = 'Trans\d:'
 
     name_ = ADSignal('Name')
     origin_location = ADSignal('OriginLocation', has_rbv=True)
@@ -558,6 +587,7 @@ class TransformPlugin(PluginBase):
 
 class FilePlugin(PluginBase):
     _default_suffix = ''
+    _suffix_re = ''
 
     auto_increment = ADSignal('AutoIncrement', has_rbv=True)
     auto_save = ADSignal('AutoSave', has_rbv=True)
@@ -583,20 +613,24 @@ class FilePlugin(PluginBase):
 
 class NetCDFPlugin(FilePlugin):
     _default_suffix = 'netCDF1:'
+    _suffix_re = 'netCDF\d:'
 
 
 class TIFFPlugin(FilePlugin):
     _default_suffix = 'TIFF1:'
+    _suffix_re = 'TIFF\d:'
 
 
 class JPEGPlugin(FilePlugin):
     _default_suffix = 'JPEG1:'
+    _suffix_re = 'JPEG\d:'
 
     jpeg_quality = ADSignal('JPEGQuality', has_rbv=True)
 
 
 class NexusPlugin(FilePlugin):
     _default_suffix = 'Nexus1:'
+    _suffix_re = 'Nexus\d:'
 
     file_template_valid = ADSignal('FileTemplateValid')
     template_file_name = ADSignal('TemplateFileName', has_rbv=True)
@@ -605,6 +639,7 @@ class NexusPlugin(FilePlugin):
 
 class HDF5Plugin(FilePlugin):
     _default_suffix = 'HDF1:'
+    _suffix_re = 'HDF\d:'
 
     boundary_align = ADSignal('BoundaryAlign', has_rbv=True)
     boundary_threshold = ADSignal('BoundaryThreshold', has_rbv=True)
@@ -643,6 +678,7 @@ class HDF5Plugin(FilePlugin):
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
+    _suffix_re = 'Magick\d:'
 
     bit_depth = ADSignal('BitDepth', has_rbv=True)
     compress_type = ADSignal('CompressType', has_rbv=True)
@@ -657,18 +693,34 @@ type_map = {'NDPluginROI': ROIPlugin,
             'NDFileTIFF': TIFFPlugin,
             'NDFileJPEG': JPEGPlugin,
             'NDPluginFile': NexusPlugin,
+            'NDPluginOverlay': OverlayPlugin,
             'NDFileHDF5': HDF5Plugin,
             'NDFileMagick': MagickPlugin,
             'NDPluginProcess': ProcessPlugin,
             }
 
 
+def plugin_from_pvname(pv):
+    for class_ in type_map.values():
+        expr = class_._suffix_re
+        m = re.search(expr, pv)
+        if m:
+            return class_
+
+    return None
+
+
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
+    base = ''.join([prefix, suffix])
+    class_ = plugin_from_pvname(base)
+    if class_ is not None:
+        return class_
+
     type_rbv = ''.join([prefix, suffix, 'PluginType_RBV'])
     type_ = epics.caget(type_rbv)
 
     # HDF5 includes version number, remove it
     type_ = type_.split(' ')[0]
 
-    class_ = type_map[type_]
+    class_ = type_map[type_].class_
     return class_(prefix, suffix=suffix, **kwargs)
