@@ -363,8 +363,8 @@ class EpicsSignal(Signal):
     # TODO: monitor updates self._readback - this shouldn't be necessary
     #       ... but, there should be a mode of operation without using
     #           monitor updates, e.g., for large arrays
-    def _get_readback(self):
-        return self._read_pv.get()
+    def _get_readback(self, **kwargs):
+        return self._read_pv.get(**kwargs)
 
     @property
     def readback(self):

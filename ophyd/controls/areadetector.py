@@ -12,6 +12,7 @@
 
 from __future__ import print_function
 import logging
+import numpy as np
 
 import epics
 
@@ -213,6 +214,20 @@ class AreaDetector(ADBase):
 
 
 class PluginBase(ADBase):
+    @property
+    def array_pixels(self):
+        array_size = self.array_size
+
+        dimensions = self.ndimensions.value
+        if dimensions == 0:
+            return 0
+
+        pixels = array_size[0]
+        for dim in array_size[1:dimensions]:
+            pixels *= dim
+
+        return pixels
+
     _array_size0 = ADSignal('ArraySize0_RBV', rw=False)
     _array_size1 = ADSignal('ArraySize1_RBV', rw=False)
     _array_size2 = ADSignal('ArraySize2_RBV', rw=False)
@@ -259,6 +274,19 @@ class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
 
     array_data = ADSignal('ArrayData')
+
+    @property
+    def image(self):
+        array_size = self.array_size
+        if array_size == [0, 0, 0]:
+            raise RuntimeError('Invalid image; ensure array_callbacks are on')
+
+        if array_size[-1] == 0:
+            array_size = array_size[:-1]
+
+        pixel_count = self.array_pixels
+        image = self.array_data._get_readback(count=pixel_count)
+        return np.array(image).reshape(array_size)
 
 
 class StatsPlugin(PluginBase):
