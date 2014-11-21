@@ -3,22 +3,12 @@
 An example of using :class:`AreaDetector`
 '''
 
-import time
-
 import config
 from ophyd.controls import areadetector
 from ophyd.controls import AreaDetector
-from ophyd.utils.epics_pvs import record_field
 
 
 def test():
-    def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-        logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
-
-        # Test that the monitor dispatcher works (there is an implicit
-        # caget in the following line when accessing rw_signal.value)
-        logger.info('[callback] caget=%s' % rw_signal.value)
-
     loggers = ('ophyd.controls.areadetector',
                'ophyd.session',
                )
@@ -42,6 +32,9 @@ def test():
     img1 = areadetector.ImagePlugin(det1_prefix, suffix='image1:')
     logger.debug('nd_array_port = %s' % img1.nd_array_port.value)
 
+    # ensure EPICS_CA_MAX_ARRAY_BYTES set properly...
+    if 1:
+        img1.array_data.value
 
 if __name__ == '__main__':
     test()
