@@ -300,7 +300,7 @@ class EpicsSignal(Signal):
         return 'EpicsSignal(alias={0}, read_pv={1}, write_pv={2})'.format(
             self._alias, self._read_pv, self._write_pv)
 
-    def _connected(self, pvname=None, conn=True, pv=None, **kwargs):
+    def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
         Connection callback from PyEpics
         '''
@@ -309,10 +309,11 @@ class EpicsSignal(Signal):
         else:
             msg = '%s disconnected' % pvname
 
-        self._ses_logger.info(msg)
-
         if self._session is not None:
-            self._session.notify_connection(self, pvname)
+            self._session.notify_connection(msg)
+        else:
+            self._ses_logger.info(msg)
+
 
     def _set_request(self, value, wait=True, **kwargs):
         '''
