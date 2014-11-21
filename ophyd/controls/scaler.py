@@ -9,7 +9,7 @@ from ..utils.epics_pvs import record_field
 logger = logging.getLogger(__name__)
 
 
-class Scaler(SignalGroup):
+class EpicsScaler(SignalGroup):
 
     def __init__(self, record, numchan=8, *args, **kwargs):
         '''SynApps Scaler Record interface.'''
