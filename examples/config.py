@@ -89,10 +89,10 @@ ad_plugins = {'image': ['image1:', ],
               }
 
 sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
-                     'cam': ['cam1:', ],
+                     'cam': 'cam1:',
                      },
                     {'prefix': 'XF:31IDA-BI{Cam:Tbl}',
-                     'cam': ['cam2:', ],
+                     'cam': 'cam2:',
                      }
                     ]
 
