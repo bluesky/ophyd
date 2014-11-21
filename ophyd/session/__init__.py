@@ -5,6 +5,7 @@ from __future__ import print_function
 import sys
 import logging
 import signal
+import warnings
 
 import epics
 
@@ -51,7 +52,6 @@ def register_object(obj, set_vars=True):
 
 
 def setup_epics():
-
     def stop_dispatcher():
         dispatcher.stop_event.set()
 
@@ -80,6 +80,8 @@ logger = logging.getLogger(OPHYD_LOGGER)
 
 
 def load_ipython_extension(ipython):
+    warnings.simplefilter('default')
+
     print('Loading Ophyd Session Manager...')
 
     # config libca params

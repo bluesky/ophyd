@@ -2,15 +2,19 @@ from __future__ import print_function
 import ctypes
 import threading
 import Queue as queue
+import warnings
+
+import epics
 
 from . import errors
-import epics
+from .decorators import cached_retval
 
 __all__ = ['split_record_field',
            'strip_field',
            'record_field',
            'check_alarm',
            'MonitorDispatcher',
+           'get_pv_form',
            ]
 
 
@@ -157,3 +161,50 @@ class MonitorDispatcher(epics.ca.CAThread):
                     args.usr._disp_tag = self
 
         return epics.ca._onMonitorEvent(args)
+
+
+@cached_retval
+def get_pv_form():
+    '''
+    Due to a bug in certain versions of PyEpics, form='time'
+    cannot be used with some large arrays.
+
+    native: gives time.time() timestamps from this machine
+    time: gives timestamps from the PVs themselves
+
+    :returns: 'native' or 'time'
+    '''
+
+    def _naive_parse_version(version):
+        try:
+            version = version.lower()
+
+            # Strip off the release-candidate version number (best-effort)
+            if 'rc' in version:
+                version = version[:version.index('rc')]
+
+            version_tuple = tuple(int(v) for v in version.split('.'))
+        except:
+            return None
+
+        return version_tuple
+
+    try:
+        from pkg_resources import parse_version
+    except ImportError:
+        parse_version = _naive_parse_version
+
+    version = parse_version(epics.__version__)
+
+    if version is None:
+        warnings.warn('Unrecognized PyEpics version; using local timestamps',
+                      ImportWarning)
+        return 'native'
+
+    elif version <= parse_version('3.2.3'):
+        warnings.warn('PyEpics versions <= 3.2.3 will use local timestamps (version: %s)' %
+                      epics.__version__,
+                      ImportWarning)
+        return 'native'
+    else:
+        return 'time'

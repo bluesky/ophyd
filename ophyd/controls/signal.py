@@ -17,6 +17,7 @@ import epics
 
 from ..session import register_object
 from ..utils import TimeoutError
+from ..utils.epics_pvs import get_pv_form
 
 logger = logging.getLogger(__name__)
 
@@ -248,13 +249,13 @@ class EpicsSignal(Signal):
 
         Signal.__init__(self, separate_readback=separate_readback, **kwargs)
 
-        self._read_pv = epics.PV(read_pv, form='time',
+        self._read_pv = epics.PV(read_pv, form=get_pv_form(),
                                  callback=self._read_changed,
                                  connection_callback=self._connected,
                                  **pv_kw)
 
         if write_pv is not None:
-            self._write_pv = epics.PV(write_pv, form='time',
+            self._write_pv = epics.PV(write_pv, form=get_pv_form(),
                                       callback=self._write_changed,
                                       connection_callback=self._connected,
                                       **pv_kw)

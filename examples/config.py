@@ -3,6 +3,8 @@
 
 import sys
 import logging
+import warnings
+
 import epics
 
 try:
@@ -17,6 +19,8 @@ EXAMPLE_LOGGER = 'ophyd_examples'
 
 
 def setup_epics():
+    warnings.simplefilter('default')
+
     # TODO in place of session setup
     import atexit
     from ophyd.utils.epics_pvs import MonitorDispatcher
