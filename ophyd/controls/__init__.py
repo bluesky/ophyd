@@ -9,4 +9,4 @@ logger.addHandler(logging.NullHandler())
 
 from .signal import (Signal, EpicsSignal)
 from .positioner import (EpicsMotor, PVPositioner)
-from .scaler import Scaler
+from .scaler import EpicsScaler

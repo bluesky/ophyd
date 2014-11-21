@@ -19,7 +19,7 @@ def test():
     logger = config.logger
 
 
-    sca = scaler.Scaler(config.scalers[0])
+    sca = scaler.EpicsScaler(config.scalers[0])
 
     sca.preset_time = 5.2
 
