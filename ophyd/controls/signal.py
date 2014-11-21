@@ -36,7 +36,7 @@ class Signal(object):
     SUB_REQUEST = 'request'
     SUB_READBACK = 'readback'
 
-    def __init__(self, alias=None, separate_readback=False):
+    def __init__(self, alias=None, separate_readback=False, name=None):
         '''
 
         :param alias: An alias for the signal
@@ -53,6 +53,7 @@ class Signal(object):
         self._alias = alias
         self._request = None
         self._readback = None
+        self._name = name
 
         self._separate_readback = separate_readback
 
@@ -85,6 +86,9 @@ class Signal(object):
             except Exception as ex:
                 self._ses_logger.error('Subscription %s callback exception (%s)' %
                                        (sub_type, self), exc_info=ex)
+    @property
+    def name(self):
+        return self._name
 
     @property
     def alias(self):
@@ -384,7 +388,7 @@ class EpicsSignal(Signal):
 # TODO uniform interface to Signal and SignalGroup
 
 class SignalGroup(object):
-    def __init__(self, alias=None):
+    def __init__(self, alias=None, **kwargs):
         '''
         Create a group or collection of related signals
 
@@ -396,6 +400,7 @@ class SignalGroup(object):
 
         self._signals = []
         self._alias = alias
+        self._name = kwargs.get('name', 'none')
 
         register_object(self)
 
@@ -405,6 +410,10 @@ class SignalGroup(object):
         An alternative name for the signal
         '''
         return self._alias
+
+    @property
+    def name(self):
+        return self._name
 
     def _run_sub(self, *args, **kwargs):
         '''
