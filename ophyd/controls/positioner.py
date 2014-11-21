@@ -207,7 +207,7 @@ class EpicsMotor(Positioner):
         self._user_readback.subscribe(self._pos_changed)
 
     def stop(self):
-        self._stop.request = 1
+        self._stop._set_request(1, wait=False)
 
     def _field_pv(self, field):
         '''
@@ -406,4 +406,4 @@ class PVPositioner(Positioner):
         self._set_position(value)
 
     def stop(self):
-        self._stop.request = self._stop_val
+        self._stop._set_request(self._stop_val, wait=False)

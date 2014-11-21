@@ -3,6 +3,8 @@
 
 import sys
 import logging
+import warnings
+
 import epics
 
 try:
@@ -17,6 +19,8 @@ EXAMPLE_LOGGER = 'ophyd_examples'
 
 
 def setup_epics():
+    warnings.simplefilter('default')
+
     # TODO in place of session setup
     import atexit
     from ophyd.utils.epics_pvs import MonitorDispatcher
@@ -91,3 +95,6 @@ sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
                      'cam': ['cam2:', ],
                      }
                     ]
+
+# this is a real instrument - it is not currently used, but be cautious!
+scalers = ['XF:23ID2-ES{Sclr:1}']
