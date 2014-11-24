@@ -261,7 +261,11 @@ class EpicsMotor(Positioner):
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
 
+    @property
+    def report(self):
+        return {self._user_readback.read_pvname: self._user_readback.value}
 
+#TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
 class PVPositioner(Positioner):
     def __init__(self, setpoint, readback=None,
                  act=None, act_val=1,
@@ -411,3 +415,8 @@ class PVPositioner(Positioner):
 
     def stop(self):
         self._stop._set_request(self._stop_val, wait=False)
+
+    #TODO: this will fail if no readback is provided to initializer
+    @property
+    def report(self):
+        return {self._readback.read_pvname: self._readback.value}

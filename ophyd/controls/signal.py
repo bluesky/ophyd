@@ -385,6 +385,20 @@ class EpicsSignal(Signal):
 
         return ret
 
+    @property
+    def report(self):
+        # FIXME:
+        ret = {}
+        if self._read_pv == self._write_pv:
+           ret[self.read_pvname] = self._read_pv.value
+        elif self._read_pv is not None \
+                and self._write_pv is None:
+            ret[self.read_pvname] = self._read_pv.value
+        elif self._write_pv is not None \
+                and self._read_pv is None:
+            ret[self.read_pvname] = self._write_pv.value
+        
+        return ret
 
 # TODO uniform interface to Signal and SignalGroup
 
