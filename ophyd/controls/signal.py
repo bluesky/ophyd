@@ -520,3 +520,27 @@ class SignalGroup(object):
 
     value = property(_get_readback, _set_request,
                      doc='Readback/request value list')
+
+    @property
+    def request_ts(self):
+        '''
+        Timestamp of request PVs, according to EPICS
+        '''
+        return [signal.request_ts for signal in self._signals]
+
+    @property
+    def readback_ts(self):
+        '''
+        Timestamp of readback PV, according to EPICS
+        '''
+        return [signal.readback_ts for signal in self._signals]
+
+    value_ts = readback_ts
+
+    @property
+    def read_pvname(self):
+        return [signal.read_pvname for signal in self._signals]
+
+    @property
+    def write_pvname(self):
+        return [signal.write_pvname for signal in self._signals]
