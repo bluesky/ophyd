@@ -12,18 +12,19 @@ import config
 from ophyd.controls import (areadetector, AreaDetector, EpicsSignal)
 
 
+def dump_pvnames(obj, f=sys.stderr):
+    for attr, signal in sorted(obj.signals.items()):
+        if not isinstance(signal, EpicsSignal):
+            continue
+
+        if signal.read_pvname:
+            print(signal.read_pvname, file=f)
+
+        if signal.write_pvname != signal.read_pvname and signal.write_pvname:
+            print(signal.write_pvname, file=f)
+
+
 def test():
-    def dump_pvnames(obj, f=sys.stderr):
-        for attr, signal in sorted(obj.signals.items()):
-            if not isinstance(signal, EpicsSignal):
-                continue
-
-            if signal.read_pvname:
-                print(signal.read_pvname, file=f)
-
-            if signal.write_pvname != signal.read_pvname and signal.write_pvname:
-                print(signal.write_pvname, file=f)
-
     def log_values(obj):
         port_name = obj.port_name.value
 
@@ -54,7 +55,6 @@ def test():
 
             if 0:
                 dump_pvnames(plugin)
-
 
             if type_ != 'file':
                 break
