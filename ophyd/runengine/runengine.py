@@ -74,8 +74,7 @@ class RunEngine(object):
     def _end_run(self, arg):
         print('End Run...')
 
-    def _move_positioners(self, positioners=None):
-        positioners = positioners['positioners']
+    def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
         for pos in positioners:
             try:
                 pos.move_next(wait=False)
@@ -88,32 +87,77 @@ class RunEngine(object):
         while moving:
             time.sleep(0.1)
             moving = any([pos.moving for pos in positioners])
-        #if dwell_time != 0:
-        #    time.sleep(dwell_time)
-        return {pos.name: pos.position for pos in positioners}
+        if settle_time is not None:
+            time.sleep(settle_time)
+        #return {pos.name: pos.position for pos in positioners}
+        ret = {}
+        [ret.update(pos.report) for pos in positioners]
+            
+        return ret
 
     def _start_scan(self, **kwargs):
-        print('Starting Scan...')
+        print('Starting Scan...{}'.format(kwargs))
+        hdr = kwargs.get('header')
+        evdesc = kwargs.get('event_descriptor')
         dets = kwargs.get('detectors')
 
+        data = {}
+        seqno = 0
         while self._scan is True:
-            posvals = self._move_positioners(kwargs)
+            posvals = self._move_positioners(**kwargs)
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
             # execute user code
             print('execute user code')
-            detvals = {d.name: d.value for d in dets}
+            #detvals = {d.name: d.value for d in dets}
+            #TODO: handle triggers here (pvs that cause detectors to fire)
+            detvals = {}
+            for d in dets:
+                detvals.update(d.report)
             time.sleep(0.5)
+            data.update(posvals, **detvals)
+            #TODO: timestamp this datapoint?
+            #data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
-            print('distribute data: %s, %s'%(posvals,detvals))
+            print('datapoint[{}]: {}'.format(seqno,data))
+            #event = data_collection.format_event(hdr, evdesc,
+            #                                  seq_no=seqno,
+            #                                  data=data)
+            #data_collection.write_to_event_PV(event)
             time.sleep(0.5)
+            seqno += 1
         self._scan = False
         return
 
+    def _get_data_keys(self, **kwargs):
+        pos = kwargs.get('positioners')
+        det = kwargs.get('detectors')
+        ret = {}
+        for p in pos:
+            ret.update(p.report)
+        for d in det:
+            ret.update(d.report)
+
+        return ret
+
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
-        # gather run_header data
+        # create run_header and event_descriptors
+        #header = data_collection.create_run_header(scan_id=runid)
+        header = {'run_header': 'Foo'}
+        keys = self._get_data_keys(**scan_args)
+        #print('keys = %s'%keys)
+        event_descriptor = {'a': 1, 'b':2}
+        if scan_args is not None:
+            scan_args.update(header, **event_descriptor)
+        #event_descriptor = data_collection.create_event_descriptor(
+        #                    run_header=header, event_type_id=1, data_keys=keys,
+        #                    descriptor_name=scan_description)
+        # write the header and event_descriptor to the header PV
+        #data_collection.write_to_hdr_PV(header, event_descriptor)
+
         self._begin_run(begin_args)
+
         self._scan_thread = Thread(target=self._start_scan, 
                                    name='Scanner',
                                    kwargs=scan_args)
@@ -121,4 +165,5 @@ class RunEngine(object):
         self._scan = True
         self._scan_thread.start()
         self._scan_thread.join()
+
         self._end_run(end_args)
