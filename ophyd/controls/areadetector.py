@@ -17,8 +17,7 @@ import numpy as np
 
 import epics
 
-from .signal import EpicsSignal
-from .signal import SignalGroup
+from .signal import (Signal, EpicsSignal, SignalGroup)
 
 
 logger = logging.getLogger(__name__)
@@ -57,12 +56,11 @@ def ADSignalGroup(*props, **kwargs):
             return self._ad_signals[key]
 
     def fget(self):
-        signal = check_exists(self)
-        return signal
+        return check_exists(self)
 
     def fset(self, value):
-        signal = check_exists(self)
-        signal.value = value
+        sg = check_exists(self)
+        sg.value = value
 
     doc = kwargs.pop('doc', '')
     return property(fget, fset, doc=doc)
@@ -88,8 +86,7 @@ def ADSignal(pv, has_rbv=False, doc='', **kwargs):
             return self._ad_signals[pv]
 
     def fget(self):
-        signal = check_exists(self)
-        return signal
+        return check_exists(self)
 
     def fset(self, value):
         signal = check_exists(self)
@@ -112,11 +109,27 @@ class ADBase(SignalGroup):
     pool_used_mem = ADSignal('PoolUsedMem')
     port_name = ADSignal('PortName_RBV', rw=False)
 
+    @property
+    def signals(self):
+        '''
+        A dictionary of all signals (or groups) in the object.
+        '''
+        if self.__sig_dict is None:
+            attrs = [(attr, getattr(self, attr))
+                     for attr in sorted(dir(self))
+                     if not attr.startswith('_') and attr != 'signals']
+
+            self.__sig_dict = dict((name, value) for name, value in attrs
+                                   if isinstance(value, (Signal, SignalGroup)))
+
+        return self.__sig_dict
+
     def __init__(self, prefix, **kwargs):
         SignalGroup.__init__(self, **kwargs)
 
         self._prefix = prefix
         self._ad_signals = {}
+        self.__sig_dict = None
 
 
 class AreaDetector(ADBase):
@@ -221,6 +234,7 @@ class AreaDetector(ADBase):
                  procs=['Proc1:', ],
                  stats=['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
                  ccs=['CC1:', 'CC2:', ],
+                 trans=['Trans1:', ],
                  **kwargs):
 
         self._base_prefix = prefix
@@ -240,6 +254,8 @@ class AreaDetector(ADBase):
                       for stat in stats]
         self.ccs = [ColorConvPlugin(self._base_prefix, suffix=cc)
                     for cc in ccs]
+        self.trans = [TransformPlugin(self._base_prefix, suffix=tran)
+                      for tran in trans]
 
 
 class PluginBase(ADBase):
@@ -509,6 +525,11 @@ class ROIPlugin(PluginBase):
     _default_suffix = 'ROI1:'
     _suffix_re = 'ROI\d:'
 
+    _array_size_x = ADSignal('ArraySizeX_RBV', rw=False)
+    _array_size_y = ADSignal('ArraySizeY_RBV', rw=False)
+    _array_size_z = ADSignal('ArraySizeZ_RBV', rw=False)
+    array_size = ADSignalGroup(_array_size_x, _array_size_y, _array_size_z)
+
     _auto_size_x = ADSignal('AutoSizeX', has_rbv=True)
     _auto_size_y = ADSignal('AutoSizeY', has_rbv=True)
     _auto_size_z = ADSignal('AutoSizeZ', has_rbv=True)
@@ -530,6 +551,11 @@ class ROIPlugin(PluginBase):
     _max_x = ADSignal('MaxX')
     _max_y = ADSignal('MaxY')
     max_ = ADSignalGroup(_max_x, _max_y)
+
+    _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
+    _max_size_y = ADSignal('MaxSizeY_RBV', rw=False)
+    _max_size_z = ADSignal('MaxSizeZ_RBV', rw=False)
+    max_size = ADSignalGroup(_max_size_x, _max_size_y, _max_size_z)
 
     _min_x = ADSignal('MinX', has_rbv=True)
     _min_y = ADSignal('MinY', has_rbv=True)
@@ -562,6 +588,11 @@ class ROIPlugin(PluginBase):
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
     _suffix_re = 'Trans\d:'
+
+    _array_size0 = ADSignal('ArraySize0', has_rbv=True)
+    _array_size1 = ADSignal('ArraySize1', has_rbv=True)
+    _array_size2 = ADSignal('ArraySize2', has_rbv=True)
+    array_size = ADSignalGroup(_array_size0, _array_size1, _array_size2)
 
     name_ = ADSignal('Name')
     origin_location = ADSignal('OriginLocation', has_rbv=True)
@@ -696,6 +727,7 @@ type_map = {'NDPluginROI': ROIPlugin,
             'NDPluginStats': StatsPlugin,
             'NDPluginColorConvert': ColorConvPlugin,
             'NDPluginStdArrays': ImagePlugin,
+            'NDPluginTransform': TransformPlugin,
             'NDFileNetCDF': NetCDFPlugin,
             'NDFileTIFF': TIFFPlugin,
             'NDFileJPEG': JPEGPlugin,
@@ -720,14 +752,16 @@ def plugin_from_pvname(pv):
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
     base = ''.join([prefix, suffix])
     class_ = plugin_from_pvname(base)
-    if class_ is not None:
-        return class_
+    if class_ is None:
+        type_rbv = ''.join([prefix, suffix, 'PluginType_RBV'])
+        type_ = epics.caget(type_rbv)
 
-    type_rbv = ''.join([prefix, suffix, 'PluginType_RBV'])
-    type_ = epics.caget(type_rbv)
+        # HDF5 includes version number, remove it
+        type_ = type_.split(' ')[0]
 
-    # HDF5 includes version number, remove it
-    type_ = type_.split(' ')[0]
+        class_ = type_map[type_].class_
 
-    class_ = type_map[type_].class_
+    if class_ is None:
+        raise ValueError('Unable to determine plugin type')
+
     return class_(prefix, suffix=suffix, **kwargs)

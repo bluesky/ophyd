@@ -85,6 +85,7 @@ ad_plugins = {'image': ['image1:', ],
               'proc': ['Proc1:', ],
               'stats': ['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
               'overlay': [('Over1:', '1:', '2:', '3:', '4:', '5:', '6:', '7:', '8:', ), ],
+              'trans': ['Trans1:', ],
               'cc': ['CC1:', 'CC2:', ],
               }
 
