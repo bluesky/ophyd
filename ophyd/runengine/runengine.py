@@ -100,6 +100,7 @@ class RunEngine(object):
         hdr = kwargs.get('header')
         evdesc = kwargs.get('event_descriptor')
         dets = kwargs.get('detectors')
+        trigs = kwargs.get('triggers')
 
         data = {}
         seqno = 0
@@ -112,6 +113,11 @@ class RunEngine(object):
             print('execute user code')
             #detvals = {d.name: d.value for d in dets}
             #TODO: handle triggers here (pvs that cause detectors to fire)
+            if trigs is not None:
+                for t in trigs:
+                    t._set_request(1, wait=True)
+            #TODO: again, WTF is with the delays required?
+            time.sleep(0.05)
             detvals = {}
             for d in dets:
                 detvals.update(d.report)
