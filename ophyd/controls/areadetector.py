@@ -83,6 +83,7 @@ def ADSignal(pv, has_rbv=False, doc='', **kwargs):
 
             self._ad_signals[pv] = EpicsSignal(read_, write_pv=write,
                                                **kwargs)
+
             return self._ad_signals[pv]
 
     def fget(self):
@@ -96,6 +97,8 @@ def ADSignal(pv, has_rbv=False, doc='', **kwargs):
 
 
 class ADBase(SignalGroup):
+    _html_docs = ['areaDetectorDoc.html']
+
     array_counter = ADSignal('ArrayCounter', has_rbv=True)
     array_rate = ADSignal('ArrayRate_RBV', rw=False)
     asyn_io = ADSignal('AsynIO')
@@ -133,6 +136,8 @@ class ADBase(SignalGroup):
 
 
 class AreaDetector(ADBase):
+    _html_docs = ['areaDetectorDoc.html']
+
     acquire = ADSignal('Acquire', has_rbv=True)
     acquire_period = ADSignal('AcquirePeriod', has_rbv=True)
     acquire_time = ADSignal('AcquireTime', has_rbv=True)
@@ -259,6 +264,8 @@ class AreaDetector(ADBase):
 
 
 class PluginBase(ADBase):
+    _html_docs = ['pluginDoc.html']
+
     @property
     def array_pixels(self):
         array_size = self.array_size.value
@@ -318,6 +325,7 @@ class PluginBase(ADBase):
 class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
     _suffix_re = 'image\d:'
+    _html_docs = ['NDPluginStdArrays.html']
 
     array_data = ADSignal('ArrayData')
 
@@ -338,6 +346,7 @@ class ImagePlugin(PluginBase):
 class StatsPlugin(PluginBase):
     _default_suffix = 'Stats1:'
     _suffix_re = 'Stats\d:'
+    _html_docs = ['NDPluginStats.html']
 
     bgd_width = ADSignal('BgdWidth', has_rbv=True)
     centroid_threshold = ADSignal('CentroidThreshold', has_rbv=True)
@@ -442,6 +451,7 @@ class StatsPlugin(PluginBase):
 class ColorConvPlugin(PluginBase):
     _default_suffix = 'CC1:'
     _suffix_re = 'CC\d:'
+    _html_docs = ['NDPluginColorConvert.html']
 
     color_mode_out = ADSignal('ColorModeOut', has_rbv=True)
     false_color = ADSignal('FalseColor', has_rbv=True)
@@ -450,6 +460,7 @@ class ColorConvPlugin(PluginBase):
 class ProcessPlugin(PluginBase):
     _default_suffix = 'Proc1:'
     _suffix_re = 'Proc\d:'
+    _html_docs = ['NDPluginProcess.html']
 
     auto_offset_scale = ADSignal('AutoOffsetScale')
     auto_reset_filter = ADSignal('AutoResetFilter', has_rbv=True)
@@ -514,6 +525,7 @@ class ProcessPlugin(PluginBase):
 class OverlayPlugin(PluginBase):
     _default_suffix = 'Over1:'
     _suffix_re = 'Over\d:'
+    _html_docs = ['NDPluginOverlay.html']
 
     # TODO a bit different from other plugins
     _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
@@ -524,6 +536,7 @@ class OverlayPlugin(PluginBase):
 class ROIPlugin(PluginBase):
     _default_suffix = 'ROI1:'
     _suffix_re = 'ROI\d:'
+    _html_docs = ['NDPluginROI.html']
 
     _array_size_x = ADSignal('ArraySizeX_RBV', rw=False)
     _array_size_y = ADSignal('ArraySizeY_RBV', rw=False)
@@ -588,6 +601,7 @@ class ROIPlugin(PluginBase):
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
     _suffix_re = 'Trans\d:'
+    _html_docs = ['NDPluginTransform.html']
 
     _array_size0 = ADSignal('ArraySize0', has_rbv=True)
     _array_size1 = ADSignal('ArraySize1', has_rbv=True)
@@ -626,6 +640,7 @@ class TransformPlugin(PluginBase):
 class FilePlugin(PluginBase):
     _default_suffix = ''
     _suffix_re = ''
+    _html_docs = ['NDPluginFile.html']
 
     auto_increment = ADSignal('AutoIncrement', has_rbv=True)
     auto_save = ADSignal('AutoSave', has_rbv=True)
@@ -652,16 +667,19 @@ class FilePlugin(PluginBase):
 class NetCDFPlugin(FilePlugin):
     _default_suffix = 'netCDF1:'
     _suffix_re = 'netCDF\d:'
+    _html_docs = ['NDFileNetCDF.html']
 
 
 class TIFFPlugin(FilePlugin):
     _default_suffix = 'TIFF1:'
     _suffix_re = 'TIFF\d:'
+    _html_docs = ['NDFileTIFF.html']
 
 
 class JPEGPlugin(FilePlugin):
     _default_suffix = 'JPEG1:'
     _suffix_re = 'JPEG\d:'
+    _html_docs = ['NDFileJPEG.html']
 
     jpeg_quality = ADSignal('JPEGQuality', has_rbv=True)
 
@@ -669,6 +687,7 @@ class JPEGPlugin(FilePlugin):
 class NexusPlugin(FilePlugin):
     _default_suffix = 'Nexus1:'
     _suffix_re = 'Nexus\d:'
+    _html_docs = ['NDFileNexus.html']
 
     file_template_valid = ADSignal('FileTemplateValid')
     template_file_name = ADSignal('TemplateFileName', has_rbv=True)
@@ -678,6 +697,7 @@ class NexusPlugin(FilePlugin):
 class HDF5Plugin(FilePlugin):
     _default_suffix = 'HDF1:'
     _suffix_re = 'HDF\d:'
+    _html_docs = ['NDFileHDF5.html']
 
     boundary_align = ADSignal('BoundaryAlign', has_rbv=True)
     boundary_threshold = ADSignal('BoundaryThreshold', has_rbv=True)
@@ -717,6 +737,7 @@ class HDF5Plugin(FilePlugin):
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
     _suffix_re = 'Magick\d:'
+    _html_docs = ['NDFileMagick']  # sic., no html extension
 
     bit_depth = ADSignal('BitDepth', has_rbv=True)
     compress_type = ADSignal('CompressType', has_rbv=True)
