@@ -4,7 +4,7 @@ from threading import Thread
 from Queue import Queue
 import time
 
-#from databroker.api import data_collection
+from databroker.api import data_collection
 
 
 
@@ -91,7 +91,7 @@ class RunEngine(object):
             time.sleep(settle_time)
         #return {pos.name: pos.position for pos in positioners}
         ret = {}
-        [ret.update(pos.report) for pos in positioners]
+        [ret.update({pos.name: pos.position}) for pos in positioners]
             
         return ret
 
@@ -102,7 +102,6 @@ class RunEngine(object):
         dets = kwargs.get('detectors')
         trigs = kwargs.get('triggers')
 
-        data = {}
         seqno = 0
         while self._scan is True:
             posvals = self._move_positioners(**kwargs)
@@ -116,20 +115,19 @@ class RunEngine(object):
             if trigs is not None:
                 for t in trigs:
                     t._set_request(1, wait=True)
-            #TODO: again, WTF is with the delays required?
+            #TODO: again, WTF is with the delays required? CA is too fast,
+            # and python is too slow (or vice versa!)
             time.sleep(0.05)
             detvals = {}
-            for d in dets:
-                detvals.update(d.report)
-            time.sleep(0.5)
-            data.update(posvals, **detvals)
+            [detvals.update({d.name: d.value}) for d in dets]
+            detvals.update(posvals)
             #TODO: timestamp this datapoint?
             #data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
-            print('datapoint[{}]: {}'.format(seqno,data))
+            print('datapoint[{}]: {}'.format(seqno,detvals))
             #event = data_collection.format_event(hdr, evdesc,
             #                                  seq_no=seqno,
-            #                                  data=data)
+            #                                  data=detvals)
             #data_collection.write_to_event_PV(event)
             time.sleep(0.5)
             seqno += 1
@@ -137,28 +135,26 @@ class RunEngine(object):
         return
 
     def _get_data_keys(self, **kwargs):
+        #ATM, these are both lists
         pos = kwargs.get('positioners')
         det = kwargs.get('detectors')
-        ret = {}
-        for p in pos:
-            ret.update(p.report)
-        for d in det:
-            ret.update(d.report)
+        
+        objs = pos + det
 
-        return ret
+        return [o.name for o in objs]
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
         #header = data_collection.create_run_header(scan_id=runid)
         header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
-        #print('keys = %s'%keys)
+        print('keys = %s'%keys)
         event_descriptor = {'a': 1, 'b':2}
         if scan_args is not None:
             scan_args.update(header, **event_descriptor)
         #event_descriptor = data_collection.create_event_descriptor(
         #                    run_header=header, event_type_id=1, data_keys=keys,
-        #                    descriptor_name=scan_description)
+        #                    descriptor_name='Scan Foo')
         # write the header and event_descriptor to the header PV
         #data_collection.write_to_hdr_PV(header, event_descriptor)
 

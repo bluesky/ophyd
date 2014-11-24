@@ -390,13 +390,16 @@ class EpicsSignal(Signal):
         # FIXME:
         ret = {}
         if self._read_pv == self._write_pv:
-           ret[self.read_pvname] = self._read_pv.value
+            ret[self._name] = self._read_pv.value
+            ret['pv'] = self.read_pvname
         elif self._read_pv is not None \
                 and self._write_pv is None:
-            ret[self.read_pvname] = self._read_pv.value
+            ret[self._name] = self._read_pv.value
+            ret['pv'] = self.read_pvname
         elif self._write_pv is not None \
                 and self._read_pv is None:
-            ret[self.read_pvname] = self._write_pv.value
+            ret[self._name] = self._write_pv.value
+            ret['pv'] = self.write_pvname
         
         return ret
 

@@ -263,7 +263,9 @@ class EpicsMotor(Positioner):
 
     @property
     def report(self):
-        return {self._user_readback.read_pvname: self._user_readback.value}
+        #return {self._user_readback.read_pvname: self._user_readback.value}
+        return {self._name: self.position,
+                'pv': self._user_readback.read_pvname} 
 
 #TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
 class PVPositioner(Positioner):
@@ -419,4 +421,5 @@ class PVPositioner(Positioner):
     #TODO: this will fail if no readback is provided to initializer
     @property
     def report(self):
-        return {self._readback.read_pvname: self._readback.value}
+        #return {self._readback.read_pvname: self._readback.value}
+        return {self._name: self.position, 'pv': self._readback.read_pvname}
