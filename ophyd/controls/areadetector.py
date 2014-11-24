@@ -43,18 +43,26 @@ __all__ = ['AreaDetector',
 
 
 def ADSignalGroup(*props, **kwargs):
-    # TODO use kwargs meaningfully
+    def check_exists(self):
+        signals = tuple(prop.fget(self) for prop in props)
+        key = tuple(signal.read_pvname for signal in signals)
+        try:
+            return self._ad_signals[key]
+        except KeyError:
+            sg = SignalGroup(**kwargs)
+            for signal in signals:
+                sg.add_signal(signal)
 
-    def get_signals(self):
-        return [prop.fget(self) for prop in props]
+            self._ad_signals[key] = sg
+            return self._ad_signals[key]
 
     def fget(self):
-        return [signal.value for signal in get_signals(self)]
+        signal = check_exists(self)
+        return signal
 
-    def fset(self, values):
-        for signal, value in zip(get_signals(self), values):
-            # print('Setting', signal, '=', value)
-            signal.value = value
+    def fset(self, value):
+        signal = check_exists(self)
+        signal.value = value
 
     doc = kwargs.pop('doc', '')
     return property(fget, fset, doc=doc)
@@ -65,7 +73,6 @@ def ADSignal(pv, has_rbv=False, doc='', **kwargs):
     Don't create an EpicsSignal instance until it's
     accessed (i.e., lazy evaluation)
     '''
-
     def check_exists(self):
         try:
             return self._ad_signals[pv]
@@ -238,7 +245,7 @@ class AreaDetector(ADBase):
 class PluginBase(ADBase):
     @property
     def array_pixels(self):
-        array_size = self.array_size
+        array_size = self.array_size.value
 
         dimensions = self.ndimensions.value
         if dimensions == 0:
@@ -300,7 +307,7 @@ class ImagePlugin(PluginBase):
 
     @property
     def image(self):
-        array_size = self.array_size
+        array_size = self.array_size.value
         if array_size == [0, 0, 0]:
             raise RuntimeError('Invalid image; ensure array_callbacks are on')
 

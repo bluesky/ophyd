@@ -391,7 +391,7 @@ class EpicsSignal(Signal):
 # TODO uniform interface to Signal and SignalGroup
 
 class SignalGroup(object):
-    def __init__(self, alias=None, **kwargs):
+    def __init__(self, name='none', alias=None, **kwargs):
         '''
         Create a group or collection of related signals
 
@@ -403,7 +403,7 @@ class SignalGroup(object):
 
         self._signals = []
         self._alias = alias
-        self._name = kwargs.get('name', 'none')
+        self._name = name
 
         register_object(self)
 
@@ -454,7 +454,8 @@ class SignalGroup(object):
             if prop_name is None:
                 prop_name = signal.alias
 
-            setattr(self, prop_name, signal)
+            if prop_name:
+                setattr(self, prop_name, signal)
 
     def subscribe(self, cb, event_type=None):
         '''
@@ -499,3 +500,23 @@ class SignalGroup(object):
         '''
         return dict((signal.alias, signal.read())
                     for signal in self._signals)
+
+    def _get_readback(self, **kwargs):
+        return [signal._get_readback(**kwargs)
+                for signal in self._signals]
+
+    readback = property(_get_readback, doc='Readback list')
+
+    def _get_request(self, **kwargs):
+        return [signal._get_request(**kwargs)
+                for signal in self._signals]
+
+    def _set_request(self, values, **kwargs):
+        return [signal._set_request(value, **kwargs)
+                for value, signal in zip(values, self._signals)]
+
+    request = property(_get_request, _set_request,
+                       doc='Request list')
+
+    value = property(_get_readback, _set_request,
+                     doc='Readback/request value list')
