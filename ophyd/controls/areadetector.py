@@ -18,6 +18,7 @@ import numpy as np
 import epics
 
 from .signal import (Signal, EpicsSignal, SignalGroup)
+from ..utils import ad_docs
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ __all__ = ['AreaDetector',
            'ROIPlugin',
            'FilePlugin',
            'NetCDFPlugin',
+           'TransformPlugin',
            'TIFFPlugin',
            'JPEGPlugin',
            'HDF5Plugin',
@@ -43,7 +45,7 @@ __all__ = ['AreaDetector',
 
 def ADSignalGroup(*props, **kwargs):
     def check_exists(self):
-        signals = tuple(prop.fget(self) for prop in props)
+        signals = tuple(prop.__get__(self) for prop in props)
         key = tuple(signal.read_pvname for signal in signals)
         try:
             return self._ad_signals[key]
@@ -66,34 +68,92 @@ def ADSignalGroup(*props, **kwargs):
     return property(fget, fset, doc=doc)
 
 
-def ADSignal(pv, has_rbv=False, doc='', **kwargs):
+def lookup_doc(obj, pv):
     '''
+    Go from top-level to base-level class, looking up html documentation
+    until we get a hit.
+
+    .. note:: This is only executed once, per class, per property (see
+    ADSignal for more information)
+    '''
+    import inspect
+
+    classes = inspect.getmro(obj.__class__)
+    docs = ad_docs.docs
+
+    for class_ in classes:
+        try:
+            html_file = class_._html_docs
+        except AttributeError:
+            continue
+
+        for fn in html_file:
+            try:
+                doc = docs[fn]
+            except KeyError:
+                continue
+
+            try:
+                return doc[pv]
+            except KeyError:
+                pass
+
+            if pv.endswith('_RBV'):
+                try:
+                    return doc[pv[:-4]]
+                except KeyError:
+                    pass
+
+    return 'No documentation found [PV suffix=%s]' % pv
+
+
+class ADSignal(object):
+    '''
+    A property-like descriptor
+
     Don't create an EpicsSignal instance until it's
     accessed (i.e., lazy evaluation)
     '''
-    def check_exists(self):
+
+    def __init__(self, pv, has_rbv=False, doc=None, **kwargs):
+        self.pv = pv
+        self.has_rbv = has_rbv
+        self.doc = doc
+        self.kwargs = kwargs
+
+        self.doc_set = (self.doc is not None)
+        self.__doc__ = '[Lazy property for %s]' % pv
+
+    def check_exists(self, obj):
+        pv = self.pv
         try:
-            return self._ad_signals[pv]
+            return obj._ad_signals[pv]
         except KeyError:
-            read_ = write = ''.join([self._prefix, pv])
-            if has_rbv:
+            read_ = write = ''.join([obj._prefix, pv])
+            if self.has_rbv:
                 read_ += '_RBV'
             else:
                 write = None
 
-            self._ad_signals[pv] = EpicsSignal(read_, write_pv=write,
-                                               **kwargs)
+            signal = EpicsSignal(read_, write_pv=write,
+                                 **self.kwargs)
 
-            return self._ad_signals[pv]
+            obj._ad_signals[pv] = signal
+            if self.doc is None:
+                if not self.doc_set:
+                    self.__doc__ = signal.__doc__ = lookup_doc(obj, pv)
+                    self.doc_set = True
+            else:
+                signal.__doc__ = self.doc
 
-    def fget(self):
-        return check_exists(self)
+            return obj._ad_signals[pv]
 
-    def fset(self, value):
-        signal = check_exists(self)
+    def __get__(self, obj, objtype=None):
+        return self.check_exists(obj)
+
+    def __set__(self, obj, value):
+        signal = self.check_exists(obj)
         signal.value = value
-
-    return property(fget, fset, doc=doc)
 
 
 class ADBase(SignalGroup):
@@ -112,10 +172,19 @@ class ADBase(SignalGroup):
     pool_used_mem = ADSignal('PoolUsedMem')
     port_name = ADSignal('PortName_RBV', rw=False)
 
+    def update_docstrings(self):
+        '''
+        ..note:: As a side-effect of how the lazy signals are implemented, docstrings
+        won't be updated until the objects are accessed.
+        '''
+        self.signals
+
     @property
     def signals(self):
         '''
         A dictionary of all signals (or groups) in the object.
+
+        .. note:: Instantiates all lazy signals
         '''
         if self.__sig_dict is None:
             attrs = [(attr, getattr(self, attr))
@@ -530,7 +599,8 @@ class OverlayPlugin(PluginBase):
     # TODO a bit different from other plugins
     _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
     _max_size_y = ADSignal('MaxSizeY_RBV', rw=False)
-    max_size = ADSignalGroup(_max_size_x, _max_size_y)
+    max_size = ADSignalGroup(_max_size_x, _max_size_y,
+                             doc='Maximum size')
 
 
 class ROIPlugin(PluginBase):
@@ -541,17 +611,20 @@ class ROIPlugin(PluginBase):
     _array_size_x = ADSignal('ArraySizeX_RBV', rw=False)
     _array_size_y = ADSignal('ArraySizeY_RBV', rw=False)
     _array_size_z = ADSignal('ArraySizeZ_RBV', rw=False)
-    array_size = ADSignalGroup(_array_size_x, _array_size_y, _array_size_z)
+    array_size = ADSignalGroup(_array_size_x, _array_size_y, _array_size_z,
+                               doc='Size of the ROI data in the X, Y, Z dimensions')
 
     _auto_size_x = ADSignal('AutoSizeX', has_rbv=True)
     _auto_size_y = ADSignal('AutoSizeY', has_rbv=True)
     _auto_size_z = ADSignal('AutoSizeZ', has_rbv=True)
-    auto_size = ADSignalGroup(_auto_size_x, _auto_size_y, _auto_size_z)
+    auto_size = ADSignalGroup(_auto_size_x, _auto_size_y, _auto_size_z,
+                              doc='Automatically set SizeXYZ to the input array size minus MinXYZ')
 
     _bin_x = ADSignal('BinX', has_rbv=True)
     _bin_y = ADSignal('BinY', has_rbv=True)
     _bin_z = ADSignal('BinZ', has_rbv=True)
-    bin_ = ADSignalGroup(_bin_x, _bin_y, _bin_z)
+    bin_ = ADSignalGroup(_bin_x, _bin_y, _bin_z,
+                         doc='Binning in the X, Y, and Z dimensions')
 
     data_type_out = ADSignal('DataTypeOut', has_rbv=True)
     enable_scale = ADSignal('EnableScale', has_rbv=True)
@@ -559,7 +632,11 @@ class ROIPlugin(PluginBase):
     _enable_x = ADSignal('EnableX', has_rbv=True)
     _enable_y = ADSignal('EnableY', has_rbv=True)
     _enable_z = ADSignal('EnableZ', has_rbv=True)
-    enable = ADSignalGroup(_enable_x, _enable_y, _enable_z)
+    enable = ADSignalGroup(_enable_x, _enable_y, _enable_z,
+                           doc='''Enable ROI calculations in the X, Y, Z dimensions.
+                           If not enabled then the start, size, binning, and reverse operations
+                           are disabled in the X/Y/Z dimension, and the values from the input array
+                           are used.''')
 
     _max_x = ADSignal('MaxX')
     _max_y = ADSignal('MaxY')
@@ -568,20 +645,23 @@ class ROIPlugin(PluginBase):
     _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
     _max_size_y = ADSignal('MaxSizeY_RBV', rw=False)
     _max_size_z = ADSignal('MaxSizeZ_RBV', rw=False)
-    max_size = ADSignalGroup(_max_size_x, _max_size_y, _max_size_z)
+    max_size = ADSignalGroup(_max_size_x, _max_size_y, _max_size_z,
+                             doc='Maximum size of the ROI in the X, Y, and Z dimensions')
 
-    _min_x = ADSignal('MinX', has_rbv=True)
-    _min_y = ADSignal('MinY', has_rbv=True)
-    _min_z = ADSignal('MinZ', has_rbv=True)
-    min_ = ADSignalGroup(_min_x, _min_y, _min_z)
+    min_x = ADSignal('MinX', has_rbv=True)
+    min_y = ADSignal('MinY', has_rbv=True)
+    min_z = ADSignal('MinZ', has_rbv=True)
+    min_ = ADSignalGroup(min_x, min_y, min_z,
+                         doc='Minimum size of the ROI in the X, Y, and Z dimensions')
 
     name_ = ADSignal('Name', has_rbv=True,
                      doc='ROI name')
 
-    _reverse_x = ADSignal('ReverseX', has_rbv=True)
-    _reverse_y = ADSignal('ReverseY', has_rbv=True)
-    _reverse_z = ADSignal('ReverseZ', has_rbv=True)
-    reverse = ADSignalGroup(_reverse_x, _reverse_y, _reverse_z)
+    reverse_x = ADSignal('ReverseX', has_rbv=True)
+    reverse_y = ADSignal('ReverseY', has_rbv=True)
+    reverse_z = ADSignal('ReverseZ', has_rbv=True)
+    reverse = ADSignalGroup(reverse_x, reverse_y, reverse_z,
+                            doc='Reverse ROI in the X, Y, Z dimensions. (0=No, 1=Yes)')
 
     scale = ADSignal('Scale', has_rbv=True)
     set_xhopr = ADSignal('SetXHOPR')
@@ -590,7 +670,8 @@ class ROIPlugin(PluginBase):
     _size_x = ADSignal('SizeX', has_rbv=True)
     _size_y = ADSignal('SizeY', has_rbv=True)
     _size_z = ADSignal('SizeZ', has_rbv=True)
-    size = ADSignalGroup(_size_x, _size_y, _size_z)
+    size = ADSignalGroup(_size_x, _size_y, _size_z,
+                         doc='Size of the ROI in the X, Y, Z dimensions')
 
     _size_x_link = ADSignal('SizeXLink')
     _size_y_link = ADSignal('SizeYLink')

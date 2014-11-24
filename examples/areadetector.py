@@ -92,6 +92,15 @@ def test():
     proc1.fc = [1, -1, 0, 1]
     logger.debug('fc=%s' % proc1.fc.value)
 
+    # if on an IPython session, try the following:
+    # In [0]: run areadetector.py
+    #
+    # In [1]: proc1.update_docstrings()
+    #
+    # In [2]: help(proc1)
+
+    return proc1
+
 
 if __name__ == '__main__':
-    test()
+    proc1 = test()
