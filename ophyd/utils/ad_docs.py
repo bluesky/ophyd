@@ -27,7 +27,7 @@ docs = {
           
           If the CoolingStatus_RBV is any of the Error states then the driver will automatically
           turn off the Peltier cooler.''',
-        HVMode=u'''[HVMode r/w, b] 
+        HVMode=u'''[HVMode r/w, bo] 
           High voltage mode. Choices are:
           0 - "Manual"
           
@@ -39,7 +39,7 @@ docs = {
           complete. This can improve the image quality, because the detector is subject to
           charge trapping when used with high x-ray fluxes, and periodically turning off the
           high voltage helps to clear the trapped charge.''',
-        HVState=u'''[HVState r/w, b] 
+        HVState=u'''[HVState r/w, bo] 
           High voltage state. Choices are:
           0 - "Off"
           
@@ -47,7 +47,7 @@ docs = {
           
           This record turns the high voltage off and on. If HVMode is Auto then the high voltage
           will be turned on during an acquisition even if HVState is off.''',
-        HVValue=u'''[HVValue r/w, a] 
+        HVValue=u'''[HVValue r/w, ao] 
           The high voltage value that will be applied to the detector when HVState=On or when
           HVMode=Auto and an acquisition is in progress. The allowed range is 0 to 400 volts.''',
         HVActual_RBV=u'[HVActual_RBV r/o, ai] The actual high voltage currently being applied to the detector.',
@@ -92,19 +92,19 @@ docs = {
         ThresholdActual4_RBV=u'''[ThresholdActual4_RBV r/o, ai] 
           Actual threshold energy in keV. This will be as close as possible to the requested
           value, subject to the constraints and algorithm explained above.''',
-        SyncInPolarity=u'''[SyncInPolarity r/w, b] 
+        SyncInPolarity=u'''[SyncInPolarity r/w, bo] 
           Polarity of the Sync In signal. Choices are:
           
           0 - "Pos."
           
           1 - "Neg."''',
-        SyncOutPolarity=u'''[SyncOutPolarity r/w, b] 
+        SyncOutPolarity=u'''[SyncOutPolarity r/w, bo] 
           Polarity of the Sync Out signal. Choices are:
           
           0 - "Pos."
           
           1 - "Neg."''',
-        SyncOutFunction=u'''[SyncOutFunction r/w, m] 
+        SyncOutFunction=u'''[SyncOutFunction r/w, mbbo] 
           Function of the Sync Out signal. Choices are:
           
           0 - "Shutter" The Sync Out signal is high while the detector is collecting.
@@ -119,7 +119,7 @@ docs = {
           at startup.''',
         UDPBuffersFree_RBV=u'[UDPBuffersFree_RBV r/o, longin] The number of free UDP buffers (images).',
         UDPSpeed_RBV=u'[UDPSpeed_RBV r/o, ai] The speed with which the last UDP buffer was received (MB/s).',
-        AutoCalibrate=u'''[AutoCalibrate r/w, b] 
+        AutoCalibrate=u'''[AutoCalibrate r/w, bo] 
           Sends a command to the detector to perform an autocalibration. The detector makes
           adjustments to achieve uniform pixel response. This operation must be performed
           at least once after the detector is power-cycled, and whenever necessary as the
@@ -129,7 +129,7 @@ docs = {
           sends 2 images, one collected before the calibration and one after the calibration.
           These images always have a range of 0-31 counts and show the correction applied
           to each pixel.''',
-        SystemReset=u'''[SystemReset r/w, b] 
+        SystemReset=u'''[SystemReset r/w, bo] 
           Writing 1 to this record sends a command to reset detector to its initial state.
           This causes the sockets to disconnect, and it takes about 30 seconds for the system
           to recover. Once it recovers the driver then sends commands to set all of the programmable
@@ -140,7 +140,7 @@ docs = {
 
 
     'FirewireWinDoc.html': dict(
-        FORMAT=u'''[FORMAT r/w, m] 
+        FORMAT=u'''[FORMAT r/w, mbbo] 
           The video format. The allowed choices are 0="VGA", 1="Super VGA 1", 2="Super VGA
           2", 6="Still image", 7="User-defined". The FDC_has_format and FDC_valid_format parameters
           described below indicate whether a particular format is actually supported by the
@@ -178,7 +178,7 @@ docs = {
           A string describing each of the formats (0-7) supported by the camera. The string
           is "N.A." if the format is not supported.''',
         CURRENT_FORMAT=u'[CURRENT_FORMAT r/o, stringin] A string describing the currently selected video format.',
-        MODE=u'''[MODE r/w, m] 
+        MODE=u'''[MODE r/w, mbbo] 
           The video mode. The allowed choices are 0-7. The FDC_has_mode and FDC_valid_mode
           parameters described below indicate whether a particular mode is actually supported
           by the camera in the currently selected video format.''',
@@ -239,7 +239,7 @@ docs = {
           selected video format. The string is "N.A." if the mode is not supported in this
           format.''',
         CURRENT_MODE=u'[CURRENT_MODE r/o, stringin] A string describing the currently selected video mode.',
-        FR=u'''[FR r/w, m] 
+        FR=u'''[FR r/w, mbbo] 
           The frame rate in frames/second. The allowed choices are 0="1.875", 1="3.75", 2="7.5",
           3="15", 4="30", 5="60", 6="120", 7="240". FDC_has_framerate and FDC_valid_framerate
           parameters described below indicate whether a particular frame rate is actually
@@ -301,7 +301,7 @@ docs = {
           currently selected video format and mode. The string is "N.A." if the frame rate
           is not supported in this format and mode.''',
         CURRENT_RATE=u'[CURRENT_RATE r/o, stringin] A string describing the currently selected video frame rate.',
-        COLORCODE=u'''[COLORCODE r/w, m] 
+        COLORCODE=u'''[COLORCODE r/w, mbbo] 
           The color code. The allowed choices are 0-10. FDC_has_colorcode and FDC_valid_colorcode
           parameters described below indicate whether a particular color code is actually
           supported by the camera in the currently selected video format (7) and mode.''',
@@ -383,7 +383,7 @@ docs = {
           currently selected video format (7) and mode. The string is "N.A." if the color
           code is not supported in this format and mode.''',
         CURRENT_COLORCODE=u'[CURRENT_COLORCODE r/o, stringin] A string describing the currently selected color code.',
-        READOUT_TIME=u'''[READOUT_TIME r/w, a] 
+        READOUT_TIME=u'''[READOUT_TIME r/w, ao] 
           The readout time in seconds. This value is added to the AcquireTime to determine
           how long to wait before a frame timeout is reported. It should be set to a value
           slightly larger than the actual readout time of the camera in the current mode.''',
@@ -391,8 +391,8 @@ docs = {
 
 
     'Mar345Doc.html': dict(
-        ScanSize=u'[ScanSize r/w, m] The detector diameter to read out. Choices are 180mm, 240mm, 300mm, and 345mm.',
-        ScanResolution=u'[ScanResolution r/w, m] The pixel size to use when reading the detector out. Choices are 0.10 and 0.15mm.',
+        ScanSize=u'[ScanSize r/w, mbbo] The detector diameter to read out. Choices are 180mm, 240mm, 300mm, and 345mm.',
+        ScanResolution=u'[ScanResolution r/w, mbbo] The pixel size to use when reading the detector out. Choices are 0.10 and 0.15mm.',
         ChangeMode=u'''[ChangeMode r/w, busy] 
           Writing 1 to this parameter causes the ScanSize and ScanResolution values to be
           sent to the server, changing the scan mode. This is not strictly necessary, because
@@ -405,17 +405,17 @@ docs = {
           the size and resolution is also encoded in the file extension used in the scan command.
           However, changing the mode before doing a scan reduces the time for the scan, because
           the detector is already configured for the correct mode.''',
-        EraseMode=u'''[EraseMode r/w, m] 
+        EraseMode=u'''[EraseMode r/w, mbbo] 
           Controls whether an erase cycle should be automatically performed during acquisition.
           Choices are None, Before expose, and After scan.''',
-        NumErase=u'''[NumErase r/w, l] 
+        NumErase=u'''[NumErase r/w, longout] 
           The number of erase cycles to perform each time the detector is erased, either because
           the mar345Erase parameter is set to 1, or because of an automatic erase as part
           of an acquisition.''',
-        Erase=u'''[Erase r/w, b] 
+        Erase=u'''[Erase r/w, busy] 
           Write 1 to this parameter to initiate erasing the detector. The detector will be
           erased multiple times if mar345NumErase is greater than 1.''',
-        Abort=u'''[Abort r/w, b] 
+        Abort=u'''[Abort r/w, bo] 
           Writing 1 to this parameter aborts the current operation as soon as possible and
           returns the driver to the idle state. Note however that commands to the mar345 server
           cannot be aborted, so the driver must wait for the current command to complete.''',
@@ -544,7 +544,7 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'prosilicaDoc.html': dict(
-        BayerConvert=u'''[BayerConvert r/w, m] 
+        BayerConvert=u'''[BayerConvert r/w, mbbo] 
           Color conversion when NDColorMode is Bayer:
           None: Raw Bayer images are passed to the plugins
           RGB1: Bayer images are converted to RGB1
@@ -553,7 +553,7 @@ badX2,badY2 replacementX2,replacementY2
           Having the camera send Bayer images uses 3 times less network bandwidth than 
           sending RGB1 images.  It does place more CPU load on the host to convert
           from Bayer to RGB, but this is often an acceptable tradeoff.''',
-        TriggerEvent=u'''[TriggerEvent r/w, m] 
+        TriggerEvent=u'''[TriggerEvent r/w, mbbo] 
           The edge or level for the selected trigger signal when ADTriggerMode=Sync In 1 to
           SyncIn 4. Allowed values are:
           Rising edge
@@ -561,10 +561,10 @@ badX2,badY2 replacementX2,replacementY2
           Any edge
           High level
           Low level''',
-        TriggerDelay=u'''[TriggerDelay r/w, a] 
+        TriggerDelay=u'''[TriggerDelay r/w, ao] 
           The delay in seconds between the trigger signal and when the frame is actually acquired.
           Minimum value is 1 microsecond.''',
-        TriggerOverlap=u'''[TriggerOverlap r/w, m] 
+        TriggerOverlap=u'''[TriggerOverlap r/w, mbbo] 
           Controls the behavior when an external trigger signal arrives before the camera
           is ready for the next trigger. Allowed values are:
           Off - the external trigger is ignored
@@ -573,7 +573,7 @@ badX2,badY2 replacementX2,replacementY2
         TriggerSoftware=u'[TriggerSoftware r/w, bo] Processing this record performs a software trigger if ADTriggerMode=Software.',
         SyncIn1Level_RBV=u'[SyncIn1Level_RBV r/o, bi] The level of the Sync In 1 signal',
         SyncIn2Level_RBV=u'[SyncIn2Level_RBV r/o, bi] The level of the Sync In 2 signal',
-        SyncOut1Mode=u'''[SyncOut1Mode r/w, m] 
+        SyncOut1Mode=u'''[SyncOut1Mode r/w, mbbo] 
           The mode of the Sync Out 1 signal. Allowed values are:
           
           GPO (general purpose output)
@@ -607,16 +607,16 @@ badX2,badY2 replacementX2,replacementY2
           Strobe3
           
           Strobe4''',
-        SyncOut1Level=u'[SyncOut1Level r/w, b] The level of the Sync Out 1 signal. This is only programmable when SyncOut1Mode=GPO.',
-        SyncOut1Invert=u'[SyncOut1Invert r/w, b] Flag to invert the Sync Out 1 signal.',
-        SyncOut2Mode=u'[SyncOut2Mode r/w, m] The mode of the Sync Out 2 signal. Allowed values are the same as for PSSyncOut1Mode.',
+        SyncOut1Level=u'[SyncOut1Level r/w, bo] The level of the Sync Out 1 signal. This is only programmable when SyncOut1Mode=GPO.',
+        SyncOut1Invert=u'[SyncOut1Invert r/w, bo] Flag to invert the Sync Out 1 signal.',
+        SyncOut2Mode=u'[SyncOut2Mode r/w, mbbo] The mode of the Sync Out 2 signal. Allowed values are the same as for PSSyncOut1Mode.',
         SyncOut2Level=u'[SyncOut2Level r/w, bo] The level of the Sync Out 2 signal. This is only programmable when SyncOut2Mode=GPO.',
         SyncOut1Level_RBV=u'[SyncOut1Level_RBV r/w, bi] The level of the Sync Out 2 signal. This is only programmable when SyncOut2Mode=GPO.',
-        SyncOut2Invert=u'[SyncOut2Invert r/w, b] Flag to invert the Sync Out 2 signal.',
-        SyncOut3Mode=u'[SyncOut3Mode r/w, m] The mode of the Sync Out 3 signal. Allowed values are the same as for PSSyncOut1Mode.',
-        SyncOut3Level=u'[SyncOut3Level r/w, b] The level of the Sync Out 3 signal. This is only programmable when SyncOut3Mode=GPO.',
-        SyncOut3Invert=u'[SyncOut3Invert r/w, b] Flag to invert the Sync Out 3 signal.',
-        Strobe1Mode=u'''[Strobe1Mode r/w, m] 
+        SyncOut2Invert=u'[SyncOut2Invert r/w, bo] Flag to invert the Sync Out 2 signal.',
+        SyncOut3Mode=u'[SyncOut3Mode r/w, mbbo] The mode of the Sync Out 3 signal. Allowed values are the same as for PSSyncOut1Mode.',
+        SyncOut3Level=u'[SyncOut3Level r/w, bo] The level of the Sync Out 3 signal. This is only programmable when SyncOut3Mode=GPO.',
+        SyncOut3Invert=u'[SyncOut3Invert r/w, bo] Flag to invert the Sync Out 3 signal.',
+        Strobe1Mode=u'''[Strobe1Mode r/w, mbbo] 
           The mode of the Strobe 1 signal. The Strobe signals are based on the following values,
           but allow for changing the delay and width relative to the underlying value. Any
           of the outputs can be set to the Stobe1 value, rather than the raw values of these
@@ -641,13 +641,13 @@ badX2,badY2 replacementX2,replacementY2
           SyncIn3
           
           SyncIn4''',
-        Strobe1CtlDuration=u'[Strobe1CtlDuration r/w, b] Flag to allow controlling the strobe duration.',
-        Strobe1Duration=u'[Strobe1Duration r/w, a] The strobe duration if PSStrobe1CtlDuration is On.',
-        Strobe1Delay=u'[Strobe1Delay r/w, a] The strobe delay relative to the underlying signal that the strobe is based on.',
+        Strobe1CtlDuration=u'[Strobe1CtlDuration r/w, bo] Flag to allow controlling the strobe duration.',
+        Strobe1Duration=u'[Strobe1Duration r/w, ao] The strobe duration if PSStrobe1CtlDuration is On.',
+        Strobe1Delay=u'[Strobe1Delay r/w, ao] The strobe delay relative to the underlying signal that the strobe is based on.',
         PSResetTimer=u'''[PSResetTimer r/w, longout] 
           Resets the timestamp timer in the camera. If PSTimestampType is POSIX or EPICS then
           it also stores the current POSIX or EPICS time in the driver.''',
-        PSTimestampType=u'''[PSTimestampType r/w, m] 
+        PSTimestampType=u'''[PSTimestampType r/w, mbbo] 
           Controls the type of timestamp in the timeStamp field of each NDArray. Choices are:
           
             NativeTicks: The number of internal camera clock ticks which have elapsed since
@@ -667,7 +667,7 @@ badX2,badY2 replacementX2,replacementY2
         PSDriverType_RBV=u'[PSDriverType_RBV r/o, stringin] Driver type',
         PSFilterVersion_RBV=u'[PSFilterVersion_RBV r/o, stringin] Packet filter version',
         PSFrameRate_RBV=u'[PSFrameRate_RBV r/o, ai] Frame rate (Hz)',
-        PSByteRate=u'''[PSByteRate r/w, l] 
+        PSByteRate=u'''[PSByteRate r/w, longout] 
           Stream bytes per second in the PvAPI driver. This allows limiting the bandwidth
           that a camera uses. It also allows operation of GigE cameras on non-Gigabit Ethernet
           networks by decreasing the value to maximum that the network supports. The default
@@ -693,20 +693,20 @@ badX2,badY2 replacementX2,replacementY2
           to select a specific camera for the EPICS IOC.''',
         FirmwareVersion=u'[FirmwareVersion r/o, stringin] The camera firmware version.',
         SoftwareVersion=u'[SoftwareVersion r/o, stringin] The FlyCapture2 SDK software version.',
-        VideoMode=u'''[VideoMode r/w, m] 
+        VideoMode=u'''[VideoMode r/w, mbbo] 
             The video mode. All possible values are listed in the Video
             modes section above. The actual enum choices for this record will only include
           the video modes supported by the camera in use.''',
-        Format7Mode=u'''[Format7Mode r/w, m] 
+        Format7Mode=u'''[Format7Mode r/w, mbbo] 
           The Format7 mode when the camera is in VideoMode=Format7. This is discussed in the
           Format7 modes section above. The actual enum choices
           for this record will only include the Format7 modes supported by the camera in use.''',
-        PixelFormat=u'''[PixelFormat r/w, m] 
+        PixelFormat=u'''[PixelFormat r/w, mbbo] 
           The pixel format when the camera is in VideoMode=Format7. This is discussed in the
           Pixel formats section above. The actual enum choices
           for this record will only include the pixel formats supported by the camera in use
           for the Format7Mode currently selected.''',
-        ConvertPixelFormat=u'''[ConvertPixelFormat r/w, m] 
+        ConvertPixelFormat=u'''[ConvertPixelFormat r/w, mbbo] 
           The driver allows converting the pixel format from the camera to another pixel format.
           The pixel formats from the camera that can be converted are:
           
@@ -726,29 +726,29 @@ badX2,badY2 replacementX2,replacementY2
             RGB16: The input format is converted to RGB16. This is useful when the input format
               is Raw16, for a color camera. In this case Bayer color is sent on the network, reducing
               the bandwidth requirement by a factor of 3.''',
-        FrameRate=u'''[FrameRate r/w, m] 
+        FrameRate=u'''[FrameRate r/w, mbbo] 
           The frame rate choice when the VideoMode is not Format7. This is discussed in the
           Frame rates section above. The actual enum choices for
           this record will only include the frame rates supported by the camera in use for
           the VideoMode currently selected.''',
-        BinningMode=u'[BinningMode r/w, m] The binning mode for GigE cameras. The allowed values are camera-specific.',
-        TriggerSource=u'''[TriggerSource r/w, m] 
+        BinningMode=u'[BinningMode r/w, mbbo] The binning mode for GigE cameras. The allowed values are camera-specific.',
+        TriggerSource=u'''[TriggerSource r/w, mbbo] 
           The trigger source signal. Choices are "GPIO_0", GPIO_1","GPIO_2", and "GPIO_3",
           which selects one of 4 GPIO pins on the camera. However, not all choices may be
           available on a specific camera, and the enum choices will only be the trigger sources
           actually supported on the camera in use.''',
-        TriggerPolarity=u'[TriggerPolarity r/w, b] The trigger polarity. Choices are "Low", and "High".',
+        TriggerPolarity=u'[TriggerPolarity r/w, bo] The trigger polarity. Choices are "Low", and "High".',
         SoftwareTrigger=u'[SoftwareTrigger r/w, bo] Processing this record causes the driver to issue a software trigger.',
-        SkipFrames=u'[SkipFrames r/w, l] The number of frames to skip when TriggerMode="Skip frames".',
-        StrobeSource=u'''[StrobeSource r/w, m] 
+        SkipFrames=u'[SkipFrames r/w, longout] The number of frames to skip when TriggerMode="Skip frames".',
+        StrobeSource=u'''[StrobeSource r/w, mbbo] 
           The strobe output signal. Choices are "GPIO_0", GPIO_1","GPIO_2", and "GPIO_3",
           which selects one of 4 GPIO pins on the camera. However, not all choices may be
           available on a specific camera, and the enum choices will only be the strobe sources
           actually supported on the camera in use.''',
-        StrobeEnable=u'[StrobeEnable r/w, b] Enables the strobe output. Choices are "Disable", and "Enable".',
-        StrobePolarity=u'[StrobePolarity r/w, b] The strobe polarity. Choices are "Low", and "High".',
-        StrobeDelay=u'[StrobeDelay r/w, a] The delay of the strobe signal relative to the start of acquisition.',
-        StrobeDuration=u'''[StrobeDuration r/w, a] 
+        StrobeEnable=u'[StrobeEnable r/w, bo] Enables the strobe output. Choices are "Disable", and "Enable".',
+        StrobePolarity=u'[StrobePolarity r/w, bo] The strobe polarity. Choices are "Low", and "High".',
+        StrobeDelay=u'[StrobeDelay r/w, ao] The delay of the strobe signal relative to the start of acquisition.',
+        StrobeDuration=u'''[StrobeDuration r/w, ao] 
           The duration of the strobe signal. If zero then the strobe output is asserted during
           the image aquisition time.''',
         MaxPacketSize=u'''[MaxPacketSize r/o, longin] 
@@ -758,7 +758,7 @@ badX2,badY2 replacementX2,replacementY2
           the camera and the IOC. However, this sometimes returns 9000 (jumbo packets) when
           jumbo packets are not in fact supported. In this case the user should manually set
           PacketSize to 1440 or image acquisition will fail.''',
-        PacketSize=u'''[PacketSize r/w, a] 
+        PacketSize=u'''[PacketSize r/w, ao] 
           The packet size to use. This is used to control the maximum bandwidth, and hence
           maximum frame rate, on Firewire and USB cameras. For GigE cameras it should be set
           to the largest packet size supported on the Ethernet connection between the camera
@@ -766,7 +766,7 @@ badX2,badY2 replacementX2,replacementY2
           and as large as 9000 for connections that do support jumbo packets. If PacketSize
           is set to 0 then the driver will use the current value of MaxPacketSize.''',
         PacketSizeActual=u'[PacketSizeActual r/o, longin] The actual packet size being used.',
-        PacketDelay=u'''[PacketDelay r/w, l] 
+        PacketDelay=u'''[PacketDelay r/w, longout] 
           The packet delay to use in microseconds. This is used to control the maximum bandwidth,
           and hence maximum frame rate, on GigE cameras. It is not used for Firewire or USB
           cameras. The default is 400 microseconds. If the number of CorruptFrames is large
@@ -776,7 +776,7 @@ badX2,badY2 replacementX2,replacementY2
         Bandwidth=u'''[Bandwidth r/o, ai] 
           The calculated bandidth in MB/s. This is computed from the image size and the frame
           rate.''',
-        TimeStampMode=u'''[TimeStampMode r/w, m] 
+        TimeStampMode=u'''[TimeStampMode r/w, mbbo] 
           The timestamp mode. Controls the value of the NDArray,.timeStamp value. Choices
           are:
           
@@ -807,19 +807,19 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'NDPluginColorConvert.html': dict(
-        ColorModeOut=u'[ColorModeOut r/w, m] The output color mode (NDColorMode_t).',
-        FalseColor=u'''[FalseColor r/w, m] 
+        ColorModeOut=u'[ColorModeOut r/w, mbbo] The output color mode (NDColorMode_t).',
+        FalseColor=u'''[FalseColor r/w, mbbo] 
           The false color map index. There are currently 2 false color maps defined, Rainbow
           and Iron. Additional color maps can easily be added in the future.''',
         ),  # end of NDPluginColorConvert.html
 
 
     'pvcamDoc.html': dict(
-        Initialize=u'[Initialize r/w, l] Initializes the detector',
+        Initialize=u'[Initialize r/w, longout] Initializes the detector',
         Slot1_RBV=u'[Slot1_RBV r, stringin] String describing 1st found detector',
         Slot2_RBV=u'[Slot2_RBV r, stringin] String describing 2nd found detector',
         Slot3_RBV=u'[Slot3_RBV r, stringin] String describing 3rd found detector',
-        DetecorSelected=u'[DetecorSelected r/w, l] Index of selected detector',
+        DetecorSelected=u'[DetecorSelected r/w, longout] Index of selected detector',
         ChipName_RBV=u'[ChipName_RBV r, stringin] String describing CCD chip',
         NumParallelPixels_RBV=u'[NumParallelPixels_RBV r, longin] Parallel size of the CCD in active rows',
         NumSerialPixels_RBV=u'[NumSerialPixels_RBV r, longin] Serial size of the CCD',
@@ -837,24 +837,24 @@ badX2,badY2 replacementX2,replacementY2
         FullWellCapacity_RBV=u'[FullWellCapacity_RBV r, longin] ',
         FrameTransferCapable_RBV=u'[FrameTransferCapable_RBV r, longin] ',
         NumSpeedTableEntries_RBV=u'[NumSpeedTableEntries_RBV r, longin] ',
-        SpeedTableIndex=u'[SpeedTableIndex r/w, l] ',
+        SpeedTableIndex=u'[SpeedTableIndex r/w, longout] ',
         BitDepth_RBV=u'[BitDepth_RBV r, longin] ',
         PixelTime_RBV=u'[PixelTime_RBV r, longin] ',
-        GainIndex=u'[GainIndex r, l] ',
+        GainIndex=u'[GainIndex r, longin] ',
         MaxGainIndex_RBV=u'[MaxGainIndex_RBV r, longin] ',
         MinShutterOpenDelay_RBV=u'[MinShutterOpenDelay_RBV r, longin] ',
         MaxShutterOpenDelay_RBV=u'[MaxShutterOpenDelay_RBV r, longin] ',
         MinShutterCloseDelay_RBV=u'[MinShutterCloseDelay_RBV r, longin] ',
         MaxShutterCloseDelay_RBV=u'[MaxShutterCloseDelay_RBV r, longin] ',
-        OpenDelay=u'[OpenDelay r/w, l] ',
-        CloseDelay=u'[CloseDelay r/w, l] ',
+        OpenDelay=u'[OpenDelay r/w, longout] ',
+        CloseDelay=u'[CloseDelay r/w, longout] ',
         MeasuredTemperature_RBV=u'[MeasuredTemperature_RBV r, longin] ',
         MinSetTemperature=u'[MinSetTemperature r, longin] ',
         MaxSetTemperature=u'[MaxSetTemperature r, longin] ',
-        SetTemperature=u'[SetTemperature r/w, l] ',
-        DetectorMode=u'[DetectorMode r/w, l] ',
-        TriggerMode=u'[TriggerMode r/w, l] ',
-        TriggerEdge=u'[TriggerEdge r/w, l] ',
+        SetTemperature=u'[SetTemperature r/w, longin] ',
+        DetectorMode=u'[DetectorMode r/w, longin] ',
+        TriggerMode=u'[TriggerMode r/w, longin] ',
+        TriggerEdge=u'[TriggerEdge r/w, longin] ',
         CameraFirmwareVers_RBV=u'[CameraFirmwareVers_RBV r, longin] ',
         PCIFWVers_RBV=u'[PCIFWVers_RBV r, longin] ',
         HeadSerialNum_RBV=u'[HeadSerialNum_RBV r, longin] ',
@@ -865,7 +865,7 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'andorDoc.html': dict(
-        AndorCooler=u'[AndorCooler R/W, b] Turn the CCD cooler on and off',
+        AndorCooler=u'[AndorCooler R/W, bo] Turn the CCD cooler on and off',
         AndorTempStatus_RBV=u'[AndorTempStatus_RBV R/O, waveform] Temperature status message.',
         AndorMessage_RBV=u'[AndorMessage_RBV R/O, waveform] Other status message.',
         AndorShutterMode=u'''[AndorShutterMode R/W, mbbo] 
@@ -881,12 +881,12 @@ badX2,badY2 replacementX2,replacementY2
         PALFilePath=u'''[PALFilePath R/W, waveform] 
           Path and Filename of pallette file (used for TIFF and BMP file colours) (255 chars
           max).''',
-        AndorADCSpeed=u'''[AndorADCSpeed R/W, m] 
+        AndorADCSpeed=u'''[AndorADCSpeed R/W, mbbo] 
           Switch between the slow (low noise) ADC and the fast ADC. Choices are:
           
             0.05 MHz
             2.5 MHz''',
-        AndorAccumulatePeriod=u'''[AndorAccumulatePeriod R/W, a] 
+        AndorAccumulatePeriod=u'''[AndorAccumulatePeriod R/W, ao] 
           Controls the period between accumulations when ImageMode=Single or Multiple and
           NumExposures>1. NOTE: Some Andor detectors (including the iKon) only support
           a single period when doing multiple accumulations in kinetic series mode. For these
@@ -902,23 +902,23 @@ badX2,badY2 replacementX2,replacementY2
         AndorAcquirePeriodActual=u'''[AndorAcquirePeriodActual R/O, ai] 
           Reads the actual value of ADAcquirePeriod, which may differ from the requested value
           due to timing limitations of the detector.''',
-        Grating=u'[Grating R/W, m] Selects the grating to use',
-        Wavelength=u'[Wavelength R/W, a] Selects the central wavelength',
+        Grating=u'[Grating R/W, mbbo] Selects the grating to use',
+        Wavelength=u'[Wavelength R/W, ao] Selects the central wavelength',
         Calibration=u'[Calibration R/O, bi] Array containing the wavelength calibration of each X pixel of the detector in nm.',
         ),  # end of andorDoc.html
 
 
     'LightFieldDoc.html': dict(
-        NumAccumulations=u'[NumAccumulations r/w, l] The number of on-chip accumulations to perform per image.',
-        NumAcquisitions=u'''[NumAcquisitions r/w, l] 
+        NumAccumulations=u'[NumAccumulations r/w, longout] The number of on-chip accumulations to perform per image.',
+        NumAcquisitions=u'''[NumAcquisitions r/w, longout] 
           The number of acquisitions to perform when acquisition is started. This controls
           the number of iterations in the outermost acquisition loop explained above. NOTE:
           This is not yet implemented, it is planned for a future release.''',
         NumAcquisitionsCounter_RBV=u'[NumAcquisitionsCounter_RBV r/o, longin] The number of acquisitions performed so far.',
-        LFGain=u'''[LFGain r/w, m] 
+        LFGain=u'''[LFGain r/w, mbbo] 
           The camera gain. This parameter is used instead of the base class ADGain parameter
           so that it can be displayed as a menu as LightField does.''',
-        LFShutterMode=u'''[LFShutterMode r/w, m] 
+        LFShutterMode=u'''[LFShutterMode r/w, mbbo] 
           The shutter operating mode for shutters controlled by LightField. Allowed values
           are:
           
@@ -928,19 +928,19 @@ badX2,badY2 replacementX2,replacementY2
             Always open: The shutter will be kept open. Useful if the light source is a strobe
               so the shutter is not needed.
             Open before trigger: The detector shutter will be opened before the trigger.''',
-        LFExperimentName=u'''[LFExperimentName r/w, m] 
+        LFExperimentName=u'''[LFExperimentName r/w, mbbo] 
           Selects the LightField experiment, which is a set of experimental conditions including
           the selected camera, etc. The record choices are constructed at run-time based on
           the experiment files currently available.''',
         LFUpdateExperiments=u'''[LFUpdateExperiments r/w, bo] 
           Updates the choices in the LFExperimentName records. This is only needed if a new
           experiment is created after the EPICS IOC is started.''',
-        LFGrating=u'''[LFGrating r/w, m] 
+        LFGrating=u'''[LFGrating r/w, mbbo] 
           Selects the spectrometer grating. The record choices are constructed at run-time
           based on the gratings actually available.''',
-        LFGratingWavelength=u'[LFGratingWavelength r/w, a] Selects the center wavelength of the spectrometer.',
-        LFEntranceWidth=u'[LFEntranceWidth r/w, l] Selects the entrance width of the side port on the spectrometer in microns.',
-        LFExitPort=u'''[LFExitPort r/w, m] 
+        LFGratingWavelength=u'[LFGratingWavelength r/w, ao] Selects the center wavelength of the spectrometer.',
+        LFEntranceWidth=u'[LFEntranceWidth r/w, longout] Selects the entrance width of the side port on the spectrometer in microns.',
+        LFExitPort=u'''[LFExitPort r/w, mbbo] 
           Selects the exit port of the spectrometer. Choices are:
           
           
@@ -948,29 +948,29 @@ badX2,badY2 replacementX2,replacementY2
             Front''',
         LFFilePath_RBV=u'[LFFilePath_RBV r/o, waveform] The actual file path for saving data.',
         LFFileName_RBV=u'[LFFileName_RBV r/o, waveform] The actual file name for saving data.',
-        LFBackgroundPath=u'[LFBackgroundPath r/w, w] The file path to use for saving background data.',
-        LFBackgroundFile=u'[LFBackgroundFile r/w, w] The file name to use for saving background data.',
+        LFBackgroundPath=u'[LFBackgroundPath r/w, waveform] The file path to use for saving background data.',
+        LFBackgroundFile=u'[LFBackgroundFile r/w, waveform] The file name to use for saving background data.',
         LFBackgroundFullFile_RBV=u'[LFBackgroundFullFile_RBV r/o, waveform] The actual full file name for saving background data.',
-        LFBackgroundEnable=u'[LFBackgroundEnable r/w, b] Enable background correction.',
-        LFIntensifierEnable=u'[LFIntensifierEnable r/w, b] Enable image intensifier.',
-        LFIntensifierGain=u'[LFIntensifierGain r/w, a] Image intensifier gain.',
-        LFGatingMode=u'''[LFGatingMode r/w, m] 
+        LFBackgroundEnable=u'[LFBackgroundEnable r/w, bo] Enable background correction.',
+        LFIntensifierEnable=u'[LFIntensifierEnable r/w, bo] Enable image intensifier.',
+        LFIntensifierGain=u'[LFIntensifierGain r/w, ao] Image intensifier gain.',
+        LFGatingMode=u'''[LFGatingMode r/w, mbbo] 
           Image intensifier gating mode. Choices are:
           
           
             Repetitive
             Sequential''',
-        LFTriggerFrequency=u'[LFTriggerFrequency r/w, a] Selects the intensifier trigger frequency.',
-        LFSyncMasterEnable=u'[LFSyncMasterEnable r/w, b] Enable sync master.',
-        LFSyncMaster2Delay=u'[LFSyncMaster2Delay r/w, a] Selects the sync master 2 delay.',
-        LFRepGateWidth=u'[LFRepGateWidth r/w, a] Selects the repetitive gate width.',
-        LFRepGateDelay=u'[LFRepGateDelay r/w, a] Selects the repetitive gate delay.',
-        LFSeqStartGateWidth=u'[LFSeqStartGateWidth r/w, a] Selects the sequential start gate width.',
-        LFSeqStartGateDelay=u'[LFSeqStartGateDelay r/w, a] Selects the sequential start gate delay.',
-        LFSeqEndGateWidth=u'[LFSeqEndGateWidth r/w, a] Selects the sequential end gate width.',
-        LFSeqEndGateDelay=u'[LFSeqEndGateDelay r/w, a] Selects the sequential end gate delay.',
-        LFAuxWidth=u'[LFAuxWidth r/w, a] Selects the auxiliary width.',
-        LFAuxDelay=u'[LFAuxDelay r/w, a] Selects the auxiliary delay.',
+        LFTriggerFrequency=u'[LFTriggerFrequency r/w, ao] Selects the intensifier trigger frequency.',
+        LFSyncMasterEnable=u'[LFSyncMasterEnable r/w, bo] Enable sync master.',
+        LFSyncMaster2Delay=u'[LFSyncMaster2Delay r/w, ao] Selects the sync master 2 delay.',
+        LFRepGateWidth=u'[LFRepGateWidth r/w, ao] Selects the repetitive gate width.',
+        LFRepGateDelay=u'[LFRepGateDelay r/w, ao] Selects the repetitive gate delay.',
+        LFSeqStartGateWidth=u'[LFSeqStartGateWidth r/w, ao] Selects the sequential start gate width.',
+        LFSeqStartGateDelay=u'[LFSeqStartGateDelay r/w, ao] Selects the sequential start gate delay.',
+        LFSeqEndGateWidth=u'[LFSeqEndGateWidth r/w, ao] Selects the sequential end gate width.',
+        LFSeqEndGateDelay=u'[LFSeqEndGateDelay r/w, ao] Selects the sequential end gate delay.',
+        LFAuxWidth=u'[LFAuxWidth r/w, ao] Selects the auxiliary width.',
+        LFAuxDelay=u'[LFAuxDelay r/w, ao] Selects the auxiliary delay.',
         ReadyToRun=u'[ReadyToRun r/o, bi] Flag indicating if LighField is ready to collect data.',
         ),  # end of LightFieldDoc.html
 
@@ -978,35 +978,35 @@ badX2,badY2 replacementX2,replacementY2
     'BrukerDoc.html': dict(
         ReadSFRMTimeout=u'[ReadSFRMTimeout r/w, ao] The timeout waiting for the SFRM file to appear.',
         BISStatus=u'[BISStatus r/w, waveform] The status string returned from BIS.',
-        NumDarks=u'[NumDarks r/w, l] The number of dark fields to collect when ADFrameType=Dark.',
+        NumDarks=u'[NumDarks r/w, longout] The number of dark fields to collect when ADFrameType=Dark.',
         ),  # end of BrukerDoc.html
 
 
     'simDetectorDoc.html': dict(
-        GainX=u'[GainX r/w, a] Gain in the X direction',
-        GainY=u'[GainY r/w, a] Gain in the Y direction',
-        GainRed=u'[GainRed r/w, a] Gain of the red channel',
-        GainGreen=u'[GainGreen r/w, a] Gain of the green channel',
-        GainBlue=u'[GainBlue r/w, a] Gain of the blue channel',
-        Reset=u'[Reset r/w, l] Set to 1 to reset image back to initial conditions',
-        SimMode=u'''[SimMode r/w, l] 
+        GainX=u'[GainX r/w, ao] Gain in the X direction',
+        GainY=u'[GainY r/w, ao] Gain in the Y direction',
+        GainRed=u'[GainRed r/w, ao] Gain of the red channel',
+        GainGreen=u'[GainGreen r/w, ao] Gain of the green channel',
+        GainBlue=u'[GainBlue r/w, ao] Gain of the blue channel',
+        Reset=u'[Reset r/w, longout] Set to 1 to reset image back to initial conditions',
+        SimMode=u'''[SimMode r/w, longout] 
           Sets the simulation mode. Options are:
           
             Linear Ramp
             Array of Peaks''',
-        PeakStartX=u'[PeakStartX r/w, l] X location of the first peak centroid',
-        PeakStartY=u'[PeakStartY r/w, l] Y location of the first peak centroid',
-        PeakWidthX=u'[PeakWidthX r/w, l] X width of the peaks',
-        PeakWidthY=u'[PeakWidthY r/w, l] Y width of the peaks',
-        PeakNumX=u'[PeakNumX r/w, l] Number of peaks in X direction',
-        PeakNumY=u'[PeakNumY r/w, l] Number of peaks in Y direction',
-        PeakStepX=u'[PeakStepX r/w, l] X step between peaks',
-        PeakStepY=u'[PeakStepY r/w, l] Y location of the first peak centroid',
-        PeakVariation=u'''[PeakVariation r/w, l] 
+        PeakStartX=u'[PeakStartX r/w, longout] X location of the first peak centroid',
+        PeakStartY=u'[PeakStartY r/w, longout] Y location of the first peak centroid',
+        PeakWidthX=u'[PeakWidthX r/w, longout] X width of the peaks',
+        PeakWidthY=u'[PeakWidthY r/w, longout] Y width of the peaks',
+        PeakNumX=u'[PeakNumX r/w, longout] Number of peaks in X direction',
+        PeakNumY=u'[PeakNumY r/w, longout] Number of peaks in Y direction',
+        PeakStepX=u'[PeakStepX r/w, longout] X step between peaks',
+        PeakStepY=u'[PeakStepY r/w, longout] Y location of the first peak centroid',
+        PeakVariation=u'''[PeakVariation r/w, longout] 
           Used to introduce randomness in the peak height. Each gaussian peak in the array
           is assigned a scaling factor.
           scalingFactor = 1.0 + (rand()%peakVariation +1)/100.0''',
-        Noise=u'''[Noise r/w, l] 
+        Noise=u'''[Noise r/w, longout] 
           Used to introduce randomness. Each affected pixel is assigned a scaling factor.
           scalingFactor = 1.0 + (rand()%noise +1)/100.0''',
         ),  # end of simDetectorDoc.html
@@ -1063,17 +1063,17 @@ badX2,badY2 replacementX2,replacementY2
 
     'areaDetectorDoc.html': dict(
         PortName_RBV=u'[PortName_RBV r/o, stringin] asyn port name',
-        DataType=u'[DataType r/w, m] Data type (NDDataType_t).',
-        ColorMode=u'[ColorMode r/w, m] Color mode (NDColorMode_t).',
+        DataType=u'[DataType r/w, mbbo] Data type (NDDataType_t).',
+        ColorMode=u'[ColorMode r/w, mbbo] Color mode (NDColorMode_t).',
         ArraySizeX_RBV=u'[ArraySizeX_RBV r/o, longin] Size of the array data in the X direction',
         ArraySizeY_RBV=u'[ArraySizeY_RBV r/o, longin] Size of the array data in the Y direction',
         ArraySizeZ_RBV=u'[ArraySizeZ_RBV r/o, longin] Size of the array data in the Z direction',
         ArraySize_RBV=u'[ArraySize_RBV r/o, longin] Total size of the array data in bytes',
-        FilePath=u'[FilePath r/w, w] File path',
+        FilePath=u'[FilePath r/w, waveform] File path',
         FilePathExists_RBV=u'[FilePathExists_RBV r/o, bi] Flag indicating if file path exists',
-        FileName=u'[FileName r/w, w] File name',
-        FileNumber=u'[FileNumber r/w, l] File number',
-        FileTemplate=u'''[FileTemplate r/w, w] 
+        FileName=u'[FileName r/w, waveform] File name',
+        FileNumber=u'[FileNumber r/w, longout] File number',
+        FileTemplate=u'''[FileTemplate r/w, waveform] 
           Format string for constructing NDFullFileName from NDFilePath, NDFileName, and NDFileNumber.
           The final file name (which is placed in NDFullFileName) is created with the following
           code:
@@ -1095,32 +1095,32 @@ badX2,badY2 replacementX2,replacementY2
           name into NDFileTemplate with no format specifiers at all, in which case NDFilePath,
           NDFileName, and NDFileNumber will be ignored.''',
         FullFileName_RBV=u'[FullFileName_RBV r/o, waveform] Full file name constructed using the algorithm described in NDFileTemplate',
-        AutoIncrement=u'''[AutoIncrement r/w, b] 
+        AutoIncrement=u'''[AutoIncrement r/w, bo] 
           Auto-increment flag. Controls whether FileNumber is automatically incremented by
           1 each time a file is saved (0=No, 1=Yes)''',
-        AutoSave=u'''[AutoSave r/w, b] 
+        AutoSave=u'''[AutoSave r/w, bo] 
           Auto-save flag (0=No, 1=Yes) controlling whether a file is automatically saved each
           time acquisition completes.''',
-        FileFormat=u'[FileFormat r/w, m] File format. The format to write/read data in (e.g. TIFF, netCDF, etc.)',
-        WriteFile=u'[WriteFile r/w, b] Manually save the most recent array to a file when value=1',
-        ReadFile=u'[ReadFile r/w, b] Manually read a file when value=1',
-        FileWriteMode=u'[FileWriteMode r/w, m] File saving mode (Single, Capture, Stream)(NDFileMode_t)',
+        FileFormat=u'[FileFormat r/w, mbbo] File format. The format to write/read data in (e.g. TIFF, netCDF, etc.)',
+        WriteFile=u'[WriteFile r/w, busy] Manually save the most recent array to a file when value=1',
+        ReadFile=u'[ReadFile r/w, busy] Manually read a file when value=1',
+        FileWriteMode=u'[FileWriteMode r/w, mbbo] File saving mode (Single, Capture, Stream)(NDFileMode_t)',
         FileWriteStatus=u'''[FileWriteStatus r/o, mbbi] 
           File write status. Gives status information on last file open or file write operation.
           Values are WriteOK (0) and WriteError (1).''',
         FileWriteMessage=u'''[FileWriteMessage r/o, waveform] 
           File write error message. An error message string if the previous file open or file
           write operation resulted in an error.''',
-        Capture=u'[Capture r/w, b] Start (1) or stop (0) file capture or streaming',
-        NumCapture=u'[NumCapture r/w, l] Number of frames to acquire in capture or streaming mode',
+        Capture=u'[Capture r/w, busy] Start (1) or stop (0) file capture or streaming',
+        NumCapture=u'[NumCapture r/w, longout] Number of frames to acquire in capture or streaming mode',
         NumCaptured_RBV=u'[NumCaptured_RBV r/o, longin] Number of arrays currently acquired capture or streaming mode',
-        DeleteDriverFile=u'''[DeleteDriverFile r/w, b] 
+        DeleteDriverFile=u'''[DeleteDriverFile r/w, bo] 
           Flag to enable deleting original driver file after a plugin has re-written the file
           in a different format. This can be useful for detectors that must write the data
           to disk in order for the areaDetector driver to read it back. Once a file-writing
           plugin has rewritten the data in another format it can be desireable to then delete
           the original file.''',
-        LazyOpen=u'''[LazyOpen r/w, b] 
+        LazyOpen=u'''[LazyOpen r/w, bo] 
           Flag to defer the creation of a new file until the first NDArray to write has been
           received. This removes the need for passing an extra NDArray through the file writing
           plugin to initialise dimensions and possibly NDAttribute list before opening the
@@ -1129,12 +1129,12 @@ badX2,badY2 replacementX2,replacementY2
           
           Only makes sense to use with file plugins which support multiple frames per file
           and only in "Stream" mode.''',
-        ArrayCallbacks=u'''[ArrayCallbacks r/w, b] 
+        ArrayCallbacks=u'''[ArrayCallbacks r/w, bo] 
           Controls whether the driver does callbacks with the array data to registered plugins.
           0=No, 1=Yes. Setting this to 0 can reduce overhead in the case that the driver is
           being used only to control the device, and not to make the data available to plugins
           or to EPICS clients.''',
-        ArrayCounter=u'''[ArrayCounter r/w, l] 
+        ArrayCounter=u'''[ArrayCounter r/w, longout] 
           Counter that increments by 1 each time an array is acquired. Can be reset by writing
           a value to it.''',
         ArrayRate_RBV=u'[ArrayRate_RBV r/o, calc] Rate at which arrays are being acquired. Computed in the ADBase.template database.',
@@ -1158,34 +1158,34 @@ badX2,badY2 replacementX2,replacementY2
         Model_RBV=u'[Model_RBV r/o, stringin] Detector model name',
         MaxSizeX_RBV=u'[MaxSizeX_RBV r/o, longin] Maximum (sensor) size in the X direction',
         MaxSizeY_RBV=u'[MaxSizeY_RBV r/o, longin] Maximum (sensor) size in the Y direction',
-        Temperature=u'[Temperature r/w, a] Detector temperature',
+        Temperature=u'[Temperature r/w, ao] Detector temperature',
         Temperature_Actual=u'[Temperature_Actual r/o, ai] Actual detector temperature',
-        Gain=u'[Gain r/w, a] Detector gain',
-        BinX=u'[BinX r/w, l] Binning in the X direction',
-        BinY=u'[BinY r/w, l] Binning in the Y direction',
-        MinX=u'''[MinX r/w, l] 
+        Gain=u'[Gain r/w, ao] Detector gain',
+        BinX=u'[BinX r/w, longout] Binning in the X direction',
+        BinY=u'[BinY r/w, longout] Binning in the Y direction',
+        MinX=u'''[MinX r/w, longout] 
           First pixel to read in the X direction.
           
           0 is the first pixel on the detector.''',
-        MinY=u'''[MinY r/w, l] 
+        MinY=u'''[MinY r/w, longout] 
           First pixel to read in the Y direction.
           0 is the first pixel on the detector.''',
-        SizeX=u'[SizeX r/w, l] Size of the region to read in the X direction',
-        SizeY=u'[SizeY r/w, l] Size of the region to read in the Y direction',
-        ReverseX=u'''[ReverseX r/w, l] 
+        SizeX=u'[SizeX r/w, longout] Size of the region to read in the X direction',
+        SizeY=u'[SizeY r/w, longout] Size of the region to read in the Y direction',
+        ReverseX=u'''[ReverseX r/w, longout] 
           Reverse array in the X direction
           (0=No, 1=Yes)''',
-        ReverseY=u'''[ReverseY r/w, l] 
+        ReverseY=u'''[ReverseY r/w, longout] 
           Reverse array in the Y direction
           (0=No, 1=Yes)''',
-        ImageMode=u'[ImageMode r/w, m] Image mode (ADImageMode_t).',
-        TriggerMode=u'[TriggerMode r/w, m] Trigger mode (ADTriggerMode_t).',
-        FrameType=u'[FrameType r/w, m] Frame type (ADFrameType_t).',
-        AcquireTime=u'[AcquireTime r/w, a] Acquisition time per image',
-        AcquirePeriod=u'[AcquirePeriod r/w, a] Acquisition period between images',
-        NumExposures=u'[NumExposures r/w, l] Number of exposures per image to acquire',
-        NumImages=u'[NumImages r/w, l] Number of images to acquire in one acquisition sequence',
-        Acquire=u'''[Acquire r/w, b] 
+        ImageMode=u'[ImageMode r/w, mbbo] Image mode (ADImageMode_t).',
+        TriggerMode=u'[TriggerMode r/w, mbbo] Trigger mode (ADTriggerMode_t).',
+        FrameType=u'[FrameType r/w, mbbo] Frame type (ADFrameType_t).',
+        AcquireTime=u'[AcquireTime r/w, ao] Acquisition time per image',
+        AcquirePeriod=u'[AcquirePeriod r/w, ao] Acquisition period between images',
+        NumExposures=u'[NumExposures r/w, longout] Number of exposures per image to acquire',
+        NumImages=u'[NumImages r/w, longout] Number of images to acquire in one acquisition sequence',
+        Acquire=u'''[Acquire r/w, busy] 
           Start (1) or stop (0) image acquisition. This is an EPICS busy record that does
           not process its forward link until acquisition is complete. Clients should write
           1 to the Acquire record to start acquisition, and wait for Acquire to go to 0 to
@@ -1208,8 +1208,8 @@ badX2,badY2 replacementX2,replacementY2
           Write a 1 to this parameter to force a read of the detector status. Detector drivers
           normally read the status as required, so this is usually not necessary, but there
           may be some circumstances under which forcing a status read may be needed.''',
-        ShutterMode=u'[ShutterMode r/w, m] Shutter mode (None, detector-controlled or EPICS-controlled) (ADShutterMode_t)',
-        ShutterControl=u'[ShutterControl r/w, b] Shutter control for the selected (detector or EPICS) shutter (ADShutterStatus_t)',
+        ShutterMode=u'[ShutterMode r/w, mbbo] Shutter mode (None, detector-controlled or EPICS-controlled) (ADShutterMode_t)',
+        ShutterControl=u'[ShutterControl r/w, bo] Shutter control for the selected (detector or EPICS) shutter (ADShutterStatus_t)',
         ShutterControlEPICS=u'''[ShutterControlEPICS r/w, bi] 
           This record processes when it receives a callback from the driver to open or close
           the EPICS shutter. It triggers the records below to actually open or close the EPICS
@@ -1230,18 +1230,18 @@ badX2,badY2 replacementX2,replacementY2
           changes. The ZRVL field should be set to the value of the input link when the shutter
           is closed, and the ONVL field should be set to the value of the input link when
           the shutter is open.''',
-        ShutterOpenDelay=u'[ShutterOpenDelay r/w, a] Time required for the shutter to actually open (ADShutterStatus_t)',
-        ShutterCloseDelay=u'[ShutterCloseDelay r/w, a] Time required for the shutter to actually close (ADShutterStatus_t)',
+        ShutterOpenDelay=u'[ShutterOpenDelay r/w, ao] Time required for the shutter to actually open (ADShutterStatus_t)',
+        ShutterCloseDelay=u'[ShutterCloseDelay r/w, ao] Time required for the shutter to actually close (ADShutterStatus_t)',
         ),  # end of areaDetectorDoc.html
 
 
     'pluginDoc.html': dict(
         PortName_RBV=u'[PortName_RBV r/o, stringin] asyn port name',
         PluginType_RBV=u'[PluginType_RBV r/o, stringin] A string describing the plugin type.',
-        NDArrayPort=u'''[NDArrayPort r/w, s] 
+        NDArrayPort=u'''[NDArrayPort r/w, stringout] 
           asyn port name for NDArray driver that will make callbacks to this plugin. This
           port can be changed at run time, connecting the plugin to a different NDArray driver.''',
-        NDArrayAddress=u'''[NDArrayAddress r/w, l] 
+        NDArrayAddress=u'''[NDArrayAddress r/w, longout] 
           asyn port address for NDArray driver that will make callbacks to this plugin. This
           address can be changed at run time, connecting the plugin to a different address
           in the NDArray driver.''',
@@ -1256,22 +1256,22 @@ badX2,badY2 replacementX2,replacementY2
         PoolUsedBuffers=u'''[PoolUsedBuffers N/A, calc] 
           The number of used NDArrays this plugin has in its NDArrayPool. Calculated from
           PoolAllocBuffers and PoolFreeBuffers.''',
-        EnableCallbacks=u'''[EnableCallbacks r/w, b] 
+        EnableCallbacks=u'''[EnableCallbacks r/w, bo] 
           Enable (1) or disable (0) callbacks from the driver to this plugin. If callbacks
           are disabled then the plugin will normally be idle and consume no CPU resources.''',
-        BlockingCallbacks=u'''[BlockingCallbacks r/w, b] 
+        BlockingCallbacks=u'''[BlockingCallbacks r/w, bo] 
           0 = callbacks from the driver do not block; the NDArray data is put on a queue and
           the callback processes in its own thread.
           
           1 = callbacks from the driver block; the callback processes in the driver callback
           thread.''',
-        MinCallbackTime=u'''[MinCallbackTime r/w, a] 
+        MinCallbackTime=u'''[MinCallbackTime r/w, ao] 
           The minimum time in seconds between calls to processCallbacks. Any callbacks occuring
           before this minimum time has elapsed will be ignored. 0 means no minimum time, i.e.
           process all callbacks.''',
-        ArrayCounter=u'[ArrayCounter r/w, l] Counter that increments by 1 each time an NDArray callback is processed',
+        ArrayCounter=u'[ArrayCounter r/w, longout] Counter that increments by 1 each time an NDArray callback is processed',
         ArrayRate_RBV=u'[ArrayRate_RBV r/o, calc] Rate (Hz) at which ArrayCounter is incrementing. Computed in database.',
-        DroppedArrays=u'''[DroppedArrays r/w, l] 
+        DroppedArrays=u'''[DroppedArrays r/w, longout] 
           Counter that increments by 1 each time an NDArray callback occurs when NDPluginDriverBlockingCallbacks=0
           and the plugin driver queue is full, so the callback cannot be processed.''',
         NDimensions_RBV=u'[NDimensions_RBV r/o, longin] Number of dimensions in last NDArray callback data',
@@ -1293,60 +1293,60 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'NDPluginROI.html': dict(
-        Name=u'[Name r/w, s] Name of this ROI',
-        EnableX=u'''[EnableX r/w, b] 
+        Name=u'[Name r/w, stringout] Name of this ROI',
+        EnableX=u'''[EnableX r/w, bo] 
           Enable ROI calculations in the X dimension. If not enabled then the start, size,
           binning, and reverse operations are disabled in the X dimension, and the values
           from the input array are used.''',
-        EnableY=u'''[EnableY r/w, b] 
+        EnableY=u'''[EnableY r/w, bo] 
           Enable ROI calculations in the Y dimension. If not enabled then the start, size,
           binning, and reverse operations are disabled in the Y dimension, and the values
           from the input array are used.''',
-        EnableZ=u'''[EnableZ r/w, b] 
+        EnableZ=u'''[EnableZ r/w, bo] 
           Enable ROI calculations in the Z dimension. If not enabled then the start, size,
           binning, and reverse operations are disabled in the Z dimension, and the values
           from the input array are used.''',
-        BinX=u'[BinX r/w, l] Binning in the X dimension',
-        BinY=u'[BinY r/w, l] Binning in the Y dimension',
-        BinZ=u'[BinZ r/w, l] Binning in the Z dimension',
-        MinX=u'[MinX r/w, l] First pixel in the ROI in the X dimension. 0 is the first pixel in the array.',
-        MinY=u'''[MinY r/w, l] 
+        BinX=u'[BinX r/w, longout] Binning in the X dimension',
+        BinY=u'[BinY r/w, longout] Binning in the Y dimension',
+        BinZ=u'[BinZ r/w, longout] Binning in the Z dimension',
+        MinX=u'[MinX r/w, longout] First pixel in the ROI in the X dimension. 0 is the first pixel in the array.',
+        MinY=u'''[MinY r/w, longout] 
           First pixel in the ROI in the Y dimension.
           0 is the first pixel in the array.''',
-        MinZ=u'''[MinZ r/w, l] 
+        MinZ=u'''[MinZ r/w, longout] 
           First pixel in the ROI in the Z dimension.
           0 is the first pixel in the array.''',
-        SizeX=u'[SizeX r/w, l] Size of the ROI in the X dimension',
-        SizeY=u'[SizeY r/w, l] Size of the ROI in the Y dimension',
-        SizeZ=u'[SizeZ r/w, l] Size of the ROI in the Z dimension',
-        AutoSizeX=u'[AutoSizeX r/w, b] Automatically set SizeX to the input array size minus MinX',
-        AutoSizeY=u'[AutoSizeY r/w, b] Automatically set SizeY to the input array size minus MinY',
-        AutoSizeZ=u'[AutoSizeZ r/w, b] Automatically set SizeZ to the input array size minus MinZ',
+        SizeX=u'[SizeX r/w, longout] Size of the ROI in the X dimension',
+        SizeY=u'[SizeY r/w, longout] Size of the ROI in the Y dimension',
+        SizeZ=u'[SizeZ r/w, longout] Size of the ROI in the Z dimension',
+        AutoSizeX=u'[AutoSizeX r/w, bo] Automatically set SizeX to the input array size minus MinX',
+        AutoSizeY=u'[AutoSizeY r/w, bo] Automatically set SizeY to the input array size minus MinY',
+        AutoSizeZ=u'[AutoSizeZ r/w, bo] Automatically set SizeZ to the input array size minus MinZ',
         MaxSizeX_RBV=u'[MaxSizeX_RBV r/o, longin] Maximum size of the ROI in the X dimension',
         MaxSizeY_RBV=u'[MaxSizeY_RBV r/o, longin] Maximum size of the ROI in the Y dimension',
         MaxSizeZ_RBV=u'[MaxSizeZ_RBV r/o, longin] Maximum size of the ROI in the Z dimension',
-        ReverseX=u'[ReverseX r/w, l] Reverse ROI in the X dimension. (0=No, 1=Yes)',
-        ReverseY=u'[ReverseY r/w, l] Reverse ROI in the Y dimension. (0=No, 1=Yes)',
-        ReverseZ=u'[ReverseZ r/w, l] Reverse ROI in the Z dimension. (0=No, 1=Yes)',
-        DataType=u'''[DataType r/w, m] 
+        ReverseX=u'[ReverseX r/w, longout] Reverse ROI in the X dimension. (0=No, 1=Yes)',
+        ReverseY=u'[ReverseY r/w, longout] Reverse ROI in the Y dimension. (0=No, 1=Yes)',
+        ReverseZ=u'[ReverseZ r/w, longout] Reverse ROI in the Z dimension. (0=No, 1=Yes)',
+        DataType=u'''[DataType r/w, mbbo] 
           Data type of the ROI (NDDataType_t). This can be different from the data type of
           the NDArray callback data.''',
         ArraySizeX_RBV=u'[ArraySizeX_RBV r/o, longin] Size of the ROI data in the X dimension',
         ArraySizeY_RBV=u'[ArraySizeY_RBV r/o, longin] Size of the ROI data in the Y dimension',
         ArraySizeZ_RBV=u'[ArraySizeZ_RBV r/o, longin] Size of the ROI data in the Z dimension',
-        EnableScale=u'''[EnableScale r/w, b] 
+        EnableScale=u'''[EnableScale r/w, bo] 
           Enable dividing by the Scale value. (0=Disable, 1=Enable). This is very useful when
           binning or when converting from a higher precision data type to a lower precision
           data type. For example when binning 2x2, then Scale=4 (dividing by 4) will prevent
           integer overflow. Similarly, when converting from 16-bit to 8-bit integers one might
           scale by 256, or perhaps a smaller number if the 16-bit data does not use the full
           16-bit range.''',
-        Scale=u'[Scale r/w, a] The scale value to divide by if EnableScale is enabled.',
+        Scale=u'[Scale r/w, ao] The scale value to divide by if EnableScale is enabled.',
         ),  # end of NDPluginROI.html
 
 
     'PerkinElmerDoc.html': dict(
-        PENumFrameBuffers=u'[PENumFrameBuffers r/w, l] Number of software frame buffers to use',
+        PENumFrameBuffers=u'[PENumFrameBuffers r/w, longout] Number of software frame buffers to use',
         PEInitialize=u'[PEInitialize w, longout] Initialize the detector',
         PE_STATUS_RBV=u'[PE_STATUS_RBV r/w, mbbi] Status of PerkinElmer driver. SHOULD DELETE THIS AND JUST USE DETECTOR STATE.',
         PESystemID=u'[PESystemID r/w, longin] PROM ID # used in communication with Perkin Elmer',
@@ -1371,7 +1371,7 @@ badX2,badY2 replacementX2,replacementY2
           are "Not available" (0) and "Available" (1).''',
         PEUsePixelCorrection=u'[PEUsePixelCorrection w, mbbo] Set whether bad pixel correction is to be used',
         PEPixelCorrectionAvailable=u'[PEPixelCorrectionAvailable r, mbbi] Report whether pixel correction file has been set and is available for use',
-        PEBadPixelFile=u'[PEBadPixelFile w, w] File name for bad pixel file',
+        PEBadPixelFile=u'[PEBadPixelFile w, waveform] File name for bad pixel file',
         PECorrectionsDir=u'[PECorrectionsDir r/w, waveform] Directory where corrections files should be stored',
         PELoadCorrections=u'[PELoadCorrections w, longout] Load offset and gain corrections from a file for use',
         PESaveCorrections=u'[PESaveCorrections w, longout] Save offset and gain corrections to a file',
@@ -1383,7 +1383,7 @@ badX2,badY2 replacementX2,replacementY2
         FirmwareVersion=u'[FirmwareVersion R/O, stringin] Camera firmware version',
         SoftwareVersion=u'[SoftwareVersion R/O, stringin] SDK software version',
         ControllerID=u'[ControllerID R/O, stringin] Camera controller ID',
-        SensorCooling=u'[SensorCooling R/W, b] Turn the sensor cooler on and off',
+        SensorCooling=u'[SensorCooling R/W, bo] Turn the sensor cooler on and off',
         TempStatus_RBV=u'''[TempStatus_RBV R/O, mbbi] 
           Temperature status. Values and strings on the Neo are:
           
@@ -1393,7 +1393,7 @@ badX2,badY2 replacementX2,replacementY2
             3 = Drift
             4 = Not Stabilized
             5 = Fault''',
-        TempControl=u'''[TempControl R/W, m] 
+        TempControl=u'''[TempControl R/W, mbbo] 
           Temperature setpoint value in degrees C. On the cooled cameras (e.g. Neo) the temperature
           is set to discrete values, rather than continuously with the Temperature record,
           because the firmware does pixel corrections for specific temperatures. Choices on
@@ -1405,13 +1405,13 @@ badX2,badY2 replacementX2,replacementY2
             3 = -30
             4 = -35
             5 = -40''',
-        FanSpeed=u'''[FanSpeed R/W, m] 
+        FanSpeed=u'''[FanSpeed R/W, mbbo] 
           Fan speed. Choices on the Neo are:
           
             0 = Off
             1 = Low
             2 = On''',
-        A3ShutterMode=u'''[A3ShutterMode R/W, m] 
+        A3ShutterMode=u'''[A3ShutterMode R/W, mbbo] 
           Selects the shutter mode. Choices for the Neo are:
           
             0 = Rolling
@@ -1423,7 +1423,7 @@ badX2,badY2 replacementX2,replacementY2
           be independently controlled. In Global mode all pixels acquire for the same time
           period and are then read out. The exposure time is independent of the readout time,
           and can be as short as 9 microseconds on the Neo.''',
-        FrameRate=u'''[FrameRate R/W, a] 
+        FrameRate=u'''[FrameRate R/W, ao] 
           Frame rate. This is the reciprocal of ADAcquirePeriod, and is the units used to
           control the Andor cameras. There are two limitations on the frame rate:
           
@@ -1441,13 +1441,13 @@ badX2,badY2 replacementX2,replacementY2
         TransferRate=u'''[TransferRate R/O, ai] 
           The maximum transfer rate in frames/s of the interface (e.g. CameraLink card). This
           is the maximum sustained FrameRate which can be achieved.''',
-        PreAmpGain=u'''[PreAmpGain R/W, m] 
+        PreAmpGain=u'''[PreAmpGain R/W, mbbo] 
           Controls the pre-amp gain and readout mode. Choices for the Neo are:
           
             0 = 11-bit (high well capacity)
             1 = 11-bit (low noise)
             2 = 16-bit (low noise & high well capacity)''',
-        PixelEncoding=u'''[PixelEncoding R/W, m] 
+        PixelEncoding=u'''[PixelEncoding R/W, mbbo] 
           Controls the pixel encoding. Choices for the Neo are:
           
             0 = Mono12
@@ -1457,23 +1457,23 @@ badX2,badY2 replacementX2,replacementY2
           
           Mono12 and Mono12Packed are only available when PreAmpGain is one of the 11-bit
           modes.''',
-        ReadoutRate=u'''[ReadoutRate R/W, m] 
+        ReadoutRate=u'''[ReadoutRate R/W, mbbo] 
           Controls the ADC readout rate. Choices for the Neo are:
           
             0 = 100 MHz
             1 = 200 MHz
             2 = 280 MHz''',
         ReadoutTime=u'[ReadoutTime R/O, ai] The readout time from the sensor into camera RAM.',
-        Overlap=u'''[Overlap R/W, b] 
+        Overlap=u'''[Overlap R/W, bo] 
           Controls whether acquisition and readout are overlapped. Choices are 0 (No) and
           1 (Yes). On the Neo if Overlap=Yes then the minimum exposure time is limited to
           about 10 ms. If Overlap=No then the minimum exposure time is 9 microseconds.''',
-        NoiseFilter=u'''[NoiseFilter R/W, b] 
+        NoiseFilter=u'''[NoiseFilter R/W, bo] 
           Controls whether the firmware applies the Spurious Noise Filter. Choices are 0 (No)
           and 1 (Yes).''',
         SoftwareTrigger=u'[SoftwareTrigger R/W, bo] Writing 1 to this record generates a software trigger if TriggerMode=Software.',
         FullAOIControl=u'[FullAOIControl R/O, bi] Indicates whether this camera supports full AOI control. This is Yes for the Neo.',
-        A3Binning=u'''[A3Binning R/W, m] 
+        A3Binning=u'''[A3Binning R/W, mbbo] 
           Controls the binning. The binning on the sCMOS camera is done in firmware and only
           certain preset values are allowed. Choices for the Neo are:
           
@@ -1486,9 +1486,9 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'NDPluginOverlay.html': dict(
-        Name=u'[Name r/w, s] Name for this overlay.',
-        Use=u'[Use r/w, b] Flag indicating whether to use (enable) this overlay. 0=No, 1=Yes.',
-        PositionX=u'[PositionX r/w, l] The X position of this overlay.',
+        Name=u'[Name r/w, stringout] Name for this overlay.',
+        Use=u'[Use r/w, bo] Flag indicating whether to use (enable) this overlay. 0=No, 1=Yes.',
+        PositionX=u'[PositionX r/w, longout] The X position of this overlay.',
         PositionXLink=u'''[PositionXLink r/w, longout] 
           Link to fetch the desired X position of this overlay. The .DOL field of this record
           can be set to another record which will then change PositionX whenever the other
@@ -1500,19 +1500,19 @@ badX2,badY2 replacementX2,replacementY2
           to a non-existent record then the X position of the overlay can be manually controlled.
           Note that this linking is done entirely in the EPICS database, and not in the plugin
           code.''',
-        PositionY=u'[PositionY r/w, l] The Y position of this overlay.',
+        PositionY=u'[PositionY r/w, longout] The Y position of this overlay.',
         PositionYLink=u'''[PositionYLink r/w, longout] 
           Link to fetch the desired Y position of this overlay. See the notes for PositionXLink
           above.''',
-        SizeX=u'[SizeX r/w, l] The X size of this overlay.',
+        SizeX=u'[SizeX r/w, longout] The X size of this overlay.',
         SizeXLink=u'''[SizeXLink r/w, longout] 
           Link to fetch the desired X size of this overlay. See the notes for PositionXLink
           above.''',
-        SizeY=u'[SizeY r/w, l] The Y size of this overlay.',
+        SizeY=u'[SizeY r/w, longout] The Y size of this overlay.',
         SizeYLink=u'''[SizeYLink r/w, longout] 
           Link to fetch the desired Y size of this overlay. See the notes for PositionXLink
           above.''',
-        WidthX=u'''[WidthX r/w, l] 
+        WidthX=u'''[WidthX r/w, longout] 
           The X line width of this overlay. For the cross overlay this will increase the width
           of the line on both sides at the same time, to maintain the central point of the
           cross. For the rectangle overlay the line thickness will grow inwards to the center.
@@ -1521,11 +1521,11 @@ badX2,badY2 replacementX2,replacementY2
         WidthXLink=u'''[WidthXLink r/w, longout] 
           Link to fetch the desired X line width of this overlay. See the notes for PositionXLink
           above.''',
-        WidthY=u'[WidthY r/w, l] The Y line width of this overlay. This behaves in the same way as the OverlayWidthX.',
+        WidthY=u'[WidthY r/w, longout] The Y line width of this overlay. This behaves in the same way as the OverlayWidthX.',
         WidthYLink=u'''[WidthYLink r/w, longout] 
           Link to fetch the desired Y line width of this overlay. See the notes for PositionXLink
           above.''',
-        Shape=u'''[Shape r/w, m] 
+        Shape=u'''[Shape r/w, mbbo] 
           The shape of this overlay. Choices are:
           
             0="Cross"
@@ -1543,7 +1543,7 @@ badX2,badY2 replacementX2,replacementY2
           and YPosition of the text overlay defines the lower left corner of the text. The
           SizeX and SizeY are ignored for the text overlay, the size is defined by the text
           string and the font.''',
-        DrawMode=u'''[DrawMode r/w, m] 
+        DrawMode=u'''[DrawMode r/w, mbbo] 
           The operation to use when drawing this overlay. Choices are:
           
             0="Set"
@@ -1557,17 +1557,17 @@ badX2,badY2 replacementX2,replacementY2
           but will be hard to see in bright areas of the image. Note that XOR is not supported
           for NDFloat32 or NDFloat64 data types directly, but they are cast to int if XOR
           is selected for arrays with those data types.''',
-        Red=u'[Red r/w, l] The red value to use when drawing the overlay. This is only used for color images.',
-        Green=u'''[Green r/w, l] 
+        Red=u'[Red r/w, longout] The red value to use when drawing the overlay. This is only used for color images.',
+        Green=u'''[Green r/w, longout] 
           The green value to use when drawing the overlay. This is the value that is used
           for monochrome images as well.''',
-        Blue=u'[Blue r/w, l] The blue value to use when drawing the overlay. This is only used for color images.',
-        DisplayText=u'[DisplayText r/w, w] The text string to write for this overlay if Shape="Text".',
-        TimeStampFormat=u'''[TimeStampFormat r/w, s] 
+        Blue=u'[Blue r/w, longout] The blue value to use when drawing the overlay. This is only used for color images.',
+        DisplayText=u'[DisplayText r/w, waveform] The text string to write for this overlay if Shape="Text".',
+        TimeStampFormat=u'''[TimeStampFormat r/w, stringout] 
           The format string to use when outputting the EPICS time stamp (epicsTS) field of
           the NDArray in the text overlay. Default="%Y-%m-%d %H:%M:%S.%03f". Any of the components
           of the format can be omitted to suppress the display of that field.''',
-        Font=u'''[Font r/w, m] 
+        Font=u'''[Font r/w, mbbo] 
           The font to use for the text display. Choices are:
           
             0="6x13"
@@ -1578,12 +1578,12 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'NDPluginStats.html': dict(
-        ComputeStatistics=u'''[ComputeStatistics r/w, b] 
+        ComputeStatistics=u'''[ComputeStatistics r/w, bo] 
           Flag to control whether to compute statistics for this array (0=No, 1=Yes). Not
           computing statistics reduces CPU load. Basic statistics computations are quite fast,
           since they involve mostly double precision addition, with 1 multiply to compute
           sigma, per array element.''',
-        BgdWidth=u'''[BgdWidth r/w, l] 
+        BgdWidth=u'''[BgdWidth r/w, longout] 
           Width of the background in pixels to use when computing net counts. 0=no background
           subtraction, so the net counts is the same as the total counts.''',
         MinValue_RBV=u'[MinValue_RBV r/o, ai] Minimum value in any element in the array',
@@ -1630,12 +1630,12 @@ badX2,badY2 replacementX2,replacementY2
           to the drvFastSweep driver. The mca record is very useful for on-the-fly data acquisition
           of the net counts in the detector or in an ROI.''',
         Sigma_RBV=u'[Sigma_RBV r/o, ai] Sigma (standard deviation) of all elements in the array',
-        ComputeCentroid=u'''[ComputeCentroid r/w, b] 
+        ComputeCentroid=u'''[ComputeCentroid r/w, bo] 
           Flag to control whether to compute the centroid statistics (0=No, 1=Yes). The centroids
           are computed from the average row and column profiles above the centroid threshold.
           These calculations are also quite fast, since they just involve addition operations
           for each array element.''',
-        CentroidThreshold=u'''[CentroidThreshold r/w, a] 
+        CentroidThreshold=u'''[CentroidThreshold r/w, ao] 
           Threshold used when computing the centroid statistics. All array elements less than
           this value are set to 0 for computing the centroid statistics. It is important to
           set this value to ignore the "background" when computing the position and size of
@@ -1694,11 +1694,11 @@ badX2,badY2 replacementX2,replacementY2
             SigmaX
             SigmaY
             SigmaXY''',
-        ComputeProfiles=u'[ComputeProfiles r/w, b] Flag to control whether to compute the profiles for this array (0=No, 1=Yes).',
+        ComputeProfiles=u'[ComputeProfiles r/w, bo] Flag to control whether to compute the profiles for this array (0=No, 1=Yes).',
         ProfileSizeX_RBV=u'[ProfileSizeX_RBV r/w, longin] Number of array elements in the X profiles.',
         ProfileSizeY_RBV=u'[ProfileSizeY_RBV r/w, longin] Number of array elements in the Y profiles.',
-        CursorX=u'[CursorX r/w, l] X position of a user-defined cursor for profiles.',
-        CursorY=u'[CursorY r/w, l] Y position of a user-defined cursor for profiles.',
+        CursorX=u'[CursorX r/w, longout] X position of a user-defined cursor for profiles.',
+        CursorY=u'[CursorY r/w, longout] Y position of a user-defined cursor for profiles.',
         ProfileAverageX_RBV=u'''[ProfileAverageX_RBV r/o, waveform] 
           Profile of the average row in the array, i.e. the sum of all rows in the array divided
           by the number of rows.''',
@@ -1715,14 +1715,14 @@ badX2,badY2 replacementX2,replacementY2
         ProfileCentroidY_RBV=u'[ProfileCentroidY_RBV r/o, waveform] Y profile through the array in the column defined by CentroidX.',
         ProfileCursorX_RBV=u'[ProfileCursorX_RBV r/o, waveform] X profile through the array in the row defined by CursorY.',
         ProfileCursorY_RBV=u'[ProfileCursorY_RBV r/o, waveform] Y profile through the array in the row defined by CursorX.',
-        ComputeHistogram=u'''[ComputeHistogram r/w, b] 
+        ComputeHistogram=u'''[ComputeHistogram r/w, bo] 
           Flag to control whether to compute the histogram for this array (0=No, 1=Yes). Not
           computing the histogram reduces CPU load.''',
-        HistSize=u'[HistSize r/w, l] Number of elements (bins) in the histogram',
-        HistMin=u'''[HistMin r/w, a] 
+        HistSize=u'[HistSize r/w, longout] Number of elements (bins) in the histogram',
+        HistMin=u'''[HistMin r/w, ao] 
           Minimum value for the histogram. All values less than or equal to this will be in
           the first bin of the histogram.''',
-        HistMax=u'''[HistMax r/w, a] 
+        HistMax=u'''[HistMax r/w, ao] 
           Maximum value for the histogram. All values greater than or equal to this will be
           in the last bin of the histogram.''',
         HistEntropy_RBV=u'''[HistEntropy_RBV r/o, ai] 
@@ -1753,7 +1753,7 @@ badX2,badY2 replacementX2,replacementY2
           Reserved)''',
         MarDezingerStatus_RBV=u'[MarDezingerStatus_RBV r/o, mbbi] Status of the marccd server dezinger task (Idle, Queued, Executing, Error, or Reserved)',
         MarSeriesStatus_RBV=u'[MarSeriesStatus_RBV r/o, mbbi] Status of the marccd server series acquisition task (Idle, Queued, Executing, Error, or Reserved).',
-        OverlapMode=u'''[OverlapMode r/w, b] 
+        OverlapMode=u'''[OverlapMode r/w, bo] 
           The marccd server has 5 tasks (Acquire, Readout, Correct, Write, Dezinger) that
           can overlap their operation. The areaDetector driver can exploit this to improve
           performance in some circumstances. If this parameter is set to 1 (Overlap) then
@@ -1765,7 +1765,7 @@ badX2,badY2 replacementX2,replacementY2
           compute statistics that are being used in data collection, e.g. in a scan. If this is
           not done then the statistics information will be grabbed before it is updated and incorrect
           scan data will result.''',
-        FrameShift=u'''[FrameShift r/w, l] 
+        FrameShift=u'''[FrameShift r/w, longout] 
           marccd can be used for time-resolved studies by collecting multiple data sets before
           reading out the detector. This is done by placing a mask in front of the detector
           that restricts the x-rays to horizontal stripe. An exposure is made, and then an
@@ -1773,19 +1773,19 @@ badX2,badY2 replacementX2,replacementY2
           by this parameter. A number of images separated by times of a few milliseconds can
           be collected, and then the detector is read out. Set this parameter to 0 to disable
           frameshift mode.''',
-        SeriesFileTemplate=u'''[SeriesFileTemplate r/w, w] 
+        SeriesFileTemplate=u'''[SeriesFileTemplate r/w, waveform] 
           The template for the file names written in trigger or timed series acquisition modes.
           The FilePath, FileName and FileNumber are combined into a string using this
           C format string.  This is used to construct a base file name.
           The actual file names in the series are constructed using this base file name plus
           the SeriesFileFirst and SeriesFileDigits records. Example: "%s%s_%3.3d"''',
-        SeriesFileFirst=u'[SeriesFileFirst r/w, l] The number of the first file in a triggered or timed series acquisition.',
-        SeriesFileDigits=u'[SeriesFileDigits r/w, l] The number of digits to use for the file numbers in triggered or timed series acquisition.',
-        GateMode=u'''[GateMode r/w, m] 
+        SeriesFileFirst=u'[SeriesFileFirst r/w, longout] The number of the first file in a triggered or timed series acquisition.',
+        SeriesFileDigits=u'[SeriesFileDigits r/w, longout] The number of digits to use for the file numbers in triggered or timed series acquisition.',
+        GateMode=u'''[GateMode r/w, mbbo] 
           The gating mode for the detector. Choices are: 
           "None" 
           "Gated"''',
-        Stability=u'''[Stability r/w, a] 
+        Stability=u'''[Stability r/w, ao] 
           The following text is from a document describing baseline stabilization from Rayonix.
           "Baseline stabilization is an optional addition to the marccd data collection software.
           This software option stabilizes the baseline offset level of each CCD image to a
@@ -1849,7 +1849,7 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'NDPluginProcess.html': dict(
-        SaveBackground=u'''[SaveBackground r/w, b] 
+        SaveBackground=u'''[SaveBackground r/w, bo] 
           Command to use the most recently acquired array as a background. Note that this
           recently acquired array should have been acquired with EnableBackground=0, or else
           that array will already have had the background subtracted, which is probably not
@@ -1859,11 +1859,11 @@ badX2,badY2 replacementX2,replacementY2
           for this array using SaveBackground. This flag will be Invalid (0) if no background
           has been acquired, or if the size of the array has changed since the background
           was last acquired.''',
-        EnableBackground=u'''[EnableBackground r/w, b] 
+        EnableBackground=u'''[EnableBackground r/w, bo] 
           Flag indicating whether the background array acquired with SaveBackground should
           be subtracted when processing the array. If ValidBackground=0 then no background
           subtraction is done even if EnableBackground=Enable.''',
-        SaveFlatField=u'''[SaveFlatField r/w, b] 
+        SaveFlatField=u'''[SaveFlatField r/w, bo] 
           Command to use the most recently acquired array as a flat field. Note that this
           recently acquired array should have been acquired with EnableFlatField=0, or else
           that array will already have been flat field normalized, which is probably not what
@@ -1873,18 +1873,18 @@ badX2,badY2 replacementX2,replacementY2
           for this array using SaveFlatField. This flag will be Invalid (0) if no flat field
           has been acquired, or if the size of the array has changed since the flat field
           was last acquired.''',
-        EnableFlatField=u'''[EnableFlatField r/w, b] 
+        EnableFlatField=u'''[EnableFlatField r/w, bo] 
           Flag indicating whether the array should be divided by the flat field array (acquired
           with SaveFlatField) when processing the array. If ValidFlatField=0 then no flat
           field normalization is done even if EnableBackground=Enable. The processing step
           consists of:
           
           Array = Array / FlatField * ScaleFlatField''',
-        ScaleFlatField=u'''[ScaleFlatField r/w, a] 
+        ScaleFlatField=u'''[ScaleFlatField r/w, ao] 
           The scale factor to multiply by after dividing the array by the flat field array.
           This scale factor is normally chosen so that the data after scaling fills the dynamic
           range of the output data type.''',
-        EnableOffsetScale=u'''[EnableOffsetScale r/w, b] 
+        EnableOffsetScale=u'''[EnableOffsetScale r/w, bo] 
           Flag indicating whether the array should be multiplied by Scale and then summed
           with Offset when processing the array. The processing step consists of:
           
@@ -1897,33 +1897,33 @@ badX2,badY2 replacementX2,replacementY2
           factors is only done once when this record is processed, and these values are used
           for subsequent array callbacks, i.e. it does not autoscale on each array callback.
           Thanks to Tom Cobb for this addition.''',
-        Scale=u'[Scale r/w, a] The scale factor to multiply by.',
-        Offset=u'[Offset r/w, a] The offset to add.',
-        EnableLowClip=u'''[EnableLowClip r/w, b] 
+        Scale=u'[Scale r/w, ao] The scale factor to multiply by.',
+        Offset=u'[Offset r/w, ao] The offset to add.',
+        EnableLowClip=u'''[EnableLowClip r/w, bo] 
           Flag to control whether to clip values to the LowClip value for this array (0=Disable,
           1=Enable).''',
-        LowClip=u'''[LowClip r/w, a] 
+        LowClip=u'''[LowClip r/w, ao] 
           The minimum allowed value for this array. If EnableLowClip=1, then all values in
           the array less than LowClip will be replaced by LowClip.''',
-        EnableHighClip=u'''[EnableHighClip r/w, b] 
+        EnableHighClip=u'''[EnableHighClip r/w, bo] 
           Flag to control whether to clip values to the HighClip value for this array (0=Disable,
           1=Enable).''',
-        HighClip=u'''[HighClip r/w, a] 
+        HighClip=u'''[HighClip r/w, ao] 
           The maximum allowed value for this array. If EnableHighClip=1, then all values in
           the array greater than HighClip will be replaced by HighClip.''',
-        DataTypeOut=u'''[DataTypeOut r/w, m] 
+        DataTypeOut=u'''[DataTypeOut r/w, mbbo] 
           Data type of the output array (NDDataType_t). This can be different from the data
           type of the NDArray callback data.''',
-        EnableFilter=u'''[EnableFilter r/w, b] 
+        EnableFilter=u'''[EnableFilter r/w, bo] 
           Flag indicating whether the array should be processed with a recursive filter. The
           details of the filter operation are explained below.''',
-        ResetFilter=u'[ResetFilter r/w, b] Command to reset the filter back to its initial state.',
-        AutoResetFilter=u'''[AutoResetFilter r/w, b] 
+        ResetFilter=u'[ResetFilter r/w, bo] Command to reset the filter back to its initial state.',
+        AutoResetFilter=u'''[AutoResetFilter r/w, bo] 
           If enabled then when NumFiltered=NumFilter the filter automatically resets. This
           can be very useful when using the Average or Sum filter modes. As soon as N sums
           or averages have been performed the filter resets, so the next sum or average is
           computed.''',
-        FilterCallbacks=u'''[FilterCallbacks r/w, b] 
+        FilterCallbacks=u'''[FilterCallbacks r/w, bo] 
           Choices are "Every array" and "Array N only". If "Every array" is selected then
           the plugin does callbacks for every incoming array it receives. If "Array N only"
           is selected then the plugin only does callbacks when NumFiltered=NumFilter. This
@@ -1931,7 +1931,7 @@ badX2,badY2 replacementX2,replacementY2
           done only when N sums or averages have been performed. If used with AutoResetFilter
           then as input arrays arrive the plugin will continually output one summed or averaged
           array after every N incoming arrays.''',
-        NumFilter=u'''[NumFilter r/w, l] 
+        NumFilter=u'''[NumFilter r/w, longout] 
           The characteristic number of arrays to use when filtering. The value of NumFiltered
           will increase as each array is processed, until it reaches the value of NumFilter,
           when it will no longer increase. The value of NumFiltered is used in the filter
@@ -1942,21 +1942,21 @@ badX2,badY2 replacementX2,replacementY2
           until it reaches the value of NumFilter, when it will cease incrementing. The value
           of NumFiltered is used in the filter equations, as explained below.''',
         FilterType=u'[FilterType r/w, mbbo] The filter type, chosen from a predefined list, as described below.',
-        OOffset=u'[OOffset r/w, a] Output offset coefficient.',
-        OScale=u'[OScale r/w, a] Output scale coefficient.',
-        OC1=u'[OC1 r/w, a] Output coefficient #1.',
-        OC2=u'[OC2 r/w, a] Output coefficient #2.',
-        OC3=u'[OC3 r/w, a] Output coefficient #3.',
-        OC4=u'[OC4 r/w, a] Output coefficient #4.',
-        FOffset=u'[FOffset r/w, a] Filter offset coefficient.',
-        FScale=u'[FScale r/w, a] Filter scale coefficient.',
-        FC1=u'[FC1 r/w, a] Filter coefficient #1.',
-        FC2=u'[FC2 r/w, a] Filter coefficient #2.',
-        FC3=u'[FC3 r/w, a] Filter coefficient #3.',
-        FC4=u'[FC4 r/w, a] Filter coefficient #4.',
-        ROffset=u'[ROffset r/w, a] Reset offset coefficient.',
-        RC1=u'[RC1 r/w, a] Filter coefficient #1.',
-        RC2=u'[RC2 r/w, a] Filter coefficient #2.',
+        OOffset=u'[OOffset r/w, ao] Output offset coefficient.',
+        OScale=u'[OScale r/w, ao] Output scale coefficient.',
+        OC1=u'[OC1 r/w, ao] Output coefficient #1.',
+        OC2=u'[OC2 r/w, ao] Output coefficient #2.',
+        OC3=u'[OC3 r/w, ao] Output coefficient #3.',
+        OC4=u'[OC4 r/w, ao] Output coefficient #4.',
+        FOffset=u'[FOffset r/w, ao] Filter offset coefficient.',
+        FScale=u'[FScale r/w, ao] Filter scale coefficient.',
+        FC1=u'[FC1 r/w, ao] Filter coefficient #1.',
+        FC2=u'[FC2 r/w, ao] Filter coefficient #2.',
+        FC3=u'[FC3 r/w, ao] Filter coefficient #3.',
+        FC4=u'[FC4 r/w, ao] Filter coefficient #4.',
+        ROffset=u'[ROffset r/w, ao] Reset offset coefficient.',
+        RC1=u'[RC1 r/w, ao] Filter coefficient #1.',
+        RC2=u'[RC2 r/w, ao] Filter coefficient #2.',
         ),  # end of NDPluginProcess.html
 
 
@@ -1968,39 +1968,39 @@ badX2,badY2 replacementX2,replacementY2
 
 
     'RoperDoc.html': dict(
-        NumAcquisitions=u'''[NumAcquisitions r/w, l] 
+        NumAcquisitions=u'''[NumAcquisitions r/w, longout] 
           The number of acquisitions to perform when acquisition is started. This controls
           the number of iterations in the outermost acquisition loop explained above.''',
         NumAcquisitionsCounter_RBV=u'[NumAcquisitionsCounter_RBV r/o, longin] The number of acquisitions performed so far.',
-        AutoDataType=u'''[AutoDataType r/w, b] 
+        AutoDataType=u'''[AutoDataType r/w, bo] 
           A flag controlling whether WinView will automatically chose the optimal data type
           for the image data. 0=No, 1=Yes. If this flag is 1 then the NDDataType parameter
           ($(P)$(R)DataType record) is ignored. If this flag is 0 then the NDDataType parameter
           controls the data type of the images.''',
-        RoperShutterMode=u'''[RoperShutterMode r/w, m] 
+        RoperShutterMode=u'''[RoperShutterMode r/w, mbbo] 
           The shutter operating mode for shutters controlled by WinView. Allowed values are:
           
             Normal: The detector shutter will be opened and closed normally for each exposure.
             Disabled closed: The shutter will be forced closed. Useful for taking a dark current
               image.
             Disabled open: The shutter will be forced open.''',
-        Comment1=u'''[Comment1 r/w, w] 
+        Comment1=u'''[Comment1 r/w, waveform] 
           User comments for the data file. 5 comment fields of 80 characters each are available
           in the header of WinView SPE files. These are waveform records with FTVL=UCHAR and
           NELM=80 so that they can be longer than the 40 character string limit in EPICS.''',
-        Comment2=u'''[Comment2 r/w, w] 
+        Comment2=u'''[Comment2 r/w, waveform] 
           User comments for the data file. 5 comment fields of 80 characters each are available
           in the header of WinView SPE files. These are waveform records with FTVL=UCHAR and
           NELM=80 so that they can be longer than the 40 character string limit in EPICS.''',
-        Comment3=u'''[Comment3 r/w, w] 
+        Comment3=u'''[Comment3 r/w, waveform] 
           User comments for the data file. 5 comment fields of 80 characters each are available
           in the header of WinView SPE files. These are waveform records with FTVL=UCHAR and
           NELM=80 so that they can be longer than the 40 character string limit in EPICS.''',
-        Comment4=u'''[Comment4 r/w, w] 
+        Comment4=u'''[Comment4 r/w, waveform] 
           User comments for the data file. 5 comment fields of 80 characters each are available
           in the header of WinView SPE files. These are waveform records with FTVL=UCHAR and
           NELM=80 so that they can be longer than the 40 character string limit in EPICS.''',
-        Comment5=u'''[Comment5 r/w, w] 
+        Comment5=u'''[Comment5 r/w, waveform] 
           User comments for the data file. 5 comment fields of 80 characters each are available
           in the header of WinView SPE files. These are waveform records with FTVL=UCHAR and
           NELM=80 so that they can be longer than the 40 character string limit in EPICS.''',

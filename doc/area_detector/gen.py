@@ -48,7 +48,8 @@ class DocRow(object):
             self.record = [pv]
         else:
             self.record = [s.strip() for s in self.record.split('\n')]
-            self.record_type = [s.strip() for s in self.record_type.split('\n')]
+
+        self.record_type = [s.strip() for s in self.record_type.split('\n')]
 
         # Couple quick fixes:
         self.record[0] = self.record[0].replace('ThresholdN', 'Threshold$(N)')
