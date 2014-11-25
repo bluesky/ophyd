@@ -166,19 +166,6 @@ class ADSignal(object):
 class ADBase(SignalGroup):
     _html_docs = ['areaDetectorDoc.html']
 
-    array_counter = ADSignal('ArrayCounter', has_rbv=True)
-    array_rate = ADSignal('ArrayRate_RBV', rw=False)
-    asyn_io = ADSignal('AsynIO')
-
-    nd_attributes_file = ADSignal('NDAttributesFile')
-    pool_alloc_buffers = ADSignal('PoolAllocBuffers')
-    pool_free_buffers = ADSignal('PoolFreeBuffers')
-    pool_max_buffers = ADSignal('PoolMaxBuffers')
-    pool_max_mem = ADSignal('PoolMaxMem')
-    pool_used_buffers = ADSignal('PoolUsedBuffers')
-    pool_used_mem = ADSignal('PoolUsedMem')
-    port_name = ADSignal('PortName_RBV', rw=False)
-
     @classmethod
     def _update_docstrings(cls_):
         '''
@@ -219,7 +206,24 @@ class ADBase(SignalGroup):
         self.__sig_dict = None
 
 
-class AreaDetector(ADBase):
+class NDArrayDriver(ADBase):
+    _html_docs = ['areaDetectorDoc.html']
+
+    array_counter = ADSignal('ArrayCounter', has_rbv=True)
+    array_rate = ADSignal('ArrayRate_RBV', rw=False)
+    asyn_io = ADSignal('AsynIO')
+
+    nd_attributes_file = ADSignal('NDAttributesFile')
+    pool_alloc_buffers = ADSignal('PoolAllocBuffers')
+    pool_free_buffers = ADSignal('PoolFreeBuffers')
+    pool_max_buffers = ADSignal('PoolMaxBuffers')
+    pool_max_mem = ADSignal('PoolMaxMem')
+    pool_used_buffers = ADSignal('PoolUsedBuffers')
+    pool_used_mem = ADSignal('PoolUsedMem')
+    port_name = ADSignal('PortName_RBV', rw=False)
+
+
+class AreaDetector(NDArrayDriver):
     _html_docs = ['areaDetectorDoc.html']
 
     acquire = ADSignal('Acquire', has_rbv=True)
@@ -324,6 +328,7 @@ class AreaDetector(ADBase):
                  stats=['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
                  ccs=['CC1:', 'CC2:', ],
                  trans=['Trans1:', ],
+                 over=[['Over1:', 1, 8], ],
                  **kwargs):
 
         self._base_prefix = prefix
@@ -345,9 +350,12 @@ class AreaDetector(ADBase):
                     for cc in ccs]
         self.trans = [TransformPlugin(self._base_prefix, suffix=tran)
                       for tran in trans]
+        self.overlays = [OverlayPlugin(self._base_prefix, suffix=o[0],
+                                       first_overlay=o[1], count=o[2])
+                         for o in over]
 
 
-class PluginBase(ADBase):
+class PluginBase(NDArrayDriver):
     _html_docs = ['pluginDoc.html']
 
     @property
@@ -606,16 +614,59 @@ class ProcessPlugin(PluginBase):
     valid_flat_field = ADSignal('ValidFlatField_RBV', rw=False)
 
 
+class Overlay(ADBase):
+    _html_docs = ['NDPluginOverlay.html']
+
+    blue = ADSignal('Blue', has_rbv=True)
+    draw_mode = ADSignal('DrawMode', has_rbv=True)
+    green = ADSignal('Green', has_rbv=True)
+    max_size_x = ADSignal('MaxSizeX')
+    max_size_y = ADSignal('MaxSizeY')
+    name = ADSignal('Name', has_rbv=True)
+
+    position_x = ADSignal('PositionX', has_rbv=True)
+    position_y = ADSignal('PositionY', has_rbv=True)
+
+    position_xl_ink = ADSignal('PositionXLink')
+    position_yl_ink = ADSignal('PositionYLink')
+
+    red = ADSignal('Red', has_rbv=True)
+    set_xhopr = ADSignal('SetXHOPR')
+    set_yhopr = ADSignal('SetYHOPR')
+    shape = ADSignal('Shape', has_rbv=True)
+
+    size_x = ADSignal('SizeX', has_rbv=True)
+    size_y = ADSignal('SizeY', has_rbv=True)
+
+    size_xl_ink = ADSignal('SizeXLink')
+    size_yl_ink = ADSignal('SizeYLink')
+    use = ADSignal('Use', has_rbv=True)
+
+
 class OverlayPlugin(PluginBase):
     _default_suffix = 'Over1:'
     _suffix_re = 'Over\d:'
     _html_docs = ['NDPluginOverlay.html']
 
-    # TODO a bit different from other plugins
     _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
     _max_size_y = ADSignal('MaxSizeY_RBV', rw=False)
     max_size = ADSignalGroup(_max_size_x, _max_size_y,
                              doc='Maximum size')
+
+    def __init__(self, prefix, count=8, first_overlay=1,
+                 **kwargs):
+        '''
+        :param int count: number of overlays (commonPlugin default is 8)
+        :param int first_overlay: number of first overlay [default: 1]
+        '''
+        PluginBase.__init__(self, prefix, **kwargs)
+
+        self.overlays = []
+
+        if count is not None:
+            n_overlays = range(first_overlay, first_overlay + count)
+            self.overlays = [Overlay('%s%d:' % (self._prefix, n))
+                             for n in n_overlays]
 
 
 class ROIPlugin(PluginBase):

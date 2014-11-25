@@ -53,7 +53,7 @@ def test():
             if 0:
                 log_values(plugin)
 
-            if 0:
+            if 1:
                 dump_pvnames(plugin)
 
             if type_ != 'file':
@@ -64,7 +64,8 @@ def test():
     # det.acquire = 1
     logger.debug('acquire = %d' % det.acquire.value)
 
-    img1 = areadetector.ImagePlugin(det1_prefix, suffix='image1:')
+    image1_suffix = config.ad_plugins['image'][0]
+    img1 = areadetector.ImagePlugin(det1_prefix, suffix=image1_suffix)
     # log_all(img1)
 
     logger.debug('nd_array_port = %s' % img1.nd_array_port.value)
@@ -73,7 +74,8 @@ def test():
     if 1:
         img1.array_data.value
 
-    proc1 = areadetector.ProcessPlugin(det1_prefix, suffix='Proc1:')
+    proc1_suffix = config.ad_plugins['proc'][0]
+    proc1 = areadetector.ProcessPlugin(det1_prefix, suffix=proc1_suffix)
 
     # Signal group allows setting value as a list:
     logger.debug('fc=%s' % proc1.fc.value)
@@ -97,8 +99,13 @@ def test():
     #
     # In [1]: help(proc1)
 
-    return proc1
+    overlay_suffix, over_start, over_count = config.ad_plugins['overlay'][0]
+    over1 = areadetector.OverlayPlugin(det1_prefix, suffix=overlay_suffix,
+                                       count=over_count, first_overlay=over_start)
+
+    logger.debug('Overlay1:1 name=%s' % over1.overlays[0].name.value)
+    return proc1, over1
 
 
 if __name__ == '__main__':
-    proc1 = test()
+    proc1, over1 = test()
