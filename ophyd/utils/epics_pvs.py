@@ -3,6 +3,7 @@ import ctypes
 import threading
 import Queue as queue
 import warnings
+import re
 
 import epics
 
@@ -230,3 +231,59 @@ def get_pv_form():
         return 'native'
     else:
         return 'time'
+
+
+def records_from_db(fn):
+    '''
+    Naively parses db/template files looking for record names
+
+    :returns: [(record type, record name), ...]
+    '''
+
+    ret = []
+    for line in open(fn, 'rt').readlines():
+        line = line.strip()
+
+        if line.startswith('#'):
+            continue
+
+        if not (line.startswith('record') or line.startswith('grecord')):
+            continue
+
+        if '(' not in line:
+            continue
+
+        line = line[line.index('(') + 1:]
+        if ',' not in line:
+            continue
+
+        rtype, record = line.split(',', 1)
+        rtype = rtype.strip()
+        record = record.strip()
+
+        if record.startswith('"'):
+            # Surrounded by quotes, easy to parse
+            record = record[1:]
+            record = record[:record.index('"')]
+        else:
+            # No quotes, and macros may contain parentheses
+            # Find the first non-matching parenthesis and
+            # that should denote the end of the record name
+            #
+            # $(P)$(R)Record)
+            #               ^
+
+            in_paren = 0
+            for i, c in enumerate(record):
+                if c == '(':
+                    in_paren += 1
+                elif c == ')':
+                    in_paren -= 1
+
+                    if in_paren < 0:
+                        record = record[:i]
+                        break
+
+        ret.append((rtype, record))
+
+    return ret

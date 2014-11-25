@@ -18,8 +18,8 @@ import numpy as np
 import epics
 
 from .areadetector import (ADBase, NDArrayDriver,
-                           ADSignal, ADSignalGroup)
-
+                           ADSignal, ADSignalGroup,
+                           AreaDetector)
 
 logger = logging.getLogger(__name__)
 __all__ = ['ImagePlugin',
@@ -635,3 +635,5 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
         raise ValueError('Unable to determine plugin type')
 
     return class_(prefix, suffix=suffix, **kwargs)
+
+
