@@ -845,7 +845,7 @@ class FilePlugin(PluginBase):
     file_path_exists = ADSignal('FilePathExists_RBV', rw=False)
     file_template = ADSignal('FileTemplate', has_rbv=True, string=True)
     file_write_mode = ADSignal('FileWriteMode', has_rbv=True)
-    full_file_name = ADSignal('FullFileName_RBV', rw=False)
+    full_file_name = ADSignal('FullFileName_RBV', rw=False, string=True)
     num_capture = ADSignal('NumCapture', has_rbv=True)
     num_captured = ADSignal('NumCaptured_RBV', rw=False)
     read_file = ADSignal('ReadFile', has_rbv=True)

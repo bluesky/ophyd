@@ -163,6 +163,28 @@ class MonitorDispatcher(epics.ca.CAThread):
         return epics.ca._onMonitorEvent(args)
 
 
+def waveform_to_string(value, type_=str, delim=''):
+    '''
+    Convert a waveform that represents a string
+    into an actual Python string
+
+    :param value: The value to convert
+    :param type_: Python type to convert to
+    :param delim: delimiter to use when joining string
+    '''
+    try:
+        value = delim.join(chr(c) for c in value)
+    except TypeError:
+        value = type_(value)
+
+    try:
+        value = value[:value.index('\0')]
+    except (IndexError, ValueError):
+        pass
+
+    return value
+
+
 @cached_retval
 def get_pv_form():
     '''

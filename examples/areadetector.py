@@ -65,6 +65,9 @@ def test():
     print(img)
 
     det.files[0].file_template = '%s%s_%3.3d.tif'
+    logger.debug('template value=%s' % det.files[0].file_template.value)
+    logger.debug('full filename=%s' % det.files[0].full_file_name.value)
+    print(len(det.files[0].full_file_name.value))
 
     log_values(det)
     # det.acquire = 1
@@ -100,7 +103,7 @@ def test():
     proc1.fc = [1, -1, 0, 1]
     logger.debug('fc=%s' % proc1.fc.value)
 
-    # if on an IPython session, try the following:
+    # if using IPython, try the following:
     # In [0]: run areadetector.py
     #
     # In [1]: help(proc1)

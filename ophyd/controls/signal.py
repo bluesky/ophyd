@@ -17,7 +17,7 @@ import epics
 
 from ..session import register_object
 from ..utils import TimeoutError
-from ..utils.epics_pvs import get_pv_form
+from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
 
 logger = logging.getLogger(__name__)
 
@@ -345,8 +345,8 @@ class EpicsSignal(Signal):
         Signal._set_request(self, value)
 
     def _fix_type(self, value):
-        if self._string and hasattr(value, '__getitem__'):
-            value = ''.join(chr(c) for c in value)
+        if self._string:
+            value = waveform_to_string(value)
 
         return value
 
@@ -378,10 +378,11 @@ class EpicsSignal(Signal):
             as_string = self._string
 
         ret = self._read_pv.get(**kwargs)
-        if as_string and hasattr(ret, '__getitem__'):
-            ret = ''.join(chr(c) for c in ret)
 
-        return ret
+        if as_string:
+            return waveform_to_string(ret)
+        else:
+            return ret
 
     @property
     def readback(self):
