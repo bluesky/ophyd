@@ -214,6 +214,7 @@ class EpicsSignal(Signal):
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw={},
                  put_complete=False,
+                 string=False,
                  **kwargs):
         '''
         An EPICS signal, comprised of either one or two EPICS PVs
@@ -236,6 +237,7 @@ class EpicsSignal(Signal):
         self._read_pv = None
         self._write_pv = None
         self._put_complete = put_complete
+        self._string = bool(string)
 
         separate_readback = False
 
@@ -342,6 +344,12 @@ class EpicsSignal(Signal):
 
         Signal._set_request(self, value)
 
+    def _fix_type(self, value):
+        if self._string and hasattr(value, '__getitem__'):
+            value = ''.join(chr(c) for c in value)
+
+        return value
+
     def _read_changed(self, value=None, timestamp=None, **kwargs):
         '''
         A callback indicating that the read value has changed
@@ -349,6 +357,7 @@ class EpicsSignal(Signal):
         if timestamp is None:
             timestamp = time.time()
 
+        value = self._fix_type(value)
         self._set_readback(value, timestamp=timestamp)
 
     def _write_changed(self, value=None, timestamp=None, **kwargs):
@@ -358,13 +367,21 @@ class EpicsSignal(Signal):
         if timestamp is None:
             timestamp = time.time()
 
+        value = self._fix_type(value)
         Signal._set_request(self, value, timestamp=timestamp)
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
     #       ... but, there should be a mode of operation without using
     #           monitor updates, e.g., for large arrays
-    def _get_readback(self, **kwargs):
-        return self._read_pv.get(**kwargs)
+    def _get_readback(self, as_string=None, **kwargs):
+        if as_string is None:
+            as_string = self._string
+
+        ret = self._read_pv.get(**kwargs)
+        if as_string and hasattr(ret, '__getitem__'):
+            ret = ''.join(chr(c) for c in ret)
+
+        return ret
 
     @property
     def readback(self):

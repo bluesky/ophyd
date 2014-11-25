@@ -15,7 +15,8 @@ import re
 import logging
 import numpy as np
 import inspect
-
+import time
+import copy
 
 import epics
 
@@ -205,6 +206,12 @@ class ADBase(SignalGroup):
         self._ad_signals = {}
         self.__sig_dict = None
 
+    def read(self):
+        return self.report()
+
+    def report(self):
+        return copy.deepcopy(self.__sig_dict)
+
 
 class NDArrayDriver(ADBase):
     _html_docs = ['areaDetectorDoc.html']
@@ -213,14 +220,14 @@ class NDArrayDriver(ADBase):
     array_rate = ADSignal('ArrayRate_RBV', rw=False)
     asyn_io = ADSignal('AsynIO')
 
-    nd_attributes_file = ADSignal('NDAttributesFile')
+    nd_attributes_file = ADSignal('NDAttributesFile', string=True)
     pool_alloc_buffers = ADSignal('PoolAllocBuffers')
     pool_free_buffers = ADSignal('PoolFreeBuffers')
     pool_max_buffers = ADSignal('PoolMaxBuffers')
     pool_max_mem = ADSignal('PoolMaxMem')
     pool_used_buffers = ADSignal('PoolUsedBuffers')
     pool_used_mem = ADSignal('PoolUsedMem')
-    port_name = ADSignal('PortName_RBV', rw=False)
+    port_name = ADSignal('PortName_RBV', rw=False, string=True)
 
 
 class AreaDetector(NDArrayDriver):
@@ -312,9 +319,9 @@ class AreaDetector(NDArrayDriver):
     _size_y = ADSignal('SizeY', has_rbv=True)
     size = ADSignalGroup(_size_x, _size_y)
 
-    status_message = ADSignal('StatusMessage_RBV', rw=False)
-    string_from_server = ADSignal('StringFromServer_RBV', rw=False)
-    string_to_server = ADSignal('StringToServer_RBV', rw=False)
+    status_message = ADSignal('StatusMessage_RBV', rw=False, string=True)
+    string_from_server = ADSignal('StringFromServer_RBV', rw=False, string=True)
+    string_to_server = ADSignal('StringToServer_RBV', rw=False, string=True)
     temperature = ADSignal('Temperature', has_rbv=True)
     temperature_actual = ADSignal('TemperatureActual')
     time_remaining = ADSignal('TimeRemaining_RBV', rw=False)
@@ -353,6 +360,42 @@ class AreaDetector(NDArrayDriver):
         self.overlays = [OverlayPlugin(self._base_prefix, suffix=o[0],
                                        first_overlay=o[1], count=o[2])
                          for o in over]
+
+    # TODO all reads should allow a timeout kw?
+    # TODO handling multiple images even possible, or just assume single shot
+    #      always?
+    def read(self, timeout=None):
+        start_mode = self.image_mode.value
+        start_acquire = self.acquire.value
+
+        self.acquire = 0
+
+        time.sleep(0.01)
+
+        if self.image_mode.value == 2:
+            self.image_mode = 0  # single mode
+            logger.debug('%s: Setting to single image mode' % self)
+
+        time.sleep(0.01)
+
+        try:
+            self.acquire = 1
+            time.sleep(0.01)
+            logger.debug('%s: Waiting for completion' % self)
+            while self.detector_state.value != 0 and self.acquire.value:
+                time.sleep(0.01)
+
+            images = [im.image for im in self.images]
+
+            logger.debug('%s: Acquired %d image(s)' % (self, len(images)))
+            if len(images) == 1:
+                return images[0]
+            else:
+                return images
+        finally:
+            logger.debug('%s: Putting detector back into original state' % self)
+            self.image_mode = start_mode
+            self.acquire._set_request(start_acquire, wait=False)
 
 
 class PluginBase(NDArrayDriver):
@@ -794,20 +837,20 @@ class FilePlugin(PluginBase):
     capture = ADSignal('Capture', has_rbv=True)
     delete_driver_file = ADSignal('DeleteDriverFile', has_rbv=True)
     file_format = ADSignal('FileFormat', has_rbv=True)
-    file_name = ADSignal('FileName', has_rbv=True)
+    file_name = ADSignal('FileName', has_rbv=True, string=True)
     file_number = ADSignal('FileNumber', has_rbv=True)
     file_number_sync = ADSignal('FileNumber_Sync')
     file_number_write = ADSignal('FileNumber_write')
-    file_path = ADSignal('FilePath', has_rbv=True)
+    file_path = ADSignal('FilePath', has_rbv=True, string=True)
     file_path_exists = ADSignal('FilePathExists_RBV', rw=False)
-    file_template = ADSignal('FileTemplate', has_rbv=True)
+    file_template = ADSignal('FileTemplate', has_rbv=True, string=True)
     file_write_mode = ADSignal('FileWriteMode', has_rbv=True)
     full_file_name = ADSignal('FullFileName_RBV', rw=False)
     num_capture = ADSignal('NumCapture', has_rbv=True)
     num_captured = ADSignal('NumCaptured_RBV', rw=False)
     read_file = ADSignal('ReadFile', has_rbv=True)
     write_file = ADSignal('WriteFile', has_rbv=True)
-    write_message = ADSignal('WriteMessage')
+    write_message = ADSignal('WriteMessage', string=True)
     write_status = ADSignal('WriteStatus')
 
 
@@ -837,8 +880,8 @@ class NexusPlugin(FilePlugin):
     _html_docs = ['NDFileNexus.html']
 
     file_template_valid = ADSignal('FileTemplateValid')
-    template_file_name = ADSignal('TemplateFileName', has_rbv=True)
-    template_file_path = ADSignal('TemplateFilePath', has_rbv=True)
+    template_file_name = ADSignal('TemplateFileName', has_rbv=True, string=True)
+    template_file_path = ADSignal('TemplateFilePath', has_rbv=True, string=True)
 
 
 class HDF5Plugin(FilePlugin):

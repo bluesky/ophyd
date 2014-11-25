@@ -53,13 +53,19 @@ def test():
             if 0:
                 log_values(plugin)
 
-            if 1:
+            if 0:
                 dump_pvnames(plugin)
 
             if type_ != 'file':
                 break
 
     det = AreaDetector(det1_prefix, cam=det1_cam)
+
+    img = det.read()
+    print(img)
+
+    det.files[0].file_template = '%s%s_%3.3d.tif'
+
     log_values(det)
     # det.acquire = 1
     logger.debug('acquire = %d' % det.acquire.value)
