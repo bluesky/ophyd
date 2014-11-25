@@ -14,6 +14,8 @@ from __future__ import print_function
 import re
 import logging
 import numpy as np
+import inspect
+
 
 import epics
 
@@ -39,6 +41,8 @@ __all__ = ['AreaDetector',
            'JPEGPlugin',
            'HDF5Plugin',
            'MagickPlugin',
+
+           'plugin_from_pvname',
            'get_areadetector_plugin',
            ]
 
@@ -68,7 +72,7 @@ def ADSignalGroup(*props, **kwargs):
     return property(fget, fset, doc=doc)
 
 
-def lookup_doc(obj, pv):
+def lookup_doc(cls_, pv):
     '''
     Go from top-level to base-level class, looking up html documentation
     until we get a hit.
@@ -76,9 +80,7 @@ def lookup_doc(obj, pv):
     .. note:: This is only executed once, per class, per property (see
     ADSignal for more information)
     '''
-    import inspect
-
-    classes = inspect.getmro(obj.__class__)
+    classes = inspect.getmro(cls_)
     docs = ad_docs.docs
 
     for class_ in classes:
@@ -121,10 +123,17 @@ class ADSignal(object):
         self.doc = doc
         self.kwargs = kwargs
 
-        self.doc_set = (self.doc is not None)
         self.__doc__ = '[Lazy property for %s]' % pv
 
+    def update_docstring(self, cls_):
+        if self.doc is None:
+            self.__doc__ = lookup_doc(cls_, self.pv)
+
     def check_exists(self, obj):
+        if obj is None:
+            # Happens when working on the class and not the object
+            return self
+
         pv = self.pv
         try:
             return obj._ad_signals[pv]
@@ -139,12 +148,10 @@ class ADSignal(object):
                                  **self.kwargs)
 
             obj._ad_signals[pv] = signal
-            if self.doc is None:
-                if not self.doc_set:
-                    self.__doc__ = signal.__doc__ = lookup_doc(obj, pv)
-                    self.doc_set = True
-            else:
+            if self.doc is not None:
                 signal.__doc__ = self.doc
+            else:
+                signal.__doc__ = self.__doc__
 
             return obj._ad_signals[pv]
 
@@ -172,12 +179,20 @@ class ADBase(SignalGroup):
     pool_used_mem = ADSignal('PoolUsedMem')
     port_name = ADSignal('PortName_RBV', rw=False)
 
-    def update_docstrings(self):
+    @classmethod
+    def _update_docstrings(cls_):
         '''
-        ..note:: As a side-effect of how the lazy signals are implemented, docstrings
-        won't be updated until the objects are accessed.
+        ..note:: Updates docstrings
         '''
-        self.signals
+
+        attrs = [(attr, getattr(cls_, attr))
+                 for attr in sorted(dir(cls_))]
+
+        signals = [obj for attr, obj in attrs
+                   if isinstance(obj, ADSignal)]
+
+        for signal in signals:
+            signal.update_docstring(cls_)
 
     @property
     def signals(self):
@@ -841,7 +856,24 @@ type_map = {'NDPluginROI': ROIPlugin,
             }
 
 
+def update_docstrings():
+    '''
+    Dynamically set docstrings for all ADSignals, based on
+    parsed areadetector documentation
+
+    .. note:: called automatically when the module is loaded
+    '''
+    for var, cls_ in globals().items():
+        if inspect.isclass(cls_):
+            if hasattr(cls_, '_update_docstrings'):
+                cls_._update_docstrings()
+
+
 def plugin_from_pvname(pv):
+    '''
+    Get the plugin class from a pvname,
+    using regular expressions defined in the classes (_suffix_re).
+    '''
     for class_ in type_map.values():
         expr = class_._suffix_re
         m = re.search(expr, pv)
@@ -852,6 +884,17 @@ def plugin_from_pvname(pv):
 
 
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
+    '''
+    Get an instance of an areadetector plugin by supplying
+    the prefix, suffix, and any kwargs for the constructor.
+
+    Uses `plugin_from_pvname` first, but falls back on using
+    epics channel access to determine the plugin type.
+
+    :returns: plugin instance
+    :raises: ValueError if the plugin type can't be determined
+    '''
+
     base = ''.join([prefix, suffix])
     class_ = plugin_from_pvname(base)
     if class_ is None:
@@ -867,3 +910,6 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
         raise ValueError('Unable to determine plugin type')
 
     return class_(prefix, suffix=suffix, **kwargs)
+
+
+update_docstrings()

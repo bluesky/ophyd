@@ -95,9 +95,7 @@ def test():
     # if on an IPython session, try the following:
     # In [0]: run areadetector.py
     #
-    # In [1]: proc1.update_docstrings()
-    #
-    # In [2]: help(proc1)
+    # In [1]: help(proc1)
 
     return proc1
 
