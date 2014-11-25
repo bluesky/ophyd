@@ -125,10 +125,10 @@ class RunEngine(object):
             #data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
             print('datapoint[{}]: {}'.format(seqno,detvals))
-            #event = data_collection.format_event(hdr, evdesc,
-            #                                  seq_no=seqno,
-            #                                  data=detvals)
-            #data_collection.write_to_event_PV(event)
+            event = data_collection.format_event(hdr, evdesc,
+                                              seq_no=seqno,
+                                              data=detvals)
+            data_collection.write_to_event_PV(event)
             time.sleep(0.5)
             seqno += 1
         self._scan = False
@@ -145,18 +145,19 @@ class RunEngine(object):
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
-        #header = data_collection.create_run_header(scan_id=runid)
-        header = {'run_header': 'Foo'}
+        header = data_collection.create_run_header(scan_id=runid)
+        #header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
         print('keys = %s'%keys)
-        event_descriptor = {'a': 1, 'b':2}
+        #event_descriptor = {'a': 1, 'b':2}
+        event_descriptor = data_collection.create_event_descriptor(
+                            run_header=header, event_type_id=1, data_keys=keys,
+                            descriptor_name='Scan Foo')
         if scan_args is not None:
-            scan_args.update(header, **event_descriptor)
-        #event_descriptor = data_collection.create_event_descriptor(
-        #                    run_header=header, event_type_id=1, data_keys=keys,
-        #                    descriptor_name='Scan Foo')
-        # write the header and event_descriptor to the header PV
-        #data_collection.write_to_hdr_PV(header, event_descriptor)
+            scan_args['header'] = header
+            scan_args['event_descriptor'] = event_descriptor
+        #write the header and event_descriptor to the header PV
+        data_collection.write_to_hdr_PV(header, event_descriptor)
 
         self._begin_run(begin_args)
 

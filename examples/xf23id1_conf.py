@@ -25,7 +25,7 @@ sensor1 = EpicsSignal(config.fake_sensors[0], rw=False, name='sensor1')
 sensor2 = EpicsSignal(config.fake_sensors[1], rw=False, name='sensor2')
 sclr_trig = EpicsSignal('XF:23ID2-ES{Sclr:1}.CNT', rw=True, name='sclr_trig')
 sclr_ch1 = EpicsSignal('XF:23ID2-ES{Sclr:1}.S1', rw=False, name='sclr_ch1')
-#sca = EpicsScaler('XF:23ID1-ES{Sclr:1}', name='sca')
+sca = EpicsScaler('XF:23ID2-ES{Sclr:1}', name='sca')
 
 m1.set_trajectory(np.linspace(-1,2,10))
 m2.set_trajectory(np.linspace(-1,2,10))
