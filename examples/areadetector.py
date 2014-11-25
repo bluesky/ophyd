@@ -9,8 +9,12 @@ import time
 
 import config
 
-from ophyd.controls import (areadetector, AreaDetector, EpicsSignal)
+from ophyd.controls import (get_areadetector_plugin,
+                            EpicsSignal, SimDetector)
 
+from ophyd.controls.ad_plugins import (ImagePlugin,
+                                       ProcessPlugin,
+                                       OverlayPlugin)
 
 def dump_pvnames(obj, f=sys.stderr):
     for attr, signal in sorted(obj.signals.items()):
@@ -47,7 +51,7 @@ def test():
             continue
 
         for suffix in suffix_list:
-            plugin = areadetector.get_areadetector_plugin(det1_prefix, suffix)
+            plugin = get_areadetector_plugin(det1_prefix, suffix)
             # Note: the below will print out every EpicsSignal attribute for
             # every plugin, image, etc. and will take a while:
             if 0:
@@ -59,7 +63,7 @@ def test():
             if type_ != 'file':
                 break
 
-    det = AreaDetector(det1_prefix, cam=det1_cam)
+    det = SimDetector(det1_prefix, cam=det1_cam)
 
     img = det.read()
     print(img)
@@ -67,14 +71,13 @@ def test():
     det.files[0].file_template = '%s%s_%3.3d.tif'
     logger.debug('template value=%s' % det.files[0].file_template.value)
     logger.debug('full filename=%s' % det.files[0].full_file_name.value)
-    print(len(det.files[0].full_file_name.value))
 
     log_values(det)
     # det.acquire = 1
     logger.debug('acquire = %d' % det.acquire.value)
 
     image1_suffix = config.ad_plugins['image'][0]
-    img1 = areadetector.ImagePlugin(det1_prefix, suffix=image1_suffix)
+    img1 = ImagePlugin(det1_prefix, suffix=image1_suffix)
     # log_all(img1)
 
     logger.debug('nd_array_port = %s' % img1.nd_array_port.value)
@@ -84,7 +87,7 @@ def test():
         img1.array_data.value
 
     proc1_suffix = config.ad_plugins['proc'][0]
-    proc1 = areadetector.ProcessPlugin(det1_prefix, suffix=proc1_suffix)
+    proc1 = ProcessPlugin(det1_prefix, suffix=proc1_suffix)
 
     # Signal group allows setting value as a list:
     logger.debug('fc=%s' % proc1.fc.value)
@@ -109,8 +112,8 @@ def test():
     # In [1]: help(proc1)
 
     overlay_suffix, over_start, over_count = config.ad_plugins['overlay'][0]
-    over1 = areadetector.OverlayPlugin(det1_prefix, suffix=overlay_suffix,
-                                       count=over_count, first_overlay=over_start)
+    over1 = OverlayPlugin(det1_prefix, suffix=overlay_suffix,
+                          count=over_count, first_overlay=over_start)
 
     logger.debug('Overlay1:1 name=%s' % over1.overlays[0].name.value)
     return proc1, over1
