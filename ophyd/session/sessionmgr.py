@@ -19,7 +19,7 @@ class SessionManager(object):
         SessionManager._instance = self
         self._ipy = ipy
         self._logger = logger
-        self._context = {'positioners': {}, 'signals': {},
+        self._registry = {'positioners': {}, 'signals': {},
                         'beamline_config': {}}
 
         if ipy is not None:
@@ -37,9 +37,9 @@ class SessionManager(object):
         signal.signal(signal.SIGINT, sigint_hdlr)
         self._ipy.push('sigint_hdlr')
 
-    def _update_context(self, obj, category):
-        if obj not in self._context[category] and obj.name is not None:
-            self._context[category][obj.name] = obj
+    def _update_registry(self, obj, category):
+        if obj not in self._registry[category] and obj.name is not None:
+            self._registry[category][obj.name] = obj
 
     # TODO: figure out what the policy needs to be here...
     def register(self, obj):
@@ -49,13 +49,9 @@ class SessionManager(object):
            then they're available in the ipy namespace too.
         '''
         if issubclass(obj.__class__, Positioner):
-            self._update_context(obj, 'positioners')
-            #if obj not in self._context['positioners']:
-            #    self._context['positioners'][obj.name] = obj
+            self._update_registry(obj, 'positioners')
         elif issubclass(obj.__class__, (Signal, SignalGroup)):
-            self._update_context(obj, 'signals')
-            #if obj not in self._context['signals']:
-            #    self._context['signals'][obj.name] = obj
+            self._update_registry(obj, 'signals')
         else:
             raise TypeError('%s cannot be registered with the session.' % obj)
         return self._logger
@@ -65,14 +61,14 @@ class SessionManager(object):
         self._logger.info('connection notification: %s' % msg)
 
     def stop_all(self):
-        for pos in self._context['positioners'].itervalues():
+        for pos in self._registry['positioners'].itervalues():
             if pos.moving is True:
                 pos.stop()
                 self._logger.info('Stopped %s' % pos)
 
-    def get_motors(self):
-        return self._context['positioners']
+    def get_positioners(self):
+        return self._registry['positioners']
 
     #TODO: should we let this raise a KeyError exception? Probably...
-    def get_motor(self, mtr):
-        return self._context['positioners'][mtr]
+    def get_positioner(self, pos):
+        return self._registry['positioners'][pos]
