@@ -15,6 +15,7 @@ import logging
 import inspect
 import time
 import re
+import sys
 import copy
 
 from .signal import (Signal, EpicsSignal, SignalGroup)
@@ -184,7 +185,19 @@ class ADBase(SignalGroup):
             signal.update_docstring(cls_)
 
     def find_signal(self, text, use_re=False,
-                    case_sensitive=False, match_fcn=None):
+                    case_sensitive=False, match_fcn=None,
+                    f=sys.stdout):
+        '''
+        Search through the signals on this detector for the string text
+
+        :param str text: Text to find
+        :param bool use_re: Use regular expressions
+        :param bool case_sensitive: Case sensitive search
+        :param callable match_fcn: Function to call when matches are found
+            Defaults to a function that prints matches to f
+        :param f: File-like object that the default match function prints to
+            (Defaults to sys.stdout)
+        '''
         # TODO: Some docstrings change based on the detector type,
         #       showing different options than are available in
         #       the base area detector class (for example). As such,
@@ -975,5 +988,4 @@ def stub_templates(path):
 
 if 0:
     stub_templates('/epics/support/areaDetector/1-9-1/ADApp/Db/')
-    import sys
     sys.exit(0)
