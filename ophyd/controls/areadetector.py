@@ -14,6 +14,7 @@ from __future__ import print_function
 import logging
 import inspect
 import time
+import re
 import copy
 
 from .signal import (Signal, EpicsSignal, SignalGroup)
@@ -122,9 +123,12 @@ class ADSignal(object):
 
         self.__doc__ = '[Lazy property for %s]' % pv
 
+    def lookup_doc(self, cls_):
+        return lookup_doc(cls_, self.pv)
+
     def update_docstring(self, cls_):
         if self.doc is None:
-            self.__doc__ = lookup_doc(cls_, self.pv)
+            self.__doc__ = self.lookup_doc(cls_)
 
     def check_exists(self, obj):
         if obj is None:
@@ -168,7 +172,7 @@ class ADBase(SignalGroup):
         attrs = [(attr, getattr(cls_, attr))
                  for attr in sorted(dir(cls_))]
 
-        return [obj for attr, obj in attrs
+        return [(attr, obj) for attr, obj in attrs
                 if isinstance(obj, ADSignal)]
 
     @classmethod
@@ -176,8 +180,52 @@ class ADBase(SignalGroup):
         '''
         ..note:: Updates docstrings
         '''
-        for signal in cls_._all_adsignals():
+        for prop_name, signal in cls_._all_adsignals():
             signal.update_docstring(cls_)
+
+    def find_signal(self, text, use_re=False,
+                    case_sensitive=False, match_fcn=None):
+        # TODO: Some docstrings change based on the detector type,
+        #       showing different options than are available in
+        #       the base area detector class (for example). As such,
+        #       instead of using the current docstrings, this grabs
+        #       them again.
+        cls_ = self.__class__
+
+        def default_match(prop_name, signal, doc):
+            print('Property: %s' % prop_name)
+            if signal.has_rbv:
+                print('  Signal: {0} / {0}_RBV'.format(signal.pv, signal.pv))
+            else:
+                print('  Signal: %s' % (signal.pv))
+            print('     Doc: %s' % doc)
+            print()
+
+        if match_fcn is None:
+            match_fcn = default_match
+
+        if use_re:
+            flags = re.MULTILINE
+            if not case_sensitive:
+                flags |= re.IGNORECASE
+
+            regex = re.compile(text, flags=flags)
+
+        elif not case_sensitive:
+            text = text.lower()
+
+        for prop_name, signal in cls_._all_adsignals():
+            doc = signal.lookup_doc(cls_)
+
+            if use_re:
+                if regex.search(doc):
+                    match_fcn(prop_name, signal, doc)
+            else:
+                if not case_sensitive:
+                    if text in doc.lower():
+                        match_fcn(prop_name, signal, doc)
+                elif text in doc:
+                    match_fcn(prop_name, signal, doc)
 
     @property
     def signals(self):
@@ -825,7 +873,6 @@ def create_detector_stub(db_file, macros=None,
     '''
     # TODO imports here since this function needs to be moved
     import inspect
-    import re
     import os
 
     from ..utils.epics_pvs import records_from_db
@@ -928,4 +975,5 @@ def stub_templates(path):
 
 if 0:
     stub_templates('/epics/support/areaDetector/1-9-1/ADApp/Db/')
-    import sys; sys.exit(0)
+    import sys
+    sys.exit(0)
