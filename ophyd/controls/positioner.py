@@ -188,7 +188,8 @@ class EpicsMotor(Positioner):
 
         self._record = record
 
-        Positioner.__init__(self, record, **kwargs)
+        name = kwargs.pop('name', record)
+        Positioner.__init__(self, name=name, **kwargs)
 
         signals = [EpicsSignal(record_field(record, 'RBV'), rw=False, alias='_user_readback'),
                    EpicsSignal(record_field(record, 'VAL'), alias='_user_request'),
@@ -261,9 +262,10 @@ class EpicsMotor(Positioner):
     def report(self):
         #return {self._user_readback.read_pvname: self._user_readback.value}
         return {self._name: self.position,
-                'pv': self._user_readback.read_pvname} 
+                'pv': self._user_readback.read_pvname}
 
-#TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
+
+# TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
 class PVPositioner(Positioner):
     def __init__(self, setpoint, readback=None,
                  act=None, act_val=1,
@@ -414,7 +416,7 @@ class PVPositioner(Positioner):
     def stop(self):
         self._stop._set_request(self._stop_val, wait=False)
 
-    #TODO: this will fail if no readback is provided to initializer
+    # TODO: this will fail if no readback is provided to initializer
     @property
     def report(self):
         #return {self._readback.read_pvname: self._readback.value}
