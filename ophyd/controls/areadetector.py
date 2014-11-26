@@ -428,7 +428,7 @@ class AdscDetector(AreaDetector):
     adsc_soft_reset = ADSignal('ADSCSoftReset')
     adsc_state = ADSignal('ADSCState')
     adsc_status = ADSignal('ADSCStatus')
-    adsc_stp_ex_rtry_ct = ADSignal('ADSCStpExRtryCt')
+    adsc_stp_ex_retry_count = ADSignal('ADSCStpExRtryCt')
     adsc_str_drks = ADSignal('ADSCStrDrks', has_rbv=True)
     adsc_wavelen = ADSignal('ADSCWavelen', has_rbv=True)
     bin_x_changed = ADSignal('BinXChanged')
@@ -441,7 +441,7 @@ class AdscDetector(AreaDetector):
 class AndorDetector(AreaDetector):
     _html_docs = ['andorDoc.html']
 
-    andor_adcs_peed = ADSignal('AndorADCSpeed', has_rbv=True)
+    andor_adc_speed = ADSignal('AndorADCSpeed', has_rbv=True)
     andor_accumulate_period = ADSignal('AndorAccumulatePeriod', has_rbv=True)
     andor_cooler = ADSignal('AndorCooler', has_rbv=True)
     andor_message = ADSignal('AndorMessage_RBV', rw=False)
@@ -614,7 +614,7 @@ class PilatusDetector(AreaDetector):
     delay_time = ADSignal('DelayTime', has_rbv=True)
     det2theta = ADSignal('Det2theta')
     det_dist = ADSignal('DetDist')
-    det_vo_ffset = ADSignal('DetVOffset')
+    det_v_offset = ADSignal('DetVOffset')
     energy_high = ADSignal('EnergyHigh')
     energy_low = ADSignal('EnergyLow')
     file_format = ADSignal('FileFormat', has_rbv=True)
