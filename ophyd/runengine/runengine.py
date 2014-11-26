@@ -4,7 +4,9 @@ from threading import Thread
 from Queue import Queue
 import time
 
-from databroker.api import data_collection
+from ..session import register_object
+
+#from databroker.api import data_collection
 
 
 
@@ -52,13 +54,14 @@ class RunEngine(object):
     '''
     def __init__(self, logger):
         self._demuxer = Demuxer()
+        self._logger = register_object(self)
 
     # start/stop/pause/resume are external api methods
     def start(self):
         pass
 
     def stop(self):
-        self._scan = False
+        self._scan_state = False
 
     def pause(self):
         pass
@@ -103,7 +106,7 @@ class RunEngine(object):
         trigs = kwargs.get('triggers')
 
         seqno = 0
-        while self._scan is True:
+        while self._scan_state is True:
             posvals = self._move_positioners(**kwargs)
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
@@ -125,13 +128,12 @@ class RunEngine(object):
             #data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
             print('datapoint[{}]: {}'.format(seqno,detvals))
-            event = data_collection.format_event(hdr, evdesc,
-                                              seq_no=seqno,
-                                              data=detvals)
-            data_collection.write_to_event_PV(event)
-            time.sleep(0.5)
+            #event = data_collection.format_event(hdr, evdesc,
+            #                                  seq_no=seqno,
+            #                                  data=detvals)
+            #data_collection.write_to_event_PV(event)
             seqno += 1
-        self._scan = False
+        self._scan_state = False
         return
 
     def _get_data_keys(self, **kwargs):
@@ -145,19 +147,19 @@ class RunEngine(object):
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
-        header = data_collection.create_run_header(scan_id=runid)
-        #header = {'run_header': 'Foo'}
+        #header = data_collection.create_run_header(scan_id=runid)
+        header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
         print('keys = %s'%keys)
-        #event_descriptor = {'a': 1, 'b':2}
-        event_descriptor = data_collection.create_event_descriptor(
-                            run_header=header, event_type_id=1, data_keys=keys,
-                            descriptor_name='Scan Foo')
+        event_descriptor = {'a': 1, 'b':2}
+        #event_descriptor = data_collection.create_event_descriptor(
+        #                    run_header=header, event_type_id=1, data_keys=keys,
+        #                    descriptor_name='Scan Foo')
         if scan_args is not None:
             scan_args['header'] = header
             scan_args['event_descriptor'] = event_descriptor
         #write the header and event_descriptor to the header PV
-        data_collection.write_to_hdr_PV(header, event_descriptor)
+        #data_collection.write_to_hdr_PV(header, event_descriptor)
 
         self._begin_run(begin_args)
 
@@ -165,8 +167,13 @@ class RunEngine(object):
                                    name='Scanner',
                                    kwargs=scan_args)
         self._scan_thread.daemon = True
-        self._scan = True
+        self._scan_state = True
         self._scan_thread.start()
-        self._scan_thread.join()
+        try:
+            while self._scan_state is True:
+                time.sleep(0.25)
+        except KeyboardInterrupt:
+            self._scan_state = False
+            self._scan_thread.join()
 
         self._end_run(end_args)
