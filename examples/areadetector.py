@@ -12,9 +12,9 @@ import config
 from ophyd.controls import (get_areadetector_plugin,
                             EpicsSignal, SimDetector)
 
-from ophyd.controls.ad_plugins import (ImagePlugin,
-                                       ProcessPlugin,
-                                       OverlayPlugin)
+from ophyd.controls import (ImagePlugin, ProcessPlugin,
+                            OverlayPlugin)
+
 
 def dump_pvnames(obj, f=sys.stderr):
     for attr, signal in sorted(obj.signals.items()):

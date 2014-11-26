@@ -3,8 +3,8 @@
 :mod:`ophyd.control.areadetector` - areaDetector
 ================================================
 
-.. module:: ophyd.control.areadetector
- :synopsis:  `areaDetector`_ camera and plugin abstractions
+.. module:: ophyd.control.areadetector.detector
+ :synopsis:  `areaDetector`_ detector/camera abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 
@@ -17,16 +17,15 @@ import time
 import re
 import sys
 
-from .signal import (Signal, EpicsSignal, SignalGroup)
-from ..utils import ad_docs
+from ..signal import (Signal, EpicsSignal, SignalGroup)
+from . import docs
 
 logger = logging.getLogger(__name__)
 
 
 __all__ = ['AreaDetector',
-           'SimDetector',
-           'AndorDetector',
            'Andor3Detector',
+           'AndorDetector',
            'BrukerDetector',
            'FirewireLinDetector',
            'FirewireWinDetector',
@@ -34,13 +33,14 @@ __all__ = ['AreaDetector',
            'Mar345Detector',
            'MarCCDDetector',
            'PerkinElmerDetector',
-           'PSLDetector',
            'PilatusDetector',
            'PixiradDetector',
            'PointGreyDetector',
            'ProsilicaDetector',
+           'PSLDetector',
            'PvcamDetector',
            'RoperDetector',
+           'SimDetector',
            'URLDetector',
            ]
 
@@ -79,7 +79,6 @@ def lookup_doc(cls_, pv):
     ADSignal for more information)
     '''
     classes = inspect.getmro(cls_)
-    docs = ad_docs.docs
 
     for class_ in classes:
         try:
@@ -89,7 +88,7 @@ def lookup_doc(cls_, pv):
 
         for fn in html_file:
             try:
-                doc = docs[fn]
+                doc = docs.docs[fn]
             except KeyError:
                 continue
 
@@ -860,7 +859,7 @@ class URLDetector(AreaDetector):
     url = ADSignal('URL_RBV', rw=False)
 
 
-from . import ad_plugins as plugins
+from . import plugins
 
 
 def update_docstrings():
@@ -899,7 +898,7 @@ def create_detector_stub(db_file, macros=None,
     import inspect
     import os
 
-    from ..utils.epics_pvs import records_from_db
+    from ...utils.epics_pvs import records_from_db
 
     assert inspect.isclass(base_class), 'Expected class'
 

@@ -4,7 +4,7 @@ An example of using :class:`AreaDetector`
 '''
 from __future__ import print_function
 import config
-from ophyd.controls.areadetector import (AreaDetector, ImagePlugin)
+from ophyd.controls import (AreaDetector, ImagePlugin)
 
 import matplotlib.pyplot as plt
 

@@ -1,10 +1,10 @@
 # vi: ts=4 sw=4
 '''
-:mod:`ophyd.control.ad_plugins` - areaDetector plugins
+:mod:`ophyd.control.areadetector.plugins` - areaDetector plugins
 ======================================================
 
-.. module:: ophyd.control.areadetector
- :synopsis:  `areaDetector`_ camera and plugin abstractions
+.. module:: ophyd.control.areadetector.plugins
+ :synopsis:  `areaDetector`_ plugin abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 
@@ -17,28 +17,27 @@ import numpy as np
 
 import epics
 
-from .areadetector import (ADBase, NDArrayDriver,
-                           ADSignal, ADSignalGroup,
-                           AreaDetector)
+from .detectors import (ADBase, NDArrayDriver,
+                        ADSignal, ADSignalGroup)
 
 logger = logging.getLogger(__name__)
-__all__ = ['ImagePlugin',
-           'StatsPlugin',
-           'ColorConvPlugin',
-           'ProcessPlugin',
-           'OverlayPlugin',
-           'NexusPlugin',
-           'ROIPlugin',
+__all__ = ['ColorConvPlugin',
            'FilePlugin',
-           'NetCDFPlugin',
-           'TransformPlugin',
-           'TIFFPlugin',
-           'JPEGPlugin',
            'HDF5Plugin',
+           'ImagePlugin',
+           'JPEGPlugin',
            'MagickPlugin',
+           'NetCDFPlugin',
+           'NexusPlugin',
+           'OverlayPlugin',
+           'ProcessPlugin',
+           'ROIPlugin',
+           'StatsPlugin',
+           'TIFFPlugin',
+           'TransformPlugin',
 
-           'plugin_from_pvname',
            'get_areadetector_plugin',
+           'plugin_from_pvname',
            ]
 
 
@@ -635,5 +634,3 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
         raise ValueError('Unable to determine plugin type')
 
     return class_(prefix, suffix=suffix, **kwargs)
-
-
