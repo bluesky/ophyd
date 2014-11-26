@@ -219,11 +219,14 @@ class EpicsMotor(Positioner):
     def move(self, position, wait=True,
              **kwargs):
 
-        # self._user_request.request = position
-        self._user_request._set_request(position, wait=wait)
+        try:
+            # self._user_request.request = position
+            self._user_request._set_request(position, wait=wait)
 
-        Positioner.move(self, position, wait=wait,
-                        **kwargs)
+            Positioner.move(self, position, wait=wait,
+                            **kwargs)
+        except KeyboardInterrupt:
+            self.stop()
 
     def __str__(self):
         return 'EpicsMotor(record={0}, val={1}, rbv={2}, egu={3})'.format(
@@ -380,11 +383,14 @@ class PVPositioner(Positioner):
 
     def move(self, position, wait=True,
              **kwargs):
-        if wait:
-            self._move_wait(position, **kwargs)
+        try:
+            if wait:
+                self._move_wait(position, **kwargs)
 
-        else:
-            self._move_async(position, **kwargs)
+            else:
+                self._move_async(position, **kwargs)
+        except KeyboardInterrupt:
+            self.stop()
 
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):

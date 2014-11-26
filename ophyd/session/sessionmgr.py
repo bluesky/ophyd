@@ -6,6 +6,7 @@ import sys
 
 from ..controls.positioner import Positioner
 from ..controls.signal import Signal, SignalGroup
+from ..runengine import RunEngine
 
 
 class SessionManager(object):
@@ -19,6 +20,7 @@ class SessionManager(object):
         SessionManager._instance = self
         self._ipy = ipy
         self._logger = logger
+        self._run_engine = None
         self._registry = {'positioners': {}, 'signals': {},
                         'beamline_config': {}}
 
@@ -30,10 +32,9 @@ class SessionManager(object):
         orig_hdlr = signal.getsignal(signal.SIGINT)
 
         def sigint_hdlr(sig, frame):
-            self._logger.info('Calling SessionManager SIGINT handler...')
+            self._logger.debug('Calling SessionManager SIGINT handler...')
             self.stop_all()
             orig_hdlr(sig, frame)
-            raise KeyboardInterrupt
         signal.signal(signal.SIGINT, sigint_hdlr)
         self._ipy.push('sigint_hdlr')
 
@@ -52,19 +53,27 @@ class SessionManager(object):
             self._update_registry(obj, 'positioners')
         elif issubclass(obj.__class__, (Signal, SignalGroup)):
             self._update_registry(obj, 'signals')
+        elif issubclass(obj.__class__, RunEngine):
+            if self._run_engine is None:
+                self._logger.debug('Registering RunEngine.')
+                self._run_engine = obj
         else:
             raise TypeError('%s cannot be registered with the session.' % obj)
         return self._logger
 
     #TODO: should swallow and gracefully notify the user of changes
     def notify_connection(self, msg):
-        self._logger.info('connection notification: %s' % msg)
+        self._logger.debug('connection notification: %s' % msg)
 
     def stop_all(self):
+        #TODO: fixme - add RunEngines to registry
+        if self._run_engine is not None:
+            self._run_engine.stop()
+
         for pos in self._registry['positioners'].itervalues():
             if pos.moving is True:
                 pos.stop()
-                self._logger.info('Stopped %s' % pos)
+                self._logger.debug('Stopped %s' % pos)
 
     def get_positioners(self):
         return self._registry['positioners']
