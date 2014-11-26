@@ -1,7 +1,7 @@
 import config
 
 from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner
-from examples.dumb_scan import simple_scan
+from dumb_scan import simple_scan
 
 
 m1 = EpicsMotor(config.motor_recs[0], name='m1')

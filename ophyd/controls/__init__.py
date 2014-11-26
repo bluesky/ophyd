@@ -10,3 +10,6 @@ logger.addHandler(logging.NullHandler())
 from .signal import (Signal, EpicsSignal)
 from .positioner import (EpicsMotor, PVPositioner)
 from .scaler import EpicsScaler
+
+from .areadetector.detectors import *
+from .areadetector.plugins import *

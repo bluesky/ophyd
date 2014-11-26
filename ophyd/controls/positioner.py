@@ -178,10 +178,6 @@ class Positioner(SignalGroup):
 
 
 class EpicsMotor(Positioner):
-    # TODO: EpicsMotor could potentially be just a special case of a PVPositioner,
-    # but there's a lot of additional info we can grab, knowing that it's a
-    # motor record. (the fact that the additional fields are rarely used
-    # properly is another story though...)
 
     def __init__(self, record, **kwargs):
         '''

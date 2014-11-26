@@ -17,7 +17,7 @@ import epics
 
 from ..session import register_object
 from ..utils import TimeoutError
-from ..utils.epics_pvs import get_pv_form
+from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +87,7 @@ class Signal(object):
             except Exception as ex:
                 self._ses_logger.error('Subscription %s callback exception (%s)' %
                                        (sub_type, self), exc_info=ex)
+
     @property
     def name(self):
         return self._name
@@ -214,6 +215,7 @@ class EpicsSignal(Signal):
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw={},
                  put_complete=False,
+                 string=False,
                  **kwargs):
         '''
         An EPICS signal, comprised of either one or two EPICS PVs
@@ -236,6 +238,7 @@ class EpicsSignal(Signal):
         self._read_pv = None
         self._write_pv = None
         self._put_complete = put_complete
+        self._string = bool(string)
 
         separate_readback = False
 
@@ -319,7 +322,6 @@ class EpicsSignal(Signal):
         else:
             self._ses_logger.info(msg)
 
-
     def _set_request(self, value, wait=True, **kwargs):
         '''
         Using channel access, set the write PV to `value`.
@@ -342,6 +344,12 @@ class EpicsSignal(Signal):
 
         Signal._set_request(self, value)
 
+    def _fix_type(self, value):
+        if self._string:
+            value = waveform_to_string(value)
+
+        return value
+
     def _read_changed(self, value=None, timestamp=None, **kwargs):
         '''
         A callback indicating that the read value has changed
@@ -349,6 +357,7 @@ class EpicsSignal(Signal):
         if timestamp is None:
             timestamp = time.time()
 
+        value = self._fix_type(value)
         self._set_readback(value, timestamp=timestamp)
 
     def _write_changed(self, value=None, timestamp=None, **kwargs):
@@ -358,11 +367,22 @@ class EpicsSignal(Signal):
         if timestamp is None:
             timestamp = time.time()
 
+        value = self._fix_type(value)
         Signal._set_request(self, value, timestamp=timestamp)
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
-    def _get_readback(self):
-        return self._read_pv.get()
+    #       ... but, there should be a mode of operation without using
+    #           monitor updates, e.g., for large arrays
+    def _get_readback(self, as_string=None, **kwargs):
+        if as_string is None:
+            as_string = self._string
+
+        ret = self._read_pv.get(**kwargs)
+
+        if as_string:
+            return waveform_to_string(ret)
+        else:
+            return ret
 
     @property
     def readback(self):
@@ -388,25 +408,25 @@ class EpicsSignal(Signal):
     @property
     def report(self):
         # FIXME:
-        ret = {}
         if self._read_pv == self._write_pv:
-            ret[self._name] = self._read_pv.value
-            ret['pv'] = self.read_pvname
-        elif self._read_pv is not None \
-                and self._write_pv is None:
-            ret[self._name] = self._read_pv.value
-            ret['pv'] = self.read_pvname
-        elif self._write_pv is not None \
-                and self._read_pv is None:
-            ret[self._name] = self._write_pv.value
-            ret['pv'] = self.write_pvname
-        
-        return ret
+            value = self._read_pv.value
+            pv = self.read_pvname
+        elif self._read_pv is not None:
+            value = self._read_pv.value
+            pv = self.read_pvname
+        elif self._write_pv is not None:
+            value = self._read_pv.value
+            pv = self.read_pvname
+
+        return {self.name: value,
+                'pv': pv
+                }
+
 
 # TODO uniform interface to Signal and SignalGroup
 
 class SignalGroup(object):
-    def __init__(self, alias=None, **kwargs):
+    def __init__(self, name='none', alias=None, **kwargs):
         '''
         Create a group or collection of related signals
 
@@ -418,7 +438,7 @@ class SignalGroup(object):
 
         self._signals = []
         self._alias = alias
-        self._name = kwargs.get('name', 'none')
+        self._name = name
 
         register_object(self)
 
@@ -469,7 +489,8 @@ class SignalGroup(object):
             if prop_name is None:
                 prop_name = signal.alias
 
-            setattr(self, prop_name, signal)
+            if prop_name:
+                setattr(self, prop_name, signal)
 
     def subscribe(self, cb, event_type=None):
         '''
@@ -514,3 +535,51 @@ class SignalGroup(object):
         '''
         return dict((signal.alias, signal.read())
                     for signal in self._signals)
+
+    def _get_readback(self, **kwargs):
+        return [signal._get_readback(**kwargs)
+                for signal in self._signals]
+
+    readback = property(_get_readback, doc='Readback list')
+
+    def _get_request(self, **kwargs):
+        return [signal._get_request(**kwargs)
+                for signal in self._signals]
+
+    def _set_request(self, values, **kwargs):
+        return [signal._set_request(value, **kwargs)
+                for value, signal in zip(values, self._signals)]
+
+    request = property(_get_request, _set_request,
+                       doc='Request list')
+
+    value = property(_get_readback, _set_request,
+                     doc='Readback/request value list')
+
+    @property
+    def request_ts(self):
+        '''
+        Timestamp of request PVs, according to EPICS
+        '''
+        return [signal.request_ts for signal in self._signals]
+
+    @property
+    def readback_ts(self):
+        '''
+        Timestamp of readback PV, according to EPICS
+        '''
+        return [signal.readback_ts for signal in self._signals]
+
+    value_ts = readback_ts
+
+    @property
+    def read_pvname(self):
+        return [signal.read_pvname for signal in self._signals]
+
+    @property
+    def write_pvname(self):
+        return [signal.write_pvname for signal in self._signals]
+
+    @property
+    def report(self):
+        return [signal.report for signal in self._signals]
