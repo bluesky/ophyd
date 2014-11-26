@@ -16,7 +16,6 @@ import inspect
 import time
 import re
 import sys
-import copy
 
 from .signal import (Signal, EpicsSignal, SignalGroup)
 from ..utils import ad_docs
@@ -150,6 +149,10 @@ class ADSignal(object):
                                  **self.kwargs)
 
             obj._ad_signals[pv] = signal
+
+            # TODO: ADBase doesn't really play well with SignalGroup
+            obj._signals.append(signal)
+
             if self.doc is not None:
                 signal.__doc__ = self.doc
             else:
@@ -247,8 +250,14 @@ class ADBase(SignalGroup):
 
         .. note:: Instantiates all lazy signals
         '''
+        def safe_getattr(obj, attr):
+            try:
+                return getattr(obj, attr)
+            except:
+                return None
+
         if self.__sig_dict is None:
-            attrs = [(attr, getattr(self, attr))
+            attrs = [(attr, safe_getattr(self, attr))
                      for attr in sorted(dir(self))
                      if not attr.startswith('_') and attr != 'signals']
 
@@ -267,8 +276,10 @@ class ADBase(SignalGroup):
     def read(self):
         return self.report()
 
+    @property
     def report(self):
-        return copy.deepcopy(self.__sig_dict)
+        # TODO: what should this return?
+        return {self.name: 0}
 
 
 class NDArrayDriver(ADBase):

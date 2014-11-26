@@ -87,6 +87,7 @@ class Signal(object):
             except Exception as ex:
                 self._ses_logger.error('Subscription %s callback exception (%s)' %
                                        (sub_type, self), exc_info=ex)
+
     @property
     def name(self):
         return self._name
@@ -321,7 +322,6 @@ class EpicsSignal(Signal):
         else:
             self._ses_logger.info(msg)
 
-
     def _set_request(self, value, wait=True, **kwargs):
         '''
         Using channel access, set the write PV to `value`.
@@ -408,20 +408,20 @@ class EpicsSignal(Signal):
     @property
     def report(self):
         # FIXME:
-        ret = {}
         if self._read_pv == self._write_pv:
-            ret[self._name] = self._read_pv.value
-            ret['pv'] = self.read_pvname
-        elif self._read_pv is not None \
-                and self._write_pv is None:
-            ret[self._name] = self._read_pv.value
-            ret['pv'] = self.read_pvname
-        elif self._write_pv is not None \
-                and self._read_pv is None:
-            ret[self._name] = self._write_pv.value
-            ret['pv'] = self.write_pvname
-        
-        return ret
+            value = self._read_pv.value
+            pv = self.read_pvname
+        elif self._read_pv is not None:
+            value = self._read_pv.value
+            pv = self.read_pvname
+        elif self._write_pv is not None:
+            value = self._read_pv.value
+            pv = self.read_pvname
+
+        return {self.name: value,
+                'pv': pv
+                }
+
 
 # TODO uniform interface to Signal and SignalGroup
 
@@ -579,3 +579,7 @@ class SignalGroup(object):
     @property
     def write_pvname(self):
         return [signal.write_pvname for signal in self._signals]
+
+    @property
+    def report(self):
+        return [signal.report for signal in self._signals]
