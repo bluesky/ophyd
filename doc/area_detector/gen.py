@@ -16,7 +16,7 @@ import lxml.html
 try:
     DOC_PATH = sys.argv[1]
 except IndexError:
-    DOC_PATH = 'cars9.uchicago.edu/software/epics'
+    DOC_PATH = 'html'
 
 # PV$(N) (N=1-10)
 n_regex = re.compile('^([a-z0-9_]+\$\(N\)[a-z0-9_]*)\s+\(N=(\d+)-(\d+)\)$',
@@ -131,17 +131,36 @@ def parse_doc(fn):
     skip_header = False
     ret = []
     past_rows = []
+    last_header = None
     for row in rows:
         row_text = [child.text_content().strip() for child in row.getchildren()]
         # all_text = '\n'.join(row_text)
 
         if row.xpath('th'):
             skip_header = (row_text[0] == 'ImageMode')
+            last_header = row_text
         elif skip_header:
             print('(skip header)', row_text, file=sys.stderr)
         elif row.xpath('td'):
-            if len(row_text) == 7:
+            row = None
+            if len(row_text) == 3:
+                # Per-detector additional information
+                # TODO: grab missing information
+                if last_header == ['Parameter index variable', 'EPICS record name', 'Description']:
+                    if row_text[1].startswith('$(P)$(R)'):
+                        fake_row = [row_text[0],
+                                    '',
+                                    '',
+                                    row_text[2],
+                                    '',
+                                    row_text[1],
+                                    '']
+                        row = DocRow(fake_row)
+
+            elif len(row_text) == 7:
                 row = DocRow(row_text)
+
+            if row is not None:
                 if row.is_valid:
                     if list(row) not in past_rows and row.record[0] not in past_rows:
                         ret.append(row)
