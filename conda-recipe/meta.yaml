@@ -43,6 +43,7 @@ test:
   imports:
     - ophyd
     - ophyd.controls
+    - ophyd.controls.areadetector
     - ophyd.runengine
     - ophyd.session
     - ophyd.userapi
