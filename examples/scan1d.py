@@ -1,5 +1,6 @@
 from ophyd.runengine import RunEngine
 
+run_eng = RunEngine(None)
 
 ''' Assumes detector params (dwell time, etc) have been 
     previously configured.
@@ -20,5 +21,4 @@ def scan1d(run_id, detectors=[], triggers=[], motors=[], paths=[], settle_time=N
     
     scan_args['settle_time'] = settle_time
 
-    engine = RunEngine(None)
-    engine.start_run(run_id, scan_args=scan_args)
+    run_eng.start_run(run_id, scan_args=scan_args)
