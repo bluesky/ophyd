@@ -6,7 +6,7 @@ import time
 
 from ..session import register_object
 
-#from databroker.api import data_collection
+from databroker.api import data_collection
 
 
 
