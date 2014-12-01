@@ -68,6 +68,8 @@ class Signal(object):
             return 'Signal(alias=%s, readback=%s)' % \
                 (self._alias, self.readback)
 
+    __repr__ = __str__
+
     def _run_sub(self, *args, **kwargs):
         '''
         Run a set of callback subscriptions
@@ -305,8 +307,11 @@ class EpicsSignal(Signal):
             return None
 
     def __str__(self):
-        return 'EpicsSignal(alias={0}, read_pv={1}, write_pv={2})'.format(
-            self._alias, self._read_pv, self._write_pv)
+        return 'EpicsSignal(value={0}, read_pv={1}, write_pv={2})'.format(
+            self.value, self._read_pv, self._write_pv)
+
+    __repr__ = __str__
+    
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
