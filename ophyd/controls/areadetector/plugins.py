@@ -58,10 +58,10 @@ class PluginBase(NDArrayDriver):
 
         return pixels
 
-    _array_size0 = ADSignal('ArraySize0_RBV', rw=False)
-    _array_size1 = ADSignal('ArraySize1_RBV', rw=False)
-    _array_size2 = ADSignal('ArraySize2_RBV', rw=False)
-    array_size = ADSignalGroup(_array_size0, _array_size1, _array_size2)
+    width = ADSignal('ArraySize0_RBV', rw=False)
+    height = ADSignal('ArraySize1_RBV', rw=False)
+    depth = ADSignal('ArraySize2_RBV', rw=False)
+    array_size = ADSignalGroup(height, width, depth)
 
     bayer_pattern = ADSignal('BayerPattern_RBV', rw=False)
     blocking_callbacks = ADSignal('BlockingCallbacks', has_rbv=True)
@@ -308,13 +308,13 @@ class Overlay(ADBase):
     green = ADSignal('Green', has_rbv=True)
     max_size_x = ADSignal('MaxSizeX')
     max_size_y = ADSignal('MaxSizeY')
-    name = ADSignal('Name', has_rbv=True)
+    overlay_portname = ADSignal('Name', has_rbv=True)
 
     position_x = ADSignal('PositionX', has_rbv=True)
     position_y = ADSignal('PositionY', has_rbv=True)
 
-    position_xl_ink = ADSignal('PositionXLink')
-    position_yl_ink = ADSignal('PositionYLink')
+    position_xlink = ADSignal('PositionXLink')
+    position_ylink = ADSignal('PositionYLink')
 
     red = ADSignal('Red', has_rbv=True)
     set_xhopr = ADSignal('SetXHOPR')
@@ -324,8 +324,8 @@ class Overlay(ADBase):
     size_x = ADSignal('SizeX', has_rbv=True)
     size_y = ADSignal('SizeY', has_rbv=True)
 
-    size_xl_ink = ADSignal('SizeXLink')
-    size_yl_ink = ADSignal('SizeYLink')
+    size_xlink = ADSignal('SizeXLink')
+    size_ylink = ADSignal('SizeYLink')
     use = ADSignal('Use', has_rbv=True)
 
 
@@ -425,10 +425,10 @@ class ROIPlugin(PluginBase):
     size = ADSignalGroup(_size_x, _size_y, _size_z,
                          doc='Size of the ROI in the X, Y, Z dimensions')
 
-    _size_x_link = ADSignal('SizeXLink')
-    _size_y_link = ADSignal('SizeYLink')
+    _size_xlink = ADSignal('SizeXLink')
+    _size_ylink = ADSignal('SizeYLink')
 
-    size_link = ADSignalGroup(_size_x_link, _size_y_link)
+    size_link = ADSignalGroup(_size_xlink, _size_ylink)
 
 
 class TransformPlugin(PluginBase):
@@ -436,10 +436,10 @@ class TransformPlugin(PluginBase):
     _suffix_re = 'Trans\d:'
     _html_docs = ['NDPluginTransform.html']
 
-    _array_size0 = ADSignal('ArraySize0', has_rbv=True)
-    _array_size1 = ADSignal('ArraySize1', has_rbv=True)
-    _array_size2 = ADSignal('ArraySize2', has_rbv=True)
-    array_size = ADSignalGroup(_array_size0, _array_size1, _array_size2)
+    width = ADSignal('ArraySize0', has_rbv=True)
+    height = ADSignal('ArraySize1', has_rbv=True)
+    depth = ADSignal('ArraySize2', has_rbv=True)
+    array_size = ADSignalGroup(height, width, depth)
 
     name_ = ADSignal('Name')
     origin_location = ADSignal('OriginLocation', has_rbv=True)
