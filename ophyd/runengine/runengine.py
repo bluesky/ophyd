@@ -104,6 +104,7 @@ class RunEngine(object):
         evdesc = kwargs.get('event_descriptor')
         dets = kwargs.get('detectors')
         trigs = kwargs.get('triggers')
+        data = kwargs.get('data')
 
         seqno = 0
         while self._scan_state is True:
@@ -133,8 +134,11 @@ class RunEngine(object):
                                               data=detvals)
             data_collection.write_to_event_PV(event)
             seqno += 1
+            #update the 'data' object from detvals dict
+            for k,v in detvals.iteritems():
+                data[k].append(v)
         self._scan_state = False
-        return
+        return 
 
     def _get_data_keys(self, **kwargs):
         #ATM, these are both lists
@@ -150,6 +154,7 @@ class RunEngine(object):
         header = data_collection.create_run_header(scan_id=runid)
         #header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
+        data = {k:[] for k in keys}
         print('keys = %s'%keys)
         #event_descriptor = {'a': 1, 'b':2}
         event_descriptor = data_collection.create_event_descriptor(
@@ -158,6 +163,7 @@ class RunEngine(object):
         if scan_args is not None:
             scan_args['header'] = header
             scan_args['event_descriptor'] = event_descriptor
+            scan_args['data'] = data
         #write the header and event_descriptor to the header PV
         data_collection.write_to_hdr_PV(header, event_descriptor)
 
@@ -177,3 +183,4 @@ class RunEngine(object):
             self._scan_thread.join()
 
         self._end_run(end_args)
+        return data
