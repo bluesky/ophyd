@@ -5,11 +5,7 @@ from Queue import Queue
 import time
 
 from ..session import register_object
-
-try:
-    from databroker.api import data_collection
-except ImportError:
-    data_collection = None
+from databroker.api import data_collection
 
 
 class Demuxer(object):

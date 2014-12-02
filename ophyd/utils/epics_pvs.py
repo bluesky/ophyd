@@ -96,7 +96,6 @@ def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
 
 
 class MonitorDispatcher(epics.ca.CAThread):
-    # TODO this needs to be setup by the session manager.
     def __init__(self, all_contexts=False, timeout=0.1,
                  callback_logger=None):
         '''
