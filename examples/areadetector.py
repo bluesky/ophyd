@@ -115,7 +115,7 @@ def test():
     over1 = OverlayPlugin(det1_prefix, suffix=overlay_suffix,
                           count=over_count, first_overlay=over_start)
 
-    logger.debug('Overlay1:1 name=%s' % over1.overlays[0].name.value)
+    logger.debug('Overlay1:1 blue=%s' % over1.overlays[0].blue)
     return proc1, over1
 
 
