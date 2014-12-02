@@ -7,6 +7,8 @@ run_eng = RunEngine(None)
 
     Also assumes that ophyd.runengine.RunEngine exists in the 
     IPython namespace.
+
+    Returns a dict of {'data_key': [value1,value2,...],}
 '''
 def scan1d(run_id, detectors=[], triggers=[], motors=[], paths=[], settle_time=None):
     scan_args = {}
@@ -21,4 +23,4 @@ def scan1d(run_id, detectors=[], triggers=[], motors=[], paths=[], settle_time=N
     
     scan_args['settle_time'] = settle_time
 
-    run_eng.start_run(run_id, scan_args=scan_args)
+    return run_eng.start_run(run_id, scan_args=scan_args)
