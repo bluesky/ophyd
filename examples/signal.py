@@ -4,6 +4,7 @@ A simple test for :class:`EpicsSignal`
 '''
 
 import time
+# import threading
 
 import config
 from ophyd.controls import EpicsSignal
@@ -12,6 +13,7 @@ from ophyd.utils.epics_pvs import record_field
 
 def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
+        # logger.info('[callback] thread=%s' % threading.currentThread())
         logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
 
         # Test that the monitor dispatcher works (there is an implicit
