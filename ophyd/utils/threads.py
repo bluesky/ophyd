@@ -97,9 +97,9 @@ class ThreadFunnel(object):
         self._thread_class = FThread
         self._logger = logger
         self._initialized = False
+        self._locked = False
 
         if single_thread:
-            self.add_event = self._add_single_event
             self.add_category('main', **kwargs)
         else:
             self.add_event = self._add_category_event
@@ -169,6 +169,8 @@ class ThreadFunnel(object):
             raise KeyError('Invalid FThread category "%s"' % category)
 
         ft.queue.put((fcn, args, kwargs))
+
+    add_event = _add_single_event
 
     @property
     def threads(self):
