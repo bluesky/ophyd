@@ -3,6 +3,8 @@ import config
 import numpy as np
 
 from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
+from ophyd.controls import SimDetector
+
 from scan1d import scan1d
 #from examples.dumb_scan import simple_scan
 
@@ -29,3 +31,37 @@ sca = EpicsScaler('XF:23ID2-ES{Sclr:1}', name='sca')
 m1.set_trajectory(np.linspace(-1,2,10))
 m2.set_trajectory(np.linspace(-1,2,10))
 
+# initialize Positioner for Mono Energy
+args = ('XF:23ID1-OP{Mono}Enrgy-SP',
+        {'readback': 'XF:23ID1-OP{Mono}Enrgy-I',
+        'stop': 'XF:23ID1-OP{Mono}Cmd:Stop-Cmd',
+        'stop_val': 1,
+        'done': 'XF:23ID1-OP{Mono}Sts:Move-Sts',
+        'done_val': 0,
+        'name': 'pgm_energy'
+        })
+pgm_energy = PVPositioner(args[0], **args[1])
+
+# initialize M1A virtual axes Positioner
+args = ('XF:23IDA-OP:1{Mir:1-Ax:Z}Mtr_POS_SP',
+        {'readback': 'XF:23IDA-OP:1{Mir:1-Ax:Z}Mtr_MON',
+         'act': 'XF:23IDA-OP:1{Mir:1}MOVE_CMD.PROC',
+         'act_val': 1,
+         'stop': 'XF:23IDA-OP:1{Mir:1}STOP_CMD.PROC',
+         'stop_val': 1,
+         'done': 'XF:23IDA-OP:1{Mir:1}BUSY_STS',
+         'done_val': 0,
+         'name': 'm1a_z',
+        })
+m1a_z = PVPositioner(args[0], **args[1])
+
+# AreaDetector crud
+simdet = SimDetector(config.sim_areadetector[0]['prefix'])
+# For now, access as simple 'signals'
+simdet_acq = EpicsSignal('XF:31IDA-BI{Cam:Tbl}cam1:Acquire_RBV',
+                         write_pv='XF:31IDA-BI{Cam:Tbl}cam1:Acquire',
+                         rw=True, name='simdet_acq')
+simdet_filename = EpicsSignal('XF:31IDA-BI{Cam:Tbl}TIFF1:FullFileName_RBV',
+                                rw=False, string=True, name='simdet_filename')
+simdet_intensity = EpicsSignal('XF:31IDA-BI{Cam:Tbl}Stats5:Total_RBV',
+                                rw=False, name='simdet_intensity')

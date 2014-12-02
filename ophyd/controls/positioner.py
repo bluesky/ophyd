@@ -374,7 +374,7 @@ class PVPositioner(Positioner):
         logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
                                                 self._act_val))
         if self._actuate is not None:
-            self._actuate._set_request(position, wait=False)
+            self._actuate._set_request(self._act_val, wait=False)
             logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
                                                  self._act_val))
 
