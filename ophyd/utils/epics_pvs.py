@@ -10,13 +10,13 @@
 
 from __future__ import print_function
 import ctypes
-import threading
-import Queue as queue
 import warnings
+import threading
 
 import epics
 
 from . import errors
+from . import threads
 from .decorators import cached_retval
 
 __all__ = ['split_record_field',
@@ -95,9 +95,8 @@ def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
     return True
 
 
-class MonitorDispatcher(epics.ca.CAThread):
-    def __init__(self, all_contexts=False, timeout=0.1,
-                 callback_logger=None):
+class MonitorDispatcher(threads.ThreadFunnel):
+    def __init__(self, *args, **kwargs):
         '''
         The monitor dispatcher works around having callbacks from libca threads.
         Using epics CA calls (caget, caput, etc.) from those callbacks is not possible
@@ -110,47 +109,53 @@ class MonitorDispatcher(epics.ca.CAThread):
             main thread
 
         :param all_contexts: re-route _all_ callbacks from _any_ context to
-            the dispatcher callback thread [default: False]
+            the dispatcher callback thread(s) [default: False]
+        :param single_thread: only use one thread [default: False]
 
         '''
-        epics.ca.CAThread.__init__(self, name='monitor_dispatcher')
+        all_contexts = kwargs.pop('all_contexts', False)
+        single_thread = kwargs.get('single_thread', False)
 
-        self.daemon = True
-        self.queue = queue.Queue()
-
-        # The dispatcher thread will stop if this event is set
-        self._stop_event = threading.Event()
         self.main_context = epics.ca.current_context()
-        self.callback_logger = callback_logger
+        self.all_contexts = bool(all_contexts)
+        self.single_thread = bool(single_thread)
 
-        self._all_contexts = bool(all_contexts)
-        self._timeout = timeout
+        threads.ThreadFunnel.__init__(self, *args, name='MonitorDispatch',
+                                      single_thread=single_thread, **kwargs)
 
-    def run(self):
+        self.setup()
+
+    def _tag_args(self, args):
         '''
-        The dispatcher itself
+        Mark the PyEpics monitor callback arguments to be handled by the
+        dispatcher
         '''
-        self._setup_pyepics(True)
+        if not callable(args.usr):
+            # Not a callback
+            return
+        elif hasattr(args.usr, '_disp_tag') and args.usr._disp_tag is self:
+            # Already tagged with this dispatcher. No need to do it again.
+            return
 
-        while not self._stop_event.is_set():
-            try:
-                callback, args, kwargs = self.queue.get(True, self._timeout)
-            except queue.Empty:
-                pass
-            else:
-                try:
-                    callback(*args, **kwargs)
-                except Exception as ex:
-                    if self.callback_logger is not None:
-                        self.callback_logger.error(ex, exc_info=ex)
+        if self.single_thread:
+            args.usr = lambda orig_cb=args.usr, **kwargs: \
+                self.add_event(orig_cb, **kwargs)
+        else:
+            thread = threading.currentThread()
+            cat = 'Epics%s' % (thread.ident, )
+            if cat not in self._categories:
+                # Dynamically add categories
+                self.add_category(cat)
 
-        self._setup_pyepics(False)
+            args.usr = lambda cat=cat, orig_cb=args.usr, **kwargs: \
+                self.add_event(cat, orig_cb, **kwargs)
+        args.usr._disp_tag = self
 
-    def stop(self):
-        '''
-        Stop the dispatcher thread and re-enable normal callbacks
-        '''
-        self._stop_event.set()
+    def _monitor_event(self, args):
+        if self.all_contexts or self.main_context == epics.ca.current_context():
+            self._tag_args(args)
+
+        return epics.ca._onMonitorEvent(args)
 
     def _setup_pyepics(self, enable):
         # Re-route monitor events to our new handler
@@ -161,15 +166,14 @@ class MonitorDispatcher(epics.ca.CAThread):
 
         epics.ca._CB_EVENT = ctypes.CFUNCTYPE(None, epics.dbr.event_handler_args)(fcn)
 
-    def _monitor_event(self, args):
-        if self.all_contexts or self.main_context == epics.ca.current_context():
-            if callable(args.usr):
-                if not hasattr(args.usr, '_disp_tag') or args.usr._disp_tag is not self:
-                    args.usr = lambda orig_cb=args.usr, **kwargs: \
-                        self.queue.put((orig_cb, [], kwargs))
-                    args.usr._disp_tag = self
+    def setup(self):
+        if not self._initialized:
+            self._setup_pyepics(True)
+            self._initialized = True
 
-        return epics.ca._onMonitorEvent(args)
+    def teardown(self):
+        if self._initialized:
+            self._setup_pyepics(False)
 
 
 def waveform_to_string(value, type_=str, delim=''):

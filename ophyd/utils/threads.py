@@ -71,7 +71,7 @@ class FThread(epics.ca.CAThread):
 class ThreadFunnel(object):
     def __init__(self, logger=None, name='thread_funnel',
                  categories=None, timeout=0.1, thread_class=FThread,
-                 single_thread=False, **kwargs):
+                 single_thread=False, locked=False, **kwargs):
         '''
         Funnels all events that are queued into the single "funnel" thread
         (or optionally multiple threads identified by name).
@@ -83,6 +83,7 @@ class ThreadFunnel(object):
         :param bool single_thread: If set, only one category is used (and one thread).
         :param class thread_class: The class to use for the threads
         :param dict kwargs: Keyword arguments to pass to add_category()
+        :param bool locked: Lock categories after initialization
 
         .. note:: categories is ignored if single_thread is set.
         '''
@@ -95,18 +96,26 @@ class ThreadFunnel(object):
         self._categories = {}
         self._thread_class = FThread
         self._logger = logger
+        self._initialized = False
 
         if single_thread:
             self.add_event = self._add_single_event
             self.add_category('main', **kwargs)
         else:
             self.add_event = self._add_category_event
-            for category in categories:
-                self.add_category(category, **kwargs)
+            if categories is not None:
+                for category in categories:
+                    self.add_category(category, **kwargs)
+
+        self._locked = bool(locked)
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def locked(self):
+        return self._locked
 
     @property
     def categories(self):
@@ -120,6 +129,8 @@ class ThreadFunnel(object):
     def add_category(self, name, class_=None, start=True, **kwargs):
         if name in self._categories:
             raise ValueError('Category already exists')
+        elif self._locked:
+            raise RuntimeError('Categories locked')
 
         if class_ is None:
             class_ = self._thread_class
@@ -129,6 +140,10 @@ class ThreadFunnel(object):
                         timeout=self._timeout,
                         logger=self._logger,
                         **kwargs)
+
+        if not self._initialized:
+            self.setup()
+            self._initialized = True
 
         if start:
             thread.start()
@@ -141,6 +156,8 @@ class ThreadFunnel(object):
         Stop the dispatcher thread and re-enable normal callbacks
         '''
         self._stop_event.set()
+        self._initialized = False
+        self.teardown()
 
     def _add_single_event(self, fcn, *args, **kwargs):
         self._add_category_event('main', fcn, *args, **kwargs)
@@ -162,6 +179,12 @@ class ThreadFunnel(object):
 
         for thread in self.threads:
             thread.join(timeout)
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass
 
 
 def test():
