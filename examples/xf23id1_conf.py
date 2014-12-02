@@ -65,11 +65,11 @@ args = ('XF:23IDA-OP:1{Mir:1-Ax:Z}Mtr_POS_SP',
 m1a_z = PVPositioner(args[0], **args[1])
 
 # AreaDetector Beam Instrumentation
-diag3_cam = ProsilicaDetector('XF:23ID1-BI{Diag:3-Cam:1}')
+# diag3_cam = ProsilicaDetector('XF:23ID1-BI{Diag:3-Cam:1}')
 # For now, access as simple 'signals'
-#simdet_acq = EpicsSignal('XF:31IDA-BI{Cam:Tbl}cam1:Acquire_RBV',
-#                         write_pv='XF:31IDA-BI{Cam:Tbl}cam1:Acquire',
-#                         rw=True, name='simdet_acq')
+diag3_cam = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}cam1:Acquire_RBV',
+                         write_pv='XF:23ID1-BI{Diag:3-Cam:1}cam1:Acquire')
+                         rw=True, name='diag3_cam_trigger')
 #simdet_filename = EpicsSignal('XF:31IDA-BI{Cam:Tbl}TIFF1:FullFileName_RBV',
 #                                rw=False, string=True, name='simdet_filename')
 diag3_tot5 = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}Stats5:Total_RBV'
