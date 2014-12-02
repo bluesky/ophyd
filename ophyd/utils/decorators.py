@@ -1,3 +1,13 @@
+# vi: ts=4 sw=4 sts=4 expandtab
+'''
+:mod:`ophyd.utils.decorators` - Useful decorators
+=================================================
+
+.. module:: ophyd.utils.decorators
+   :synopsis:
+
+'''
+
 import functools
 
 

@@ -1,9 +1,18 @@
+# vi: ts=4 sw=4 sts=4 expandtab
+'''
+:mod:`ophyd.utils.epics_pvs` - EPICS-related utilities
+======================================================
+
+.. module:: ophyd.utils.epics_pvs
+   :synopsis:
+
+'''
+
 from __future__ import print_function
 import ctypes
 import threading
 import Queue as queue
 import warnings
-import re
 
 import epics
 
