@@ -70,7 +70,8 @@ def setup_loggers(logger_names, fmt=LOG_FORMAT):
         logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG)
 
-        handler = logging.StreamHandler(sys.stdout)
+        #handler = logging.StreamHandler(sys.stdout)
+        handler = logging.FileHandler('/tmp/ophyd.log')
         handler.setFormatter(fmt)
         logger.addHandler(handler)
 

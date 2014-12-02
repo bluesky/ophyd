@@ -68,9 +68,11 @@ m1a_z = PVPositioner(args[0], **args[1])
 # diag3_cam = ProsilicaDetector('XF:23ID1-BI{Diag:3-Cam:1}')
 # For now, access as simple 'signals'
 diag3_cam = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}cam1:Acquire_RBV',
-                         write_pv='XF:23ID1-BI{Diag:3-Cam:1}cam1:Acquire')
+                         write_pv='XF:23ID1-BI{Diag:3-Cam:1}cam1:Acquire',
                          rw=True, name='diag3_cam_trigger')
 #simdet_filename = EpicsSignal('XF:31IDA-BI{Cam:Tbl}TIFF1:FullFileName_RBV',
 #                                rw=False, string=True, name='simdet_filename')
-diag3_tot5 = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}Stats5:Total_RBV'
-                                rw=False, name='diag3_tot5)
+diag3_tot1 = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}Stats1:Total_RBV',
+                                rw=False, name='diag3_tot1')
+diag3_tot5 = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}Stats5:Total_RBV',
+                                rw=False, name='diag3_tot5')
