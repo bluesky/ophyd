@@ -21,6 +21,8 @@ slt2_yc = EpicsMotor('XF:23ID1-OP{Slt:2-Ax:YCtr}Mtr', name='slt2_yc')
 slt3_x = EpicsMotor('XF:23ID1-OP{Slt:3-Ax:X}Mtr', name='slt3_x')
 slt3_y = EpicsMotor('XF:23ID1-OP{Slt:3-Ax:Y}Mtr', name='slt3_y')
 
+diag5_y = EpicsMotor('XF:23ID1-BI{Diag:5-Ax:Y}Mtr', name='diag5_y')
+
 #m1 = EpicsMotor(config.motor_recs[0], name='m1')
 #m2 = EpicsMotor(config.motor_recs[1], name='m2')
 #fm = config.fake_motors[0]
@@ -33,12 +35,9 @@ slt3_y = EpicsMotor('XF:23ID1-OP{Slt:3-Ax:Y}Mtr', name='slt3_y')
 #                       name='m7'
 #                       )
 
-#sclr_trig = EpicsSignal('XF:23ID2-ES{Sclr:1}.CNT', rw=True, name='sclr_trig')
-#sclr_ch1 = EpicsSignal('XF:23ID2-ES{Sclr:1}.S1', rw=False, name='sclr_ch1')
+sclr_trig = EpicsSignal('XF:23ID1-ES{Sclr:1}.CNT', rw=True, name='sclr_trig')
+sclr_ch1 = EpicsSignal('XF:23ID1-ES{Sclr:1}.S6', rw=False, name='sclr_ch6')
 #sca = EpicsScaler('XF:23ID2-ES{Sclr:1}', name='sca')
-#
-#m1.set_trajectory(np.linspace(-1,2,10))
-#m2.set_trajectory(np.linspace(-1,2,10))
 #
 # initialize Positioner for Mono Energy
 args = ('XF:23ID1-OP{Mono}Enrgy-SP',
@@ -76,3 +75,14 @@ diag3_tot1 = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}Stats1:Total_RBV',
                                 rw=False, name='diag3_tot1')
 diag3_tot5 = EpicsSignal('XF:23ID1-BI{Diag:3-Cam:1}Stats5:Total_RBV',
                                 rw=False, name='diag3_tot5')
+pimte_cam = EpicsSignal('XF:23ID1-ES{Dif-Cam:PIMTE}cam1:Acquire_RBV',
+                         write_pv='XF:23ID1-ES{Dif-Cam:PIMTE}cam1:Acquire',
+                         rw=True, name='pimte_cam_trigger')
+#simdet_filename = EpicsSignal('XF:31IDA-ES{Cam:Tbl}TIFF1:FullFileName_RBV',
+#                                rw=False, string=True, name='simdet_filename')
+pimte_tot1 = EpicsSignal('XF:23ID1-ES{Dif-Cam:PIMTE}Stats1:Total_RBV',
+                                rw=False, name='pimte_tot1')
+pimte_tot4 = EpicsSignal('XF:23ID1-ES{Dif-Cam:PIMTE}Stats4:Total_RBV',
+                                rw=False, name='pimte_tot4')
+pimte_tot5 = EpicsSignal('XF:23ID1-ES{Dif-Cam:PIMTE}Stats5:Total_RBV',
+                                rw=False, name='pimte_tot5')
