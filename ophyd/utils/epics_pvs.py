@@ -61,7 +61,7 @@ def record_field(record, field):
 
 def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
                 reason_field=None, reason_pv=None,
-                min_severity=errors.EPICS_SEV_MINOR):
+                min_severity=errors.MinorAlarmError.severity):
     """
     Raise an exception if an alarm is set
 
