@@ -146,13 +146,18 @@ class ADSignal(object):
         try:
             return obj._ad_signals[pv]
         except KeyError:
+            base_name = obj.name
+            full_name = '%s.%s' % (base_name, name_from_pv(pv))
+
             read_ = write = ''.join([obj._prefix, pv])
+
             if self.has_rbv:
                 read_ += '_RBV'
             else:
                 write = None
 
             signal = EpicsSignal(read_, write_pv=write,
+                                 name=full_name,
                                  **self.kwargs)
 
             obj._ad_signals[pv] = signal

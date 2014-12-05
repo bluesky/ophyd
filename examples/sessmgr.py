@@ -12,4 +12,5 @@ sca = EpicsScaler(config.scalers[0], name='sca')
 
 from ophyd.controls import SimDetector
 
-simdet = SimDetector('XF:31IDA-BI{Cam:Tbl}')
+simdet = SimDetector('XF:31IDA-BI{Cam:Tbl}',
+                     name='simdet')
