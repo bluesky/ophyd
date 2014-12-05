@@ -207,6 +207,15 @@ class EpicsMotor(Positioner):
         self._done_move.subscribe(self._move_changed)
         self._user_readback.subscribe(self._pos_changed)
 
+    @property
+    def moving(self):
+        '''
+        whether or not the motor is moving
+
+        :returns: bool
+        '''
+        return bool(self._is_moving._get_readback(use_monitor=False))
+ 
     def stop(self):
         self._stop._set_request(1, wait=False)
 
