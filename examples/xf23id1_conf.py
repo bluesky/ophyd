@@ -3,7 +3,7 @@ import numpy as np
 from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
 from ophyd.controls import SimDetector
 from ophyd.controls import ProsilicaDetector
-
+from ophyd.userapi import *
 from scan1d import scan1d
 
 # Slits 
