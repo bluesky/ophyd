@@ -18,7 +18,7 @@ from epics import caget, caput
 # Global Defs of certain strings
 
 STRING_FMT = '^14'
-VALUE_FMT  = '^-14f'
+VALUE_FMT  = '^ 14f'
 
 def _list_of(value, type_=str):
   """Return a list of types defined by type_""" 
@@ -60,12 +60,11 @@ def _ensure_positioner_pair(func):
     return func(pos, val, *args, **kwargs)
   return inner
 
-def _ensure_positioner_pair2(func):
-  def inner(positioner, position1, position2, *args, **kwargs):
+def _ensure_positioner_tuple(func):
+  def inner(positioner, tup, *args, **kwargs):
     pos = _list_of(positioner, Positioner)
-    val1 = _list_of(position1, (float, int))
-    val2 = _list_of(position2, (float, int))
-    return func(pos, val1, val2, *args, **kwargs)
+    t = _list_of(tup, (tuple, list))
+    return func(pos, t, *args, **kwargs)
   return inner
 
 def _ensure_positioner(func):
@@ -105,6 +104,7 @@ def mov(positioner, position, quiet = False):
         for p in positioner:
           _print_value(p.position)
         print('', end = '\r')
+      time.sleep(0.01)
       moving = any([p.moving for p in positioner])
       if not moving:
         flag += 1
@@ -137,14 +137,13 @@ def movr(positioner, position):
   _new_val = [a + b for a,b in zip(_start_val, position)] 
   mov(positioner, _new_val)
 
-@_ensure_positioner_pair2
-def set_lm(positioner, pve_limit, nve_limit):
+@_ensure_positioner
+def set_lm(positioner, limits):
   """Set the positioner limits
 
   Note : Currently this only works for EpicsMotor instances
   :param positioner: A single positioner or a collection of positioners to move
-  :param pve_limits: A single value or a collection of values.
-  :param nve_limits: A single value or a collection of values.
+  :param limits: A single tupple or a collection of tuples for the form (+ve, -ve) limits.
 
   """
 
@@ -153,16 +152,17 @@ def set_lm(positioner, pve_limit, nve_limit):
   for p in positioner:
     if not isinstance(p, EpicsMotor): 
       raise ValueError("Positioners must be EpicsMotors to set limits")
-  for p,lim1,lim2 in zip(positioner, pve_limit, nve_limit):
-    if lim1:
-      if not caput(p._record + ".HLM", lim1):
-        raise Exception("Unable to set limits for %s", p.name)
-      print("Upper limit set to {:{fmt}} for positioner {}".format(lim1, p.name, fmt = VALUE_FMT))
+  
+  for p,lim in zip(positioner, limits):
+    lim1 = max(lim)
+    lim2 = min(lim)
+    if not caput(p._record + ".HLM", lim1):
+      raise Exception("Unable to set limits for %s", p.name)
+    print("Upper limit set to {:{fmt}} for positioner {}".format(lim1, p.name, fmt = VALUE_FMT))
 
-    if lim2:
-      if not caput(p._record + ".LLM", lim2):
-        raise Exception("Unable to set limits for %s", p.name)
-      print("Lower limit set to {:{fmt}} for positioner {}".format(lim2, p.name, fmt = VALUE_FMT))
+    if not caput(p._record + ".LLM", lim2):
+      raise Exception("Unable to set limits for %s", p.name)
+    print("Lower limit set to {:{fmt}} for positioner {}".format(lim2, p.name, fmt = VALUE_FMT))
 
 
 @_ensure_positioner_pair
