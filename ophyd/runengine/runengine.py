@@ -6,8 +6,10 @@ import time
 
 from ..session import register_object
 
-from databroker.api import data_collection
-
+try:
+    from databroker.api import data_collection
+except ImportError:
+    data_collection = None
 
 
 class Demuxer(object):
@@ -95,7 +97,7 @@ class RunEngine(object):
         #return {pos.name: pos.position for pos in positioners}
         ret = {}
         [ret.update({pos.name: pos.position}) for pos in positioners]
-            
+
         return ret
 
     def _start_scan(self, **kwargs):
@@ -138,13 +140,13 @@ class RunEngine(object):
             for k,v in detvals.iteritems():
                 data[k].append(v)
         self._scan_state = False
-        return 
+        return
 
     def _get_data_keys(self, **kwargs):
         #ATM, these are both lists
         pos = kwargs.get('positioners')
         det = kwargs.get('detectors')
-        
+
         objs = pos + det
 
         return [o.name for o in objs]
@@ -169,7 +171,7 @@ class RunEngine(object):
 
         self._begin_run(begin_args)
 
-        self._scan_thread = Thread(target=self._start_scan, 
+        self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
                                    kwargs=scan_args)
         self._scan_thread.daemon = True

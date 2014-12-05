@@ -53,7 +53,7 @@ def register_object(obj, set_vars=True):
 
 def setup_epics():
     def stop_dispatcher():
-        dispatcher.stop_event.set()
+        dispatcher.stop()
 
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very

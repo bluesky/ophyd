@@ -26,7 +26,7 @@ def setup_epics():
     from ophyd.utils.epics_pvs import MonitorDispatcher
 
     def stop_dispatcher():
-        dispatcher.stop_event.set()
+        dispatcher.stop()
 
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very

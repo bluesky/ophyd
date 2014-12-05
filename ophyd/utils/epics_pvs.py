@@ -1,9 +1,18 @@
+# vi: ts=4 sw=4 sts=4 expandtab
+'''
+:mod:`ophyd.utils.epics_pvs` - EPICS-related utilities
+======================================================
+
+.. module:: ophyd.utils.epics_pvs
+   :synopsis:
+
+'''
+
 from __future__ import print_function
 import ctypes
 import threading
 import Queue as queue
 import warnings
-import re
 
 import epics
 
@@ -111,7 +120,7 @@ class MonitorDispatcher(epics.ca.CAThread):
         self.queue = queue.Queue()
 
         # The dispatcher thread will stop if this event is set
-        self.stop_event = threading.Event()
+        self._stop_event = threading.Event()
         self.main_context = epics.ca.current_context()
         self.callback_logger = callback_logger
 
@@ -124,7 +133,7 @@ class MonitorDispatcher(epics.ca.CAThread):
         '''
         self._setup_pyepics(True)
 
-        while not self.stop_event.is_set():
+        while not self._stop_event.is_set():
             try:
                 callback, args, kwargs = self.queue.get(True, self._timeout)
             except queue.Empty:

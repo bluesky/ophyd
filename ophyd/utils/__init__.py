@@ -1,5 +1,10 @@
-
+# vi: ts=4 sw=4 sts=4 expandtab
 '''
+:mod:`ophyd.utils` - Miscellaneous utility functions
+====================================================
+
+.. module:: ophyd.utils
+   :synopsis:
 
 '''
 
