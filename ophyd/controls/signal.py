@@ -22,10 +22,10 @@ from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
 logger = logging.getLogger(__name__)
 
 
-class Subscriptions(object):
+class OphydObject(object):
     _default_sub = None
 
-    def __init__(self):
+    def __init__(self, name, alias):
         '''
         Subscription/callback mechanism for registered objects in ophyd sessions.
         '''
@@ -34,6 +34,8 @@ class Subscriptions(object):
                           if sub.startswith('SUB_'))
         self._sub_cache = {}
         self._ses_logger = None
+        self._name = name
+        self._alias = alias
 
     def _run_sub(self, cb, *args, **kwargs):
         '''
@@ -92,7 +94,7 @@ class Subscriptions(object):
         '''
         Subscribe to events this signal group emits
 
-        See also :func:`Subscriptions.clear_sub`
+        See also :func:`clear_sub`
 
         :param callable cb: A callable function (that takes kwargs)
             to be run when the event is generated
@@ -113,7 +115,7 @@ class Subscriptions(object):
         '''
         Remove a subscription, given the original callback function
 
-        See also :func:`Subscriptions.subscribe`
+        See also :func:`subscribe`
 
         :param callable callback: The callback
         :param event_type: The event to unsubscribe from (if None, removes it
@@ -129,8 +131,25 @@ class Subscriptions(object):
         else:
             self._subs[event_type].remove(cb)
 
+    def register(self):
+        '''
+        Register this object with the session
+        '''
+        register_object(self)
 
-class Signal(Subscriptions):
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def alias(self):
+        '''
+        An alternative name for the signal
+        '''
+        return self._alias
+
+
+class Signal(OphydObject):
     '''
     This class represents a signal, which can potentially be a read-write
     or read-only value.
@@ -150,12 +169,10 @@ class Signal(Subscriptions):
         '''
 
         self._default_sub = self.SUB_READBACK
-        Subscriptions.__init__(self)
+        OphydObject.__init__(self, name, alias)
 
-        self._alias = alias
         self._request = None
         self._readback = None
-        self._name = name
 
         self._separate_readback = separate_readback
 
@@ -170,17 +187,6 @@ class Signal(Subscriptions):
                 (self._alias, self.readback)
 
     __repr__ = __str__
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def alias(self):
-        '''
-        An alternative name for the signal
-        '''
-        return self._alias
 
     # - Request value
     def _get_request(self):
@@ -472,7 +478,7 @@ class EpicsSignal(Signal):
 
 # TODO uniform interface to Signal and SignalGroup
 
-class SignalGroup(Subscriptions):
+class SignalGroup(OphydObject):
     def __init__(self, name='none', alias=None, **kwargs):
         '''
         Create a group or collection of related signals
@@ -480,24 +486,11 @@ class SignalGroup(Subscriptions):
         :param alias: An alternative name for the signal group
         '''
 
-        Subscriptions.__init__(self)
+        OphydObject.__init__(self, name=name, alias=alias)
 
         self._signals = []
-        self._alias = alias
-        self._name = name
 
-        register_object(self)
-
-    @property
-    def alias(self):
-        '''
-        An alternative name for the signal
-        '''
-        return self._alias
-
-    @property
-    def name(self):
-        return self._name
+        self._register()
 
     def add_signal(self, signal, prop_name=None):
         '''
