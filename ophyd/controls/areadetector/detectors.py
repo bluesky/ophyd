@@ -17,6 +17,7 @@ import time
 import re
 import sys
 
+from ..ophydobj import OphydObject
 from ..signal import (Signal, EpicsSignal, SignalGroup)
 from . import docs
 
@@ -149,9 +150,6 @@ class ADSignal(object):
 
             obj._ad_signals[pv] = signal
 
-            # TODO: ADBase doesn't really play well with SignalGroup
-            obj._signals.append(signal)
-
             if self.doc is not None:
                 signal.__doc__ = self.doc
             else:
@@ -167,7 +165,7 @@ class ADSignal(object):
         signal.value = value
 
 
-class ADBase(SignalGroup):
+class ADBase(OphydObject):
     _html_docs = ['areaDetectorDoc.html']
 
     @classmethod
@@ -266,7 +264,10 @@ class ADBase(SignalGroup):
         return self.__sig_dict
 
     def __init__(self, prefix, **kwargs):
-        SignalGroup.__init__(self, **kwargs)
+        name = kwargs.get('name', 'None')
+        alias = kwargs.get('name', 'None')
+
+        OphydObject.__init__(self, name, alias)
 
         self._prefix = prefix
         self._ad_signals = {}
