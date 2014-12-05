@@ -46,6 +46,13 @@ __all__ = ['AreaDetector',
            ]
 
 
+def name_from_pv(pv):
+    # TODO
+    name = pv.lower().rstrip(':')
+    name = name.replace(':', '.')
+    return name
+
+
 def ADSignalGroup(*props, **kwargs):
     def check_exists(self):
         signals = tuple(prop.__get__(self) for prop in props)
@@ -264,8 +271,8 @@ class ADBase(OphydObject):
         return self.__sig_dict
 
     def __init__(self, prefix, **kwargs):
-        name = kwargs.get('name', 'None')
-        alias = kwargs.get('name', 'None')
+        name = kwargs.get('name', name_from_pv(prefix))
+        alias = kwargs.get('alias', 'None')
 
         OphydObject.__init__(self, name, alias)
 
@@ -369,6 +376,26 @@ class AreaDetector(NDArrayDriver):
     time_remaining = ADSignal('TimeRemaining_RBV', rw=False)
     trigger_mode = ADSignal('TriggerMode', has_rbv=True)
 
+    def _add_plugin_by_suffix(self, suffix, type_=None, **kwargs):
+        if type_ is None:
+            type_ = plugins.get_areadetector_plugin_class(self._base_prefix,
+                                                          suffix=suffix)
+
+        if issubclass(type_, plugins.OverlayPlugin):
+            kwargs = dict(kwargs)
+            kwargs['first_overlay'] = suffix[1]
+            kwargs['count'] = suffix[2]
+            suffix = suffix[0]
+
+        prop_name = name_from_pv(suffix)
+        full_name = '%s.%s' % (self.name, prop_name)
+
+        prefix = self._base_prefix
+        instance = type_(prefix, suffix=suffix,
+                         name=full_name, alias='', **kwargs)
+        setattr(self, prop_name, instance)
+        return instance
+
     def __init__(self, prefix, cam='cam1:',
                  images=['image1:', ],
                  rois=['ROI1:', 'ROI2:', 'ROI3:', 'ROI4:'],
@@ -385,20 +412,21 @@ class AreaDetector(NDArrayDriver):
         if cam and not prefix.endswith(cam):
             prefix = ''.join([prefix, cam])
 
-        ADBase.__init__(self, prefix=prefix, **kwargs)
+        ADBase.__init__(self, prefix, **kwargs)
 
-        self.images = [plugins.ImagePlugin(self._base_prefix, suffix=im)
-                       for im in images]
-        self.files = [plugins.get_areadetector_plugin(self._base_prefix, suffix=fn)
-                      for fn in files]
-        self.procs = [plugins.ProcessPlugin(self._base_prefix, suffix=proc)
-                      for proc in procs]
-        self.stats = [plugins.StatsPlugin(self._base_prefix, suffix=stat)
-                      for stat in stats]
-        self.ccs = [plugins.ColorConvPlugin(self._base_prefix, suffix=cc)
-                    for cc in ccs]
-        self.trans = [plugins.TransformPlugin(self._base_prefix, suffix=tran)
-                      for tran in trans]
+        groups = [(images, plugins.ImagePlugin),
+                  (files, None),
+                  (procs, plugins.ProcessPlugin),
+                  (stats, plugins.StatsPlugin),
+                  (ccs, plugins.ColorConvPlugin),
+                  (trans, plugins.TransformPlugin),
+                  (over, plugins.OverlayPlugin),
+                  ]
+
+        for suffixes, type_ in groups:
+            for suffix in suffixes:
+                self._add_plugin_by_suffix(suffix, type_)
+
         self.overlays = [plugins.OverlayPlugin(self._base_prefix, suffix=o[0],
                                                first_overlay=o[1], count=o[2])
                          for o in over]

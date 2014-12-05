@@ -97,7 +97,7 @@ class PluginBase(NDArrayDriver):
 
         prefix = ''.join([prefix, suffix])
 
-        ADBase.__init__(self, prefix=prefix, **kwargs)
+        ADBase.__init__(self, prefix, **kwargs)
 
 
 class ImagePlugin(PluginBase):
@@ -607,6 +607,30 @@ def plugin_from_pvname(pv):
     return None
 
 
+def get_areadetector_plugin_class(prefix, suffix=''):
+    '''
+    Get an areadetector plugin class by supplying
+    the prefix, suffix, and any kwargs for the constructor.
+
+    Uses `plugin_from_pvname` first, but falls back on using
+    epics channel access to determine the plugin type.
+
+    :returns: plugin instance
+    :raises: ValueError if the plugin type can't be determined
+    '''
+    base = ''.join([prefix, suffix])
+    class_ = plugin_from_pvname(base)
+    if class_ is None:
+        type_rbv = ''.join([prefix, suffix, 'PluginType_RBV'])
+        type_ = epics.caget(type_rbv)
+
+        # HDF5 includes version number, remove it
+        type_ = type_.split(' ')[0]
+
+        class_ = type_map[type_].class_
+
+    return class_
+
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
     '''
     Get an instance of an areadetector plugin by supplying
@@ -619,17 +643,7 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
     :raises: ValueError if the plugin type can't be determined
     '''
 
-    base = ''.join([prefix, suffix])
-    class_ = plugin_from_pvname(base)
-    if class_ is None:
-        type_rbv = ''.join([prefix, suffix, 'PluginType_RBV'])
-        type_ = epics.caget(type_rbv)
-
-        # HDF5 includes version number, remove it
-        type_ = type_.split(' ')[0]
-
-        class_ = type_map[type_].class_
-
+    class_ = get_areadetector_plugin_class(prefix, suffix)
     if class_ is None:
         raise ValueError('Unable to determine plugin type')
 
