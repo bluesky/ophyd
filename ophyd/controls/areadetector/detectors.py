@@ -394,7 +394,28 @@ class AreaDetector(NDArrayDriver):
         instance = type_(prefix, suffix=suffix,
                          name=full_name, alias='', **kwargs)
         setattr(self, prop_name, instance)
+
+        # TODO better way to do this?
+        if type_ not in self._plugins:
+            self._plugins[type_] = []
+
+        self._plugins[type_].append(instance)
         return instance
+
+    def _plugins_of_type(self, type_, subclasses=True):
+        if not subclasses:
+            return self._plugins.get(type_, [])
+
+        ret = []
+        for t, plugins in self._plugins.items():
+            if issubclass(type_, t):
+                ret.extend(plugins)
+
+        return ret
+
+    @property
+    def images(self):
+        return self._plugins_of_type(plugins.ImagePlugin)
 
     def __init__(self, prefix, cam='cam1:',
                  images=['image1:', ],
@@ -408,6 +429,7 @@ class AreaDetector(NDArrayDriver):
                  **kwargs):
 
         self._base_prefix = prefix
+        self._plugins = {}
 
         if cam and not prefix.endswith(cam):
             prefix = ''.join([prefix, cam])
