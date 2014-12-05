@@ -33,7 +33,7 @@ def put_complete_test():
         time.sleep(0.1)
 
     pos.move(-1, wait=True)
-    logger.info('--> post-move request, moving=%s' % pos.moving)
+    logger.info('--> synchronous move request, moving=%s' % pos.moving)
 
     logger.info('--> PV Positioner, using put completion and no DONE pv')
     # PV positioner, put completion, no done pv
@@ -77,37 +77,38 @@ def test():
     epics.caput(fm['actuate'], 1)
     time.sleep(2)
 
-    pos = PVPositioner(fm['setpoint'],
-                       readback=fm['readback'],
-                       act=fm['actuate'], act_val=1,
-                       stop=fm['stop'], stop_val=1,
-                       done=fm['moving'], done_val=1,
-                       put_complete=False,
-                       )
+    if 0:
+        pos = PVPositioner(fm['setpoint'],
+                           readback=fm['readback'],
+                           act=fm['actuate'], act_val=1,
+                           stop=fm['stop'], stop_val=1,
+                           done=fm['moving'], done_val=1,
+                           put_complete=False,
+                           )
 
-    pos.subscribe(callback, event_type=pos.SUB_DONE)
+        pos.subscribe(callback, event_type=pos.SUB_DONE)
 
-    pos.subscribe(callback, event_type=pos.SUB_READBACK)
+        pos.subscribe(callback, event_type=pos.SUB_READBACK)
 
-    logger.info('---- test #1 ----')
-    logger.info('--> move to 1')
-    pos.move(1)
-    logger.info('--> move to 0')
-    pos.move(0)
+        logger.info('---- test #1 ----')
+        logger.info('--> move to 1')
+        pos.move(1)
+        logger.info('--> move to 0')
+        pos.move(0)
 
-    logger.info('---- test #2 ----')
-    logger.info('--> move to 1')
-    pos.move(1, wait=False)
-    time.sleep(0.5)
-    logger.info('--> stop')
-    pos.stop()
-    logger.info('--> sleep')
-    time.sleep(1)
-    logger.info('--> move to 0')
-    pos.move(0, wait=False, moved_cb=done_moving)
-    logger.info('--> post-move request, moving=%s' % pos.moving)
-    time.sleep(2)
-    # m2.move(1)
+        logger.info('---- test #2 ----')
+        logger.info('--> move to 1')
+        pos.move(1, wait=False)
+        time.sleep(0.5)
+        logger.info('--> stop')
+        pos.stop()
+        logger.info('--> sleep')
+        time.sleep(1)
+        logger.info('--> move to 0')
+        pos.move(0, wait=False, moved_cb=done_moving)
+        logger.info('--> post-move request, moving=%s' % pos.moving)
+        time.sleep(2)
+        # m2.move(1)
 
     put_complete_test()
 

@@ -347,6 +347,8 @@ class PVPositioner(Positioner):
             self.add_signal(EpicsSignal(done, alias='_done'))
 
             self._done.subscribe(self._move_changed)
+        else:
+            self._done_val = False
 
         for signal in signals:
             self.add_signal(signal)
@@ -375,8 +377,7 @@ class PVPositioner(Positioner):
         '''
         has_done = self._done is not None
         if not has_done:
-            self._moving = True
-            self._started_moving = True
+            self._move_changed(value=True)
 
         if self._move_timeout <= 0.0:
             # TODO pyepics timeout of 0 and None don't mean infinite wait?
@@ -391,7 +392,7 @@ class PVPositioner(Positioner):
                                        timeout=timeout)
 
         if not has_done:
-            self._moving = False
+            self._move_changed(value=False)
 
         if self._started_moving and not self._moving:
             self._done_moving(timestamp=self._setpoint.readback_ts)
@@ -431,12 +432,11 @@ class PVPositioner(Positioner):
         def done_moving(**kwargs):
             if self._put_complete:
                 logger.debug('[%s] Async motion done' % self)
-                self._moving = False
+                self._move_changed(value=False)
 
         if self._done is None and self._put_complete:
             # No done signal, so we rely on put completion
-            self._moving = True
-            self._started_moving = True
+            self._move_changed(value=True)
 
         if self._actuate is not None:
             self._setpoint._set_request(position, wait=False)
