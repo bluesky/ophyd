@@ -152,7 +152,7 @@ class Positioner(SignalGroup):
         '''
         The current position of the motor in its engineering units
 
-        :returns: float
+        :rtype: float
         '''
         return self._position
 
@@ -172,7 +172,7 @@ class Positioner(SignalGroup):
         '''
         Whether or not the motor is moving
 
-        :returns: bool
+        :rtype: bool
         '''
         return self._moving
 
@@ -191,13 +191,13 @@ class EpicsMotor(Positioner):
         name = kwargs.pop('name', record)
         Positioner.__init__(self, name=name, **kwargs)
 
-        signals = [EpicsSignal(record_field(record, 'RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(record_field(record, 'VAL'), alias='_user_request'),
-                   EpicsSignal(record_field(record, 'MOVN'), alias='_is_moving'),
-                   EpicsSignal(record_field(record, 'DMOV'), alias='_done_move'),
-                   EpicsSignal(record_field(record, 'EGU'), alias='_egu'),
-                   EpicsSignal(record_field(record, 'STOP'), alias='_stop'),
-                   # EpicsSignal(record_field(record, 'RDBD'), alias='retry_deadband'),
+        signals = [EpicsSignal(self.field_pv('RBV'), rw=False, alias='_user_readback'),
+                   EpicsSignal(self.field_pv('VAL'), alias='_user_request'),
+                   EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
+                   EpicsSignal(self.field_pv('DMOV'), alias='_done_move'),
+                   EpicsSignal(self.field_pv('EGU'), alias='_egu'),
+                   EpicsSignal(self.field_pv('STOP'), alias='_stop'),
+                   # EpicsSignal(self.field_pv('RDBD'), alias='retry_deadband'),
                    ]
 
         for signal in signals:
@@ -212,14 +212,21 @@ class EpicsMotor(Positioner):
         '''
         whether or not the motor is moving
 
-        :returns: bool
+        :rtype: bool
         '''
         return bool(self._is_moving._get_readback(use_monitor=False))
- 
+
     def stop(self):
         self._stop._set_request(1, wait=False)
 
-    def _field_pv(self, field):
+    @property
+    def record(self):
+        '''
+        The EPICS record name
+        '''
+        return self._record
+
+    def field_pv(self, field):
         '''
         Return a full PV from the field name
         '''

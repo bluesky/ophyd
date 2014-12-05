@@ -31,33 +31,46 @@ class EpicsScaler(SignalGroup):
 
         Eventually need to provide PR1..16 -- preset counts too.
         '''
-        signals = [EpicsSignal(record_field(record, 'CNT'),
-                                alias='_count_ctl'),
-                   EpicsSignal(record_field(record, 'CONT'),
-                                alias='_count_mode'),
-                   EpicsSignal(record_field(record, 'T'),
-                                alias='_elapsed_time'),
-                   EpicsSignal(record_field(record, 'TP'),
-                                alias='_preset_time')
-                  ]
+        signals = [EpicsSignal(self.field_pv('CNT'),
+                               alias='_count_ctl'),
+                   EpicsSignal(self.field_pv('CONT'),
+                               alias='_count_mode'),
+                   EpicsSignal(self.field_pv('T'),
+                               alias='_elapsed_time'),
+                   EpicsSignal(self.field_pv('TP'),
+                               alias='_preset_time')
+                   ]
 
         # create the 'NM1..numchan' channel name Signals
         ch_names = []
         for ch in range(1, numchan + 1):
-            name = ''.join([record_field(record, 'NM'), str(ch)])
+            name = ''.join([self.field_pv('NM'), str(ch)])
             ch_names.append(EpicsSignal(name,
                             alias=''.join(['_ch', str(ch), '_name'])))
         signals += ch_names
         # create the 'S1..numchan' channel count Signals (read-only)
         ch_names = []
         for ch in range(1, numchan + 1):
-            name = ''.join([record_field(record, 'S'), str(ch)])
+            name = ''.join([self.field_pv('S'), str(ch)])
             ch_names.append(EpicsSignal(name, rw=False,
                             alias=''.join(['_ch', str(ch), '_count'])))
         signals += ch_names
 
         for sig in signals:
             self.add_signal(sig)
+
+    @property
+    def record(self):
+        '''
+        The EPICS record name
+        '''
+        return self._record
+
+    def field_pv(self, field):
+        '''
+        Return a full PV from the field name
+        '''
+        return record_field(self._record, field)
 
     def start(self):
         self._count_ctl._set_request(1, wait=False)
