@@ -48,7 +48,7 @@ args = ('XF:23ID1-OP{Mono}Enrgy-SP',
         'done_val': 0,
         'name': 'pgm_energy'
         })
-#pgm_energy = PVPositioner(args[0], **args[1])
+pgm_energy = PVPositioner(args[0], **args[1])
 
 # initialize M1A virtual axes Positioner
 args = ('XF:23IDA-OP:1{Mir:1-Ax:Z}Mtr_POS_SP',
@@ -61,7 +61,7 @@ args = ('XF:23IDA-OP:1{Mir:1-Ax:Z}Mtr_POS_SP',
          'done_val': 0,
          'name': 'm1a_z',
         })
-#m1a_z = PVPositioner(args[0], **args[1])
+m1a_z = PVPositioner(args[0], **args[1])
 
 # AreaDetector Beam Instrumentation
 # diag3_cam = ProsilicaDetector('XF:23ID1-BI{Diag:3-Cam:1}')
