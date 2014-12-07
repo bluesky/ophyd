@@ -311,7 +311,6 @@ class EpicsSignal(Signal):
             self.value, self._read_pv, self._write_pv)
 
     __repr__ = __str__
-    
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
