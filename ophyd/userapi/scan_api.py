@@ -101,14 +101,16 @@ class ScanND(Scan):
 
 class AScan(ScanND):
     def __init__(self):
-        self.dimension = 1
-    pass
+        ScanND.__init__(self, 1)
 
 
 class DScan(AScan):
+    def __init__(self):
+        AScan.__init__(self)
+
     def preScan(self):
         """Prescan Compute Paths"""
-        AScan.prescan(self)
+        AScan.preScan(self)
         self._start_positions = [p.position for p in self.positioners]
         self.paths = [np.array(path) + start
                       for path, start in zip(self.paths, self._start_positions)]
