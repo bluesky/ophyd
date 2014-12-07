@@ -20,21 +20,6 @@ class Scan(object):
         self.paths = None
         self.positioners = None
 
-    def generatePathsFromPts(self, dim, start, stop, npts):
-        """Generate Paths from start, stop and number of pts
-
-        :param dim: Dimensionality of scan (1 = linear)
-        :param start: Array of start values.
-        :param stop: Array of stop values.
-        :param npts: Number of points (1 will be added to create good intervals)
-
-        For the Arrays of :param start: and :param stop: these should have
-        a dimension (n x m) where n is the number of positioners in each part
-        of the loop and m is the dimensionality of the scan.
-
-        """
-        pass
-
     def checkPaths(self):
         pass
 
@@ -66,7 +51,7 @@ class Scan(object):
         self._scan_args['positioners'] = self.positioners
         self._scan_args['settle_time'] = self.settle_time
 
-        print(self._scan_args)
+        # Run the scan!
 
         self._last_data = self._run_eng.start_run(run_id,
                                                   scan_args=self._scan_args)
@@ -101,8 +86,9 @@ class Scan(object):
 
 class ScanND(Scan):
     """Class for a N-Dimensional Scan"""
-    def __init__(self):
+    def __init__(self, dimension=1):
         Scan.__init__(self)
+        self.dimension = dimension
 
     def __call__(self, positioners, start, stop, npts,
                  triggers=None, detectors=None):
@@ -114,6 +100,8 @@ class ScanND(Scan):
 
 
 class AScan(ScanND):
+    def __init__(self):
+        self.dimension = 1
     pass
 
 

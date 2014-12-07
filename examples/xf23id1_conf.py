@@ -6,7 +6,13 @@ from ophyd.controls import ProsilicaDetector
 from ophyd.userapi import *
 from scan1d import scan1d
 
-# Slits 
+from ophyd.userapi.scan_api import ScanND, AScan, DScan
+
+scan = ScanND()
+ascan = AScan()
+dscan = DScan()
+
+# Slits
 
 slt1_xg = EpicsMotor('XF:23ID1-OP{Slt:1-Ax:XGap}Mtr', name='slt1_xg')
 slt1_xc = EpicsMotor('XF:23ID1-OP{Slt:1-Ax:XCtr}Mtr', name='slt1_xc')
