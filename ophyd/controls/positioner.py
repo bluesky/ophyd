@@ -132,8 +132,8 @@ class Positioner(SignalGroup):
         Runs SUB_DONE subscription.
         '''
 
-        self._run_sub(sub_type=self.SUB_DONE, timestamp=timestamp,
-                      value=value, **kwargs)
+        self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
+                       value=value, **kwargs)
 
         if self._moved_callbacks:
             for cb in self._moved_callbacks:
@@ -164,8 +164,8 @@ class Positioner(SignalGroup):
         self._position = value
 
         timestamp = kwargs.pop('timestamp', time.time())
-        self._run_sub(sub_type=self.SUB_READBACK, timestamp=timestamp,
-                      value=value, **kwargs)
+        self._run_subs(sub_type=self.SUB_READBACK, timestamp=timestamp,
+                       value=value, **kwargs)
 
     @property
     def moving(self):
@@ -271,8 +271,8 @@ class EpicsMotor(Positioner):
                                                            self, self._moving, value))
 
         if self._started_moving:
-            self._run_sub(sub_type=self.SUB_START, timestamp=timestamp,
-                          value=value, **kwargs)
+            self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
+                           value=value, **kwargs)
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
@@ -420,8 +420,8 @@ class PVPositioner(Positioner):
                                                            self, self._moving, value))
 
         if self._started_moving:
-            self._run_sub(sub_type=self.SUB_START, timestamp=timestamp,
-                          value=value, **kwargs)
+            self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
+                           value=value, **kwargs)
 
         if not self._put_complete:
             # In the case of put completion, motion complete

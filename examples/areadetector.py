@@ -68,9 +68,9 @@ def test():
     img = det.read()
     print(img)
 
-    det.files[0].file_template = '%s%s_%3.3d.tif'
-    logger.debug('template value=%s' % det.files[0].file_template.value)
-    logger.debug('full filename=%s' % det.files[0].full_file_name.value)
+    det.tiff1.file_template = '%s%s_%3.3d.tif'
+    logger.debug('template value=%s' % det.tiff1.file_template.value)
+    logger.debug('full filename=%s' % det.tiff1.full_file_name.value)
 
     log_values(det)
     # det.acquire = 1
@@ -78,6 +78,7 @@ def test():
 
     image1_suffix = config.ad_plugins['image'][0]
     img1 = ImagePlugin(det1_prefix, suffix=image1_suffix)
+    # or: img1 = det.image1
     # log_all(img1)
 
     logger.debug('nd_array_port = %s' % img1.nd_array_port.value)
@@ -88,6 +89,7 @@ def test():
 
     proc1_suffix = config.ad_plugins['proc'][0]
     proc1 = ProcessPlugin(det1_prefix, suffix=proc1_suffix)
+    # or: proc1 = det.proc1
 
     # Signal group allows setting value as a list:
     logger.debug('fc=%s' % proc1.fc.value)

@@ -33,7 +33,7 @@ def test():
     # Or reference that plugin from the detector instance
     ad = AreaDetector(det1_prefix, cam=det1_cam,
                       images=['image1:', ])
-    img = ad.images[0].image
+    img = ad.image1.image
     plt.imshow(img, cmap=plt.cm.gray)
     plt.show()
 
