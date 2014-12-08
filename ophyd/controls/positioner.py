@@ -54,6 +54,18 @@ class Positioner(SignalGroup):
         self._followed = []
 
     @property
+    def limits(self):
+        return (0, 0)
+
+    @property
+    def low_limit(self):
+        return self.limits[0]
+
+    @property
+    def high_limit(self):
+        return self.limits[1]
+
+    @property
     def next_pos(self):
         '''
         Get the next point in the trajectory
@@ -94,7 +106,7 @@ class Positioner(SignalGroup):
             finished (not applicable if `wait` is set)
         :param float timeout: Timeout in seconds
 
-        :raises: TimeoutError
+        :raises: TimeoutError, ValueError (on invalid positions)
         '''
 
         # TODO session manager handles ctrl-C to stop move?
@@ -192,7 +204,8 @@ class EpicsMotor(Positioner):
         Positioner.__init__(self, name=name, **kwargs)
 
         signals = [EpicsSignal(self.field_pv('RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(self.field_pv('VAL'), alias='_user_request'),
+                   EpicsSignal(self.field_pv('VAL'), alias='_user_request',
+                               limits=True),
                    EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
                    EpicsSignal(self.field_pv('DMOV'), alias='_done_move'),
                    EpicsSignal(self.field_pv('EGU'), alias='_egu'),
@@ -206,6 +219,10 @@ class EpicsMotor(Positioner):
         self._moving = bool(self._is_moving.value)
         self._done_move.subscribe(self._move_changed)
         self._user_readback.subscribe(self._pos_changed)
+
+    @property
+    def limits(self):
+        return self._user_request.limits
 
     @property
     def moving(self):

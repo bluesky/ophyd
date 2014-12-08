@@ -64,7 +64,7 @@ class Signal(OphydObject):
     def _get_request(self):
         return self._request
 
-    def _set_request(self, value, allow_cb=True, **kwargs):
+    def _set_request(self, value, allow_cb=True, force=False, **kwargs):
         '''
         Set the request value internally.
 
@@ -74,6 +74,9 @@ class Signal(OphydObject):
 
         .. note:: A timestamp will be generated if none is passed via kwargs.
         '''
+        if not force:
+            self.check_value(value)
+
         old_value = self._request
         self._request = value
 
@@ -133,12 +136,21 @@ class Signal(OphydObject):
                     'value': self.readback,
                     }
 
+    def check_value(self, value, **kwargs):
+        '''
+        Check if the value can be written first
+
+        :raises: ValueError
+        '''
+        pass
+
 
 class EpicsSignal(Signal):
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw={},
                  put_complete=False,
                  string=False,
+                 limits=False,
                  **kwargs):
         '''
         An EPICS signal, comprised of either one or two EPICS PVs
@@ -148,6 +160,7 @@ class EpicsSignal(Signal):
         :type write_pv: str or None
         :param dict pv_kw: Keyword arguments for epics.PV(**pv_kw)
         :param bool rw: Read-write signal (or read-only)
+        :param bool limits: Check limits prior to writing value
 
         ==========================
         read_pv  write_pv   rw     Result
@@ -162,6 +175,7 @@ class EpicsSignal(Signal):
         self._write_pv = None
         self._put_complete = put_complete
         self._string = bool(string)
+        self._check_limits = bool(limits)
 
         separate_readback = False
 
@@ -247,7 +261,38 @@ class EpicsSignal(Signal):
         else:
             self._ses_logger.info(msg)
 
-    def _set_request(self, value, wait=True, **kwargs):
+    @property
+    def limits(self):
+        pv = self._write_pv
+        pv.get_ctrlvars()
+        return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
+
+    @property
+    def low_limit(self):
+        return self.limits[0]
+
+    @property
+    def high_limit(self):
+        return self.limits[1]
+
+    def check_value(self, value):
+        '''
+        Check if the value is within the request PV's control limits
+
+        :raises: ValueError
+        '''
+        if not self._check_limits:
+            return
+
+        low_limit, high_limit = self.limits
+        if low_limit >= high_limit:
+            return
+
+        if not (low_limit <= value <= high_limit):
+            raise ValueError('Value {} outside of range: [{}, {}]'.format(value,
+                                                                          low_limit, high_limit))
+
+    def _set_request(self, value, force=False, wait=True, **kwargs):
         '''
         Using channel access, set the write PV to `value`.
 
@@ -258,6 +303,8 @@ class EpicsSignal(Signal):
         if self._write_pv is None:
             raise RuntimeError('Read-only EPICS signal')
 
+        self.check_value(value)
+
         if not self._write_pv.connected:
             if not self._write_pv.wait_for_connection():
                 raise TimeoutError('Failed to connect to %s' %
@@ -267,7 +314,7 @@ class EpicsSignal(Signal):
         self._write_pv.put(value, wait=wait, use_complete=use_complete,
                            **kwargs)
 
-        Signal._set_request(self, value)
+        Signal._set_request(self, value, force=True)
 
     def _fix_type(self, value):
         if self._string:
