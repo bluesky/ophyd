@@ -1,10 +1,14 @@
 from __future__ import print_function
 import numpy as np
-from time import sleep
+from time import sleep, strftime
 
 from ophyd.runengine import RunEngine
+from ophyd.controls import EpicsMotor, PVPositioner
+
+from pyOlog import SimpleOlogClient
 
 __all__ = ['AScan', 'DScan']
+
 
 def ensure_iterator(i):
     """Check if i is an iterator. If not return length-1 iterator"""
@@ -15,14 +19,15 @@ def ensure_iterator(i):
 
 
 class Scan(object):
+
     def __init__(self):
         self._run_eng = RunEngine(None)
         self._last_data = None
 
         self.triggers = None
         self.detectors = None
-        self._default_detectors = None
-        self._default_triggers = None
+        self._default_detectors = list()
+        self._default_triggers = list()
         self.settle_time = None
 
         self.paths = list()
@@ -47,6 +52,12 @@ class Scan(object):
     def postScan(self):
         pass
 
+    def setupDetectors(self):
+        pass
+
+    def setupTriggers(self):
+        pass
+
     def run(self):
         """Run the scan"""
 
@@ -59,8 +70,9 @@ class Scan(object):
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
 
-            scan_args['detectors']   = self.detectors
-            scan_args['triggers']    = self.triggers
+            scan_args = dict()
+            scan_args['detectors'] = self.detectors
+            scan_args['triggers'] = self.triggers
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
 
@@ -102,7 +114,7 @@ class Scan(object):
         if self._detectors is None:
             return self._default_detectors
         else:
-            return self._detectors + self.default_detectors
+            return self._detectors + self._default_detectors
 
     @detectors.setter
     def detectors(self, detectors):
@@ -110,14 +122,14 @@ class Scan(object):
         self._detectors = detectors
 
     @property
-    def default_positioners(self):
-        """Get the defualt positioners"""
-        return self._default_positioners
+    def default_detectors(self):
+        """Get the defualt detectors"""
+        return self._default_detectors
 
-    @default_positioners.setter
-    def default_positioners(self, pos):
-        """Set the default positioners"""
-        self._default_positioners = pos
+    @default_detectors.setter
+    def default_detectors(self, det):
+        """Set the default detectors"""
+        self._default_detectors = det
 
     @property
     def default_triggers(self):
@@ -151,16 +163,18 @@ class Scan(object):
 
 
 class ScanND(Scan):
+
     """Class for a N-Dimensional Scan"""
+
     def __init__(self):
         Scan.__init__(self)
         self.dimension = None
 
-    def calcLinearPath(start, stop, npts):
+    def calcLinearPath(self, start, stop, npts):
         """Return a linearaly spaced path"""
         return np.linspace(start, stop, npts)
 
-    def calculatePaths(self, start, stop, npts, dim):
+    def calculatePath(self, start, stop, npts, dim):
         """Calculate a single path given start, stop and npts for dim"""
         N = np.asarray(npts)
         a = self.calcLinearPath(start, stop, npts[dim])
@@ -177,6 +191,10 @@ class ScanND(Scan):
         # the length of npts.
 
         npts = ensure_iterator(npts)
+        positioners = ensure_iterator(positioners)
+        start = ensure_iterator(start)
+        stop = ensure_iterator(stop)
+
         dimension = len(npts)
         pos = list()
         paths = list()
@@ -186,12 +204,12 @@ class ScanND(Scan):
         start = ensure_iterator(start)
         stop = ensure_iterator(stop)
 
-        for b,e,d in zip(start, stop, range(dimension)):
+        for b, e, d in zip(start, stop, range(dimension)):
             # For each dimension we work out the paths
-            iter_pos = ensure_iterator(pos[d])
+            iter_pos = ensure_iterator(positioners[d])
             for p in iter_pos:
                 pos.append(p)
-                paths.append(self.calcLinearPath(b, e, npts, d))
+                paths.append(self.calculatePath(b, e, npts, d))
 
         self.positioners = pos
         self.paths = paths
@@ -200,12 +218,25 @@ class ScanND(Scan):
 
 
 class AScan(ScanND):
+
     def preScan(self):
         ScanND.preScan(self)
 
+        time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
+
+        msg = 'Scan started at {}\n\n'.format(time_text)
+        msg += '===\n'
+        for p in self.positioners:
+            if isinstance(p, (EpicsMotor, PVPositioner)):
+                for pv in p.read_pvname:
+                    msg += "PV:" + pv + "\n"
+        print(msg)
+        olog_client = SimpleOlogClient()
+        olog_client.log(msg)
 
 
 class DScan(AScan):
+
     def __init__(self):
         AScan.__init__(self)
 
