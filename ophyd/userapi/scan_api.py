@@ -230,7 +230,7 @@ class AScan(ScanND):
             if isinstance(p, (EpicsMotor, PVPositioner)):
                 for pv in p.read_pvname:
                     msg += "PV:" + pv + "\n"
-        print(msg)
+
         olog_client = SimpleOlogClient()
         olog_client.log(msg)
 
