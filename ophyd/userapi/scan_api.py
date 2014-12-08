@@ -35,37 +35,37 @@ class Scan(object):
 
         self._run_id = 0
 
-    def checkPaths(self):
+    def check_paths(self):
         pass
 
     def __enter__(self):
-        self.preScan()
+        self.pre_scan()
 
     def __exit__(self, exec_type, exec_value, traceback):
-        self.postScan()
+        self.post_scan()
         # Here we can raise the exceptions
         return False
 
-    def preScan(self):
+    def pre_scan(self):
         pass
 
-    def postScan(self):
+    def post_scan(self):
         pass
 
-    def setupDetectors(self):
+    def setup_detectors(self):
         pass
 
-    def setupTriggers(self):
+    def setup_triggers(self):
         pass
 
     def run(self):
         """Run the scan"""
 
-        self.checkPaths()
+        self.check_paths()
 
         with self:
-            self.setupDetectors()
-            self.setupTriggers()
+            self.setup_detectors()
+            self.setup_triggers()
 
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
@@ -171,14 +171,14 @@ class ScanND(Scan):
         Scan.__init__(self)
         self.dimension = None
 
-    def calcLinearPath(self, start, stop, npts):
+    def calc_linear_path(self, start, stop, npts):
         """Return a linearaly spaced path"""
         return np.linspace(start, stop, npts)
 
-    def calculatePath(self, start, stop, npts, dim):
+    def calc_path(self, start, stop, npts, dim):
         """Calculate a single path given start, stop and npts for dim"""
         N = np.asarray(npts)
-        a = self.calcLinearPath(start, stop, npts[dim])
+        a = self.calc_linear_path(start, stop, npts[dim])
         x = N[::-1][:len(N)-dim-1]
         y = N[:dim]
         a = np.repeat(a, x.prod())
@@ -210,7 +210,7 @@ class ScanND(Scan):
             iter_pos = ensure_iterator(positioners[d])
             for p in iter_pos:
                 pos.append(p)
-                paths.append(self.calculatePath(b, e, npts, d))
+                paths.append(self.calc_path(b, e, npts, d))
 
         self.positioners = pos
         self.paths = paths
@@ -220,8 +220,8 @@ class ScanND(Scan):
 
 class AScan(ScanND):
 
-    def preScan(self):
-        ScanND.preScan(self)
+    def pre_scan(self):
+        ScanND.pre_scan(self)
 
         time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
 
@@ -241,16 +241,16 @@ class DScan(AScan):
     def __init__(self):
         AScan.__init__(self)
 
-    def preScan(self):
+    def pre_scan(self):
         """Prescan Compute Paths"""
         self._start_positions = [p.position for p in self.positioners]
         self.paths = [np.array(path) + start
                       for path, start in zip(self.paths, self._start_positions)]
-        AScan.preScan(self)
+        AScan.pre_scan(self)
 
-    def postScan(self):
+    def post_scan(self):
         """Post Scan Move to start positions"""
-        AScan.postScan(self)
+        AScan.post_scan(self)
         for pos, start in zip(self.positioners, self._start_positions):
             pos.move(start, wait=True)
 
