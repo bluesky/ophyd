@@ -12,7 +12,7 @@ __all__ = ['AScan', 'DScan']
 
 def ensure_iterator(i):
     """Check if i is an iterator. If not return length-1 iterator"""
-    if hasattr(i, "__iter__"):
+    if hasattr(i, "__iter__") or hasattr(i, "__getitem__"):
         return i
     else:
         return [i]
@@ -80,6 +80,7 @@ class Scan(object):
 
             self.data = self._run_eng.start_run(self._run_id + 1,
                                                 scan_args=scan_args)
+            self._run_id += 1
 
     @property
     def run_id(self):
