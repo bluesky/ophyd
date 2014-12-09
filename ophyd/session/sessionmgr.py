@@ -1,11 +1,9 @@
 from __future__ import print_function
 import signal
-import logging
-import sys
 
 
 from ..controls.positioner import Positioner
-from ..controls.signal import Signal, SignalGroup
+from ..controls.signal import (OphydObject, Signal, SignalGroup)
 from ..runengine import RunEngine
 
 
@@ -49,14 +47,17 @@ class SessionManager(object):
            If these objects are loaded via "ipython -i conf_script.py",
            then they're available in the ipy namespace too.
         '''
-        if issubclass(obj.__class__, Positioner):
+        if isinstance(obj, Positioner):
             self._update_registry(obj, 'positioners')
-        elif issubclass(obj.__class__, (Signal, SignalGroup)):
+        elif isinstance(obj, (Signal, SignalGroup)):
             self._update_registry(obj, 'signals')
-        elif issubclass(obj.__class__, RunEngine):
+        elif isinstance(obj, RunEngine):
             if self._run_engine is None:
                 self._logger.debug('Registering RunEngine.')
                 self._run_engine = obj
+        elif isinstance(obj, OphydObject):
+            # TODO
+            pass
         else:
             raise TypeError('%s cannot be registered with the session.' % obj)
         return self._logger

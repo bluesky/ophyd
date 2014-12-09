@@ -15,25 +15,20 @@ import time
 
 import epics
 
-from ..session import register_object
 from ..utils import TimeoutError
 from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
+from .ophydobj import OphydObject
+
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: read -> report
-#       * report() reports current state
-#       * read() performs action on the signal and returns something similar to
-#           report()
-
-class Signal(object):
+class Signal(OphydObject):
     '''
     This class represents a signal, which can potentially be a read-write
     or read-only value.
     '''
 
-    # TODO: no enums in Python 2.x -- if you have a better way, let me know:
     SUB_REQUEST = 'request'
     SUB_READBACK = 'readback'
 
@@ -48,17 +43,12 @@ class Signal(object):
         '''
 
         self._default_sub = self.SUB_READBACK
-        self._subs = dict((getattr(self, sub), []) for sub in dir(self)
-                          if sub.startswith('SUB_'))
+        OphydObject.__init__(self, name, alias)
 
-        self._alias = alias
         self._request = None
         self._readback = None
-        self._name = name
 
         self._separate_readback = separate_readback
-
-        register_object(self)
 
     def __str__(self):
         if self._separate_readback:
@@ -69,37 +59,6 @@ class Signal(object):
                 (self._alias, self.readback)
 
     __repr__ = __str__
-
-    def _run_sub(self, *args, **kwargs):
-        '''
-        Run a set of callback subscriptions
-
-        Only the kwarg :param:`sub_type` is required, indicating
-        the type of callback to perform. All other positional arguments
-        and kwargs are passed directly to the callback function.
-
-        No exceptions are raised when the callback functions fail;
-        they are merely logged with the session logger.
-        '''
-        sub_type = kwargs['sub_type']
-
-        for cb in self._subs[sub_type]:
-            try:
-                cb(*args, **kwargs)
-            except Exception as ex:
-                self._ses_logger.error('Subscription %s callback exception (%s)' %
-                                       (sub_type, self), exc_info=ex)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def alias(self):
-        '''
-        An alternative name for the signal
-        '''
-        return self._alias
 
     # - Request value
     def _get_request(self):
@@ -123,9 +82,9 @@ class Signal(object):
 
         if allow_cb:
             timestamp = kwargs.pop('timestamp', time.time())
-            self._run_sub(sub_type=Signal.SUB_REQUEST,
-                          old_value=old_value, value=value,
-                          timestamp=timestamp, **kwargs)
+            self._run_subs(sub_type=Signal.SUB_REQUEST,
+                           old_value=old_value, value=value,
+                           timestamp=timestamp, **kwargs)
 
     request = property(lambda self: self._get_request(),
                        lambda self, value: self._set_request(value),
@@ -153,47 +112,9 @@ class Signal(object):
 
         if allow_cb:
             timestamp = kwargs.pop('timestamp', time.time())
-            self._run_sub(sub_type=Signal.SUB_READBACK,
-                          old_value=old_value, value=value,
-                          timestamp=timestamp, **kwargs)
-
-    def subscribe(self, callback, event_type=None):
-        '''
-        Subscribe to events this signal emits
-
-        See also :func:`Signal.clear_sub`
-
-        :param callable callback: A callable function (that takes kwargs)
-            to be run when the event is generated
-        :param event_type: The name of the event to subscribe to (if None,
-            defaults to Signal._default_sub)
-        :type event_type: str or None
-        '''
-        if event_type is None:
-            event_type = self._default_sub
-
-        assert callable(callback), 'The callback must be callable'
-        self._subs[event_type].append(callback)
-
-    def clear_sub(self, callback, event_type=None):
-        '''
-        Remove a subscription, given the original callback function
-
-        See also :func:`Signal.subscribe`
-
-        :param callable callback: The callback
-        :param event_type: The event to unsubscribe from (if None, removes it
-            from all event types)
-        :type event_type: str or None
-        '''
-        if event_type is None:
-            for event_type, cbs in self._subs.items():
-                try:
-                    cbs.remove(callback)
-                except ValueError:
-                    pass
-        else:
-            self._subs[event_type].remove(callback)
+            self._run_subs(sub_type=Signal.SUB_READBACK,
+                           old_value=old_value, value=value,
+                           timestamp=timestamp, **kwargs)
 
     def read(self):
         '''
@@ -311,7 +232,6 @@ class EpicsSignal(Signal):
             self.value, self._read_pv, self._write_pv)
 
     __repr__ = __str__
-    
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
@@ -430,53 +350,17 @@ class EpicsSignal(Signal):
 
 # TODO uniform interface to Signal and SignalGroup
 
-class SignalGroup(object):
+class SignalGroup(OphydObject):
     def __init__(self, name='none', alias=None, **kwargs):
         '''
         Create a group or collection of related signals
 
         :param alias: An alternative name for the signal group
         '''
-        self._default_sub = None
-        self._subs = dict((getattr(self, sub), []) for sub in dir(self)
-                          if sub.startswith('SUB_'))
+
+        OphydObject.__init__(self, name=name, alias=alias)
 
         self._signals = []
-        self._alias = alias
-        self._name = name
-
-        register_object(self)
-
-    @property
-    def alias(self):
-        '''
-        An alternative name for the signal
-        '''
-        return self._alias
-
-    @property
-    def name(self):
-        return self._name
-
-    def _run_sub(self, *args, **kwargs):
-        '''
-        Run a set of callback subscriptions
-
-        Only the kwarg :param:`sub_type` is required, indicating
-        the type of callback to perform. All other positional arguments
-        and kwargs are passed directly to the callback function.
-
-        No exceptions are raised when the callback functions fail;
-        they are merely logged with the session logger.
-        '''
-        sub_type = kwargs['sub_type']
-
-        for cb in self._subs[sub_type]:
-            try:
-                cb(*args, **kwargs)
-            except Exception as ex:
-                self._ses_logger.error('Subscription %s callback exception (%s)' %
-                                       (sub_type, self), exc_info=ex)
 
     def add_signal(self, signal, prop_name=None):
         '''
@@ -496,43 +380,6 @@ class SignalGroup(object):
 
             if prop_name:
                 setattr(self, prop_name, signal)
-
-    def subscribe(self, cb, event_type=None):
-        '''
-        Subscribe to events this signal group emits
-
-        See also :func:`SignalGroup.clear_sub`
-
-        :param callable cb: A callable function (that takes kwargs)
-            to be run when the event is generated
-        :param event_type: The name of the event to subscribe to (if None,
-            defaults to SignalGroup._default_sub)
-        :type event_type: str or None
-        '''
-        if event_type is None:
-            event_type = self._default_sub
-
-        self._subs[event_type].append(cb)
-
-    def clear_sub(self, cb, event_type=None):
-        '''
-        Remove a subscription, given the original callback function
-
-        See also :func:`SignalGroup.subscribe`
-
-        :param callable callback: The callback
-        :param event_type: The event to unsubscribe from (if None, removes it
-            from all event types)
-        :type event_type: str or None
-        '''
-        if event_type is None:
-            for event_type, cbs in self._subs.items():
-                try:
-                    cbs.remove(cb)
-                except ValueError:
-                    pass
-        else:
-            self._subs[event_type].remove(cb)
 
     def read(self):
         '''
