@@ -15,7 +15,7 @@ LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
 OPHYD_LOGGER = 'ophyd_session'
 
 
-def get_session_manager(*args, **kwargs):
+def get_session_manager():
     from .sessionmgr import SessionManager
 
     # TODO: Session manager singleton
