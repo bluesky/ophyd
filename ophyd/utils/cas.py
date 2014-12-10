@@ -40,6 +40,7 @@ def patch_swig(mod):
 
     if hasattr(mod, '_swig_setattr_nondynamic'):
         mod._swig_setattr_nondynamic = fix
+        logger.debug('patched SWIG setattr')
 
 
 patch_swig(cas)

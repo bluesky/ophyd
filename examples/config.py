@@ -97,5 +97,10 @@ sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
                      }
                     ]
 
+# Fake PV names for the channel access server to create
+fake_pvnames = ['__channel_access_server__',
+                ]
+
 # this is a real instrument - it is not currently used, but be cautious!
 scalers = ['XF:23ID2-ES{Sclr:1}']
+
