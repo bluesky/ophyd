@@ -95,5 +95,4 @@ def load_ipython_extension(ipython):
     from epics import (caget, caput, camonitor, cainfo)
     ipython.push('caget caput camonitor cainfo')
 
-    # MAYBE? push signal handler into ipy.user_ns
     print('...Done loading Ophyd Session Manager')
