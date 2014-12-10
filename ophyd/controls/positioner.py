@@ -309,6 +309,7 @@ class PVPositioner(Positioner):
                  stop=None, stop_val=1,
                  done=None, done_val=1,
                  put_complete=False,
+                 settle_time=0.05,
                  **kwargs):
         '''
         A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
@@ -321,6 +322,8 @@ class PVPositioner(Positioner):
         :param stop_val: The stop value
         :param str done: A readback value indicating whether motion is finished
         :param done_val: The value of the done pv when motion has completed
+        :param float settle_time: Time to wait after a move to ensure a move
+            complete callback is received
         :param bool put_complete: If set, the specified PV should allow
             for asynchronous put completion to indicate motion has finished.
             If `act` is specified, it will be used for put completion.
@@ -335,6 +338,7 @@ class PVPositioner(Positioner):
         self._done_val = done_val
         self._act_val = act_val
         self._put_complete = bool(put_complete)
+        self._settle_time = float(settle_time)
 
         self._actuate = None
         self._stop = None
@@ -410,6 +414,8 @@ class PVPositioner(Positioner):
 
         if not has_done:
             self._move_changed(value=False)
+        else:
+            time.sleep(self._settle_time)
 
         if self._started_moving and not self._moving:
             self._done_moving(timestamp=self._setpoint.readback_ts)
