@@ -2,8 +2,8 @@ from __future__ import print_function
 import numpy as np
 from time import sleep, strftime
 
-from ophyd.runengine import RunEngine
-from ophyd.controls import EpicsMotor, PVPositioner
+from ..runengine import RunEngine
+from ..controls import EpicsMotor, PVPositioner
 
 from pyOlog import SimpleOlogClient
 
