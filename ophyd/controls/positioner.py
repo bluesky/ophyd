@@ -11,6 +11,7 @@
 from __future__ import print_function
 import logging
 import time
+import warnings
 
 from epics.pv import fmt_time
 
@@ -54,6 +55,18 @@ class Positioner(SignalGroup):
         self._followed = []
 
     @property
+    def limits(self):
+        return (0, 0)
+
+    @property
+    def low_limit(self):
+        return self.limits[0]
+
+    @property
+    def high_limit(self):
+        return self.limits[1]
+
+    @property
     def next_pos(self):
         '''
         Get the next point in the trajectory
@@ -94,7 +107,7 @@ class Positioner(SignalGroup):
             finished (not applicable if `wait` is set)
         :param float timeout: Timeout in seconds
 
-        :raises: TimeoutError
+        :raises: TimeoutError, ValueError (on invalid positions)
         '''
 
         # TODO session manager handles ctrl-C to stop move?
@@ -192,7 +205,8 @@ class EpicsMotor(Positioner):
         Positioner.__init__(self, name=name, **kwargs)
 
         signals = [EpicsSignal(self.field_pv('RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(self.field_pv('VAL'), alias='_user_request'),
+                   EpicsSignal(self.field_pv('VAL'), alias='_user_request',
+                               limits=True),
                    EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
                    EpicsSignal(self.field_pv('DMOV'), alias='_done_move'),
                    EpicsSignal(self.field_pv('EGU'), alias='_egu'),
@@ -206,6 +220,10 @@ class EpicsMotor(Positioner):
         self._moving = bool(self._is_moving.value)
         self._done_move.subscribe(self._move_changed)
         self._user_readback.subscribe(self._pos_changed)
+
+    @property
+    def limits(self):
+        return self._user_request.limits
 
     @property
     def moving(self):
@@ -338,37 +356,80 @@ class PVPositioner(Positioner):
         if stop is not None:
             self.add_signal(EpicsSignal(stop, alias='_stop'))
 
+        if done is None and not self._put_complete:
+            # TODO is this exception worthy?
+            warnings.warn('Positioner %s has no way of knowing motion status' % self.name)
+
         if done is not None:
             self.add_signal(EpicsSignal(done, alias='_done'))
 
             self._done.subscribe(self._move_changed)
+        else:
+            self._done_val = False
 
         for signal in signals:
             self.add_signal(signal)
 
+    @property
+    def moving(self):
+        '''
+        Whether or not the motor is moving
+
+        If a `done` PV is specified, it will be read directly to get
+        the motion status. If not, it determined from the internal
+        state of PVPositioner.
+
+        :rtype: bool
+        '''
+        if self._done is not None:
+            dval = self._done._get_readback(use_monitor=False)
+            return (dval != self._done_val)
+        else:
+            return self._moving
+
+    def _move_wait_pc(self, position, **kwargs):
+        '''
+        Move and wait until motion has completed,
+        using put completion (pc) on one of the signals
+        '''
+        has_done = self._done is not None
+        if not has_done:
+            self._move_changed(value=True)
+
+        if self._move_timeout <= 0.0:
+            # TODO pyepics timeout of 0 and None don't mean infinite wait?
+            timeout = 1e6
+
+        if self._actuate is None:
+            self._setpoint._set_request(position, wait=True,
+                                        timeout=timeout)
+        else:
+            self._setpoint._set_request(position, wait=False)
+            self._actuate._set_request(self._act_val, wait=True,
+                                       timeout=timeout)
+
+        if not has_done:
+            self._move_changed(value=False)
+
+        if self._started_moving and not self._moving:
+            self._done_moving(timestamp=self._setpoint.readback_ts)
+        elif self._started_moving and self._moving:
+            # TODO better exceptions
+            raise TimeoutError('Failed to move %s to %s (put complete done, still moving)' %
+                               (self, position))
+        else:
+            raise TimeoutError('Failed to move %s to %s (no motion, put complete)' %
+                               (self, position))
+
     def _move_wait(self, position, **kwargs):
+        '''
+        Move and wait until motion has completed
+        '''
         self._started_moving = False
 
         if self._put_complete:
             # TODO timeout setting with put completion; untested
-            if self._put_complete:
-                if self._actuate is None:
-                    self._setpoint._set_request(position, wait=True,
-                                                timeout=self._move_timeout)
-                else:
-                    self._setpoint._set_request(position, wait=False)
-                    self._actuate._set_request(self._act_val, wait=True,
-                                               timeout=self._move_timeout)
-
-            if self._started_moving and not self._moving:
-                self._done_moving(timestamp=self._setpoint.readback_timestamp)
-            elif self._started_moving and self._moving:
-                # TODO better exceptions
-                raise TimeoutError('Failed to move %s to %s s (put complete done, still moving)' %
-                                   (self, position))
-            else:
-                raise TimeoutError('Failed to move %s to %s s (no motion, put complete)' %
-                                   (self, position))
+            self._move_wait_pc(position, **kwargs)
         else:
             self._setpoint._set_request(position, wait=True)
             logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
@@ -379,32 +440,42 @@ class PVPositioner(Positioner):
                 logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
                                                      self._act_val))
 
-        Positioner.move(self, position, wait=True,
-                        **kwargs)
-
     def _move_async(self, position, **kwargs):
+        '''
+        Move and do not wait until motion is complete (asynchronous)
+        '''
         self._started_moving = False
 
-        self._setpoint.request = position
+        def done_moving(**kwargs):
+            if self._put_complete:
+                logger.debug('[%s] Async motion done' % self)
+                self._move_changed(value=False)
 
-        logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
-                                                self._act_val))
+        if self._done is None and self._put_complete:
+            # No done signal, so we rely on put completion
+            self._move_changed(value=True)
+
         if self._actuate is not None:
-            self._actuate._set_request(self._act_val, wait=False)
-            logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
-                                                 self._act_val))
-
-        Positioner.move(self, position, wait=False,
-                        **kwargs)
+            self._setpoint._set_request(position, wait=False)
+            self._actuate._set_request(self._act_val, wait=False,
+                                       callback=done_moving)
+        else:
+            self._setpoint._set_request(position, wait=False,
+                                        callback=done_moving)
 
     def move(self, position, wait=True,
              **kwargs):
-        try:
-            if wait:
-                self._move_wait(position, **kwargs)
 
-            else:
-                self._move_async(position, **kwargs)
+        if wait:
+            move_fcn = self._move_wait
+        else:
+            move_fcn = self._move_async
+
+        try:
+            move_fcn(position, **kwargs)
+
+            Positioner.move(self, position, wait=wait,
+                            **kwargs)
         except KeyboardInterrupt:
             self.stop()
 

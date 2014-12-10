@@ -10,10 +10,9 @@ from ..runengine import RunEngine
 class SessionManager(object):
     _instance = None
 
-    def __init__(self, logger=None, ipy=None):
-        #TODO: FIXME... seriously...
+    def __init__(self, logger, ipy):
         if SessionManager._instance is not None:
-            return SessionManager._instance
+            raise RuntimeError('SessionManager already instantiated.')
 
         SessionManager._instance = self
         self._ipy = ipy
@@ -22,10 +21,8 @@ class SessionManager(object):
         self._registry = {'positioners': {}, 'signals': {},
                         'beamline_config': {}}
 
-        if ipy is not None:
-            self._ipy = ipy
-            session_mgr = self
-            self._ipy.push('session_mgr')
+        session_mgr = self
+        self._ipy.push('session_mgr')
 
         orig_hdlr = signal.getsignal(signal.SIGINT)
 
@@ -35,6 +32,18 @@ class SessionManager(object):
             orig_hdlr(sig, frame)
         signal.signal(signal.SIGINT, sigint_hdlr)
         self._ipy.push('sigint_hdlr')
+
+        #Restore _scan_id from IPy user_ns.
+        #Relying on c.StoreMagics.autorestore = True in ophyd IPy profile.
+        try:
+            scanid = self._ipy.user_ns['_scan_id']
+            self._logger.debug('Last scan id = %s' % scanid) 
+        except KeyError:
+            self._logger.debug('SessionManager could not find a scan_id.')
+            self._logger.debug('Resetting scan_id to 1...')
+            self._ipy.user_ns['_scan_id'] = 1
+            self._ipy.run_line_magic('store', '_scan_id')
+
 
     def _update_registry(self, obj, category):
         if obj not in self._registry[category] and obj.name is not None:
@@ -82,3 +91,18 @@ class SessionManager(object):
     #TODO: should we let this raise a KeyError exception? Probably...
     def get_positioner(self, pos):
         return self._registry['positioners'][pos]
+
+    def get_current_scan_id(self):
+        return self._ipy.user_ns['_scan_id']
+
+    def get_next_scan_id(self):
+        '''Increments the current scan_id by one and returns the value.
+           Then, persists the scan_id using IPython's "%store" magics.
+        '''
+        self._ipy.user_ns['_scan_id'] += 1
+        self._ipy.run_line_magic('store', '_scan_id')
+        return self._ipy.user_ns['_scan_id']
+
+    def set_scan_id(self, value):
+        self._ipy.user_ns['_scan_id'] = value
+        self._ipy.run_line_magic('store', '_scan_id')
