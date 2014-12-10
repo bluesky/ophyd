@@ -48,11 +48,13 @@ def setup_loggers(logger_names, fmt=LOG_FORMAT):
         logger.addHandler(handler)
 
 
+setup_loggers((EXAMPLE_LOGGER, ))
+logger = logging.getLogger(EXAMPLE_LOGGER)
+
+
 session = ophyd.get_session_manager()
 setup_epics()
 
-setup_loggers((EXAMPLE_LOGGER, ))
-logger = logging.getLogger(EXAMPLE_LOGGER)
 
 motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',
               'XF:31IDA-OP{Tbl-Ax:X2}Mtr',

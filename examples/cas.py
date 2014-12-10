@@ -20,7 +20,9 @@ def test():
 
     pvname = config.fake_pvnames[0]
 
-    server = caServer()
+    session = config.session
+    server = session.cas
+
     pv = PythonPV(pvname, 123.0, server=server)
 
     def updated(value=None, **kwargs):

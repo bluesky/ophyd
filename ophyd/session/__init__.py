@@ -4,26 +4,26 @@
 from __future__ import print_function
 import sys
 import logging
-import signal
 import warnings
 
 import epics
 
 import atexit
-from ophyd.utils.epics_pvs import MonitorDispatcher
+from ..utils.epics_pvs import MonitorDispatcher
 
 LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
 OPHYD_LOGGER = 'ophyd_session'
 
 
-def get_session_manager():
+def get_session_manager(*args, **kwargs):
     from .sessionmgr import SessionManager
 
     # TODO: Session manager singleton
-    try:
-        return SessionManager._instance
-    except AttributeError:
-        return None
+    if SessionManager._instance is None:
+        logger.warning('Instantiating SessionManager outside of IPython')
+        SessionManager(logging.getLogger(OPHYD_LOGGER), None)
+
+    return SessionManager._instance
 
 
 def register_object(obj, set_vars=True):
@@ -101,6 +101,6 @@ def load_ipython_extension(ipython):
 
     # import caget, caput, camonitor, cainfo
     from epics import (caget, caput, camonitor, cainfo)
-    ipython.push('caget caput camonitor cainfo')
+    ipython.push('caget caput camonitor cainfo session_mgr')
 
     print('...Done loading Ophyd Session Manager')

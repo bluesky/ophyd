@@ -11,13 +11,29 @@ try:
 except ImportError:
     caServer = None
 
+__all__ = ['SessionManager']
+
+
+class _FakeIPython(object):
+    user_ns = {}
+
+    def _no_op(self, *args, **kwargs):
+        pass
+
+    ask_exit = _no_op
+    push = _no_op
+    run_line_magic = _no_op
+
 
 class SessionManager(object):
     _instance = None
 
-    def __init__(self, logger, ipy):
+    def __init__(self, logger, ipy=None):
         if SessionManager._instance is not None:
             raise RuntimeError('SessionManager already instantiated.')
+
+        if ipy is None:
+            ipy = _FakeIPython()
 
         SessionManager._instance = self
         self._ipy = ipy
@@ -60,6 +76,13 @@ class SessionManager(object):
             self._logger.debug('Resetting scan_id to 1...')
             self._ipy.user_ns['_scan_id'] = 1
             self._ipy.run_line_magic('store', '_scan_id')
+
+    @property
+    def cas(self):
+        '''
+        Channel Access Server instance
+        '''
+        return self._cas
 
     def _cleanup(self):
         '''
