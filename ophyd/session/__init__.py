@@ -53,7 +53,15 @@ def register_object(obj, set_vars=True):
 
 def setup_epics():
     def stop_dispatcher():
+        if not dispatcher.is_alive():
+            return
+
         dispatcher.stop()
+        dispatcher.join()
+
+        epics.ca._onGetEvent = lambda *args, **kwargs: 0
+        epics.ca._onMonitorEvent = lambda *args, **kwargs: 0
+        epics.ca.get_cache = lambda *args, **kwargs: {}
 
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very

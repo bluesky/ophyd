@@ -1,10 +1,15 @@
 from __future__ import print_function
 import signal
-
+import atexit
 
 from ..controls.positioner import Positioner
 from ..controls.signal import (OphydObject, Signal, SignalGroup)
 from ..runengine import RunEngine
+
+try:
+    from ..utils.cas import caServer
+except ImportError:
+    caServer = None
 
 
 class SessionManager(object):
@@ -19,10 +24,14 @@ class SessionManager(object):
         self._logger = logger
         self._run_engine = None
         self._registry = {'positioners': {}, 'signals': {},
-                        'beamline_config': {}}
+                          'beamline_config': {}}
 
         session_mgr = self
         self._ipy.push('session_mgr')
+
+        # Override the IPython exit request function
+        self._ipy_exit = self._ipy.ask_exit
+        self._ipy.ask_exit = self._ask_exit
 
         orig_hdlr = signal.getsignal(signal.SIGINT)
 
@@ -30,20 +39,45 @@ class SessionManager(object):
             self._logger.debug('Calling SessionManager SIGINT handler...')
             self.stop_all()
             orig_hdlr(sig, frame)
+
         signal.signal(signal.SIGINT, sigint_hdlr)
         self._ipy.push('sigint_hdlr')
+
+        if caServer is not None:
+            self._cas = caServer()
+        else:
+            self._cas = None
+
+        atexit.register(self._cleanup)
 
         #Restore _scan_id from IPy user_ns.
         #Relying on c.StoreMagics.autorestore = True in ophyd IPy profile.
         try:
             scanid = self._ipy.user_ns['_scan_id']
-            self._logger.debug('Last scan id = %s' % scanid) 
+            self._logger.debug('Last scan id = %s' % scanid)
         except KeyError:
             self._logger.debug('SessionManager could not find a scan_id.')
             self._logger.debug('Resetting scan_id to 1...')
             self._ipy.user_ns['_scan_id'] = 1
             self._ipy.run_line_magic('store', '_scan_id')
 
+    def _cleanup(self):
+        '''
+        Called when exiting IPython is confirmed
+        '''
+        if self._cas is not None:
+            self._cas.stop()
+
+    def _ask_exit(self):
+        # TODO tweak this behavior as desired; one ctrl-D stops the scan,
+        #      two confirms exit
+
+        run = self._run_engine
+        if run is not None:
+            self.stop_all()
+            run.stop()
+        else:
+            self._ipy_exit()
 
     def _update_registry(self, obj, category):
         if obj not in self._registry[category] and obj.name is not None:
