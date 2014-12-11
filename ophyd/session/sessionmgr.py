@@ -44,9 +44,6 @@ class SessionManager(object):
         self._registry = {'positioners': {}, 'signals': {},
                           'beamline_config': {}}
 
-        session_mgr = self
-        self._ipy.push('session_mgr')
-
         # Override the IPython exit request function
         self._ipy_exit = self._ipy.ask_exit
         self._ipy.ask_exit = self._ask_exit

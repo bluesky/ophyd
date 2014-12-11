@@ -99,7 +99,6 @@ def load_ipython_extension(ipython):
     #SessionManager will insert itself into ipython user namespace
     session_mgr = SessionManager(logger=logger, ipy=ipython)
 
-    # import caget, caput, camonitor, cainfo
     from epics import (caget, caput, camonitor, cainfo)
     ipython.push('caget caput camonitor cainfo session_mgr')
 
