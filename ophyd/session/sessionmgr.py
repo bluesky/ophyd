@@ -1,6 +1,7 @@
 from __future__ import print_function
 import signal
 import atexit
+import warnings
 
 from ..controls.positioner import Positioner
 from ..controls.signal import (OphydObject, Signal, SignalGroup)
@@ -20,6 +21,7 @@ class _FakeIPython(object):
     def _no_op(self, *args, **kwargs):
         pass
 
+    config = None
     ask_exit = _no_op
     push = _no_op
     run_line_magic = _no_op
@@ -67,16 +69,53 @@ class SessionManager(object):
 
         atexit.register(self._cleanup)
 
-        #Restore _scan_id from IPy user_ns.
-        #Relying on c.StoreMagics.autorestore = True in ophyd IPy profile.
-        try:
-            scanid = self._ipy.user_ns['_scan_id']
-            self._logger.debug('Last scan id = %s' % scanid)
-        except KeyError:
-            self._logger.debug('SessionManager could not find a scan_id.')
-            self._logger.debug('Resetting scan_id to 1...')
-            self._ipy.user_ns['_scan_id'] = 1
-            self._ipy.run_line_magic('store', '_scan_id')
+        self.persist_var('_persisting', [], desc='persistence list')
+        self.persist_var('_scan_id', 1, desc='Scan ID')
+
+    @property
+    def persisting(self):
+        return self['_persisting']
+
+    @property
+    def ipy_config(self):
+        '''
+        The IPython configuration
+        '''
+        return self._ipy.config
+
+    @property
+    def in_ipython(self):
+        return not isinstance(self._ipy, _FakeIPython)
+
+    def persist_var(self, name, value=0, desc=None):
+        if not self.in_ipython:
+            return
+
+        config = self.ipy_config
+        if not config.StoreMagics.autorestore:
+            warnings.warn('StoreMagics.autorestore not enabled; variable persistence disabled')
+
+            if name not in self:
+                self[name] = value
+                self._logger.debug('Setting %s = %s' % (name, value))
+            return self[name]
+
+        if name not in self.persisting:
+            self.persisting.append(name)
+
+        if name not in self:
+            if desc is not None:
+                self._logger.debug('SessionManager could not find %s (%s).' % (name, desc))
+                self._logger.debug('Resetting %s to %s' % (name, value))
+
+            self[name] = value
+        else:
+            value = self[name]
+            if desc is not None:
+                self._logger.debug('Last %s = %s' % (desc, self[name]))
+
+        self._ipy.run_line_magic('store', name)
+        return value
 
     @property
     def cas(self):
@@ -91,6 +130,12 @@ class SessionManager(object):
         '''
         if self._cas is not None:
             self._cas.stop()
+
+        persisting = [name for name in self.persisting
+                      if name in self]
+
+        for name in persisting:
+            self._ipy.run_line_magic('store', name)
 
     def _ask_exit(self):
         # TODO tweak this behavior as desired; one ctrl-D stops the scan,
@@ -151,16 +196,24 @@ class SessionManager(object):
         return self._registry['positioners'][pos]
 
     def get_current_scan_id(self):
-        return self._ipy.user_ns['_scan_id']
+        return self['_scan_id']
 
     def get_next_scan_id(self):
         '''Increments the current scan_id by one and returns the value.
            Then, persists the scan_id using IPython's "%store" magics.
         '''
-        self._ipy.user_ns['_scan_id'] += 1
-        self._ipy.run_line_magic('store', '_scan_id')
-        return self._ipy.user_ns['_scan_id']
+        self['_scan_id'] += 1
+        return self['_scan_id']
 
     def set_scan_id(self, value):
-        self._ipy.user_ns['_scan_id'] = value
-        self._ipy.run_line_magic('store', '_scan_id')
+        self['_scan_id'] = value
+
+    # TODO: does this make sense for the session? up for suggestions
+    def __getitem__(self, key):
+        return self._ipy.user_ns[key]
+
+    def __setitem__(self, key, value):
+        self._ipy.user_ns[key] = value
+
+    def __contains__(self, key):
+        return key in self._ipy.user_ns
