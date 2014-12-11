@@ -23,26 +23,18 @@ def test():
     session = config.session
     server = session.cas
 
-    pv = PythonPV(pvname, 123.0, server=server)
-
     def updated(value=None, **kwargs):
         print('Updated to: %s' % value)
 
+    python_pv = PythonPV(pvname, 123.0, server=server)
     signal = EpicsSignal(pvname)
     signal.subscribe(updated)
 
     time.sleep(0.1)
 
     for i in range(10):
-        pv.value = i
+        python_pv.value = i
         time.sleep(0.05)
-
-    server.stop()
-
-    if 0:
-        # TODO
-        import epics
-        epics.ca.detach_context()
 
 
 if __name__ == '__main__':

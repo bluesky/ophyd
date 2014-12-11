@@ -25,6 +25,8 @@ class _FakeIPython(object):
     ask_exit = _no_op
     push = _no_op
     run_line_magic = _no_op
+    __getattr__ = _no_op
+    __setattr__ = _no_op
 
 
 class SessionManager(object):
@@ -127,6 +129,9 @@ class SessionManager(object):
         '''
         if self._cas is not None:
             self._cas.stop()
+
+        if not self.in_ipython:
+            return
 
         persisting = [name for name in self.persisting
                       if name in self]
