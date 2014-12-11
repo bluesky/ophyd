@@ -62,6 +62,7 @@ class SessionManager(object):
         if caServer is not None:
             self._cas = caServer()
         else:
+            self._logger.info('pcaspy is unavailable; channel access server disabled')
             self._cas = None
 
         atexit.register(self._cleanup)
