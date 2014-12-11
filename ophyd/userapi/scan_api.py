@@ -221,19 +221,20 @@ class ScanND(Scan):
 class AScan(ScanND):
 
     def pre_scan(self):
-        ScanND.pre_scan(self)
-
-        time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
-
-        msg = 'Scan started at {}\n\n'.format(time_text)
-        msg += '===\n'
-        for p in self.positioners:
-            if isinstance(p, (EpicsMotor, PVPositioner)):
-                for pv in p.read_pvname:
-                    msg += "PV:" + pv + "\n"
-
-        olog_client = SimpleOlogClient()
-        olog_client.log(msg)
+        pass
+#        ScanND.pre_scan(self)
+#
+#        time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
+#
+#        msg = 'Scan started at {}\n\n'.format(time_text)
+#        msg += '===\n'
+#        for p in self.positioners:
+#            if isinstance(p, (EpicsMotor, PVPositioner)):
+#                for pv in p.read_pvname:
+#                    msg += "PV:" + pv + "\n"
+#
+#        olog_client = SimpleOlogClient()
+#        olog_client.log(msg)
 
 
 class DScan(AScan):
