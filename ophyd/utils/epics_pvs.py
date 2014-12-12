@@ -61,7 +61,7 @@ def record_field(record, field):
 
 def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
                 reason_field=None, reason_pv=None,
-                min_severity=errors.EPICS_SEV_MINOR):
+                min_severity=errors.MinorAlarmError.severity):
     """
     Raise an exception if an alarm is set
 
@@ -127,6 +127,8 @@ class MonitorDispatcher(epics.ca.CAThread):
         self._all_contexts = bool(all_contexts)
         self._timeout = timeout
 
+        self.start()
+
     def run(self):
         '''
         The dispatcher itself
@@ -146,6 +148,7 @@ class MonitorDispatcher(epics.ca.CAThread):
                         self.callback_logger.error(ex, exc_info=ex)
 
         self._setup_pyepics(False)
+        epics.ca.detach_context()
 
     def stop(self):
         '''
@@ -163,7 +166,7 @@ class MonitorDispatcher(epics.ca.CAThread):
         epics.ca._CB_EVENT = ctypes.CFUNCTYPE(None, epics.dbr.event_handler_args)(fcn)
 
     def _monitor_event(self, args):
-        if self.all_contexts or self.main_context == epics.ca.current_context():
+        if self._all_contexts or self.main_context == epics.ca.current_context():
             if callable(args.usr):
                 if not hasattr(args.usr, '_disp_tag') or args.usr._disp_tag is not self:
                     args.usr = lambda orig_cb=args.usr, **kwargs: \

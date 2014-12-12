@@ -65,6 +65,10 @@ class RunEngine(object):
     def stop(self):
         self._scan_state = False
 
+    @property
+    def running(self):
+        return self._scan_state
+
     def pause(self):
         pass
 

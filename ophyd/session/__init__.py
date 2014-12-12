@@ -4,13 +4,7 @@
 from __future__ import print_function
 import sys
 import logging
-import signal
 import warnings
-
-import epics
-
-import atexit
-from ophyd.utils.epics_pvs import MonitorDispatcher
 
 LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
 OPHYD_LOGGER = 'ophyd_session'
@@ -19,11 +13,11 @@ OPHYD_LOGGER = 'ophyd_session'
 def get_session_manager():
     from .sessionmgr import SessionManager
 
-    # TODO: Session manager singleton
-    try:
-        return SessionManager._instance
-    except AttributeError:
-        return None
+    if SessionManager._instance is None:
+        logger.warning('Instantiating SessionManager outside of IPython')
+        SessionManager(logging.getLogger(OPHYD_LOGGER), None)
+
+    return SessionManager._instance
 
 
 def register_object(obj, set_vars=True):
@@ -37,31 +31,13 @@ def register_object(obj, set_vars=True):
     :rtype: :class:`SessionManager` or None
     '''
     ses = get_session_manager()
-
-    if ses is None:
-        # TODO setup additional logger when no session present?
-        ses_logger = logger
-    else:
-        ses_logger = ses.register(obj)
+    ses_logger = ses.register(obj)
 
     if set_vars:
         obj._session = ses
         obj._ses_logger = ses_logger
 
     return ses
-
-
-def setup_epics():
-    def stop_dispatcher():
-        dispatcher.stop()
-
-    # It's important to use the same context in the callback dispatcher
-    # as the main thread, otherwise not-so-savvy users will be very
-    # confused
-    epics.ca.use_initial_context()
-    dispatcher = MonitorDispatcher()
-
-    atexit.register(stop_dispatcher)
 
 
 def setup_loggers(logger_names, fmt=LOG_FORMAT):
@@ -84,15 +60,8 @@ def load_ipython_extension(ipython):
 
     print('Loading Ophyd Session Manager...')
 
-    # config libca params
-    setup_epics()
-
     from .sessionmgr import SessionManager
     #SessionManager will insert itself into ipython user namespace
     session_mgr = SessionManager(logger=logger, ipy=ipython)
-
-    # import caget, caput, camonitor, cainfo
-    from epics import (caget, caput, camonitor, cainfo)
-    ipython.push('caget caput camonitor cainfo')
 
     print('...Done loading Ophyd Session Manager')
