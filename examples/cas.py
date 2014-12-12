@@ -8,7 +8,7 @@ import time
 
 import config
 
-from ophyd.utils.cas import (caServer, PythonPV)
+from ophyd.utils.cas import PythonPV
 from ophyd.controls import EpicsSignal
 
 
@@ -18,10 +18,10 @@ def test():
 
     config.setup_loggers(loggers)
 
-    pvname = config.fake_pvnames[0]
-
     session = config.session
     server = session.cas
+
+    pvname = ''.join((server.prefix, config.server_pvnames[0]))
 
     def updated(value=None, **kwargs):
         print('Updated to: %s' % value)

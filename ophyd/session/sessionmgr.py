@@ -60,7 +60,8 @@ class SessionManager(object):
         self._setup_sigint()
 
         if caServer is not None:
-            self._cas = caServer()
+            self._cas = caServer('OPHYD_SESSION:')
+            # TODO config should override this?
         else:
             self._logger.info('pcaspy is unavailable; channel access server disabled')
             self._cas = None

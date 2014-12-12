@@ -53,6 +53,9 @@ logger = logging.getLogger(EXAMPLE_LOGGER)
 
 
 session = ophyd.get_session_manager()
+
+session.cas.prefix = 'XF:31IDA-BI{OPHYD_EXAMPLE}:'
+
 setup_epics()
 
 
@@ -99,9 +102,9 @@ sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
                      }
                     ]
 
-# Fake PV names for the channel access server to create
-fake_pvnames = ['__channel_access_server__',
-                ]
+# PV names for the channel access server to create
+server_pvnames = ['_server_pv_',
+                  ]
 
 # this is a real instrument - it is not currently used, but be cautious!
 scalers = ['XF:23ID2-ES{Sclr:1}']

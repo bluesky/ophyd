@@ -136,12 +136,13 @@ class caServer(cas.caServer):
     enum_types = (cas.aitEnumEnum16, )
     numerical_types = (cas.aitEnumFloat64, cas.aitEnumInt32)
 
-    def __init__(self, start=True):
+    def __init__(self, prefix, start=True):
         cas.caServer.__init__(self)
 
         self._pvs = {}
         self._thread = None
         self._running = False
+        self._prefix = str(prefix)
 
         if start:
             self.start()
@@ -149,10 +150,23 @@ class caServer(cas.caServer):
     # TODO asCaStop when all are stopped:
     #  cas.asCaStop()
 
+    def _get_prefix(self):
+        return self._prefix
+
+    def _set_prefix(self, prefix):
+        if prefix != self._prefix:
+            # TODO any special handling?
+            logger.debug('New PV prefix %s -> %s' % (self._prefix, prefix))
+            self._prefix = prefix
+
+    prefix = property(_get_prefix, _set_prefix)
+
     def __getitem__(self, pv):
         return self.get_pv(pv)
 
     def get_pv(self, pv):
+        pv = self._strip_prefix(pv)
+
         if '.' in pv:
             record, field = split_record_field(pv)
             if record in self._pvs:
@@ -162,17 +176,26 @@ class caServer(cas.caServer):
         return self._pvs[pv]
 
     def add_pv(self, pvi):
-        name = pvi.name
+        name = self._strip_prefix(pvi.name)
 
         if name in self._pvs:
             raise ValueError('PV already exists')
 
         self._pvs[name] = pvi
 
+    def _strip_prefix(self, pvname):
+        '''
+        Remove the channel access server prefix from the pv name
+        '''
+        if pvname[:len(self._prefix)] == self._prefix:
+            return pvname[len(self._prefix):]
+        else:
+            return pvname
+
     def pvExistTest(self, context, addr, pvname):
-        # TODO parse to check for record: record.FIELD
-        #      and check with record instance to see if FIELD
-        #      exists
+        if not pvname.startswith(self._prefix):
+            return cas.pverDoesNotExistHere
+
         try:
             self.get_pv(pvname)
         except KeyError:
@@ -185,6 +208,7 @@ class caServer(cas.caServer):
         try:
             pvi = self.get_pv(pvname)
         except KeyError:
+            print('not found', pvname)
             return casPVNotFoundError.ret
 
         logger.debug('PV attach %s' % (pvname, ))
@@ -261,6 +285,9 @@ class PythonPV(cas.casPV):
             type_ = type(value)
         elif value is not None:
             value = type_(value)
+
+        if server is not None:
+            name = server._strip_prefix(name)
 
         self._name = str(name)
         self._ca_type = caServer.type_map.get(type_, type_)
