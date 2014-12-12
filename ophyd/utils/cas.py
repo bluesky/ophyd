@@ -151,6 +151,9 @@ class caServer(cas.caServer):
     #  cas.asCaStop()
 
     def _get_prefix(self):
+        '''
+        The channel access prefix, shared by all PVs added to this server.
+        '''
         return self._prefix
 
     def _set_prefix(self, prefix):
@@ -253,6 +256,10 @@ class caServer(cas.caServer):
 
 
 class PythonPV(cas.casPV):
+    '''
+    Channel access server process variable
+    '''
+
     def __init__(self, name, value,
                  count=0,
                  type_=None,
@@ -270,6 +277,30 @@ class PythonPV(cas.casPV):
                  scan_cb=None,
                  ):
 
+        '''
+        Channel access server process variable
+
+        :param str name: The PV name (should not include server prefix)
+        :param value: The initial value, also used to guess the CA type
+        :param int count: The number of elements in the array
+            (must be >= len(value))
+        :param type_: Override the default type detected from `value`
+        :param int precision: The precision clients should use for display
+        :param str units: The engineering units of the pv
+        :param limits: Limit information (high, low, etc. See :class:`Limits`)
+        :param scan: The rate at which to call scan()
+        :param asg: Access security group information (TODO)
+        :param minor_states: For enums, the minor alarm states
+        :param major_states: For enums, the major alarm states
+        :param server: The channel access server to attach to
+        :param written_cb: A callback called when the value is written to via
+            channel access. This overrides the default `written_to` method.
+        :param scan_cb: A callback called when the scan event happens --
+            when the PV should have its value updated. This overrides the
+            default `scan` method.
+        '''
+
+        # TODO: asg
         if written_cb is None:
             written_cb = self.written_to
         elif not callable(written_cb):
@@ -721,6 +752,11 @@ class PythonPV(cas.casPV):
 
 
 class PythonRecord(PythonPV):
+    '''
+    A channel access server record, starting out with just a
+    VAL field. Additional fields can be added dynamically.
+    '''
+
     def __init__(self, name, val_field,
                  **kwargs):
 
