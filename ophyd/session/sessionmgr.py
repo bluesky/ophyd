@@ -3,8 +3,11 @@ import signal
 import atexit
 import warnings
 
+import epics
+
 from ..controls.positioner import Positioner
 from ..controls.signal import (OphydObject, Signal, SignalGroup)
+from ..utils.epics_pvs import MonitorDispatcher
 from ..runengine import RunEngine
 
 try:
@@ -40,25 +43,21 @@ class SessionManager(object):
             ipy = _FakeIPython()
 
         SessionManager._instance = self
+
         self._ipy = ipy
         self._logger = logger
         self._run_engine = None
         self._registry = {'positioners': {}, 'signals': {},
                           'beamline_config': {}}
 
+        self._dispatcher = None
+        self._setup_epics()
+
         # Override the IPython exit request function
         self._ipy_exit = self._ipy.ask_exit
         self._ipy.ask_exit = self._ask_exit
 
-        orig_hdlr = signal.getsignal(signal.SIGINT)
-
-        def sigint_hdlr(sig, frame):
-            self._logger.debug('Calling SessionManager SIGINT handler...')
-            self.stop_all()
-            orig_hdlr(sig, frame)
-
-        signal.signal(signal.SIGINT, sigint_hdlr)
-        self._ipy.push('sigint_hdlr')
+        self._setup_sigint()
 
         if caServer is not None:
             self._cas = caServer()
@@ -70,6 +69,24 @@ class SessionManager(object):
 
         self.persist_var('_persisting', [], desc='persistence list')
         self.persist_var('_scan_id', 1, desc='Scan ID')
+
+    def _setup_sigint(self):
+        '''
+        Setup the signal interrupt handler
+        '''
+        self._orig_sigint_hdlr = signal.getsignal(signal.SIGINT)
+        signal.signal(signal.SIGINT, self.sigint_hdlr)
+
+        # Expose it to IPython as well
+        self._ipy.push(dict(sigint_hdlr=self.sigint_hdlr))
+
+    def sigint_hdlr(self, sig, frame):
+        '''
+        Default ophyd signal interrupt (ctrl-c) handler
+        '''
+        self._logger.debug('Calling SessionManager SIGINT handler...')
+        self.stop_all()
+        self._orig_sigint_hdlr(sig, frame)
 
     @property
     def persisting(self):
@@ -116,32 +133,38 @@ class SessionManager(object):
         self._ipy.run_line_magic('store', name)
         return value
 
-    @property
-    def cas(self):
-        '''
-        Channel Access Server instance
-        '''
-        return self._cas
-
     def _cleanup(self):
         '''
         Called when exiting IPython is confirmed
         '''
+        if self._dispatcher.is_alive():
+            self._dispatcher.stop()
+            self._dispatcher.join()
+
         if self._cas is not None:
+            # Stopping the channel access server causes disconnections right as
+            # the program is quitting. To stop it from being noisy and
+            # polluting stdout with needless tracebacks, set the pyepics
+            # events callback filters to not do anything.
+            epics.ca._onGetEvent = lambda *args, **kwargs: 0
+            epics.ca._onMonitorEvent = lambda *args, **kwargs: 0
+            epics.ca.get_cache = lambda *args, **kwargs: {}
+
             self._cas.stop()
 
-        if not self.in_ipython:
-            return
+        if self.in_ipython:
+            persisting = [name for name in self.persisting
+                          if name in self]
 
-        persisting = [name for name in self.persisting
-                      if name in self]
-
-        for name in persisting:
-            self._ipy.run_line_magic('store', name)
+            for name in persisting:
+                self._ipy.run_line_magic('store', name)
 
     def _ask_exit(self):
-        # TODO tweak this behavior as desired; one ctrl-D stops the scan,
-        #      two confirms exit
+        '''
+        Called when the user tries to quit the IPython session
+
+        One ctrl-D stops the scan, two confirms exit
+        '''
 
         run = self._run_engine
         if run is not None:
@@ -210,12 +233,44 @@ class SessionManager(object):
     def set_scan_id(self, value):
         self['_scan_id'] = value
 
-    # TODO: does this make sense for the session? up for suggestions
     def __getitem__(self, key):
+        '''
+        Grab variables from the IPython namespace
+        '''
         return self._ipy.user_ns[key]
 
     def __setitem__(self, key, value):
+        '''
+        Set variables in the IPython namespace
+        '''
         self._ipy.user_ns[key] = value
 
     def __contains__(self, key):
         return key in self._ipy.user_ns
+
+    @property
+    def cas(self):
+        '''
+        Channel Access Server instance
+        '''
+        return self._cas
+
+    @property
+    def dispatcher(self):
+        '''
+        The monitor dispatcher
+        '''
+        return self._dispatcher
+
+    def _setup_epics(self):
+        # It's important to use the same context in the callback dispatcher
+        # as the main thread, otherwise not-so-savvy users will be very
+        # confused
+        epics.ca.use_initial_context()
+
+        self._dispatcher = MonitorDispatcher()
+
+        self._ipy.push(dict(caget=epics.caget,
+                            caput=epics.caput,
+                            camonitor=epics.camonitor,
+                            cainfo=epics.cainfo))
