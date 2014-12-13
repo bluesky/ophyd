@@ -202,6 +202,7 @@ class ScanND(Scan):
         for b, e, d in zip(start, stop, range(dimension)):
             # For each dimension we work out the paths
             iter_pos = ensure_iterator(positioners[d])
+            print(iter_pos)
             for p in iter_pos:
                 pos.append(p)
                 paths.append(self.calc_path(b, e, npts, d))
