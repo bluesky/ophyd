@@ -51,11 +51,6 @@ def setup_loggers(logger_names, fmt=LOG_FORMAT):
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
 
-        olog_handler = OlogHandler()
-        olog_handler.setLevel(logging.INFO)
-        logger.addHandler(olog_handler)
-
-
 # setup logging
 setup_loggers((OPHYD_LOGGER, ))
 logger = logging.getLogger(OPHYD_LOGGER)
@@ -67,7 +62,7 @@ def load_ipython_extension(ipython):
     print('Loading Ophyd Session Manager...')
 
     from .sessionmgr import SessionManager
-    #SessionManager will insert itself into ipython user namespace
+    # SessionManager will insert itself into ipython user namespace
     session_mgr = SessionManager(logger=logger, ipy=ipython)
 
     print('...Done loading Ophyd Session Manager')

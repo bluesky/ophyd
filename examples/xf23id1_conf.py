@@ -7,6 +7,7 @@ from ophyd.userapi import *
 import logging
 from ophyd.userapi.scan_api import ScanND, AScan, DScan
 
+from pyOlog.OlogHandler import OlogHandler
 
 # Undulator
 
@@ -155,9 +156,20 @@ npbx = EpicsMotor('XF:23ID1-ES{Dif:Lens-Ax:BtmX}Mtr', name = 'npbx')
 npby = EpicsMotor('XF:23ID1-ES{Dif:Lens-Ax:BtmY}Mtr', name = 'npby')
 npbz = EpicsMotor('XF:23ID1-ES{Dif:Lens-Ax:BtmZ}Mtr', name = 'npbz')
 
+
+# Setup auto logging
+
+olog_handler = OlogHandler(logbooks='Data Acquisition')
+olog_handler.setLevel(logging.INFO)
+session_mgr._logger.addHandler(olog_handler)
+
+# Setup Scans
+
 scan = ScanND()
 ascan = AScan()
 ascan.default_triggers = [sclr_trig]
-ascan.default_detectors= [sclr_ch1, sclr_ch2, sclr_ch3, sclr_ch4, sclr_ch5,
-                          sclr_ch6]
+ascan.default_detectors = [sclr_ch1, sclr_ch2, sclr_ch3, sclr_ch4, sclr_ch5,
+                           sclr_ch6]
 dscan = DScan()
+dscan.default_triggers = ascan.default_triggers
+dscan.default_detectors = ascan.default_detectors

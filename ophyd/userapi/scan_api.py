@@ -225,7 +225,7 @@ class AScan(ScanND):
         time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
 
         msg = ''
-        msg += 'Scan ID : {}\n\n'.format(self.scan_id)
+        msg += 'Scan ID         : {}\n'.format(self.scan_id)
         msg += 'Scan started at : {}\n\n'.format(time_text)
         msg += '===\n'
         for p in self.positioners + self.triggers + self.detectors:
