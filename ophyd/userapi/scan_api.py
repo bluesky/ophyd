@@ -4,8 +4,9 @@ from time import sleep, strftime
 
 from ..runengine import RunEngine
 from ..controls import EpicsMotor, PVPositioner
+from ..session import get_session_manager
 
-from pyOlog import SimpleOlogClient
+session_manager = get_session_manager()
 
 __all__ = ['AScan', 'DScan']
 
@@ -32,8 +33,6 @@ class Scan(object):
 
         self.paths = list()
         self.positioners = list()
-
-        self._run_id = 0
 
     def check_paths(self):
         pass
@@ -78,14 +77,9 @@ class Scan(object):
 
             # Run the scan!
 
-            self.data = self._run_eng.start_run(self._run_id + 1,
+            run_id = session_manager.get_next_scan_id()
+            self.data = self._run_eng.start_run(run_id,
                                                 scan_args=scan_args)
-            self._run_id += 1
-
-    @property
-    def run_id(self):
-        """Return the last run 'ID'"""
-        return self._run_id
 
     @property
     def data(self):
@@ -222,19 +216,19 @@ class AScan(ScanND):
 
     def pre_scan(self):
         pass
-#        ScanND.pre_scan(self)
-#
-#        time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
-#
-#        msg = 'Scan started at {}\n\n'.format(time_text)
-#        msg += '===\n'
-#        for p in self.positioners:
-#            if isinstance(p, (EpicsMotor, PVPositioner)):
-#                for pv in p.read_pvname:
-#                    msg += "PV:" + pv + "\n"
-#
-#        olog_client = SimpleOlogClient()
-#        olog_client.log(msg)
+        ScanND.pre_scan(self)
+
+        time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
+
+        msg = 'Scan started at {}\n\n'.format(time_text)
+        msg += '===\n'
+        for p in self.positioners + self.triggers + self.detectors:
+            try:
+                msg += 'PV:{}\n'.format(p.report['pv'])
+            except KeyError:
+                pass
+
+        get_session_manager()._logger.info(msg)
 
 
 class DScan(AScan):

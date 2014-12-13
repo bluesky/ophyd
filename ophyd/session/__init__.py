@@ -44,11 +44,17 @@ def setup_loggers(logger_names, fmt=LOG_FORMAT):
     fmt = logging.Formatter(LOG_FORMAT)
     for name in logger_names:
         logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG)
 
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(fmt)
+        handler.setLevel(logging.DEBUG)
         logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+
+        olog_handler = OlogHandler()
+        olog_handler.setLevel(logging.INFO)
+        logger.addHandler(olog_handler)
+
 
 # setup logging
 setup_loggers((OPHYD_LOGGER, ))
