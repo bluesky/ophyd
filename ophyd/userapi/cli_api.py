@@ -3,12 +3,18 @@ Command Line Interface to opyd objects
 
 """
 
+# Green = \033[0;32m{}\033[0m
+# Red = \033[0;31m{}\033[0m
+
 from __future__ import print_function
-import logging
 import time
 import functools
 
 from ..controls.positioner import EpicsMotor, Positioner
+from ..session import get_session_manager
+
+session_mgr = get_session_manager()
+logger = session_mgr._logger
 
 from epics import caget, caput
 import numpy as np
@@ -23,7 +29,8 @@ __all__ = ['mov',
 # Global Defs of certain strings
 
 STRING_FMT = '^14'
-VALUE_FMT  = '^ 14f'
+VALUE_FMT = '^ 14f'
+
 
 def _list_of(value, type_=str):
     """Return a list of types defined by type_"""
@@ -37,26 +44,24 @@ def _list_of(value, type_=str):
 
     return [s for s in value]
 
-#def _print_green(text):
-#  print("\033[0;32m{}\033[0m".format(text), end = '')
-#
-#def _print_red(text):
-#  print("\033[0;31m{}\033[0m".format(text), end = '')
 
 def _print_string(val):
-    print('{:{fmt}} '.format(val, fmt=STRING_FMT), end = '')
+    print('{:{fmt}} '.format(val, fmt=STRING_FMT), end='')
+
 
 def _print_value(val):
     if val is not None:
-        print('{:{fmt}} '.format(val, fmt=VALUE_FMT), end = '')
+        print('{:{fmt}} '.format(val, fmt=VALUE_FMT), end='')
     else:
         _print_string('')
+
 
 def _blink(on=True):
     if on:
         print("\x1b[?25h\n")
     else:
         print("\x1b[?25l\n")
+
 
 def _ensure_positioner_pair(func):
     @functools.wraps(func)
@@ -66,6 +71,7 @@ def _ensure_positioner_pair(func):
         return func(pos, val, *args, **kwargs)
     return inner
 
+
 def _ensure_positioner_tuple(func):
     @functools.wraps(func)
     def inner(positioner, tup, *args, **kwargs):
@@ -74,6 +80,7 @@ def _ensure_positioner_tuple(func):
         return func(pos, t, *args, **kwargs)
     return inner
 
+
 def _ensure_positioner(func):
     @functools.wraps(func)
     def inner(positioner, *args, **kwargs):
@@ -81,30 +88,40 @@ def _ensure_positioner(func):
         return func(pos, *args, **kwargs)
     return inner
 
+
+def ensure(ensure_tuple, ensure_dict):
+    def ensure_decorator(func):
+        @functools.wraps(func)
+        def inner(*args, **kwargs):
+            args = tuple([_list_of(a, v) for a, v in zip(args, ensure_tuple)])
+            for key, value in ensure_dict.iteritems():
+                if key in kwargs:
+                    kwargs[key] = _list_of(kwargs[key], value)
+            return func(*args, **kwargs)
+        return inner
+    return ensure_decorator
+
+
 @_ensure_positioner_pair
-def mov(positioner, position, quiet = False):
+def mov(positioner, position):
     """Move a positioner to a given position
 
-    :param positioner: A single positioner or a collection of positioners to move
+    :param positioner: A single positioner or a collection of
+                       positioners to move
     :param position: A single position or a collection of positions.
-    :param quiet: Do not print any output to console.
 
     """
 
     try:
-
-        if not quiet:
-            _blink(False)
-            for p in positioner:
-                _print_string(p.name)
-            print("\n")
+        _blink(False)
+        for p in positioner:
+            _print_string(p.name)
+        print("\n")
 
         # Start Moving all Positioners
 
         stat = [p.move(v, wait=False) for p, v in
                 zip(positioner, position)]
-
-        time.sleep(0.01)
 
         # The loop below ensures that at least a couple prints
         # will happen
@@ -126,14 +143,15 @@ def mov(positioner, position, quiet = False):
         print("\n\n")
         print("ABORTED : Commanded all positioners to stop")
 
-    if not quiet:
-        _blink()
+    _blink()
+
 
 @_ensure_positioner_pair
-def movr(positioner, position, quiet = False):
+def movr(positioner, position, quiet=False):
     """Move a positioner to a relative position
 
-    :param positioner: A single positioner or a collection of positioners to move
+    :param positioner: A single positioner or a collection of
+                       positioners to move
     :param position: A single position or a collection of positions.
     :param quiet: Do not print any output to console.
 
@@ -145,16 +163,19 @@ def movr(positioner, position, quiet = False):
         if v is None:
             raise Exception("Unable to read motor position for relative move")
 
-    _new_val = [a + b for a,b in zip(_start_val, position)]
+    _new_val = [a + b for a, b in zip(_start_val, position)]
     mov(positioner, _new_val, quiet)
+
 
 @_ensure_positioner
 def set_lm(positioner, limits):
     """Set the positioner limits
 
     Note : Currently this only works for EpicsMotor instances
-    :param positioner: A single positioner or a collection of positioners to move
-    :param limits: A single tupple or a collection of tuples for the form (+ve, -ve) limits.
+    :param positioner: A single positioner or a collection of
+                       positioners to move
+    :param limits: A single tupple or a collection of tuples for
+                       the form (+ve, -ve) limits.
 
     """
 
@@ -164,19 +185,23 @@ def set_lm(positioner, limits):
         if not isinstance(p, EpicsMotor):
             raise ValueError("Positioners must be EpicsMotors to set limits")
 
-    for p,lim in zip(positioner, limits):
+    for p, lim in zip(positioner, limits):
         lim1 = max(lim)
         lim2 = min(lim)
         if not caput(p._record + ".HLM", lim1):
             # Fixme : Add custom exception class
             raise Exception("Unable to set limits for %s", p.name)
-        print("Upper limit set to {:{fmt}} for positioner {}".format(
-              lim1, p.name, fmt = VALUE_FMT))
+        msg = "Upper limit set to {:{fmt}} for positioner {}".format(
+              lim1, p.name, fmt=VALUE_FMT)
+        print(msg)
+        logger.info(msg)
 
         if not caput(p._record + ".LLM", lim2):
             raise Exception("Unable to set limits for %s", p.name)
-        print("Lower limit set to {:{fmt}} for positioner {}".format(
-              lim2, p.name, fmt = VALUE_FMT))
+        msg = "Lower limit set to {:{fmt}} for positioner {}".format(
+              lim2, p.name, fmt=VALUE_FMT)
+        print(msg)
+        logger.info(msg)
 
 
 @_ensure_positioner_pair
@@ -184,18 +209,14 @@ def set_pos(positioner, position):
     """Set the position of a positioner
 
     Note : Currently this only works for EpicsMotor instances
-    :param positioner: A single positioner or a collection of positioners to move
+    :param positioner: A single positioner or a collection of
+                       positioners to move
     :param position: A single position or a collection of positions.
 
     """
-    # TODO : Loggin of motors
     for p in positioner:
         if not isinstance(p, EpicsMotor):
             raise ValueError("Positioners must be EpicsMotors to set position")
-
-    # Get the current position
-
-    new_val = position
 
     # Get the current offset
 
@@ -212,28 +233,42 @@ def set_pos(positioner, position):
 
     for o, old_o, p in zip(new_offsets, old_offsets, positioner):
         if caput(p._record + '.OFF', o):
-            print('Motor {0} set to position {1} (Offset = {2} was {3})'.format(
-                   p.name, p.position, o, old_o))
+            msg = 'Motor {0} set to position {1} (Offset = {2} was {3})'.format(
+                  p.name, p.position, o, old_o)
+            print(msg)
+            logger.info(msg)
         else:
             print('Unable to set position of positioner {0}'.format(p.name))
 
     print('')
 
-@_ensure_positioner
-def wh_pos(positioner):
-    """Where are the current position of Positioners"""
+
+@ensure((Positioner,), {'positioners': Positioner})
+def wh_pos(positioners=None):
+    """Print the current position of Positioners
+
+    Parameters
+    ----------
+    positioners : Positioner, list of Positioners or None
+                  Positioners to output. If None print all
+                  positioners positions.
+    """
 
     print('')
 
-    pos = [p.position for p in positioner]
+    if positioners is None:
+        positioners = [session_mgr.get_positioners()[d]
+                       for d in sorted(session_mgr.get_positioners())]
 
-    for p,v,n in zip(positioner, pos, range(len(pos))):
+    pos = [p.position for p in positioners]
+
+    for p, v, n in zip(positioners, pos, range(len(pos))):
         _print_string(p.name)
-        print(' = ', end = '')
+        print(' = ', end='')
         _print_value(v)
         if n % 2:
             print('')
         else:
-            print('  ', end = '')
+            print('  ', end='')
 
     print('')
