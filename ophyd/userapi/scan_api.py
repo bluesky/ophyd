@@ -7,6 +7,7 @@ from ..controls import EpicsMotor, PVPositioner
 from ..session import get_session_manager
 
 session_manager = get_session_manager()
+logger = get_session_manager()._logger
 
 __all__ = ['AScan', 'DScan']
 
@@ -59,10 +60,10 @@ class Scan(object):
 
     def run(self):
         """Run the scan"""
-
-        self.check_paths()
+        self.scan_id = session_manager.get_next_scan_id()
 
         with self:
+            self.check_paths()
             self.setup_detectors()
             self.setup_triggers()
 
@@ -77,8 +78,7 @@ class Scan(object):
 
             # Run the scan!
 
-            run_id = session_manager.get_next_scan_id()
-            self.data = self._run_eng.start_run(run_id,
+            self.data = self._run_eng.start_run(self.scan_id,
                                                 scan_args=scan_args)
 
     @property
@@ -202,7 +202,10 @@ class ScanND(Scan):
         for b, e, d in zip(start, stop, range(dimension)):
             # For each dimension we work out the paths
             iter_pos = ensure_iterator(positioners[d])
+<<<<<<< HEAD
             print(iter_pos)
+=======
+>>>>>>> Modified scan_id location and added to log
             for p in iter_pos:
                 pos.append(p)
                 paths.append(self.calc_path(b, e, npts, d))
@@ -221,7 +224,9 @@ class AScan(ScanND):
 
         time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
 
-        msg = 'Scan started at {}\n\n'.format(time_text)
+        msg = ''
+        msg += 'Scan ID : {}\n\n'.format(self.scan_id)
+        msg += 'Scan started at : {}\n\n'.format(time_text)
         msg += '===\n'
         for p in self.positioners + self.triggers + self.detectors:
             try:
@@ -229,7 +234,7 @@ class AScan(ScanND):
             except KeyError:
                 pass
 
-        get_session_manager()._logger.info(msg)
+        logger.info(msg)
 
 
 class DScan(AScan):
@@ -248,8 +253,12 @@ class DScan(AScan):
         """Post Scan Move to start positions"""
         AScan.post_scan(self)
 
+<<<<<<< HEAD
         status = [pos.move(start, wait=False)
                   for pos, start in zip(self.positioners, self._start_positions)]
+=======
+        sleep(0.1)
+>>>>>>> Modified scan_id location and added to log
 
         print("\nMoving positioners back to start positions.")
         while any(not stat.done for stat in status):
