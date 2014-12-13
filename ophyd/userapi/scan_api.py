@@ -42,9 +42,8 @@ class Scan(object):
         self.pre_scan()
 
     def __exit__(self, exec_type, exec_value, traceback):
+        logger.debug("Scan context manager exited with %s", str(exec_value))
         self.post_scan()
-        # Here we can raise the exceptions
-        return False
 
     def pre_scan(self):
         pass
