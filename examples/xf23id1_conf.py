@@ -4,7 +4,7 @@ from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
 from ophyd.controls import SimDetector
 from ophyd.controls import ProsilicaDetector
 from ophyd.userapi import *
-
+import logging
 from ophyd.userapi.scan_api import ScanND, AScan, DScan
 
 
