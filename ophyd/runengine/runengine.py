@@ -11,6 +11,7 @@ try:
 except ImportError:
     data_collection = None
 
+from metadataStore.collectionapi.commands import create_event
 
 class Demuxer(object):
 
@@ -138,7 +139,7 @@ class RunEngine(object):
             event = data_collection.format_event(hdr, evdesc,
                                               seq_no=seqno,
                                               data=detvals)
-            data_collection.write_to_event_PV(event)
+            create_event(event)
             seqno += 1
             #update the 'data' object from detvals dict
             for k,v in detvals.iteritems():
@@ -171,7 +172,6 @@ class RunEngine(object):
             scan_args['event_descriptor'] = event_descriptor
             scan_args['data'] = data
         #write the header and event_descriptor to the header PV
-        data_collection.write_to_hdr_PV(header, event_descriptor)
 
         self._begin_run(begin_args)
 
