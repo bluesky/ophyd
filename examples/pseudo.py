@@ -38,11 +38,12 @@ def test():
     real2 = EpicsMotor(config.motor_recs[2], name='real2')
 
     logger.info('------- Sequential pseudo positioner')
-    pos = PseudoPositioner([real0, real1, real2],
+    pos = PseudoPositioner('seq',
+                           [real0, real1, real2],
                            forward=calc_fwd, reverse=calc_rev,
                            pseudo=['pseudo0', 'pseudo1', 'pseudo2'],
-                           simultaneous=False,
-                           name='pseudopos')
+                           concurrent=False
+                           )
 
     logger.info('Move to (.2, .2, .2), which is (-.2, -.2, -.2) for real motors')
     pos.move((.2, .2, .2), wait=True)
@@ -54,18 +55,19 @@ def test():
 
         logger.info('Position is: %s (moving=%s)' % (pos.position, pos.moving))
 
-        # No such thing as a non-blocking move for a sequential (i.e.,
-        # non-simultaneous) pseudo positioner
+        # No such thing as a non-blocking move for a sequential
+        # pseudo positioner
 
         # Create another one and give that a try
 
-    pos = PseudoPositioner([real0, real1, real2],
+    pos = PseudoPositioner('conc',
+                           [real0, real1, real2],
                            forward=calc_fwd, reverse=calc_rev,
                            pseudo=['pseudo0', 'pseudo1', 'pseudo2'],
-                           simultaneous=True,
-                           name='pseudopos')
+                           concurrent=True
+                           )
 
-    logger.info('------- Simultaneous pseudo positioner')
+    logger.info('------- concurrent pseudo positioner')
     logger.info('Move to (2, 2, 2), which is (-2, -2, -2) for real motors')
     ret = pos.move((2, 2, 2), wait=False, moved_cb=done)
     while not ret.done:
