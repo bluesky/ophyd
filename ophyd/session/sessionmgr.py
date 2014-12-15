@@ -104,21 +104,33 @@ class SessionManager(object):
     def in_ipython(self):
         return not isinstance(self._ipy, _FakeIPython)
 
+    @property
+    def autorestore(self):
+        '''
+        Check for Magics autorestore and return it.
+        '''
+        config = self.ipy_config
+
+        try:
+            return config.StoreMagics.autorestore
+        except AttributeError:
+            try:
+                return config.StoreMagic.autorestore 
+            except AttributeError:
+                pass
+
     def persist_var(self, name, value=0, desc=None):
         if not self.in_ipython:
             return
 
         config = self.ipy_config
-        if not config.StoreMagics.autorestore:
-            warnings.warn('StoreMagics.autorestore not enabled; variable persistence disabled')
+        if not self.autorestore:
+            warnings.warn('StoreMagic.autorestore not enabled; variable persistence disabled')
 
             if name not in self:
                 self[name] = value
                 self._logger.debug('Setting %s = %s' % (name, value))
             return self[name]
-
-        if name not in self.persisting:
-            self.persisting.append(name)
 
         if name not in self:
             if desc is not None:
@@ -130,6 +142,9 @@ class SessionManager(object):
             value = self[name]
             if desc is not None:
                 self._logger.debug('Last %s = %s' % (desc, self[name]))
+
+        if name not in self.persisting:
+            self.persisting.append(name)
 
         self._ipy.run_line_magic('store', name)
         return value
@@ -167,8 +182,9 @@ class SessionManager(object):
         One ctrl-D stops the scan, two confirms exit
         '''
 
+        
         run = self._run_engine
-        if run is not None:
+        if run is not None and run.running:
             self.stop_all()
             run.stop()
         else:

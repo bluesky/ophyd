@@ -58,6 +58,7 @@ class RunEngine(object):
     def __init__(self, logger):
         self._demuxer = Demuxer()
         self._logger = register_object(self)
+        self._scan_state = False
 
     # start/stop/pause/resume are external api methods
     def start(self):
