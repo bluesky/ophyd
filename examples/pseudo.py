@@ -68,8 +68,8 @@ def test():
     logger.info('------- Simultaneous pseudo positioner')
     logger.info('Move to (2, 2, 2), which is (-2, -2, -2) for real motors')
     ret = pos.move((2, 2, 2), wait=False, moved_cb=done)
-    print('Checking')
     while not ret.done:
+        logger.info('Pos=%s %s (err=%s)' % (pos.position, ret, ret.error))
         time.sleep(0.1)
 
     print('Done')

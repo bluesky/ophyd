@@ -56,8 +56,10 @@ class PseudoPositioner(Positioner):
 
         if pseudo is None:
             pseudo = ('value', )
-
-        self._pseudo = tuple(pseudo)
+        elif isinstance(pseudo, str):
+            self._pseudo = (pseudo, )
+        else:
+            self._pseudo = tuple(pseudo)
 
         # TODO will calculations ever be too complex to make caching x number of
         #      fwd/rev calculation results worthwhile?
@@ -100,7 +102,8 @@ class PseudoPositioner(Positioner):
 
     @property
     def position(self):
-        return self.calc_reverse()
+        pos_kw = dict((real.name, real.position) for real in self._real)
+        return self.calc_reverse(**pos_kw)
 
     def _real_finished(self, obj=None, **kwargs):
         '''
