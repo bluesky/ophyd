@@ -25,11 +25,11 @@ def put_complete_test():
                        put_complete=True,
                        )
 
-    pos.move(1, wait=False)
+    stat = pos.move(1, wait=False)
     logger.info('--> post-move request, moving=%s' % pos.moving)
 
-    while pos.moving:
-        logger.info('--> moving...')
+    while not stat.done:
+        logger.info('--> moving... %s error=%s' % (stat, stat.error))
         time.sleep(0.1)
 
     pos.move(-1, wait=True)
@@ -42,11 +42,11 @@ def put_complete_test():
                        put_complete=True,
                        )
 
-    pos.move(2, wait=False)
+    stat = pos.move(2, wait=False)
     logger.info('--> post-move request, moving=%s' % pos.moving)
 
-    while pos.moving:
-        logger.info('--> moving...')
+    while not stat.done:
+        logger.info('--> moving... %s' % stat)
         time.sleep(0.1)
 
     pos.move(0, wait=True)

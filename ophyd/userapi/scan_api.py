@@ -251,10 +251,12 @@ class DScan(AScan):
     def post_scan(self):
         """Post Scan Move to start positions"""
         AScan.post_scan(self)
-        for pos, start in zip(self.positioners, self._start_positions):
-            pos.move(start, wait=True)
+
+        status = [pos.move(start, wait=False)
+                  for pos, start in zip(self.positioners, self._start_positions)]
 
         print("\nMoving positioners back to start positions.")
-        while any([p.moving for p in self.positioners]):
-            sleep(0.1)
+        while any(not stat.done for stat in status):
+            sleep(0.01)
+
         print("Done.")

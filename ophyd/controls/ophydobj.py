@@ -9,6 +9,9 @@
 '''
 
 from __future__ import print_function
+
+import time
+
 from ..session import register_object
 
 
@@ -24,7 +27,7 @@ class OphydObject(object):
         self._alias = alias
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
-                          if sub.startswith('SUB_'))
+                          if sub.startswith('SUB_') or sub.startswith('_SUB_'))
         self._sub_cache = {}
         self._ses_logger = None
 
@@ -75,6 +78,15 @@ class OphydObject(object):
         '''
         sub_type = kwargs['sub_type']
 
+        # Guarantee that the object will be in the kwargs
+        if 'obj' not in kwargs:
+            kwargs['obj'] = self
+
+        # And if a timestamp key exists, but isn't filled -- supply it with
+        # a new timestamp
+        if 'timestamp' in kwargs and kwargs['timestamp'] is None:
+            kwargs['timestamp'] = time.time()
+
         # Shallow-copy the callback arguments for replaying the
         # callback at a later time (e.g., when a new subscription is made)
         self._sub_cache[sub_type] = (tuple(args), dict(kwargs))
@@ -102,6 +114,12 @@ class OphydObject(object):
 
         if run:
             self._run_cached_sub(event_type, cb)
+
+    def _reset_sub(self, event_type):
+        '''
+        Remove all subscriptions in an event type
+        '''
+        del self._subs[event_type][:]
 
     def clear_sub(self, cb, event_type=None):
         '''

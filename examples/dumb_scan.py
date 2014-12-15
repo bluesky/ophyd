@@ -28,31 +28,28 @@ def simple_scan(motors=[],
 
     logger = config.logger
 
-    def wait_motor(m):
-        logger.debug('Waiting on motor %s' % m)
-        while m.moving:
-            time.sleep(0.01)
-
     def move_motors():
+        end_of_trajectory = []
         status = []
         for motor in motors:
             try:
-                pos = motor.move_next(wait=False)
+                _, stat = motor.move_next(wait=False)
             except StopIteration:
                 logger.debug('End of trajectory for motor %s' % motor)
                 # End of the trajectory
-                status.append(True)
+                end_of_trajectory.append(True)
                 break
             else:
                 logger.debug('Moving motor %s to %s' % (motor, pos))
-                status.append(False)
+                end_of_trajectory.append(False)
+                status.append(stat)
 
-        if all(status):
+        if all(end_of_trajectory):
             logger.debug('End of trajectory for all motors')
             return False
 
-        for motor in motors:
-            wait_motor(motor)
+        while not all(stat.done for stat in status):
+            time.sleep(0.01)
 
         return True
 

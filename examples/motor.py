@@ -68,8 +68,12 @@ def test():
     else:
         raise ValueError('Move should have failed')
 
-    # m2.move(1)
+    logger.info('--> move to 0')
+    stat = m1.move(2, wait=False)
 
+    while not stat.done:
+        logger.info('--> moving... %s error=%s' % (stat, stat.error))
+        time.sleep(0.1)
 
 if __name__ == '__main__':
     test()

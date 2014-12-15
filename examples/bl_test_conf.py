@@ -53,7 +53,7 @@ args = ('XF:23IDA-OP:1{Mir:1-Ax:Z}Mtr_POS_SP',
 #m1a_z = PVPositioner(args[0], **args[1])
 
 # AreaDetector crud
-simdet = SimDetector('XF:31IDA-BI{Cam:Tbl}')
+simdet = SimDetector('XF:31IDA-BI{Cam:Tbl}', name='simdet')
 # For now, access as simple 'signals'
 simdet_acq = EpicsSignal('XF:31IDA-BI{Cam:Tbl}cam1:Acquire_RBV',
                          write_pv='XF:31IDA-BI{Cam:Tbl}cam1:Acquire',

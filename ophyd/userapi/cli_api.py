@@ -13,6 +13,13 @@ from ..controls.positioner import EpicsMotor, Positioner
 from epics import caget, caput
 import numpy as np
 
+__all__ = ['mov',
+           'movr',
+           'set_pos',
+           'wh_pos',
+           'set_lm'
+           ]
+
 # Global Defs of certain strings
 
 STRING_FMT = '^14'
@@ -52,6 +59,7 @@ def _blink(on=True):
         print("\x1b[?25l\n")
 
 def _ensure_positioner_pair(func):
+    @functools.wraps(func)
     def inner(positioner, position, *args, **kwargs):
         pos = _list_of(positioner, Positioner)
         val = _list_of(position, (float, int))
@@ -93,20 +101,23 @@ def mov(positioner, position, quiet = False):
 
         # Start Moving all Positioners
 
-        for p, v in zip(positioner, position):
-            p.move(v, wait = False)
+        stat = [p.move(v, wait=False) for p, v in
+                zip(positioner, position)]
+
         time.sleep(0.01)
 
+        # The loop below ensures that at least a couple prints
+        # will happen
         flag = 0
-        moving = True
-        while moving or (flag < 2):
+        done = False
+        while not all(s.done for s in stat) or (flag < 2):
             if not quiet:
                 for p in positioner:
                     _print_value(p.position)
-                print('', end = '\r')
+                print('', end='\r')
             time.sleep(0.01)
-            moving = any([p.moving for p in positioner])
-            if not moving:
+            done = all(s.done for s in stat)
+            if done:
                 flag += 1
 
     except KeyboardInterrupt:

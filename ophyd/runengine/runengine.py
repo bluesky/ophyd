@@ -95,18 +95,18 @@ class RunEngine(object):
         print('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
-        for pos in positioners:
-            try:
-                pos.move_next(wait=False)
-            except StopIteration as si:
-                return None
-        #TODO: FIXME why the F**K is this delay necessary for proper operation!!!
+        try:
+            status = [pos.move_next(wait=False)[1]
+                      for pos in positioners]
+        except StopIteration:
+            return None
+
+        # status now holds the MoveStatus() instances
         time.sleep(0.05)
-        moving = any([pos.moving for pos in positioners])
         #TODO: this should iterate at most N times to catch hangups
-        while moving:
+        while not all(s.done for s in status):
             time.sleep(0.1)
-            moving = any([pos.moving for pos in positioners])
+
         if settle_time is not None:
             time.sleep(settle_time)
         #return {pos.name: pos.position for pos in positioners}

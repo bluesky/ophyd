@@ -151,6 +151,7 @@ class EpicsSignal(Signal):
                  put_complete=False,
                  string=False,
                  limits=False,
+                 auto_monitor=None,
                  **kwargs):
         '''
         An EPICS signal, comprised of either one or two EPICS PVs
@@ -192,12 +193,14 @@ class EpicsSignal(Signal):
         self._read_pv = epics.PV(read_pv, form=get_pv_form(),
                                  callback=self._read_changed,
                                  connection_callback=self._connected,
+                                 auto_monitor=auto_monitor,
                                  **pv_kw)
 
         if write_pv is not None:
             self._write_pv = epics.PV(write_pv, form=get_pv_form(),
                                       callback=self._write_changed,
                                       connection_callback=self._connected,
+                                      auto_monitor=auto_monitor,
                                       **pv_kw)
         elif rw:
             self._write_pv = self._read_pv
