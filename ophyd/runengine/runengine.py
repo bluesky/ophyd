@@ -1,8 +1,9 @@
 from __future__ import print_function
 import logging
+import sys
+import time
 from threading import Thread
 from Queue import Queue
-import time
 
 from ..session import register_object
 
@@ -11,7 +12,15 @@ try:
 except ImportError:
     data_collection = None
 
-from metadataStore.collectionapi.commands import create_event
+import pymongo
+try:
+    from metadataStore.collectionapi.commands import create_event
+except pymongo.errors.ConnectionFailure:
+    print('[!!] Failed to connect to metadataStore', file=sys.stderr)
+except ImportError:
+    print('[!!] Failed to import metadataStore api', file=sys.stderr)
+    create_event = None
+
 
 class Demuxer(object):
 
