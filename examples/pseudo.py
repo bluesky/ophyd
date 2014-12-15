@@ -74,6 +74,20 @@ def test():
         logger.info('Pos=%s %s (err=%s)' % (pos.position, ret, ret.error))
         time.sleep(0.1)
 
+    pseudo0 = pos.pseudos['pseudo0']
+    pseudo0.move(0, wait=True)
+    logger.info('Move pseudo0 to 0, position=%s' % (pos.position, ))
+    logger.info('pseudo0 = %s' % pseudo0.position)
+
+    ret = pseudo0.move(1, wait=False)
+    while not ret.done:
+        logger.info('Pseudo0.pos=%s Pos=%s %s (err=%s)' % (pseudo0.position,
+                                                           pos.position, ret, ret.error))
+        time.sleep(0.1)
+
+    logger.info('Pseudo0.pos=%s Pos=%s %s (err=%s)' % (pseudo0.position,
+                                                       pos.position, ret, ret.error))
+
     print('Done')
 
 if __name__ == '__main__':

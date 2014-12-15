@@ -21,16 +21,71 @@ from .positioner import Positioner
 logger = logging.getLogger(__name__)
 
 
+class PseudoSingle(Positioner):
+    def __init__(self, master, idx, **kwargs):
+        name = '%s.%s' % (master.name, master._pseudo[idx])
+
+        Positioner.__init__(self, name=name, **kwargs)
+
+        self._master = master
+        self._idx = idx
+
+        self._master.subscribe(self._sub_proxy, self.SUB_START)
+        self._master.subscribe(self._sub_proxy, self.SUB_DONE)
+        self._master.subscribe(self._sub_proxy_idx, self.SUB_READBACK)
+
+    def _sub_proxy(self, obj=None, **kwargs):
+        '''
+        Master callbacks such as start of motion, motion finished,
+        etc. will be simply passed through.
+        '''
+        return self._run_subs(obj=self, **kwargs)
+
+    def _sub_proxy_idx(self, obj=None, value=None, **kwargs):
+        value = value[self._idx]
+        return self._run_subs(obj=self, value=value, **kwargs)
+
+    @property
+    def moving(self):
+        return self._master.moving
+
+    @property
+    def position(self):
+        return self._master.position[self._idx]
+
+    def stop(self):
+        return self._master.stop()
+
+    @property
+    def sequential(self):
+        return self._master.sequential
+
+    @property
+    def concurrent(self):
+        return self._master.concurrent
+
+    # Don't allow the base class to specify whether it has started moving
+    def _get_started(self):
+        return self._master._started_moving
+
+    def _set_started(self, value):
+        pass
+
+    _started_moving = property(_get_started, _set_started)
+
+    def move(self, pos, **kwargs):
+        return self._master.move_single(self._idx, pos, **kwargs)
+
+
 class PseudoPositioner(Positioner):
-    def __init__(self, positioners,
+    def __init__(self, name, positioners,
                  forward=None,
                  reverse=None,
                  concurrent=True,
                  pseudo=None,
-                 master=None,
                  **kwargs):
 
-        Positioner.__init__(self, **kwargs)
+        Positioner.__init__(self, name=name, **kwargs)
 
         if forward is not None:
             if not callable(forward):
@@ -61,6 +116,9 @@ class PseudoPositioner(Positioner):
         else:
             self._pseudo = tuple(pseudo)
 
+        if len(self._pseudo) > 1:
+            self._pseudo_pos = [PseudoSingle(self, i) for i, pseudo
+                                in enumerate(self._pseudo)]
         # TODO will calculations ever be too complex to make caching x number of
         #      fwd/rev calculation results worthwhile?
         if not self._pseudo or not self._real:
@@ -101,6 +159,11 @@ class PseudoPositioner(Positioner):
     _started_moving = property(_get_started, _set_started)
 
     @property
+    def pseudos(self):
+        return dict((name, pseudo) for name, pseudo in
+                    zip(self._pseudo, self._pseudo_pos))
+
+    @property
     def position(self):
         pos_kw = dict((real.name, real.position) for real in self._real)
         return self.calc_reverse(**pos_kw)
@@ -119,6 +182,14 @@ class PseudoPositioner(Positioner):
 
             if not self._real_waiting:
                 self._done_moving()
+
+    def move_single(self, idx, position, **kwargs):
+        if isinstance(idx, str):
+            idx = self._pseudo.index(idx)
+
+        target = list(self.position)
+        target[idx] = position
+        return self.move(target, **kwargs)
 
     def move(self, position, wait=True, timeout=30.0,
              **kwargs):
