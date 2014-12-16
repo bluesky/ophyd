@@ -119,15 +119,15 @@ class PseudoPositioner(Positioner):
                            run=False)
 
         if pseudo is None:
-            pseudo = ('value', )
+            self._pseudo_names = ('pseudo', )
         elif isinstance(pseudo, str):
             self._pseudo_names = (pseudo, )
         else:
             self._pseudo_names = tuple(pseudo)
 
-        if len(self._pseudo_names) > 1:
-            self._pseudo_pos = [PseudoSingle(self, i) for i, pseudo
-                                in enumerate(self._pseudo_names)]
+        self._pseudo_pos = [PseudoSingle(self, i) for i, pseudo
+                            in enumerate(self._pseudo_names)]
+
         # TODO will calculations ever be too complex to make caching x number of
         #      fwd/rev calculation results worthwhile?
         if not self._pseudo_names or not self._real:
@@ -298,3 +298,23 @@ class PseudoPositioner(Positioner):
             raise ValueError('Reverse calculation did not return right position count')
 
         return pseudo_pos
+
+    def __getitem__(self, key):
+        '''
+        Get either a single pseudo or real positioner by name
+        '''
+        try:
+            return self.pseudos[key]
+        except:
+            return self.reals[key]
+
+    def __setitem__(self, key, value):
+        pos = self[key]
+        pos.move(value)
+
+    def __contains__(self, key):
+        try:
+            self.__getitem__(key)
+            return True
+        except:
+            return False

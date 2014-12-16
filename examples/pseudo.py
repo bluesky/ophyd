@@ -10,20 +10,10 @@ import config
 from ophyd.controls import (EpicsMotor, PseudoPositioner)
 
 
-def test():
-    def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-        logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
+logger = config.logger
 
-    def done_moving(**kwargs):
-        logger.info('Done moving %s' % (kwargs, ))
 
-    loggers = ()
-               # 'ophyd.controls.positioner',
-               # 'ophyd.session',
-
-    config.setup_loggers(loggers)
-    logger = config.logger
-
+def multi_pseudo():
     def calc_fwd(pseudo0=0.0, pseudo1=0.0, pseudo2=0.0):
         return [-pseudo0, -pseudo1, -pseudo2]
 
@@ -74,7 +64,7 @@ def test():
         logger.info('Pos=%s %s (err=%s)' % (pos.position, ret, ret.error))
         time.sleep(0.1)
 
-    pseudo0 = pos.pseudos['pseudo0']
+    pseudo0 = pos['pseudo0']
     pseudo0.move(0, wait=True)
     logger.info('Move pseudo0 to 0, position=%s' % (pos.position, ))
     logger.info('pseudo0 = %s' % pseudo0.position)
@@ -94,7 +84,37 @@ def test():
     logger.info('Pseudo0.pos=%s Pos=%s %s (err=%s)' % (pseudo0.position,
                                                        pos.position, ret, ret.error))
 
-    print('Done')
+    # pos['pseudo0'] = 2
+    assert('pseudo0' in pos)
+    assert('real0' in pos)
+
+
+def single_pseudo():
+    def calc_fwd(pseudo=0.0):
+        return [-pseudo]
+
+    def calc_rev(real0=0.0, real1=0.0, real2=0.0):
+        return [-real0, -real1, -real2]
+
+    def done(**kwargs):
+        print('** Finished moving (%s)' % (kwargs, ))
+
+    real0 = EpicsMotor(config.motor_recs[0], name='real0')
+    real1 = EpicsMotor(config.motor_recs[1], name='real1')
+    real2 = EpicsMotor(config.motor_recs[2], name='real2')
+
+    logger.info('------- Sequential, single pseudo positioner')
+    pos = PseudoPositioner('seq',
+                           [real0, real1, real2],
+                           forward=calc_fwd, reverse=calc_rev,
+                           concurrent=False
+                           )
+
+    logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
+    pos.move(.2, wait=True)
+    logger.info('Position is: %s (moving=%s)' % (pos.position, pos.moving))
+
 
 if __name__ == '__main__':
-    test()
+    # multi_pseudo()
+    single_pseudo()
