@@ -9,7 +9,7 @@ from numpy.testing import assert_array_equal
 
 import epics
 
-from ophyd.utils.cas import (caServer, PythonPV, PythonRecord,
+from ophyd.utils.cas import (caServer, CasPV, CasRecord,
                              Limits, logger, casAsyncCompletion)
 
 from ophyd.utils.errors import alarms
@@ -62,8 +62,8 @@ class CASTests(unittest.TestCase):
         limits = Limits(lolo=0.1, low=0.2, high=0.4, hihi=0.5)
 
         # pvs = server, pvc = client
-        pvs = PythonPV(pv_name, 0.0, limits=limits,
-                       units='test', server=server)
+        pvs = CasPV(pv_name, 0.0, limits=limits,
+                    units='test', server=server)
         pvc = client_pv(pv_name)
 
         logger.info('client put, client get')
@@ -82,7 +82,7 @@ class CASTests(unittest.TestCase):
 
     def test_string(self):
         pv_name = get_pvname()
-        pvs = PythonPV(pv_name, 'test', units='test')
+        pvs = CasPV(pv_name, 'test', units='test')
         server.add_pv(pvs)
 
         pvc = client_pv(pv_name)
@@ -97,9 +97,9 @@ class CASTests(unittest.TestCase):
 
     def test_enum(self):
         pv_name = get_pvname()
-        pvs = PythonPV(pv_name, ['a', 'b', 'c'], units='test',
-                       minor_states=['a'],
-                       major_states=['c'])
+        pvs = CasPV(pv_name, ['a', 'b', 'c'], units='test',
+                    minor_states=['a'],
+                    major_states=['c'])
 
         server.add_pv(pvs)
         pvc = client_pv(pv_name)
@@ -115,8 +115,8 @@ class CASTests(unittest.TestCase):
             logger.debug('written_to-> %s' % kwargs)
 
         pv_name = get_pvname()
-        pvs = PythonPV(pv_name, 0.0, server=server,
-                       written_cb=written_to)
+        pvs = CasPV(pv_name, 0.0, server=server,
+                    written_cb=written_to)
         pvc = client_pv(pv_name)
 
         caget(pvc)
@@ -141,7 +141,7 @@ class CASTests(unittest.TestCase):
     def test_numpy(self):
         pv_name = get_pvname()
         arr = np.arange(10)
-        pvs = PythonPV(pv_name, arr, server=server)
+        pvs = CasPV(pv_name, arr, server=server)
         pvc = client_pv(pv_name)
 
         pvs[1:4] = 4
@@ -165,7 +165,7 @@ class CASTests(unittest.TestCase):
         egu_field = record_field(record, 'EGU')
 
         arr = np.arange(10)
-        pvs = PythonRecord(record, arr)
+        pvs = CasRecord(record, arr)
         pvs.add_field('EGU', 'testing')
 
         server.add_pv(pvs)

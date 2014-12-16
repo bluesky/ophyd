@@ -8,7 +8,7 @@ import time
 
 import config
 
-from ophyd.utils.cas import PythonPV
+from ophyd.utils.cas import CasPV
 from ophyd.controls import EpicsSignal
 
 
@@ -26,7 +26,7 @@ def test():
     def updated(value=None, **kwargs):
         print('Updated to: %s' % value)
 
-    python_pv = PythonPV(pvname, 123.0, server=server)
+    python_pv = CasPV(pvname, 123.0, server=server)
     signal = EpicsSignal(pvname)
     signal.subscribe(updated)
 
