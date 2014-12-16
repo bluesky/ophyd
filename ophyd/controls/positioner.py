@@ -318,6 +318,8 @@ class EpicsMotor(Positioner):
     def move(self, position, wait=True,
              **kwargs):
 
+        self._started_moving = False
+
         try:
             self._user_request._set_request(position, wait=wait)
 
@@ -346,13 +348,14 @@ class EpicsMotor(Positioner):
         was_moving = self._moving
         self._moving = (value != 1)
 
+        started = False
         if not self._started_moving:
-            self._started_moving = (not was_moving and self._moving)
+            started = self._started_moving = (not was_moving and self._moving)
 
         logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
                                                            self, self._moving, value))
 
-        if self._started_moving:
+        if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
                            value=value, **kwargs)
 
@@ -374,6 +377,7 @@ class PVPositioner(Positioner):
                  done=None, done_val=1,
                  put_complete=False,
                  settle_time=0.05,
+                 limits=None,
                  **kwargs):
         '''
         A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
@@ -407,6 +411,11 @@ class PVPositioner(Positioner):
         self._actuate = None
         self._stop = None
         self._done = None
+
+        if limits is None:
+            self._limits = (0, 0)
+        else:
+            self._limits = tuple(limits)
 
         signals = []
         self.add_signal(EpicsSignal(setpoint, alias='_setpoint'))
@@ -492,7 +501,6 @@ class PVPositioner(Positioner):
             raise TimeoutError('Failed to move %s to %s (put complete done, still moving)' %
                                (self, position))
         else:
-            print('started', self._started_moving, 'moving', self._moving)
             raise TimeoutError('Failed to move %s to %s (no motion, put complete)' %
                                (self, position))
 
@@ -560,13 +568,14 @@ class PVPositioner(Positioner):
         was_moving = self._moving
         self._moving = (value != self._done_val)
 
+        started = False
         if not self._started_moving:
-            self._started_moving = (not was_moving and self._moving)
+            started = self._started_moving = (not was_moving and self._moving)
 
         logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
                                                            self, self._moving, value))
 
-        if self._started_moving:
+        if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
                            value=value, **kwargs)
 
@@ -592,3 +601,7 @@ class PVPositioner(Positioner):
     def report(self):
         #return {self._readback.read_pvname: self._readback.value}
         return {self._name: self.position, 'pv': self._readback.read_pvname}
+
+    @property
+    def limits(self):
+        return tuple(self._limits)

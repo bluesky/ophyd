@@ -121,6 +121,7 @@ class caServer(cas.caServer):
                 str: cas.aitEnumString,
                 float: cas.aitEnumFloat64,
                 int: cas.aitEnumInt32,
+                bool: cas.aitEnumInt32,
 
                 np.int8: cas.aitEnumInt8,
                 np.uint8: cas.aitEnumUint8,
@@ -212,7 +213,6 @@ class caServer(cas.caServer):
         try:
             pvi = self.get_pv(pvname)
         except KeyError:
-            print('not found', pvname)
             return casPVNotFoundError.ret
 
         logger.debug('PV attach %s' % (pvname, ))
@@ -770,10 +770,12 @@ class CasRecord(CasPV):
     '''
 
     def __init__(self, name, val_field, rtype=None,
+                 desc='',
                  **kwargs):
         '''
         :param str name: The record prefix
         :param val_field: The default value for the value field
+        :param str desc: The description field value
         :param str rtype: The record type to use
         '''
         assert '.' not in name, 'Record name cannot have periods'
@@ -785,6 +787,9 @@ class CasRecord(CasPV):
 
         if rtype is not None:
             self.add_field('RTYP', str(rtype))
+
+        if desc is not None:
+            self.add_field('DESC', str(desc))
 
     def field_pvname(self, field):
         return record_field(self.name, field)

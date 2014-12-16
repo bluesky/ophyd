@@ -54,7 +54,7 @@ logger = logging.getLogger(EXAMPLE_LOGGER)
 
 session = ophyd.get_session_manager()
 
-session.cas.prefix = 'XF:31IDA-BI{OPHYD_EXAMPLE}:'
+session.cas.prefix = 'XF:31IDA-BI{OPHYD_EXAMPLE}'
 
 setup_epics()
 
