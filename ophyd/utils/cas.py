@@ -255,7 +255,7 @@ class caServer(cas.caServer):
         self._pvs.clear()
 
 
-class PythonPV(cas.casPV):
+class CasPV(cas.casPV):
     '''
     Channel access server process variable
     '''
@@ -745,13 +745,13 @@ class PythonPV(cas.casPV):
         return self._count
 
     def __str__(self):
-        return 'PythonPV({0.name}, value={0.value},' \
+        return 'CasPV({0.name}, value={0.value},' \
                'alarm={0.alarm}, severity={0.severity})'.format(self)
 
     __repr__ = __str__
 
 
-class PythonRecord(PythonPV):
+class CasRecord(CasPV):
     '''
     A channel access server record, starting out with just a
     VAL field. Additional fields can be added dynamically.
@@ -762,7 +762,7 @@ class PythonRecord(PythonPV):
 
         assert '.' not in name, 'Record name cannot have periods'
 
-        PythonPV.__init__(self, name, val_field, **kwargs)
+        CasPV.__init__(self, name, val_field, **kwargs)
 
         self.fields = {}
         self.add_field('VAL', None, pv=self)
@@ -781,12 +781,12 @@ class PythonRecord(PythonPV):
         if pv is None:
             field_pv = self.field_pvname(field)
             kwargs.pop('server', '')
-            pv = PythonPV(field_pv, value, **kwargs)
+            pv = CasPV(field_pv, value, **kwargs)
 
         self.fields[field] = pv
 
     def __str__(self):
-        return 'PythonRecord({0.name}, value={0.value},' \
+        return 'CasRecord({0.name}, value={0.value},' \
                'alarm={0.alarm}, severity={0.severity})'.format(self)
 
     __repr__ = __str__
