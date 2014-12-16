@@ -79,6 +79,12 @@ def test():
     logger.info('Move pseudo0 to 0, position=%s' % (pos.position, ))
     logger.info('pseudo0 = %s' % pseudo0.position)
 
+    def single_sub(**kwargs):
+        # logger.info('Single sub: %s' % (kwargs, ))
+        pass
+
+    pseudo0.subscribe(single_sub, pseudo0.SUB_READBACK)
+
     ret = pseudo0.move(1, wait=False)
     while not ret.done:
         logger.info('Pseudo0.pos=%s Pos=%s %s (err=%s)' % (pseudo0.position,

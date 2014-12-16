@@ -12,6 +12,8 @@ from __future__ import print_function
 import logging
 import time
 
+from collections import OrderedDict
+
 import numpy as np
 
 from ..utils import TimeoutError
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class PseudoSingle(Positioner):
     def __init__(self, master, idx, **kwargs):
-        name = '%s.%s' % (master.name, master._pseudo[idx])
+        name = '%s.%s' % (master.name, master._pseudo_names[idx])
 
         Positioner.__init__(self, name=name, **kwargs)
 
@@ -103,25 +105,32 @@ class PseudoPositioner(Positioner):
         self._concurrent = bool(concurrent)
         self._finish_thread = None
         self._real_waiting = []
+        self._real_cur_pos = {}
 
         for real in self._real:
             real.subscribe(self._real_finished,
                            event_type=real.SUB_DONE,
                            run=False)
 
+            self._real_cur_pos[real] = real.position
+
+            real.subscribe(self._real_pos_update,
+                           event_type=real.SUB_READBACK,
+                           run=False)
+
         if pseudo is None:
             pseudo = ('value', )
         elif isinstance(pseudo, str):
-            self._pseudo = (pseudo, )
+            self._pseudo_names = (pseudo, )
         else:
-            self._pseudo = tuple(pseudo)
+            self._pseudo_names = tuple(pseudo)
 
-        if len(self._pseudo) > 1:
+        if len(self._pseudo_names) > 1:
             self._pseudo_pos = [PseudoSingle(self, i) for i, pseudo
-                                in enumerate(self._pseudo)]
+                                in enumerate(self._pseudo_names)]
         # TODO will calculations ever be too complex to make caching x number of
         #      fwd/rev calculation results worthwhile?
-        if not self._pseudo or not self._real:
+        if not self._pseudo_names or not self._real:
             raise ValueError('Must have at least 1 positioner and pseudo-positioner')
 
     def stop(self):
@@ -160,13 +169,34 @@ class PseudoPositioner(Positioner):
 
     @property
     def pseudos(self):
-        return dict((name, pseudo) for name, pseudo in
-                    zip(self._pseudo, self._pseudo_pos))
+        '''
+        Dictionary of pseudo motors by name
+
+        Keys are in the order of creation
+        '''
+        return OrderedDict((name, pseudo) for name, pseudo in
+                           zip(self._pseudo_names, self._pseudo_pos))
 
     @property
-    def position(self):
-        pos_kw = dict((real.name, real.position) for real in self._real)
-        return self.calc_reverse(**pos_kw)
+    def reals(self):
+        '''
+        Dictionary of real motors by name
+        '''
+        return OrderedDict((real.name, real) for real in self._real)
+
+    def _update_position(self):
+        pos_kw = dict((real.name, pos) for real, pos in self._real_cur_pos.items())
+        new_pos = self.calc_reverse(**pos_kw)
+        self._set_position(new_pos)
+        return new_pos
+
+    def _real_pos_update(self, obj=None, value=None, **kwargs):
+        '''
+        A single real positioner has moved
+        '''
+        real = obj
+        self._real_cur_pos[real] = value
+        self._update_position()
 
     def _real_finished(self, obj=None, **kwargs):
         '''
@@ -185,7 +215,7 @@ class PseudoPositioner(Positioner):
 
     def move_single(self, idx, position, **kwargs):
         if isinstance(idx, str):
-            idx = self._pseudo.index(idx)
+            idx = self._pseudo_names.index(idx)
 
         target = list(self.position)
         target[idx] = position
@@ -193,12 +223,12 @@ class PseudoPositioner(Positioner):
 
     def move(self, position, wait=True, timeout=30.0,
              **kwargs):
-        if np.size(position) != len(self._pseudo):
+        if np.size(position) != len(self._pseudo_pos):
             raise ValueError('Number of positions and pseudo positioners does not match')
 
         position = np.array(position, ndmin=1)
         pos_kw = dict((pseudo, value) for pseudo, value in
-                      zip(self._pseudo, position))
+                      zip(self._pseudo_names, position))
 
         real_pos = self.calc_forward(**pos_kw)
 
@@ -259,12 +289,12 @@ class PseudoPositioner(Positioner):
         '''
         Override me
         '''
-        return [0.0] * len(self._pseudo)
+        return [0.0] * len(self._pseudo_pos)
 
     def calc_reverse(self, *args, **kwargs):
         pseudo_pos = self._calc_reverse(**kwargs)
 
-        if len(pseudo_pos) != len(self._pseudo):
+        if len(pseudo_pos) != len(self._pseudo_pos):
             raise ValueError('Reverse calculation did not return right position count')
 
         return pseudo_pos

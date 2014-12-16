@@ -110,7 +110,10 @@ class OphydObject(object):
         if event_type is None:
             event_type = self._default_sub
 
-        self._subs[event_type].append(cb)
+        try:
+            self._subs[event_type].append(cb)
+        except KeyError:
+            raise KeyError('Unknown event type: %s' % event_type)
 
         if run:
             self._run_cached_sub(event_type, cb)
