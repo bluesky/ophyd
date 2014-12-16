@@ -1,14 +1,5 @@
 from __future__ import print_function
 
-# import time
-# import threading
-# import logging
-#
-# import numpy as np
-#
-# from .errors import (AlarmError, MajorAlarmError, MinorAlarmError)
-# from .errors import alarms
-
 from .cas import (CasRecord, casAsyncCompletion)
 from ..controls.positioner import (Positioner, )
 from ..controls.pseudopos import (PseudoPositioner, )
@@ -52,6 +43,16 @@ class CasMotor(CasRecord):
                  tweak_value=1.0,
                  **kwargs):
 
+        '''
+        A fake EPICS motor record, made available to EPICS by the built-in
+        channel access server.
+
+        :param name: The record name (not including the server prefix)
+        :param positioner: The ophyd :class:`Positioner` to expose to EPICS
+        :param float tweak_value: The default tweak value
+        :param kwargs: Passed onto CasRecord
+        '''
+
         if not isinstance(positioner, Positioner):
             raise ValueError('The positioner must be derived from Positioner')
         elif isinstance(positioner, PseudoPositioner):
@@ -87,6 +88,10 @@ class CasMotor(CasRecord):
 
     def written_to(self, timestamp=None, value=None,
                    status=None, severity=None):
+        '''
+        [CAS callback] CA client requested a move by writing to this record
+        (or .VAL)
+        '''
         if status or severity:
             return
 
@@ -96,10 +101,13 @@ class CasMotor(CasRecord):
 
             raise casAsyncCompletion
 
-    def _readback_updated(self, value=None, **kwargs):
-        self[self._fld_readback] = value
-
     def _check_limits(self, pos):
+        '''
+        Check the position against the limits
+
+        :returns: False if the limits are tripped
+        :rtype: bool
+        '''
         low_lim, high_lim = self._pos.limits
 
         # TODO: better way to do this. also, limits on .VAL will only update
@@ -119,6 +127,12 @@ class CasMotor(CasRecord):
         return True
 
     def tweak(self, amount):
+        '''
+        Performs a tweak of positioner by `amount`.
+
+        The standard motor record behavior is to add the tweak value (.TWV)
+        onto the user-request value (.VAL) and move there.
+        '''
         # pos = self._pos.position + amount
         pos = self.value + amount
         self.value = pos
@@ -127,20 +141,41 @@ class CasMotor(CasRecord):
             self._pos.move(pos, wait=False)
 
     def tweak_reverse(self, **kwargs):
+        '''
+        [CAS callback] CA client requested to tweak reverse
+        '''
         tweak_val = self[self._fld_tweak_val].value
         return self.tweak(-tweak_val)
 
     def tweak_forward(self, **kwargs):
+        '''
+        [CAS callback] CA client requested to tweak forward
+        '''
         tweak_val = self[self._fld_tweak_val].value
         return self.tweak(tweak_val)
 
+    def _readback_updated(self, value=None, **kwargs):
+        '''
+        [Pos callback] Positioner readback value has been updated
+        '''
+        self[self._fld_readback] = value
+
     def _move_started(self, **kwargs):
+        '''
+        [Pos callback] Positioner motion has started
+        '''
         self._update_status(moving=1)
 
     def _move_done(self, **kwargs):
+        '''
+        [Pos callback] Positioner motion has completed
+        '''
         self._update_status(moving=0)
 
     def _update_status(self, **kwargs):
+        '''
+        Update the motor status field (MSTA)
+        '''
         old_status = self._status
 
         for arg, value in kwargs.iteritems():
