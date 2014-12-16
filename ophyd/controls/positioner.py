@@ -333,6 +333,12 @@ class EpicsMotor(Positioner):
             self._record, self._user_request.value, self._user_readback.value,
             self.egu)
 
+    def check_value(self, pos):
+        '''
+        Check that the position is within the soft limits
+        '''
+        self._user_request.check_value(pos)
+
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
         '''
@@ -418,7 +424,7 @@ class PVPositioner(Positioner):
             self._limits = tuple(limits)
 
         signals = []
-        self.add_signal(EpicsSignal(setpoint, alias='_setpoint'))
+        self.add_signal(EpicsSignal(setpoint, alias='_setpoint', limits=True))
 
         if readback is not None:
             self.add_signal(EpicsSignal(readback, alias='_readback'))
@@ -448,6 +454,12 @@ class PVPositioner(Positioner):
 
         for signal in signals:
             self.add_signal(signal)
+
+    def check_value(self, pos):
+        '''
+        Check that the position is within the soft limits
+        '''
+        self._setpoint.check_value(pos)
 
     @property
     def moving(self):

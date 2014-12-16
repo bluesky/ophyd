@@ -59,6 +59,18 @@ def multi_pseudo():
 
     logger.info('------- concurrent pseudo positioner')
     logger.info('Move to (2, 2, 2), which is (-2, -2, -2) for real motors')
+
+    pos.check_value((2, 2, 2))
+    try:
+        pos.check_value((2, 2, 2, 3))
+    except ValueError as ex:
+        logger.info('Check value failed, as expected (%s)' % ex)
+
+    try:
+        pos.check_value((real0.high_limit + 1, 2, 2))
+    except ValueError as ex:
+        logger.info('Check value failed, as expected (%s)' % ex)
+
     ret = pos.move((2, 2, 2), wait=False, moved_cb=done)
     while not ret.done:
         logger.info('Pos=%s %s (err=%s)' % (pos.position, ret, ret.error))
@@ -66,6 +78,12 @@ def multi_pseudo():
 
     pseudo0 = pos['pseudo0']
     pseudo0.move(0, wait=True)
+
+    try:
+        pseudo0.check_value(real0.high_limit + 1)
+    except ValueError as ex:
+        logger.info('Check value for single failed, as expected (%s)' % ex)
+
     logger.info('Move pseudo0 to 0, position=%s' % (pos.position, ))
     logger.info('pseudo0 = %s' % pseudo0.position)
 
@@ -123,5 +141,5 @@ def single_pseudo():
     logger.info('Real positions: %s' % ([real.position for real in reals], ))
 
 if __name__ == '__main__':
-    # multi_pseudo()
+    multi_pseudo()
     single_pseudo()

@@ -49,6 +49,9 @@ class PseudoSingle(Positioner):
 
         return self._run_subs(obj=self, value=value, **kwargs)
 
+    def check_value(self, pos):
+        self._master.check_single(self._idx, pos)
+
     @property
     def moving(self):
         return self._master.moving
@@ -140,6 +143,33 @@ class PseudoPositioner(Positioner):
             pos.stop()
 
         Positioner.stop(self)
+
+    def check_single(self, idx, position):
+        '''
+        Check if a new position for a single pseudo positioner is valid
+        '''
+        if isinstance(idx, str):
+            idx = self._pseudo_names.index(idx)
+
+        target = list(self.position)
+        target[idx] = position
+        return self.check_value(target)
+
+    def check_value(self, position):
+        '''
+        Check if a new position for all pseudo positioners is valid
+        '''
+        if np.size(position) != len(self._pseudo_pos):
+            raise ValueError('Number of positions and pseudo positioners does not match')
+
+        position = np.array(position, ndmin=1)
+        pos_kw = dict((pseudo, value) for pseudo, value in
+                      zip(self._pseudo_names, position))
+
+        real_pos = self.calc_forward(**pos_kw)
+
+        for real, pos in zip(self._real, real_pos):
+            real.check_value(pos)
 
     @property
     def moving(self):

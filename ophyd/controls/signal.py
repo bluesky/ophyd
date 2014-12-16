@@ -136,14 +136,6 @@ class Signal(OphydObject):
                     'value': self.readback,
                     }
 
-    def check_value(self, value, **kwargs):
-        '''
-        Check if the value can be written first
-
-        :raises: ValueError
-        '''
-        pass
-
 
 class EpicsSignal(Signal):
     def __init__(self, read_pv, write_pv=None,

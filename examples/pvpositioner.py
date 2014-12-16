@@ -25,6 +25,15 @@ def put_complete_test():
                        put_complete=True,
                        )
 
+    high_lim = pos._setpoint.high_limit
+    try:
+        pos.check_value(high_lim + 1)
+    except ValueError as ex:
+        logger.info('Check value for single failed, as expected (%s)' % ex)
+    else:
+        print('high lim is %f' % high_lim)
+        raise ValueError('check_value should have failed')
+
     stat = pos.move(1, wait=False)
     logger.info('--> post-move request, moving=%s' % pos.moving)
 

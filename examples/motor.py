@@ -68,6 +68,13 @@ def test():
     else:
         raise ValueError('Move should have failed')
 
+    try:
+        m1.check_value(low_lim - 1)
+    except ValueError as ex:
+        logger.debug('Failed check_value, as expected (%s)' % ex)
+    else:
+        raise ValueError('check_value should have failed')
+
     logger.info('--> move to 0')
     stat = m1.move(2, wait=False)
 

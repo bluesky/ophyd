@@ -160,3 +160,11 @@ class OphydObject(object):
         An alternative name for the signal
         '''
         return self._alias
+
+    def check_value(self, value, **kwargs):
+        '''
+        Check if the value is valid for this object
+
+        :raises: ValueError
+        '''
+        pass
