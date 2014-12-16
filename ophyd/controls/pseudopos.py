@@ -44,7 +44,9 @@ class PseudoSingle(Positioner):
         return self._run_subs(obj=self, **kwargs)
 
     def _sub_proxy_idx(self, obj=None, value=None, **kwargs):
-        value = value[self._idx]
+        if hasattr(value, '__getitem__'):
+            value = value[self._idx]
+
         return self._run_subs(obj=self, value=value, **kwargs)
 
     @property
@@ -280,7 +282,7 @@ class PseudoPositioner(Positioner):
         '''
         real_pos = self._calc_forward(**kwargs)
 
-        if len(real_pos) != len(self._real):
+        if np.size(real_pos) != np.size(self._real):
             raise ValueError('Forward calculation did not return right position count')
 
         return real_pos
@@ -294,7 +296,7 @@ class PseudoPositioner(Positioner):
     def calc_reverse(self, *args, **kwargs):
         pseudo_pos = self._calc_reverse(**kwargs)
 
-        if len(pseudo_pos) != len(self._pseudo_pos):
+        if np.size(pseudo_pos) != np.size(self._pseudo_pos):
             raise ValueError('Reverse calculation did not return right position count')
 
         return pseudo_pos

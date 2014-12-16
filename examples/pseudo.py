@@ -91,10 +91,10 @@ def multi_pseudo():
 
 def single_pseudo():
     def calc_fwd(pseudo=0.0):
-        return [-pseudo]
+        return [-pseudo, -pseudo, -pseudo]
 
     def calc_rev(real0=0.0, real1=0.0, real2=0.0):
-        return [-real0, -real1, -real2]
+        return -real0
 
     def done(**kwargs):
         print('** Finished moving (%s)' % (kwargs, ))
@@ -103,9 +103,11 @@ def single_pseudo():
     real1 = EpicsMotor(config.motor_recs[1], name='real1')
     real2 = EpicsMotor(config.motor_recs[2], name='real2')
 
+    reals = [real0, real1, real2]
+
     logger.info('------- Sequential, single pseudo positioner')
     pos = PseudoPositioner('seq',
-                           [real0, real1, real2],
+                           reals,
                            forward=calc_fwd, reverse=calc_rev,
                            concurrent=False
                            )
@@ -113,7 +115,12 @@ def single_pseudo():
     logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
     pos.move(.2, wait=True)
     logger.info('Position is: %s (moving=%s)' % (pos.position, pos.moving))
+    logger.info('Real positions: %s' % ([real.position for real in reals], ))
 
+    logger.info('Move to -.2, which is (.2, .2, .2) for real motors')
+    pos.move(-.2, wait=True)
+    logger.info('Position is: %s (moving=%s)' % (pos.position, pos.moving))
+    logger.info('Real positions: %s' % ([real.position for real in reals], ))
 
 if __name__ == '__main__':
     # multi_pseudo()
