@@ -185,6 +185,7 @@ class caServer(cas.caServer):
             raise ValueError('PV already exists')
 
         self._pvs[name] = pvi
+        pvi._server = self
 
     def _strip_prefix(self, pvname):
         '''
@@ -338,6 +339,7 @@ class CasPV(cas.casPV):
             #       updated for a group?
             self.limits = limits
 
+        self._server = None
         self._value = value
         self._enums = []
         self._alarm = AlarmError.severity
@@ -395,6 +397,16 @@ class CasPV(cas.casPV):
 
         if server is not None:
             server.add_pv(self)
+
+    @property
+    def full_pvname(self):
+        '''
+        The full PV name, including the server prefix
+        '''
+        if self._server is None:
+            raise ValueError('PV not yet added to a server')
+        else:
+            return ''.join((self._server.prefix, self._name))
 
     def __getitem__(self, idx):
         if self._count <= 0:
@@ -757,9 +769,13 @@ class CasRecord(CasPV):
     VAL field. Additional fields can be added dynamically.
     '''
 
-    def __init__(self, name, val_field,
+    def __init__(self, name, val_field, rtype=None,
                  **kwargs):
-
+        '''
+        :param str name: The record prefix
+        :param val_field: The default value for the value field
+        :param str rtype: The record type to use
+        '''
         assert '.' not in name, 'Record name cannot have periods'
 
         CasPV.__init__(self, name, val_field, **kwargs)
@@ -767,11 +783,17 @@ class CasRecord(CasPV):
         self.fields = {}
         self.add_field('VAL', None, pv=self)
 
+        if rtype is not None:
+            self.add_field('RTYP', str(rtype))
+
     def field_pvname(self, field):
         return record_field(self.name, field)
 
     def __getitem__(self, field):
         return self.fields[field]
+
+    def __setitem__(self, field, value):
+        self.fields[field].value = value
 
     def add_field(self, field, value, pv=None, **kwargs):
         field = field.upper()
@@ -790,3 +812,4 @@ class CasRecord(CasPV):
                'alarm={0.alarm}, severity={0.severity})'.format(self)
 
     __repr__ = __str__
+

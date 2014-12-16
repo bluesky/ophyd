@@ -21,12 +21,14 @@ def test():
     session = config.session
     server = session.cas
 
-    pvname = ''.join((server.prefix, config.server_pvnames[0]))
-
     def updated(value=None, **kwargs):
         print('Updated to: %s' % value)
 
-    python_pv = CasPV(pvname, 123.0, server=server)
+    python_pv = CasPV(config.server_pvnames[0], 123.0, server=server)
+
+    # full_pvname includes the server prefix
+    pvname = python_pv.full_pvname
+
     signal = EpicsSignal(pvname)
     signal.subscribe(updated)
 
