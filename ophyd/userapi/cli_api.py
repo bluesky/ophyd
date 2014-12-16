@@ -103,7 +103,7 @@ def ensure(ensure_tuple, ensure_dict):
 
 
 @_ensure_positioner_pair
-def mov(positioner, position):
+def mov(positioner, position, quiet=False):
     """Move a positioner to a given position
 
     :param positioner: A single positioner or a collection of
