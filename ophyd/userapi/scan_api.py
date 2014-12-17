@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 from time import sleep, strftime
-
+import six
 from ..runengine import RunEngine
 from ..controls import EpicsMotor, PVPositioner
 from ..session import get_session_manager
@@ -35,6 +35,9 @@ class Scan(object):
         self.paths = list()
         self.positioners = list()
 
+        self._plotx = None
+        self._ploty = None
+
     def check_paths(self):
         pass
 
@@ -57,6 +60,39 @@ class Scan(object):
     def setup_triggers(self):
         pass
 
+    def format_plot(self):
+        '''
+        Format the bits of information the user (most likely)
+        cares about
+
+        Returns
+        -------
+        plotx : str
+            The default positioners to set as the x axis
+        ploty : list
+            The list of positioners/detectors to plot on the y axis
+        '''
+        pos_names = [pos.name for pos in self.positioners]
+        det_names = [det.name for det in self.detectors]
+        valid_names = pos_names + det_names
+        # default value for the x axis
+        plotx = self.positioners[0].name
+        # if plotx is not a valid string, ignore it. if it is, make
+        # sure that it is in the positioners/detectors that the
+        # scan knows about
+        if isinstance(self._plotx, six.string_types):
+            if self._plotx:
+                for name in valid_names:
+                    if name in self._plotx:
+                        plotx = name
+
+        ploty = []
+        # checking validity of self._ploty
+        for name in valid_names:
+            if name in self._ploty:
+                ploty.append(name)
+        return plotx, ploty
+
     def run(self):
         """Run the scan"""
         self.scan_id = session_manager.get_next_scan_id()
@@ -74,9 +110,12 @@ class Scan(object):
             scan_args['triggers'] = self.triggers
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
-
+            scan_args['custom'] = {}
+            plotx, ploty = self.format_plot()
+            scan_args['custom']['plotx'] = plotx
+            if ploty:
+                scan_args['custom']['ploty'] = ploty
             # Run the scan!
-
             self.data = self._run_eng.start_run(self.scan_id,
                                                 scan_args=scan_args)
 
@@ -154,6 +193,22 @@ class Scan(object):
     def paths(self, paths):
         """Set the paths for the scan"""
         self._paths = paths
+
+    @property
+    def ploty(self):
+        return self._ploty
+
+    @ploty.setter
+    def ploty(self, ploty):
+        '''
+
+        Parameters
+        ----------
+        ploty : str
+            The name of the data set that is understood to be the
+            important y data for the scan
+        '''
+        self._ploty = ploty
 
 
 class ScanND(Scan):
