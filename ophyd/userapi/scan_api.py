@@ -201,10 +201,7 @@ class ScanND(Scan):
         for b, e, d in zip(start, stop, range(dimension)):
             # For each dimension we work out the paths
             iter_pos = ensure_iterator(positioners[d])
-<<<<<<< HEAD
-            print(iter_pos)
-=======
->>>>>>> Modified scan_id location and added to log
+
             for p in iter_pos:
                 pos.append(p)
                 paths.append(self.calc_path(b, e, npts, d))
@@ -252,12 +249,8 @@ class DScan(AScan):
         """Post Scan Move to start positions"""
         AScan.post_scan(self)
 
-<<<<<<< HEAD
         status = [pos.move(start, wait=False)
                   for pos, start in zip(self.positioners, self._start_positions)]
-=======
-        sleep(0.1)
->>>>>>> Modified scan_id location and added to log
 
         print("\nMoving positioners back to start positions.")
         while any(not stat.done for stat in status):
