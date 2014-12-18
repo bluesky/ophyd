@@ -168,7 +168,7 @@ class RunEngine(object):
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
-        header = data_collection.create_run_header(scan_id=runid)
+        header = data_collection.create_run_header(scan_id=runid, **scan_args)
         #header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
         data = {k:[] for k in keys}
