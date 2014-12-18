@@ -518,26 +518,36 @@ class FilePlugin(PluginBase):
     write_message = ADSignal('WriteMessage', string=True)
     write_status = ADSignal('WriteStatus')
 
-    def get_filenames(self, detector=None, sanity_check=True,
+    def get_filenames(self, detector=None, check=True,
                       using_autosave=True, acquired=True):
+        '''
+        Get the filenames saved or to be saved by this file plugin.
+
+        :param detector: The detector to use (defaults to the one the
+            plugin was instantiated with)
+        :param bool check: Check the configured parameters to see if they
+            make sense
+        :param bool acquired: If True, pre-existing image filenames are returned.
+            If False, image filenames that will be written are returned.
+        :param bool using_autosave: If using `Capture` mode, set this to False.
+
+        :rtype: list
+        '''
         detector = self._get_detector(detector)
 
         if detector.image_mode.value == detector.ImageMode.SINGLE:
             images = 1
-        else:
+        elif detector.image_mode.value == detector.ImageMode.MULTIPLE:
             images = detector.num_images.value
+        # elif detector.image_mode.value == detector.ImageMode.CONTINUOUS:
+        else:
+            raise ValueError('Unhandled image mode: %s' % (detector.image_mode.value, ))
 
         base_path = self.file_path.value
         file_name = self.file_name.value
         template = self.file_template.value
 
-        if sanity_check:
-            if images > 1 and not self.auto_increment.value:
-                raise ValueError('Images will be overwritten')
-
-            if not self.auto_save.value:
-                raise ValueError('Plugin not set to save files')
-
+        if check:
             if not self.file_path_exists.value:
                 raise ValueError('Plugin reports path does not exist')
 
@@ -546,11 +556,15 @@ class FilePlugin(PluginBase):
             except Exception as ex:
                 raise ValueError('Invalid filename template (%s)' % ex)
 
-            if not self.enable.value:
-                raise ValueError('Plugin not enabled (set enable to 1)')
+            if not acquired:
+                if not self.enable.value:
+                    raise ValueError('Plugin not enabled (set enable to 1)')
 
-            if using_autosave and not self.auto_save.value:
-                raise ValueError('Plugin not enabled (set enable to 1)')
+                if using_autosave:
+                    if images > 1 and not self.auto_increment.value:
+                        raise ValueError('Images will be overwritten')
+                    elif not self.auto_save.value:
+                        raise ValueError('Autosave not enabled (set enable to 1)')
 
         next_number = self.file_number.value
         current_number = next_number - 1
@@ -566,19 +580,20 @@ class FilePlugin(PluginBase):
                 first_number = current_number
                 last_number = first_number + images - 1
         elif write_mode in (self.FileWriteMode.CAPTURE, self.FileWriteMode.STREAM):
-            # Multiple images
-            # to_capture = self.num_capture.value
-            # captured = self.num_captured.value
-            # TODO: this gets tricky if the camera is setup to acquire
-            #       less images than this per trigger
+            # Multiple images saved in one file
+            #
+            # Does not advance to next file if num_capture is hit
+
+            # max_capture = self.num_capture.value
+            # if max_capture > 0:
+            #     remaining = max_capture - self.num_capture.value
+
+            # TODO this may need reworking
             if acquired:
-                # if captured < to_capture:
-                #     return []
                 first_number = current_number
-                last_number = first_number
             else:
                 first_number = next_number
-                last_number = next_number
+            last_number = first_number
 
         else:
             raise RuntimeError('Unhandled capture write mode')
