@@ -19,6 +19,8 @@ import epics
 
 from .detectors import (ADBase, NDArrayDriver,
                         ADSignal, ADSignalGroup)
+from ...utils import enum
+
 
 logger = logging.getLogger(__name__)
 __all__ = ['ColorConvPlugin',
@@ -75,7 +77,7 @@ class PluginBase(NDArrayDriver):
 
     dimensions = ADSignal('Dimensions_RBV', rw=False)
     dropped_arrays = ADSignal('DroppedArrays', has_rbv=True)
-    enable_callbacks = ADSignal('EnableCallbacks', has_rbv=True)
+    enable = ADSignal('EnableCallbacks', has_rbv=True)
     min_callback_time = ADSignal('MinCallbackTime', has_rbv=True)
     nd_array_address = ADSignal('NDArrayAddress', has_rbv=True)
     nd_array_port = ADSignal('NDArrayPort', has_rbv=True)
@@ -91,13 +93,31 @@ class PluginBase(NDArrayDriver):
     time_stamp = ADSignal('TimeStamp_RBV', rw=False)
     unique_id = ADSignal('UniqueId_RBV', rw=False)
 
-    def __init__(self, prefix, suffix=None, **kwargs):
+    def _get_detector(self, detector=None):
+        if detector is not None:
+            return detector
+
+        if self._detector is not None:
+            return self._detector
+
+        raise ValueError('Must specify detector')
+
+    def __init__(self, prefix, suffix=None, detector=None, **kwargs):
         if suffix is None:
             suffix = self._default_suffix
 
         prefix = ''.join([prefix, suffix])
 
         ADBase.__init__(self, prefix, **kwargs)
+
+        self._detector = detector
+
+    @property
+    def detector(self):
+        '''
+        The default detector associated with the plugin
+        '''
+        return self._detector
 
 
 class ImagePlugin(PluginBase):
@@ -475,6 +495,8 @@ class FilePlugin(PluginBase):
     _suffix_re = ''
     _html_docs = ['NDPluginFile.html']
 
+    FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
+
     auto_increment = ADSignal('AutoIncrement', has_rbv=True)
     auto_save = ADSignal('AutoSave', has_rbv=True)
     capture = ADSignal('Capture', has_rbv=True)
@@ -495,6 +517,74 @@ class FilePlugin(PluginBase):
     write_file = ADSignal('WriteFile', has_rbv=True)
     write_message = ADSignal('WriteMessage', string=True)
     write_status = ADSignal('WriteStatus')
+
+    def get_filenames(self, detector=None, sanity_check=True,
+                      using_autosave=True, acquired=True):
+        detector = self._get_detector(detector)
+
+        if detector.image_mode.value == detector.ImageMode.SINGLE:
+            images = 1
+        else:
+            images = detector.num_images.value
+
+        base_path = self.file_path.value
+        file_name = self.file_name.value
+        template = self.file_template.value
+
+        if sanity_check:
+            if images > 1 and not self.auto_increment.value:
+                raise ValueError('Images will be overwritten')
+
+            if not self.auto_save.value:
+                raise ValueError('Plugin not set to save files')
+
+            if not self.file_path_exists.value:
+                raise ValueError('Plugin reports path does not exist')
+
+            try:
+                template % ('a', 'b', 1)
+            except Exception as ex:
+                raise ValueError('Invalid filename template (%s)' % ex)
+
+            if not self.enable.value:
+                raise ValueError('Plugin not enabled (set enable to 1)')
+
+            if using_autosave and not self.auto_save.value:
+                raise ValueError('Plugin not enabled (set enable to 1)')
+
+        next_number = self.file_number.value
+        current_number = next_number - 1
+
+        write_mode = self.file_write_mode.value
+        if write_mode == self.FileWriteMode.SINGLE:
+            # One file per image
+            if acquired:
+                # file_number is the next one to save
+                last_number = current_number
+                first_number = current_number - images + 1
+            else:
+                first_number = current_number
+                last_number = first_number + images - 1
+        elif write_mode in (self.FileWriteMode.CAPTURE, self.FileWriteMode.STREAM):
+            # Multiple images
+            # to_capture = self.num_capture.value
+            # captured = self.num_captured.value
+            # TODO: this gets tricky if the camera is setup to acquire
+            #       less images than this per trigger
+            if acquired:
+                # if captured < to_capture:
+                #     return []
+                first_number = current_number
+                last_number = first_number
+            else:
+                first_number = next_number
+                last_number = next_number
+
+        else:
+            raise RuntimeError('Unhandled capture write mode')
+
+        return [template % (base_path, file_name, file_num)
+                for file_num in range(first_number, last_number + 1)]
 
 
 class NetCDFPlugin(FilePlugin):
@@ -630,6 +720,7 @@ def get_areadetector_plugin_class(prefix, suffix=''):
         class_ = type_map[type_].class_
 
     return class_
+
 
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
     '''

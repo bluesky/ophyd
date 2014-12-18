@@ -14,3 +14,10 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 from .errors import *
+
+
+def enum(**enums):
+    '''
+    Create an enum from the keyword arguments
+    '''
+    return type('Enum', (object,), enums)

@@ -2,10 +2,7 @@ import time
 
 import config
 from ophyd.controls import scaler
-
-
-def enum(**enums):
-    return type('Enum', (object,), enums)
+from ophyd.utils import enum
 
 ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 

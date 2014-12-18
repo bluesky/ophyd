@@ -20,6 +20,8 @@ import sys
 from ..ophydobj import OphydObject
 from ..signal import (Signal, EpicsSignal, SignalGroup)
 from . import docs
+from ...utils import enum
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,9 @@ __all__ = ['AreaDetector',
 
 
 def name_from_pv(pv):
-    # TODO
+    '''
+    Create a signal's ophyd name based on the PV
+    '''
     name = pv.lower().rstrip(':')
     name = name.replace(':', '.')
     return name
@@ -314,6 +318,8 @@ class NDArrayDriver(ADBase):
 class AreaDetector(NDArrayDriver):
     _html_docs = ['areaDetectorDoc.html']
 
+    ImageMode = enum(SINGLE=0, MULTIPLE=1, CONTINUOUS=2)
+
     acquire = ADSignal('Acquire', has_rbv=True)
     acquire_period = ADSignal('AcquirePeriod', has_rbv=True)
     acquire_time = ADSignal('AcquireTime', has_rbv=True)
@@ -397,7 +403,8 @@ class AreaDetector(NDArrayDriver):
 
         prefix = self._base_prefix
         instance = type_(prefix, suffix=suffix,
-                         name=full_name, alias='', **kwargs)
+                         name=full_name, alias='',
+                         detector=self, **kwargs)
         setattr(self, prop_name, instance)
 
         # TODO better way to do this?
@@ -412,9 +419,9 @@ class AreaDetector(NDArrayDriver):
             return self._plugins.get(type_, [])
 
         ret = []
-        for t, plugins in self._plugins.items():
+        for t, pl in self._plugins.items():
             if issubclass(type_, t):
-                ret.extend(plugins)
+                ret.extend(pl)
 
         return ret
 
@@ -425,7 +432,8 @@ class AreaDetector(NDArrayDriver):
     def __init__(self, prefix, cam='cam1:',
                  images=['image1:', ],
                  rois=['ROI1:', 'ROI2:', 'ROI3:', 'ROI4:'],
-                 files=['TIFF1:', ],
+                 files=['TIFF1:', 'netCDF1:', 'JPEG1:', 'Nexus1:',
+                        'HDF1:', 'Magick1:', ],
                  procs=['Proc1:', ],
                  stats=['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
                  ccs=['CC1:', 'CC2:', ],
@@ -455,7 +463,8 @@ class AreaDetector(NDArrayDriver):
                 self._add_plugin_by_suffix(suffix, type_)
 
         self.overlays = [plugins.OverlayPlugin(self._base_prefix, suffix=o[0],
-                                               first_overlay=o[1], count=o[2])
+                                               first_overlay=o[1], count=o[2],
+                                               detector=self)
                          for o in over]
 
     # TODO all reads should allow a timeout kw?
@@ -469,7 +478,7 @@ class AreaDetector(NDArrayDriver):
 
         time.sleep(0.01)
 
-        if self.image_mode.value == 2:
+        if self.image_mode.value == self.ImageMode.CONTINUOUS:
             self.image_mode = 0  # single mode
             logger.debug('%s: Setting to single image mode' % self)
 
