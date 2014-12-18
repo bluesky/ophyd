@@ -544,13 +544,13 @@ class SimDetector(AreaDetector):
 class AdscDetector(AreaDetector):
     _html_docs = ['adscDoc.html']
 
-    adsc2_theta = ADSignal('ADSC2Theta', has_rbv=True)
+    adsc_2theta = ADSignal('ADSC2Theta', has_rbv=True)
     adsc_adc = ADSignal('ADSCAdc', has_rbv=True)
     adsc_axis = ADSignal('ADSCAxis', has_rbv=True)
     adsc_beam_x = ADSignal('ADSCBeamX', has_rbv=True)
     adsc_beam_y = ADSignal('ADSCBeamY', has_rbv=True)
     adsc_dezingr = ADSignal('ADSCDezingr', has_rbv=True)
-    adsc_distnce = ADSignal('ADSCDistnce', has_rbv=True)
+    adsc_distance = ADSignal('ADSCDistnce', has_rbv=True)
     adsc_im_width = ADSignal('ADSCImWidth', has_rbv=True)
     adsc_im_xform = ADSignal('ADSCImXform', has_rbv=True)
     adsc_kappa = ADSignal('ADSCKappa', has_rbv=True)
@@ -568,7 +568,7 @@ class AdscDetector(AreaDetector):
     adsc_str_drks = ADSignal('ADSCStrDrks', has_rbv=True)
     adsc_wavelen = ADSignal('ADSCWavelen', has_rbv=True)
     bin_x_changed = ADSignal('BinXChanged')
-    bin_yc_hanged = ADSignal('BinYChanged')
+    bin_y_changed = ADSignal('BinYChanged')
     ext_trig_ctl = ADSignal('ExSwTrCtl')
     ext_trig_ctl_rsp = ADSignal('ExSwTrCtlRsp')
     ext_trig_ok_to_exp = ADSignal('ExSwTrOkToExp')
@@ -640,7 +640,7 @@ class FirewireWinDetector(AreaDetector):
     current_rate = ADSignal('CURRENT_RATE')
     dropped_frames = ADSignal('DROPPED_FRAMES', has_rbv=True)
     format_ = ADSignal('FORMAT', has_rbv=True)
-    fr = ADSignal('FR', has_rbv=True)
+    frame_rate = ADSignal('FR', has_rbv=True)
     mode = ADSignal('MODE', has_rbv=True)
     readout_time = ADSignal('READOUT_TIME', has_rbv=True)
 
@@ -748,7 +748,7 @@ class PilatusDetector(AreaDetector):
     cbf_template_file = ADSignal('CbfTemplateFile')
     chi = ADSignal('Chi')
     delay_time = ADSignal('DelayTime', has_rbv=True)
-    det2theta = ADSignal('Det2theta')
+    det_2theta = ADSignal('Det2theta')
     det_dist = ADSignal('DetDist')
     det_v_offset = ADSignal('DetVOffset')
     energy_high = ADSignal('EnergyHigh')
