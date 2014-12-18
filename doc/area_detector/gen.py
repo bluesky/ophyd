@@ -99,7 +99,16 @@ class DocRow(object):
                     whitespace = m.groups()[0]
                     self.description = '\n%s%s' % (whitespace, self.description.lstrip())
 
-            return u"{0}=u{3}[{0} {2.access}, {1}] {2.description}{3},".format(pv, type_, self, quotes)
+            top_info = [pv]
+
+            if self.access:
+                top_info.append(self.access)
+
+            if type_:
+                top_info.append(type_)
+
+            top_line = ' '.join(top_info)
+            return u"{0}=u{3}[{1}] {2.description}{3},".format(pv, top_line, self, quotes)
 
         m = self.multiple
         if m is not None:
