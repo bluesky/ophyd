@@ -43,8 +43,9 @@ class SessionManager(object):
             ipy = _FakeIPython()
 
         SessionManager._instance = self
-
         self._ipy = ipy
+        self._ipy.push(dict(session_mgr=self))
+
         self._logger = logger
         self._run_engine = None
         self._registry = {'positioners': {}, 'signals': {},
