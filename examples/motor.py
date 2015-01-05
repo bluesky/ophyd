@@ -88,5 +88,10 @@ def test():
     logger.debug(m1.pvname)
     logger.debug(m1.request_pvname)
 
+    prec = m1.precision
+    fmt = '%%.%df' % prec
+    print(fmt % m1.position)
+
+
 if __name__ == '__main__':
     test()

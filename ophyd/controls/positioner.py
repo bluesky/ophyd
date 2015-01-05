@@ -280,7 +280,17 @@ class EpicsMotor(Positioner):
         self._set_position(self._user_readback.value)
 
     @property
+    def precision(self):
+        '''
+        The precision of the readback PV, as reported by EPICS
+        '''
+        return self._user_readback.precision
+
+    @property
     def egu(self):
+        '''
+        Engineering units
+        '''
         return self._egu.value
 
     @property

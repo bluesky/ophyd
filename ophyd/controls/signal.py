@@ -203,6 +203,13 @@ class EpicsSignal(Signal):
             self._write_pv = self._read_pv
 
     @property
+    def precision(self):
+        '''
+        The precision of the read PV, as reported by EPICS
+        '''
+        return self._read_pv.precision
+
+    @property
     def request_ts(self):
         '''
         Timestamp of request PV, according to EPICS
