@@ -287,6 +287,9 @@ class EpicsSignal(Signal):
 
         :raises: ValueError
         '''
+        if value is None:
+            raise ValueError('Cannot write None to epics PVs')
+
         if not self._check_limits:
             return
 
@@ -298,16 +301,19 @@ class EpicsSignal(Signal):
             raise ValueError('Value {} outside of range: [{}, {}]'.format(value,
                                                                           low_limit, high_limit))
 
-    def get(self, **kwargs):
-        '''
-        Get the readback value
+    # TODO: monitor updates self._readback - this shouldn't be necessary
+    #       ... but, there should be a mode of operation without using
+    #           monitor updates, e.g., for large arrays
+    def get(self, as_string=None, **kwargs):
+        if as_string is None:
+            as_string = self._string
 
-        :param kwargs: Passed onto epics.PV.get()
-        '''
-        if kwargs:
-            return self._read_pv.get(**kwargs)
+        ret = self._read_pv.get(**kwargs)
+
+        if as_string:
+            return waveform_to_string(ret)
         else:
-            return self._readback
+            return ret
 
     def get_setpoint(self, **kwargs):
         '''
@@ -316,8 +322,9 @@ class EpicsSignal(Signal):
 
         :param kwargs: Passed onto epics.PV.get()
         '''
-        if kwargs:
-            return self._write_pv.get(**kwargs)
+        if kwargs or self._setpoint is None:
+            setpoint = self._write_pv.get(**kwargs)
+            return self._fix_type(setpoint)
         else:
             return self._setpoint
 
@@ -370,20 +377,6 @@ class EpicsSignal(Signal):
 
         value = self._fix_type(value)
         Signal.put(self, value, timestamp=timestamp)
-
-    # TODO: monitor updates self._readback - this shouldn't be necessary
-    #       ... but, there should be a mode of operation without using
-    #           monitor updates, e.g., for large arrays
-    def _get_readback(self, as_string=None, **kwargs):
-        if as_string is None:
-            as_string = self._string
-
-        ret = self._read_pv.get(**kwargs)
-
-        if as_string:
-            return waveform_to_string(ret)
-        else:
-            return ret
 
     def read(self):
         '''
@@ -457,13 +450,13 @@ class SignalGroup(OphydObject):
         return dict((signal.alias, signal.read())
                     for signal in self._signals)
 
-    def get(self, *args, **kwargs):
-        return [signal.get(*args, **kwargs)
+    def get(self, **kwargs):
+        return [signal.get(**kwargs)
                 for signal in self._signals]
 
-    def put(self, *args, **kwargs):
-        return [signal.put(*args, **kwargs)
-                for signal in self._signals]
+    def put(self, values, **kwargs):
+        return [signal.put(value, **kwargs)
+                for signal, value in zip(self._signals, values)]
 
     def get_setpoint(self, **kwargs):
         return [signal.get_setpoint(**kwargs)

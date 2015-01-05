@@ -66,7 +66,7 @@ def test():
     det = SimDetector(det1_prefix, cam=det1_cam)
 
     img = det.read()
-    print(img)
+    print('Image: %s' % img)
 
     det.tiff1.file_template = '%s%s_%3.3d.tif'
     logger.debug('template value=%s' % det.tiff1.file_template.value)
@@ -118,6 +118,7 @@ def test():
                           count=over_count, first_overlay=over_start)
 
     logger.debug('Overlay1:1 blue=%s' % over1.overlays[0].blue)
+
     return proc1, over1
 
 
