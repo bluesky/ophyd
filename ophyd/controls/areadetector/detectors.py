@@ -60,7 +60,7 @@ def name_from_pv(pv):
 def ADSignalGroup(*props, **kwargs):
     def check_exists(self):
         signals = tuple(prop.__get__(self) for prop in props)
-        key = tuple(signal.read_pvname for signal in signals)
+        key = tuple(signal.pvname for signal in signals)
         try:
             return self._ad_signals[key]
         except KeyError:

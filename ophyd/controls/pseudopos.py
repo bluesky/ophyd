@@ -32,9 +32,9 @@ class PseudoSingle(Positioner):
         self._master = master
         self._idx = idx
 
-        self._master.subscribe(self._sub_proxy, self.SUB_START)
-        self._master.subscribe(self._sub_proxy, self.SUB_DONE)
-        self._master.subscribe(self._sub_proxy_idx, self.SUB_READBACK)
+        self._master.subscribe(self._sub_proxy, event_type=self.SUB_START)
+        self._master.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
+        self._master.subscribe(self._sub_proxy_idx, event_type=self.SUB_READBACK)
 
     def _sub_proxy(self, obj=None, **kwargs):
         '''

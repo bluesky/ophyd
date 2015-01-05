@@ -21,11 +21,11 @@ def dump_pvnames(obj, f=sys.stderr):
         if not isinstance(signal, EpicsSignal):
             continue
 
-        if signal.read_pvname:
-            print(signal.read_pvname, file=f)
+        if signal.pvname:
+            print(signal.pvname, file=f)
 
-        if signal.write_pvname != signal.read_pvname and signal.write_pvname:
-            print(signal.write_pvname, file=f)
+        if signal.request_pvname != signal.pvname and signal.request_pvname:
+            print(signal.request_pvname, file=f)
 
 
 def test():
@@ -34,7 +34,7 @@ def test():
 
         for attr, signal in sorted(obj.signals.items()):
             name = "%s.%s" % (port_name, attr)
-            logger.debug('(epics) %s %s=%s' % (name, signal.read_pvname, signal.value))
+            logger.debug('(epics) %s %s=%s' % (name, signal.pvname, signal.value))
 
     loggers = ('ophyd.controls.areadetector',
                'ophyd.session',
@@ -96,7 +96,7 @@ def test():
     proc1.fc = [1, 2, 3, 4]
     time.sleep(0.1)
 
-    logger.debug('fc=%s from %s' % (proc1.fc.value, proc1.fc.read_pvname))
+    logger.debug('fc=%s from %s' % (proc1.fc.value, proc1.fc.pvname))
 
     # But they can be accessed individually as well
     logger.debug('(fc1=%s, fc2=%s, fc3=%s, fc4=%s)' % (proc1._fc1.value,

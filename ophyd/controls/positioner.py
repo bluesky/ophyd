@@ -228,8 +228,7 @@ class Positioner(SignalGroup):
 
     def _set_position(self, value, **kwargs):
         '''
-        Set the current internal position and run the
-        SUB_READBACK subscription
+        Set the current internal position and run the SUB_READBACK subscription
         '''
         self._position = value
 
@@ -329,7 +328,7 @@ class EpicsMotor(Positioner):
             self.stop()
 
     def __str__(self):
-        return 'EpicsMotor(record={0}, val={1}, rbv={2}, egu={3})'.format(
+        return 'EpicsMotor(record={0!r}, val={1!r}, rbv={2!r}, egu={3!r})'.format(
             self._record, self._user_request.value, self._user_readback.value,
             self.egu)
 
@@ -370,9 +369,8 @@ class EpicsMotor(Positioner):
 
     @property
     def report(self):
-        #return {self._user_readback.read_pvname: self._user_readback.value}
         return {self._name: self.position,
-                'pv': self._user_readback.read_pvname}
+                'pv': self._user_readback.pvname}
 
 
 # TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
@@ -507,7 +505,7 @@ class PVPositioner(Positioner):
             time.sleep(self._settle_time)
 
         if self._started_moving and not self._moving:
-            self._done_moving(timestamp=self._setpoint.readback_ts)
+            self._done_moving(timestamp=self._setpoint.timestamp)
         elif self._started_moving and self._moving:
             # TODO better exceptions
             raise TimeoutError('Failed to move %s to %s (put complete done, still moving)' %
@@ -526,12 +524,12 @@ class PVPositioner(Positioner):
             self._move_wait_pc(position, **kwargs)
         else:
             self._setpoint._set_request(position, wait=True)
-            logger.debug('Setpoint set: %s = %s' % (self._setpoint.write_pvname,
+            logger.debug('Setpoint set: %s = %s' % (self._setpoint.request_pvname,
                                                     position))
 
             if self._actuate is not None:
                 self._actuate._set_request(self._act_val, wait=True)
-                logger.debug('Actuating: %s = %s' % (self._actuate.write_pvname,
+                logger.debug('Actuating: %s = %s' % (self._actuate.request_pvname,
                                                      self._act_val))
 
     def _move_async(self, position, **kwargs):
@@ -611,8 +609,7 @@ class PVPositioner(Positioner):
     # TODO: this will fail if no readback is provided to initializer
     @property
     def report(self):
-        #return {self._readback.read_pvname: self._readback.value}
-        return {self._name: self.position, 'pv': self._readback.read_pvname}
+        return {self._name: self.position, 'pv': self._readback.pvname}
 
     @property
     def limits(self):

@@ -31,7 +31,7 @@ def test():
 
     rw_signal = EpicsSignal(rbv, write_pv=val)
                             # put_complete=True)
-    rw_signal.subscribe(callback, event_type=rw_signal.SUB_READBACK)
+    rw_signal.subscribe(callback, event_type=rw_signal.SUB_VALUE)
     rw_signal.subscribe(callback, event_type=rw_signal.SUB_REQUEST)
 
     rw_signal.value = 2

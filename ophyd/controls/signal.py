@@ -30,7 +30,7 @@ class Signal(OphydObject):
     '''
 
     SUB_REQUEST = 'request'
-    SUB_READBACK = 'readback'
+    SUB_VALUE = 'value'
 
     def __init__(self, alias=None, separate_readback=False, name=None):
         '''
@@ -42,7 +42,7 @@ class Signal(OphydObject):
             from the same source as the request value, set this to True.
         '''
 
-        self._default_sub = self.SUB_READBACK
+        self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, name, alias)
 
         self._request = None
@@ -52,11 +52,11 @@ class Signal(OphydObject):
 
     def __str__(self):
         if self._separate_readback:
-            return 'Signal(alias=%s, request=%s, readback=%s)' % \
+            return 'Signal(alias=%r, request=%r, readback=%r)' % \
                 (self._alias, self.request, self.readback)
         else:
-            return 'Signal(alias=%s, readback=%s)' % \
-                (self._alias, self.readback)
+            return 'Signal(alias=%r, value=%r)' % \
+                (self._alias, self.value)
 
     __repr__ = __str__
 
@@ -93,16 +93,21 @@ class Signal(OphydObject):
                        lambda self, value: self._set_request(value),
                        doc='The desired/requested value for the signal')
 
+    def get(self, *args, **kwargs):
+        '''
+        Get the readback value
+        '''
+        return self._get_readback(*args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        '''
+        Set the request value
+        '''
+        return self._set_request(*args, **kwargs)
+
     # - Readback value
     def _get_readback(self):
         return self._readback
-
-    @property
-    def readback(self):
-        '''
-        The readback value of the signal
-        '''
-        return self._get_readback()
 
     # - Value reads from readback, and writes to request
     value = property(lambda self: self._get_readback(),
@@ -115,7 +120,7 @@ class Signal(OphydObject):
 
         if allow_cb:
             timestamp = kwargs.pop('timestamp', time.time())
-            self._run_subs(sub_type=Signal.SUB_READBACK,
+            self._run_subs(sub_type=Signal.SUB_VALUE,
                            old_value=old_value, value=value,
                            timestamp=timestamp, **kwargs)
 
@@ -133,7 +138,7 @@ class Signal(OphydObject):
                     }
         else:
             return {'alias': self.alias,
-                    'value': self.readback,
+                    'value': self.value,
                     }
 
 
@@ -208,16 +213,14 @@ class EpicsSignal(Signal):
         return self._write_pv.timestamp
 
     @property
-    def readback_ts(self):
+    def timestamp(self):
         '''
         Timestamp of readback PV, according to EPICS
         '''
         return self._read_pv.timestamp
 
-    value_ts = readback_ts
-
     @property
-    def read_pvname(self):
+    def pvname(self):
         '''
         The readback PV name
         '''
@@ -227,7 +230,7 @@ class EpicsSignal(Signal):
             return None
 
     @property
-    def write_pvname(self):
+    def request_pvname(self):
         '''
         The request/write PV name
         '''
@@ -237,8 +240,11 @@ class EpicsSignal(Signal):
             return None
 
     def __str__(self):
-        return 'EpicsSignal(value={0}, read_pv={1}, write_pv={2})'.format(
-            self.value, self._read_pv, self._write_pv)
+        if self._read_pv is self._write_pv:
+            return 'EpicsSignal(value=%r, pv=%r)' % (self.value, self._read_pv)
+        else:
+            return 'EpicsSignal(value=%r, pv=%r, request_pv=%r)' % (
+                self.value, self._read_pv, self._write_pv)
 
     __repr__ = __str__
 
@@ -351,13 +357,6 @@ class EpicsSignal(Signal):
         else:
             return ret
 
-    @property
-    def readback(self):
-        '''
-        The readback value, read from EPICS
-        '''
-        return self._get_readback()
-
     def read(self):
         '''
         See :func:`Signal.read`
@@ -365,10 +364,10 @@ class EpicsSignal(Signal):
 
         ret = Signal.read(self)
         if self._read_pv is not None:
-            ret['read_pv'] = self.read_pvname
+            ret['read_pv'] = self.pvname
 
         if self._write_pv is not None:
-            ret['write_pv'] = self.write_pvname
+            ret['write_pv'] = self.request_pvname
 
         return ret
 
@@ -377,13 +376,13 @@ class EpicsSignal(Signal):
         # FIXME:
         if self._read_pv == self._write_pv:
             value = self._read_pv.value
-            pv = self.read_pvname
+            pv = self.pvname
         elif self._read_pv is not None:
             value = self._read_pv.value
-            pv = self.read_pvname
+            pv = self.pvname
         elif self._write_pv is not None:
-            value = self._read_pv.value
-            pv = self.read_pvname
+            value = self._write_pv.value
+            pv = self.request_pvname
 
         return {self.name: value,
                 'pv': pv
@@ -430,11 +429,17 @@ class SignalGroup(OphydObject):
         return dict((signal.alias, signal.read())
                     for signal in self._signals)
 
+    def get(self, *args, **kwargs):
+        return [signal.get(*args, **kwargs)
+                for signal in self._signals]
+
+    def put(self, *args, **kwargs):
+        return [signal.put(*args, **kwargs)
+                for signal in self._signals]
+
     def _get_readback(self, **kwargs):
         return [signal._get_readback(**kwargs)
                 for signal in self._signals]
-
-    readback = property(_get_readback, doc='Readback list')
 
     def _get_request(self, **kwargs):
         return [signal._get_request(**kwargs)
@@ -458,21 +463,19 @@ class SignalGroup(OphydObject):
         return [signal.request_ts for signal in self._signals]
 
     @property
-    def readback_ts(self):
+    def timestamp(self):
         '''
         Timestamp of readback PV, according to EPICS
         '''
-        return [signal.readback_ts for signal in self._signals]
-
-    value_ts = readback_ts
+        return [signal.timestamp for signal in self._signals]
 
     @property
-    def read_pvname(self):
-        return [signal.read_pvname for signal in self._signals]
+    def pvname(self):
+        return [signal.pvname for signal in self._signals]
 
     @property
-    def write_pvname(self):
-        return [signal.write_pvname for signal in self._signals]
+    def request_pvname(self):
+        return [signal.request_pvname for signal in self._signals]
 
     @property
     def report(self):
