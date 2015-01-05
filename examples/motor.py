@@ -82,5 +82,11 @@ def test():
         logger.info('--> moving... %s error=%s' % (stat, stat.error))
         time.sleep(0.1)
 
+    logger.debug(m1.get())
+    logger.debug(m1.request_ts)
+    logger.debug(m1.timestamp)
+    logger.debug(m1.pvname)
+    logger.debug(m1.request_pvname)
+
 if __name__ == '__main__':
     test()

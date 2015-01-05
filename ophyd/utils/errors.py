@@ -17,6 +17,10 @@ class TimeoutError(OpException):
     pass
 
 
+class ReadOnlyError(OpException):
+    pass
+
+
 # - Alarms
 
 # Severities

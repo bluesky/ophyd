@@ -15,7 +15,7 @@ import time
 
 import epics
 
-from ..utils import TimeoutError
+from ..utils import (ReadOnlyError, TimeoutError)
 from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
 from .ophydobj import OphydObject
 
@@ -208,7 +208,7 @@ class EpicsSignal(Signal):
         Timestamp of request PV, according to EPICS
         '''
         if self._write_pv is None:
-            raise RuntimeError('Read-only EPICS signal')
+            raise ReadOnlyError('Read-only EPICS signal')
 
         return self._write_pv.timestamp
 
@@ -302,7 +302,7 @@ class EpicsSignal(Signal):
         :param dict kwargs: Keyword arguments to pass to callbacks
         '''
         if self._write_pv is None:
-            raise RuntimeError('Read-only EPICS signal')
+            raise ReadOnlyError('Read-only EPICS signal')
 
         self.check_value(value)
 
@@ -460,7 +460,13 @@ class SignalGroup(OphydObject):
         '''
         Timestamp of request PVs, according to EPICS
         '''
-        return [signal.request_ts for signal in self._signals]
+        def get_ts(signal):
+            try:
+                return signal.request_ts
+            except ReadOnlyError:
+                return
+
+        return [get_ts(signal) for signal in self._signals]
 
     @property
     def timestamp(self):
