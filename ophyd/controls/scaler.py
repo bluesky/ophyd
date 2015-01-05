@@ -73,7 +73,7 @@ class EpicsScaler(SignalGroup):
         return record_field(self._record, field)
 
     def start(self):
-        self._count_ctl._set_request(1, wait=False)
+        self._count_ctl.put(1, wait=False)
 
     # TODO: should this be a non-blocking write?
     # TODO: should writes be non-blocking by default?
@@ -104,7 +104,7 @@ class EpicsScaler(SignalGroup):
         :returns: a dict {channel x: counts,}
         '''
         # Block waiting for counting to complete
-        self._count_ctl._set_request(1, wait=True)
+        self._count_ctl.put(1, wait=True)
 
         if channels is None:
             channels = range(1, self._numchan + 1)

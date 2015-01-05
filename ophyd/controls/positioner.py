@@ -297,7 +297,7 @@ class EpicsMotor(Positioner):
         return bool(self._is_moving._get_readback(use_monitor=False))
 
     def stop(self):
-        self._stop._set_request(1, wait=False)
+        self._stop.put(1, wait=False)
 
         Positioner.stop(self)
 
@@ -320,7 +320,7 @@ class EpicsMotor(Positioner):
         self._started_moving = False
 
         try:
-            self._user_request._set_request(position, wait=wait)
+            self._user_request.put(position, wait=wait)
 
             return Positioner.move(self, position, wait=wait,
                                    **kwargs)
@@ -492,12 +492,12 @@ class PVPositioner(Positioner):
             timeout = 1e6
 
         if self._actuate is None:
-            self._setpoint._set_request(position, wait=True,
-                                        timeout=timeout)
+            self._setpoint.put(position, wait=True,
+                               timeout=timeout)
         else:
-            self._setpoint._set_request(position, wait=False)
-            self._actuate._set_request(self._act_val, wait=True,
-                                       timeout=timeout)
+            self._setpoint.put(position, wait=False)
+            self._actuate.put(self._act_val, wait=True,
+                              timeout=timeout)
 
         if not has_done:
             self._move_changed(value=False)
@@ -523,12 +523,12 @@ class PVPositioner(Positioner):
         if self._put_complete:
             self._move_wait_pc(position, **kwargs)
         else:
-            self._setpoint._set_request(position, wait=True)
+            self._setpoint.put(position, wait=True)
             logger.debug('Setpoint set: %s = %s' % (self._setpoint.request_pvname,
                                                     position))
 
             if self._actuate is not None:
-                self._actuate._set_request(self._act_val, wait=True)
+                self._actuate.put(self._act_val, wait=True)
                 logger.debug('Actuating: %s = %s' % (self._actuate.request_pvname,
                                                      self._act_val))
 
@@ -548,12 +548,12 @@ class PVPositioner(Positioner):
             self._move_changed(value=True)
 
         if self._actuate is not None:
-            self._setpoint._set_request(position, wait=False)
-            self._actuate._set_request(self._act_val, wait=False,
-                                       callback=done_moving)
+            self._setpoint.put(position, wait=False)
+            self._actuate.put(self._act_val, wait=False,
+                              callback=done_moving)
         else:
-            self._setpoint._set_request(position, wait=False,
-                                        callback=done_moving)
+            self._setpoint.put(position, wait=False,
+                               callback=done_moving)
 
     def move(self, position, wait=True, **kwargs):
         if wait:
@@ -602,7 +602,7 @@ class PVPositioner(Positioner):
         self._set_position(value)
 
     def stop(self):
-        self._stop._set_request(self._stop_val, wait=False)
+        self._stop.put(self._stop_val, wait=False)
 
         Positioner.stop(self)
 

@@ -501,7 +501,7 @@ class AreaDetector(NDArrayDriver):
         finally:
             logger.debug('%s: Putting detector back into original state' % self)
             self.image_mode = start_mode
-            self.acquire._set_request(start_acquire, wait=False)
+            self.acquire.put(start_acquire, wait=False)
 
 
 class SimDetector(AreaDetector):

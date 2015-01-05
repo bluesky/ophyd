@@ -90,7 +90,7 @@ class Signal(OphydObject):
                            timestamp=timestamp, **kwargs)
 
     request = property(lambda self: self._get_request(),
-                       lambda self, value: self._set_request(value),
+                       lambda self, value: self.put(value),
                        doc='The desired/requested value for the signal')
 
     def get(self, *args, **kwargs):
@@ -111,7 +111,7 @@ class Signal(OphydObject):
 
     # - Value reads from readback, and writes to request
     value = property(lambda self: self._get_readback(),
-                     lambda self, value: self._set_request(value),
+                     lambda self, value: self.put(value),
                      doc='The requested value for the signal')
 
     def _set_readback(self, value, allow_cb=True, **kwargs):
