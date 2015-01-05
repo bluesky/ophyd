@@ -106,7 +106,8 @@ def test():
 
     # Reset them to the default values
     proc1.fc = [1, -1, 0, 1]
-    logger.debug('fc=%s' % proc1.fc.value)
+    time.sleep(0.1)
+    logger.debug('reset to fc=%s' % proc1.fc.value)
 
     # if using IPython, try the following:
     # In [0]: run areadetector.py

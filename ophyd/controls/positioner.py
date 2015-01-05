@@ -304,7 +304,7 @@ class EpicsMotor(Positioner):
 
         :rtype: bool
         '''
-        return bool(self._is_moving._get_readback(use_monitor=False))
+        return bool(self._is_moving.get(use_monitor=False))
 
     def stop(self):
         self._stop.put(1, wait=False)
@@ -481,7 +481,7 @@ class PVPositioner(Positioner):
         :rtype: bool
         '''
         if self._done is not None:
-            dval = self._done._get_readback(use_monitor=False)
+            dval = self._done.get(use_monitor=False)
             return (dval != self._done_val)
         else:
             return self._moving
