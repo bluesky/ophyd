@@ -9,15 +9,28 @@ Command Line Interface to opyd objects
 from __future__ import print_function
 import time
 import functools
+import sys
+from contextlib import contextmanager
+
+import numpy as np
+from epics import caget, caput
 
 from ..controls.positioner import EpicsMotor, Positioner
 from ..session import get_session_manager
 
-session_mgr = get_session_manager()
-logger = session_mgr._logger
+try:
+    from pyOlog.cli import stdlog
+except ImportError:
+    stdlog = None
+    print("[!!] Could not import Olog", file=sys.stderr)
 
-from epics import caget, caput
-import numpy as np
+try:
+    olog_client = get_session_manager()['olog_client']
+except KeyError:
+    olog_client = None
+
+session_mgr = get_session_manager()
+
 
 __all__ = ['mov',
            'movr',
@@ -28,8 +41,40 @@ __all__ = ['mov',
 
 # Global Defs of certain strings
 
-STRING_FMT = '^14'
-VALUE_FMT = '^ 14f'
+FMT_LEN = 18
+FMT_PREC = 6
+
+
+def logbook_add_objects(objects, extra_pvs=None):
+    """Add to the logbook aditional information on ophyd objects.
+
+    :param objects: Objects to add to log entry.
+    :type objects: Ophyd objects
+    :param extra_pvs: Extra PVs to include in report
+    :type extra_pvs: List of strings
+
+    This routine takes objects and possible extra pvs and adds to the log
+    entry information which is not printed to stdout/stderr.
+
+    """
+
+    msg = ''
+    msg += '{:^43}|{:^22}|{:^50}\n'.format('PV Name', 'Name', 'Value')
+    msg += '{:-^120}\n'.format('')
+
+    # Make a list of all PVs and positioners
+    pvs = [o.report['pv'] for o in objects]
+    names = [o.name for o in objects]
+    values = [str(o.value) for o in objects]
+    if extra_pvs is not None:
+        pvs += extra_pvs
+        names += ['None' for e in extra_pvs]
+        values += [caget(e) for e in extra_pvs]
+
+    for a, b, c in zip(pvs, names, values):
+        msg += 'PV:{:<40} {:<22} {:<50}\n'.format(a, b, c)
+
+    return msg
 
 
 def _list_of(value, type_=str):
@@ -45,22 +90,38 @@ def _list_of(value, type_=str):
     return [s for s in value]
 
 
-def _print_string(val):
-    print('{:{fmt}} '.format(val, fmt=STRING_FMT), end='')
+def print_header(title='', char='-', len=80):
+    print('{:{char}^{len}}'.format(title, char=char, len=len))
 
 
-def _print_value(val):
+def print_string(val, size=FMT_LEN, pre='', post=' '):
+    print('{}{:<{size}}{}'.format(pre, val, post, size=size), end='')
+
+
+def print_value(val, prec=FMT_PREC, egu='', **kwargs):
     if val is not None:
-        print('{:{fmt}} '.format(val, fmt=VALUE_FMT), end='')
+        print_string('{:.{fmt}} {}'.format(val, egu, fmt=prec), **kwargs)
     else:
-        _print_string('')
+        print_string('', **kwargs)
 
 
-def _blink(on=True):
+def print_value_aligned(val, size=FMT_LEN, prec=FMT_PREC, egu='', **kwargs):
+    fmt1 = '{{0:>{0}}}.{{1:<{1}}}'.format(size-prec-6, prec)
+    fmt2 = '{{:.{}f}}'.format(prec)
+    s = fmt2.format(val).rstrip('0').split('.')
+    if len(s) == 1:
+        s = (s[0], '0')
+    elif s[1] == '':
+        s[1] = '0'
+    s[1] = '{} {}'.format(s[1], egu)
+    print_string(fmt1.format(*(s[:2])), **kwargs)
+
+
+def blink(on=True, file=sys.stdout):
     if on:
-        print("\x1b[?25h\n")
+        print("\x1b[?25h", end='', file=file)
     else:
-        print("\x1b[?25l\n")
+        print("\x1b[?25l", end='', file=file)
 
 
 def _ensure_positioner_pair(func):
@@ -102,6 +163,29 @@ def ensure(ensure_tuple, ensure_dict):
     return ensure_decorator
 
 
+@contextmanager
+def catch_keyboard_interrupt(positioners):
+    """Context manager to capture Keyboard Interrupt and stop motors
+
+    This context manager should be used when moving positioners via the cli
+    to capture the keyboardInterrupt and ensure that motors are stopped and
+    clean up the output to the screen.
+
+    """
+
+    blink(False)
+
+    try:
+        yield
+    except KeyboardInterrupt:
+        print("[!!] ABORTED : Commanding all positioners to stop.")
+        for p in positioners:
+            p.stop()
+            print("[--] Stopping {}".format(p.name))
+
+    blink(True)
+
+
 @_ensure_positioner_pair
 def mov(positioner, position, quiet=False):
     """Move a positioner to a given position
@@ -112,14 +196,15 @@ def mov(positioner, position, quiet=False):
 
     """
 
-    try:
-        _blink(False)
-        for p in positioner:
-            _print_string(p.name)
-        print("\n")
+    print('\n   ', end='')
+    for p in positioner:
+        print_string(p.name)
+    print("\n")
 
-        # Start Moving all Positioners
+    # Start Moving all Positioners in context manager to catch
+    # Keyboard interrupts
 
+    with catch_keyboard_interrupt(positioner):
         stat = [p.move(v, wait=False) for p, v in
                 zip(positioner, position)]
 
@@ -129,21 +214,16 @@ def mov(positioner, position, quiet=False):
         done = False
         while not all(s.done for s in stat) or (flag < 2):
             if not quiet:
+                print('   ', end='')
                 for p in positioner:
-                    _print_value(p.position)
+                    print_value(p.position, egu=p.egu)
                 print('', end='\r')
             time.sleep(0.01)
             done = all(s.done for s in stat)
             if done:
                 flag += 1
 
-    except KeyboardInterrupt:
-        for p in positioner:
-            p.stop()
-        print("\n\n")
-        print("ABORTED : Commanded all positioners to stop")
-
-    _blink()
+    print('\n')
 
 
 @_ensure_positioner_pair
@@ -180,6 +260,7 @@ def set_lm(positioner, limits):
     """
 
     print('')
+    msg = ''
 
     for p in positioner:
         if not isinstance(p, EpicsMotor):
@@ -191,17 +272,17 @@ def set_lm(positioner, limits):
         if not caput(p._record + ".HLM", lim1):
             # Fixme : Add custom exception class
             raise Exception("Unable to set limits for %s", p.name)
-        msg = "Upper limit set to {:{fmt}} for positioner {}".format(
-              lim1, p.name, fmt=VALUE_FMT)
-        print(msg)
-        logger.info(msg)
+        msg += "Upper limit set to {:.{prec}g} for positioner {}\n".format(
+               lim1, p.name, prec=FMT_PREC)
 
         if not caput(p._record + ".LLM", lim2):
             raise Exception("Unable to set limits for %s", p.name)
-        msg = "Lower limit set to {:{fmt}} for positioner {}".format(
-              lim2, p.name, fmt=VALUE_FMT)
-        print(msg)
-        logger.info(msg)
+        msg += "Lower limit set to {:.{prec}g} for positioner {}\n".format(
+               lim2, p.name, prec=FMT_PREC)
+
+    print(msg)
+    if olog_client:
+        olog_client.log(msg)
 
 
 @_ensure_positioner_pair
@@ -220,8 +301,11 @@ def set_pos(positioner, position):
 
     # Get the current offset
 
-    old_offsets = [caget(p._record + ".OFF") for p in positioner]
-    dial = [caget(p._record + ".DRBV") for p in positioner]
+    offset_pvs = [p._record + ".OFF" for p in positioner]
+    dial_pvs = [p._record + ".DRBV" for p in positioner]
+
+    old_offsets = [caget(p) for p in offset_pvs]
+    dial = [caget(p) for p in dial_pvs]
 
     for v in old_offsets + dial:
         if v is None:
@@ -229,23 +313,24 @@ def set_pos(positioner, position):
 
     new_offsets = [a - b for a, b in zip(position, dial)]
 
-    print('')
-
+    msg = ''
     for o, old_o, p in zip(new_offsets, old_offsets, positioner):
         if caput(p._record + '.OFF', o):
-            msg = 'Motor {0} set to position {1} (Offset = {2} was {3})'.format(
-                  p.name, p.position, o, old_o)
-            print(msg)
-            logger.info(msg)
+            msg += 'Motor {0} set to position {1} (Offset = {2} was {3})\n'\
+                   .format(p.name, p.position, o, old_o)
         else:
             print('Unable to set position of positioner {0}'.format(p.name))
 
-    print('')
+    print(msg)
+    lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
+    olog_client.log(msg + '\n' + lmsg)
 
 
 @ensure((Positioner,), {'positioners': Positioner})
 def wh_pos(positioners=None):
     """Print the current position of Positioners
+
+    Print to the screen positioners and their current values.
 
     Parameters
     ----------
@@ -262,13 +347,25 @@ def wh_pos(positioners=None):
 
     pos = [p.position for p in positioners]
 
-    for p, v, n in zip(positioners, pos, range(len(pos))):
-        _print_string(p.name)
-        print(' = ', end='')
-        _print_value(v)
-        if n % 2:
-            print('')
-        else:
-            print('  ', end='')
+    # Print out header
 
+    print_header(len=4*(FMT_LEN+3)+1)
+    print_string('Positioner', pre='| ', post=' | ')
+    print_string('Value', post=' | ')
+    print_string('Low Limit', post=' | ')
+    print_string('High Limit', post=' |\n')
+
+    print_header(len=4*(FMT_LEN+3)+1)
+
+    for p, v in zip(positioners, pos):
+        print_string(p.name, pre='| ', post=' | ')
+        print_value_aligned(v, egu=p.egu, post=' | ')
+        print_value_aligned(p.low_limit, egu=p.egu, post=' | ')
+        print_value_aligned(p.high_limit, egu=p.egu, post=' |\n')
+
+    print_header(len=4*(FMT_LEN+3)+1)
     print('')
+
+    lmsg = logbook_add_objects(positioners)
+    if stdlog:
+        print(lmsg, file=stdlog.stdlog)
