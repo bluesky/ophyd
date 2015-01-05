@@ -60,11 +60,13 @@ class Signal(OphydObject):
 
     __repr__ = __str__
 
-    # - setpoint value
-    def _get_setpoint(self):
+    def get_setpoint(self):
+        '''
+        Get the value of the setpoint
+        '''
         return self._setpoint
 
-    def _set_setpoint(self, value, allow_cb=True, force=False, **kwargs):
+    def put(self, value, allow_cb=True, force=False, **kwargs):
         '''
         Set the setpoint value internally.
 
@@ -89,32 +91,28 @@ class Signal(OphydObject):
                            old_value=old_value, value=value,
                            timestamp=timestamp, **kwargs)
 
-    setpoint = property(lambda self: self._get_setpoint(),
+    # getters/setters of properties are defined as lambdas so subclasses
+    # can override them without redefining the property
+    setpoint = property(lambda self: self.get_setpoint(),
                         lambda self, value: self.put(value),
                         doc='The setpoint value for the signal')
 
-    def get(self, *args, **kwargs):
+    # - Readback value
+    def get(self):
         '''
         Get the readback value
         '''
-        return self._get_readback(*args, **kwargs)
-
-    def put(self, *args, **kwargs):
-        '''
-        Set the setpoint value
-        '''
-        return self._set_setpoint(*args, **kwargs)
-
-    # - Readback value
-    def _get_readback(self):
         return self._readback
 
     # - Value reads from readback, and writes to setpoint
-    value = property(lambda self: self._get_readback(),
+    value = property(lambda self: self.get(),
                      lambda self, value: self.put(value),
                      doc='The value associated with the signal')
 
     def _set_readback(self, value, allow_cb=True, **kwargs):
+        '''
+        Set the readback value internally
+        '''
         old_value = self._readback
         self._readback = value
 
@@ -300,7 +298,30 @@ class EpicsSignal(Signal):
             raise ValueError('Value {} outside of range: [{}, {}]'.format(value,
                                                                           low_limit, high_limit))
 
-    def _set_setpoint(self, value, force=False, wait=True, **kwargs):
+    def get(self, **kwargs):
+        '''
+        Get the readback value
+
+        :param kwargs: Passed onto epics.PV.get()
+        '''
+        if kwargs:
+            return self._read_pv.get(**kwargs)
+        else:
+            return self._readback
+
+    def get_setpoint(self, **kwargs):
+        '''
+        Get the setpoint value (use only if the setpoint PV and the readback
+        PV differ)
+
+        :param kwargs: Passed onto epics.PV.get()
+        '''
+        if kwargs:
+            return self._write_pv.get(**kwargs)
+        else:
+            return self._setpoint
+
+    def put(self, value, force=False, wait=True, **kwargs):
         '''
         Using channel access, set the write PV to `value`.
 
@@ -322,7 +343,7 @@ class EpicsSignal(Signal):
         self._write_pv.put(value, wait=wait, use_complete=use_complete,
                            **kwargs)
 
-        Signal._set_setpoint(self, value, force=True)
+        Signal.put(self, value, force=True)
 
     def _fix_type(self, value):
         if self._string:
@@ -348,7 +369,7 @@ class EpicsSignal(Signal):
             timestamp = time.time()
 
         value = self._fix_type(value)
-        Signal._set_setpoint(self, value, timestamp=timestamp)
+        Signal.put(self, value, timestamp=timestamp)
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
     #       ... but, there should be a mode of operation without using
@@ -444,22 +465,14 @@ class SignalGroup(OphydObject):
         return [signal.put(*args, **kwargs)
                 for signal in self._signals]
 
-    def _get_readback(self, **kwargs):
-        return [signal._get_readback(**kwargs)
+    def get_setpoint(self, **kwargs):
+        return [signal.get_setpoint(**kwargs)
                 for signal in self._signals]
 
-    def _get_setpoint(self, **kwargs):
-        return [signal._get_setpoint(**kwargs)
-                for signal in self._signals]
-
-    def _set_setpoint(self, values, **kwargs):
-        return [signal._set_setpoint(value, **kwargs)
-                for value, signal in zip(values, self._signals)]
-
-    setpoint = property(_get_setpoint, _set_setpoint,
+    setpoint = property(get_setpoint, put,
                         doc='Setpoint list')
 
-    value = property(_get_readback, _set_setpoint,
+    value = property(get, put,
                      doc='Readback value list')
 
     @property
