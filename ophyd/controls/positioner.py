@@ -329,7 +329,7 @@ class EpicsMotor(Positioner):
             self.stop()
 
     def __str__(self):
-        return 'EpicsMotor(record={0}, val={1}, rbv={2}, egu={3})'.format(
+        return "EpicsMotor(record='{0}', val={1}, rbv={2}, egu='{3}')".format(
             self._record, self._user_request.value, self._user_readback.value,
             self.egu)
 
