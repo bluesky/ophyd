@@ -56,7 +56,7 @@ def simple_scan(motors=[],
     def do_triggers():
         for trigger, value in triggers:
             logger.debug('Trigger %s = %s' % (trigger, value))
-            trigger.request = value
+            trigger.value = value
 
     def collect_data():
         logger.debug('Collecting data')

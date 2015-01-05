@@ -78,7 +78,7 @@ class EpicsScaler(SignalGroup):
     # TODO: should this be a non-blocking write?
     # TODO: should writes be non-blocking by default?
     def stop(self):
-        self._count_ctl.request = 0
+        self._count_ctl.value = 0
 
     @property
     def count_mode(self):
@@ -86,7 +86,7 @@ class EpicsScaler(SignalGroup):
 
     @count_mode.setter
     def count_mode(self, mode):
-        self._count_mode.request = mode
+        self._count_mode.value = mode
 
     @property
     def preset_time(self):
@@ -94,7 +94,7 @@ class EpicsScaler(SignalGroup):
 
     @preset_time.setter
     def preset_time(self, time):
-        self._preset_time.request = time
+        self._preset_time.value = time
 
     def read(self, channels=None):
         '''

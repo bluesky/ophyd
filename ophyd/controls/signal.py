@@ -29,7 +29,7 @@ class Signal(OphydObject):
     or read-only value.
     '''
 
-    SUB_REQUEST = 'request'
+    SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
     def __init__(self, alias=None, separate_readback=False, name=None):
@@ -39,34 +39,34 @@ class Signal(OphydObject):
         :type alias: unicode/str or None
 
         :param bool separate_readback: If the readback value isn't coming
-            from the same source as the request value, set this to True.
+            from the same source as the setpoint value, set this to True.
         '''
 
         self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, name, alias)
 
-        self._request = None
+        self._setpoint = None
         self._readback = None
 
         self._separate_readback = separate_readback
 
     def __str__(self):
         if self._separate_readback:
-            return 'Signal(alias=%r, request=%r, readback=%r)' % \
-                (self._alias, self.request, self.readback)
+            return 'Signal(alias=%r, setpoint=%r, readback=%r)' % \
+                (self._alias, self.setpoint, self.readback)
         else:
             return 'Signal(alias=%r, value=%r)' % \
                 (self._alias, self.value)
 
     __repr__ = __str__
 
-    # - Request value
-    def _get_request(self):
-        return self._request
+    # - setpoint value
+    def _get_setpoint(self):
+        return self._setpoint
 
-    def _set_request(self, value, allow_cb=True, force=False, **kwargs):
+    def _set_setpoint(self, value, allow_cb=True, force=False, **kwargs):
         '''
-        Set the request value internally.
+        Set the setpoint value internally.
 
         :param value: The value to set
         :param bool allow_cb: Allow callbacks (subscriptions) to happen
@@ -77,21 +77,21 @@ class Signal(OphydObject):
         if not force:
             self.check_value(value)
 
-        old_value = self._request
-        self._request = value
+        old_value = self._setpoint
+        self._setpoint = value
 
         if not self._separate_readback:
             self._set_readback(value)
 
         if allow_cb:
             timestamp = kwargs.pop('timestamp', time.time())
-            self._run_subs(sub_type=Signal.SUB_REQUEST,
+            self._run_subs(sub_type=Signal.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=timestamp, **kwargs)
 
-    request = property(lambda self: self._get_request(),
-                       lambda self, value: self.put(value),
-                       doc='The desired/requested value for the signal')
+    setpoint = property(lambda self: self._get_setpoint(),
+                        lambda self, value: self.put(value),
+                        doc='The setpoint value for the signal')
 
     def get(self, *args, **kwargs):
         '''
@@ -101,18 +101,18 @@ class Signal(OphydObject):
 
     def put(self, *args, **kwargs):
         '''
-        Set the request value
+        Set the setpoint value
         '''
-        return self._set_request(*args, **kwargs)
+        return self._set_setpoint(*args, **kwargs)
 
     # - Readback value
     def _get_readback(self):
         return self._readback
 
-    # - Value reads from readback, and writes to request
+    # - Value reads from readback, and writes to setpoint
     value = property(lambda self: self._get_readback(),
                      lambda self, value: self.put(value),
-                     doc='The requested value for the signal')
+                     doc='The value associated with the signal')
 
     def _set_readback(self, value, allow_cb=True, **kwargs):
         old_value = self._readback
@@ -133,7 +133,7 @@ class Signal(OphydObject):
         '''
         if self._separate_readback:
             return {'alias': self.alias,
-                    'request': self.request,
+                    'setpoint': self.setpoint,
                     'readback': self.readback,
                     }
         else:
@@ -210,9 +210,9 @@ class EpicsSignal(Signal):
         return self._read_pv.precision
 
     @property
-    def request_ts(self):
+    def setpoint_ts(self):
         '''
-        Timestamp of request PV, according to EPICS
+        Timestamp of setpoint PV, according to EPICS
         '''
         if self._write_pv is None:
             raise ReadOnlyError('Read-only EPICS signal')
@@ -237,9 +237,9 @@ class EpicsSignal(Signal):
             return None
 
     @property
-    def request_pvname(self):
+    def setpoint_pvname(self):
         '''
-        The request/write PV name
+        The setpoint PV name
         '''
         try:
             return self._write_pv.pvname
@@ -250,7 +250,7 @@ class EpicsSignal(Signal):
         if self._read_pv is self._write_pv:
             return 'EpicsSignal(value=%r, pv=%r)' % (self.value, self._read_pv)
         else:
-            return 'EpicsSignal(value=%r, pv=%r, request_pv=%r)' % (
+            return 'EpicsSignal(value=%r, pv=%r, setpoint_pv=%r)' % (
                 self.value, self._read_pv, self._write_pv)
 
     __repr__ = __str__
@@ -285,7 +285,7 @@ class EpicsSignal(Signal):
 
     def check_value(self, value):
         '''
-        Check if the value is within the request PV's control limits
+        Check if the value is within the setpoint PV's control limits
 
         :raises: ValueError
         '''
@@ -300,7 +300,7 @@ class EpicsSignal(Signal):
             raise ValueError('Value {} outside of range: [{}, {}]'.format(value,
                                                                           low_limit, high_limit))
 
-    def _set_request(self, value, force=False, wait=True, **kwargs):
+    def _set_setpoint(self, value, force=False, wait=True, **kwargs):
         '''
         Using channel access, set the write PV to `value`.
 
@@ -322,7 +322,7 @@ class EpicsSignal(Signal):
         self._write_pv.put(value, wait=wait, use_complete=use_complete,
                            **kwargs)
 
-        Signal._set_request(self, value, force=True)
+        Signal._set_setpoint(self, value, force=True)
 
     def _fix_type(self, value):
         if self._string:
@@ -348,7 +348,7 @@ class EpicsSignal(Signal):
             timestamp = time.time()
 
         value = self._fix_type(value)
-        Signal._set_request(self, value, timestamp=timestamp)
+        Signal._set_setpoint(self, value, timestamp=timestamp)
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
     #       ... but, there should be a mode of operation without using
@@ -374,7 +374,7 @@ class EpicsSignal(Signal):
             ret['read_pv'] = self.pvname
 
         if self._write_pv is not None:
-            ret['write_pv'] = self.request_pvname
+            ret['write_pv'] = self.setpoint_pvname
 
         return ret
 
@@ -389,7 +389,7 @@ class EpicsSignal(Signal):
             pv = self.pvname
         elif self._write_pv is not None:
             value = self._write_pv.value
-            pv = self.request_pvname
+            pv = self.setpoint_pvname
 
         return {self.name: value,
                 'pv': pv
@@ -448,28 +448,28 @@ class SignalGroup(OphydObject):
         return [signal._get_readback(**kwargs)
                 for signal in self._signals]
 
-    def _get_request(self, **kwargs):
-        return [signal._get_request(**kwargs)
+    def _get_setpoint(self, **kwargs):
+        return [signal._get_setpoint(**kwargs)
                 for signal in self._signals]
 
-    def _set_request(self, values, **kwargs):
-        return [signal._set_request(value, **kwargs)
+    def _set_setpoint(self, values, **kwargs):
+        return [signal._set_setpoint(value, **kwargs)
                 for value, signal in zip(values, self._signals)]
 
-    request = property(_get_request, _set_request,
-                       doc='Request list')
+    setpoint = property(_get_setpoint, _set_setpoint,
+                        doc='Setpoint list')
 
-    value = property(_get_readback, _set_request,
-                     doc='Readback/request value list')
+    value = property(_get_readback, _set_setpoint,
+                     doc='Readback value list')
 
     @property
-    def request_ts(self):
+    def setpoint_ts(self):
         '''
-        Timestamp of request PVs, according to EPICS
+        Timestamp of setpoint PVs, according to EPICS
         '''
         def get_ts(signal):
             try:
-                return signal.request_ts
+                return signal.setpoint_ts
             except ReadOnlyError:
                 return
 
@@ -487,8 +487,8 @@ class SignalGroup(OphydObject):
         return [signal.pvname for signal in self._signals]
 
     @property
-    def request_pvname(self):
-        return [signal.request_pvname for signal in self._signals]
+    def setpoint_pvname(self):
+        return [signal.setpoint_pvname for signal in self._signals]
 
     @property
     def report(self):

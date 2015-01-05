@@ -261,7 +261,7 @@ class EpicsMotor(Positioner):
         Positioner.__init__(self, name=name, **kwargs)
 
         signals = [EpicsSignal(self.field_pv('RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(self.field_pv('VAL'), alias='_user_request',
+                   EpicsSignal(self.field_pv('VAL'), alias='_user_setpoint',
                                limits=True),
                    EpicsSignal(self.field_pv('EGU'), alias='_egu'),
                    EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
@@ -295,7 +295,7 @@ class EpicsMotor(Positioner):
 
     @property
     def limits(self):
-        return self._user_request.limits
+        return self._user_setpoint.limits
 
     @property
     def moving(self):
@@ -330,7 +330,7 @@ class EpicsMotor(Positioner):
         self._started_moving = False
 
         try:
-            self._user_request.put(position, wait=wait)
+            self._user_setpoint.put(position, wait=wait)
 
             return Positioner.move(self, position, wait=wait,
                                    **kwargs)
@@ -339,14 +339,14 @@ class EpicsMotor(Positioner):
 
     def __str__(self):
         return 'EpicsMotor(record={0!r}, val={1!r}, rbv={2!r}, egu={3!r})'.format(
-            self._record, self._user_request.value, self._user_readback.value,
+            self._record, self._user_setpoint.value, self._user_readback.value,
             self.egu)
 
     def check_value(self, pos):
         '''
         Check that the position is within the soft limits
         '''
-        self._user_request.check_value(pos)
+        self._user_setpoint.check_value(pos)
 
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
@@ -534,12 +534,12 @@ class PVPositioner(Positioner):
             self._move_wait_pc(position, **kwargs)
         else:
             self._setpoint.put(position, wait=True)
-            logger.debug('Setpoint set: %s = %s' % (self._setpoint.request_pvname,
+            logger.debug('Setpoint set: %s = %s' % (self._setpoint.setpoint_pvname,
                                                     position))
 
             if self._actuate is not None:
                 self._actuate.put(self._act_val, wait=True)
-                logger.debug('Actuating: %s = %s' % (self._actuate.request_pvname,
+                logger.debug('Actuating: %s = %s' % (self._actuate.setpoint_pvname,
                                                      self._act_val))
 
     def _move_async(self, position, **kwargs):

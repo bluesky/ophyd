@@ -24,8 +24,8 @@ def dump_pvnames(obj, f=sys.stderr):
         if signal.pvname:
             print(signal.pvname, file=f)
 
-        if signal.request_pvname != signal.pvname and signal.request_pvname:
-            print(signal.request_pvname, file=f)
+        if signal.setpoint_pvname != signal.pvname and signal.setpoint_pvname:
+            print(signal.setpoint_pvname, file=f)
 
 
 def test():
