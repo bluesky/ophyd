@@ -1,8 +1,13 @@
+'''
+Epics motor-record simulation using the ophyd Channel Access Server
+'''
+
 from __future__ import print_function
 
-from .cas import (CasRecord, casAsyncCompletion)
-from ..controls.positioner import (Positioner, )
-from ..controls.pseudopos import (PseudoPositioner, )
+from .pv import CasRecord
+from .errors import casAsyncCompletion
+from ..positioner import (Positioner, )
+from ..pseudopos import (PseudoPositioner, )
 
 
 STATUS_BITS = {'direction': 0,         # last raw direction; (0:Negative, 1:Positive)

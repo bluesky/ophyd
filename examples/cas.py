@@ -8,12 +8,12 @@ import time
 
 import config
 
-from ophyd.utils.cas import CasPV
+from ophyd.controls.cas import CasPV
 from ophyd.controls import EpicsSignal
 
 
 def test():
-    loggers = ('ophyd.utils.cas',
+    loggers = ('ophyd.controls.cas',
                )
 
     config.setup_loggers(loggers)

@@ -8,12 +8,12 @@ import epics
 
 import config
 
-from ophyd.utils.cas_motor import (CasMotor, )
+from ophyd.controls.cas import CasMotor
 from ophyd.controls import (EpicsMotor, PVPositioner)
 
 
 def test():
-    loggers = ('ophyd.utils.cas',
+    loggers = ('ophyd.controls.cas',
                )
 
     config.setup_loggers(loggers)
