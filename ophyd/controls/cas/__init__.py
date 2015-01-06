@@ -12,3 +12,4 @@ from .server import caServer
 from .pv import (CasPV, CasRecord)
 from .motor import CasMotor
 from .errors import (casUndefinedValueError, casAsyncCompletion)
+from .function import CasFunction

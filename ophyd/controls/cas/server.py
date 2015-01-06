@@ -80,8 +80,19 @@ class caServer(cas.caServer):
         if start:
             self.start()
 
+        self._attach_cas_functions()
+
     # TODO asCaStop when all are stopped:
     #  cas.asCaStop()
+
+    def _attach_cas_functions(self):
+        from . import CasFunction
+
+        for fcn in list(CasFunction._to_attach):
+            if fcn._server is None:
+                fcn.attach_server(self)
+
+        del CasFunction._to_attach[:]
 
     def _get_prefix(self):
         '''
@@ -112,6 +123,9 @@ class caServer(cas.caServer):
         return self._pvs[pv]
 
     def add_pv(self, pvi):
+        '''
+        Add a PV instance to the server
+        '''
         name = self._strip_prefix(pvi.name)
 
         if name in self._pvs:
@@ -119,6 +133,23 @@ class caServer(cas.caServer):
 
         self._pvs[name] = pvi
         pvi._server = self
+
+    def remove_pv(self, pvi):
+        '''
+        Remove a PV instance from the server
+        '''
+        if isinstance(pvi, str):
+            name = pvi
+        else:
+            name = pvi.name
+
+        name = self._strip_prefix(name)
+
+        if name not in self._pvs:
+            raise ValueError('PV not in server')
+
+        del self._pvs[name]
+        pvi._server = None
 
     def _strip_prefix(self, pvname):
         '''
