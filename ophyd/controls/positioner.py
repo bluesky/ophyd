@@ -328,10 +328,11 @@ class EpicsMotor(Positioner):
         except KeyboardInterrupt:
             self.stop()
 
-    def __str__(self):
-        return "EpicsMotor(record='{0}', val={1}, rbv={2}, egu='{3}')".format(
-            self._record, self._user_request.value, self._user_readback.value,
-            self.egu)
+    def __repr__(self):
+        return "{0}(record={1!r}, val={2!r}, rbv={3!r}, egu={4!r})".format(
+            self.__class__.__name__,
+            self._record, self._user_request.value,
+            self._user_readback.value, self.egu)
 
     def check_value(self, pos):
         '''
