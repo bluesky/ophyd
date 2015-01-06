@@ -16,6 +16,8 @@ logger = config.logger
 # (prefix defaults to 'function_name:' when not specified)
 @CasFunction()
 def async_func(a=0, b=0.0, **kwargs):
+    # Note that since 0 is an integer, `a` will be an integer in EPICS
+    # Note that since 0.0 is a float, `b` will be a float in EPICS
     logger.info('async_func called: a=%s b=%s, kw=%s' % (a, b, kwargs))
 
     # Function is called asynchronously, so it's OK to block:
