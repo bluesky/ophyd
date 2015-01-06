@@ -66,9 +66,10 @@ class MoveStatus(object):
         else:
             return self.finish_ts - self.start_ts
 
-    def __str__(self):
-        return 'MoveStatus(done={0.done} elapsed={0.elapsed:.1f} ' \
-               'success={0.success})'.format(self)
+    def __repr__(self):
+        return '{0}(done={1.done} elapsed={1.elapsed:.1f} ' \
+               'success={1.success})'.format(self.__class__.__name__,
+                                             self)
 
 
 class Positioner(SignalGroup):
@@ -618,3 +619,21 @@ class PVPositioner(Positioner):
     @property
     def limits(self):
         return tuple(self._limits)
+
+    def __repr__(self):
+        repr = '{0}(setpoint={1._setpoint!r}'.format(self.__class__.__name__,
+                                                     self)
+        if self._readback:
+            repr = '{0},{1._readback!r}'.format(repr, self)
+        if self._actuate:
+            repr = '{0},act={1._actuate!r},act_val={1._act_val!r}'.format(repr, self)
+        if self._stop:
+            repr = '{0},stop={1._stop!r},stop_val={1._stop_val!r}'.format(repr, self)
+        if self._done:
+            repr = '{0},done={1._done!r},done_val={1._done_val!r}'.format(repr, self)
+        repr = '{0},put_complete={1._put_complete!r}'.format(repr, self)
+        repr = '{0},settle_time={1._settle_time!r}'.format(repr, self)
+        repr = '{0},limits={1._limits!r}'.format(repr, self)
+
+        return repr
+

@@ -50,15 +50,15 @@ class Signal(OphydObject):
 
         self._separate_readback = separate_readback
 
-    def __str__(self):
+    def __repr__(self):
         if self._separate_readback:
-            return 'Signal(alias=%s, request=%s, readback=%s)' % \
-                (self._alias, self.request, self.readback)
+            return '{0}(alias={1!r}, request={2!r}, readback={3!r})'.format(
+                   self.__class__.__name__, self._alias, self.request,
+                   self.readback)
         else:
-            return 'Signal(alias=%s, readback=%s)' % \
-                (self._alias, self.readback)
-
-    __repr__ = __str__
+            return '{0}(alias={1!r}, readback={2!r})'.format(
+                   self.__class__.__name__, self._alias,
+                   self.readback)
 
     # - Request value
     def _get_request(self):
@@ -236,11 +236,10 @@ class EpicsSignal(Signal):
         except AttributeError:
             return None
 
-    def __str__(self):
-        return 'EpicsSignal(value={0}, read_pv={1}, write_pv={2})'.format(
+    def __repr__(self):
+        return '{0}(value={1!r}, read_pv={2!r}, write_pv={3!r})'.format(
+            self.__class__.__name__,
             self.value, self._read_pv, self._write_pv)
-
-    __repr__ = __str__
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
