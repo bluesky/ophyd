@@ -7,13 +7,16 @@ from __future__ import print_function
 import time
 
 from ophyd.controls.cas import CasFunction
+import config
+
+logger = config.logger
 
 
 # Keyword arguments only allowed, since default values must be specified.
 # (prefix defaults to 'function_name:' when not specified)
 @CasFunction()
 def async_func(a=0, b=0.0, **kwargs):
-    print('async_func called: a=%s b=%s, kw=%s' % (a, b, kwargs))
+    logger.info('async_func called: a=%s b=%s, kw=%s' % (a, b, kwargs))
 
     # Function is called asynchronously, so it's OK to block:
     time.sleep(0.5)
@@ -36,10 +39,6 @@ def string_func(value='test'):
 
     # Not a asynchronous PV, don't block
     return value.upper()
-
-
-import config
-logger = config.logger
 
 # Can't use positional arguments:
 try:

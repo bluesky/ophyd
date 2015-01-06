@@ -68,8 +68,9 @@ class caServer(cas.caServer):
     string_types = (cas.aitEnumString, cas.aitEnumFixedString, cas.aitEnumUint8)
     enum_types = (cas.aitEnumEnum16, )
     numerical_types = (cas.aitEnumFloat64, cas.aitEnumInt32)
+    default_instance = None
 
-    def __init__(self, prefix, start=True):
+    def __init__(self, prefix, start=True, default=True):
         cas.caServer.__init__(self)
 
         self._pvs = {}
@@ -80,7 +81,10 @@ class caServer(cas.caServer):
         if start:
             self.start()
 
-        self._attach_cas_functions()
+        if default and caServer.default_instance is None:
+            caServer.default_instance = self
+
+            self._attach_cas_functions()
 
     # TODO asCaStop when all are stopped:
     #  cas.asCaStop()

@@ -11,7 +11,7 @@ import epics
 
 from .pv import CasPV
 from .errors import casAsyncCompletion
-
+from . import caServer
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,9 @@ class CasFunction(object):
                  ):
         '''
         '''
+
+        if server is None and caServer.default_instance is not None:
+            server = caServer.default_instance
 
         self._prefix = str(prefix)
         self._server = server
