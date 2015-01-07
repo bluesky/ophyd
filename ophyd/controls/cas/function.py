@@ -221,7 +221,7 @@ class CasFunction(object):
 
         spec = inspect.getargspec(fcn)
         args, var_args, var_kws, defaults = spec
-        if len(args) != len(defaults) or var_args:
+        if (args and len(args) != len(defaults)) or var_args:
             raise ValueError('All arguments must have defaults')
 
         name = fcn.__name__
@@ -230,7 +230,12 @@ class CasFunction(object):
 
         info = self._functions[name] = {}
 
-        info['parameters'] = list(zip(args, defaults))
+        if args:
+            parameters = list(zip(args, defaults))
+        else:
+            parameters = []
+
+        info['parameters'] = parameters
         info['function'] = fcn
         info['wrapped'] = wrapped
         self._add_fcn(name)

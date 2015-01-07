@@ -59,6 +59,13 @@ def array_func(value=0.0):
     return np.arange(10) * value
 
 
+@CasFunction(type_=np.int32, count=10)
+def no_arg_func():
+    logger.info('no_arg_func called')
+
+    return np.arange(10)
+
+
 # Keyword arguments get passed onto CasPV for the return value, so you can specify
 # more about the return type:
 @CasFunction()
@@ -179,6 +186,21 @@ def test_array_input():
     logger.info('called normally: %r' % array_input_func(value=input_))
 
 
+def test_no_arg():
+    logger.info('no argument function')
+    pvnames = no_arg_func.get_pvnames()
+
+    sig_proc = EpicsSignal(pvnames['process'])
+    sig_ret = EpicsSignal(pvnames['retval'])
+
+    sig_proc.value = 1
+
+    time.sleep(0.1)
+    logger.info('result through channel access: %r' % sig_ret.value)
+
+    logger.info('called normally: %r' % no_arg_func())
+
+
 def test():
     loggers = ('ophyd.controls.cas',
                'ophyd.controls.cas.function',
@@ -191,6 +213,7 @@ def test():
     test_string()
     test_array()
     test_array_input()
+    test_no_arg()
 
 
 if __name__ == '__main__':
