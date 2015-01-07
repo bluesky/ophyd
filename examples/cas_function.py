@@ -59,6 +59,15 @@ def array_func(value=0.0):
     return np.arange(10) * value
 
 
+# Keyword arguments get passed onto CasPV for the return value, so you can specify
+# more about the return type:
+@CasFunction()
+def array_input_func(value=np.array([1., 2., 3.], dtype=np.float)):
+    logger.info('array_input_func called: value=%s' % (value, ))
+
+    return np.average(value)
+
+
 # Can't use positional arguments:
 try:
     @CasFunction(prefix='test:')
@@ -152,6 +161,24 @@ def test_array():
     logger.info('called normally: %r' % array_func(value=2.0))
 
 
+def test_array_input():
+    logger.info('array input function')
+    pvnames = array_input_func.get_pvnames()
+
+    sig_value = EpicsSignal(pvnames['value'])
+    sig_proc = EpicsSignal(pvnames['process'])
+    sig_ret = EpicsSignal(pvnames['retval'])
+
+    input_ = np.array([5, 10, 15])
+    sig_value.value = input_
+    sig_proc.value = 1
+
+    time.sleep(0.1)
+    logger.info('result through channel access: %r' % sig_ret.value)
+
+    logger.info('called normally: %r' % array_input_func(value=input_))
+
+
 def test():
     loggers = ('ophyd.controls.cas',
                'ophyd.controls.cas.function',
@@ -159,11 +186,12 @@ def test():
 
     config.setup_loggers(loggers)
 
-
-if __name__ == '__main__':
-    test()
-
     test_async()
     test_sync()
     test_string()
     test_array()
+    test_array_input()
+
+
+if __name__ == '__main__':
+    test()

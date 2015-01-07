@@ -162,6 +162,10 @@ class CasPV(cas.casPV):
             self._enums = list(self._value)
             self._value = self._value[0]
 
+            if np.array(self._value).dtype.type != np.string_:
+                raise ValueError('Enum list item types should be strings (specify an np.array'
+                                 ' as the value if you wanted a waveform)')
+
             alarm_fcn = self._check_enum
 
             self.minor_states = list(minor_states)
