@@ -67,7 +67,7 @@ class MoveStatus(object):
             return self.finish_ts - self.start_ts
 
     def __repr__(self):
-        return '{0}(done={1.done} elapsed={1.elapsed:.1f} ' \
+        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
                'success={1.success})'.format(self.__class__.__name__,
                                              self)
 
@@ -330,10 +330,9 @@ class EpicsMotor(Positioner):
             self.stop()
 
     def __repr__(self):
-        return "{0}(record={1!r}, val={2!r}, rbv={3!r}, egu={4!r})".format(
+        return '{0}(record={1!r}, name={2!r})'.format(
             self.__class__.__name__,
-            self._record, self._user_request.value,
-            self._user_readback.value, self.egu)
+            self._record, self.name)
 
     def check_value(self, pos):
         '''
@@ -621,19 +620,21 @@ class PVPositioner(Positioner):
         return tuple(self._limits)
 
     def __repr__(self):
-        repr = '{0}(setpoint={1._setpoint!r}'.format(self.__class__.__name__,
-                                                     self)
+        repr = 'setpoint={0._setpoint.read_pvname!r}'.format(self)
         if self._readback:
-            repr = '{0},{1._readback!r}'.format(repr, self)
+            repr = '{0}, readback={1._readback.read_pvname!r}'.format(repr, self)
         if self._actuate:
-            repr = '{0},act={1._actuate!r},act_val={1._act_val!r}'.format(repr, self)
+            repr = '{0}, act={1._actuate.read_pvname!r}, ' \
+                'act_val={1._act_val!r}'.format(repr, self)
         if self._stop:
-            repr = '{0},stop={1._stop!r},stop_val={1._stop_val!r}'.format(repr, self)
+            repr = '{0}, stop={1._stop.read_pvname!r}, ' \
+                'stop_val={1._stop_val!r}'.format(repr, self)
         if self._done:
-            repr = '{0},done={1._done!r},done_val={1._done_val!r}'.format(repr, self)
-        repr = '{0},put_complete={1._put_complete!r}'.format(repr, self)
-        repr = '{0},settle_time={1._settle_time!r}'.format(repr, self)
-        repr = '{0},limits={1._limits!r}'.format(repr, self)
+            repr = '{0}, done={1._done.read_pvname!r}, ' \
+                'done_val={1._done_val!r}'.format(repr, self)
+        repr = '{0}, put_complete={1._put_complete!r}'.format(repr, self)
+        repr = '{0}, settle_time={1._settle_time!r}'.format(repr, self)
+        repr = '{0}, limits={1._limits!r}'.format(repr, self)
+        repr = '{0}, name={1.name!r}'.format(repr, self)
 
-        return repr
-
+        return '{0}({1})'.format(self.__class__.__name__, repr)
