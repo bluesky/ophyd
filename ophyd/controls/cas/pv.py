@@ -138,6 +138,8 @@ class CasPV(cas.casPV):
         self._written_cb = written_cb
         self._count = 0
 
+        count = max(count, 0)
+
         if limits is None:
             self.limits = Limits()
         elif isinstance(limits, dict):
@@ -154,7 +156,7 @@ class CasPV(cas.casPV):
         self._severity = AlarmError.severity
         self._updating = False
 
-        if self._ca_type in caServer.numerical_types:
+        if count == 0 and self._ca_type in caServer.numerical_types:
             alarm_fcn = self._check_numerical
         elif self._ca_type in caServer.enum_types:
             self._enums = list(self._value)
@@ -166,7 +168,7 @@ class CasPV(cas.casPV):
             self.major_states = list(major_states)
         elif self._ca_type in caServer.string_types:
             alarm_fcn = self._check_string
-        elif type_ is np.ndarray and isinstance(value, np.ndarray):
+        elif count > 0 or (type_ is np.ndarray and isinstance(value, np.ndarray)):
             try:
                 self._ca_type = caServer.type_map[value.dtype.type]
             except KeyError:

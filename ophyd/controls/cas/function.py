@@ -28,8 +28,26 @@ class CasFunction(object):
                  process_pv='Proc', use_process=True,
                  retval_pv='Val',
                  return_value=0.0,
+                 **return_kwargs
                  ):
         '''
+        :param str prefix: The prefix to use (defaults to the function name)
+        :param caServer server: The channel access server to use (defaults to
+            the currently running one, or the next instantiated one if not
+            specified)
+        :param bool async: Function should be called asynchronously, in its own
+            thread (do not set to False when doing large calculations or any
+            blocking in the function)
+        :param callable failed_cb: When an exception is raised inside the function,
+            `failed_cb` will be called.
+        :param str process_pv: PV name for the Process PV, used to start the
+            calculation
+        :param bool use_process: If True, process_pv is created. Otherwise,
+            the function will be called when each parameter is written to.
+        :param str retval_pv: Return value PV name
+        :param return_value: Default value for the return value
+        :param return_kwargs: Keyword arguments are passed to the return value
+            CasPV initializer. You can then specify `count`, `type_`, etc. here
         '''
 
         if server is None and caServer.default_instance is not None:
@@ -45,6 +63,7 @@ class CasFunction(object):
         self._use_process = bool(use_process)
         self._retval_pv = str(retval_pv)
         self._default_retval = return_value
+        self._return_kwargs = return_kwargs
 
         if not self._use_process:
             self._async = False
@@ -90,7 +109,8 @@ class CasFunction(object):
             pv_kw['written_cb'] = info['wrapped']
             proc_pv = None
 
-        retval_pv = CasPV(''.join((fcn_prefix, self._retval_pv)), self._default_retval)
+        retval_pv = CasPV(''.join((fcn_prefix, self._retval_pv)), self._default_retval,
+                          **self._return_kwargs)
 
         param_pvs = [CasPV(''.join((fcn_prefix, param)), value, **pv_kw)
                      for param, value in params]
@@ -142,7 +162,7 @@ class CasFunction(object):
             info['retval_pv'].value = ret
         except Exception as ex:
             self._failed(name, 'CAS retval invalid: %s (%s)' % (name, ex.__class__.__name__),
-                        ex, kwargs)
+                         ex, kwargs)
 
         if self._async and name in self._async_threads:
             del self._async_threads[name]

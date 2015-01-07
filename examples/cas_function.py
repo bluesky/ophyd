@@ -7,6 +7,8 @@ server)
 from __future__ import print_function
 import time
 
+import numpy as np
+
 from ophyd.controls import EpicsSignal
 from ophyd.controls.cas import CasFunction
 
@@ -36,7 +38,7 @@ def async_func(a=0, b=0.0, **kwargs):
 def sync_func(a=0, b=0.0, **kwargs):
     logger.info('sync_func called: a=%s b=%s, kw=%s' % (a, b, kwargs))
 
-    # Not a asynchronous PV, don't block
+    # Not an asynchronous PV, don't block
     return a * b
 
 
@@ -46,6 +48,16 @@ def string_func(value='test'):
 
     # Not a asynchronous PV, don't block
     return value.upper()
+
+
+# Keyword arguments get passed onto CasPV for the return value, so you can specify
+# more about the return type:
+@CasFunction(type_=np.int32, count=10)
+def array_func(value=0.0):
+    logger.info('array_func called: value=%s' % (value, ))
+
+    return np.arange(10) * value
+
 
 # Can't use positional arguments:
 try:
@@ -123,6 +135,23 @@ def test_string():
     logger.info('called normally: %r' % string_func(value='hello'))
 
 
+def test_array():
+    logger.info('array function')
+    pvnames = array_func.get_pvnames()
+
+    sig_value = EpicsSignal(pvnames['value'])
+    sig_proc = EpicsSignal(pvnames['process'])
+    sig_ret = EpicsSignal(pvnames['retval'])
+
+    sig_value.value = 2.0
+    sig_proc.value = 1
+
+    time.sleep(0.1)
+    logger.info('result through channel access: %r' % sig_ret.value)
+
+    logger.info('called normally: %r' % array_func(value=2.0))
+
+
 def test():
     loggers = ('ophyd.controls.cas',
                'ophyd.controls.cas.function',
@@ -137,3 +166,4 @@ if __name__ == '__main__':
     test_async()
     test_sync()
     test_string()
+    test_array()
