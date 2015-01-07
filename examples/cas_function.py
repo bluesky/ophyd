@@ -1,7 +1,8 @@
 #!/usr/bin/env python2.7
 '''
-An example of using :class:`caServer`, an EPICS channel access server
-implementation based on pcaspy
+An example of using :class:`CasFunction`, a decorator that makes a Python
+function accessible over channel access (using ophyd's built-in EPICS channel access
+server)
 '''
 from __future__ import print_function
 import time
