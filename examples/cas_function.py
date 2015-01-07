@@ -6,7 +6,9 @@ implementation based on pcaspy
 from __future__ import print_function
 import time
 
+from ophyd.controls import EpicsSignal
 from ophyd.controls.cas import CasFunction
+
 import config
 
 logger = config.logger
@@ -23,7 +25,9 @@ def async_func(a=0, b=0.0, **kwargs):
     # Function is called asynchronously, so it's OK to block:
     time.sleep(0.5)
 
-    return a + b
+    ret = a + b
+    logger.info('async_func returning: %s' % ret)
+    return ret
 
 
 # Keyword arguments only allowed, since default values must be specified.
@@ -59,9 +63,6 @@ try:
 except ValueError:
     logger.debug('(Failed as expected)')
 
-
-
-from ophyd.controls import EpicsSignal
 
 def test_async():
     logger.info('asynchronous function')
