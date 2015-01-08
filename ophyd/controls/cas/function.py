@@ -80,6 +80,9 @@ class CasFunction(object):
             self._async = False
 
     def attach_server(self, server):
+        '''
+        Attach a channel access server instance
+        '''
         if self._server is not None:
             raise ValueError('Server already attached')
 
@@ -97,6 +100,12 @@ class CasFunction(object):
             CasFunction._to_attach.remove(self)
 
     def _add_fcn(self, name):
+        '''
+        Add a function to the list being handled.
+
+        If a channel access server isn't attached yet, queue this instance to be
+        added at a later point.
+        '''
         server = self._server
         if server is None:
             # The next caServer created will attach to these functions
@@ -161,6 +170,14 @@ class CasFunction(object):
         info['param_dict'] = pv_dict
 
     def _failed(self, name, msg, ex, kwargs):
+        '''
+        Failure condition - since functions are called asynchronously in
+        background threads, a few options are given to the user for error
+        reporting. First, the status_pv for the corresponding function is
+        updated. If a failure callback was specified in the decorator, it will
+        then be called. If no failure callback is specified, the module logger
+        will be used.
+        '''
         failed_cb = self._failed_cb
 
         info = self._functions[name]
@@ -180,6 +197,9 @@ class CasFunction(object):
             logger.error(msg, exc_info=ex)
 
     def _run_function(self, name, **kwargs):
+        '''
+        Run the function in this thread, with the kwargs passed
+        '''
         info = self._functions[name]
         fcn = info['function']
 
@@ -207,12 +227,20 @@ class CasFunction(object):
         return ret
 
     def _run_async(self, name, **kwargs):
+        '''
+        Run a function asynchronously, in a separate thread
+        '''
         thread = epics.ca.CAThread(target=self._run_function,
                                    args=(name, ), kwargs=kwargs)
         self._async_threads[name] = thread
         thread.start()
 
     def get_kwargs(self, name, **override):
+        '''
+        Get the keyword arguments to be passed to the function.
+        These come from the current values stored in the channel access server
+        process variables.
+        '''
         info = self._functions[name]
 
         pv_dict = info['param_dict']
@@ -249,6 +277,9 @@ class CasFunction(object):
         return ret
 
     def __call__(self, fcn):
+        '''
+        Wraps the function
+        '''
         @functools.wraps(fcn)
         def wrapped_sync(**cas_kw):
             # Block until async request finishes

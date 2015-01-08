@@ -251,6 +251,7 @@ def test_failure():
     time.sleep(0.1)
     logger.info('status pv shows: %r' % sig_status.value)
 
+
 def test():
     loggers = ('ophyd.controls.cas',
                'ophyd.controls.cas.function',
