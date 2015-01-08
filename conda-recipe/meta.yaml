@@ -37,6 +37,7 @@ requirements:
     - python
     - pyepics
     - broker
+    - pcaspy
 
 test:
   # Python imports
@@ -44,6 +45,7 @@ test:
     - ophyd
     - ophyd.controls
     - ophyd.controls.areadetector
+    - ophyd.controls.cas
     - ophyd.runengine
     - ophyd.session
     - ophyd.userapi
