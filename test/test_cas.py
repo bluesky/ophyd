@@ -22,7 +22,7 @@ server = None
 def setUpModule():
     global server
 
-    server = caServer()
+    server = caServer('')
     server._pv_idx = 0
 
 
