@@ -620,21 +620,21 @@ class PVPositioner(Positioner):
         return tuple(self._limits)
 
     def __repr__(self):
-        repr = 'setpoint={0._setpoint.read_pvname!r}'.format(self)
+        repr = ['setpoint={0._setpoint.read_pvname!r}'.format(self)]
         if self._readback:
-            repr = '{0}, readback={1._readback.read_pvname!r}'.format(repr, self)
+            repr.append('readback={0._readback.read_pvname!r}'.format(self))
         if self._actuate:
-            repr = '{0}, act={1._actuate.read_pvname!r}, ' \
-                'act_val={1._act_val!r}'.format(repr, self)
+            repr.append('act={0._actuate.read_pvname!r}'.format(self))
+            repr.append('act_val={0._act_val!r}'.format(self))
         if self._stop:
-            repr = '{0}, stop={1._stop.read_pvname!r}, ' \
-                'stop_val={1._stop_val!r}'.format(repr, self)
+            repr.append('stop={0._stop.read_pvname!r}'.format(self))
+            repr.append('stop_val={0._stop_val!r}'.format(self))
         if self._done:
-            repr = '{0}, done={1._done.read_pvname!r}, ' \
-                'done_val={1._done_val!r}'.format(repr, self)
-        repr = '{0}, put_complete={1._put_complete!r}'.format(repr, self)
-        repr = '{0}, settle_time={1._settle_time!r}'.format(repr, self)
-        repr = '{0}, limits={1._limits!r}'.format(repr, self)
-        repr = '{0}, name={1.name!r}'.format(repr, self)
+            repr.append('done={0._done.read_pvname!r}'.format(self))
+            repr.append('done_val={0._done_val!r}'.format(self))
+        repr.append('put_complete={0._put_complete!r}'.format(self))
+        repr.append('settle_time={0._settle_time!r}'.format(self))
+        repr.append('limits={0._limits!r}'.format(self))
+        repr.append('name={0.name!r}'.format(self))
 
-        return '{0}({1})'.format(self.__class__.__name__, repr)
+        return '{0}({1})'.format(self.__class__.__name__, ', '.join(repr))

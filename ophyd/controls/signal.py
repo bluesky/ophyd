@@ -237,16 +237,16 @@ class EpicsSignal(Signal):
             return None
 
     def __repr__(self):
-        repr = 'read_pv={0._read_pv.pvname!r}'.format(self)
+        repr = ['read_pv={0._read_pv.pvname!r}'.format(self)]
         if self._write_pv is not None:
-            repr = '{0}, write_pv={1._write_pv.pvname!r}'.format(repr, self)
-        repr = '{0}, name={1.name!r}'.format(repr, self)
-        repr = '{0}, rw={1._rw!r}, string={1._string!r}'.format(repr, self)
-        repr = '{0}, limits={1._check_limits!r}'.format(repr, self)
-        repr = '{0}, put_complete={1._put_complete!r}'.format(repr, self)
-        repr = '{0}, pv_kw={1._pv_kw!r}'.format(repr, self)
-        repr = '{0}, auto_monitor={1._auto_monitor!r}'.format(repr, self)
-        return '{0}({1})'.format(self.__class__.__name__, repr)
+            repr.append('write_pv={0._write_pv.pvname!r}'.format(self))
+        repr.append('name={0.name!r}'.format(self))
+        repr.append('rw={0._rw!r}, string={0._string!r}'.format(self))
+        repr.append('limits={0._check_limits!r}'.format(self))
+        repr.append('put_complete={0._put_complete!r}'.format(self))
+        repr.append('pv_kw={0._pv_kw!r}'.format(self))
+        repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
+        return '{0}({1})'.format(self.__class__.__name__, ', '.join(repr))
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
