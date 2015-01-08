@@ -38,7 +38,6 @@ def async_func(a=0, b=0.0, **kwargs):
 
     ret = a + b
     logger.info('async_func returning: %s' % ret)
-    raise Exception('failed')
     return ret
 
 
@@ -100,6 +99,15 @@ def array_input_func(value=np.array([1., 2., 3.], dtype=np.float)):
     logger.info('array_input_func called: value=%s' % (value, ))
 
     return np.average(value)
+
+
+@CasFunction()
+def failure_func():
+    '''
+    If exceptions are raised, the status PV gets updated to reflect that
+    '''
+    logger.info('failure_func called')
+    raise ValueError('failed, somehow')
 
 
 # Can't use positional arguments:
@@ -231,6 +239,18 @@ def test_no_arg():
     logger.info('called normally: %r' % no_arg_func())
 
 
+def test_failure():
+    logger.info('function that fails with an exception')
+    pvnames = failure_func.get_pvnames()
+
+    sig_proc = EpicsSignal(pvnames['process'])
+    sig_status = EpicsSignal(pvnames['status'])
+
+    sig_proc.value = 1
+
+    time.sleep(0.1)
+    logger.info('status pv shows: %r' % sig_status.value)
+
 def test():
     loggers = ('ophyd.controls.cas',
                'ophyd.controls.cas.function',
@@ -244,6 +264,7 @@ def test():
     test_array()
     test_array_input()
     test_no_arg()
+    test_failure()
 
 
 if __name__ == '__main__':

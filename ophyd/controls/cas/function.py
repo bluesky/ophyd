@@ -13,6 +13,7 @@ import functools
 import inspect
 import logging
 import time
+from collections import OrderedDict
 
 import epics
 
@@ -152,7 +153,7 @@ class CasFunction(object):
         info['status_pv'] = status_pv
         info['param_pvs'] = param_pvs
 
-        pv_dict = dict(zip(params, param_pvs))
+        pv_dict = OrderedDict(zip(params, param_pvs))
         pv_dict['retval'] = retval_pv
         pv_dict['process'] = proc_pv
         pv_dict['status'] = status_pv
@@ -187,7 +188,7 @@ class CasFunction(object):
         try:
             ret = fcn(**kwargs)
         except Exception as ex:
-            self._failed(name, 'CAS function failed: %s (%s)' % (name, ex.__class__.__name__),
+            self._failed(name, '%s: %s (%s)' % (ex.__class__.__name__, ex, name),
                          ex, kwargs)
             ret = None
 
@@ -195,7 +196,7 @@ class CasFunction(object):
             if ret is not None:
                 info['retval_pv'].value = ret
         except Exception as ex:
-            self._failed(name, 'CAS retval invalid: %s (%s)' % (name, ex.__class__.__name__),
+            self._failed(name, 'Retval: %s %s (%s)' % (ex.__class__.__name__, ex, name),
                          ex, kwargs)
 
         if self._async and name in self._async_threads:
