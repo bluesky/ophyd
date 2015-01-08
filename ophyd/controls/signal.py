@@ -15,7 +15,7 @@ import time
 
 import epics
 
-from ..utils import TimeoutError
+from ..utils import (TimeoutError, LimitError)
 from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
 from .ophydobj import OphydObject
 
@@ -284,7 +284,7 @@ class EpicsSignal(Signal):
             return
 
         if not (low_limit <= value <= high_limit):
-            raise ValueError('Value {} outside of range: [{}, {}]'.format(value,
+            raise LimitError('Value {} outside of range: [{}, {}]'.format(value,
                                                                           low_limit, high_limit))
 
     def _set_request(self, value, force=False, wait=True, **kwargs):

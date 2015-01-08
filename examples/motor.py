@@ -7,6 +7,7 @@ import time
 
 import config
 from ophyd.controls import EpicsMotor
+from ophyd.utils.errors import LimitError
 
 
 def test():
@@ -56,13 +57,14 @@ def test():
     low_lim, high_lim = m1.low_limit, m1.high_limit
     try:
         m1.move(high_lim + 1)
-    except ValueError as ex:
+    except LimitError as ex:
         logger.debug('Failed move, as expected (%s)' % ex)
     else:
         raise ValueError('Move should have failed')
 
     try:
         m1.move(low_lim - 1)
+        # LimitError is a ValueError, so either can be caught
     except ValueError as ex:
         logger.debug('Failed move, as expected (%s)' % ex)
     else:

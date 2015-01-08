@@ -17,6 +17,11 @@ class TimeoutError(OpException):
     pass
 
 
+class LimitError(ValueError, OpException):
+    '''Value is outside of defined limits'''
+    pass
+
+
 # - Alarms
 
 # Severities
