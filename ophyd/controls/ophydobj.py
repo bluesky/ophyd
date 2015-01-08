@@ -168,3 +168,11 @@ class OphydObject(object):
         :raises: ValueError
         '''
         pass
+
+    def __repr__(self):
+        repr = ['name={0._name!r}'.format(self)]
+
+        if self._alias:
+            repr.append('alias={0._alias!r}'.format(self))
+
+        return '{}({})'.format(self.__class__.__name__, ', '.join(repr))

@@ -36,6 +36,16 @@ class PseudoSingle(Positioner):
         self._master.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
         self._master.subscribe(self._sub_proxy_idx, event_type=self.SUB_READBACK)
 
+    def __repr__(self):
+        repr = ['idx={0._idx!r}'.format(self),
+                'name={0._name!r}'.format(self),
+                ]
+
+        if self._alias:
+            repr.append('alias={0._alias!r}'.format(self))
+
+        return '{}({})'.format(self.__class__.__name__, ', '.join(repr))
+
     def _sub_proxy(self, obj=None, **kwargs):
         '''
         Master callbacks such as start of motion, motion finished,
@@ -130,13 +140,27 @@ class PseudoPositioner(Positioner):
         else:
             self._pseudo_names = tuple(pseudo)
 
-        self._pseudo_pos = [PseudoSingle(self, i) for i, pseudo
-                            in enumerate(self._pseudo_names)]
+        self._pseudo_pos = [PseudoSingle(self, i) for i
+                            in range(len(self._pseudo_names))]
 
         # TODO will calculations ever be too complex to make caching x number of
         #      fwd/rev calculation results worthwhile?
         if not self._pseudo_names or not self._real:
             raise ValueError('Must have at least 1 positioner and pseudo-positioner')
+
+    def __repr__(self):
+        repr = ['name={0._name!r}'.format(self),
+                'positioners={0._real!r}'.format(self),
+                'concurrent={0._concurrent!r}'.format(self),
+                'pseudo={0._pseudo_names!r}'.format(self),
+                'forward={0._calc_forward!r}'.format(self),
+                'reverse={0._calc_reverse!r}'.format(self),
+                ]
+
+        if self._alias:
+            repr.append('alias={0._alias!r}'.format(self))
+
+        return '{}({})'.format(self.__class__.__name__, ', '.join(repr))
 
     def stop(self):
         for pos in self._real:

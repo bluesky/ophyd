@@ -248,7 +248,8 @@ class EpicsSignal(Signal):
             return None
 
     def __repr__(self):
-        repr = ['read_pv={0._read_pv.pvname!r}'.format(self)]
+        repr = ['name={0._name!r}'.format(self),
+                'read_pv={0._read_pv.pvname!r}'.format(self)]
         if self._write_pv is not None:
             repr.append('write_pv={0._write_pv.pvname!r}'.format(self))
 
@@ -420,7 +421,7 @@ class EpicsSignal(Signal):
 # TODO uniform interface to Signal and SignalGroup
 
 class SignalGroup(OphydObject):
-    def __init__(self, name='none', alias=None, **kwargs):
+    def __init__(self, name='none', alias=None, signals=None, **kwargs):
         '''
         Create a group or collection of related signals
 
@@ -430,6 +431,21 @@ class SignalGroup(OphydObject):
         OphydObject.__init__(self, name=name, alias=alias)
 
         self._signals = []
+
+        if signals:
+            for signal in signals:
+                self.add_signal(signal)
+
+    def __repr__(self):
+        repr = ['name={0._name!r}'.format(self)]
+
+        if self._signals:
+            repr.append('signals={0._signals!r}'.format(self))
+
+        if self._alias:
+            repr.append('alias={0._alias!r}'.format(self))
+
+        return '{0}(signals={1._signals!r})'.format(self.__class__.__name__, self)
 
     def add_signal(self, signal, prop_name=None):
         '''

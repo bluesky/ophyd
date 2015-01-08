@@ -77,6 +77,8 @@ def multi_pseudo():
         time.sleep(0.1)
 
     pseudo0 = pos['pseudo0']
+    logger.info('Single pseudo axis: %s' % pseudo0)
+
     pseudo0.move(0, wait=True)
 
     try:
