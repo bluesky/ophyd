@@ -6,7 +6,7 @@ A simple test for :class:`EpicsSignal`
 import time
 
 import config
-from ophyd.controls import EpicsSignal
+from ophyd.controls import (EpicsSignal, Signal)
 from ophyd.utils.epics_pvs import record_field
 
 
@@ -38,6 +38,15 @@ def test():
     time.sleep(1.)
     rw_signal.value = 1
     time.sleep(1.)
+
+    # You can also create a Python Signal:
+    sig = Signal(name='testing', value=10)
+    logger.info('Python signal: %s' % sig)
+
+    # Even one with a separate setpoint/readback value:
+    sig = Signal(name='testing', value=10, setpoint=2,
+                 separate_readback=True)
+    logger.info('Python signal: %s' % sig)
 
 if __name__ == '__main__':
     test()

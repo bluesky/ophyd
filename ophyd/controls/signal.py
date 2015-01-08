@@ -32,7 +32,8 @@ class Signal(OphydObject):
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
-    def __init__(self, alias=None, separate_readback=False, name=None):
+    def __init__(self, alias=None, separate_readback=False, name=None,
+                 value=None, setpoint=None):
         '''
 
         :param alias: An alias for the signal
@@ -45,20 +46,19 @@ class Signal(OphydObject):
         self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, name, alias)
 
-        self._setpoint = None
-        self._readback = None
+        self._setpoint = setpoint
+        self._readback = value
 
         self._separate_readback = separate_readback
 
-    def __str__(self):
+    def __repr__(self):
+        repr = ['alias={0._alias!r}'.format(self),
+                'value={0.value!r}'.format(self),
+                'name={0.name!r}'.format(self),
+                ]
         if self._separate_readback:
-            return 'Signal(alias=%r, setpoint=%r, readback=%r)' % \
-                (self._alias, self.setpoint, self.readback)
-        else:
-            return 'Signal(alias=%r, value=%r)' % \
-                (self._alias, self.value)
-
-    __repr__ = __str__
+            repr.append('setpoint={0.setpoint!r}'.format(self))
+        return '{0}({1})'.format(self.__class__.__name__, ', '.join(repr))
 
     def get_setpoint(self):
         '''
@@ -172,6 +172,9 @@ class EpicsSignal(Signal):
         self._put_complete = put_complete
         self._string = bool(string)
         self._check_limits = bool(limits)
+        self._rw = rw
+        self._pv_kw = pv_kw
+        self._auto_monitor = auto_monitor
 
         separate_readback = False
 
@@ -244,14 +247,18 @@ class EpicsSignal(Signal):
         except AttributeError:
             return None
 
-    def __str__(self):
-        if self._read_pv is self._write_pv:
-            return 'EpicsSignal(value=%r, pv=%r)' % (self.value, self._read_pv)
-        else:
-            return 'EpicsSignal(value=%r, pv=%r, setpoint_pv=%r)' % (
-                self.value, self._read_pv, self._write_pv)
+    def __repr__(self):
+        repr = ['read_pv={0._read_pv.pvname!r}'.format(self)]
+        if self._write_pv is not None:
+            repr.append('write_pv={0._write_pv.pvname!r}'.format(self))
 
-    __repr__ = __str__
+        repr.append('name={0.name!r}'.format(self))
+        repr.append('rw={0._rw!r}, string={0._string!r}'.format(self))
+        repr.append('limits={0._check_limits!r}'.format(self))
+        repr.append('put_complete={0._put_complete!r}'.format(self))
+        repr.append('pv_kw={0._pv_kw!r}'.format(self))
+        repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
+        return '{0}({1})'.format(self.__class__.__name__, ', '.join(repr))
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''

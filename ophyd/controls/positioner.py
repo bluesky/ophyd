@@ -67,8 +67,11 @@ class MoveStatus(object):
             return self.finish_ts - self.start_ts
 
     def __str__(self):
-        return 'MoveStatus(done={0.done} elapsed={0.elapsed:.1f} ' \
-               'success={0.success})'.format(self)
+        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
+               'success={1.success})'.format(self.__class__.__name__,
+                                             self)
+
+    __repr__ = __str__
 
 
 class Positioner(SignalGroup):
@@ -337,10 +340,10 @@ class EpicsMotor(Positioner):
         except KeyboardInterrupt:
             self.stop()
 
-    def __str__(self):
-        return 'EpicsMotor(record={0!r}, val={1!r}, rbv={2!r}, egu={3!r})'.format(
-            self._record, self._user_setpoint.value, self._user_readback.value,
-            self.egu)
+    def __repr__(self):
+        return '{}(record={!r}, name={!r})'.format(
+            self.__class__.__name__,
+            self._record, self.name)
 
     def check_value(self, pos):
         '''
@@ -624,3 +627,23 @@ class PVPositioner(Positioner):
     @property
     def limits(self):
         return tuple(self._limits)
+
+    def __repr__(self):
+        repr = ['setpoint={0._setpoint.pvname!r}'.format(self)]
+        if self._readback:
+            repr.append('readback={0._readback.pvname!r}'.format(self))
+        if self._actuate:
+            repr.append('act={0._actuate.pvname!r}'.format(self))
+            repr.append('act_val={0._act_val!r}'.format(self))
+        if self._stop:
+            repr.append('stop={0._stop.pvname!r}'.format(self))
+            repr.append('stop_val={0._stop_val!r}'.format(self))
+        if self._done:
+            repr.append('done={0._done.pvname!r}'.format(self))
+            repr.append('done_val={0._done_val!r}'.format(self))
+        repr.append('put_complete={0._put_complete!r}'.format(self))
+        repr.append('settle_time={0._settle_time!r}'.format(self))
+        repr.append('limits={0._limits!r}'.format(self))
+        repr.append('name={0.name!r}'.format(self))
+
+        return '{}({})'.format(self.__class__.__name__, ', '.join(repr))
