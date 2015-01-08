@@ -11,8 +11,9 @@ from ..utils.epics_pvs import MonitorDispatcher
 from ..runengine import RunEngine
 
 try:
-    from ..utils.cas import caServer
-except ImportError:
+    from ..controls.cas import caServer
+except ImportError as ex:
+    print(ex)
     caServer = None
 
 __all__ = ['SessionManager']
@@ -116,7 +117,7 @@ class SessionManager(object):
             return config.StoreMagics.autorestore
         except AttributeError:
             try:
-                return config.StoreMagic.autorestore 
+                return config.StoreMagic.autorestore
             except AttributeError:
                 pass
 
@@ -183,7 +184,7 @@ class SessionManager(object):
         One ctrl-D stops the scan, two confirms exit
         '''
 
-        
+
         run = self._run_engine
         if run is not None and run.running:
             self.stop_all()

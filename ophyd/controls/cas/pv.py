@@ -1,3 +1,12 @@
+# vi: ts=4 sw=4
+'''
+:mod:`ophyd.controls.cas.pv` - CAS process variables
+====================================================
+
+.. module:: ophyd.controls.cas.pv
+   :synopsis: Epics process variables used in the channel access server, :class:`caServer`
+'''
+
 from __future__ import print_function
 
 import time
@@ -7,70 +16,23 @@ import logging
 import numpy as np
 from pcaspy import cas
 
-from .errors import (AlarmError, MajorAlarmError, MinorAlarmError)
-from .errors import alarms
-from .epics_pvs import (split_record_field, record_field)
+from ...utils.errors import (AlarmError, MajorAlarmError, MinorAlarmError)
+from ...utils.errors import alarms
+from ...utils.epics_pvs import record_field
+
+from .server import caServer
+from .errors import (casAsyncCompletion, casAsyncRunning, casError, casSuccess,
+                     casUndefinedValueError)
 
 
 logger = logging.getLogger(__name__)
 
 
-def patch_swig(mod):
-    '''
-    ref: http://sourceforge.net/p/swig/bugs/1255/
-    Workaround for setters failing with swigged classes
-    '''
-
-    def fix(self, class_type, name, value, static=1):
-        if name == "thisown":
-            return self.this.own(value)
-        elif name == "this" and type(value).__name__ == 'SwigPyObject':
-            self.__dict__[name] = value
-            return
-
-        method = class_type.__swig_setmethods__.get(name, None)
-        if method:
-            return method(self, value)
-        elif not static:
-            object.__setattr__(self, name, value)
-        else:
-            raise AttributeError("You cannot add attributes to %s" % self)
-
-    cas.epicsTimeStamp.__repr__ = cas.epicsTimeStamp.__str__
-
-    if hasattr(mod, '_swig_setattr_nondynamic'):
-        mod._swig_setattr_nondynamic = fix
-        logger.debug('patched SWIG setattr')
-
-
-patch_swig(cas)
-
-
-class casError(Exception):
-    ret = cas.S_casApp_success
-
-
-class casSuccess(casError):
-    ret = cas.S_casApp_success
-
-
-class casPVNotFoundError(casError):
-    ret = cas.S_casApp_pvNotFound
-
-
-class casUndefinedValueError(casError):
-    ret = cas.S_casApp_undefined
-
-
-class casAsyncCompletion(casError):
-    ret = cas.S_casApp_asyncCompletion
-
-
-class casAsyncRunning(casError):
-    ret = cas.S_casApp_postponeAsyncIO
-
-
 class Limits(object):
+    '''
+    Control and display limits for Epics PVs
+    '''
+
     def __init__(self,
                  lolim=0.0,
                  hilim=0.0,
@@ -88,7 +50,7 @@ class Limits(object):
 
     def check_alarm(self, value):
         """
-        Raise an exception if an alarm is set
+        Raise an exception if an alarm would be set with the given value
 
         :raises: AlarmError (MinorAlarmError, MajorAlarmError)
         """
@@ -113,147 +75,6 @@ class Limits(object):
             elif value <= low:
                 raise MinorAlarmError('%s <= %s' % (value, low),
                                       alarm=alarms.LOW_ALARM)
-
-
-class caServer(cas.caServer):
-    type_map = {list: cas.aitEnumEnum16,
-                tuple: cas.aitEnumEnum16,
-                str: cas.aitEnumString,
-                float: cas.aitEnumFloat64,
-                int: cas.aitEnumInt32,
-                bool: cas.aitEnumInt32,
-
-                np.int8: cas.aitEnumInt8,
-                np.uint8: cas.aitEnumUint8,
-                np.int16: cas.aitEnumInt16,
-                np.uint16: cas.aitEnumUint16,
-                np.int32: cas.aitEnumInt32,
-                np.uint32: cas.aitEnumUint32,
-                np.float32: cas.aitEnumFloat32,
-                np.float64: cas.aitEnumFloat64,
-                }
-
-    string_types = (cas.aitEnumString, cas.aitEnumFixedString, cas.aitEnumUint8)
-    enum_types = (cas.aitEnumEnum16, )
-    numerical_types = (cas.aitEnumFloat64, cas.aitEnumInt32)
-
-    def __init__(self, prefix, start=True):
-        cas.caServer.__init__(self)
-
-        self._pvs = {}
-        self._thread = None
-        self._running = False
-        self._prefix = str(prefix)
-
-        if start:
-            self.start()
-
-    # TODO asCaStop when all are stopped:
-    #  cas.asCaStop()
-
-    def _get_prefix(self):
-        '''
-        The channel access prefix, shared by all PVs added to this server.
-        '''
-        return self._prefix
-
-    def _set_prefix(self, prefix):
-        if prefix != self._prefix:
-            # TODO any special handling?
-            logger.debug('New PV prefix %s -> %s' % (self._prefix, prefix))
-            self._prefix = prefix
-
-    prefix = property(_get_prefix, _set_prefix)
-
-    def __getitem__(self, pv):
-        return self.get_pv(pv)
-
-    def get_pv(self, pv):
-        pv = self._strip_prefix(pv)
-
-        if '.' in pv:
-            record, field = split_record_field(pv)
-            if record in self._pvs:
-                rec = self._pvs[record]
-                return rec[field]
-
-        return self._pvs[pv]
-
-    def add_pv(self, pvi):
-        name = self._strip_prefix(pvi.name)
-
-        if name in self._pvs:
-            raise ValueError('PV already exists')
-
-        self._pvs[name] = pvi
-        pvi._server = self
-
-    def _strip_prefix(self, pvname):
-        '''
-        Remove the channel access server prefix from the pv name
-        '''
-        if pvname[:len(self._prefix)] == self._prefix:
-            return pvname[len(self._prefix):]
-        else:
-            return pvname
-
-    def pvExistTest(self, context, addr, pvname):
-        if not pvname.startswith(self._prefix):
-            return cas.pverDoesNotExistHere
-
-        try:
-            self.get_pv(pvname)
-        except KeyError:
-            return cas.pverDoesNotExistHere
-        else:
-            logger.debug('Responded %s exists' % pvname)
-            return cas.pverExistsHere
-
-    def pvAttach(self, context, pvname):
-        try:
-            pvi = self.get_pv(pvname)
-        except KeyError:
-            return casPVNotFoundError.ret
-
-        logger.debug('PV attach %s' % (pvname, ))
-        return pvi
-
-    def initAccessSecurityFile(self, filename, **subst):
-        # TODO
-        macros = ','.join(['%s=%s' % (k, v)
-                           for k, v in subst.items()])
-        cas.asInitFile(filename, macros)
-        cas.asCaStart()
-
-    def _process_loop(self, timeout=0.1):
-        self._running = True
-
-        while self._running:
-            cas.process(timeout)
-
-    def start(self):
-        if self._thread is not None:
-            return
-
-        self._thread = threading.Thread(target=self._process_loop)
-        self._thread.daemon = True
-        self._thread.start()
-
-    @property
-    def running(self):
-        return self._running
-
-    def stop(self, wait=True):
-        if self._running:
-            self._running = False
-
-            if wait:
-                self._thread.join()
-            self._thread = None
-
-    def cleanup(self):
-        self.stop()
-        self._pvs.clear()
 
 
 class CasPV(cas.casPV):
@@ -330,6 +151,8 @@ class CasPV(cas.casPV):
         self._written_cb = written_cb
         self._count = 0
 
+        count = max(count, 0)
+
         if limits is None:
             self.limits = Limits()
         elif isinstance(limits, dict):
@@ -346,11 +169,15 @@ class CasPV(cas.casPV):
         self._severity = AlarmError.severity
         self._updating = False
 
-        if self._ca_type in caServer.numerical_types:
+        if count == 0 and self._ca_type in caServer.numerical_types:
             alarm_fcn = self._check_numerical
         elif self._ca_type in caServer.enum_types:
             self._enums = list(self._value)
             self._value = self._value[0]
+
+            if np.array(self._value).dtype.type != np.string_:
+                raise ValueError('Enum list item types should be strings (specify an np.array'
+                                 ' as the value if you wanted a waveform)')
 
             alarm_fcn = self._check_enum
 
@@ -358,7 +185,7 @@ class CasPV(cas.casPV):
             self.major_states = list(major_states)
         elif self._ca_type in caServer.string_types:
             alarm_fcn = self._check_string
-        elif type_ is np.ndarray and isinstance(value, np.ndarray):
+        elif count > 0 or (type_ is np.ndarray and isinstance(value, np.ndarray)):
             try:
                 self._ca_type = caServer.type_map[value.dtype.type]
             except KeyError:
@@ -404,9 +231,16 @@ class CasPV(cas.casPV):
         The full PV name, including the server prefix
         '''
         if self._server is None:
-            raise ValueError('PV not yet added to a server')
+            raise ValueError('PV not yet added to a server (%s)' % self._name)
         else:
             return ''.join((self._server.prefix, self._name))
+
+    @property
+    def server(self):
+        '''
+        The server the channel access PV is managed by
+        '''
+        return self._server
 
     def __getitem__(self, idx):
         if self._count <= 0:
@@ -616,6 +450,24 @@ class CasPV(cas.casPV):
         '''
         self.value = value
 
+    def process(self, wait=True):
+        '''
+        Cause the written-to callback to be fired
+        '''
+
+        try:
+            ret = self._written_cb(timestamp=self._timestamp,
+                                   value=self._value,
+                                   status=self._status,
+                                   severity=self._severity)
+        except casAsyncCompletion:
+            while wait and self.hasAsyncWrite():
+                time.sleep(0.01)
+
+            ret = self.value
+
+        return ret
+
     def write(self, context, value):
         '''
         The PV was written to over channel access
@@ -645,8 +497,7 @@ class CasPV(cas.casPV):
 
     def async_done(self, ret=casSuccess.ret):
         '''
-        Indicate to the server that the asynchronous write
-        has completed
+        Indicate to the server that the asynchronous write has completed
         '''
         if self.hasAsyncWrite():
             self.endAsyncWrite(ret)
@@ -665,8 +516,7 @@ class CasPV(cas.casPV):
 
     def _gdd_set_value(self, gdd):
         '''
-        Update a gdd instance with the current value
-        and alarm/severity
+        Update a gdd instance with the current value and alarm/severity
         '''
         if gdd.primitiveType() == cas.aitEnumInvalid:
             gdd.setPrimType(self._ca_type)
@@ -756,11 +606,9 @@ class CasPV(cas.casPV):
         '''
         return self._count
 
-    def __str__(self):
-        return 'CasPV({0.name}, value={0.value},' \
+    def __repr__(self):
+        return 'CasPV({0.name!r}, value={0.value!r}, ' \
                'alarm={0.alarm}, severity={0.severity})'.format(self)
-
-    __repr__ = __str__
 
 
 class CasRecord(CasPV):
@@ -812,9 +660,6 @@ class CasRecord(CasPV):
 
         self.fields[field] = pv
 
-    def __str__(self):
-        return 'CasRecord({0.name}, value={0.value},' \
-               'alarm={0.alarm}, severity={0.severity})'.format(self)
-
-    __repr__ = __str__
-
+    def __repr__(self):
+        return '{0}({1.name!r}, value={1.value!r}, alarm={1.alarm}, ' \
+               'severity={1.severity})'.format(self.__class__.__name__, self)

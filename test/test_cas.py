@@ -9,8 +9,8 @@ from numpy.testing import assert_array_equal
 
 import epics
 
-from ophyd.utils.cas import (caServer, CasPV, CasRecord,
-                             Limits, logger, casAsyncCompletion)
+from ophyd.controls.cas import (caServer, CasPV, CasRecord,
+                                Limits, logger, casAsyncCompletion)
 
 from ophyd.utils.errors import alarms
 from ophyd.utils.epics_pvs import record_field
