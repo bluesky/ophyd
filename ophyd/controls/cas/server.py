@@ -131,7 +131,6 @@ class caServer(cas.caServer):
         Add a PV instance to the server
         '''
         name = self._strip_prefix(pvi.name)
-
         if name in self._pvs:
             raise ValueError('PV already exists')
 

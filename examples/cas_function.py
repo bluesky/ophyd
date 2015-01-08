@@ -17,12 +17,20 @@ import config
 logger = config.logger
 
 
-# Keyword arguments only allowed, since default values must be specified.
-# (prefix defaults to 'function_name:' when not specified)
 @CasFunction()
 def async_func(a=0, b=0.0, **kwargs):
-    # Note that since 0 is an integer, `a` will be an integer in EPICS
-    # Note that since 0.0 is a float, `b` will be a float in EPICS
+    '''
+    A CasFunction, a Python function that has all input parameters represented as
+    process variables. Execution is done asynchronously, using put completion on the
+    client side (on the server/Python side, it is run in a separate thread from the channel
+    access context)
+
+    Note: Keyword arguments only allowed, since default values must be specified.
+    Note: Prefix defaults to 'function_name:' when not specified
+
+    Note: Since 0 is an integer, `a` will be an integer in EPICS
+    Note: Since 0.0 is a float, `b` will be a float in EPICS
+    '''
     logger.info('async_func called: a=%s b=%s, kw=%s' % (a, b, kwargs))
 
     # Function is called asynchronously, so it's OK to block:
@@ -30,12 +38,17 @@ def async_func(a=0, b=0.0, **kwargs):
 
     ret = a + b
     logger.info('async_func returning: %s' % ret)
+    raise Exception('failed')
     return ret
 
 
-# Keyword arguments only allowed, since default values must be specified.
 @CasFunction(async=False, prefix='test:sync:')
 def sync_func(a=0, b=0.0, **kwargs):
+    '''
+    Synchronously executed CasFunction.
+    Do not block in these functions.
+    '''
+    # TODO: should we even give access to synchronous functions to users?
     logger.info('sync_func called: a=%s b=%s, kw=%s' % (a, b, kwargs))
 
     # Not an asynchronous PV, don't block
@@ -44,32 +57,46 @@ def sync_func(a=0, b=0.0, **kwargs):
 
 @CasFunction(return_value='test')
 def string_func(value='test'):
+    '''
+    Functions work on strings as well. This function takes a string
+    and returns a string
+
+    Note: EPICS string limitations apply here
+    '''
     logger.info('string_func called: value=%s' % value)
 
     # Not a asynchronous PV, don't block
     return value.upper()
 
 
-# Keyword arguments get passed onto CasPV for the return value, so you can specify
-# more about the return type:
 @CasFunction(type_=np.int32, count=10)
 def array_func(value=0.0):
+    '''
+    Keyword arguments get passed onto CasPV for the return value, so you can specify
+    more about the return type in the CasFunction decorator
+    '''
     logger.info('array_func called: value=%s' % (value, ))
 
     return np.arange(10) * value
 
 
-@CasFunction(type_=np.int32, count=10)
+@CasFunction(type_=np.int32, count=10,
+             async=False)
 def no_arg_func():
+    '''
+    No arguments taken in the function, returns an int array of 10 elements
+    '''
     logger.info('no_arg_func called')
 
     return np.arange(10)
 
 
-# Keyword arguments get passed onto CasPV for the return value, so you can specify
-# more about the return type:
 @CasFunction()
 def array_input_func(value=np.array([1., 2., 3.], dtype=np.float)):
+    '''
+    Keyword arguments get passed onto CasPV for the return value, so you can specify
+    more about the return type
+    '''
     logger.info('array_input_func called: value=%s' % (value, ))
 
     return np.average(value)
@@ -92,6 +119,9 @@ try:
 except ValueError:
     logger.debug('(Failed as expected)')
 
+
+# The individual tests below call the CasFunctions through both channel access
+# and through standard Python function calls
 
 def test_async():
     logger.info('asynchronous function')

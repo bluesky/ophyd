@@ -27,6 +27,7 @@ class CasFunction(object):
                  async=True, failed_cb=None,
                  process_pv='Proc', use_process=True,
                  retval_pv='Val',
+                 status_pv='Sts',
                  return_value=0.0,
                  **return_kwargs
                  ):
@@ -44,6 +45,7 @@ class CasFunction(object):
             calculation
         :param bool use_process: If True, process_pv is created. Otherwise,
             the function will be called when each parameter is written to.
+        :param str status_pv: Status PV name
         :param str retval_pv: Return value PV name
         :param return_value: Default value for the return value
         :param return_kwargs: Keyword arguments are passed to the return value
@@ -60,6 +62,7 @@ class CasFunction(object):
         self._failed_cb = failed_cb
         self._async_threads = {}
         self._process_pv = str(process_pv)
+        self._status_pv = str(status_pv)
         self._use_process = bool(use_process)
         self._retval_pv = str(retval_pv)
         self._default_retval = return_value
@@ -100,6 +103,7 @@ class CasFunction(object):
 
         info = self._functions[name]
         params = info['parameters']
+        defaults = info['defaults']
 
         pv_kw = {}
         if self._use_process:
@@ -109,15 +113,21 @@ class CasFunction(object):
             pv_kw['written_cb'] = info['wrapped']
             proc_pv = None
 
-        retval_pv = CasPV(''.join((fcn_prefix, self._retval_pv)), self._default_retval,
+        retval_pv = CasPV(''.join((fcn_prefix, self._retval_pv)),
+                          self._default_retval,
                           **self._return_kwargs)
 
-        param_pvs = [CasPV(''.join((fcn_prefix, param)), value, **pv_kw)
-                     for param, value in params]
+        status_pv = CasPV(''.join((fcn_prefix, self._status_pv)),
+                          'status')
+
+        param_pvs = [CasPV(''.join((fcn_prefix, param)),
+                           default,
+                           **pv_kw)
+                     for param, default in zip(params, defaults)]
 
         added = []
         try:
-            for pv in param_pvs + [proc_pv, retval_pv]:
+            for pv in param_pvs + [proc_pv, retval_pv, status_pv]:
                 if pv is not None:
                     server.add_pv(pv)
                     added.append(pv)
@@ -132,10 +142,26 @@ class CasFunction(object):
 
         info['process_pv'] = proc_pv
         info['retval_pv'] = retval_pv
+        info['status_pv'] = status_pv
         info['param_pvs'] = param_pvs
+
+        pv_dict = dict(zip(params, param_pvs))
+        pv_dict['retval'] = retval_pv
+        pv_dict['process'] = proc_pv
+        pv_dict['status'] = status_pv
+
+        info['param_dict'] = pv_dict
 
     def _failed(self, name, msg, ex, kwargs):
         failed_cb = self._failed_cb
+
+        info = self._functions[name]
+        status_pv = info['status_pv']
+        if status_pv.server is not None:
+            try:
+                status_pv.value = msg
+            except:
+                pass
 
         if failed_cb is not None:
             try:
@@ -156,9 +182,11 @@ class CasFunction(object):
         except Exception as ex:
             self._failed(name, 'CAS function failed: %s (%s)' % (name, ex.__class__.__name__),
                          ex, kwargs)
+            ret = None
 
         try:
-            info['retval_pv'].value = ret
+            if ret is not None:
+                info['retval_pv'].value = ret
         except Exception as ex:
             self._failed(name, 'CAS retval invalid: %s (%s)' % (name, ex.__class__.__name__),
                          ex, kwargs)
@@ -178,25 +206,37 @@ class CasFunction(object):
 
     def get_kwargs(self, name, **override):
         info = self._functions[name]
-        param_pvs = zip(info['parameters'], info['param_pvs'])
-        ret = dict((param, pv.value)
-                   for (param, default), pv in param_pvs)
+
+        pv_dict = info['param_dict']
+        parameters = info['parameters']
+        ret = dict((param, pv_dict[param].value)
+                   for param in parameters)
 
         ret.update(override)
         return ret
 
-    def get_pvnames(self, name):
+    def get_pv_instance(self, name, pv):
+        '''
+        Grab a parameter's PV instance from a specific function, by name
+        '''
         if not self._server:
             raise RuntimeError('Server not yet configured (i.e., no prefix yet)')
 
         info = self._functions[name]
-        param_pvs = zip(info['parameters'], info['param_pvs'])
-        ret = dict((param, pv.full_pvname)
-                   for (param, default), pv in param_pvs)
+        param_pvs = info['param_dict']
+        return param_pvs[pv]
 
-        ret['retval'] = info['retval_pv'].full_pvname
-        if self._use_process:
-            ret['process'] = info['process_pv'].full_pvname
+    def get_pvnames(self, name):
+        '''
+        Get all PV names for a specific function in a dictionary:
+            {param: pvname}
+        '''
+        if not self._server:
+            raise RuntimeError('Server not yet configured (i.e., no prefix yet)')
+
+        info = self._functions[name]
+        ret = dict((param, pv.full_pvname)
+                   for param, pv in info['param_dict'].items())
 
         return ret
 
@@ -235,7 +275,8 @@ class CasFunction(object):
         else:
             parameters = []
 
-        info['parameters'] = parameters
+        info['parameters'] = [param for param, default in parameters]
+        info['defaults'] = [default for param, default in parameters]
         info['function'] = fcn
         info['wrapped'] = wrapped
         self._add_fcn(name)
@@ -246,5 +287,9 @@ class CasFunction(object):
         def get_pvnames():
             return self.get_pvnames(name)
 
+        def get_pv(pv):
+            return self.get_pv_instance(name, pv)
+
         wrapped_sync.get_pvnames = get_pvnames
+        wrapped_sync.get_pv = get_pv
         return wrapped_sync

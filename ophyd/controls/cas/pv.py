@@ -218,9 +218,16 @@ class CasPV(cas.casPV):
         The full PV name, including the server prefix
         '''
         if self._server is None:
-            raise ValueError('PV not yet added to a server')
+            raise ValueError('PV not yet added to a server (%s)' % self._name)
         else:
             return ''.join((self._server.prefix, self._name))
+
+    @property
+    def server(self):
+        '''
+        The server the channel access PV is managed by
+        '''
+        return self._server
 
     def __getitem__(self, idx):
         if self._count <= 0:
@@ -430,6 +437,24 @@ class CasPV(cas.casPV):
         '''
         self.value = value
 
+    def process(self, wait=True):
+        '''
+        Cause the written-to callback to be fired
+        '''
+
+        try:
+            ret = self._written_cb(timestamp=self._timestamp,
+                                   value=self._value,
+                                   status=self._status,
+                                   severity=self._severity)
+        except casAsyncCompletion:
+            while wait and self.hasAsyncWrite():
+                time.sleep(0.01)
+
+            ret = self.value
+
+        return ret
+
     def write(self, context, value):
         '''
         The PV was written to over channel access
@@ -459,8 +484,7 @@ class CasPV(cas.casPV):
 
     def async_done(self, ret=casSuccess.ret):
         '''
-        Indicate to the server that the asynchronous write
-        has completed
+        Indicate to the server that the asynchronous write has completed
         '''
         if self.hasAsyncWrite():
             self.endAsyncWrite(ret)
@@ -479,8 +503,7 @@ class CasPV(cas.casPV):
 
     def _gdd_set_value(self, gdd):
         '''
-        Update a gdd instance with the current value
-        and alarm/severity
+        Update a gdd instance with the current value and alarm/severity
         '''
         if gdd.primitiveType() == cas.aitEnumInvalid:
             gdd.setPrimType(self._ca_type)
@@ -570,11 +593,9 @@ class CasPV(cas.casPV):
         '''
         return self._count
 
-    def __str__(self):
-        return 'CasPV({0.name}, value={0.value},' \
+    def __repr__(self):
+        return 'CasPV({0.name!r}, value={0.value!r}, ' \
                'alarm={0.alarm}, severity={0.severity})'.format(self)
-
-    __repr__ = __str__
 
 
 class CasRecord(CasPV):
@@ -626,8 +647,6 @@ class CasRecord(CasPV):
 
         self.fields[field] = pv
 
-    def __str__(self):
-        return 'CasRecord({0.name!r}, value={0.value!r},' \
-               'alarm={0.alarm}, severity={0.severity})'.format(self)
-
-    __repr__ = __str__
+    def __repr__(self):
+        return '{0}({1.name!r}, value={1.value!r}, alarm={1.alarm}, ' \
+               'severity={1.severity})'.format(self.__class__.__name__, self)
