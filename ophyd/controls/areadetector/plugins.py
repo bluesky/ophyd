@@ -137,7 +137,7 @@ class ImagePlugin(PluginBase):
             array_size = array_size[:-1]
 
         pixel_count = self.array_pixels
-        image = self.array_data._get_readback(count=pixel_count)
+        image = self.array_data.get(count=pixel_count)
         return np.array(image).reshape(array_size)
 
 

@@ -135,7 +135,7 @@ class RunEngine(object):
             #TODO: handle triggers here (pvs that cause detectors to fire)
             if trigs is not None:
                 for t in trigs:
-                    t._set_request(1, wait=True)
+                    t.put(1, wait=True)
             #TODO: again, WTF is with the delays required? CA is too fast,
             # and python is too slow (or vice versa!)
             time.sleep(0.05)

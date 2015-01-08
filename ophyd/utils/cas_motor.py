@@ -80,9 +80,9 @@ class CasMotor(CasRecord):
         self.add_field(self._fld_calib_set, 0)
         self.add_field(self._fld_limit_viol, 0)
 
-        self._pos.subscribe(self._readback_updated, self._pos.SUB_READBACK)
-        self._pos.subscribe(self._move_started, self._pos.SUB_START)
-        self._pos.subscribe(self._move_done, self._pos.SUB_DONE)
+        self._pos.subscribe(self._readback_updated, event_type=self._pos.SUB_READBACK)
+        self._pos.subscribe(self._move_started, event_type=self._pos.SUB_START)
+        self._pos.subscribe(self._move_done, event_type=self._pos.SUB_DONE)
 
         self._update_status(moving=self._pos.moving)
 

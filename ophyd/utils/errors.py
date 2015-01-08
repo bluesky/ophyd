@@ -14,6 +14,12 @@ class OpException(Exception):
 
 
 class TimeoutError(OpException):
+    '''Operation timed out'''
+    pass
+
+
+class ReadOnlyError(OpException):
+    '''Signal is read-only'''
     pass
 
 

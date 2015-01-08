@@ -56,12 +56,12 @@ def simple_scan(motors=[],
     def do_triggers():
         for trigger, value in triggers:
             logger.debug('Trigger %s = %s' % (trigger, value))
-            trigger.request = value
+            trigger.value = value
 
     def collect_data():
         logger.debug('Collecting data')
         # return [det.read() for det in detectors]
-        return [det.readback for det in detectors]
+        return [det.value for det in detectors]
 
     for motor, pos in zip(motors, trajectories):
         logger.debug('Setting trajectory for motor %s' % motor)

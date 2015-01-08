@@ -14,9 +14,9 @@ def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
         logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
 
-        # Test that the monitor dispatcher works (there is an implicit
-        # caget in the following line when accessing rw_signal.value)
-        logger.info('[callback] caget=%s' % rw_signal.value)
+        # Test that the monitor dispatcher works (you cannot use channel access in
+        # callbacks without it)
+        logger.info('[callback] caget=%s' % rw_signal.get())
 
     loggers = ('ophyd.controls.signal',
                'ophyd.session',
@@ -31,8 +31,8 @@ def test():
 
     rw_signal = EpicsSignal(rbv, write_pv=val)
                             # put_complete=True)
-    rw_signal.subscribe(callback, event_type=rw_signal.SUB_READBACK)
-    rw_signal.subscribe(callback, event_type=rw_signal.SUB_REQUEST)
+    rw_signal.subscribe(callback, event_type=rw_signal.SUB_VALUE)
+    rw_signal.subscribe(callback, event_type=rw_signal.SUB_SETPOINT)
 
     rw_signal.value = 2
     time.sleep(1.)
