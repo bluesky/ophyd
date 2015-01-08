@@ -18,10 +18,13 @@ from ..session import register_object
 class OphydObject(object):
     _default_sub = None
 
-    def __init__(self, name, alias, register=True):
+    def __init__(self, name=None, alias=None, register=True):
         '''
         Subscription/callback mechanism for registered objects in ophyd sessions.
         '''
+
+        if name is None:
+            raise ValueError('An OphydObject must have a name')
 
         self._name = name
         self._alias = alias
@@ -170,7 +173,16 @@ class OphydObject(object):
         pass
 
     def __repr__(self):
-        repr = ['name={0._name!r}'.format(self)]
+        return self._get_repr()
+
+    def _get_repr(self, info=None):
+        repr = []
+
+        if self._name:
+            repr.append('name={0._name!r}'.format(self))
+
+        if info:
+            repr.extend(info)
 
         if self._alias:
             repr.append('alias={0._alias!r}'.format(self))

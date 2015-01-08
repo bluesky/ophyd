@@ -283,7 +283,7 @@ class ADBase(OphydObject):
         name = kwargs.get('name', name_from_pv(prefix))
         alias = kwargs.get('alias', 'None')
 
-        OphydObject.__init__(self, name, alias)
+        OphydObject.__init__(self, name=name, alias=alias)
 
         self._prefix = prefix
         self._ad_signals = {}

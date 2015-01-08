@@ -44,7 +44,7 @@ class Signal(OphydObject):
         '''
 
         self._default_sub = self.SUB_VALUE
-        OphydObject.__init__(self, name, alias)
+        OphydObject.__init__(self, name=name, alias=alias)
 
         self._setpoint = setpoint
         self._readback = value
@@ -52,13 +52,10 @@ class Signal(OphydObject):
         self._separate_readback = separate_readback
 
     def __repr__(self):
-        repr = ['alias={0._alias!r}'.format(self),
-                'value={0.value!r}'.format(self),
-                'name={0.name!r}'.format(self),
-                ]
+        repr = ['value={0.value!r}'.format(self)]
         if self._separate_readback:
             repr.append('setpoint={0.setpoint!r}'.format(self))
-        return '{0}({1})'.format(self.__class__.__name__, ', '.join(repr))
+        return self._get_repr(repr)
 
     def get_setpoint(self):
         '''
@@ -186,7 +183,9 @@ class EpicsSignal(Signal):
             else:
                 separate_readback = True
 
-        Signal.__init__(self, separate_readback=separate_readback, **kwargs)
+        name = kwargs.pop('name', read_pv)
+        Signal.__init__(self, separate_readback=separate_readback, name=name,
+                        **kwargs)
 
         self._read_pv = epics.PV(read_pv, form=get_pv_form(),
                                  callback=self._read_changed,
@@ -248,18 +247,16 @@ class EpicsSignal(Signal):
             return None
 
     def __repr__(self):
-        repr = ['name={0._name!r}'.format(self),
-                'read_pv={0._read_pv.pvname!r}'.format(self)]
+        repr = ['read_pv={0._read_pv.pvname!r}'.format(self)]
         if self._write_pv is not None:
             repr.append('write_pv={0._write_pv.pvname!r}'.format(self))
 
-        repr.append('name={0.name!r}'.format(self))
         repr.append('rw={0._rw!r}, string={0._string!r}'.format(self))
         repr.append('limits={0._check_limits!r}'.format(self))
         repr.append('put_complete={0._put_complete!r}'.format(self))
         repr.append('pv_kw={0._pv_kw!r}'.format(self))
         repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
-        return '{0}({1})'.format(self.__class__.__name__, ', '.join(repr))
+        return self._get_repr(repr)
 
     def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
         '''
@@ -437,7 +434,7 @@ class SignalGroup(OphydObject):
                 self.add_signal(signal)
 
     def __repr__(self):
-        repr = ['name={0._name!r}'.format(self)]
+        repr = []
 
         if self._signals:
             repr.append('signals={0._signals!r}'.format(self))
@@ -445,7 +442,7 @@ class SignalGroup(OphydObject):
         if self._alias:
             repr.append('alias={0._alias!r}'.format(self))
 
-        return '{0}(signals={1._signals!r})'.format(self.__class__.__name__, self)
+        return self._get_repr(repr)
 
     def add_signal(self, signal, prop_name=None):
         '''

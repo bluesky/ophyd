@@ -341,9 +341,7 @@ class EpicsMotor(Positioner):
             self.stop()
 
     def __repr__(self):
-        return '{}(record={!r}, name={!r})'.format(
-            self.__class__.__name__,
-            self._record, self.name)
+        return self._get_repr(['record={!r}'.format(self._record)])
 
     def check_value(self, pos):
         '''
@@ -644,6 +642,5 @@ class PVPositioner(Positioner):
         repr.append('put_complete={0._put_complete!r}'.format(self))
         repr.append('settle_time={0._settle_time!r}'.format(self))
         repr.append('limits={0._limits!r}'.format(self))
-        repr.append('name={0.name!r}'.format(self))
 
-        return '{}({})'.format(self.__class__.__name__, ', '.join(repr))
+        return self._get_repr(repr)
