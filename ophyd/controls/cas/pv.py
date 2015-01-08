@@ -1,3 +1,12 @@
+# vi: ts=4 sw=4
+'''
+:mod:`ophyd.controls.cas.pv` - CAS process variables
+====================================================
+
+.. module:: ophyd.controls.cas.pv
+   :synopsis: Epics process variables used in the channel access server, :class:`caServer`
+'''
+
 from __future__ import print_function
 
 import time
@@ -20,6 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 class Limits(object):
+    '''
+    Control and display limits for Epics PVs
+    '''
+
     def __init__(self,
                  lolim=0.0,
                  hilim=0.0,
@@ -37,7 +50,7 @@ class Limits(object):
 
     def check_alarm(self, value):
         """
-        Raise an exception if an alarm is set
+        Raise an exception if an alarm would be set with the given value
 
         :raises: AlarmError (MinorAlarmError, MajorAlarmError)
         """

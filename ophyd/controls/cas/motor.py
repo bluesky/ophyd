@@ -1,5 +1,11 @@
+# vi: ts=4 sw=4
 '''
-Epics motor-record simulation using the ophyd Channel Access Server
+:mod:`ophyd.controls.cas.motor` - CAS motors
+==================================================
+
+.. module:: ophyd.controls.cas.motor
+   :synopsis: Epics motor-record simulation using the ophyd Channel Access
+              Server
 '''
 
 from __future__ import print_function

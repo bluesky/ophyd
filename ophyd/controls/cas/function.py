@@ -1,4 +1,11 @@
+# vi: ts=4 sw=4
 '''
+:mod:`ophyd.controls.cas.function` - CAS Functions
+==================================================
+
+.. module:: ophyd.controls.cas.function
+   :synopsis: RPC-like functionality via channel access for Python functions
+              with a simple decorator
 '''
 
 from __future__ import print_function

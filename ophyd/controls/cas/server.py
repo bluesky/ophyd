@@ -1,5 +1,10 @@
+# vi: ts=4 sw=4
 '''
-Channel access server implementation, based on pcaspy
+:mod:`ophyd.controls.cas.server` - Channel access server
+========================================================
+
+.. module:: ophyd.controls.cas.server
+   :synopsis: Channel access server implementation, based on pcaspy
 '''
 
 from __future__ import print_function

@@ -1,12 +1,16 @@
+# vi: ts=4 sw=4
 '''
-Channel access server-related
+:mod:`ophyd.controls.cas` - Channel access server
+=================================================
+
+.. module:: ophyd.controls.cas
+   :synopsis: Channel access server implementation, based on pcaspy
 '''
 
 import logging
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
-
 
 from .server import caServer
 from .pv import (CasPV, CasRecord)

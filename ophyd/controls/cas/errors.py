@@ -1,3 +1,12 @@
+# vi: ts=4 sw=4
+'''
+:mod:`ophyd.controls.cas.errors` - CAS errors
+=============================================
+
+.. module:: ophyd.controls.cas.errors
+   :synopsis: Errors/return value information shared by the channel access
+              server
+'''
 from pcaspy import cas
 
 __all__ = ['casError',
