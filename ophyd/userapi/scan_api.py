@@ -191,10 +191,10 @@ class Scan(SharedState):
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
             scan_args['custom'] = {}
-            plotx, ploty = self.format_plot()
-            scan_args['custom']['plotx'] = plotx
-            if ploty:
-                scan_args['custom']['ploty'] = ploty
+            # plotx, ploty = self.format_plot()
+            # scan_args['custom']['plotx'] = plotx
+            # if ploty:
+            #     scan_args['custom']['ploty'] = ploty
 
             # Run the scan!
             self.data = self._run_eng.start_run(self.scan_id,

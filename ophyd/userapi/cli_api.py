@@ -10,7 +10,8 @@ from __future__ import print_function
 import time
 import functools
 import sys
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
+from StringIO import StringIO
 
 import numpy as np
 from epics import caget, caput
@@ -18,25 +19,19 @@ from epics import caget, caput
 from ..controls.positioner import EpicsMotor, Positioner
 from ..session import get_session_manager
 
-try:
-    from pyOlog.cli import stdlog
-except ImportError:
-    stdlog = None
-    print("[!!] Could not import Olog", file=sys.stderr)
-
-try:
-    olog_client = get_session_manager()['olog_client']
-except KeyError:
-    olog_client = None
-
 session_mgr = get_session_manager()
 
+try:
+    logbook = session_mgr['olog_client']
+except KeyError:
+    logbook = None
 
 __all__ = ['mov',
            'movr',
            'set_pos',
            'wh_pos',
-           'set_lm'
+           'set_lm',
+           'log_pos'
            ]
 
 # Global Defs of certain strings
@@ -90,12 +85,12 @@ def _list_of(value, type_=str):
     return [s for s in value]
 
 
-def print_header(title='', char='-', len=80):
-    print('{:{char}^{len}}'.format(title, char=char, len=len))
+def print_header(title='', char='-', len=80, file=sys.stdout):
+    print('{:{char}^{len}}'.format(title, char=char, len=len), file=file)
 
 
-def print_string(val, size=FMT_LEN, pre='', post=' '):
-    print('{}{:<{size}}{}'.format(pre, val, post, size=size), end='')
+def print_string(val, size=FMT_LEN, pre='', post=' ', file=sys.stdout):
+    print('{}{:<{size}}{}'.format(pre, val, post, size=size), end='', file=file)
 
 
 def print_value(val, prec=FMT_PREC, egu='', **kwargs):
@@ -218,7 +213,7 @@ def mov(positioner, position, quiet=False):
                 for p in positioner:
                     print_value(p.position, egu=p.egu)
                 print('', end='\r')
-            time.sleep(0.01)
+            time.sleep(0.05)
             done = all(s.done for s in stat)
             if done:
                 flag += 1
@@ -241,7 +236,7 @@ def movr(positioner, position, quiet=False):
     _start_val = [p.position for p in positioner]
     for v in _start_val:
         if v is None:
-            raise Exception("Unable to read motor position for relative move")
+            raise ValueError("Unable to read motor position for relative move")
 
     _new_val = [a + b for a, b in zip(_start_val, position)]
     mov(positioner, _new_val, quiet)
@@ -281,8 +276,8 @@ def set_lm(positioner, limits):
                lim2, p.name, prec=FMT_PREC)
 
     print(msg)
-    if olog_client:
-        olog_client.log(msg)
+    if logbook:
+        logbook.log(msg)
 
 
 @_ensure_positioner_pair
@@ -297,7 +292,8 @@ def set_pos(positioner, position):
     """
     for p in positioner:
         if not isinstance(p, EpicsMotor):
-            raise ValueError("Positioners must be EpicsMotors to set position")
+            raise TypeError("Positioner {} must be an EpicsMotor"
+                            "to set position.".format(p.name))
 
     # Get the current offset
 
@@ -309,7 +305,8 @@ def set_pos(positioner, position):
 
     for v in old_offsets + dial:
         if v is None:
-            raise Exception("Cannot get values for EpicsMotor")
+            raise ValueError("Could not read or invalid value for current"
+                             "position of positioners")
 
     new_offsets = [a - b for a, b in zip(position, dial)]
 
@@ -322,8 +319,9 @@ def set_pos(positioner, position):
             print('Unable to set position of positioner {0}'.format(p.name))
 
     print(msg)
+
     lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
-    olog_client.log(msg + '\n' + lmsg)
+    logbook.log(msg + '\n' + lmsg)
 
 
 @ensure((Positioner,), {'positioners': Positioner})
@@ -338,34 +336,74 @@ def wh_pos(positioners=None):
                   Positioners to output. If None print all
                   positioners positions.
     """
-
-    print('')
-
     if positioners is None:
         positioners = [session_mgr.get_positioners()[d]
                        for d in sorted(session_mgr.get_positioners())]
+
+    _print_pos(positioners, file=sys.stdout)
+
+
+@ensure((Positioner,), {'positioners': Positioner})
+def log_pos(positioners=None):
+    """Log the current position of Positioners
+
+    Print to the screen positioners and their current values.
+
+    Parameters
+    ----------
+    positioners : Positioner, list of Positioners or None
+                  Positioners to output. If None print all
+                  positioners positions.
+    """
+    if positioners is None:
+        positioners = [session_mgr.get_positioners()[d]
+                       for d in sorted(session_mgr.get_positioners())]
+
+    msg = ''
+
+    with closing(StringIO()) as sio:
+        _print_pos(positioners, file=sio)
+        msg += sio.getvalue()
+
+    print(msg)
+
+    # Add the text representation of the positioners
+
+    msg += logbook_add_objects(positioners)
+
+    # Create the property for storing motor posisions
+    pdict = {}
+    pdict['objects'] = repr(positioners)
+    pdict['values'] = repr({p.name: p.position for p in positioners})
+    p = ['OphydPositioners', pdict]
+
+    # make the logbook entry
+    id = logbook.log(msg, properties=[p])
+
+    print('Logbook positions added as Logbook ID {}'.format(id))
+
+
+def _print_pos(positioners, file=sys.stdout):
+    """Pretty Print the positioners to file"""
+    print('', file=file)
 
     pos = [p.position for p in positioners]
 
     # Print out header
 
-    print_header(len=4*(FMT_LEN+3)+1)
-    print_string('Positioner', pre='| ', post=' | ')
-    print_string('Value', post=' | ')
-    print_string('Low Limit', post=' | ')
-    print_string('High Limit', post=' |\n')
+    print_header(len=4*(FMT_LEN+3)+1, file=file)
+    print_string('Positioner', pre='| ', post=' | ', file=file)
+    print_string('Value', post=' | ', file=file)
+    print_string('Low Limit', post=' | ', file=file)
+    print_string('High Limit', post=' |\n', file=file)
 
-    print_header(len=4*(FMT_LEN+3)+1)
+    print_header(len=4*(FMT_LEN+3)+1, file=file)
 
     for p, v in zip(positioners, pos):
-        print_string(p.name, pre='| ', post=' | ')
-        print_value_aligned(v, egu=p.egu, post=' | ')
-        print_value_aligned(p.low_limit, egu=p.egu, post=' | ')
-        print_value_aligned(p.high_limit, egu=p.egu, post=' |\n')
+        print_string(p.name, pre='| ', post=' | ', file=file)
+        print_value_aligned(v, egu=p.egu, post=' | ', file=file)
+        print_value_aligned(p.low_limit, egu=p.egu, post=' | ', file=file)
+        print_value_aligned(p.high_limit, egu=p.egu, post=' |\n', file=file)
 
-    print_header(len=4*(FMT_LEN+3)+1)
-    print('')
-
-    lmsg = logbook_add_objects(positioners)
-    if stdlog:
-        print(lmsg, file=stdlog.stdlog)
+    print_header(len=4*(FMT_LEN+3)+1, file=file)
+    print('', file=file)
