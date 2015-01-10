@@ -8,7 +8,7 @@ from Queue import Queue
 from ..session import register_object
 
 try:
-    from databroker.pyapi import data_collection
+    from databroker.api import data_collection
 except ImportError:
     data_collection = None
 
