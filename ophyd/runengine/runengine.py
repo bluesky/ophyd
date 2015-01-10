@@ -13,11 +13,9 @@ try:
 except ImportError:
     data_collection = None
 
+import pymongo
 try:
     from metadataStore.api.collection import create_event
-except ImportError as ex:
-    print('[!!] Failed to import metadataStore api: %s' % ex, file=sys.stderr)
-    from metadataStore.collectioni.api.commands import create_event
 except pymongo.errors.ConnectionFailure:
     print('[!!] Failed to connect to metadataStore', file=sys.stderr)
 except ImportError:
