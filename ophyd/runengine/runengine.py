@@ -8,13 +8,13 @@ from Queue import Queue
 from ..session import register_object
 
 try:
-    from databroker.api import data_collection
+    from databroker.pyapi import data_collection
 except ImportError:
     data_collection = None
 
 import pymongo
 try:
-    from metadataStore.collectionapi.commands import create_event
+    from metadataStore.collectioni.api.commands import create_event
 except pymongo.errors.ConnectionFailure:
     print('[!!] Failed to connect to metadataStore', file=sys.stderr)
 except ImportError:
