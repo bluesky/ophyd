@@ -9,6 +9,8 @@ BUILDDIR      = build
 
 # For auto gh-pages
 GH_PAGES_SOURCES = doc/Makefile doc/source 
+GH_PAGES_DIR := $(shell mktemp -d)
+GH_PAGES_BRANCH = cli_refactor
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
@@ -156,15 +158,17 @@ doctest:
 	      "results in $(BUILDDIR)/doctest/output.txt."
 
 gh-pages:
-	cd ..
-	git checkout gh-pages
-	git checkout master $(GH_PAGES_SOURCES)
-	git reset HEAD
-	cd doc
-	rm -rf build _sources _static
-	make html
-	mv -fv build/html/* ./
-	rm -rf $(GH_PAGES_SOURCES) build
-	git add -A 
-	git ci -m "Generated gh-pages `git log master -1 --pretty=short --abbrev-commit`" && \
-		git push origin gh-pages ; git checkout master
+	git clone `git config --get remote.origin.url` $(GH_PAGES_DIR)
+	cd $(GH_PAGES_DIR) && \
+		git checkout gh-pages && \
+		git checkout $(GH_PAGES_SOURCES) && \
+		git reset HEAD && \
+		cd $(GH_PAGES_DIR)/doc && \
+		rm -rf build _sources _static && \
+		make html && \
+		mv -fv build/html/* ./ && \
+		rm -rf $(GH_PAGES_SOURCES) build && \
+		git add -A  && \
+		git commit -m "Generated gh-pages `git log master -1 --pretty=short --abbrev-commit`" && \
+		git push origin gh-pages 
+	rm -rf $(GH_PAGES_DIR)
