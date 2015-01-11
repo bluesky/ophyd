@@ -1,5 +1,5 @@
 from __future__ import print_function
-import logging
+# import logging
 import sys
 import time
 from threading import Thread
@@ -133,7 +133,7 @@ class RunEngine(object):
                 break
             # execute user code
             # print('execute user code')
-            #detvals = {d.name: d.value for d in dets}
+            # detvals = {d.name: d.value for d in dets}
             # TODO: handle triggers here (pvs that cause detectors to fire)
             if trigs is not None:
                 for t in trigs:
@@ -145,7 +145,7 @@ class RunEngine(object):
             [detvals.update({d.name: d.value}) for d in dets]
             detvals.update(posvals)
             # TODO: timestamp this datapoint?
-            #data.update({'timestamp': time.time()})
+            # data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
             print('datapoint[{}]: {}'.format(seqno, detvals))
             event = data_collection.format_event(hdr, evdesc,
@@ -158,6 +158,8 @@ class RunEngine(object):
                 data[k].append(v)
 
             if kwargs.get('positioners') is None:
+                break
+            if len(kwargs.get('positioners')) == 0:
                 break
         self._scan_state = False
         return
@@ -174,11 +176,11 @@ class RunEngine(object):
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
         header = data_collection.create_run_header(scan_id=runid, **scan_args)
-        #header = {'run_header': 'Foo'}
+        # header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
         # print('keys = %s'%keys)
-        #event_descriptor = {'a': 1, 'b':2}
+        # event_descriptor = {'a': 1, 'b':2}
         event_descriptor = data_collection.create_event_descriptor(
             run_header=header, event_type_id=1, data_keys=keys,
             descriptor_name='Scan Foo')
