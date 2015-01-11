@@ -8,7 +8,7 @@ PAPER         =
 BUILDDIR      = build
 
 # For auto gh-pages
-GH_PAGES_SOURCES = Makefile source 
+GH_PAGES_SOURCES = doc/Makefile doc/source 
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
