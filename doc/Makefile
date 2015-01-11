@@ -166,7 +166,7 @@ gh-pages:
 		cd $(GH_PAGES_DIR)/doc && \
 		rm -rf build _sources _static && \
 		make html && \
-		mv -fv build/html/* ./ && \
+		mv -fv build/html/* ../ && \
 		rm -rf $(GH_PAGES_SOURCES) build && \
 		git add -A  && \
 		git commit -m "Generated gh-pages `git log master -1 --pretty=short --abbrev-commit`" && \
