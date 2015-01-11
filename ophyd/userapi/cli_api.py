@@ -10,10 +10,12 @@ import sys
 from contextlib import contextmanager, closing
 from StringIO import StringIO
 
+from IPython.utils.coloransi import TermColors as tc
+
 import numpy as np
 from epics import caget, caput
 
-from ..controls.positioner import EpicsMotor, Positioner
+from ..controls.positioner import EpicsMotor, Positioner, PVPositioner
 from ..session import get_session_manager
 
 session_mgr = get_session_manager()
@@ -170,25 +172,31 @@ def catch_keyboard_interrupt(positioners):
     try:
         yield
     except KeyboardInterrupt:
-        print("[!!] ABORTED : Commanding all positioners to stop.")
+        print(tc.Red + "[!!] ABORTED "
+              ": Commanding all positioners to stop.")
         for p in positioners:
             p.stop()
-            print("[--] Stopping {}".format(p.name))
+            print("{}[--] Stopping {}{}".format(tc.Red, tc.LightRed, p.name))
 
+    print(tc.Normal, end='')
     blink(True)
 
 
 @_ensure_positioner_pair
 def mov(positioner, position, quiet=False):
-    """Move a positioner to a given position
+    """Move positioners to given positions
 
-    :param positioner: A single positioner or a collection of
-                       positioners to move
-    :param position: A single position or a collection of positions.
+    Move positioners using the move method of the Positioner class.
+
+    Args:
+        positioner: Positioner or list of Positioners to move
+        position: Values (single or list) to move positioners to.
+        quiet: If quiet is true then don't print to screen.
 
     """
 
     print('\n   ', end='')
+    print(tc.Green, end='')
     for p in positioner:
         print_string(p.name)
     print("\n")
@@ -206,29 +214,31 @@ def mov(positioner, position, quiet=False):
         done = False
         while not all(s.done for s in stat) or (flag < 2):
             if not quiet:
+                print(tc.LightGreen, end='')
                 print('   ', end='')
                 for p in positioner:
                     print_value(p.position, egu=p.egu)
                 print('', end='\r')
-            time.sleep(0.05)
+            time.sleep(0.01)
             done = all(s.done for s in stat)
             if done:
                 flag += 1
 
-    print('\n')
+    print(tc.Normal + '\n')
 
 
 @_ensure_positioner_pair
 def movr(positioner, position, quiet=False):
-    """Move a positioner to a relative position
+    """Move positioners to given positions
 
-    :param positioner: A single positioner or a collection of
-                       positioners to move
-    :param position: A single position or a collection of positions.
-    :param quiet: Do not print any output to console.
+    Move positioners using the move method of the Positioner class.
+
+    Args:
+        positioner: Positioner or list of Positioners to move
+        position: Values (single or list) to move positioners to.
+        quiet: If quiet is true then don't print to screen.
 
     """
-    # Get current positions
 
     _start_val = [p.position for p in positioner]
     for v in _start_val:
@@ -241,34 +251,54 @@ def movr(positioner, position, quiet=False):
 
 @_ensure_positioner
 def set_lm(positioner, limits):
-    """Set the positioner limits
+    """Set the limits of the positioner
 
-    Note : Currently this only works for EpicsMotor instances
-    :param positioner: A single positioner or a collection of
-                       positioners to move
-    :param limits: A single tupple or a collection of tuples for
-                       the form (+ve, -ve) limits.
+    Sets the limits of the positioner or list of positioners. For EpicsMotors
+    the fields .HLM and .LLM are set to the high and low limits respectively.
+    For PVPositioners the .DRVH and .DRVL fields are set on the setopoint
+    record. If neither method works then an IOError is raised.
+
+    Args:
+        positioner: A single positioner or a collection of
+            positioners to set the limits of.
+        limits: A single tupple or a collection of tuples for
+            the form (+ve, -ve) limits.
+
+    Raises:
+        IOError: If the caput (EPICS put) fails then an IOError is raised.
 
     """
 
     print('')
     msg = ''
 
+    high_fields = []
+    low_fields = []
     for p in positioner:
-        if not isinstance(p, EpicsMotor):
-            raise ValueError("Positioners must be EpicsMotors to set limits")
+        if isinstance(p, EpicsMotor):
+            high_fields.append(p._record + '.HLM')
+            low_fields.append(p._record + '.LLM')
+        elif isinstance(p, PVPositioner):
+            high_fields.append(p.setpoint_pvname[0] + '.DRVH')
+            low_fields.append(p.setpoint_pvname[0] + '.DRVL')
+        else:
+            raise TypeError("Positioners must be EpicsMotors or PVPositioners"
+                            "to set the limits")
 
-    for p, lim in zip(positioner, limits):
+    for p, lim, high_field, low_field in zip(positioner,
+                                             limits,
+                                             high_fields, low_fields):
         lim1 = max(lim)
         lim2 = min(lim)
-        if not caput(p._record + ".HLM", lim1):
-            # Fixme : Add custom exception class
-            raise Exception("Unable to set limits for %s", p.name)
+        if not caput(high_field, lim1):
+            raise IOError("Unable to set high limit for {}"
+                          " writing to PV {}.".format(p.name, high_field))
         msg += "Upper limit set to {:.{prec}g} for positioner {}\n".format(
                lim1, p.name, prec=FMT_PREC)
 
-        if not caput(p._record + ".LLM", lim2):
-            raise Exception("Unable to set limits for %s", p.name)
+        if not caput(low_field, lim2):
+            raise IOError("Unable to set low limit for {}"
+                          " writing to PV {}.".format(p.name, low_field))
         msg += "Lower limit set to {:.{prec}g} for positioner {}\n".format(
                lim2, p.name, prec=FMT_PREC)
 
@@ -281,11 +311,17 @@ def set_lm(positioner, limits):
 def set_pos(positioner, position):
     """Set the position of a positioner
 
-    Note : Currently this only works for EpicsMotor instances
-    :param positioner: A single positioner or a collection of
-                       positioners to move
-    :param position: A single position or a collection of positions.
+    Set the position of a positioner or positioners to the value position.
+    This function only works for EpicsMotors (Based on the EPICS Motor Record)
+    and uses the .OFF field to set the current position to the value passed to
+    the function.
 
+    Args:
+        positioner: Positioner or list of positioners.
+        position: New position, or list of positions to set the positioners to.
+
+    Raises:
+        TypeError: If positioner is not an instance of an EpicsMotor.
     """
     for p in positioner:
         if not isinstance(p, EpicsMotor):
@@ -321,17 +357,18 @@ def set_pos(positioner, position):
     logbook.log(msg + '\n' + lmsg)
 
 
-@ensure((Positioner,), {'positioners': Positioner})
-def wh_pos(positioners=None):
-    """Print the current position of Positioners
+def wh_pos(positioners):
+    """Get the current position of Positioners and print to screen.
 
-    Print to the screen positioners and their current values.
+    Print to the screen the position of the positioners in a formated table.
+    If positioners is None then get all registered positioners from the
+    session manager.
 
-    Parameters
-    ----------
-    positioners : Positioner, list of Positioners or None
-                  Positioners to output. If None print all
-                  positioners positions.
+    Args:
+        positioners : Positioner, list of Positioners or None
+
+    Returns:
+        Nothing.
     """
     if positioners is None:
         positioners = [session_mgr.get_positioners()[d]
@@ -340,17 +377,18 @@ def wh_pos(positioners=None):
     _print_pos(positioners, file=sys.stdout)
 
 
-@ensure((Positioner,), {'positioners': Positioner})
 def log_pos(positioners=None):
-    """Log the current position of Positioners
+    """Get the current position of Positioners and make a logbook entry.
 
-    Print to the screen positioners and their current values.
+    Print to the screen the position of the positioners and make a logbook
+    text entry. If positioners is None then get all registered positioners
+    from the session manager.
 
-    Parameters
-    ----------
-    positioners : Positioner, list of Positioners or None
-                  Positioners to output. If None print all
-                  positioners positions.
+    Args:
+        positioners : Positioner, list of Positioners or None
+
+    Returns:
+        The ID of the logbook entry returned by the logbook.log method.
     """
     if positioners is None:
         positioners = [session_mgr.get_positioners()[d]
@@ -378,6 +416,7 @@ def log_pos(positioners=None):
     id = logbook.log(msg, properties=[p])
 
     print('Logbook positions added as Logbook ID {}'.format(id))
+    return id
 
 
 def _print_pos(positioners, file=sys.stdout):
