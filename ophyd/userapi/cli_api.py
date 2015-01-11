@@ -3,9 +3,6 @@ Command Line Interface to opyd objects
 
 """
 
-# Green = \033[0;32m{}\033[0m
-# Red = \033[0;31m{}\033[0m
-
 from __future__ import print_function
 import time
 import functools
