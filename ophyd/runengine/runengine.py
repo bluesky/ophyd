@@ -1,5 +1,5 @@
 from __future__ import print_function
-import logging
+# import logging
 import sys
 import time
 from threading import Thread
@@ -58,9 +58,11 @@ class Demuxer(object):
 
 
 class RunEngine(object):
+
     '''
 
     '''
+
     def __init__(self, logger):
         self._demuxer = Demuxer()
         self._logger = register_object(self)
@@ -100,20 +102,20 @@ class RunEngine(object):
 
         # status now holds the MoveStatus() instances
         time.sleep(0.05)
-        #TODO: this should iterate at most N times to catch hangups
+        # TODO: this should iterate at most N times to catch hangups
         while not all(s.done for s in status):
             time.sleep(0.1)
 
         if settle_time is not None:
             time.sleep(settle_time)
-        #return {pos.name: pos.position for pos in positioners}
+        # return {pos.name: pos.position for pos in positioners}
         ret = {}
         [ret.update({pos.name: pos.position}) for pos in positioners]
 
         return ret
 
     def _start_scan(self, **kwargs):
-        print('Starting Scan...{}'.format(kwargs))
+        # print('Starting Scan...{}'.format(kwargs))
         hdr = kwargs.get('header')
         evdesc = kwargs.get('event_descriptor')
         dets = kwargs.get('detectors')
@@ -127,35 +129,40 @@ class RunEngine(object):
             if posvals is None:
                 break
             # execute user code
-            print('execute user code')
-            #detvals = {d.name: d.value for d in dets}
-            #TODO: handle triggers here (pvs that cause detectors to fire)
+            # print('execute user code')
+            # detvals = {d.name: d.value for d in dets}
+            # TODO: handle triggers here (pvs that cause detectors to fire)
             if trigs is not None:
                 for t in trigs:
                     t.put(1, wait=True)
-            #TODO: again, WTF is with the delays required? CA is too fast,
+            # TODO: again, WTF is with the delays required? CA is too fast,
             # and python is too slow (or vice versa!)
             time.sleep(0.05)
             detvals = {}
             [detvals.update({d.name: d.value}) for d in dets]
             detvals.update(posvals)
-            #TODO: timestamp this datapoint?
-            #data.update({'timestamp': time.time()})
+            # TODO: timestamp this datapoint?
+            # data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
-            print('datapoint[{}]: {}'.format(seqno,detvals))
+            print('datapoint[{}]: {}'.format(seqno, detvals))
             event = data_collection.format_event(hdr, evdesc,
-                                              seq_no=seqno,
-                                              data=detvals)
+                                                 seq_no=seqno,
+                                                 data=detvals)
             create_event(event)
             seqno += 1
-            #update the 'data' object from detvals dict
-            for k,v in detvals.iteritems():
+            # update the 'data' object from detvals dict
+            for k, v in detvals.iteritems():
                 data[k].append(v)
+
+            if kwargs.get('positioners') is None:
+                break
+            if len(kwargs.get('positioners')) == 0:
+                break
         self._scan_state = False
         return
 
     def _get_data_keys(self, **kwargs):
-        #ATM, these are both lists
+        # ATM, these are both lists
         pos = kwargs.get('positioners')
         det = kwargs.get('detectors')
 
@@ -166,19 +173,19 @@ class RunEngine(object):
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
         header = data_collection.create_run_header(scan_id=runid, **scan_args)
-        #header = {'run_header': 'Foo'}
+        # header = {'run_header': 'Foo'}
         keys = self._get_data_keys(**scan_args)
-        data = {k:[] for k in keys}
-        print('keys = %s'%keys)
-        #event_descriptor = {'a': 1, 'b':2}
+        data = {k: [] for k in keys}
+        # print('keys = %s'%keys)
+        # event_descriptor = {'a': 1, 'b':2}
         event_descriptor = data_collection.create_event_descriptor(
-                            run_header=header, event_type_id=1, data_keys=keys,
-                            descriptor_name='Scan Foo')
+            run_header=header, event_type_id=1, data_keys=keys,
+            descriptor_name='Scan Foo')
         if scan_args is not None:
             scan_args['header'] = header
             scan_args['event_descriptor'] = event_descriptor
             scan_args['data'] = data
-        #write the header and event_descriptor to the header PV
+        # write the header and event_descriptor to the header PV
 
         self._begin_run(begin_args)
 
