@@ -7,6 +7,11 @@ SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = build
 
+# For auto gh-pages
+GH_PAGES_SOURCES = doc/Makefile doc/source 
+GH_PAGES_DIR := $(shell mktemp -d)
+GH_PAGES_BRANCH = cli_refactor
+
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
@@ -151,3 +156,22 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+gh-pages:
+	git clone `git config --get remote.origin.url` $(GH_PAGES_DIR)
+	cd $(GH_PAGES_DIR) && \
+		git checkout gh-pages && \
+		mkdir -p $(GH_PAGES_DIR)/doc && \
+		git checkout master $(GH_PAGES_SOURCES) && \
+		git reset HEAD && \
+		cd $(GH_PAGES_DIR)/doc && \
+		make html && \
+		cp -rv build/html/* ../ && \
+		rm -rf $(GH_PAGES_DIR)/$(GH_PAGES_SOURCES) && \
+		rm -rf $(GH_PAGES_DIR)/build && \
+		rm -rf $(GH_PAGES_DIR)/doc && \
+		cd $(GH_PAGES_DIR) && \
+		git add -A  && \
+		git commit -m "Generated gh-pages `git log master -1 --pretty=short --abbrev-commit`" && \
+		git push origin gh-pages 
+	rm -rf $(GH_PAGES_DIR)
