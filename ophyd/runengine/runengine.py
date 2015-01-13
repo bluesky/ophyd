@@ -171,12 +171,14 @@ class RunEngine(object):
 
     def _get_data_keys(self, **kwargs):
         # ATM, these are both lists
-        pos = kwargs.get('positioners')
-        det = kwargs.get('detectors')
+        names = [o.name for o in kwargs.get('positioners')]
+        for det in kwargs.get('detectors'):
+            if isinstance(det, SignalGroup):
+                names += [o.name for o in det.signals]
+            else:
+                names.append(det.name)
 
-        objs = pos + det
-
-        return [o.name for o in objs]
+        return names
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
