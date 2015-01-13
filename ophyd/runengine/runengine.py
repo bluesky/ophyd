@@ -6,6 +6,7 @@ from threading import Thread
 from Queue import Queue
 
 from ..session import register_object
+from ..controls.signal import SignalGroup
 
 try:
     from databroker.api import data_collection
@@ -139,7 +140,14 @@ class RunEngine(object):
             # and python is too slow (or vice versa!)
             time.sleep(0.05)
             detvals = {}
-            [detvals.update({d.name: d.value}) for d in dets]
+            for det in dets:
+                if isinstance(det, SignalGroup):
+                    # If we have a signal group, loop over all names
+                    # and signals
+                    for sig in det.signals:
+                        detvals.update({sig.name: sig.value})
+                else:
+                    detvals.update({det.name: det.value})
             detvals.update(posvals)
             # TODO: timestamp this datapoint?
             # data.update({'timestamp': time.time()})

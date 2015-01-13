@@ -32,13 +32,17 @@ class EpicsScaler(SignalGroup):
         Eventually need to provide PR1..16 -- preset counts too.
         '''
         signals = [EpicsSignal(self.field_pv('CNT'),
-                               alias='_count_ctl'),
+                               alias='_count_ctl',
+                               name=''.join([self.name, '_cnt'])),
                    EpicsSignal(self.field_pv('CONT'),
-                               alias='_count_mode'),
+                               alias='_count_mode',
+                               name=''.join([self.name, '_cont'])),
                    EpicsSignal(self.field_pv('T'),
-                               alias='_elapsed_time'),
+                               alias='_elapsed_time',
+                               name=''.join([self.name, '_t'])),
                    EpicsSignal(self.field_pv('TP'),
-                               alias='_preset_time')
+                               alias='_preset_time',
+                               name=''.join([self.name, '_preset']))
                    ]
 
         # create the 'NM1..numchan' channel name Signals
@@ -46,6 +50,7 @@ class EpicsScaler(SignalGroup):
         for ch in range(1, numchan + 1):
             name = ''.join([self.field_pv('NM'), str(ch)])
             ch_names.append(EpicsSignal(name,
+                            name=''.join([self.name, '_nm', str(ch)]),
                             alias=''.join(['_ch', str(ch), '_name'])))
         signals += ch_names
         # create the 'S1..numchan' channel count Signals (read-only)
@@ -53,6 +58,7 @@ class EpicsScaler(SignalGroup):
         for ch in range(1, numchan + 1):
             name = ''.join([self.field_pv('S'), str(ch)])
             ch_names.append(EpicsSignal(name, rw=False,
+                            name=''.join([self.name, '_s', str(ch)]),
                             alias=''.join(['_ch', str(ch), '_count'])))
         signals += ch_names
 
@@ -86,6 +92,10 @@ class EpicsScaler(SignalGroup):
     # TODO: should writes be non-blocking by default?
     def stop(self):
         self._count_ctl.value = 0
+
+    @property
+    def count(self):
+        return self._count_ctl
 
     @property
     def count_mode(self):
