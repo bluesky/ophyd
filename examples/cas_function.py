@@ -110,6 +110,16 @@ def failure_func():
     raise ValueError('failed, somehow')
 
 
+@CasFunction(return_value=True)
+def bool_func(bool_one=False, bool_two=True):
+    '''
+    Boolean values turn into EPICS enums, with values: ['False', 'True']
+    '''
+    logger.info('bool_func called: bool_one=%r bool_two=%r' % (bool_one, bool_two))
+
+    return bool(bool_one or bool_two)
+
+
 # Can't use positional arguments:
 try:
     @CasFunction(prefix='test:')
@@ -147,7 +157,7 @@ def test_async():
     sig_proc.value = 1
 
     time.sleep(0.1)
-    logger.info('result through channel access: %s' % sig_ret.value)
+    logger.info('result through channel access: %r' % sig_ret.value)
 
     logger.info('called normally: %r' % async_func(a=a, b=b))
 
@@ -252,6 +262,39 @@ def test_failure():
     logger.info('status pv shows: %r' % sig_status.value)
 
 
+def test_bool():
+    logger.info('logical or of two boolean values')
+    pvnames = bool_func.get_pvnames()
+
+    sig_bool1 = EpicsSignal(pvnames['bool_one'])
+    sig_bool2 = EpicsSignal(pvnames['bool_two'])
+    sig_proc = EpicsSignal(pvnames['process'])
+    sig_status = EpicsSignal(pvnames['status'])
+    sig_ret = EpicsSignal(pvnames['retval'])
+
+    one, two = True, False
+    sig_bool1.value = one
+    sig_bool2.value = two
+    sig_proc.value = 1
+
+    time.sleep(0.1)
+    logger.info('result through channel access: %r (string is %r)' %
+                (sig_ret.value, sig_ret.get(as_string=True)))
+
+    logger.info('called normally: %r' % bool_func(bool_one=one, bool_two=two))
+
+    one, two = False, False
+    sig_bool1.value = one
+    sig_bool2.value = two
+    sig_proc.value = 1
+
+    time.sleep(0.1)
+    logger.info('result through channel access: %r (string is %r)' %
+                (sig_ret.value, sig_ret.get(as_string=True)))
+
+    logger.info('called normally: %r' % bool_func(bool_one=one, bool_two=two))
+
+
 def test():
     loggers = ('ophyd.controls.cas',
                'ophyd.controls.cas.function',
@@ -266,6 +309,7 @@ def test():
     test_array_input()
     test_no_arg()
     test_failure()
+    test_bool()
 
 
 if __name__ == '__main__':

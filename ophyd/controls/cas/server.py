@@ -58,7 +58,7 @@ class caServer(cas.caServer):
                 str: cas.aitEnumString,
                 float: cas.aitEnumFloat64,
                 int: cas.aitEnumInt32,
-                bool: cas.aitEnumInt32,
+                bool: cas.aitEnumEnum16,
 
                 np.int8: cas.aitEnumInt8,
                 np.uint8: cas.aitEnumUint8,
