@@ -65,6 +65,11 @@ def test():
 
     det = SimDetector(det1_prefix, cam=det1_cam)
 
+    det.image_mode = 'Single'
+    det.image1.enable = 'Enable'
+
+    det.array_callbacks = 'Enable'
+
     img = det.read()
     print('Image: %s' % img)
 
@@ -74,6 +79,8 @@ def test():
 
     log_values(det)
     # det.acquire = 1
+    # logger.info('Acquired filename(s): {}'.format(det.tiff1.get_filenames()))
+
     logger.debug('acquire = %d' % det.acquire.value)
 
     image1_suffix = config.ad_plugins['image'][0]
