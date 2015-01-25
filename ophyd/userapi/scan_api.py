@@ -1,6 +1,6 @@
 from __future__ import print_function
 import numpy as np
-from time import sleep, strftime
+from time import sleep
 import six
 import sys
 import collections
@@ -43,8 +43,7 @@ class Data(object):
 class Scan(object):
     _shared_config = {'default_triggers': [],
                       'default_detectors': [],
-                      'scan_data': None,
-                     }
+                      'scan_data': None, }
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -183,8 +182,8 @@ class Scan(object):
 
         After configuring the detectors and triggers the trajectory is loaded
         into the positioners using the :py:meth:`set_trajectory` method.
-        Finally the :py:class:`RunEngine` is initialised from the scans config and
-        executed using the :py:meth:`start_run()` method.
+        Finally the :py:class:`RunEngine` is initialised from the scans config
+        and executed using the :py:meth:`start_run()` method.
 
         The data which is collected in the run, returned by the run-engine is
         appended to a ringbuffer and can be accessed through the :py:meth:data
@@ -480,6 +479,7 @@ class AScan(Scan):
         self.dimension = dimension
 
         self.run(**kwargs)
+
 
 class DScan(AScan):
     def pre_scan(self):

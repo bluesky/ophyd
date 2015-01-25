@@ -234,6 +234,8 @@ def set_pos(positioner, position):
 
     >>>set_pos([m1, m2], [1, 2])
 
+    Raises:
+        TypeError: If positioner is not an instance of an EpicsMotor.
     """
     for p in positioner:
         if not isinstance(p, EpicsMotor):
