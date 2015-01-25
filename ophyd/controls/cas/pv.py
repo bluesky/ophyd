@@ -172,8 +172,12 @@ class CasPV(cas.casPV):
         if count == 0 and self._ca_type in caServer.numerical_types:
             alarm_fcn = self._check_numerical
         elif self._ca_type in caServer.enum_types:
-            self._enums = list(self._value)
-            self._value = self._value[0]
+            if type_ is bool:
+                self._enums = ['False', 'True']
+                self._value = self._enums[bool(value)]
+            else:
+                self._enums = list(self._value)
+                self._value = self._value[0]
 
             if np.array(self._value).dtype.type != np.string_:
                 raise ValueError('Enum list item types should be strings (specify an np.array'

@@ -313,7 +313,7 @@ class EpicsSignal(Signal):
         if as_string is None:
             as_string = self._string
 
-        ret = self._read_pv.get(**kwargs)
+        ret = self._read_pv.get(as_string=as_string, **kwargs)
 
         if as_string:
             return waveform_to_string(ret)
@@ -352,6 +352,7 @@ class EpicsSignal(Signal):
                                    self._write_pv.pvname)
 
         use_complete = kwargs.get('use_complete', self._put_complete)
+
         self._write_pv.put(value, wait=wait, use_complete=use_complete,
                            **kwargs)
 
