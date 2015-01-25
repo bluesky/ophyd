@@ -12,7 +12,6 @@ from StringIO import StringIO
 
 from IPython.utils.coloransi import TermColors as tc
 
-import numpy as np
 from epics import caget, caput
 
 from ..controls.positioner import EpicsMotor, Positioner, PVPositioner
@@ -39,159 +38,50 @@ FMT_LEN = 18
 FMT_PREC = 6
 
 
-def logbook_add_objects(objects, extra_pvs=None):
-    """Add to the logbook aditional information on ophyd objects.
+def ensure(*ensure_args):
+    def wrap(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            # First check if we have an iterable first
+            # on the first arg
+            # if not then make these all lists
+            if len(args) > 0:
+                if not hasattr(args[0], "__iter__"):
+                    args = tuple([[a] for a in args])
+            # Now do type checking ignoring None
+            for arg, t in zip(args, ensure_args):
+                if t is not None:
+                    for x in arg:
+                        if not isinstance(x, t):
+                            raise TypeError("Incorect type in parameter list")
 
-    :param objects: Objects to add to log entry.
-    :type objects: Ophyd objects
-    :param extra_pvs: Extra PVs to include in report
-    :type extra_pvs: List of strings
-
-    This routine takes objects and possible extra pvs and adds to the log
-    entry information which is not printed to stdout/stderr.
-
-    """
-
-    msg = ''
-    msg += '{:^43}|{:^22}|{:^50}\n'.format('PV Name', 'Name', 'Value')
-    msg += '{:-^120}\n'.format('')
-
-    # Make a list of all PVs and positioners
-    pvs = [o.report['pv'] for o in objects]
-    names = [o.name for o in objects]
-    values = [str(o.value) for o in objects]
-    if extra_pvs is not None:
-        pvs += extra_pvs
-        names += ['None' for e in extra_pvs]
-        values += [caget(e) for e in extra_pvs]
-
-    for a, b, c in zip(pvs, names, values):
-        msg += 'PV:{:<40} {:<22} {:<50}\n'.format(a, b, c)
-
-    return msg
+            f(*args, **kwargs)
+        return wrapper
+    return wrap
 
 
-def _list_of(value, type_=str):
-    """Return a list of types defined by type_"""
-    if value is None:
-        return None
-    elif isinstance(value, type_):
-        return [value]
-
-    if any([not isinstance(s, type_) for s in value]):
-        raise ValueError("The list is of incorrect type")
-
-    return [s for s in value]
-
-
-def print_header(title='', char='-', len=80, file=sys.stdout):
-    print('{:{char}^{len}}'.format(title, char=char, len=len), file=file)
-
-
-def print_string(val, size=FMT_LEN, pre='', post=' ', file=sys.stdout):
-    print('{}{:<{size}}{}'.format(pre, val, post, size=size), end='', file=file)
-
-
-def print_value(val, prec=FMT_PREC, egu='', **kwargs):
-    if val is not None:
-        print_string('{:.{fmt}} {}'.format(val, egu, fmt=prec), **kwargs)
-    else:
-        print_string('', **kwargs)
-
-
-def print_value_aligned(val, size=FMT_LEN, prec=FMT_PREC, egu='', **kwargs):
-    fmt1 = '{{0:>{0}}}.{{1:<{1}}}'.format(size-prec-6, prec)
-    fmt2 = '{{:.{}f}}'.format(prec)
-    s = fmt2.format(val).rstrip('0').split('.')
-    if len(s) == 1:
-        s = (s[0], '0')
-    elif s[1] == '':
-        s[1] = '0'
-    s[1] = '{} {}'.format(s[1], egu)
-    print_string(fmt1.format(*(s[:2])), **kwargs)
-
-
-def blink(on=True, file=sys.stdout):
-    if on:
-        print("\x1b[?25h", end='', file=file)
-    else:
-        print("\x1b[?25l", end='', file=file)
-
-
-def _ensure_positioner_pair(func):
-    @functools.wraps(func)
-    def inner(positioner, position, *args, **kwargs):
-        pos = _list_of(positioner, Positioner)
-        val = _list_of(position, (float, int))
-        return func(pos, val, *args, **kwargs)
-    return inner
-
-
-def _ensure_positioner_tuple(func):
-    @functools.wraps(func)
-    def inner(positioner, tup, *args, **kwargs):
-        pos = _list_of(positioner, Positioner)
-        t = _list_of(tup, (tuple, list, np.array))
-        return func(pos, t, *args, **kwargs)
-    return inner
-
-
-def _ensure_positioner(func):
-    @functools.wraps(func)
-    def inner(positioner, *args, **kwargs):
-        pos = _list_of(positioner, Positioner)
-        return func(pos, *args, **kwargs)
-    return inner
-
-
-def ensure(ensure_tuple, ensure_dict):
-    def ensure_decorator(func):
-        @functools.wraps(func)
-        def inner(*args, **kwargs):
-            args = tuple([_list_of(a, v) for a, v in zip(args, ensure_tuple)])
-            for key, value in ensure_dict.iteritems():
-                if key in kwargs:
-                    kwargs[key] = _list_of(kwargs[key], value)
-            return func(*args, **kwargs)
-        return inner
-    return ensure_decorator
-
-
-@contextmanager
-def catch_keyboard_interrupt(positioners):
-    """Context manager to capture Keyboard Interrupt and stop motors
-
-    This context manager should be used when moving positioners via the cli
-    to capture the keyboardInterrupt and ensure that motors are stopped and
-    clean up the output to the screen.
-
-    """
-
-    blink(False)
-
-    try:
-        yield
-    except KeyboardInterrupt:
-        print(tc.Red + "[!!] ABORTED "
-              ": Commanding all positioners to stop.")
-        for p in positioners:
-            p.stop()
-            print("{}[--] Stopping {}{}".format(tc.Red, tc.LightRed, p.name))
-
-    print(tc.Normal, end='')
-    blink(True)
-
-
-@_ensure_positioner_pair
-def mov(positioner, position, quiet=False):
+@ensure(Positioner, None)
+def mov(positioner, position):
     """Move positioners to given positions
 
     Move positioners using the move method of the Positioner class.
 
-    Args:
-        positioner: Positioner or list of Positioners to move
-        position: Values (single or list) to move positioners to.
-        quiet: If quiet is true then don't print to screen.
+    Parameters
+    ----------
+        positioner: Positioner or list
+            Positioners to move
+        position: float or list of float
+            Values to move positioners to.
+
+    Examples
+    --------
+    Move a single positioner `slt1_xc` to 10::
+
+    >>>mov(slt1_xc, 10)
+
+    Move positioner `slt1_xg` and `slt1_yg` to 2 and 3 respectively::
+
+    >>>mov([slt1_xg, slt1_yg], [2, 3])
 
     """
 
@@ -213,12 +103,11 @@ def mov(positioner, position, quiet=False):
         flag = 0
         done = False
         while not all(s.done for s in stat) or (flag < 2):
-            if not quiet:
-                print(tc.LightGreen, end='')
-                print('   ', end='')
-                for p in positioner:
-                    print_value(p.position, egu=p.egu)
-                print('', end='\r')
+            print(tc.LightGreen, end='')
+            print('   ', end='')
+            for p in positioner:
+                print_value(p.position, egu=p.egu)
+            print('', end='\r')
             time.sleep(0.01)
             done = all(s.done for s in stat)
             if done:
@@ -227,29 +116,25 @@ def mov(positioner, position, quiet=False):
     print(tc.Normal + '\n')
 
 
-@_ensure_positioner_pair
-def movr(positioner, position, quiet=False):
-    """Move positioners to given positions
+def movr(positioner, position):
+    """Move positioners relative to their current positon.
 
-    Move positioners using the move method of the Positioner class.
-
-    Args:
-        positioner: Positioner or list of Positioners to move
-        position: Values (single or list) to move positioners to.
-        quiet: If quiet is true then don't print to screen.
+    See Also
+    --------
+    mov : move positioners to an absolute position.
 
     """
 
     _start_val = [p.position for p in positioner]
     for v in _start_val:
         if v is None:
-            raise ValueError("Unable to read motor position for relative move")
+            raise IOError("Unable to read motor position for relative move")
 
     _new_val = [a + b for a, b in zip(_start_val, position)]
-    mov(positioner, _new_val, quiet)
+    mov(positioner, _new_val)
 
 
-@_ensure_positioner
+@ensure(Positioner, None)
 def set_lm(positioner, limits):
     """Set the limits of the positioner
 
@@ -258,14 +143,26 @@ def set_lm(positioner, limits):
     For PVPositioners the .DRVH and .DRVL fields are set on the setopoint
     record. If neither method works then an IOError is raised.
 
-    Args:
-        positioner: A single positioner or a collection of
-            positioners to set the limits of.
-        limits: A single tupple or a collection of tuples for
-            the form (+ve, -ve) limits.
+    Parameters
+    ----------
+        positioner: positioner or list of positioners
+        limits: single or list of tuple of form (+ve, -ve) limits
 
-    Raises:
-        IOError: If the caput (EPICS put) fails then an IOError is raised.
+    Raises
+    ------
+        IOError
+            If the caput (EPICS put) fails then an IOError is raised.
+
+    Examples
+    --------
+    Set the limits of motor `m1` to (10, -10)::
+
+    >>>set_lm(slt1_xc, (10, -10))
+
+    Set the limits of motors `m1` and `m2` to (2, -2) and (3, -3)
+    respectively::
+
+    >>>set_lm([m1, m2], [[2,-2], [3, -3]])
 
     """
 
@@ -307,7 +204,7 @@ def set_lm(positioner, limits):
         logbook.log(msg)
 
 
-@_ensure_positioner_pair
+@ensure(Positioner, (float, int))
 def set_pos(positioner, position):
     """Set the position of a positioner
 
@@ -316,12 +213,27 @@ def set_pos(positioner, position):
     and uses the .OFF field to set the current position to the value passed to
     the function.
 
-    Args:
+    Parameters
+    ----------
         positioner: Positioner or list of positioners.
-        position: New position, or list of positions to set the positioners to.
+        position: float or list of floats.
+            New position of positioners
 
-    Raises:
-        TypeError: If positioner is not an instance of an EpicsMotor.
+    Raises
+    ------
+        TypeError
+            If positioner is not an instance of an EpicsMotor.
+
+    Examples
+    --------
+    Set the position of motor m1 to 4::
+
+    >>>set_pos(m1, 4)
+
+    Set the position of motors m1 and m2 to 1 and 2 respectively::
+
+    >>>set_pos([m1, m2], [1, 2])
+
     """
     for p in positioner:
         if not isinstance(p, EpicsMotor):
@@ -357,18 +269,33 @@ def set_pos(positioner, position):
     logbook.log(msg + '\n' + lmsg)
 
 
-def wh_pos(positioners):
+@ensure(Positioner)
+def wh_pos(positioners=None):
     """Get the current position of Positioners and print to screen.
 
     Print to the screen the position of the positioners in a formated table.
     If positioners is None then get all registered positioners from the
     session manager.
 
-    Args:
+    Parameters
+    ----------
         positioners : Positioner, list of Positioners or None
 
-    Returns:
-        Nothing.
+    See Also
+    --------
+
+    log_pos : Log positioner values to logbook
+
+    Examples
+    --------
+    List all positioners::
+
+    >>>wh_pos()
+
+    List positioners `m1`, `m2` and `m3`::
+
+    >>>wh_pos([m1, m2, m3])
+
     """
     if positioners is None:
         positioners = [session_mgr.get_positioners()[d]
@@ -377,18 +304,23 @@ def wh_pos(positioners):
     _print_pos(positioners, file=sys.stdout)
 
 
+@ensure(Positioner)
 def log_pos(positioners=None):
     """Get the current position of Positioners and make a logbook entry.
 
     Print to the screen the position of the positioners and make a logbook
     text entry. If positioners is None then get all registered positioners
-    from the session manager.
+    from the session manager. This routine also creates session information
+    in the logbook so positions can be recovered.
 
-    Args:
+    Parameters
+    ----------
         positioners : Positioner, list of Positioners or None
 
-    Returns:
-        The ID of the logbook entry returned by the logbook.log method.
+    Returns
+    -------
+        int
+            The ID of the logbook entry returned by the logbook.log method.
     """
     if positioners is None:
         positioners = [session_mgr.get_positioners()[d]
@@ -417,6 +349,131 @@ def log_pos(positioners=None):
 
     print('Logbook positions added as Logbook ID {}'.format(id))
     return id
+
+
+def log_pos_diff(id=None, **kwargs):
+    """Move to positions located in logboook"""
+    values, objects = logbook_to_objects(id, **kwargs)
+
+    # Cycle through positioners and compare position with old value
+
+    for key, value in objects.iteritems():
+        print(values[key] - value.position)
+
+
+def logbook_to_objects(id=None, **kwargs):
+    """Search the logbook and return positioners"""
+    if logbook is None:
+        raise NotImplemented("No logbook is avaliable")
+
+    entry = logbook.find(id=id, **kwargs)
+    if len(entry) != 1:
+        raise ValueError("Search of logbook was not unique, please refine"
+                         "search")
+    try:
+        prop = entry[0]['properties']['OphydPositioners']
+    except KeyError:
+        KeyError('No property in log entry with positioner information')
+
+    try:
+        obj = eval(prop['objects'])
+        val = eval(prop['values'])
+    except:
+        RuntimeError('Unable to create objects from log entry')
+
+    objects = {o.name: o for o in obj}
+    return val, objects
+
+
+def logbook_add_objects(objects, extra_pvs=None):
+    """Add to the logbook aditional information on ophyd objects.
+
+    :param objects: Objects to add to log entry.
+    :type objects: Ophyd objects
+    :param extra_pvs: Extra PVs to include in report
+    :type extra_pvs: List of strings
+
+    This routine takes objects and possible extra pvs and adds to the log
+    entry information which is not printed to stdout/stderr.
+
+    """
+
+    msg = ''
+    msg += '{:^43}|{:^22}|{:^50}\n'.format('PV Name', 'Name', 'Value')
+    msg += '{:-^120}\n'.format('')
+
+    # Make a list of all PVs and positioners
+    pvs = [o.report['pv'] for o in objects]
+    names = [o.name for o in objects]
+    values = [str(o.value) for o in objects]
+    if extra_pvs is not None:
+        pvs += extra_pvs
+        names += ['None' for e in extra_pvs]
+        values += [caget(e) for e in extra_pvs]
+
+    for a, b, c in zip(pvs, names, values):
+        msg += 'PV:{:<40} {:<22} {:<50}\n'.format(a, b, c)
+
+    return msg
+
+
+def print_header(title='', char='-', len=80, file=sys.stdout):
+    print('{:{char}^{len}}'.format(title, char=char, len=len), file=file)
+
+
+def print_string(val, size=FMT_LEN, pre='', post=' ', file=sys.stdout):
+    print('{}{:<{size}}{}'.format(pre, val, post, size=size), end='', file=file)
+
+
+def print_value(val, prec=FMT_PREC, egu='', **kwargs):
+    if val is not None:
+        print_string('{:.{fmt}} {}'.format(val, egu, fmt=prec), **kwargs)
+    else:
+        print_string('', **kwargs)
+
+
+def print_value_aligned(val, size=FMT_LEN, prec=FMT_PREC, egu='', **kwargs):
+    fmt1 = '{{0:>{0}}}.{{1:<{1}}}'.format(size-prec-6, prec)
+    fmt2 = '{{:.{}f}}'.format(prec)
+    s = fmt2.format(val).rstrip('0').split('.')
+    if len(s) == 1:
+        s = (s[0], '0')
+    elif s[1] == '':
+        s[1] = '0'
+    s[1] = '{} {}'.format(s[1], egu)
+    print_string(fmt1.format(*(s[:2])), **kwargs)
+
+
+def blink(on=True, file=sys.stdout):
+    if on:
+        print("\x1b[?25h", end='', file=file)
+    else:
+        print("\x1b[?25l", end='', file=file)
+
+
+@contextmanager
+def catch_keyboard_interrupt(positioners):
+    """Context manager to capture Keyboard Interrupt and stop motors
+
+    This context manager should be used when moving positioners via the cli
+    to capture the keyboardInterrupt and ensure that motors are stopped and
+    clean up the output to the screen.
+
+    """
+
+    blink(False)
+
+    try:
+        yield
+    except KeyboardInterrupt:
+        print(tc.Red + "[!!] ABORTED "
+              ": Commanding all positioners to stop.")
+        for p in positioners:
+            p.stop()
+            print("{}[--] Stopping {}{}".format(tc.Red, tc.LightRed, p.name))
+
+    print(tc.Normal, end='')
+    blink(True)
 
 
 def _print_pos(positioners, file=sys.stdout):

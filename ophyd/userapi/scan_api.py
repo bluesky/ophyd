@@ -3,33 +3,57 @@ import numpy as np
 from time import sleep, strftime
 import six
 import sys
+import collections
+import itertools
 
 from IPython.utils.coloransi import TermColors as tc
 
 from ..runengine import RunEngine
 from ..session import get_session_manager
+from ..utils import LimitError
 
 session_manager = get_session_manager()
 logger = session_manager._logger
 
-__all__ = ['AScan', 'DScan', 'Scan']
+__all__ = ['AScan', 'DScan', 'Scan', 'Data']
 
-try:
-    logbook = session_manager['olog_client']
-except KeyError:
-    logbook = None
+
+class Data(object):
+    """Class for containing scan data"""
+    def __init__(self, data):
+        """Initialize class with data
+
+        Parameters
+        ----------
+
+        data : dict
+            Dictionary of data from scan
+
+        """
+        self._data_dict = data
+        for key, value in data.iteritems():
+            setattr(self, key, np.array(value))
+
+    @property
+    def data_dict(self):
+        """Dictionary of data objects"""
+        return self._data_dict
 
 
 class Scan(object):
     _shared_config = {'default_triggers': [],
-                      'default_detectors': []}
+                      'default_detectors': [],
+                      'scan_data': None,
+                     }
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
 
         self._run_eng = RunEngine(None)
 
-        self._last_data = None
+        if self._shared_config['scan_data'] is None:
+            self._shared_config['scan_data'] = collections.deque(maxlen=100)
+        self._data_buffer = self._shared_config['scan_data']
 
         self.triggers = None
         self.detectors = None
@@ -41,36 +65,75 @@ class Scan(object):
         self._plotx = None
         self._ploty = None
 
+        try:
+            self.logbook = session_manager['olog_client']
+        except KeyError:
+            self.logbook = None
+
+    def __call__(self, *args, **kwargs):
+        pass
+
     def check_paths(self):
-        """Check the paths against any limits of positioners"""
+        """Check the positioner paths
+
+        This routine checks the path of the positioners against limits by
+        using the :py:meth:`check_value` method.
+
+        Raises
+        ------
+        ValueError
+            Raised in the case that a positioner will be moved outside its
+            limits.
+
+        """
         for pos, path in zip(self.positioners, self.paths):
             for p in path:
-                if pos.check_value(p):
+                try:
+                    pos.check_value(p)
+                except LimitError:
                     raise ValueError('Scan moves positioner {} \
                                      out of limits {},{}'.format(
                                      pos.name, p.low_limit, p.high_limit))
 
     def __enter__(self):
+        """Entry point for context manager"""
         self.pre_scan()
 
     def __exit__(self, exec_type, exec_value, traceback):
+        """Exit point for context manager"""
         logger.debug("Scan context manager exited with %s", str(exec_value))
         self.post_scan()
 
     def pre_scan(self):
+        """Routine run before scan starts"""
         pass
 
     def post_scan(self):
+        """Routine run after scan has completed"""
         pass
 
-    def setup_detectors(self):
+    def setup_detectors(self, detectors):
+        """Routine run to setup detectors before scan starts
+
+        Parameters
+        ----------
+        detectors : list of Ophyd Objects
+            List of the detectors to configure.
+        """
         pass
 
-    def setup_triggers(self):
+    def setup_triggers(self, triggers):
+        """Routine run to setup triggers before scan starts
+
+        Parameters
+        ----------
+        triggers : list of OphydObjects
+            List of the triggers to configure.
+        """
         pass
 
     def format_plot(self):
-        '''
+        """
         Guess the positioners and detectors that the user cares about
 
         Returns
@@ -79,20 +142,25 @@ class Scan(object):
             The default positioners to set as the x axis
         ploty : list
             The list of positioners/detectors to plot on the y axis
-        '''
+        """
+
         pos_names = [pos.name for pos in self.positioners]
         det_names = [det.name for det in self.detectors]
         valid_names = pos_names + det_names
         # default value for the x axis
-        plotx = self.positioners[0].name
-        # if plotx is not a valid string, ignore it. if it is, make
-        # sure that it is in the positioners/detectors that the
-        # scan knows about
-        if isinstance(self._plotx, six.string_types):
-            if self._plotx:
-                for name in valid_names:
-                    if name in self._plotx:
-                        plotx = name
+        if len(self.positioners) > 0:
+            plotx = self.positioners[0].name
+            # if plotx is not a valid string, ignore it. if it is, make
+            # sure that it is in the positioners/detectors that the
+            # scan knows about
+            if isinstance(self._plotx, six.string_types):
+                if self._plotx:
+                    for name in valid_names:
+                        if name in self._plotx:
+                            plotx = name
+                            break
+        else:
+            plotx = None
 
         ploty = []
         # checking validity of self._ploty
@@ -103,7 +171,26 @@ class Scan(object):
         return plotx, ploty
 
     def run(self, **kwargs):
-        """Run the scan"""
+        """Run the scan
+
+        The main loop of the scan. This routine runs the scan and
+        initially enters a context manager which runs :py:meth:`pre_scan()` on
+        entry. Within the context manager the following steps are taken:
+
+        :py:meth:`check_paths()`
+        :py:meth:`setup_detectors()`
+        :py:meth:`setup_triggers()`
+
+        After configuring the detectors and triggers the trajectory is loaded
+        into the positioners using the :py:meth:`set_trajectory` method.
+        Finally the :py:class:`RunEngine` is initialised from the scans config and
+        executed using the :py:meth:`start_run()` method.
+
+        The data which is collected in the run, returned by the run-engine is
+        appended to a ringbuffer and can be accessed through the :py:meth:data
+        method.
+
+        """
         self.scan_id = session_manager.get_next_scan_id()
 
         # Run this in a context manager to capture
@@ -111,8 +198,8 @@ class Scan(object):
 
         with self:
             self.check_paths()
-            self.setup_detectors()
-            self.setup_triggers()
+            self.setup_detectors(self.detectors)
+            self.setup_triggers(self.triggers)
 
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
@@ -125,28 +212,51 @@ class Scan(object):
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
             scan_args['custom'] = {}
-            # plotx, ploty = self.format_plot()
-            # scan_args['custom']['plotx'] = plotx
-            # if ploty:
-            #     scan_args['custom']['ploty'] = ploty
+            plotx, ploty = self.format_plot()
+            if plotx:
+                scan_args['custom']['plotx'] = plotx
+            if ploty:
+                scan_args['custom']['ploty'] = ploty
 
             # Run the scan!
-            self.data = self._run_eng.start_run(self.scan_id,
-                                                scan_args=scan_args)
+            data = self._run_eng.start_run(self.scan_id,
+                                           scan_args=scan_args)
+
+            self._data_buffer.append(Data(data))
 
     @property
     def data(self):
-        """Return the last scanned data set"""
-        return self._last_data
+        """Return the data ringbuffer
 
-    @data.setter
-    def data(self, data):
-        """Set the last scanned data set"""
-        self._last_data = data
+        Returns
+        -------
+        :py:class:collections.deque object containing :py:class:Data objects
+
+        """
+        return self._data_buffer
+
+    @property
+    def last_data(self):
+        """Returns the last data set
+
+        Returns
+        -------
+        :py:class:Data object
+            Returns the last data. Equivalent to `Scan.data[-1]`
+
+        """
+        if len(self._data_buffer) > 0:
+            return self._data_buffer[-1]
+        return None
 
     @property
     def default_detectors(self):
-        """Return the default detectors"""
+        """Return the default detectors
+
+        Returns
+        -------
+        list of OphydObjects
+        """
         return self._shared_config['default_detectors']
 
     @default_detectors.setter
@@ -156,7 +266,12 @@ class Scan(object):
 
     @property
     def default_triggers(self):
-        """Return the default triggers"""
+        """Return the default triggers
+
+        Returns
+        -------
+        list of OphydObjects
+        """
         return self._shared_config['default_triggers']
 
     @default_triggers.setter
@@ -166,7 +281,15 @@ class Scan(object):
 
     @property
     def triggers(self):
-        """Return the default triggers for this scan"""
+        """Return the triggers for this scan
+
+        The triggers of the scan is a concatenation of the list of triggers
+        for this scan instance and the default triggers which is a singleton.
+
+        Returns
+        -------
+        list of OphydObjects
+        """
         if self._triggers is None:
             return self.default_triggers
         else:
@@ -179,7 +302,15 @@ class Scan(object):
 
     @property
     def detectors(self):
-        """Return the default detectors for this scan"""
+        """Return the detectors for this scan
+
+        The detectors of the scan is a concatenation of the list of detectors
+        for this scan instance and the default detectors which is a singleton.
+
+        Returns
+        -------
+        list of OphydObjects
+        """
         if self._detectors is None:
             return self.default_detectors
         else:
@@ -191,41 +322,25 @@ class Scan(object):
         self._detectors = detectors
 
 
-class ScanND(Scan):
+class AScan(Scan):
     """Class for a N-Dimensional Scan"""
 
     def __init__(self, *args, **kwargs):
-        super(ScanND, self).__init__()
+        super(AScan, self).__init__()
         self.dimension = None
         self.scan_command = None
 
     def pre_scan(self, *args, **kwargs):
-        super(ScanND, self).pre_scan(*args, **kwargs)
+        super(AScan, self).pre_scan(*args, **kwargs)
         self.make_log_entry()
-
-    def calc_linear_path(self, start, stop, npts):
-        """Return a linearaly spaced path"""
-        return np.linspace(start, stop, npts)
-
-    def calc_path(self, start, stop, npts, dim):
-        """Calculate a single path given start, stop and npts for dim"""
-        N = np.asarray(npts)
-        a = self.calc_linear_path(start, stop, npts[dim])
-        x = N[::-1][:len(N)-dim-1]
-        y = N[:dim]
-        a = np.repeat(a, x.prod())
-        a = np.tile(a, y.prod())
-        return a
 
     def make_log_entry(self):
         """Format and make a log entry for the scan"""
-        time_text = strftime("%a, %d %b %Y %H:%M:%S %Z")
 
         # Print header
 
         msg = ['Scan Command    : {}'.format(self.scan_command)]
         msg.append('Scan ID         : {}'.format(self.scan_id))
-        msg.append('Scan started at : {}'.format(time_text))
         msg.append('Scan Dimension  : {}'.format(self.dimension))
         msg.append('Scan Datapoints : {} ({})'.format(self.datapoints,
                                                       np.prod(self.datapoints)))
@@ -251,6 +366,7 @@ class ScanND(Scan):
             msg.append('{:<30}'.format(det.name))
 
         msg.append('')
+
         msg.append('{0:=^80}'.format(''))
 
         for p in self.positioners + self.triggers + self.detectors:
@@ -268,7 +384,10 @@ class ScanND(Scan):
         d['start'] = repr(self.start)
         d['stop'] = repr(self.stop)
         d['npts'] = repr(self.npts)
-        logbook.log('\n'.join(msg), properties=[['OphydScan', d]])
+        if self.logbook is not None:
+            self.logbook.log('\n'.join(msg), properties={'OphydScan': d},
+                             ensure=True,
+                             logbooks=['Data Aquisition'])
 
     def format_command_line(self, *args, **kwargs):
         """Return a string representation of the passed arguments"""
@@ -277,7 +396,42 @@ class ScanND(Scan):
         return rtn
 
     def __call__(self, positioners, start, stop, npts, **kwargs):
-        """Run Scan"""
+        """Scan positioners along a regular path
+
+        Parameters
+        ----------
+        positioners : Positioner or list of Positioners
+            The positioner objects to use in the scan
+        start : position or list of positions
+            The start position of the positioners
+        stop : position or list of positions
+            The stop position of the positioners
+        npts : int or list of int
+            The number of intervals in the scan
+
+        Examples
+        --------
+        Scan motor m1 from -10 to 10 with 20 intervals::
+
+        >>>scan(m1, -10, 10, 20)
+
+        Scan motor m1 and m2 in a linear path with 20 intervals with m1
+        starting at -10 and m2 starting at -5 and traveling to 10 and 5
+        respectively::
+
+        >>>scan([m1, m2], [-10, -5], [10, 5], 20)
+
+        Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling
+        from -10 to 10 and m2 traveling from -5 to 5::
+
+        >>>scan([m1, m2], [-10, -5], [10, 5], [20, 20])
+
+        Scan motors m1 and m2 in a linear path in the first dimension and
+        m3 as a linear path in the second dimension::
+
+        >>>scan([[m1, m2], m3], [[-10, -5], -2], [[10, 5], 2], [20, 20])
+
+        """
 
         # This is an n-dimensional scan. We take the dims from
         # the length of npts.
@@ -285,7 +439,8 @@ class ScanND(Scan):
         positioners = ensure_iterator(positioners)
         start = ensure_iterator(start)
         stop = ensure_iterator(stop)
-        npts = ensure_iterator(npts)
+        npts = np.array(ensure_iterator(npts))
+        dimension = npts.shape[0]
 
         self.start = start
         self.stop = stop
@@ -294,21 +449,30 @@ class ScanND(Scan):
         args = (positioners, start, stop, npts)
         self.scan_command = self.format_command_line(*args, **kwargs)
 
-        dimension = len(npts)
-        pos = []
-        paths = []
-
         # Calculate number of points from intervals
 
-        npts = np.asarray(npts) + 1
+        npts = np.array(npts) + 1
 
-        for b, e, d in zip(start, stop, range(dimension)):
+        # Make the array to populate the ranges with
+        edges = [np.linspace(0, 1, n) for n in npts]
+        grid = [np.array(a) for a in zip(*itertools.product(*edges))]
+
+        # This grid goes from 0 to 1 in all dimensions.
+        # and can be used to scale start and stop points
+
+        pos = []
+        paths = []
+        for d in range(dimension):
             # For each dimension we work out the paths
+            # each dimension can have a number of positioners
             iter_pos = ensure_iterator(positioners[d])
+            begin = ensure_iterator(start[d])
+            end = ensure_iterator(stop[d])
 
-            for p in iter_pos:
+            for p, b, e in zip(iter_pos, begin, end):
                 pos.append(p)
-                paths.append(self.calc_path(b, e, npts, d))
+                path = b + ((e-b) * grid[d])
+                paths.append(path)
 
         self.positioners = pos
         self.paths = paths
@@ -316,11 +480,6 @@ class ScanND(Scan):
         self.dimension = dimension
 
         self.run(**kwargs)
-
-
-class AScan(ScanND):
-    pass
-
 
 class DScan(AScan):
     def pre_scan(self):
@@ -332,7 +491,7 @@ class DScan(AScan):
 
     def post_scan(self):
         """Post Scan Move to start positions"""
-        super(DScan, self).pre_scan()
+        super(DScan, self).post_scan()
         status = [pos.move(start, wait=False)
                   for pos, start in
                   zip(self.positioners, self._start_positions)]
@@ -345,6 +504,82 @@ class DScan(AScan):
             sleep(0.01)
 
         print(tc.Green + " Done.")
+
+
+class Count(Scan):
+    """Trigger and collect a single measurement
+
+    This class serves as a mechanism to trigger and collect a single
+    measurement. This is often termed a *count*. This class inherits
+    from the :py:class:Scan class and therefore formats and records a
+    single *run* of one datapoint.
+
+    A log entry is created if the logbook is setup which records the
+    result of the scan.
+
+    """
+    def __call__(self, *args, **kwargs):
+        """Start a count"""
+        self.run(*args, **kwargs)
+
+    def post_scan(self):
+        """Post-scan print data
+
+        This post-scan routine prints the scan results to the screen and
+        if the logbook is setup prints the results to the screen
+        """
+        super(Count, self).post_scan()
+
+        msg = self.fmt_count()
+
+        print('')
+        print(msg)
+        print('')
+
+        # Make a logbook entry
+
+        lmsg = []
+        lmsg.append('Scan ID         : {}'.format(self.scan_id))
+        lmsg.append('')
+        lmsg.append(msg)
+        lmsg.append('Triggers:')
+        for trig in self.triggers:
+            lmsg.append('{:<30}'.format(trig.name))
+        lmsg.append('')
+        lmsg.append('{0:=^80}'.format(''))
+        for p in self.triggers + self.detectors:
+            try:
+                lmsg.append('PV:{}'.format(p.report['pv']))
+            except KeyError:
+                pass
+
+        d = {}
+        d['id'] = self.scan_id
+        d['triggers'] = repr(self.triggers)
+        d['detectors'] = repr(self.detectors)
+        d['values'] = repr(self.last_data.data_dict)
+        if self.logbook is not None:
+            self.logbook.log('\n'.join(lmsg), ensure=True,
+                             properties={'OphydCount': d},
+                             logbooks=['Data Aquisition'])
+
+    def fmt_count(self):
+        """Format the count results
+
+        Returns
+        -------
+        string
+            String of a tabular representation of the counts from the
+            detectors
+        """
+        rtn = []
+        rtn.append('{:<28} | {}'.format('Detector', 'Value'))
+        rtn.append('{0:=^60}'.format(''))
+        data = collections.OrderedDict(sorted(self.last_data.data_dict.items()))
+        for x, y in data.iteritems():
+            rtn.append('{:<30} {}'.format(x, y))
+        rtn.append('')
+        return '\n'.join(rtn)
 
 
 def ensure_iterator(i):
