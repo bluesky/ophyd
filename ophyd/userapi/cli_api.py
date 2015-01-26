@@ -29,7 +29,8 @@ __all__ = ['mov',
            'set_pos',
            'wh_pos',
            'set_lm',
-           'log_pos'
+           'log_pos',
+           'log_pos_diff'
            ]
 
 # Global Defs of certain strings
@@ -68,10 +69,10 @@ def mov(positioner, position):
 
     Parameters
     ----------
-        positioner: Positioner or list
-            Positioners to move
-        position: float or list of float
-            Values to move positioners to.
+    positioner: Positioner or list
+        Positioners to move
+    position: float or list of float
+        Values to move positioners to.
 
     Examples
     --------
@@ -145,13 +146,13 @@ def set_lm(positioner, limits):
 
     Parameters
     ----------
-        positioner: positioner or list of positioners
-        limits: single or list of tuple of form (+ve, -ve) limits
+    positioner: positioner or list of positioners
+    limits: single or list of tuple of form (+ve, -ve) limits
 
     Raises
     ------
-        IOError
-            If the caput (EPICS put) fails then an IOError is raised.
+    IOError
+        If the caput (EPICS put) fails then an IOError is raised.
 
     Examples
     --------
@@ -215,14 +216,14 @@ def set_pos(positioner, position):
 
     Parameters
     ----------
-        positioner: Positioner or list of positioners.
-        position: float or list of floats.
-            New position of positioners
+    positioner: Positioner or list of positioners.
+    position: float or list of floats.
+        New position of positioners
 
     Raises
     ------
-        TypeError
-            If positioner is not an instance of an EpicsMotor.
+    TypeError
+        If positioner is not an instance of an EpicsMotor.
 
     Examples
     --------
@@ -281,7 +282,7 @@ def wh_pos(positioners=None):
 
     Parameters
     ----------
-        positioners : Positioner, list of Positioners or None
+    positioners : Positioner, list of Positioners or None
 
     See Also
     --------
@@ -355,12 +356,36 @@ def log_pos(positioners=None):
 
 def log_pos_diff(id=None, **kwargs):
     """Move to positions located in logboook"""
-    values, objects = logbook_to_objects(id, **kwargs)
+    oldpos, objects = logbook_to_objects(id, **kwargs)
 
     # Cycle through positioners and compare position with old value
 
+
+    diff = []
+    positioners = []
+    values = []
     for key, value in objects.iteritems():
-        print(values[key] - value.position)
+        try:
+            diff.append(value.position - oldpos[key])
+            positioners.append(value)
+            values.append(value.position)
+        except:
+            pass
+
+    print_header(len=3*(FMT_LEN+3)+1)
+    print_string('Positioner', pre='| ', post=' | ')
+    print_string('Value', post=' | ')
+    print_string('Difference', post=' |\n')
+
+    print_header(len=3*(FMT_LEN+3)+1)
+
+    for p, v, d in zip(positioners, values, diff):
+        print_string(p.name, pre='| ', post=' | ')
+        print_value_aligned(v, egu=p.egu, post=' | ')
+        print_value_aligned(d, egu=p.egu, post=' |\n')
+
+    print_header(len=3*(FMT_LEN+3)+1)
+    print('')
 
 
 def logbook_to_objects(id=None, **kwargs):
