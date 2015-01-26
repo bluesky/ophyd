@@ -9,6 +9,7 @@ import functools
 import sys
 from contextlib import contextmanager, closing
 from StringIO import StringIO
+import collections
 
 from IPython.utils.coloransi import TermColors as tc
 
@@ -354,23 +355,98 @@ def log_pos(positioners=None):
     return id
 
 
-def log_pos_diff(id=None, **kwargs):
-    """Move to positions located in logboook"""
+def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
+    """Move to positions located in logboook
+
+    This function moves to positions recorded in the experimental logbook
+    using the :py:func:`log_pos` function.
+
+    Parameters
+    ----------
+    id : integer
+        ID of logbook entry to search for and move positions to.
+    dry_run : bool
+        If True, do not move motors, but execute a dry_run
+    positioners : list
+        List of string names of positioners to compare and move. Other
+        positioners in the log entry will be ignored.
+
+    """
+    logpos, objects = logbook_to_objects(id, **kwargs)
+    objects = collections.OrderedDict(sorted(objects.items()))
+
+    if positioners is not None:
+        keys = set(positioners).intersection(set(objects.keys()))
+        objects = {x: objects[x] for x in keys}
+
+    print('')
+    stat = []
+    for key, value in objects.iteritems():
+        newpos = logpos[key]
+        oldpos = value.position
+        try:
+            if not dry_run:
+                stat.append(value.move(newpos, wait=False))
+        except:
+            print('{}[!!] Unable to move positioner {}'
+                  .format(tc.Red, tc.Normal))
+        else:
+            print('{}[**] Moving positioner {} to {}'
+                  ' from current position of {}{}`'
+                  .format(tc.Green, value.name, newpos,
+                          oldpos, tc.Normal))
+
+    print('\n{}Waiting for positioners to complete .....'
+          .format(tc.LightGreen), end='')
+
+    sys.stdout.flush()
+
+    if len(stat) > 0:
+        while all(s.done for s in stat):
+            time.sleep(0.01)
+
+    print(' Done{}\n'.format(tc.Normal))
+
+
+def log_pos_diff(id=None, positioners=None, **kwargs):
+    """Move to positions located in logboook
+
+    This function compares positions recorded in the experimental logbook
+    using the :py:func:`log_pos` function.
+
+    Parameters
+    ----------
+    id : integer
+        ID of logbook entry to search for and move positions to.
+    positioners : list
+        List of string names of positioners to compare. Other positioners
+        in the log entry will be ignored.
+
+    """
+
     oldpos, objects = logbook_to_objects(id, **kwargs)
+    objects = collections.OrderedDict(sorted(objects.items()))
 
     # Cycle through positioners and compare position with old value
-
+    # If we have an error, print a warning
 
     diff = []
-    positioners = []
+    pos = []
     values = []
+
+    if positioners is not None:
+        keys = set(positioners).intersection(set(objects.keys()))
+        objects = {x: objects[x] for x in keys}
+
+    print('')
     for key, value in objects.iteritems():
         try:
             diff.append(value.position - oldpos[key])
-            positioners.append(value)
+            pos.append(value)
             values.append(value.position)
         except:
-            pass
+            print('{}[!!] Unable to compare positioner {}{}'
+                  .format(tc.Red, key, tc.Normal))
 
     print_header(len=3*(FMT_LEN+3)+1)
     print_string('Positioner', pre='| ', post=' | ')
@@ -379,7 +455,7 @@ def log_pos_diff(id=None, **kwargs):
 
     print_header(len=3*(FMT_LEN+3)+1)
 
-    for p, v, d in zip(positioners, values, diff):
+    for p, v, d in zip(pos, values, diff):
         print_string(p.name, pre='| ', post=' | ')
         print_value_aligned(v, egu=p.egu, post=' | ')
         print_value_aligned(d, egu=p.egu, post=' |\n')
