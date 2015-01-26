@@ -15,12 +15,20 @@ from ..utils import LimitError
 session_manager = get_session_manager()
 logger = session_manager._logger
 
-__all__ = ['AScan', 'DScan', 'Scan', 'Data']
+__all__ = ['AScan', 'DScan', 'Scan', 'Data', 'Count']
 
 
 class Data(object):
-    """Class for containing scan data"""
-    def __init__(self, data):
+    """Class for containing scan data
+
+    This is a small object for containing data from a scan as objects. The
+    data can be set on initialization or using the :py:meth:`data_dict`
+    proprty. Data which has a length greater than 1 is stored as numpy
+    arrays.
+
+    """
+
+    def __init__(self, data=None):
         """Initialize class with data
 
         Parameters
@@ -30,17 +38,51 @@ class Data(object):
             Dictionary of data from scan
 
         """
-        self._data_dict = data
-        for key, value in data.iteritems():
-            setattr(self, key, np.array(value))
+        if data is not None:
+            self.data_dict = data
 
     @property
     def data_dict(self):
         """Dictionary of data objects"""
         return self._data_dict
 
+    @data_dict.setter
+    def data_dict(self, data):
+        """Set the data dictionary"""
+        self._data_dict = data
+        for key, value in data.iteritems():
+            a = np.array(value)
+            if a.size <= 1:
+                a = value
+            setattr(self, key, a)
+
 
 class Scan(object):
+    """Class for configuring and running a scan
+
+    This class performs setup and calls the Ophyd RunEngine to start a scan
+    (run). It cah be inhereted to overload the configuration or add additional
+    steps in the scan. When the scan is run using the :py:meth:`run` method the
+    class enters a context manager (itsself) which runs :py:meth:`pre_scan` on
+    entry, and runs :py:meth:`post_scan` on exit. Because of the use of the
+    context manager, :py:meth:'post_scan' will run even if an exception is
+    thrown in the :py:class:`RunEngine`. Within the context manager the following
+    steps are taken:
+
+    * :py:meth:`check_paths`
+    * :py:meth:`setup_detectors`
+    * :py:meth:`setup_triggers`
+
+    After configuring the detectors and triggers the trajectory is loaded
+    into the positioners using the :py:meth:`set_trajectory` method.
+    Finally the :py:class:`RunEngine` is initialised from the scans config
+    and executed using the :py:meth:`start_run()` method.
+
+    The data which is collected in the run, returned by the run-engine is
+    appended to a ringbuffer and can be accessed through the :py:meth:`data`
+    method.
+
+    """
     _shared_config = {'default_triggers': [],
                       'default_detectors': [],
                       'scan_data': None, }
@@ -70,7 +112,15 @@ class Scan(object):
             self.logbook = None
 
     def __call__(self, *args, **kwargs):
-        pass
+        """Start a run
+
+        This is a convinience function and calls :py:meth:`run` with the
+        parameters passed to this function. This is equivalent to::
+
+        >>>scan.run(*args, **kwargs)
+
+        """
+        self.run(*args, **kwargs)
 
     def check_paths(self):
         """Check the positioner paths
@@ -172,22 +222,8 @@ class Scan(object):
     def run(self, **kwargs):
         """Run the scan
 
-        The main loop of the scan. This routine runs the scan and
-        initially enters a context manager which runs :py:meth:`pre_scan()` on
-        entry. Within the context manager the following steps are taken:
-
-        :py:meth:`check_paths()`
-        :py:meth:`setup_detectors()`
-        :py:meth:`setup_triggers()`
-
-        After configuring the detectors and triggers the trajectory is loaded
-        into the positioners using the :py:meth:`set_trajectory` method.
-        Finally the :py:class:`RunEngine` is initialised from the scans config
-        and executed using the :py:meth:`start_run()` method.
-
-        The data which is collected in the run, returned by the run-engine is
-        appended to a ringbuffer and can be accessed through the :py:meth:data
-        method.
+        The main loop of the scan. This routine runs the scan and calls the
+        ophyd runengine.
 
         """
         self.scan_id = session_manager.get_next_scan_id()
@@ -229,7 +265,7 @@ class Scan(object):
 
         Returns
         -------
-        :py:class:collections.deque object containing :py:class:Data objects
+        :py:class:`collections.deque` object containing :py:class:`Data` objects
 
         """
         return self._data_buffer
@@ -240,7 +276,7 @@ class Scan(object):
 
         Returns
         -------
-        :py:class:Data object
+        :py:class:`Data` object
             Returns the last data. Equivalent to `Scan.data[-1]`
 
         """
@@ -296,7 +332,7 @@ class Scan(object):
 
     @triggers.setter
     def triggers(self, triggers):
-        """Set the default triggers for this scan"""
+        """Set the triggers for this scan"""
         self._triggers = triggers
 
     @property
@@ -317,12 +353,37 @@ class Scan(object):
 
     @detectors.setter
     def detectors(self, detectors):
-        """Set the default detectors for this scan"""
+        """Set the detectors for this scan"""
         self._detectors = detectors
 
 
 class AScan(Scan):
-    """Class for a N-Dimensional Scan"""
+    """Class for running N-Dimensional Scan
+
+    This class performs setup and runs N-dimensional scans.
+
+    Examples
+    --------
+    Scan motor m1 from -10 to 10 with 20 intervals::
+
+    >>>scan(m1, -10, 10, 20)
+
+    Scan motor m1 and m2 in a linear path with 20 intervals with m1
+    starting at -10 and m2 starting at -5 and traveling to 10 and 5
+    respectively::
+
+    >>>scan([m1, m2], [-10, -5], [10, 5], 20)
+
+    Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling
+    from -10 to 10 and m2 traveling from -5 to 5::
+
+    >>>scan([m1, m2], [-10, -5], [10, 5], [20, 20])
+
+    Scan motors m1 and m2 in a linear path in the first dimension and
+    m3 as a linear path in the second dimension::
+
+    >>>scan([[m1, m2], m3], [[-10, -5], -2], [[10, 5], 2], [20, 20])
+    """
 
     def __init__(self, *args, **kwargs):
         super(AScan, self).__init__()
@@ -331,9 +392,9 @@ class AScan(Scan):
 
     def pre_scan(self, *args, **kwargs):
         super(AScan, self).pre_scan(*args, **kwargs)
-        self.make_log_entry()
+        self._make_log_entry()
 
-    def make_log_entry(self):
+    def _make_log_entry(self):
         """Format and make a log entry for the scan"""
 
         # Print header
@@ -388,7 +449,7 @@ class AScan(Scan):
                              ensure=True,
                              logbooks=['Data Aquisition'])
 
-    def format_command_line(self, *args, **kwargs):
+    def _format_command_line(self, *args, **kwargs):
         """Return a string representation of the passed arguments"""
         cl_args = cmdline_to_str(*args, **kwargs)
         rtn = '{}()({})'.format(self.__class__.__name__, cl_args)
@@ -396,6 +457,8 @@ class AScan(Scan):
 
     def __call__(self, positioners, start, stop, npts, **kwargs):
         """Scan positioners along a regular path
+
+        This method will Setup the scan and run the RunEngine (perform a scan)
 
         Parameters
         ----------
@@ -408,27 +471,26 @@ class AScan(Scan):
         npts : int or list of int
             The number of intervals in the scan
 
-        Examples
-        --------
-        Scan motor m1 from -10 to 10 with 20 intervals::
+        """
+        self.setup_scan(positioners, start, stop, npts, **kwargs)
+        self.run(**kwargs)
 
-        >>>scan(m1, -10, 10, 20)
+    def setup_scan(self, positioners, start, stop, npts, **kwargs):
+        """Setup scan along a regular path.
 
-        Scan motor m1 and m2 in a linear path with 20 intervals with m1
-        starting at -10 and m2 starting at -5 and traveling to 10 and 5
-        respectively::
+        This method will Setup the scan only. The scan can be executed using
+        :py:meth:`run` method.
 
-        >>>scan([m1, m2], [-10, -5], [10, 5], 20)
-
-        Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling
-        from -10 to 10 and m2 traveling from -5 to 5::
-
-        >>>scan([m1, m2], [-10, -5], [10, 5], [20, 20])
-
-        Scan motors m1 and m2 in a linear path in the first dimension and
-        m3 as a linear path in the second dimension::
-
-        >>>scan([[m1, m2], m3], [[-10, -5], -2], [[10, 5], 2], [20, 20])
+        Parameters
+        ----------
+        positioners : Positioner or list of Positioners
+            The positioner objects to use in the scan
+        start : position or list of positions
+            The start position of the positioners
+        stop : position or list of positions
+            The stop position of the positioners
+        npts : int or list of int
+            The number of intervals in the scan
 
         """
 
@@ -446,7 +508,7 @@ class AScan(Scan):
         self.npts = npts
 
         args = (positioners, start, stop, npts)
-        self.scan_command = self.format_command_line(*args, **kwargs)
+        self.scan_command = self._format_command_line(*args, **kwargs)
 
         # Calculate number of points from intervals
 
@@ -478,19 +540,29 @@ class AScan(Scan):
         self.datapoints = npts
         self.dimension = dimension
 
-        self.run(**kwargs)
-
 
 class DScan(AScan):
     def pre_scan(self):
-        """Prescan store starting positions and change paths"""
+        """Prescan store starting positions and change paths
+
+        This prescan routine stores the current position of the positioners
+        upon execution and then sets the paths to the difference between the
+        current position and the scan range.
+
+        """
         super(DScan, self).pre_scan()
         self._start_positions = [p.position for p in self.positioners]
         self.paths = [np.array(path) + start
                       for path, start in zip(self.paths, self._start_positions)]
 
     def post_scan(self):
-        """Post Scan Move to start positions"""
+        """Post Scan Move to start positions
+
+        This post scan routine returns the positioners to their origional
+        starting position (as recorded by :py:meth:`pre_scan`) once the scan
+        has finished.
+
+        """
         super(DScan, self).post_scan()
         status = [pos.move(start, wait=False)
                   for pos, start in
@@ -511,17 +583,13 @@ class Count(Scan):
 
     This class serves as a mechanism to trigger and collect a single
     measurement. This is often termed a *count*. This class inherits
-    from the :py:class:Scan class and therefore formats and records a
+    from the :py:class:`Scan` class and therefore formats and records a
     single *run* of one datapoint.
 
     A log entry is created if the logbook is setup which records the
     result of the scan.
 
     """
-    def __call__(self, *args, **kwargs):
-        """Start a count"""
-        self.run(*args, **kwargs)
-
     def post_scan(self):
         """Post-scan print data
 
@@ -530,7 +598,7 @@ class Count(Scan):
         """
         super(Count, self).post_scan()
 
-        msg = self.fmt_count()
+        msg = self._fmt_count()
 
         print('')
         print(msg)
@@ -563,7 +631,7 @@ class Count(Scan):
                              properties={'OphydCount': d},
                              logbooks=['Data Aquisition'])
 
-    def fmt_count(self):
+    def _fmt_count(self):
         """Format the count results
 
         Returns
