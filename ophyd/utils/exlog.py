@@ -5,6 +5,4 @@
 
 .. module:: ophyd.utils.exlog
    :synopsis:
-
 '''
-

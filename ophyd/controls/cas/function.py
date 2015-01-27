@@ -25,10 +25,38 @@ logger = logging.getLogger(__name__)
 
 
 class CasFunction(object):
-    '''
-    Channel Access Server function decorator
-    '''
+    '''Channel Access Server function decorator
 
+    RPC-like functionality via channel access for Python functions
+
+    Parameters
+    ----------
+    prefix : str, optional
+        The prefix to use (defaults to the function name)
+    server : caServer, optional
+        The channel access server to use (defaults to the currently running one,
+        or the next instantiated one if not specified)
+    async : bool, optional
+        Function should be called asynchronously, in its own thread (do not set
+        to False when doing large calculations or any blocking in the function)
+    failed_cb : callable, optional
+        When an exception is raised inside the function, `failed_cb` will be
+        called.
+    process_pv : str, optional
+        PV name for the Process PV, used to start the calculation
+    use_process : bool, optional
+        If True, process_pv is created. Otherwise, the function will be called
+        when each parameter is written to.
+    retval_pv : str, optional
+        Return value PV name
+    status_pv : str, optional
+        Status PV name
+    return_value : , optional
+        Default value for the return value
+    return_kwargs : , optional
+        Keyword arguments are passed to the return value CasPV initializer. You
+        can then specify `count`, `type_`, etc. here
+    '''
     _to_attach = []
 
     def __init__(self, prefix='', server=None,
@@ -39,26 +67,6 @@ class CasFunction(object):
                  return_value=0.0,
                  **return_kwargs
                  ):
-        '''
-        :param str prefix: The prefix to use (defaults to the function name)
-        :param caServer server: The channel access server to use (defaults to
-            the currently running one, or the next instantiated one if not
-            specified)
-        :param bool async: Function should be called asynchronously, in its own
-            thread (do not set to False when doing large calculations or any
-            blocking in the function)
-        :param callable failed_cb: When an exception is raised inside the function,
-            `failed_cb` will be called.
-        :param str process_pv: PV name for the Process PV, used to start the
-            calculation
-        :param bool use_process: If True, process_pv is created. Otherwise,
-            the function will be called when each parameter is written to.
-        :param str status_pv: Status PV name
-        :param str retval_pv: Return value PV name
-        :param return_value: Default value for the return value
-        :param return_kwargs: Keyword arguments are passed to the return value
-            CasPV initializer. You can then specify `count`, `type_`, etc. here
-        '''
 
         if server is None and caServer.default_instance is not None:
             server = caServer.default_instance
@@ -80,9 +88,7 @@ class CasFunction(object):
             self._async = False
 
     def attach_server(self, server):
-        '''
-        Attach a channel access server instance
-        '''
+        '''Attach a channel access server instance'''
         if self._server is not None:
             raise ValueError('Server already attached')
 
@@ -100,8 +106,7 @@ class CasFunction(object):
             CasFunction._to_attach.remove(self)
 
     def _add_fcn(self, name):
-        '''
-        Add a function to the list being handled.
+        '''Add a function to the list being handled.
 
         If a channel access server isn't attached yet, queue this instance to be
         added at a later point.
@@ -170,8 +175,7 @@ class CasFunction(object):
         info['param_dict'] = pv_dict
 
     def _failed(self, name, msg, ex, kwargs):
-        '''
-        Failure condition - since functions are called asynchronously in
+        '''Failure condition - since functions are called asynchronously in
         background threads, a few options are given to the user for error
         reporting. First, the status_pv for the corresponding function is
         updated. If a failure callback was specified in the decorator, it will
@@ -197,9 +201,7 @@ class CasFunction(object):
             logger.error(msg, exc_info=ex)
 
     def _run_function(self, name, **kwargs):
-        '''
-        Run the function in this thread, with the kwargs passed
-        '''
+        '''Run the function in this thread, with the kwargs passed'''
         info = self._functions[name]
         fcn = info['function']
 
@@ -227,17 +229,14 @@ class CasFunction(object):
         return ret
 
     def _run_async(self, name, **kwargs):
-        '''
-        Run a function asynchronously, in a separate thread
-        '''
+        '''Run a function asynchronously, in a separate thread'''
         thread = epics.ca.CAThread(target=self._run_function,
                                    args=(name, ), kwargs=kwargs)
         self._async_threads[name] = thread
         thread.start()
 
     def get_kwargs(self, name, **override):
-        '''
-        Get the keyword arguments to be passed to the function.
+        '''Get the keyword arguments to be passed to the function.
         These come from the current values stored in the channel access server
         process variables.
         '''
@@ -252,9 +251,7 @@ class CasFunction(object):
         return ret
 
     def get_pv_instance(self, name, pv):
-        '''
-        Grab a parameter's PV instance from a specific function, by name
-        '''
+        '''Grab a parameter's PV instance from a specific function, by name'''
         if not self._server:
             raise RuntimeError('Server not yet configured (i.e., no prefix yet)')
 
@@ -263,8 +260,7 @@ class CasFunction(object):
         return param_pvs[pv]
 
     def get_pvnames(self, name):
-        '''
-        Get all PV names for a specific function in a dictionary:
+        '''Get all PV names for a specific function in a dictionary:
             {param: pvname}
         '''
         if not self._server:
@@ -277,9 +273,7 @@ class CasFunction(object):
         return ret
 
     def __call__(self, fcn):
-        '''
-        Wraps the function
-        '''
+        '''Wraps the function'''
         @functools.wraps(fcn)
         def wrapped_sync(**cas_kw):
             # Block until async request finishes

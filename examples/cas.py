@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-An example of using :class:`caServer`, an EPICS channel access server
+'''An example of using :class:`caServer`, an EPICS channel access server
 implementation based on pcaspy
 '''
 from __future__ import print_function

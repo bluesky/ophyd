@@ -7,7 +7,6 @@
  :synopsis:  `areaDetector`_ detector/camera abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
-
 '''
 
 from __future__ import print_function
@@ -49,9 +48,7 @@ __all__ = ['AreaDetector',
 
 
 def name_from_pv(pv):
-    '''
-    Create a signal's ophyd name based on the PV
-    '''
+    '''Create a signal's ophyd name based on the PV'''
     name = pv.lower().rstrip(':')
     name = name.replace(':', '.')
     return name
@@ -83,12 +80,13 @@ def ADSignalGroup(*props, **kwargs):
 
 
 def lookup_doc(cls_, pv):
-    '''
+    '''Lookup documentation extracted from the areadetector html docs
+
     Go from top-level to base-level class, looking up html documentation
     until we get a hit.
 
-    .. note:: This is only executed once, per class, per property (see
-    ADSignal for more information)
+    .. note:: This is only executed once, per class, per property (see ADSignal
+        for more information)
     '''
     classes = inspect.getmro(cls_)
 
@@ -119,11 +117,28 @@ def lookup_doc(cls_, pv):
 
 
 class ADSignal(object):
-    '''
-    A property-like descriptor
+    '''A property-like descriptor
 
-    Don't create an EpicsSignal instance until it's
-    accessed (i.e., lazy evaluation)
+    Don't create an EpicsSignal instance until it's accessed (i.e., lazy
+    evaluation)
+
+    Parameters
+    ----------
+    pv : str
+        The suffix portion of the PV
+    has_rbv : bool, optional
+        Whether or not a separate readback value pv exists
+    doc : str, optional
+        Docstring information
+
+    Attributes
+    ----------
+    pv : str
+        The suffix portion of the PV
+    has_rbv : bool, optional
+        Whether or not a separate readback value pv exists
+    doc : str, optional
+        Docstring information
     '''
 
     def __init__(self, pv, has_rbv=False, doc=None, **kwargs):
@@ -142,6 +157,7 @@ class ADSignal(object):
             self.__doc__ = self.lookup_doc(cls_)
 
     def check_exists(self, obj):
+        '''Instantiate the signal if necessary'''
         if obj is None:
             # Happens when working on the class and not the object
             return self
@@ -182,6 +198,8 @@ class ADSignal(object):
 
 
 class ADBase(OphydObject):
+    '''The AreaDetector base class'''
+
     _html_docs = ['areaDetectorDoc.html']
 
     @classmethod
@@ -194,25 +212,29 @@ class ADBase(OphydObject):
 
     @classmethod
     def _update_docstrings(cls_):
-        '''
-        ..note:: Updates docstrings
-        '''
+        '''Updates docstrings'''
         for prop_name, signal in cls_._all_adsignals():
             signal.update_docstring(cls_)
 
     def find_signal(self, text, use_re=False,
                     case_sensitive=False, match_fcn=None,
                     f=sys.stdout):
-        '''
-        Search through the signals on this detector for the string text
+        '''Search through the signals on this detector for the string text
 
-        :param str text: Text to find
-        :param bool use_re: Use regular expressions
-        :param bool case_sensitive: Case sensitive search
-        :param callable match_fcn: Function to call when matches are found
-            Defaults to a function that prints matches to f
-        :param f: File-like object that the default match function prints to
-            (Defaults to sys.stdout)
+        Parameters
+        ----------
+        text : str
+            Text to find
+        use_re : bool, optional
+            Use regular expressions
+        case_sensitive : bool, optional
+            Case sensitive search
+        match_fcn : callable, optional
+            Function to call when matches are found Defaults to a function that
+            prints matches to f
+        f : file-like, optional
+            File-like object that the default match function prints to (Defaults
+            to sys.stdout)
         '''
         # TODO: Some docstrings change based on the detector type,
         #       showing different options than are available in
@@ -258,8 +280,7 @@ class ADBase(OphydObject):
 
     @property
     def signals(self):
-        '''
-        A dictionary of all signals (or groups) in the object.
+        '''A dictionary of all signals (or groups) in the object.
 
         .. note:: Instantiates all lazy signals
         '''
@@ -928,9 +949,8 @@ from . import plugins
 
 
 def update_docstrings():
-    '''
-    Dynamically set docstrings for all ADSignals, based on
-    parsed areadetector documentation
+    '''Dynamically set docstrings for all ADSignals, based on parsed
+    areadetector documentation
 
     .. note:: called automatically when the module is loaded
     '''
@@ -956,9 +976,7 @@ def create_detector_stub(db_file, macros=None,
                          property_name_fcn=None,
                          det_name=None):
 
-    '''
-    Stub out a new AreaDetector directly from a database file
-    '''
+    '''Stub out a new AreaDetector directly from a database file'''
     # TODO imports here since this function needs to be moved
     import inspect
     import os
@@ -1005,9 +1023,8 @@ def create_detector_stub(db_file, macros=None,
     print('class %s(%s):' % (det_name, base_class.__name__))
 
     def get_prop_name(pv):
-        '''
-        A terribly confusing method to get a property name from
-        the camel-case AreaDetector PV names
+        '''A terribly confusing method to get a property name from the
+        camel-case AreaDetector PV names
         '''
         # If the name starts with a bunch of capital letters, use
         # all but the last one as one word

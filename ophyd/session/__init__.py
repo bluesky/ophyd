@@ -1,6 +1,4 @@
-'''
-
-'''
+''' '''
 from __future__ import print_function
 import sys
 import logging
@@ -21,14 +19,20 @@ def get_session_manager():
 
 
 def register_object(obj, set_vars=True):
-    '''
-    Register the object with the current running ophyd session.
+    '''Register the object with the current running ophyd session.
 
-    :param object obj: The object to register
-    :param bool set_vars: If set, obj._session and obj._ses_logger
+    Parameters
+    ----------
+    obj : object
+        The object to register
+    set_vars : bool, optional
+        If set, obj._session and obj._ses_logger
         are set to the current session and its associated logger.
-    :return: The current session
-    :rtype: :class:`SessionManager` or None
+
+    Returns
+    -------
+    session : SessionManager or None
+        The current session
     '''
     ses = get_session_manager()
     ses_logger = ses.register(obj)

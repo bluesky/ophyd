@@ -5,7 +5,6 @@
 
 .. module:: ophyd.utils
    :synopsis:
-
 '''
 
 import logging
@@ -17,7 +16,5 @@ from .errors import *
 
 
 def enum(**enums):
-    '''
-    Create an enum from the keyword arguments
-    '''
+    '''Create an enum from the keyword arguments'''
     return type('Enum', (object,), enums)

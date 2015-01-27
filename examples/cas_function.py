@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-An example of using :class:`CasFunction`, a decorator that makes a Python
+'''An example of using :class:`CasFunction`, a decorator that makes a Python
 function accessible over channel access (using ophyd's built-in EPICS channel access
 server)
 '''
@@ -19,8 +18,7 @@ logger = config.logger
 
 @CasFunction()
 def async_func(a=0, b=0.0, **kwargs):
-    '''
-    A CasFunction, a Python function that has all input parameters represented as
+    '''A CasFunction, a Python function that has all input parameters represented as
     process variables. Execution is done asynchronously, using put completion on the
     client side (on the server/Python side, it is run in a separate thread from the channel
     access context)
@@ -43,8 +41,7 @@ def async_func(a=0, b=0.0, **kwargs):
 
 @CasFunction(async=False, prefix='test:sync:')
 def sync_func(a=0, b=0.0, **kwargs):
-    '''
-    Synchronously executed CasFunction.
+    '''Synchronously executed CasFunction.
     Do not block in these functions.
     '''
     # TODO: should we even give access to synchronous functions to users?
@@ -56,8 +53,7 @@ def sync_func(a=0, b=0.0, **kwargs):
 
 @CasFunction(return_value='test')
 def string_func(value='test'):
-    '''
-    Functions work on strings as well. This function takes a string
+    '''Functions work on strings as well. This function takes a string
     and returns a string
 
     Note: EPICS string limitations apply here
@@ -70,8 +66,7 @@ def string_func(value='test'):
 
 @CasFunction(type_=np.int32, count=10)
 def array_func(value=0.0):
-    '''
-    Keyword arguments get passed onto CasPV for the return value, so you can specify
+    '''Keyword arguments get passed onto CasPV for the return value, so you can specify
     more about the return type in the CasFunction decorator
     '''
     logger.info('array_func called: value=%s' % (value, ))
@@ -82,9 +77,7 @@ def array_func(value=0.0):
 @CasFunction(type_=np.int32, count=10,
              async=False)
 def no_arg_func():
-    '''
-    No arguments taken in the function, returns an int array of 10 elements
-    '''
+    '''No arguments taken in the function, returns an int array of 10 elements'''
     logger.info('no_arg_func called')
 
     return np.arange(10)
@@ -92,8 +85,7 @@ def no_arg_func():
 
 @CasFunction()
 def array_input_func(value=np.array([1., 2., 3.], dtype=np.float)):
-    '''
-    Keyword arguments get passed onto CasPV for the return value, so you can specify
+    '''Keyword arguments get passed onto CasPV for the return value, so you can specify
     more about the return type
     '''
     logger.info('array_input_func called: value=%s' % (value, ))
@@ -103,18 +95,14 @@ def array_input_func(value=np.array([1., 2., 3.], dtype=np.float)):
 
 @CasFunction()
 def failure_func():
-    '''
-    If exceptions are raised, the status PV gets updated to reflect that
-    '''
+    '''If exceptions are raised, the status PV gets updated to reflect that'''
     logger.info('failure_func called')
     raise ValueError('failed, somehow')
 
 
 @CasFunction(return_value=True)
 def bool_func(bool_one=False, bool_two=True):
-    '''
-    Boolean values turn into EPICS enums, with values: ['False', 'True']
-    '''
+    '''Boolean values turn into EPICS enums, with values: ['False', 'True']'''
     logger.info('bool_func called: bool_one=%r bool_two=%r' % (bool_one, bool_two))
 
     return bool(bool_one or bool_two)

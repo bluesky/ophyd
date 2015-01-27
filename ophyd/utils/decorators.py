@@ -5,15 +5,13 @@
 
 .. module:: ophyd.utils.decorators
    :synopsis:
-
 '''
 
 import functools
 
 
 def cached_retval(fcn):
-    '''
-    Function decorator
+    '''Function decorator
 
     Caches the wrapped functions return value
 

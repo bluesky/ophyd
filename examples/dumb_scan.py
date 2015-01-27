@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-A simple, dumb scan test which only uses the basic signals
-'''
+'''A simple, dumb scan test which only uses the basic signals'''
 
 import time
 import numpy as np
@@ -17,13 +15,19 @@ def simple_scan(motors=[],
                 pos_settle_time=0.01,
                 trigger_settle_time=0.01,
                 dwell_time=1.0):
-    '''
-    motors: a list of positioners
-    trajectories: a list of iterables, corresponding to each motor
-    triggers: a list of tuples in the format (pv, value) to run after
-              motion has finished
-    detectors: pvs to record after the dwell time
-    dwell_time: time to dwell per point of scan
+    '''Run a simple scan outside of the Ophyd framework
+
+    Parameters
+    ----------
+    motors : a list of positioners
+    trajectories : a list of iterables
+        Trajectories should match in position to the motors
+    triggers : a list of tuples in the format (pv, value)
+        Run after motion has finished
+    detectors : list of pvs
+        Recorded after the dwell time
+    dwell_time : float
+        time to dwell per point of scan
     '''
 
     logger = config.logger

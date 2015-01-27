@@ -34,6 +34,13 @@ class _FakeIPython(object):
 
 
 class SessionManager(object):
+    '''The singleton session manager
+
+    Parameters
+    ----------
+    logger : logging.Logger
+    ipy : IPython session, optional
+    '''
     _instance = None
 
     def __init__(self, logger, ipy=None):
@@ -74,9 +81,7 @@ class SessionManager(object):
         self.persist_var('_scan_id', 1, desc='Scan ID')
 
     def _setup_sigint(self):
-        '''
-        Setup the signal interrupt handler
-        '''
+        '''Setup the signal interrupt handler'''
         self._orig_sigint_hdlr = signal.getsignal(signal.SIGINT)
         signal.signal(signal.SIGINT, self.sigint_hdlr)
 
@@ -84,9 +89,7 @@ class SessionManager(object):
         self._ipy.push(dict(sigint_hdlr=self.sigint_hdlr))
 
     def sigint_hdlr(self, sig, frame):
-        '''
-        Default ophyd signal interrupt (ctrl-c) handler
-        '''
+        '''Default ophyd signal interrupt (ctrl-c) handler'''
         self._logger.debug('Calling SessionManager SIGINT handler...')
         self.stop_all()
         self._orig_sigint_hdlr(sig, frame)
@@ -97,9 +100,7 @@ class SessionManager(object):
 
     @property
     def ipy_config(self):
-        '''
-        The IPython configuration
-        '''
+        '''The IPython configuration'''
         return self._ipy.config
 
     @property
@@ -108,9 +109,7 @@ class SessionManager(object):
 
     @property
     def autorestore(self):
-        '''
-        Check for Magics autorestore and return it.
-        '''
+        '''Check for Magics autorestore and return it.'''
         config = self.ipy_config
 
         try:
@@ -152,9 +151,7 @@ class SessionManager(object):
         return value
 
     def _cleanup(self):
-        '''
-        Called when exiting IPython is confirmed
-        '''
+        '''Called when exiting IPython is confirmed'''
         if self._dispatcher.is_alive():
             self._dispatcher.stop()
             self._dispatcher.join()
@@ -178,8 +175,7 @@ class SessionManager(object):
                 self._ipy.run_line_magic('store', name)
 
     def _ask_exit(self):
-        '''
-        Called when the user tries to quit the IPython session
+        '''Called when the user tries to quit the IPython session
 
         One ctrl-D stops the scan, two confirms exit
         '''
@@ -253,15 +249,11 @@ class SessionManager(object):
         self['_scan_id'] = value
 
     def __getitem__(self, key):
-        '''
-        Grab variables from the IPython namespace
-        '''
+        '''Grab variables from the IPython namespace'''
         return self._ipy.user_ns[key]
 
     def __setitem__(self, key, value):
-        '''
-        Set variables in the IPython namespace
-        '''
+        '''Set variables in the IPython namespace'''
         self._ipy.user_ns[key] = value
 
     def __contains__(self, key):
@@ -269,16 +261,12 @@ class SessionManager(object):
 
     @property
     def cas(self):
-        '''
-        Channel Access Server instance
-        '''
+        '''Channel Access Server instance'''
         return self._cas
 
     @property
     def dispatcher(self):
-        '''
-        The monitor dispatcher
-        '''
+        '''The monitor dispatcher'''
         return self._dispatcher
 
     def _setup_epics(self):

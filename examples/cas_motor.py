@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-An example of using :class:`CasMotor`, which allows Ophyd :class:`Positioner`s
+'''An example of using :class:`CasMotor`, which allows Ophyd :class:`Positioner`s
 to be accessed by EPICS, via the built-in channel access server.
 '''
 from __future__ import print_function

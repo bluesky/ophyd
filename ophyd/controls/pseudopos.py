@@ -5,7 +5,6 @@
 
 .. module:: ophyd.control.pseudopos
    :synopsis: Pseudo positioner support
-
 '''
 
 from __future__ import print_function
@@ -24,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 class PseudoSingle(Positioner):
+    '''A single axis of a PseudoPositioner'''
+
     def __init__(self, master, idx, **kwargs):
         name = '%s.%s' % (master.name, master._pseudo_names[idx])
 
@@ -40,8 +41,7 @@ class PseudoSingle(Positioner):
         return self._get_repr(['idx={0._idx!r}'.format(self)])
 
     def _sub_proxy(self, obj=None, **kwargs):
-        '''
-        Master callbacks such as start of motion, motion finished,
+        '''Master callbacks such as start of motion, motion finished,
         etc. will be simply passed through.
         '''
         return self._run_subs(obj=self, **kwargs)
@@ -88,6 +88,24 @@ class PseudoSingle(Positioner):
 
 
 class PseudoPositioner(Positioner):
+    '''A pseudo positioner which can be comprised of multiple positioners
+
+    Parameters
+    ----------
+    positioners : sequence
+        A list of real positioners to control. Positioners must be named.
+    forward : callable
+        Pseudo -> real positioner calculation function
+        Optionally, subclass PseudoPositioner and replace _calc_forward.
+    reverse : callable
+        Real -> pseudo positioner calculation function
+        Optionally, subclass PseudoPositioner and replace _calc_reverse.
+    concurrent : bool, optional
+        If set, all real motors will be moved concurrently. If not, they will be
+        moved in order of how they were defined initially
+    pseudo : list of strings, optional
+        List of pseudo positioner names
+    '''
     def __init__(self, name, positioners,
                  forward=None,
                  reverse=None,
@@ -158,9 +176,7 @@ class PseudoPositioner(Positioner):
         Positioner.stop(self)
 
     def check_single(self, idx, position):
-        '''
-        Check if a new position for a single pseudo positioner is valid
-        '''
+        '''Check if a new position for a single pseudo positioner is valid'''
         if isinstance(idx, str):
             idx = self._pseudo_names.index(idx)
 
@@ -169,9 +185,7 @@ class PseudoPositioner(Positioner):
         return self.check_value(target)
 
     def check_value(self, position):
-        '''
-        Check if a new position for all pseudo positioners is valid
-        '''
+        '''Check if a new position for all pseudo positioners is valid'''
         if np.size(position) != len(self._pseudo_pos):
             raise ValueError('Number of positions and pseudo positioners does not match')
 
@@ -190,17 +204,14 @@ class PseudoPositioner(Positioner):
 
     @property
     def sequential(self):
-        '''
-        If sequential is set, motors will move in the sequence they were defined in
+        '''If sequential is set, motors will move in the sequence they were defined in
         (i.e., in series)
         '''
         return not self._concurrent
 
     @property
     def concurrent(self):
-        '''
-        If concurrent is set, motors will move concurrently (in parallel)
-        '''
+        '''If concurrent is set, motors will move concurrently (in parallel)'''
         return self._concurrent
 
     # Don't allow the base class to specify whether it has started moving
@@ -214,8 +225,7 @@ class PseudoPositioner(Positioner):
 
     @property
     def pseudos(self):
-        '''
-        Dictionary of pseudo motors by name
+        '''Dictionary of pseudo motors by name
 
         Keys are in the order of creation
         '''
@@ -224,9 +234,7 @@ class PseudoPositioner(Positioner):
 
     @property
     def reals(self):
-        '''
-        Dictionary of real motors by name
-        '''
+        '''Dictionary of real motors by name'''
         return OrderedDict((real.name, real) for real in self._real)
 
     def _update_position(self):
@@ -236,16 +244,13 @@ class PseudoPositioner(Positioner):
         return new_pos
 
     def _real_pos_update(self, obj=None, value=None, **kwargs):
-        '''
-        A single real positioner has moved
-        '''
+        '''A single real positioner has moved'''
         real = obj
         self._real_cur_pos[real] = value
         self._update_position()
 
     def _real_finished(self, obj=None, **kwargs):
-        '''
-        A single real positioner has finished moving.
+        '''A single real positioner has finished moving.
 
         Used for asynchronous motion, if all have finished
         moving then fire a callback (via `Positioner._done_moving`)
@@ -315,14 +320,11 @@ class PseudoPositioner(Positioner):
         return ret
 
     def _calc_forward(self, *args, **kwargs):
-        '''
-        Override me
-        '''
+        '''Override me'''
         return [0.0] * len(self._real)
 
     def calc_forward(self, *args, **kwargs):
-        '''
-        '''
+        ''' '''
         real_pos = self._calc_forward(**kwargs)
 
         if np.size(real_pos) != np.size(self._real):
@@ -331,9 +333,7 @@ class PseudoPositioner(Positioner):
         return real_pos
 
     def _calc_reverse(self, *args, **kwargs):
-        '''
-        Override me
-        '''
+        '''Override me'''
         return [0.0] * len(self._pseudo_pos)
 
     def calc_reverse(self, *args, **kwargs):
@@ -345,9 +345,7 @@ class PseudoPositioner(Positioner):
         return pseudo_pos
 
     def __getitem__(self, key):
-        '''
-        Get either a single pseudo or real positioner by name
-        '''
+        '''Get either a single pseudo or real positioner by name'''
         try:
             return self.pseudos[key]
         except:

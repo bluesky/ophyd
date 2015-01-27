@@ -5,7 +5,6 @@
 
 .. module:: ophyd.control.ophydobj
    :synopsis:
-
 '''
 
 from __future__ import print_function
@@ -16,16 +15,30 @@ from ..session import register_object
 
 
 class OphydObject(object):
+    '''The base class for all objects in Ophyd
+
+    Handles:
+    * Subscription/callback mechanism
+    * Registration with session manager
+
+    Parameters
+    ----------
+    name : str, optional
+        The name of the object.  If None, registration is disabled.
+    alias : str, optional
+        A [potentially simplified] alias of the object
+    register : bool, optional
+        Attempt to register with the session manager
+
+    Attributes
+    ----------
+    name
+    alias
+    '''
+
     _default_sub = None
 
     def __init__(self, name=None, alias=None, register=True):
-        '''
-        Subscription/callback mechanism for registered objects in ophyd sessions.
-        '''
-
-        if name is None:
-            raise ValueError('An OphydObject must have a name')
-
         self._name = name
         self._alias = alias
 
@@ -38,10 +51,12 @@ class OphydObject(object):
             self._register()
 
     def _run_sub(self, cb, *args, **kwargs):
-        '''
-        Run a single subscription callback
+        '''Run a single subscription callback
 
-        :param cb: The callback
+        Parameters
+        ----------
+        cb
+            The callback
         '''
 
         try:
@@ -52,12 +67,15 @@ class OphydObject(object):
                                    (sub_type, self), exc_info=ex)
 
     def _run_cached_sub(self, sub_type, cb):
-        '''
-        Run a single subscription callback using the most recent
+        '''Run a single subscription callback using the most recent
         cached arguments
 
-        :param sub_type: The subscription type
-        :param cb: The callback
+        Parameters
+        ----------
+        sub_type
+            The subscription type
+        cb
+            The callback
         '''
 
         try:
@@ -69,8 +87,7 @@ class OphydObject(object):
             self._run_sub(cb, *args, **kwargs)
 
     def _run_subs(self, *args, **kwargs):
-        '''
-        Run a set of subscription callbacks
+        '''Run a set of subscription callbacks
 
         Only the kwarg :param:`sub_type` is required, indicating
         the type of callback to perform. All other positional arguments
@@ -98,17 +115,20 @@ class OphydObject(object):
             self._run_sub(cb, *args, **kwargs)
 
     def subscribe(self, cb, event_type=None, run=True):
-        '''
-        Subscribe to events this signal group emits
+        '''Subscribe to events this signal group emits
 
         See also :func:`clear_sub`
 
-        :param callable cb: A callable function (that takes kwargs)
+        Parameters
+        ----------
+        cb : callable
+            A callable function (that takes kwargs)
             to be run when the event is generated
-        :param event_type: The name of the event to subscribe to (if None,
+        event_type : str, optional
+            The name of the event to subscribe to (if None,
             defaults to SignalGroup._default_sub)
-        :type event_type: str or None
-        :param bool run: Run the callback now
+        run : bool, optional
+            Run the callback now
         '''
         if event_type is None:
             event_type = self._default_sub
@@ -122,21 +142,21 @@ class OphydObject(object):
             self._run_cached_sub(event_type, cb)
 
     def _reset_sub(self, event_type):
-        '''
-        Remove all subscriptions in an event type
-        '''
+        '''Remove all subscriptions in an event type'''
         del self._subs[event_type][:]
 
     def clear_sub(self, cb, event_type=None):
-        '''
-        Remove a subscription, given the original callback function
+        '''Remove a subscription, given the original callback function
 
         See also :func:`subscribe`
 
-        :param callable callback: The callback
-        :param event_type: The event to unsubscribe from (if None, removes it
-            from all event types)
-        :type event_type: str or None
+        Parameters
+        ----------
+        cb : callable
+            The callback
+        event_type : str, optional
+            The event to unsubscribe from (if None, removes it from all event
+            types)
         '''
         if event_type is None:
             for event_type, cbs in self._subs.items():
@@ -148,9 +168,7 @@ class OphydObject(object):
             self._subs[event_type].remove(cb)
 
     def _register(self):
-        '''
-        Register this object with the session
-        '''
+        '''Register this object with the session'''
         register_object(self)
 
     @property
@@ -159,16 +177,15 @@ class OphydObject(object):
 
     @property
     def alias(self):
-        '''
-        An alternative name for the signal
-        '''
+        '''An alternative name for the signal'''
         return self._alias
 
     def check_value(self, value, **kwargs):
-        '''
-        Check if the value is valid for this object
+        '''Check if the value is valid for this object
 
-        :raises: ValueError
+        Raises
+        ------
+        ValueError
         '''
         pass
 

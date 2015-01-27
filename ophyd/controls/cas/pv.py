@@ -29,8 +29,37 @@ logger = logging.getLogger(__name__)
 
 
 class Limits(object):
-    '''
-    Control and display limits for Epics PVs
+    '''Control and display limits for Epics PVs
+
+    Parameters
+    ----------
+    lolim : float
+        The low control limit to which the value is clamped
+    hilim : float
+        The high control limit to which the value is clamped
+    hihi : float
+        The high-high alarm limit
+    lolo : float
+        The low-low alarm limit
+    high : float
+        The high alarm limit
+    low : float
+        The low alarm limit
+
+    Attributes
+    ----------
+    lolim : float
+        The low control limit to which the value is clamped
+    hilim : float
+        The high control limit to which the value is clamped
+    hihi : float
+        The high-high alarm limit
+    lolo : float
+        The low-low alarm limit
+    high : float
+        The high alarm limit
+    low : float
+        The low alarm limit
     '''
 
     def __init__(self,
@@ -49,10 +78,11 @@ class Limits(object):
         self.low = float(low)
 
     def check_alarm(self, value):
-        """
-        Raise an exception if an alarm would be set with the given value
+        """Raise an exception if an alarm would be set with the given value
 
-        :raises: AlarmError (MinorAlarmError, MajorAlarmError)
+        Raises
+        ------
+        AlarmError (MinorAlarmError, MajorAlarmError)
         """
 
         lolo = self.lolo
@@ -78,8 +108,47 @@ class Limits(object):
 
 
 class CasPV(cas.casPV):
-    '''
-    Channel access server process variable
+    '''Channel access server process variable
+
+    Parameters
+    ----------
+    name : str
+        The PV name (should not include server prefix)
+    value :
+        The initial value, also used to guess the CA type
+    count : int, optional
+        The number of elements in the array (must be >= len(value))
+    type_ : , optional
+        Override the default type detected from `value`
+    precision : int, optional
+        The precision clients should use for display
+    units : str, optional
+        The engineering units of the pv
+    limits : Limits or sequence, optional
+        Limit information (high, low, etc. See :class:`Limits`)
+    scan : float, optional
+        The rate at which to call scan()
+    asg : , optional
+        Access security group information (TODO)
+    minor_states : sequence, optional
+        For enums, the minor alarm states
+    major_states : sequence, optional
+        For enums, the major alarm states
+    written_cb : callable, optional
+        A callback called when the value is written to via channel access. This
+        overrides the default `written_to` method.
+    scan_cb : callable, optional
+        A callback called when the scan event happens -- when the PV should have
+        its value updated. This overrides the default `scan` method.
+    server : caServer, optional
+        The channel access server to attach to
+
+    Attributes
+    ----------
+    minor_states : list
+        For enum types, the list of values which cause a MinorAlarm
+    major_states : list
+        For enum types, the list of values which cause a MajorAlarm
     '''
 
     def __init__(self, name, value,
@@ -98,29 +167,6 @@ class CasPV(cas.casPV):
                  written_cb=None,
                  scan_cb=None,
                  ):
-
-        '''
-        Channel access server process variable
-
-        :param str name: The PV name (should not include server prefix)
-        :param value: The initial value, also used to guess the CA type
-        :param int count: The number of elements in the array
-            (must be >= len(value))
-        :param type_: Override the default type detected from `value`
-        :param int precision: The precision clients should use for display
-        :param str units: The engineering units of the pv
-        :param limits: Limit information (high, low, etc. See :class:`Limits`)
-        :param scan: The rate at which to call scan()
-        :param asg: Access security group information (TODO)
-        :param minor_states: For enums, the minor alarm states
-        :param major_states: For enums, the major alarm states
-        :param server: The channel access server to attach to
-        :param written_cb: A callback called when the value is written to via
-            channel access. This overrides the default `written_to` method.
-        :param scan_cb: A callback called when the scan event happens --
-            when the PV should have its value updated. This overrides the
-            default `scan` method.
-        '''
 
         # TODO: asg
         if written_cb is None:
@@ -231,9 +277,7 @@ class CasPV(cas.casPV):
 
     @property
     def full_pvname(self):
-        '''
-        The full PV name, including the server prefix
-        '''
+        '''The full PV name, including the server prefix'''
         if self._server is None:
             raise ValueError('PV not yet added to a server (%s)' % self._name)
         else:
@@ -241,9 +285,7 @@ class CasPV(cas.casPV):
 
     @property
     def server(self):
-        '''
-        The server the channel access PV is managed by
-        '''
+        '''The server the channel access PV is managed by'''
         return self._server
 
     def __getitem__(self, idx):
@@ -257,14 +299,11 @@ class CasPV(cas.casPV):
         self.value = self._value
 
     def stop(self):
-        '''
-        Stop the scan loop
-        '''
+        '''Stop the scan loop'''
         self._updating = False
 
     def scan(self):
-        '''
-        Called at every `scan` second intervals
+        '''Called at every `scan` second intervals
 
         Override this or specify scan_cb in the initializer.
         '''
@@ -286,44 +325,32 @@ class CasPV(cas.casPV):
             time.sleep(self._scan_rate)
 
     def touch(self):
-        '''
-        Update the timestamp and alarm status (without changing the value)
-        '''
+        '''Update the timestamp and alarm status (without changing the value)'''
         self._timestamp = cas.epicsTimeStamp()
         self._status, self._severity = self.check_alarm()
 
     @property
     def name(self):
-        '''
-        The PV name
-        '''
+        '''The PV name'''
         return self._name
 
     @property
     def alarm(self):
-        '''
-        Current alarm status
-        '''
+        '''Current alarm status'''
         return self._alarm
 
     @property
     def count(self):
-        '''
-        Array size
-        '''
+        '''Array size'''
         return self._count
 
     @property
     def severity(self):
-        '''
-        Current alarm severity
-        '''
+        '''Current alarm severity'''
         return self._severity
 
     def check_alarm(self, value=None):
-        '''
-        Check a value against this PV's alarm settings
-        '''
+        '''Check a value against this PV's alarm settings'''
         if value is None:
             value = self._value
 
@@ -335,21 +362,15 @@ class CasPV(cas.casPV):
         return (alarms.NO_ALARM, 0)
 
     def _check_string(self, value):
-        '''
-        Alarm checking for string PVs
-        '''
+        '''Alarm checking for string PVs'''
         pass
 
     def _check_numerical(self, value):
-        '''
-        Alarm checking for numerical PVs
-        '''
+        '''Alarm checking for numerical PVs'''
         self.limits.check_alarm(value)
 
     def _check_enum(self, value):
-        '''
-        Alarm checking for enums
-        '''
+        '''Alarm checking for enums'''
         if isinstance(value, int):
             value = self._enums[value]
 
@@ -361,9 +382,7 @@ class CasPV(cas.casPV):
                                   alarm=alarms.STATE_ALARM)
 
     def _gdd_to_dict(self, gdd):
-        '''
-        Take a gdd value and dump the important parts into a dictionary
-        '''
+        '''Take a gdd value and dump the important parts into a dictionary'''
         timestamp = cas.epicsTimeStamp()
         gdd.getTimeStamp(timestamp)
         value = gdd.get()
@@ -403,8 +422,7 @@ class CasPV(cas.casPV):
     value = property(_get_value, _set_value)
 
     def resize(self, count=None, value=None):
-        '''
-        Resize an array PV, optionally specifying a new value
+        '''Resize an array PV, optionally specifying a new value
 
         If `count` is not specified, the size of `value` is used
         '''
@@ -433,31 +451,28 @@ class CasPV(cas.casPV):
 
     def written_to(self, timestamp=None, value=None,
                    status=None, severity=None):
-        '''
-        Default callback for when the PV is written to
+        '''Default callback for when the PV is written to
 
-        :raises: casAsyncCompletion (when asynchronous completion is desired)
+        Raises
+        ------
+        casAsyncCompletion (when asynchronous completion is desired)
         '''
         pass
 
     def get(self, **kwargs):
-        '''
-        Get the current value
+        '''Get the current value
         (acts like an epics.PV, otherwise just use pv.value)
         '''
         return self.value
 
     def put(self, value, **kwargs):
-        '''
-        Set the current value
+        '''Set the current value
         (acts like an epics.PV, otherwise just use pv.value = value)
         '''
         self.value = value
 
     def process(self, wait=True):
-        '''
-        Cause the written-to callback to be fired
-        '''
+        '''Cause the written-to callback to be fired'''
 
         try:
             ret = self._written_cb(timestamp=self._timestamp,
@@ -473,8 +488,7 @@ class CasPV(cas.casPV):
         return ret
 
     def write(self, context, value):
-        '''
-        The PV was written to over channel access
+        '''The PV was written to over channel access
 
         (internal function, override `written_to` instead)
         '''
@@ -500,15 +514,12 @@ class CasPV(cas.casPV):
         return casSuccess.ret
 
     def async_done(self, ret=casSuccess.ret):
-        '''
-        Indicate to the server that the asynchronous write has completed
-        '''
+        '''Indicate to the server that the asynchronous write has completed'''
         if self.hasAsyncWrite():
             self.endAsyncWrite(ret)
 
     def writeNotify(self, context, value):
-        '''
-        An asynchronous write attempt was made
+        '''An asynchronous write attempt was made
 
         (internal function)
         '''
@@ -519,9 +530,7 @@ class CasPV(cas.casPV):
         return self.write(context, value)
 
     def _gdd_set_value(self, gdd):
-        '''
-        Update a gdd instance with the current value and alarm/severity
-        '''
+        '''Update a gdd instance with the current value and alarm/severity'''
         if gdd.primitiveType() == cas.aitEnumInvalid:
             gdd.setPrimType(self._ca_type)
 
@@ -537,9 +546,7 @@ class CasPV(cas.casPV):
 
     def _gdd_function(fcn, **kwargs):
         def wrapped(self, gdd):
-            '''
-            Internal pcaspy function; do not use
-            '''
+            '''Internal pcaspy function; do not use'''
             try:
                 ret = fcn(self, gdd, **kwargs)
             except casError as ex:
@@ -557,9 +564,7 @@ class CasPV(cas.casPV):
         return wrapped
 
     def _gdd_attr(self, gdd, attr=''):
-        '''
-        Set the gdd value to (some attribute of this instance)
-        '''
+        '''Set the gdd value to (some attribute of this instance)'''
         try:
             value = getattr(self, attr)
         except:
@@ -568,9 +573,7 @@ class CasPV(cas.casPV):
             gdd.put(value)
 
     def _gdd_lim(self, gdd, attr=''):
-        '''
-        Set the gdd value to (some part of the limits)
-        '''
+        '''Set the gdd value to (some part of the limits)'''
         try:
             value = getattr(self.limits, attr)
         except:
@@ -590,24 +593,18 @@ class CasPV(cas.casPV):
     getEnums = _gdd_function(_gdd_attr, attr='_enums')
 
     def bestExternalType(self):
-        '''
-        Internal pcaspy function; do not use
-        '''
+        '''Internal pcaspy function; do not use'''
         return self._ca_type
 
     def maxDimension(self):
-        '''
-        Internal pcaspy function; do not use
-        '''
+        '''Internal pcaspy function; do not use'''
         if self._count >= 1:
             return 1
         else:
             return 0
 
     def maxBound(self, dims):
-        '''
-        Internal pcaspy function; do not use
-        '''
+        '''Internal pcaspy function; do not use'''
         return self._count
 
     def __repr__(self):
@@ -616,20 +613,33 @@ class CasPV(cas.casPV):
 
 
 class CasRecord(CasPV):
-    '''
-    A channel access server record, starting out with just a
-    VAL field. Additional fields can be added dynamically.
+    '''A channel access server record
+
+    Starts out with just a VAL field. Additional fields can be added
+    dynamically.
+
+    Parameters
+    ----------
+    name : str
+        The record prefix
+    val_field
+        The default value for the value field
+    rtype : str
+        The record type to use
+    desc : str
+        The description field value
+    kwargs : dict
+        Passed to CasPV initializer
+
+    Attributes
+    ----------
+    fields : dict
+        Field name to CasPV instance
     '''
 
     def __init__(self, name, val_field, rtype=None,
                  desc='',
                  **kwargs):
-        '''
-        :param str name: The record prefix
-        :param val_field: The default value for the value field
-        :param str desc: The description field value
-        :param str rtype: The record type to use
-        '''
         assert '.' not in name, 'Record name cannot have periods'
 
         CasPV.__init__(self, name, val_field, **kwargs)

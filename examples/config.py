@@ -1,5 +1,4 @@
-'''
-'''
+''' '''
 
 import sys
 import logging
@@ -108,4 +107,3 @@ server_pvnames = ['_server_pv_',
 
 # this is a real instrument - it is not currently used, but be cautious!
 scalers = ['XF:23ID2-ES{Sclr:1}']
-
