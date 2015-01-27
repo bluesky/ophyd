@@ -1023,9 +1023,7 @@ def create_detector_stub(db_file, macros=None,
     print('class %s(%s):' % (det_name, base_class.__name__))
 
     def get_prop_name(pv):
-        '''A terribly confusing method to get a property name from the
-        camel-case AreaDetector PV names
-        '''
+        '''Get a property name from the camel-case AreaDetector PV name'''
         # If the name starts with a bunch of capital letters, use
         # all but the last one as one word
         # e.g., TESTOne -> test_one

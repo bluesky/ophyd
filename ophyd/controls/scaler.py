@@ -126,7 +126,9 @@ class EpicsScaler(SignalGroup):
 
         Returns
         -------
-        {channel_x: counts}
+        channel_dict : dict
+            Where channel numbers are the keys and values are the counts,
+            i.e., {channel_x: counts}
         '''
         # Block waiting for counting to complete
         self._count_ctl.put(1, wait=True)

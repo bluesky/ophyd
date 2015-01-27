@@ -62,6 +62,8 @@ class Signal(OphydObject):
 
         .. note:: A timestamp will be generated if none is passed via kwargs.
 
+        Keyword arguments are passed on to callbacks
+
         Parameters
         ----------
         value
@@ -70,8 +72,6 @@ class Signal(OphydObject):
             Allow callbacks (subscriptions) to happen
         force : bool, optional
             Skip checking the value first
-        kwargs : dict, optional
-            Keyword arguments to pass to callbacks
         '''
         if not force:
             self.check_value(value)
@@ -137,13 +137,16 @@ class Signal(OphydObject):
 class EpicsSignal(Signal):
     '''An EPICS signal, comprised of either one or two EPICS PVs
 
-    =================================
+    =======  =========  =====  ==========================================
     read_pv  write_pv   rw     Result
-    -------  --------   ----   ------
+    =======  ========   ====   ==========================================
     str      None       True   read_pv is used as write_pv
     str      None       False  Read-only signal
     str      str        True   Read from read_pv, write to write_pv
     str      str        False  write_pv ignored.
+    =======  ========   ====   ==========================================
+
+    Keyword arguments are passed on to the base class (Signal) initializer
 
     Parameters
     ----------
@@ -159,8 +162,6 @@ class EpicsSignal(Signal):
         Check limits prior to writing value
     auto_monitor : bool, optional
         Use automonitor with epics.PV
-    kwargs : dict, optional
-        Passed onto Signal initializer
     '''
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw={},
@@ -319,10 +320,7 @@ class EpicsSignal(Signal):
         '''Get the setpoint value (use only if the setpoint PV and the readback
         PV differ)
 
-        Parameters
-        ----------
-        kwargs : dict, optional
-            Passed onto epics.PV.get()
+        Keyword arguments are passed on to epics.PV.get()
         '''
         if kwargs or self._setpoint is None:
             setpoint = self._write_pv.get(**kwargs)
@@ -333,14 +331,14 @@ class EpicsSignal(Signal):
     def put(self, value, force=False, **kwargs):
         '''Using channel access, set the write PV to `value`.
 
+        Keyword arguments are passed on to callbacks
+
         Parameters
         ----------
         value : any
             The value to set
         force : bool, optional
             Skip checking the value first
-        kwargs : dict, optional
-            Keyword arguments to pass to callbacks
         '''
         if self._write_pv is None:
             raise ReadOnlyError('Read-only EPICS signal')

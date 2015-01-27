@@ -277,13 +277,12 @@ class Positioner(SignalGroup):
 class EpicsMotor(Positioner):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
+    Keyword arguments are passed through to the base class, Positioner
+
     Parameters
     ----------
     record : str
         The record to use
-
-    kwargs : dict
-        Passed onto Positioner initializer
     '''
 
     def __init__(self, record, **kwargs):
@@ -404,6 +403,8 @@ class EpicsMotor(Positioner):
 class PVPositioner(Positioner):
     '''A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
 
+    Keyword arguments are passed through to the base class, Positioner
+
     Parameters
     ----------
     setpoint : str
@@ -431,8 +432,6 @@ class PVPositioner(Positioner):
         Time to wait after a move to ensure a move complete callback is received
     limits : 2-element sequence, optional
         (low_limit, high_limit)
-    kwargs : dict, optional
-        Passed onto Positioner initializer
     '''
 
     def __init__(self, setpoint, readback=None,

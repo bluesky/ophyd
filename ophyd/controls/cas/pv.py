@@ -618,18 +618,18 @@ class CasRecord(CasPV):
     Starts out with just a VAL field. Additional fields can be added
     dynamically.
 
+    Keyword arguments are passed through to the base class, CasPV
+
     Parameters
     ----------
     name : str
         The record prefix
     val_field
         The default value for the value field
-    rtype : str
+    rtype : str, optional
         The record type to use
-    desc : str
+    desc : str, optional
         The description field value
-    kwargs : dict
-        Passed to CasPV initializer
 
     Attributes
     ----------

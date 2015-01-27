@@ -38,6 +38,8 @@ class CasMotor(CasRecord):
     '''A fake EPICS motor record, made available to EPICS by the built-in
     channel access server.
 
+    Keyword arguments are passed to the base class, CasRecord
+
     Parameters
     ----------
     name : str
@@ -46,8 +48,6 @@ class CasMotor(CasRecord):
         The ophyd :class:`Positioner` to expose to EPICS
     tweak_value : float
         The default tweak value
-    **kwargs : dict
-        Passed onto CasRecord
     '''
 
     _rtype = 'motor'

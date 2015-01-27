@@ -350,6 +350,8 @@ class Overlay(ADBase):
 class OverlayPlugin(PluginBase):
     '''Plugin which adds graphics overlays to an NDArray image
 
+    Keyword arguments are passed to the base class, PluginBase
+
     Parameters
     ----------
     prefix : str
@@ -358,8 +360,6 @@ class OverlayPlugin(PluginBase):
         number of overlays (commonPlugin default is 8)
     first_overlay : int, optional
         number of first overlay [default: 1]
-    kwargs : dict, optional
-        Passed to PluginBase
 
     Attributes
     ----------
@@ -729,15 +729,16 @@ def plugin_from_pvname(pv):
 
 
 def get_areadetector_plugin_class(prefix, suffix=''):
-    '''Get an areadetector plugin class by supplying
-    the prefix, suffix, and any kwargs for the constructor.
+    '''Get an areadetector plugin class by supplying the prefix, suffix, and any
+    kwargs for the constructor.
 
-    Uses `plugin_from_pvname` first, but falls back on using
-    epics channel access to determine the plugin type.
+    Uses `plugin_from_pvname` first, but falls back on using epics channel
+    access to determine the plugin type.
 
     Returns
     -------
-        plugin instance
+    plugin : Plugin
+        The plugin class
 
     Raises
     ------
@@ -759,15 +760,16 @@ def get_areadetector_plugin_class(prefix, suffix=''):
 
 
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
-    '''Get an instance of an areadetector plugin by supplying
-    the prefix, suffix, and any kwargs for the constructor.
+    '''Get an instance of an areadetector plugin by supplying the prefix,
+    suffix, and any kwargs for the constructor.
 
     Uses `plugin_from_pvname` first, but falls back on using
     epics channel access to determine the plugin type.
 
     Returns
     -------
-        plugin instance
+    plugin : Plugin
+        The plugin instance
 
     Raises
     ------

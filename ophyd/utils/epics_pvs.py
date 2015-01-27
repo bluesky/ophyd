@@ -37,7 +37,8 @@ def split_record_field(pv):
 
     Returns
     -------
-    (record, field)
+    record : str
+    field : str
     '''
     if '.' in pv:
         record, field = pv.rsplit('.', 1)
@@ -227,7 +228,7 @@ def get_pv_form():
 
     Returns
     -------
-    'native' or 'time'
+    {'native', 'time'}
     '''
 
     def _naive_parse_version(version):
@@ -270,7 +271,8 @@ def records_from_db(fn):
 
     Returns
     -------
-    [(record type, record name), ...]
+    records : list
+        [(record type, record name), ...]
     '''
 
     ret = []

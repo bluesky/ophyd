@@ -66,8 +66,8 @@ def string_func(value='test'):
 
 @CasFunction(type_=np.int32, count=10)
 def array_func(value=0.0):
-    '''Keyword arguments get passed onto CasPV for the return value, so you can specify
-    more about the return type in the CasFunction decorator
+    '''Keyword arguments get passed on to CasPV for the return value, so you can
+    specify more about the return type in the CasFunction decorator
     '''
     logger.info('array_func called: value=%s' % (value, ))
 
@@ -85,8 +85,8 @@ def no_arg_func():
 
 @CasFunction()
 def array_input_func(value=np.array([1., 2., 3.], dtype=np.float)):
-    '''Keyword arguments get passed onto CasPV for the return value, so you can specify
-    more about the return type
+    '''Keyword arguments get passed on to CasPV for the return value, so you can
+    specify more about the return type
     '''
     logger.info('array_input_func called: value=%s' % (value, ))
 

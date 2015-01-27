@@ -237,6 +237,7 @@ class CasFunction(object):
 
     def get_kwargs(self, name, **override):
         '''Get the keyword arguments to be passed to the function.
+
         These come from the current values stored in the channel access server
         process variables.
         '''
