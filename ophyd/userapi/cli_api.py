@@ -51,11 +51,14 @@ def ensure(*ensure_args):
                 if not hasattr(args[0], "__iter__"):
                     args = tuple([[a] for a in args])
             # Now do type checking ignoring None
-            for arg, t in zip(args, ensure_args):
+            for n, (arg, t) in enumerate(zip(args, ensure_args)):
                 if t is not None:
                     for x in arg:
                         if not isinstance(x, t):
-                            raise TypeError("Incorect type in parameter list")
+                            raise TypeError("Incorect type in parameter list.\n"
+                                            "Parameter at position {} "
+                                            "is expected to be an instance of "
+                                            "{}".format(n, t))
 
             f(*args, **kwargs)
         return wrapper
