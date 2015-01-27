@@ -475,6 +475,10 @@ class SignalGroup(OphydObject):
         return [signal.get(**kwargs)
                 for signal in self._signals]
 
+    @property
+    def signals(self):
+        return self._signals
+
     def put(self, values, **kwargs):
         return [signal.put(value, **kwargs)
                 for signal, value in zip(self._signals, values)]

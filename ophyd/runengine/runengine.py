@@ -6,16 +6,20 @@ from threading import Thread
 from Queue import Queue
 
 from ..session import register_object
+from ..controls.signal import SignalGroup
 
 try:
     from databroker.api import data_collection
 except ImportError:
     data_collection = None
 
+import pymongo
 try:
     from metadataStore.api.collection import create_event
-except ImportError as ex:
-    print('[!!] Failed to import metadataStore api: %s' % ex, file=sys.stderr)
+except pymongo.errors.ConnectionFailure:
+    print('[!!] Failed to connect to metadataStore', file=sys.stderr)
+except ImportError:
+    print('[!!] Failed to import metadataStore api', file=sys.stderr)
     create_event = None
 
 
@@ -139,7 +143,14 @@ class RunEngine(object):
             # and python is too slow (or vice versa!)
             time.sleep(0.05)
             detvals = {}
-            [detvals.update({d.name: d.value}) for d in dets]
+            for det in dets:
+                if isinstance(det, SignalGroup):
+                    # If we have a signal group, loop over all names
+                    # and signals
+                    for sig in det.signals:
+                        detvals.update({sig.name: sig.value})
+                else:
+                    detvals.update({det.name: det.value})
             detvals.update(posvals)
             # TODO: timestamp this datapoint?
             # data.update({'timestamp': time.time()})
@@ -163,12 +174,14 @@ class RunEngine(object):
 
     def _get_data_keys(self, **kwargs):
         # ATM, these are both lists
-        pos = kwargs.get('positioners')
-        det = kwargs.get('detectors')
+        names = [o.name for o in kwargs.get('positioners')]
+        for det in kwargs.get('detectors'):
+            if isinstance(det, SignalGroup):
+                names += [o.name for o in det.signals]
+            else:
+                names.append(det.name)
 
-        objs = pos + det
-
-        return [o.name for o in objs]
+        return names
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
         # create run_header and event_descriptors
