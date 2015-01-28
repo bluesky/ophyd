@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-A simple test for :class:`PseudoPositioner`
-'''
+'''A simple test for :class:`PseudoPositioner`'''
 from __future__ import print_function
 
 import time

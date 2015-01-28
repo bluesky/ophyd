@@ -7,7 +7,6 @@
  :synopsis:  `areaDetector`_ plugin abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
-
 '''
 
 from __future__ import print_function
@@ -44,6 +43,7 @@ __all__ = ['ColorConvPlugin',
 
 
 class PluginBase(NDArrayDriver):
+    '''AreaDetector plugin base class'''
     _html_docs = ['pluginDoc.html']
 
     @property
@@ -114,9 +114,7 @@ class PluginBase(NDArrayDriver):
 
     @property
     def detector(self):
-        '''
-        The default detector associated with the plugin
-        '''
+        '''The default detector associated with the plugin'''
         return self._detector
 
 
@@ -350,6 +348,23 @@ class Overlay(ADBase):
 
 
 class OverlayPlugin(PluginBase):
+    '''Plugin which adds graphics overlays to an NDArray image
+
+    Keyword arguments are passed to the base class, PluginBase
+
+    Parameters
+    ----------
+    prefix : str
+        The areaDetector plugin prefix
+    count : int, optional
+        number of overlays (commonPlugin default is 8)
+    first_overlay : int, optional
+        number of first overlay [default: 1]
+
+    Attributes
+    ----------
+    overlays : list of Overlay
+    '''
     _default_suffix = 'Over1:'
     _suffix_re = 'Over\d:'
     _html_docs = ['NDPluginOverlay.html']
@@ -361,10 +376,6 @@ class OverlayPlugin(PluginBase):
 
     def __init__(self, prefix, count=8, first_overlay=1,
                  **kwargs):
-        '''
-        :param int count: number of overlays (commonPlugin default is 8)
-        :param int first_overlay: number of first overlay [default: 1]
-        '''
         PluginBase.__init__(self, prefix, **kwargs)
 
         self.overlays = []
@@ -520,18 +531,24 @@ class FilePlugin(PluginBase):
 
     def get_filenames(self, detector=None, check=True,
                       using_autosave=True, acquired=True):
-        '''
-        Get the filenames saved or to be saved by this file plugin.
+        '''Get the filenames saved or to be saved by this file plugin.
 
-        :param detector: The detector to use (defaults to the one the
-            plugin was instantiated with)
-        :param bool check: Check the configured parameters to see if they
-            make sense
-        :param bool acquired: If True, pre-existing image filenames are returned.
+        Parameters
+        ----------
+        detector : AreaDetector, optional
+            The detector to use (defaults to the one the plugin was instantiated
+            with)
+        check : bool, optional
+            Check the configured parameters to see if they make sense
+        using_autosave : bool, optional
+            If using `Capture` mode, set this to False.
+        acquired : bool, optional
+            If True, pre-existing image filenames are returned.
             If False, image filenames that will be written are returned.
-        :param bool using_autosave: If using `Capture` mode, set this to False.
 
-        :rtype: list
+        Returns
+        -------
+        filenames : list of str
         '''
         detector = self._get_detector(detector)
 
@@ -699,8 +716,7 @@ type_map = {'NDPluginROI': ROIPlugin,
 
 
 def plugin_from_pvname(pv):
-    '''
-    Get the plugin class from a pvname,
+    '''Get the plugin class from a pvname,
     using regular expressions defined in the classes (_suffix_re).
     '''
     for class_ in type_map.values():
@@ -713,15 +729,21 @@ def plugin_from_pvname(pv):
 
 
 def get_areadetector_plugin_class(prefix, suffix=''):
-    '''
-    Get an areadetector plugin class by supplying
-    the prefix, suffix, and any kwargs for the constructor.
+    '''Get an areadetector plugin class by supplying the prefix, suffix, and any
+    kwargs for the constructor.
 
-    Uses `plugin_from_pvname` first, but falls back on using
-    epics channel access to determine the plugin type.
+    Uses `plugin_from_pvname` first, but falls back on using epics channel
+    access to determine the plugin type.
 
-    :returns: plugin instance
-    :raises: ValueError if the plugin type can't be determined
+    Returns
+    -------
+    plugin : Plugin
+        The plugin class
+
+    Raises
+    ------
+    ValueError
+        If the plugin type can't be determined
     '''
     base = ''.join([prefix, suffix])
     class_ = plugin_from_pvname(base)
@@ -738,15 +760,21 @@ def get_areadetector_plugin_class(prefix, suffix=''):
 
 
 def get_areadetector_plugin(prefix, suffix='', **kwargs):
-    '''
-    Get an instance of an areadetector plugin by supplying
-    the prefix, suffix, and any kwargs for the constructor.
+    '''Get an instance of an areadetector plugin by supplying the prefix,
+    suffix, and any kwargs for the constructor.
 
     Uses `plugin_from_pvname` first, but falls back on using
     epics channel access to determine the plugin type.
 
-    :returns: plugin instance
-    :raises: ValueError if the plugin type can't be determined
+    Returns
+    -------
+    plugin : Plugin
+        The plugin instance
+
+    Raises
+    ------
+    ValueError
+        If the plugin type can't be determined
     '''
 
     class_ = get_areadetector_plugin_class(prefix, suffix)

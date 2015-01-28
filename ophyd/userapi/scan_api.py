@@ -26,16 +26,14 @@ class Data(object):
     proprty. Data which has a length greater than 1 is stored as numpy
     arrays.
 
+    Parameters
+    ----------
+    data : dict
+        Dictionary of data from scan
     """
 
     def __init__(self, data=None):
         """Initialize class with data
-
-        Parameters
-        ----------
-
-        data : dict
-            Dictionary of data from scan
 
         """
         if data is not None:
@@ -82,6 +80,9 @@ class Scan(object):
     appended to a ringbuffer and can be accessed through the :py:meth:`data`
     method.
 
+    Attributes
+    ----------
+    TODO
     """
     _shared_config = {'default_triggers': [],
                       'default_detectors': [],
@@ -118,7 +119,6 @@ class Scan(object):
         parameters passed to this function. This is equivalent to::
 
         >>>scan.run(*args, **kwargs)
-
         """
         self.run(*args, **kwargs)
 
@@ -133,7 +133,6 @@ class Scan(object):
         ValueError
             Raised in the case that a positioner will be moved outside its
             limits.
-
         """
         for pos, path in zip(self.positioners, self.paths):
             for p in path:
@@ -182,8 +181,7 @@ class Scan(object):
         pass
 
     def format_plot(self):
-        """
-        Guess the positioners and detectors that the user cares about
+        """Guess the positioners and detectors that the user cares about
 
         Returns
         -------
@@ -224,7 +222,6 @@ class Scan(object):
 
         The main loop of the scan. This routine runs the scan and calls the
         ophyd runengine.
-
         """
         self.scan_id = session_manager.get_next_scan_id()
 
@@ -266,7 +263,6 @@ class Scan(object):
         Returns
         -------
         :py:class:`collections.deque` object containing :py:class:`Data` objects
-
         """
         return self._data_buffer
 
@@ -278,7 +274,6 @@ class Scan(object):
         -------
         :py:class:`Data` object
             Returns the last data. Equivalent to `Scan.data[-1]`
-
         """
         if len(self._data_buffer) > 0:
             return self._data_buffer[-1]
@@ -470,7 +465,6 @@ class AScan(Scan):
             The stop position of the positioners
         npts : int or list of int
             The number of intervals in the scan
-
         """
         self.setup_scan(positioners, start, stop, npts, **kwargs)
         self.run(**kwargs)
@@ -491,7 +485,6 @@ class AScan(Scan):
             The stop position of the positioners
         npts : int or list of int
             The number of intervals in the scan
-
         """
 
         # This is an n-dimensional scan. We take the dims from
@@ -548,7 +541,6 @@ class DScan(AScan):
         This prescan routine stores the current position of the positioners
         upon execution and then sets the paths to the difference between the
         current position and the scan range.
-
         """
         super(DScan, self).pre_scan()
         self._start_positions = [p.position for p in self.positioners]
@@ -561,7 +553,6 @@ class DScan(AScan):
         This post scan routine returns the positioners to their origional
         starting position (as recorded by :py:meth:`pre_scan`) once the scan
         has finished.
-
         """
         super(DScan, self).post_scan()
         status = [pos.move(start, wait=False)
@@ -588,7 +579,6 @@ class Count(Scan):
 
     A log entry is created if the logbook is setup which records the
     result of the scan.
-
     """
     def post_scan(self):
         """Post-scan print data

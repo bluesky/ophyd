@@ -24,7 +24,16 @@ except ImportError:
 
 
 class Demuxer(object):
+    '''Demultiplexer
 
+    Attributes
+    ----------
+    inpq : Queue
+    outpqs : list of Queues
+    thread : threading.Thread
+    demux : bool
+
+    '''
     def __init__(self):
         self.inpq = Queue()
         self.outpqs = []
@@ -62,9 +71,11 @@ class Demuxer(object):
 
 
 class RunEngine(object):
+    '''The run engine
 
-    '''
-
+    Parameters
+    ----------
+    logger : logging.Logger
     '''
 
     def __init__(self, logger):

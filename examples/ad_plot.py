@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-An example of using :class:`AreaDetector`
-'''
+'''An example of using :class:`AreaDetector`'''
 from __future__ import print_function
 import config
 from ophyd.controls import (AreaDetector, ImagePlugin)

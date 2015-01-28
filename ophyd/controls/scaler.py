@@ -10,16 +10,23 @@ logger = logging.getLogger(__name__)
 
 
 class EpicsScaler(SignalGroup):
+    '''SynApps Scaler Record interface
+
+    Parameters
+    ----------
+    record : str
+        The scaler record prefix
+    numchan : int, optional
+        The number of channels to use
+    '''
 
     def __init__(self, record, numchan=8, *args, **kwargs):
-        '''SynApps Scaler Record interface.'''
         self._record = record
         self._numchan = numchan
 
         SignalGroup.__init__(self, *args, **kwargs)
 
-        '''
-        Which record fields do we need to expose here (minimally)?
+        '''Which record fields do we need to expose here (minimally)?
 
         CNT     -- start/stop counting
         CONT    -- OneShot/AutoCount
@@ -74,15 +81,11 @@ class EpicsScaler(SignalGroup):
 
     @property
     def record(self):
-        '''
-        The EPICS record name
-        '''
+        '''The EPICS record name'''
         return self._record
 
     def field_pv(self, field):
-        '''
-        Return a full PV from the field name
-        '''
+        '''Return a full PV from the field name'''
         return record_field(self._record, field)
 
     def start(self):
@@ -114,11 +117,18 @@ class EpicsScaler(SignalGroup):
         self._preset_time.value = time
 
     def read(self, channels=None):
-        '''
-        Trigger a counting period and return all or selected channels.
+        '''Trigger a counting period and return all or selected channels.
 
-        :param channels: a tuple enumerating the channels to return.
-        :returns: a dict {channel x: counts,}
+        Parameters
+        ----------
+        channels
+            a tuple enumerating the channels to return.
+
+        Returns
+        -------
+        channel_dict : dict
+            Where channel numbers are the keys and values are the counts,
+            i.e., {channel_x: counts}
         '''
         # Block waiting for counting to complete
         self._count_ctl.put(1, wait=True)

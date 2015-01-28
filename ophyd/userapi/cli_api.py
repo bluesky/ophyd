@@ -1,7 +1,4 @@
-"""
-Command Line Interface to opyd objects
-
-"""
+"""Command Line Interface to opyd objects"""
 
 from __future__ import print_function
 import time
@@ -73,9 +70,9 @@ def mov(positioner, position):
 
     Parameters
     ----------
-    positioner: Positioner or list
+    positioner : Positioner or list
         Positioners to move
-    position: float or list of float
+    position : float or list of float
         Values to move positioners to.
 
     Examples
@@ -87,7 +84,6 @@ def mov(positioner, position):
     Move positioner `slt1_xg` and `slt1_yg` to 2 and 3 respectively::
 
     >>>mov([slt1_xg, slt1_yg], [2, 3])
-
     """
 
     print('\n   ', end='')
@@ -127,7 +123,6 @@ def movr(positioner, position):
     See Also
     --------
     mov : move positioners to an absolute position.
-
     """
 
     _start_val = [p.position for p in positioner]
@@ -150,8 +145,8 @@ def set_lm(positioner, limits):
 
     Parameters
     ----------
-    positioner: positioner or list of positioners
-    limits: single or list of tuple of form (+ve, -ve) limits
+    positioner : positioner or list of positioners
+    limits : single or list of tuple of form (+ve, -ve) limits
 
     Raises
     ------
@@ -168,7 +163,6 @@ def set_lm(positioner, limits):
     respectively::
 
     >>>set_lm([m1, m2], [[2,-2], [3, -3]])
-
     """
 
     print('')
@@ -220,8 +214,8 @@ def set_pos(positioner, position):
 
     Parameters
     ----------
-    positioner: Positioner or list of positioners.
-    position: float or list of floats.
+    positioner : Positioner or list of positioners.
+    position : float or list of floats.
         New position of positioners
 
     Raises
@@ -302,7 +296,6 @@ def wh_pos(positioners=None):
     List positioners `m1`, `m2` and `m3`::
 
     >>>wh_pos([m1, m2, m3])
-
     """
     if positioners is None:
         positioners = [session_mgr.get_positioners(d)
@@ -361,19 +354,18 @@ def log_pos(positioners=None):
 def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
     """Move to positions located in logboook
 
-    This function moves to positions recorded in the experimental logbook
-    using the :py:func:`log_pos` function.
+    This function moves to positions recorded in the experimental logbook using
+    the :py:func:`log_pos` function.
 
     Parameters
     ----------
-    id : integer
+    id : integer, optional
         ID of logbook entry to search for and move positions to.
-    dry_run : bool
+    dry_run : bool, optional
         If True, do not move motors, but execute a dry_run
-    positioners : list
+    positioners : list, optional
         List of string names of positioners to compare and move. Other
         positioners in the log entry will be ignored.
-
     """
     logpos, objects = logbook_to_objects(id, **kwargs)
     objects = collections.OrderedDict(sorted(objects.items()))
@@ -424,7 +416,6 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
     positioners : list
         List of string names of positioners to compare. Other positioners
         in the log entry will be ignored.
-
     """
 
     oldpos, objects = logbook_to_objects(id, **kwargs)
@@ -494,14 +485,15 @@ def logbook_to_objects(id=None, **kwargs):
 def logbook_add_objects(objects, extra_pvs=None):
     """Add to the logbook aditional information on ophyd objects.
 
-    :param objects: Objects to add to log entry.
-    :type objects: Ophyd objects
-    :param extra_pvs: Extra PVs to include in report
-    :type extra_pvs: List of strings
+    This routine takes objects and possible extra pvs and adds to the log entry
+    information which is not printed to stdout/stderr.
 
-    This routine takes objects and possible extra pvs and adds to the log
-    entry information which is not printed to stdout/stderr.
-
+    Parameters
+    ----------
+    objects : Ophyd objects
+        Objects to add to log entry.
+    extra_pvs : List of strings
+        Extra PVs to include in report
     """
 
     msg = ''
@@ -564,7 +556,6 @@ def catch_keyboard_interrupt(positioners):
     This context manager should be used when moving positioners via the cli
     to capture the keyboardInterrupt and ensure that motors are stopped and
     clean up the output to the screen.
-
     """
 
     blink(False)

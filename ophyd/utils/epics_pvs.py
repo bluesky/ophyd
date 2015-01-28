@@ -5,7 +5,6 @@
 
 .. module:: ophyd.utils.epics_pvs
    :synopsis:
-
 '''
 
 from __future__ import print_function
@@ -29,11 +28,17 @@ __all__ = ['split_record_field',
 
 
 def split_record_field(pv):
-    '''
-    Splits a pv into (record, field)
+    '''Splits a pv into (record, field)
 
-    :param str pv: the pv to split
-    :returns: (record, field)
+    Parameters
+    ----------
+    pv : str
+        the pv to split
+
+    Returns
+    -------
+    record : str
+    field : str
     '''
     if '.' in pv:
         record, field = pv.rsplit('.', 1)
@@ -44,15 +49,12 @@ def split_record_field(pv):
 
 
 def strip_field(pv):
-    '''
-    Strip off the field from a record
-    '''
+    '''Strip off the field from a record'''
     return split_record_field(pv)[0]
 
 
 def record_field(record, field):
-    '''
-    Given a record and a field, combine them into
+    '''Given a record and a field, combine them into
     a pv of the form: record.FIELD
     '''
     record = strip_field(record)
@@ -62,10 +64,11 @@ def record_field(record, field):
 def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
                 reason_field=None, reason_pv=None,
                 min_severity=errors.MinorAlarmError.severity):
-    """
-    Raise an exception if an alarm is set
+    """Raise an exception if an alarm is set
 
-    :raises: AlarmError (MinorAlarmError, MajorAlarmError)
+    Raises
+    ------
+    AlarmError (MinorAlarmError, MajorAlarmError)
     """
     stat_pv = '%s.%s' % (base_pv, stat_field)
     severity_pv = '%s.%s' % (base_pv, severity_field)
@@ -96,24 +99,40 @@ def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
 
 
 class MonitorDispatcher(epics.ca.CAThread):
+    '''A monitor dispatcher which works with pyepics
+
+    The monitor dispatcher works around having callbacks from libca threads.
+    Using epics CA calls (caget, caput, etc.) from those callbacks is not
+    possible without this dispatcher workaround.
+
+    ... note:: Without `all_contexts` set, only the callbacks that are run with
+        the same context as the the main thread are affected.
+
+    ... note:: Ensure that you call epics.ca.use_initial_context() at startup in
+        the main thread
+
+    Parameters
+    ----------
+    all_contexts : bool, optional
+        re-route _all_ callbacks from _any_ context to the dispatcher callback
+        thread
+    timeout : float, optional
+    callback_logger : logging.Logger, optional
+        A logger to notify about failed callbacks
+
+    Attributes
+    ----------
+    main_context : ctypes long
+        The main CA context
+    callback_logger : logging.Logger
+        A logger to notify about failed callbacks
+    queue : Queue
+        The event queue
+    '''
+
     # TODO this needs to be setup by the session manager.
     def __init__(self, all_contexts=False, timeout=0.1,
                  callback_logger=None):
-        '''
-        The monitor dispatcher works around having callbacks from libca threads.
-        Using epics CA calls (caget, caput, etc.) from those callbacks is not possible
-        without this dispatcher workaround.
-
-        ... note:: Without `all_contexts` set, only the callbacks that are run with the
-            same context as the the main thread are affected.
-
-        ... note:: Ensure that you call epics.ca.use_initial_context() at startup in the
-            main thread
-
-        :param all_contexts: re-route _all_ callbacks from _any_ context to
-            the dispatcher callback thread [default: False]
-
-        '''
         epics.ca.CAThread.__init__(self, name='monitor_dispatcher')
 
         self.daemon = True
@@ -130,9 +149,7 @@ class MonitorDispatcher(epics.ca.CAThread):
         self.start()
 
     def run(self):
-        '''
-        The dispatcher itself
-        '''
+        '''The dispatcher itself'''
         self._setup_pyepics(True)
 
         while not self._stop_event.is_set():
@@ -151,9 +168,7 @@ class MonitorDispatcher(epics.ca.CAThread):
         epics.ca.detach_context()
 
     def stop(self):
-        '''
-        Stop the dispatcher thread and re-enable normal callbacks
-        '''
+        '''Stop the dispatcher thread and re-enable normal callbacks'''
         self._stop_event.set()
 
     def _setup_pyepics(self, enable):
@@ -177,13 +192,16 @@ class MonitorDispatcher(epics.ca.CAThread):
 
 
 def waveform_to_string(value, type_=str, delim=''):
-    '''
-    Convert a waveform that represents a string
-    into an actual Python string
+    '''Convert a waveform that represents a string into an actual Python string
 
-    :param value: The value to convert
-    :param type_: Python type to convert to
-    :param delim: delimiter to use when joining string
+    Parameters
+    ----------
+    value
+        The value to convert
+    type_ : type, optional
+        Python type to convert to
+    delim : str, optional
+        delimiter to use when joining string
     '''
     try:
         value = delim.join(chr(c) for c in value)
@@ -200,14 +218,17 @@ def waveform_to_string(value, type_=str, delim=''):
 
 @cached_retval
 def get_pv_form():
-    '''
-    Due to a bug in certain versions of PyEpics, form='time'
-    cannot be used with some large arrays.
+    '''Get the PV form that should be used for pyepics
+
+    Due to a bug in certain versions of PyEpics, form='time' cannot be used
+    with some large arrays.
 
     native: gives time.time() timestamps from this machine
     time: gives timestamps from the PVs themselves
 
-    :returns: 'native' or 'time'
+    Returns
+    -------
+    {'native', 'time'}
     '''
 
     def _naive_parse_version(version):
@@ -246,10 +267,12 @@ def get_pv_form():
 
 
 def records_from_db(fn):
-    '''
-    Naively parses db/template files looking for record names
+    '''Naively parse db/template files looking for record names
 
-    :returns: [(record type, record name), ...]
+    Returns
+    -------
+    records : list
+        [(record type, record name), ...]
     '''
 
     ret = []

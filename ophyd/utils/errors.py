@@ -32,6 +32,8 @@ class LimitError(ValueError, OpException):
 
 # Severities
 class EpicsAlarms(object):
+    '''EPICS alarm information'''
+
     alarms = ('NO_ALARM',
               'READ_ALARM',
               'WRITE_ALARM',
@@ -90,10 +92,7 @@ class MajorAlarmError(AlarmError):
 
 
 def get_alarm_class(severity):
-    '''
-    Get the corresponding alarm exception class for
-    the specified severity.
-    '''
+    '''Get the corresponding alarm exception class for the specified severity.'''
     severity_error_class = {
         MinorAlarmError.severity: MinorAlarmError,
         MajorAlarmError.severity: MajorAlarmError,

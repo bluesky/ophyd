@@ -22,8 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def patch_swig(mod):
-    '''
-    ref: http://sourceforge.net/p/swig/bugs/1255/
+    '''ref: http://sourceforge.net/p/swig/bugs/1255/
     Workaround for setters failing with swigged classes
     '''
 
@@ -53,6 +52,18 @@ patch_swig(cas)
 
 
 class caServer(cas.caServer):
+    '''Channel Access Server
+
+    Parameters
+    ----------
+    prefix : str
+        The prefix for all PVs on the server to use
+    start : bool, optional
+        Start the server now
+    default : bool, optional
+        Use as the default channel access server
+    '''
+
     type_map = {list: cas.aitEnumEnum16,
                 tuple: cas.aitEnumEnum16,
                 str: cas.aitEnumString,
@@ -104,9 +115,7 @@ class caServer(cas.caServer):
         del CasFunction._to_attach[:]
 
     def _get_prefix(self):
-        '''
-        The channel access prefix, shared by all PVs added to this server.
-        '''
+        '''The channel access prefix, shared by all PVs added to this server.'''
         return self._prefix
 
     def _set_prefix(self, prefix):
@@ -132,9 +141,7 @@ class caServer(cas.caServer):
         return self._pvs[pv]
 
     def add_pv(self, pvi):
-        '''
-        Add a PV instance to the server
-        '''
+        '''Add a PV instance to the server'''
         name = self._strip_prefix(pvi.name)
         if name in self._pvs:
             raise ValueError('PV already exists')
@@ -143,9 +150,7 @@ class caServer(cas.caServer):
         pvi._server = self
 
     def remove_pv(self, pvi):
-        '''
-        Remove a PV instance from the server
-        '''
+        '''Remove a PV instance from the server'''
         if isinstance(pvi, str):
             name = pvi
         else:
@@ -160,9 +165,7 @@ class caServer(cas.caServer):
         pvi._server = None
 
     def _strip_prefix(self, pvname):
-        '''
-        Remove the channel access server prefix from the pv name
-        '''
+        '''Remove the channel access server prefix from the pv name'''
         if pvname[:len(self._prefix)] == self._prefix:
             return pvname[len(self._prefix):]
         else:

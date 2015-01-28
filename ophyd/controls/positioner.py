@@ -5,7 +5,6 @@
 
 .. module:: ophyd.control.positioner
    :synopsis:
-
 '''
 
 from __future__ import print_function
@@ -24,8 +23,33 @@ logger = logging.getLogger(__name__)
 
 
 class MoveStatus(object):
-    '''
-    Asynchronous movement status
+    '''Asynchronous movement status
+
+    Parameters
+    ----------
+    positioner : Positioner
+    target : float or array-like
+        Target position
+    done : bool, optional
+        Whether or not the motion has already completed
+    start_ts : float, optional
+        The motion start timestamp
+
+    Attributes
+    ----------
+    pos : Positioner
+    target : float or array-like
+        Target position
+    done : bool
+        Whether or not the motion has already completed
+    start_ts : float
+        The motion start timestamp
+    finish_ts : float
+        The motion completd timestamp
+    finish_pos : float or ndarray
+        The final position
+    success : bool
+        Motion successfully completed
     '''
 
     def __init__(self, positioner, target, done=False,
@@ -75,17 +99,17 @@ class MoveStatus(object):
 
 
 class Positioner(SignalGroup):
+    '''A soft positioner.
+
+    Subclass from this to implement your own positioners.
+    '''
+
     SUB_START = 'start_moving'
     SUB_DONE = 'done_moving'
     SUB_READBACK = 'readback'
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
 
     def __init__(self, *args, **kwargs):
-        '''
-        A soft positioner. Subclass from this to implement your own
-        positioners.
-        '''
-
         SignalGroup.__init__(self, *args, **kwargs)
 
         self._started_moving = False
@@ -99,10 +123,12 @@ class Positioner(SignalGroup):
         self._egu = kwargs.get('egu', '')
 
     def set_trajectory(self, traj):
-        '''
-        Set the trajectory of the motion
+        '''Set the trajectory of the motion
 
-        :param iterable traj: Iterable sequence
+        Parameters
+        ----------
+        traj : iterable
+            Sequence of positions to follow
         '''
         self._trajectory = iter(traj)
         self._followed = []
@@ -125,9 +151,7 @@ class Positioner(SignalGroup):
 
     @property
     def next_pos(self):
-        '''
-        Get the next point in the trajectory
-        '''
+        '''Get the next point in the trajectory'''
 
         if self._trajectory is None:
             raise ValueError('Trajectory unset')
@@ -141,9 +165,7 @@ class Positioner(SignalGroup):
         return next_pos
 
     def move_next(self, **kwargs):
-        '''
-        Move to the next point in the trajectory
-        '''
+        '''Move to the next point in the trajectory'''
         pos = self.next_pos
         if pos is None:
             raise StopIteration('End of trajectory')
@@ -153,17 +175,24 @@ class Positioner(SignalGroup):
 
     def move(self, position, wait=True,
              moved_cb=None, timeout=30.0):
-        '''
-        Move to a specified position, optionally waiting for motion to
+        '''Move to a specified position, optionally waiting for motion to
         complete.
 
-        :param position: Position to move to
-        :param bool wait: Wait for move completion
-        :param callable moved_cb: Call this callback when movement has
-            finished (not applicable if `wait` is set)
-        :param float timeout: Timeout in seconds
+        Parameters
+        ----------
+        position
+            Position to move to
+        wait : bool
+            Wait for move completion
+        moved_cb : callable
+            Call this callback when movement has finished (not applicable if
+            `wait` is set)
+        timeout : float
+            Timeout in seconds
 
-        :raises: TimeoutError, ValueError (on invalid positions)
+        Raises
+        ------
+        TimeoutError, ValueError (on invalid positions)
         '''
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
@@ -200,10 +229,7 @@ class Positioner(SignalGroup):
             return status
 
     def _done_moving(self, timestamp=None, value=None, **kwargs):
-        '''
-        Called when motion has completed.
-        Runs SUB_DONE subscription.
-        '''
+        '''Call when motion has completed.  Runs SUB_DONE subscription.'''
 
         self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
                        value=value, **kwargs)
@@ -214,25 +240,23 @@ class Positioner(SignalGroup):
         self._reset_sub(self._SUB_REQ_DONE)
 
     def stop(self):
-        '''
-        Stops motion
-        '''
+        '''Stops motion'''
+
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
 
     @property
     def position(self):
-        '''
-        The current position of the motor in its engineering units
+        '''The current position of the motor in its engineering units
 
-        :rtype: float
+        Returns
+        -------
+        position : float
         '''
         return self._position
 
     def _set_position(self, value, **kwargs):
-        '''
-        Set the current internal position and run the SUB_READBACK subscription
-        '''
+        '''Set the current internal position, run the readback subscription'''
         self._position = value
 
         timestamp = kwargs.pop('timestamp', time.time())
@@ -241,23 +265,27 @@ class Positioner(SignalGroup):
 
     @property
     def moving(self):
-        '''
-        Whether or not the motor is moving
+        '''Whether or not the motor is moving
 
-        :rtype: bool
+        Returns
+        -------
+        moving : bool
         '''
         return self._moving
 
 
 class EpicsMotor(Positioner):
+    '''An EPICS motor record, wrapped in a :class:`Positioner`
+
+    Keyword arguments are passed through to the base class, Positioner
+
+    Parameters
+    ----------
+    record : str
+        The record to use
+    '''
 
     def __init__(self, record, **kwargs):
-        '''
-        An EPICS motor record, wrapped in a :class:`Positioner`
-
-        :param str record: The record to use
-        '''
-
         self._record = record
 
         name = kwargs.pop('name', record)
@@ -284,16 +312,12 @@ class EpicsMotor(Positioner):
 
     @property
     def precision(self):
-        '''
-        The precision of the readback PV, as reported by EPICS
-        '''
+        '''The precision of the readback PV, as reported by EPICS'''
         return self._user_readback.precision
 
     @property
     def egu(self):
-        '''
-        Engineering units
-        '''
+        '''Engineering units'''
         return self._egu.value
 
     @property
@@ -302,10 +326,11 @@ class EpicsMotor(Positioner):
 
     @property
     def moving(self):
-        '''
-        whether or not the motor is moving
+        '''Whether or not the motor is moving
 
-        :rtype: bool
+        Returns
+        -------
+        moving : bool
         '''
         return bool(self._is_moving.get(use_monitor=False))
 
@@ -316,15 +341,11 @@ class EpicsMotor(Positioner):
 
     @property
     def record(self):
-        '''
-        The EPICS record name
-        '''
+        '''The EPICS record name'''
         return self._record
 
     def field_pv(self, field):
-        '''
-        Return a full PV from the field name
-        '''
+        '''Return a full PV from the field name'''
         return record_field(self._record, field)
 
     def move(self, position, wait=True,
@@ -344,23 +365,17 @@ class EpicsMotor(Positioner):
         return self._get_repr(['record={!r}'.format(self._record)])
 
     def check_value(self, pos):
-        '''
-        Check that the position is within the soft limits
-        '''
+        '''Check that the position is within the soft limits'''
         self._user_setpoint.check_value(pos)
 
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
-        '''
-        Callback from EPICS, indicating a change in position
-        '''
+        '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
-        '''
-        Callback from EPICS, indicating that movement status has changed
-        '''
+        '''Callback from EPICS, indicating that movement status has changed'''
         was_moving = self._moving
         self._moving = (value != 1)
 
@@ -386,6 +401,39 @@ class EpicsMotor(Positioner):
 
 # TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
 class PVPositioner(Positioner):
+    '''A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
+
+    Keyword arguments are passed through to the base class, Positioner
+
+    Parameters
+    ----------
+    setpoint : str
+        The setpoint (request) PV
+    readback : str, optional
+        The readback PV (e.g., encoder position PV)
+    act : str, optional
+        The actuation PV to set when movement is requested
+    act_val : any, optional
+        The actuation value
+    stop : str, optional
+        The stop PV to set when motion should be stopped
+    stop_val : any, optional
+        The stop value
+    done : str
+        A readback value indicating whether motion is finished
+    done_val : any, optional
+        The value of the done pv when motion has completed
+    put_complete : bool, optional
+        If set, the specified PV should allow for asynchronous put completion to
+        indicate motion has finished.  If `act` is specified, it will be used
+        for put completion.  Otherwise, the `setpoint` will be used.  See the
+        `-c` option from `caput` for more information.
+    settle_time : float, optional
+        Time to wait after a move to ensure a move complete callback is received
+    limits : 2-element sequence, optional
+        (low_limit, high_limit)
+    '''
+
     def __init__(self, setpoint, readback=None,
                  act=None, act_val=1,
                  stop=None, stop_val=1,
@@ -394,26 +442,6 @@ class PVPositioner(Positioner):
                  settle_time=0.05,
                  limits=None,
                  **kwargs):
-        '''
-        A :class:`Positioner`, comprised of multiple :class:`EpicsSignal`s.
-
-        :param str setpoint: The setpoint (request) PV
-        :param str readback: The readback PV (e.g., encoder position PV)
-        :param str act: The actuation PV to set when movement is requested
-        :param act_val: The actuation value
-        :param str stop: The stop PV to set when motion should be stopped
-        :param stop_val: The stop value
-        :param str done: A readback value indicating whether motion is finished
-        :param done_val: The value of the done pv when motion has completed
-        :param float settle_time: Time to wait after a move to ensure a move
-            complete callback is received
-        :param bool put_complete: If set, the specified PV should allow
-            for asynchronous put completion to indicate motion has finished.
-            If `act` is specified, it will be used for put completion.
-            Otherwise, the `setpoint` will be used.
-
-            See the `-c` option from `caput` for more information.
-        '''
 
         Positioner.__init__(self, **kwargs)
 
@@ -465,21 +493,19 @@ class PVPositioner(Positioner):
             self.add_signal(signal)
 
     def check_value(self, pos):
-        '''
-        Check that the position is within the soft limits
-        '''
+        '''Check that the position is within the soft limits'''
         self._setpoint.check_value(pos)
 
     @property
     def moving(self):
-        '''
-        Whether or not the motor is moving
+        '''Whether or not the motor is moving
 
-        If a `done` PV is specified, it will be read directly to get
-        the motion status. If not, it determined from the internal
-        state of PVPositioner.
+        If a `done` PV is specified, it will be read directly to get the motion
+        status. If not, it determined from the internal state of PVPositioner.
 
-        :rtype: bool
+        Returns
+        -------
+        bool
         '''
         if self._done is not None:
             dval = self._done.get(use_monitor=False)
@@ -488,10 +514,7 @@ class PVPositioner(Positioner):
             return self._moving
 
     def _move_wait_pc(self, position, **kwargs):
-        '''
-        Move and wait until motion has completed, using put completion (pc) on
-        one of the signals
-        '''
+        '''*put complete* Move and wait until motion has completed'''
         has_done = self._done is not None
         if not has_done:
             self._move_changed(value=False)
@@ -526,9 +549,7 @@ class PVPositioner(Positioner):
                                (self, position))
 
     def _move_wait(self, position, **kwargs):
-        '''
-        Move and wait until motion has completed
-        '''
+        '''Move and wait until motion has completed'''
         self._started_moving = False
 
         if self._put_complete:
@@ -544,9 +565,7 @@ class PVPositioner(Positioner):
                                                      self._act_val))
 
     def _move_async(self, position, **kwargs):
-        '''
-        Move and do not wait until motion is complete (asynchronous)
-        '''
+        '''Move and do not wait until motion is complete (asynchronous)'''
         self._started_moving = False
 
         def done_moving(**kwargs):
@@ -607,9 +626,7 @@ class PVPositioner(Positioner):
 
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
-        '''
-        Callback from EPICS, indicating a change in position
-        '''
+        '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
     def stop(self):

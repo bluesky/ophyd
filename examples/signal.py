@@ -1,7 +1,5 @@
 #!/usr/bin/env python2.7
-'''
-A simple test for :class:`EpicsSignal`
-'''
+'''A simple test for :class:`EpicsSignal`'''
 
 import time
 
