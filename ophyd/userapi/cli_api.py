@@ -298,8 +298,8 @@ def wh_pos(positioners=None):
     >>>wh_pos([m1, m2, m3])
     """
     if positioners is None:
-        positioners = [session_mgr.get_positioners(d)
-                       for d in sorted(session_mgr.get_positioners())]
+        pos = session_mgr.get_positioners()
+        positioners = [pos[k] for k in sorted(pos)]
 
     _print_pos(positioners, file=sys.stdout)
 
@@ -323,8 +323,8 @@ def log_pos(positioners=None):
             The ID of the logbook entry returned by the logbook.log method.
     """
     if positioners is None:
-        positioners = [session_mgr.get_positioners(d)
-                       for d in sorted(session_mgr.get_positioners())]
+        pos = session_mgr.get_positioners()
+        positioners = [pos[k] for k in sorted(pos)]
 
     msg = ''
 
