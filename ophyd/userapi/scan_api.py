@@ -442,7 +442,7 @@ class AScan(Scan):
         if self.logbook is not None:
             self.logbook.log('\n'.join(msg), properties={'OphydScan': d},
                              ensure=True,
-                             logbooks=['Data Aquisition'])
+                             logbooks=['Data Acquisition'])
 
     def _format_command_line(self, *args, **kwargs):
         """Return a string representation of the passed arguments"""

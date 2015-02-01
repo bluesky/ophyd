@@ -342,10 +342,10 @@ def log_pos(positioners=None):
     pdict = {}
     pdict['objects'] = repr(positioners)
     pdict['values'] = repr({p.name: p.position for p in positioners})
-    p = ['OphydPositioners', pdict]
 
     # make the logbook entry
-    id = logbook.log(msg, properties=[p])
+    id = logbook.log(msg, properties={'OphydPositioners': pdict},
+                     ensure=True)
 
     print('Logbook positions added as Logbook ID {}'.format(id))
     return id
@@ -591,7 +591,10 @@ def _print_pos(positioners, file=sys.stdout):
 
     for p, v in zip(positioners, pos):
         print_string(p.name, pre='| ', post=' | ', file=file)
-        print_value_aligned(v, egu=p.egu, post=' | ', file=file)
+        if v is not None:
+            print_value_aligned(v, egu=p.egu, post=' | ', file=file)
+        else:
+            print_string('INVALID', post=' | ', file=file)
         print_value_aligned(p.low_limit, egu=p.egu, post=' | ', file=file)
         print_value_aligned(p.high_limit, egu=p.egu, post=' |\n', file=file)
 
