@@ -108,7 +108,8 @@ def mov(positioner, position):
             print('   ', end='')
             for p in positioner:
                 print_value(p.position, egu=p.egu)
-            print('', end='\r')
+            print('\n')
+            print('\033[2A', end='')
             time.sleep(0.01)
             done = all(s.done for s in stat)
             if done:
@@ -117,6 +118,7 @@ def mov(positioner, position):
     print(tc.Normal + '\n')
 
 
+@ensure(Positioner, None)
 def movr(positioner, position):
     """Move positioners relative to their current positon.
 
