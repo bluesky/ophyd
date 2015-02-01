@@ -117,7 +117,7 @@ def mov(positioner, position):
             print(tc.LightGreen, end='')
             print('   ', end='')
             for p, prec in zip(positioner, pos_prec):
-                print_value(p.position, egu=p.egu, prec=p.precision)
+                print_value(p.position, egu=p.egu, prec=prec)
             print('\n')
             print('\033[2A', end='')
             time.sleep(0.01)
