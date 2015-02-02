@@ -95,6 +95,15 @@ def mov(positioner, position):
     # Start Moving all Positioners in context manager to catch
     # Keyboard interrupts
 
+    # TODO : This should be a utility function
+
+    pos_prec = []
+    for p in positioner:
+        if hasattr(p, 'precision'):
+            pos_prec.append(p.precision)
+        else:
+            pos_prec.append(FMT_PREC)
+
     with catch_keyboard_interrupt(positioner):
         stat = [p.move(v, wait=False) for p, v in
                 zip(positioner, position)]
@@ -103,12 +112,14 @@ def mov(positioner, position):
         # will happen
         flag = 0
         done = False
+
         while not all(s.done for s in stat) or (flag < 2):
             print(tc.LightGreen, end='')
             print('   ', end='')
-            for p in positioner:
-                print_value(p.position, egu=p.egu)
-            print('', end='\r')
+            for p, prec in zip(positioner, pos_prec):
+                print_value(p.position, egu=p.egu, prec=prec)
+            print('\n')
+            print('\033[2A', end='')
             time.sleep(0.01)
             done = all(s.done for s in stat)
             if done:
@@ -117,6 +128,7 @@ def mov(positioner, position):
     print(tc.Normal + '\n')
 
 
+@ensure(Positioner, None)
 def movr(positioner, position):
     """Move positioners relative to their current positon.
 
@@ -342,10 +354,10 @@ def log_pos(positioners=None):
     pdict = {}
     pdict['objects'] = repr(positioners)
     pdict['values'] = repr({p.name: p.position for p in positioners})
-    p = ['OphydPositioners', pdict]
 
     # make the logbook entry
-    id = logbook.log(msg, properties=[p])
+    id = logbook.log(msg, properties={'OphydPositioners': pdict},
+                     ensure=True)
 
     print('Logbook positions added as Logbook ID {}'.format(id))
     return id
@@ -451,8 +463,8 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
 
     for p, v, d in zip(pos, values, diff):
         print_string(p.name, pre='| ', post=' | ')
-        print_value_aligned(v, egu=p.egu, post=' | ')
-        print_value_aligned(d, egu=p.egu, post=' |\n')
+        print_value(v, egu=p.egu, post=' | ')
+        print_value(d, egu=p.egu, post=' |\n')
 
     print_header(len=3*(FMT_LEN+3)+1)
     print('')
@@ -525,21 +537,9 @@ def print_string(val, size=FMT_LEN, pre='', post=' ', file=sys.stdout):
 
 def print_value(val, prec=FMT_PREC, egu='', **kwargs):
     if val is not None:
-        print_string('{:.{fmt}} {}'.format(val, egu, fmt=prec), **kwargs)
+        print_string('{: .{fmt}f} {}'.format(val, egu, fmt=prec), **kwargs)
     else:
         print_string('', **kwargs)
-
-
-def print_value_aligned(val, size=FMT_LEN, prec=FMT_PREC, egu='', **kwargs):
-    fmt1 = '{{0:>{0}}}.{{1:<{1}}}'.format(size-prec-6, prec)
-    fmt2 = '{{:.{}f}}'.format(prec)
-    s = fmt2.format(val).rstrip('0').split('.')
-    if len(s) == 1:
-        s = (s[0], '0')
-    elif s[1] == '':
-        s[1] = '0'
-    s[1] = '{} {}'.format(s[1], egu)
-    print_string(fmt1.format(*(s[:2])), **kwargs)
 
 
 def blink(on=True, file=sys.stdout):
@@ -591,9 +591,17 @@ def _print_pos(positioners, file=sys.stdout):
 
     for p, v in zip(positioners, pos):
         print_string(p.name, pre='| ', post=' | ', file=file)
-        print_value_aligned(v, egu=p.egu, post=' | ', file=file)
-        print_value_aligned(p.low_limit, egu=p.egu, post=' | ', file=file)
-        print_value_aligned(p.high_limit, egu=p.egu, post=' |\n', file=file)
+        if v is not None:
+            if hasattr(p, 'precision'):
+                prec = p.precision
+            else:
+                prec = FMT_PREC
+            print_value(v, egu=p.egu, prec=prec,
+                        post=' | ', file=file)
+        else:
+            print_string('INVALID', post=' | ', file=file)
+        print_value(p.low_limit, egu=p.egu, post=' | ', file=file)
+        print_value(p.high_limit, egu=p.egu, post=' |\n', file=file)
 
     print_header(len=4*(FMT_LEN+3)+1, file=file)
     print('', file=file)
