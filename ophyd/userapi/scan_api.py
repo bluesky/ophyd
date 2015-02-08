@@ -6,6 +6,7 @@ import sys
 import collections
 import itertools
 import string
+import traceback
 
 from IPython.utils.coloransi import TermColors as tc
 
@@ -38,12 +39,13 @@ def estimate(x, y):
         stats['cen'] = x[zero_cross[0]]
     if zero_cross.size == 2:
         fwhm = x[zero_cross]
-    stats['width'] = fwhm[1] - fwhm[0]
-    stats['fwhm_left'] = (fwhm[0], y[zero_cross[0]])
-    stats['fwhm_right'] = (fwhm[1], y[zero_cross[1]])
+        stats['width'] = fwhm[1] - fwhm[0]
+        stats['fwhm_left'] = (fwhm[0], y[zero_cross[0]])
+        stats['fwhm_right'] = (fwhm[1], y[zero_cross[1]])
 
     # Center of mass
     stats['center_of_mass'] = (x * y).sum() / y.sum()
+    return stats
 
 
 class Data(object):
@@ -89,14 +91,14 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
-        keys, values = data.iteritems()
-        keys = ''.join([ch if ch in (string.ascii_letters + string.digits)
+        keys = data.keys()
+        values = [np.array(a) for a in data.values()]
+        keys = [''.join([ch if ch in (string.ascii_letters + string.digits)
                         else '_'
-                        for ch in keys])
+                        for ch in key]) for key in keys]
         self._data_dict = {key: value for key, value in zip(keys, values)}
         for key, value in zip(keys, values):
-            a = np.array(value)
-            setattr(self, key, a)
+            setattr(self, key, value)
 
 
 class Scan(object):
@@ -191,9 +193,10 @@ class Scan(object):
         """Entry point for context manager"""
         self.pre_scan()
 
-    def __exit__(self, exec_type, exec_value, traceback):
+    def __exit__(self, exec_type, exec_value, tb):
         """Exit point for context manager"""
         logger.debug("Scan context manager exited with %s", str(exec_value))
+        traceback.print_tb(tb)
         self.post_scan()
 
     def pre_scan(self):
