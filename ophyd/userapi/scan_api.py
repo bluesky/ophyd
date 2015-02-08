@@ -5,6 +5,7 @@ import six
 import sys
 import collections
 import itertools
+import string
 
 from IPython.utils.coloransi import TermColors as tc
 
@@ -88,13 +89,14 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
-        self._data_dict = {key.replace('.', '_'): value for key, value in
-                           data.iteritems()}
-        for key, value in data.iteritems():
+        keys, values = data.iteritems()
+        keys = ''.join([ch if ch in (string.ascii_letters + string.digits)
+                        else '_'
+                        for ch in keys])
+        self._data_dict = {key: value for key, value in zip(keys, values)}
+        for key, value in zip(keys, values):
             a = np.array(value)
-            if a.size <= 1:
-                a = value
-            setattr(self, key.replace('.', '_'), a)
+            setattr(self, key, a)
 
 
 class Scan(object):
