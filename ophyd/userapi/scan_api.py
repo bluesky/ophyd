@@ -132,6 +132,8 @@ class Scan(object):
     """
     _shared_config = {'default_triggers': [],
                       'default_detectors': [],
+                      'user_detectors': [],
+                      'user_triggers': [],
                       'scan_data': None, }
 
     def __init__(self, *args, **kwargs):
@@ -143,8 +145,6 @@ class Scan(object):
             self._shared_config['scan_data'] = collections.deque(maxlen=100)
         self._data_buffer = self._shared_config['scan_data']
 
-        self.triggers = None
-        self.detectors = None
         self.settle_time = None
 
         self.paths = list()
@@ -357,6 +357,36 @@ class Scan(object):
         self._shared_config['default_triggers'] = triggers
 
     @property
+    def user_detectors(self):
+        """Return the user detectors
+
+        Returns
+        -------
+        list of OphydObjects
+        """
+        return self._shared_config['user_detectors']
+
+    @user_detectors.setter
+    def user_detectors(self, detectors):
+        """Set the user detectors"""
+        self._shared_config['user_detectors'] = detectors
+
+    @property
+    def user_triggers(self):
+        """Return the user triggers
+
+        Returns
+        -------
+        list of OphydObjects
+        """
+        return self._shared_config['user_triggers']
+
+    @user_triggers.setter
+    def user_triggers(self, triggers):
+        """Set the user triggers"""
+        self._shared_config['user_triggers'] = triggers
+
+    @property
     def triggers(self):
         """Return the triggers for this scan
 
@@ -367,15 +397,7 @@ class Scan(object):
         -------
         list of OphydObjects
         """
-        if self._triggers is None:
-            return self.default_triggers
-        else:
-            return self._triggers + self.default_triggers
-
-    @triggers.setter
-    def triggers(self, triggers):
-        """Set the triggers for this scan"""
-        self._triggers = triggers
+        return self._shared_config['user_triggers'] + self.default_triggers
 
     @property
     def detectors(self):
@@ -388,15 +410,7 @@ class Scan(object):
         -------
         list of OphydObjects
         """
-        if self._detectors is None:
-            return self.default_detectors
-        else:
-            return self._detectors + self.default_detectors
-
-    @detectors.setter
-    def detectors(self, detectors):
-        """Set the detectors for this scan"""
-        self._detectors = detectors
+        return self._shared_config['user_detectors'] + self.default_detectors
 
 
 class AScan(Scan):
