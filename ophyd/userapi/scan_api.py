@@ -18,6 +18,33 @@ logger = session_manager._logger
 __all__ = ['AScan', 'DScan', 'Scan', 'Data', 'Count']
 
 
+def estimate(x, y):
+    """Return a dictionary of the vital stats of a 'peak'"""
+    stats = dict()
+    # Center of peak
+    stats['ymin'] = y.min()
+    stats['ymax'] = y.max()
+    stats['avg_y'] = np.average(y)
+    stats['x_at_ymin'] = x[y.argmin()]
+    stats['x_at_ymax'] = x[y.argmax()]
+    # Calculate CEN from derivative
+    zero_cross = np.where(np.diff(np.sign(y -
+                 (stats['ymax'] + stats['ymin'])/2)))[0]
+    if zero_cross.size == 2:
+        stats['cen'] = (x[zero_cross].sum() / 2,
+                        (stats['ymax'] + stats['ymin'])/2)
+    elif zero_cross.size == 1:
+        stats['cen'] = x[zero_cross[0]]
+    if zero_cross.size == 2:
+        fwhm = x[zero_cross]
+    stats['width'] = fwhm[1] - fwhm[0]
+    stats['fwhm_left'] = (fwhm[0], y[zero_cross[0]])
+    stats['fwhm_right'] = (fwhm[1], y[zero_cross[1]])
+
+    # Center of mass
+    stats['center_of_mass'] = (x * y).sum() / y.sum()
+
+
 class Data(object):
     """Class for containing scan data
 
@@ -39,6 +66,20 @@ class Data(object):
         if data is not None:
             self.data_dict = data
 
+    def _estimate(self, xname, yname):
+        """Estimate peak parameters"""
+        self._estimate_dict = estimate(self.data_dict[xname],
+                                       self.data_dict[yname])
+
+    def estimate(self, xname, yname):
+        self._estimate(xname, yname)
+        return self._estimate_dict
+
+    def cen(self, xname, yname):
+        """Calculate the center from FWHM"""
+        self._estimate(xname, yname)
+        return self._estimate_dict['cen']
+
     @property
     def data_dict(self):
         """Dictionary of data objects"""
@@ -47,12 +88,13 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
-        self._data_dict = data
+        self._data_dict = {key.replace('.', '_'): value for key, value in
+                           data.iteritems()}
         for key, value in data.iteritems():
             a = np.array(value)
             if a.size <= 1:
                 a = value
-            setattr(self, key, a)
+            setattr(self, key.replace('.', '_'), a)
 
 
 class Scan(object):
@@ -64,8 +106,8 @@ class Scan(object):
     class enters a context manager (itsself) which runs :py:meth:`pre_scan` on
     entry, and runs :py:meth:`post_scan` on exit. Because of the use of the
     context manager, :py:meth:'post_scan' will run even if an exception is
-    thrown in the :py:class:`RunEngine`. Within the context manager the following
-    steps are taken:
+    thrown in the :py:class:`RunEngine`. Within the context manager the
+    following steps are taken:
 
     * :py:meth:`check_paths`
     * :py:meth:`setup_detectors`
