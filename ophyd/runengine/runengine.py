@@ -172,7 +172,7 @@ class RunEngine(object):
         # event comes in. Set it to None for now
         event_descriptor = None
 
-        seqno = 0
+        seq_num = 0
         while self._scan_state is True:
             print('self._scan_state is True in self._start_scan')
             posvals = self._move_positioners(**kwargs)
@@ -209,16 +209,16 @@ class RunEngine(object):
             # TODO: timestamp this datapoint?
             # data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
-            print('datapoint[{}]: {}'.format(seqno, detvals))
+            print('datapoint[{}]: {}'.format(seq_num, detvals))
             # grab the current time as a timestamp that describes when the
             # event data was bundled together
             bundle_time = time.time()
             # actually insert the event into metadataStore
             try:
-                print('\n\ninserting event {}\n------------------'.format(seqno))
+                print('\n\ninserting event {}\n------------------'.format(seq_num))
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
-                                         seq_no=seqno)
+                                         seq_num=seq_num)
             except mds.EventDescriptorIsNoneError:
                 # the time when the event descriptor was created
                 print('event_descriptor has not been created. creating it now...')
@@ -231,13 +231,13 @@ class RunEngine(object):
                     data_keys=mds.format_data_keys(data_key_info))
                 print('\n\nevent_descriptor: {}\n'.format(vars(event_descriptor)))
                 # insert the event again. this time it better damn well work
-                print('\n\ninserting event {}\n------------------'.format(seqno))
+                print('\n\ninserting event {}\n------------------'.format(seq_num))
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
-                                         seq_no=seqno)
-            print('\n\nevent {}\n--------\n{}'.format(seqno, vars(event)))
+                                         seq_num=seq_num)
+            print('\n\nevent {}\n--------\n{}'.format(seq_num, vars(event)))
 
-            seqno += 1
+            seq_num += 1
             # update the 'data' object from detvals dict
             for k, v in detvals.items():
                 data[k].append(v)
