@@ -6,7 +6,7 @@ import os
 import time
 from threading import Thread
 from Queue import Queue
-
+import numpy as np
 from ..session import register_object
 from ..controls.signal import SignalGroup
 
@@ -35,14 +35,17 @@ def _get_info(positioners=None, detectors=None, data=None):
     def get_det_info(detector):
         """Internal function to grab info from a detector
         """
-        val = data[detector.name]
+        val = np.asarray(data[detector.name])
+        dtype = 'number'
         try:
             shape = val.shape
         except AttributeError:
             # val is probably a float...
             shape = None
         source = "PV:{}".format(detector.pvname)
-        return {detector.name: {'source': source, 'dtype': 'number',
+        if not shape:
+            dtype = 'array'
+        return {detector.name: {'source': source, 'dtype': dtype,
                                 'shape': shape}}
 
     for det in detectors:
