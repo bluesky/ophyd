@@ -1,27 +1,61 @@
 from __future__ import print_function
 # import logging
 import sys
+import getpass
+import os
 import time
 from threading import Thread
 from Queue import Queue
-
+import numpy as np
 from ..session import register_object
 from ..controls.signal import SignalGroup
 
-try:
-    from databroker.api import data_collection
-except ImportError:
-    data_collection = None
+from metadataStore.api import collection as mds
 
-import pymongo
-try:
-    from metadataStore.api.collection import create_event
-except pymongo.errors.ConnectionFailure:
-    print('[!!] Failed to connect to metadataStore', file=sys.stderr)
-except ImportError:
-    print('[!!] Failed to import metadataStore api', file=sys.stderr)
-    create_event = None
+# Data formatting helper function
+def _get_info(positioners=None, detectors=None, data=None):
+    """Helper function to extract information from the positioners/detectors
+    and send it over to metadatastore so that ophyd is insulated from mds
+    spec changes
 
+    Parameters
+    ----------
+    positioners : list, optional
+        List of ophyd positioners
+    detectors : list
+        List of ophyd detectors, optional
+    data : dict
+        Dictionary of actual data
+    """
+    pv_info = {pos.name: {'source': pos.report['pv'],
+                          'dtype': 'number',
+                          'shape': None}
+               for pos in positioners}
+
+    def get_det_info(detector):
+        """Internal function to grab info from a detector
+        """
+        val = np.asarray(data[detector.name])
+        dtype = 'number'
+        try:
+            shape = val.shape
+        except AttributeError:
+            # val is probably a float...
+            shape = None
+        source = "PV:{}".format(detector.pvname)
+        if not shape:
+            dtype = 'array'
+        return {detector.name: {'source': source, 'dtype': dtype,
+                                'shape': shape}}
+
+    for det in detectors:
+        if isinstance(det, SignalGroup):
+            for sig in det.signals:
+                pv_info.update(get_det_info(sig))
+        else:
+            pv_info.update(get_det_info(det))
+
+    return pv_info
 
 class Demuxer(object):
     '''Demultiplexer
@@ -110,8 +144,7 @@ class RunEngine(object):
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
         try:
-            status = [pos.move_next(wait=False)[1]
-                      for pos in positioners]
+            status = [pos.move_next(wait=False)[1] for pos in positioners]
         except StopIteration:
             return None
 
@@ -120,26 +153,33 @@ class RunEngine(object):
         # TODO: this should iterate at most N times to catch hangups
         while not all(s.done for s in status):
             time.sleep(0.1)
-
         if settle_time is not None:
             time.sleep(settle_time)
-        # return {pos.name: pos.position for pos in positioners}
-        ret = {}
-        [ret.update({pos.name: pos.position}) for pos in positioners]
 
-        return ret
+        # use metadatastore to format the events so that ophyd is insulated from
+        # metadatastore spec changes
+        return {
+            pos.name: {
+                'timestamp': pos.timestamp[pos.pvname.index(pos.report['pv'])],
+                'value': pos.position}
+            for pos in positioners}
 
     def _start_scan(self, **kwargs):
         # print('Starting Scan...{}'.format(kwargs))
-        hdr = kwargs.get('header')
-        evdesc = kwargs.get('event_descriptor')
+        begin_run_event = kwargs.get('begin_run_event')
         dets = kwargs.get('detectors')
         trigs = kwargs.get('triggers')
         data = kwargs.get('data')
 
-        seqno = 0
+        # creation of the event descriptor should be delayed until the first
+        # event comes in. Set it to None for now
+        event_descriptor = None
+
+        seq_num = 0
         while self._scan_state is True:
+            print('self._scan_state is True in self._start_scan')
             posvals = self._move_positioners(**kwargs)
+            print('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
@@ -158,22 +198,51 @@ class RunEngine(object):
                 if isinstance(det, SignalGroup):
                     # If we have a signal group, loop over all names
                     # and signals
+                    # print('vars(det) in ophyd _start_scan', vars(det))
                     for sig in det.signals:
-                        detvals.update({sig.name: sig.value})
+                        detvals.update({sig.name: {
+                            'timestamp': sig.timestamp[sig.pvname.index(sig.report['pv'])],
+                            'value': sig.value}})
                 else:
-                    detvals.update({det.name: det.value})
+                    detvals.update({
+                        det.name: {'timestamp': det.timestamp,
+                                   'value': det.value}})
             detvals.update(posvals)
+            detvals = mds.format_events(detvals)
             # TODO: timestamp this datapoint?
             # data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
-            print('datapoint[{}]: {}'.format(seqno, detvals))
-            event = data_collection.format_event(hdr, evdesc,
-                                                 seq_no=seqno,
-                                                 data=detvals)
-            create_event(event)
-            seqno += 1
+            print('datapoint[{}]: {}'.format(seq_num, detvals))
+            # grab the current time as a timestamp that describes when the
+            # event data was bundled together
+            bundle_time = time.time()
+            # actually insert the event into metadataStore
+            try:
+                print('\n\ninserting event {}\n------------------'.format(seq_num))
+                event = mds.insert_event(event_descriptor=event_descriptor,
+                                         time=bundle_time, data=detvals,
+                                         seq_num=seq_num)
+            except mds.EventDescriptorIsNoneError:
+                # the time when the event descriptor was created
+                print('event_descriptor has not been created. creating it now...')
+                evdesc_creation_time = time.time()
+                data_key_info = _get_info(positioners=kwargs.get('positioners'),
+                                          detectors=dets, data=detvals)
+
+                event_descriptor = mds.insert_event_descriptor(
+                    begin_run_event=begin_run_event, time=evdesc_creation_time,
+                    data_keys=mds.format_data_keys(data_key_info))
+                print('\n\nevent_descriptor: {}\n'.format(vars(event_descriptor)))
+                # insert the event again. this time it better damn well work
+                print('\n\ninserting event {}\n------------------'.format(seq_num))
+                event = mds.insert_event(event_descriptor=event_descriptor,
+                                         time=bundle_time, data=detvals,
+                                         seq_num=seq_num)
+            print('\n\nevent {}\n--------\n{}'.format(seq_num, vars(event)))
+
+            seq_num += 1
             # update the 'data' object from detvals dict
-            for k, v in detvals.iteritems():
+            for k, v in detvals.items():
                 data[k].append(v)
 
             if kwargs.get('positioners') is None:
@@ -191,28 +260,46 @@ class RunEngine(object):
                 names += [o.name for o in det.signals]
             else:
                 names.append(det.name)
-
         return names
 
     def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
-        # create run_header and event_descriptors
-        header = data_collection.create_run_header(scan_id=runid, **scan_args)
-        # header = {'run_header': 'Foo'}
+        """
+
+        Parameters
+        ----------
+        runid : sortable
+        begin_args
+        end_args
+        scan_args
+
+        Returns
+        -------
+        data : dict
+            {data_name: []}
+        """
+        # format the begin run event information
+        beamline_id = scan_args.get('beamline_id', None)
+        if beamline_id is None:
+            beamline_id = os.uname()[1].split('-')[0]
+        custom = scan_args.get('custom', None)
+        beamline_config = scan_args.get('beamline_config', None)
+        owner = scan_args.get('owner', None)
+        if owner is None:
+            owner = getpass.getuser()
+        runid = str(runid)
+
+        # insert the begin_run_event into metadatastore
+        begin_run_event = mds.insert_begin_run(
+            time = time.time(), beamline_id=beamline_id, owner=owner,
+            beamline_config=beamline_config, scan_id=runid, custom=custom)
+
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
-        # print('keys = %s'%keys)
-        # event_descriptor = {'a': 1, 'b':2}
-        event_descriptor = data_collection.create_event_descriptor(
-            run_header=header, event_type_id=1, data_keys=keys,
-            descriptor_name='Scan Foo')
         if scan_args is not None:
-            scan_args['header'] = header
-            scan_args['event_descriptor'] = event_descriptor
+            scan_args['begin_run_event'] = begin_run_event
             scan_args['data'] = data
-        # write the header and event_descriptor to the header PV
 
         self._begin_run(begin_args)
-
         self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
                                    kwargs=scan_args)
@@ -225,6 +312,5 @@ class RunEngine(object):
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()
-
         self._end_run(end_args)
         return data

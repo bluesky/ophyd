@@ -467,8 +467,7 @@ class SignalGroup(OphydObject):
                     for signal in self._signals)
 
     def get(self, **kwargs):
-        return [signal.get(**kwargs)
-                for signal in self._signals]
+        return [signal.get(**kwargs) for signal in self._signals]
 
     @property
     def signals(self):
