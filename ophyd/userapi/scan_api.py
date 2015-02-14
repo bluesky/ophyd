@@ -48,6 +48,12 @@ def estimate(x, y):
     return stats
 
 
+class OphydList(list):
+    """Subclass of List for Ophyd Objects to allow easy removal"""
+    def pop(self, obj):
+        pass
+
+
 class Data(object):
     """Class for containing scan data
 
@@ -428,12 +434,12 @@ class AScan(Scan):
     starting at -10 and m2 starting at -5 and traveling to 10 and 5
     respectively::
 
-    >>>scan([m1, m2], [-10, -5], [10, 5], 20)
+    >>>scan([[m1, m2]], [[-10, -5]], [[10, 5]], 20)
 
     Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling
     from -10 to 10 and m2 traveling from -5 to 5::
 
-    >>>scan([m1, m2], [-10, -5], [10, 5], [20, 20])
+    >>>scan([[m1], [m2]], [[-10], [-5]], [[10], [5]], [20, 20])
 
     Scan motors m1 and m2 in a linear path in the first dimension and
     m3 as a linear path in the second dimension::
