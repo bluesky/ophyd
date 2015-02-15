@@ -277,6 +277,13 @@ class RunEngine(object):
         data : dict
             {data_name: []}
         """
+        if begin_args is None:
+            begin_args = {}
+        if end_args is None:
+            end_args = {}
+        if scan_args is None:
+            scan_args = {}
+
         # format the begin run event information
         beamline_id = scan_args.get('beamline_id', None)
         if beamline_id is None:
@@ -296,9 +303,9 @@ class RunEngine(object):
 
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
-        if scan_args is not None:
-            scan_args['begin_run_event'] = begin_run_event
-            scan_args['data'] = data
+
+        scan_args['begin_run_event'] = begin_run_event
+        scan_args['data'] = data
 
         self._begin_run(begin_args)
         self._scan_thread = Thread(target=self._start_scan,
