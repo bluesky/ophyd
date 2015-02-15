@@ -1,6 +1,7 @@
 from __future__ import print_function
 # import logging
 import sys
+import traceback
 import getpass
 import os
 import time
@@ -142,7 +143,8 @@ class RunEngine(object):
     def _end_run(self, arg):
         state = arg.get('state', 'success')
         bre = arg['begin_run_event']
-        mds.insert_end_run(bre, time, exit_status=state)
+        reason = arg.get('reason', '')
+        mds.insert_end_run(bre, time, exit_status=state, reason=reason)
         print('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -327,6 +329,15 @@ class RunEngine(object):
             self._scan_state = False
             self._scan_thread.join()
             end_args['state'] = 'abort'
+            end_args['reason'] = 'User interrupt'
+        except Exception:
+            self._scan_state = False
+            self._scan_thread.join()
+            end_args['state'] = 'fail'
+            tb = ''.join(traceback.format_stack())
+            end_args['reason'] = tb
+            # this should attach the exception information automatically
+            # logger.exception("bad things happened")
         finally:
             self._end_run(end_args)
 
