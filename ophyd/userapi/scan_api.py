@@ -5,6 +5,8 @@ import six
 import sys
 import collections
 import itertools
+import string
+import traceback
 
 from IPython.utils.coloransi import TermColors as tc
 
@@ -16,6 +18,40 @@ session_manager = get_session_manager()
 logger = session_manager._logger
 
 __all__ = ['AScan', 'DScan', 'Scan', 'Data', 'Count']
+
+
+def estimate(x, y):
+    """Return a dictionary of the vital stats of a 'peak'"""
+    stats = dict()
+    # Center of peak
+    stats['ymin'] = y.min()
+    stats['ymax'] = y.max()
+    stats['avg_y'] = np.average(y)
+    stats['x_at_ymin'] = x[y.argmin()]
+    stats['x_at_ymax'] = x[y.argmax()]
+    # Calculate CEN from derivative
+    zero_cross = np.where(np.diff(np.sign(y -
+                 (stats['ymax'] + stats['ymin'])/2)))[0]
+    if zero_cross.size == 2:
+        stats['cen'] = (x[zero_cross].sum() / 2,
+                        (stats['ymax'] + stats['ymin'])/2)
+    elif zero_cross.size == 1:
+        stats['cen'] = x[zero_cross[0]]
+    if zero_cross.size == 2:
+        fwhm = x[zero_cross]
+        stats['width'] = fwhm[1] - fwhm[0]
+        stats['fwhm_left'] = (fwhm[0], y[zero_cross[0]])
+        stats['fwhm_right'] = (fwhm[1], y[zero_cross[1]])
+
+    # Center of mass
+    stats['center_of_mass'] = (x * y).sum() / y.sum()
+    return stats
+
+
+class OphydList(list):
+    """Subclass of List for Ophyd Objects to allow easy removal"""
+    def pop(self, obj):
+        pass
 
 
 class Data(object):
@@ -39,6 +75,20 @@ class Data(object):
         if data is not None:
             self.data_dict = data
 
+    def _estimate(self, xname, yname):
+        """Estimate peak parameters"""
+        self._estimate_dict = estimate(self.data_dict[xname],
+                                       self.data_dict[yname])
+
+    def estimate(self, xname, yname):
+        self._estimate(xname, yname)
+        return self._estimate_dict
+
+    def cen(self, xname, yname):
+        """Calculate the center from FWHM"""
+        self._estimate(xname, yname)
+        return self._estimate_dict['cen']
+
     @property
     def data_dict(self):
         """Dictionary of data objects"""
@@ -47,12 +97,14 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
-        self._data_dict = data
-        for key, value in data.iteritems():
-            a = np.array(value)
-            if a.size <= 1:
-                a = value
-            setattr(self, key, a)
+        keys = data.keys()
+        values = [np.array(a) for a in data.values()]
+        keys = [''.join([ch if ch in (string.ascii_letters + string.digits)
+                        else '_'
+                        for ch in key]) for key in keys]
+        self._data_dict = {key: value for key, value in zip(keys, values)}
+        for key, value in zip(keys, values):
+            setattr(self, key, value)
 
 
 class Scan(object):
@@ -64,8 +116,8 @@ class Scan(object):
     class enters a context manager (itsself) which runs :py:meth:`pre_scan` on
     entry, and runs :py:meth:`post_scan` on exit. Because of the use of the
     context manager, :py:meth:'post_scan' will run even if an exception is
-    thrown in the :py:class:`RunEngine`. Within the context manager the following
-    steps are taken:
+    thrown in the :py:class:`RunEngine`. Within the context manager the
+    following steps are taken:
 
     * :py:meth:`check_paths`
     * :py:meth:`setup_detectors`
@@ -86,6 +138,8 @@ class Scan(object):
     """
     _shared_config = {'default_triggers': [],
                       'default_detectors': [],
+                      'user_detectors': [],
+                      'user_triggers': [],
                       'scan_data': None, }
 
     def __init__(self, *args, **kwargs):
@@ -97,8 +151,6 @@ class Scan(object):
             self._shared_config['scan_data'] = collections.deque(maxlen=100)
         self._data_buffer = self._shared_config['scan_data']
 
-        self.triggers = None
-        self.detectors = None
         self.settle_time = None
 
         self.paths = list()
@@ -147,9 +199,10 @@ class Scan(object):
         """Entry point for context manager"""
         self.pre_scan()
 
-    def __exit__(self, exec_type, exec_value, traceback):
+    def __exit__(self, exec_type, exec_value, tb):
         """Exit point for context manager"""
         logger.debug("Scan context manager exited with %s", str(exec_value))
+        traceback.print_tb(tb)
         self.post_scan()
 
     def pre_scan(self):
@@ -310,6 +363,36 @@ class Scan(object):
         self._shared_config['default_triggers'] = triggers
 
     @property
+    def user_detectors(self):
+        """Return the user detectors
+
+        Returns
+        -------
+        list of OphydObjects
+        """
+        return self._shared_config['user_detectors']
+
+    @user_detectors.setter
+    def user_detectors(self, detectors):
+        """Set the user detectors"""
+        self._shared_config['user_detectors'] = detectors
+
+    @property
+    def user_triggers(self):
+        """Return the user triggers
+
+        Returns
+        -------
+        list of OphydObjects
+        """
+        return self._shared_config['user_triggers']
+
+    @user_triggers.setter
+    def user_triggers(self, triggers):
+        """Set the user triggers"""
+        self._shared_config['user_triggers'] = triggers
+
+    @property
     def triggers(self):
         """Return the triggers for this scan
 
@@ -320,15 +403,7 @@ class Scan(object):
         -------
         list of OphydObjects
         """
-        if self._triggers is None:
-            return self.default_triggers
-        else:
-            return self._triggers + self.default_triggers
-
-    @triggers.setter
-    def triggers(self, triggers):
-        """Set the triggers for this scan"""
-        self._triggers = triggers
+        return self._shared_config['user_triggers'] + self.default_triggers
 
     @property
     def detectors(self):
@@ -341,15 +416,7 @@ class Scan(object):
         -------
         list of OphydObjects
         """
-        if self._detectors is None:
-            return self.default_detectors
-        else:
-            return self._detectors + self.default_detectors
-
-    @detectors.setter
-    def detectors(self, detectors):
-        """Set the detectors for this scan"""
-        self._detectors = detectors
+        return self._shared_config['user_detectors'] + self.default_detectors
 
 
 class AScan(Scan):
@@ -367,12 +434,12 @@ class AScan(Scan):
     starting at -10 and m2 starting at -5 and traveling to 10 and 5
     respectively::
 
-    >>>scan([m1, m2], [-10, -5], [10, 5], 20)
+    >>>scan([[m1, m2]], [[-10, -5]], [[10, 5]], 20)
 
     Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling
     from -10 to 10 and m2 traveling from -5 to 5::
 
-    >>>scan([m1, m2], [-10, -5], [10, 5], [20, 20])
+    >>>scan([[m1], [m2]], [[-10], [-5]], [[10], [5]], [20, 20])
 
     Scan motors m1 and m2 in a linear path in the first dimension and
     m3 as a linear path in the second dimension::
