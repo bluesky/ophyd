@@ -288,10 +288,11 @@ class RunEngine(object):
             owner = getpass.getuser()
         runid = str(runid)
 
+        blc = mds.insert_beamline_config(beamline_config, time=time.time())
         # insert the begin_run_event into metadatastore
         begin_run_event = mds.insert_begin_run(
-            time = time.time(), beamline_id=beamline_id, owner=owner,
-            beamline_config=beamline_config, scan_id=runid, custom=custom)
+            time=time.time(), beamline_id=beamline_id, owner=owner,
+            beamline_config=blc, scan_id=runid, custom=custom)
 
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
