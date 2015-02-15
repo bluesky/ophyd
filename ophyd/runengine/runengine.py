@@ -140,6 +140,9 @@ class RunEngine(object):
         print('Begin Run...')
 
     def _end_run(self, arg):
+        state = arg.get('state', 'success')
+        bre = arg['begin_run_event']
+        mds.insert_end_run(bre, time, exit_status=state)
         print('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -301,10 +304,13 @@ class RunEngine(object):
             time=time.time(), beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
 
+        # stash bre for later use
+        scan_args['begin_run_event'] = begin_run_event
+        end_args['begin_run_event'] = begin_run_event
+
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
 
-        scan_args['begin_run_event'] = begin_run_event
         scan_args['data'] = data
 
         self._begin_run(begin_args)
@@ -320,5 +326,8 @@ class RunEngine(object):
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()
-        self._end_run(end_args)
+            end_args['state'] = 'abort'
+        finally:
+            self._end_run(end_args)
+
         return data
