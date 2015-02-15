@@ -142,7 +142,7 @@ class RunEngine(object):
     def _end_run(self, arg):
         state = arg.get('state', 'success')
         bre = arg['begin_run_event']
-        mds.insert_end_run(bre, time, exit_status=state)
+        mds.insert_end_run(bre, time.time(), exit_status=state)
         print('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
