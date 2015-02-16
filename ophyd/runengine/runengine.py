@@ -140,6 +140,9 @@ class RunEngine(object):
         print('Begin Run...')
 
     def _end_run(self, arg):
+        state = arg.get('state', 'success')
+        bre = arg['begin_run_event']
+        mds.insert_end_run(bre, time.time(), exit_status=state)
         print('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -277,6 +280,13 @@ class RunEngine(object):
         data : dict
             {data_name: []}
         """
+        if begin_args is None:
+            begin_args = {}
+        if end_args is None:
+            end_args = {}
+        if scan_args is None:
+            scan_args = {}
+
         # format the begin run event information
         beamline_id = scan_args.get('beamline_id', None)
         if beamline_id is None:
@@ -288,16 +298,20 @@ class RunEngine(object):
             owner = getpass.getuser()
         runid = str(runid)
 
+        blc = mds.insert_beamline_config(beamline_config, time=time.time())
         # insert the begin_run_event into metadatastore
         begin_run_event = mds.insert_begin_run(
             time=time.time(), beamline_id=beamline_id, owner=owner,
-            beamline_config=beamline_config, scan_id=runid, custom=custom)
+            beamline_config=blc, scan_id=runid, custom=custom)
+
+        # stash bre for later use
+        scan_args['begin_run_event'] = begin_run_event
+        end_args['begin_run_event'] = begin_run_event
 
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
-        if scan_args is not None:
-            scan_args['begin_run_event'] = begin_run_event
-            scan_args['data'] = data
+
+        scan_args['data'] = data
 
         self._begin_run(begin_args)
         self._scan_thread = Thread(target=self._start_scan,
@@ -312,5 +326,8 @@ class RunEngine(object):
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()
-        self._end_run(end_args)
+            end_args['state'] = 'abort'
+        finally:
+            self._end_run(end_args)
+
         return data
