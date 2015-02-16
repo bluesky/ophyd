@@ -10,7 +10,7 @@ import numpy as np
 from ..session import register_object
 from ..controls.signal import SignalGroup
 
-from metadataStore.api import collection as mds
+from metadataStore import api as mds
 
 # Data formatting helper function
 def _get_info(positioners=None, detectors=None, data=None):
@@ -290,7 +290,7 @@ class RunEngine(object):
 
         # insert the begin_run_event into metadatastore
         begin_run_event = mds.insert_begin_run(
-            time = time.time(), beamline_id=beamline_id, owner=owner,
+            time=time.time(), beamline_id=beamline_id, owner=owner,
             beamline_config=beamline_config, scan_id=runid, custom=custom)
 
         keys = self._get_data_keys(**scan_args)
