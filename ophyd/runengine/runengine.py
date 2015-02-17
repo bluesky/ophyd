@@ -10,7 +10,7 @@ import numpy as np
 from ..session import register_object
 from ..controls.signal import SignalGroup
 
-from metadataStore import api as mds
+from metadatastore import api as mds
 
 # Data formatting helper function
 def _get_info(positioners=None, detectors=None, data=None):
