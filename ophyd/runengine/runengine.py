@@ -134,15 +134,15 @@ class RunEngine(object):
     def resume(self):
         pass
 
-    def _begin_run(self, arg):
+    def _run_start(self, arg):
         # run any registered user functions
         # save user data (if any), and run_header
         print('Begin Run...')
 
     def _end_run(self, arg):
         state = arg.get('state', 'success')
-        bre = arg['begin_run_event']
-        mds.insert_end_run(bre, time.time(), exit_status=state)
+        bre = arg['run_start']
+        mds.insert_run_end(bre, time.time(), exit_status=state)
         print('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -169,7 +169,7 @@ class RunEngine(object):
 
     def _start_scan(self, **kwargs):
         # print('Starting Scan...{}'.format(kwargs))
-        begin_run_event = kwargs.get('begin_run_event')
+        run_start = kwargs.get('run_start')
         dets = kwargs.get('detectors')
         trigs = kwargs.get('triggers')
         data = kwargs.get('data')
@@ -233,7 +233,7 @@ class RunEngine(object):
                                           detectors=dets, data=detvals)
 
                 event_descriptor = mds.insert_event_descriptor(
-                    begin_run_event=begin_run_event, time=evdesc_creation_time,
+                    run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
                 print('\n\nevent_descriptor: {}\n'.format(vars(event_descriptor)))
                 # insert the event again. this time it better damn well work
@@ -265,13 +265,13 @@ class RunEngine(object):
                 names.append(det.name)
         return names
 
-    def start_run(self, runid, begin_args=None, end_args=None, scan_args=None):
+    def start_run(self, runid, start_args=None, end_args=None, scan_args=None):
         """
 
         Parameters
         ----------
         runid : sortable
-        begin_args
+        start_args
         end_args
         scan_args
 
@@ -280,8 +280,8 @@ class RunEngine(object):
         data : dict
             {data_name: []}
         """
-        if begin_args is None:
-            begin_args = {}
+        if start_args is None:
+            start_args = {}
         if end_args is None:
             end_args = {}
         if scan_args is None:
@@ -299,21 +299,21 @@ class RunEngine(object):
         runid = str(runid)
 
         blc = mds.insert_beamline_config(beamline_config, time=time.time())
-        # insert the begin_run_event into metadatastore
-        begin_run_event = mds.insert_begin_run(
+        # insert the run_start into metadatastore
+        run_start = mds.insert_run_start(
             time=time.time(), beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
 
         # stash bre for later use
-        scan_args['begin_run_event'] = begin_run_event
-        end_args['begin_run_event'] = begin_run_event
+        scan_args['run_start'] = run_start
+        end_args['run_start'] = run_start
 
         keys = self._get_data_keys(**scan_args)
         data = {k: [] for k in keys}
 
         scan_args['data'] = data
 
-        self._begin_run(begin_args)
+        self._run_start(start_args)
         self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
                                    kwargs=scan_args)
