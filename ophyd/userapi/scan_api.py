@@ -193,7 +193,7 @@ class Scan(object):
                 except LimitError:
                     raise ValueError('Scan moves positioner {} \
                                      out of limits {},{}'.format(
-                                     pos.name, p.low_limit, p.high_limit))
+                                     pos.name, pos.low_limit, pos.high_limit))
 
     def __enter__(self):
         """Entry point for context manager"""
