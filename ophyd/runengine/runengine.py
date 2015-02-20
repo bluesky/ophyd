@@ -35,7 +35,9 @@ def _get_info(positioners=None, detectors=None, data=None):
     def get_det_info(detector):
         """Internal function to grab info from a detector
         """
-        val = np.asarray(data[detector.name])
+        # grab 'value' from [value, timestamp]
+        val = np.asarray(data[detector.name][0]) 
+
         dtype = 'number'
         try:
             shape = val.shape
@@ -43,7 +45,8 @@ def _get_info(positioners=None, detectors=None, data=None):
             # val is probably a float...
             shape = None
         source = "PV:{}".format(detector.pvname)
-        if not shape:
+
+        if shape:
             dtype = 'array'
         return {detector.name: {'source': source, 'dtype': dtype,
                                 'shape': shape}}
