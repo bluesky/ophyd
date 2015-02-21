@@ -393,6 +393,11 @@ class EpicsSignal(Signal):
         return ret
 
     @property
+    def source(self):
+        """Return the source as a dictionary"""
+        return {self.name: 'SIM:{}'.format(self.name)}
+
+    @property
     def report(self):
         # FIXME:
         if self._read_pv == self._write_pv:
@@ -408,6 +413,29 @@ class EpicsSignal(Signal):
         return {self.name: value,
                 'pv': pv
                 }
+
+    @property
+    def source(self):
+        """Return the source as a dictionary
+
+        Returns
+        -------
+        dict
+            Dictionary of name and formatted source string
+        """
+        return {self.name: 'PV:{}'.format(self._read_pv.pvname)}
+
+    def read(self):
+        """Read the signal and format for data collection
+
+        Returns
+        -------
+        dict
+            Dictionary of value timestamp pairs
+        """
+
+        return {self.name: {'value': self.value,
+                            'timestamp': self.timestamp}}
 
 
 class SignalGroup(OphydObject):
@@ -514,3 +542,15 @@ class SignalGroup(OphydObject):
     @property
     def report(self):
         return [signal.report for signal in self._signals]
+
+    @property
+    def source(self):
+        sources = {}
+        [sources.update(signal.source) for signal in self._signals]
+        return sources
+
+    def read(self):
+        values = {}
+        [values.update(signal.read()) for signal in self._signals]
+        return values
+

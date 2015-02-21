@@ -26,8 +26,6 @@ class Detector(SignalGroup):
     Subclass from this to implement your own detectors
     '''
 
-    SUB_DONE = 'done_acquiring'
-    _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
 
     def __init__(self, *args, **kwargs):
         super(Detector, self).__init__(*args, **kwargs)
@@ -62,14 +60,14 @@ class Detector(SignalGroup):
         status.done = True
         return status
 
-    def read(self, **kwargs):
-        '''Retrieve data from instrumentation, format it, and return it.
-        '''
-        raise NotImplementedError('Detector.read must be implemented')
+    #def read(self, **kwargs):
+    #    '''Retrieve data from instrumentation, format it, and return it.
+    #    '''
+    #    raise NotImplementedError('Detector.read must be implemented')
 
-    def source(self, **kwargs):
-        '''Get source info for a given detector'''
-        raise NotImplementedError('Detector.source must be implemented')
+    #def source(self, **kwargs):
+    #    '''Get source info for a given detector'''
+    #    raise NotImplementedError('Detector.source must be implemented')
 
 
 class SignalDetector(Detector):
@@ -83,22 +81,3 @@ class SignalDetector(Detector):
             else:
                 raise ValueError('signal must be Signal or SignalGroup instance')
 
-    def read(self, **kwargs):
-        '''Read signal and return formatted for run-engine.
-
-        Returns
-        -------
-        dict
-        '''
-        return {sig.name: {'value': sig.value,
-                           'timestamp': sig.timestamp} for sig in self.signals}
-
-    def source(self, **kwargs):
-        '''Return signal names and sources'''
-        src = {}
-        for sig in self.signals:
-            if isinstance(sig, EpicsSignal):
-                src.update({sig.name: 'PV:{}'.format(sig.pvname)})
-            else:
-                raise NotImplementedError('Cant determine source of PV')
-        return src

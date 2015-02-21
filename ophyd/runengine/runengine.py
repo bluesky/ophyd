@@ -28,9 +28,7 @@ def _get_info(positioners=None, detectors=None, data=None):
         Dictionary of actual data
     """
     src = {}
-    [src.update({pos.name: {'source': pos.report['pv']}})
-     for pos in positioners]
-    [src.update(det.source()) for det in detectors]
+    [src.update(x.source) for x in (detectors + positioners)]
 
     info_dict = {}
     for name, value in data.iteritems():
@@ -170,6 +168,7 @@ class RunEngine(object):
         run_start = kwargs.get('run_start')
         dets = kwargs.get('detectors')
         data = kwargs.get('data')
+        positioners = kwargs.get('positioners')
 
         # creation of the event descriptor should be delayed until the first
         # event comes in. Set it to None for now
@@ -196,9 +195,8 @@ class RunEngine(object):
             detvals = {}
             for det in dets:
                 detvals.update(det.read())
-
-            # Update with positioners
-            detvals.update(posvals)
+            for pos in positioners:
+                detvals.update(pos.read())
 
             # Format dict for MDS
 

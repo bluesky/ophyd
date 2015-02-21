@@ -291,8 +291,10 @@ class EpicsMotor(Positioner):
         name = kwargs.pop('name', record)
         Positioner.__init__(self, name=name, **kwargs)
 
-        signals = [EpicsSignal(self.field_pv('RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(self.field_pv('VAL'), alias='_user_setpoint',
+        signals = [EpicsSignal(self.field_pv('RBV'), rw=False,
+                               alias='_user_readback'),
+                   EpicsSignal(self.field_pv('VAL'),
+                               alias='_user_setpoint',
                                limits=True),
                    EpicsSignal(self.field_pv('EGU'), alias='_egu'),
                    EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
@@ -397,6 +399,15 @@ class EpicsMotor(Positioner):
     def report(self):
         return {self._name: self.position,
                 'pv': self._user_readback.pvname}
+
+    @property
+    def source(self):
+        src = self._user_readback.source[self._user_readback.name]
+        return {self.name: src}
+
+    def read(self):
+        val = self._user_readback.read()[self._user_readback.name]
+        return {self.name: val}
 
 
 # TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
@@ -638,6 +649,16 @@ class PVPositioner(Positioner):
     @property
     def report(self):
         return {self._name: self.position, 'pv': self._readback.pvname}
+
+    @property
+    def source(self):
+        src = self._readback.source[self._readback.name]
+        return {self.name: src}
+
+    def read(self):
+        val = self._readback.read()[self._readback.name]
+        return {self.name: val}
+
 
     @property
     def limits(self):

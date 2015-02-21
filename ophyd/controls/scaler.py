@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class EpicsScaler(SignalDetector):
     '''SynApps Scaler Record interface'''
-    _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
+    _SUB_REQ_DONE = '_req_done'  # requested count finished
     def __init__(self, record, numchan=8, *args, **kwargs):
         super(EpicsScaler, self).__init__(*args, **kwargs)
         self._record = record
