@@ -85,14 +85,15 @@ class Detector(SignalGroup):
 
 
 class SignalDetector(Detector):
-    def __init__(self, signal, *args, **kwargs):
+    def __init__(self, signal=None, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
-        if isinstance(signal, SignalGroup):
-            [self.add_signal(sig) for sig in signal.signals]
-        elif isinstance(signal, Signal):
-            self.add_signal(signal)
-        else:
-            raise ValueError('signal must be Signal or SignalGroup instance')
+        if signal is not None:
+            if isinstance(signal, SignalGroup):
+                [self.add_signal(sig) for sig in signal.signals]
+            elif isinstance(signal, Signal):
+                self.add_signal(signal)
+            else:
+                raise ValueError('signal must be Signal or SignalGroup instance')
 
     def read(self, **kwargs):
         '''Read signal and return formatted for run-engine.
