@@ -1,7 +1,7 @@
 from __future__ import print_function
 import logging
 
-from .signal import EpicsSignal, SignalGroup
+from .signal import EpicsSignal
 from .detector import SignalDetector
 
 logger = logging.getLogger(__name__)
@@ -98,5 +98,5 @@ class EpicsScaler(SignalDetector):
             self._done_acquiring()
 
         self.count.put(1, wait=False,
-                        callback=done_counting)
+                       callback=done_counting)
         return SignalDetector.acquire(self, **kwargs)
