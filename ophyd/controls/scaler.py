@@ -19,6 +19,7 @@ class EpicsScaler(SignalDetector):
     '''
 
     def __init__(self, record, numchan=8, *args, **kwargs):
+        super(EpicsScaler, self).__init__(*args, **kwargs)
         self._record = record
         self._numchan = numchan
         '''Which record fields do we need to expose here (minimally)?
@@ -33,25 +34,29 @@ class EpicsScaler(SignalDetector):
 
         Eventually need to provide PR1..16 -- preset counts too.
         '''
-        name = kwargs['name']
-        print(name)
+        name = self.name
         signals = [EpicsSignal(self._field_pv('CNT'),
+                               alias='count',
                                name=''.join([name, '_count'])),
                    EpicsSignal(self._field_pv('CONT'),
+                               alias='count_mode',
                                name=''.join([name, '_count_mode'])),
                    EpicsSignal(self._field_pv('T'),
+                               alias='time',
                                name=''.join([name, '_time'])),
                    EpicsSignal(self._field_pv('TP'),
+                               alias='preset_time',
                                name=''.join([name, '_preset_time']))
                    ]
 
         for ch in range(1, numchan + 1):
             pv = '{}{}'.format(self._field_pv('S'), ch)
             signals.append(EpicsSignal(pv, rw=False,
-                           name='{}_chan{}'.format(name, ch)))
+                                       alias='chan{}'.format(ch),
+                                       name='{}_chan{}'.format(name, ch)))
 
-        group = SignalGroup(signals, name=name + '_group')
-        super(EpicsScaler, self).__init__(group, *args, **kwargs)
+        for sig in signals:
+            self.add_signal(sig)
 
     def _field_pv(self, field):
         return '{}.{}'.format(self._record, field)
@@ -71,15 +76,15 @@ class EpicsScaler(SignalDetector):
 
         TODO: Could set acquisition time here
         """
-        self._autocount = self._count_mode.value
-        self._count_mode.value = 0
+        self._autocount = self.count_mode.value
+        self.count_mode.value = 0
 
     def deconfigure(self, **kwargs):
         """Deconfigure Scaler
 
         Reset thet autocount status
         """
-        self._count_mode.value = self._autocount
+        self.count_mode.value = self._autocount
 
     def acquire(self, **kwargs):
         """Start the scaler counting and return status
@@ -92,6 +97,6 @@ class EpicsScaler(SignalDetector):
         def done_counting(**kwargs):
             self._done_acquiring()
 
-        self._count.put(1, wait=False,
+        self.count.put(1, wait=False,
                         callback=done_counting)
         return SignalDetector.acquire(self, **kwargs)
