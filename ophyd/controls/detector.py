@@ -59,8 +59,7 @@ class Detector(SignalGroup):
         DetectorStatus : Object to tell if detector has finished acquiring
         '''
         status = DetectorStatus(self)
-        self.subscribe(status._finished,
-                       event_type=self._SUB_REQ_DONE, run=False)
+        status.done = True
         return status
 
     def _done_acquiring(self, timestamp=None, value=None, **kwargs):

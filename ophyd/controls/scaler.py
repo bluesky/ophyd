@@ -2,22 +2,13 @@ from __future__ import print_function
 import logging
 
 from .signal import EpicsSignal
-from .detector import SignalDetector
+from .detector import SignalDetector, DetectorStatus
 
 logger = logging.getLogger(__name__)
 
 
 class EpicsScaler(SignalDetector):
-    '''SynApps Scaler Record interface
-
-    Parameters
-    ----------
-    record : str
-        The scaler record prefix
-    numchan : int, optional
-        The number of channels to use
-    '''
-
+    '''SynApps Scaler Record interface'''
     def __init__(self, record, numchan=8, *args, **kwargs):
         super(EpicsScaler, self).__init__(*args, **kwargs)
         self._record = record
@@ -27,7 +18,6 @@ class EpicsScaler(SignalDetector):
         CNT     -- start/stop counting
         CONT    -- OneShot/AutoCount
         G1..16  -- Gate Control, Yes/No
-        NM1..16 -- Channel 1..16 Name
         S1..16  -- Counts
         T       -- Elapsed time
         TP      -- Preset time (duration to count over)
@@ -99,4 +89,7 @@ class EpicsScaler(SignalDetector):
 
         self.count.put(1, wait=False,
                        callback=done_counting)
-        return SignalDetector.acquire(self, **kwargs)
+        status = DetectorStatus(self)
+        self.subscribe(status._finished,
+                       event_type=self._SUB_REQ_DONE, run=False)
+        return status

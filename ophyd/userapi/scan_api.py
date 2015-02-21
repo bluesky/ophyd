@@ -1,7 +1,6 @@
 from __future__ import print_function
 import numpy as np
 from time import sleep
-import six
 import sys
 import collections
 import itertools
@@ -13,6 +12,7 @@ from IPython.utils.coloransi import TermColors as tc
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
+from ..controls import Detector, SignalDetector
 
 session_manager = get_session_manager()
 logger = session_manager._logger
@@ -158,9 +158,6 @@ class Scan(object):
         self.paths = list()
         self.positioners = list()
 
-        self._plotx = None
-        self._ploty = None
-
         try:
             self.logbook = session_manager['olog_client']
         except KeyError:
@@ -206,6 +203,7 @@ class Scan(object):
         logger.debug("Scan context manager exited with %s", str(exec_value))
         traceback.print_tb(tb)
         self.post_scan()
+        return False
 
     def pre_scan(self):
         """Routine run before scan starts"""
@@ -215,7 +213,7 @@ class Scan(object):
         """Routine run after scan has completed"""
         pass
 
-    def setup_detectors(self, detectors):
+    def setup_detectors(self):
         """Routine run to setup detectors before scan starts
 
         Parameters
@@ -225,7 +223,7 @@ class Scan(object):
         """
         pass
 
-    def setup_triggers(self, triggers):
+    def setup_triggers(self):
         """Routine run to setup triggers before scan starts
 
         Parameters
@@ -234,43 +232,6 @@ class Scan(object):
             List of the triggers to configure.
         """
         pass
-
-    def format_plot(self):
-        """Guess the positioners and detectors that the user cares about
-
-        Returns
-        -------
-        plotx : str
-            The default positioners to set as the x axis
-        ploty : list
-            The list of positioners/detectors to plot on the y axis
-        """
-
-        pos_names = [pos.name for pos in self.positioners]
-        det_names = [det.name for det in self.detectors]
-        valid_names = pos_names + det_names
-        # default value for the x axis
-        if len(self.positioners) > 0:
-            plotx = self.positioners[0].name
-            # if plotx is not a valid string, ignore it. if it is, make
-            # sure that it is in the positioners/detectors that the
-            # scan knows about
-            if isinstance(self._plotx, six.string_types):
-                if self._plotx:
-                    for name in valid_names:
-                        if name in self._plotx:
-                            plotx = name
-                            break
-        else:
-            plotx = None
-
-        ploty = []
-        # checking validity of self._ploty
-        for name in valid_names:
-            if self._ploty is not None:
-                if name in self._ploty:
-                    ploty.append(name)
-        return plotx, ploty
 
     def run(self, **kwargs):
         """Run the scan
@@ -285,8 +246,8 @@ class Scan(object):
 
         with self:
             self.check_paths()
-            self.setup_detectors(self.detectors)
-            self.setup_triggers(self.triggers)
+            self.setup_detectors()
+            self.setup_triggers()
 
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
@@ -294,16 +255,13 @@ class Scan(object):
             # Create the dict to pass to the run-engine
 
             scan_args = dict()
-            scan_args['detectors'] = self.detectors
+            detectors = [SignalDetector(det) if not isinstance(det, Detector)
+                         else det for det in self.detectors]
+            scan_args['detectors'] = detectors
             scan_args['triggers'] = self.triggers
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
             scan_args['custom'] = {}
-            plotx, ploty = self.format_plot()
-            if plotx:
-                scan_args['custom']['plotx'] = plotx
-            if ploty:
-                scan_args['custom']['ploty'] = ploty
 
             # Run the scan!
             data = self._run_eng.start_run(self.scan_id,
