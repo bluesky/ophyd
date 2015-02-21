@@ -8,7 +8,7 @@
 '''
 
 from __future__ import print_function
-from .signal import (Signal, SignalGroup)
+from .signal import (Signal, SignalGroup, EpicsSignal)
 
 
 class DetectorStatus(object):
@@ -79,14 +79,18 @@ class Detector(SignalGroup):
         '''
         raise NotImplementedError('Detector.read must be implemented')
 
+    def source(self, **kwargs):
+        '''Get source info for a given detector'''
+        raise NotImplementedError('Detector.source must be implemented')
+
 
 class SignalDetector(Detector):
     def __init__(self, signal, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
         if isinstance(signal, SignalGroup):
-            [self._add_signal(sig) for sig in signal.signals]
+            [self.add_signal(sig) for sig in signal.signals]
         elif isinstance(signal, Signal):
-            self._add_signal(signal)
+            self.add_signal(signal)
         else:
             raise ValueError('signal must be Signal or SignalGroup instance')
 
@@ -97,5 +101,15 @@ class SignalDetector(Detector):
         -------
         dict
         '''
-        return {sig: {'value': sig.value,
-                      'timestamp': sig.timestamp} for sig in self.signals}
+        return {sig.name: {'value': sig.value,
+                           'timestamp': sig.timestamp} for sig in self.signals}
+
+    def source(self, **kwargs):
+        '''Return signal names and sources'''
+        src = {}
+        for sig in self.signals:
+            if isinstance(sig, EpicsSignal):
+                src.update({sig.name: 'PV:{}'.format(sig.pvname)})
+            else:
+                raise NotImplementedError('Cant determine source of PV')
+        return src
