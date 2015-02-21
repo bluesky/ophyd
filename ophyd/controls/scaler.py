@@ -93,23 +93,5 @@ class EpicsScaler(SignalDetector):
             self._done_acquiring()
 
         self._count.put(1, wait=False,
-                            callback=done_counting)
+                        callback=done_counting)
         return SignalDetector.acquire(self, **kwargs)
-
-#    def read(self, **kwargs):
-#        '''Trigger a counting period and return all or selected channels.
-#
-#        Returns
-#        -------
-#        channel_dict : dict
-#            Where channel numbers are the keys and values are the counts,
-#            i.e., {channel_x: counts}
-#        '''
-#        channels = range(1, self._numchan + 1)
-#
-#        rtn = {}
-#        for ch in channels:
-#            sig = getattr(self, '_ch{}_count'.format(ch))
-#            rtn.update({sig.name: {'value': sig.value,
-#                                  'timestamp': sig.timestamp}})
-#        return rtn
