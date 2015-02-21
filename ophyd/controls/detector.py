@@ -8,16 +8,16 @@
 '''
 
 from __future__ import print_function
-from .signal import (EpicsSignal, SignalGroup)
+from .signal import (Signal, SignalGroup)
 
 
 class DetectorStatus(object):
     def __init__(self, detector):
         self.done = False
         self.detector = detector
+
     def _finished(self, success=True, **kwargs):
         self.done = True
-
 
 
 class Detector(SignalGroup):
@@ -26,9 +26,9 @@ class Detector(SignalGroup):
     Subclass from this to implement your own detectors
     '''
 
-    #SUB_START = 'start_acquiring'
     SUB_DONE = 'done_acquiring'
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
+
     def __init__(self, *args, **kwargs):
         super(Detector, self).__init__(*args, **kwargs)
 
@@ -83,7 +83,12 @@ class Detector(SignalGroup):
 class SignalDetector(Detector):
     def __init__(self, signal, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
-        self._signal = signal
+        if isinstance(signal, Signal):
+            self._add_signal(signal)
+        elif isinstance(signal, SignalGroup):
+            [self._add_signal(sig) for sig in signal.signals]
+        else:
+            raise ValueError('signal must be Signal or SignalGroup instance')
 
     def read(self, **kwargs):
         '''Read signal and return formatted for run-engine.
@@ -92,5 +97,5 @@ class SignalDetector(Detector):
         -------
         dict
         '''
-        return {self._signal.name: {'value': self._signal.value,
-                                    'timestamp': self._signal.timestamp}}
+        return {sig: {'value': sig.value,
+                      'timestamp': sig.timestamp} for sig in self.signals}
