@@ -186,8 +186,11 @@ class RunEngine(object):
 
             # Trigger detector acquisision
             acq_status = [det.acquire() for det in dets]
-            while all([stat.done for stat in acq_status]):
-                time.sleep(0.005)
+
+            while any([not stat.done for stat in acq_status]):
+                time.sleep(0.05)
+
+            time.sleep(0.05)
 
             # Read detector values
             detvals = {}
