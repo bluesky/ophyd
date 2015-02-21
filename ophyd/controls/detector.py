@@ -83,10 +83,10 @@ class Detector(SignalGroup):
 class SignalDetector(Detector):
     def __init__(self, signal, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
-        if isinstance(signal, Signal):
-            self._add_signal(signal)
-        elif isinstance(signal, SignalGroup):
+        if isinstance(signal, SignalGroup):
             [self._add_signal(sig) for sig in signal.signals]
+        elif isinstance(signal, Signal):
+            self._add_signal(signal)
         else:
             raise ValueError('signal must be Signal or SignalGroup instance')
 
