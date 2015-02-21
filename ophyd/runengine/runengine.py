@@ -27,16 +27,17 @@ def _get_info(positioners=None, detectors=None, data=None):
     data : dict
         Dictionary of actual data
     """
-    pv_info = {pos.name: {'source': pos.report['pv'],
-                          'dtype': 'number',
-                          'shape': None}
-               for pos in positioners}
+    src = {}
+    [src.update({pos.name: {'source': pos.report['pv']}})
+     for pos in positioners]
+    [src.update(det.source()) for det in detectors]
 
-    def get_det_info(detector):
+    info_dict = {}
+    for name, value in data.iteritems():
         """Internal function to grab info from a detector
         """
         # grab 'value' from [value, timestamp]
-        val = np.asarray(data[detector.name][0]) 
+        val = np.asarray(value[0])
 
         dtype = 'number'
         try:
@@ -44,21 +45,15 @@ def _get_info(positioners=None, detectors=None, data=None):
         except AttributeError:
             # val is probably a float...
             shape = None
-        source = "PV:{}".format(detector.pvname)
 
         if shape:
             dtype = 'array'
-        return {detector.name: {'source': source, 'dtype': dtype,
-                                'shape': shape}}
+        info_dict.update({name: {'dtype': dtype,
+                                 'shape': shape,
+                                 'source': src[name]}})
 
-    for det in detectors:
-        if isinstance(det, SignalGroup):
-            for sig in det.signals:
-                pv_info.update(get_det_info(sig))
-        else:
-            pv_info.update(get_det_info(det))
+    return info_dict
 
-    return pv_info
 
 class Demuxer(object):
     '''Demultiplexer
@@ -174,7 +169,6 @@ class RunEngine(object):
         # print('Starting Scan...{}'.format(kwargs))
         run_start = kwargs.get('run_start')
         dets = kwargs.get('detectors')
-        trigs = kwargs.get('triggers')
         data = kwargs.get('data')
 
         # creation of the event descriptor should be delayed until the first
@@ -189,31 +183,22 @@ class RunEngine(object):
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
-            # execute user code
-            # print('execute user code')
-            # detvals = {d.name: d.value for d in dets}
-            # TODO: handle triggers here (pvs that cause detectors to fire)
-            if trigs is not None:
-                for t in trigs:
-                    t.put(1, wait=True)
-            # TODO: again, WTF is with the delays required? CA is too fast,
-            # and python is too slow (or vice versa!)
-            time.sleep(0.05)
+
+            # Trigger detector acquisision
+            acq_status = [det.acquire() for det in dets]
+            while all([stat.done for stat in acq_status]):
+                time.sleep(0.005)
+
+            # Read detector values
             detvals = {}
             for det in dets:
-                if isinstance(det, SignalGroup):
-                    # If we have a signal group, loop over all names
-                    # and signals
-                    # print('vars(det) in ophyd _start_scan', vars(det))
-                    for sig in det.signals:
-                        detvals.update({sig.name: {
-                            'timestamp': sig.timestamp[sig.pvname.index(sig.report['pv'])],
-                            'value': sig.value}})
-                else:
-                    detvals.update({
-                        det.name: {'timestamp': det.timestamp,
-                                   'value': det.value}})
+                detvals.update(det.read())
+
+            # Update with positioners
             detvals.update(posvals)
+
+            # Format dict for MDS
+
             detvals = mds.format_events(detvals)
             # TODO: timestamp this datapoint?
             # data.update({'timestamp': time.time()})

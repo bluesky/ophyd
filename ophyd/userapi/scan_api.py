@@ -97,6 +97,8 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
+        data = {key: np.array(value)[:,0]
+                for key, value in data.iteritems()}
         keys = data.keys()
         values = [np.array(a) for a in data.values()]
         keys = [''.join([ch if ch in (string.ascii_letters + string.digits)
@@ -491,10 +493,16 @@ class AScan(Scan):
 
         msg.append('{0:=^80}'.format(''))
 
-        for p in self.positioners + self.triggers + self.detectors:
+        for p in self.positioners:
             try:
                 msg.append('PV:{}'.format(p.report['pv']))
-            except KeyError:
+            except:
+                pass
+
+        for p in self.detectors:
+            try:
+                [msg.append(val) for key, val in p.source().iteritems()]
+            except:
                 pass
 
         d = {}
@@ -672,10 +680,10 @@ class Count(Scan):
             lmsg.append('{:<30}'.format(trig.name))
         lmsg.append('')
         lmsg.append('{0:=^80}'.format(''))
-        for p in self.triggers + self.detectors:
+        for p in self.detectors:
             try:
-                lmsg.append('PV:{}'.format(p.report['pv']))
-            except KeyError:
+                [lmsg.append(val) for key, val in p.source().iteritems()]
+            except:
                 pass
 
         d = {}
