@@ -63,7 +63,6 @@ class Detector(SignalGroup):
                        event_type=self._SUB_REQ_DONE, run=False)
         return status
 
-
     def _done_acquiring(self, timestamp=None, value=None, **kwargs):
         '''Call when acquisition has completed.  Runs SUB_DONE subscription.'''
 
@@ -80,3 +79,18 @@ class Detector(SignalGroup):
         '''
         raise NotImplementedError('Detector.read must be implemented')
 
+
+class SignalDetector(Detector):
+    def __init__(self, signal, *args, **kwargs):
+        super(SignalDetector, self).__init__(*args, **kwargs)
+        self._signal = signal
+
+    def read(self, **kwargs):
+        '''Read signal and return formatted for run-engine.
+
+        Returns
+        -------
+        dict
+        '''
+        return {self._signal.name: {'value': self._signal.value,
+                                    'timestamp': self._signal.timestamp}}
