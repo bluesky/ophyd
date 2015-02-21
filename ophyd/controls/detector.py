@@ -62,17 +62,6 @@ class Detector(SignalGroup):
         status.done = True
         return status
 
-    def _done_acquiring(self, timestamp=None, value=None, **kwargs):
-        '''Call when acquisition has completed.  Runs SUB_DONE subscription.'''
-
-        self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
-                       value=value, **kwargs)
-
-        self._run_subs(sub_type=self._SUB_REQ_DONE, timestamp=timestamp,
-                       value=value, success=True,
-                       **kwargs)
-        self._reset_sub(self._SUB_REQ_DONE)
-
     def read(self, **kwargs):
         '''Retrieve data from instrumentation, format it, and return it.
         '''
