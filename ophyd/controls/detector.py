@@ -8,7 +8,7 @@
 '''
 
 from __future__ import print_function
-from .signal import (Signal, SignalGroup, EpicsSignal)
+from .signal import (Signal, SignalGroup)
 
 
 class DetectorStatus(object):
@@ -25,7 +25,6 @@ class Detector(SignalGroup):
 
     Subclass from this to implement your own detectors
     '''
-
 
     def __init__(self, *args, **kwargs):
         super(Detector, self).__init__(*args, **kwargs)
@@ -80,4 +79,3 @@ class SignalDetector(Detector):
                 self.add_signal(signal)
             else:
                 raise ValueError('signal must be Signal or SignalGroup instance')
-
