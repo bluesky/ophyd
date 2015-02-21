@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 class EpicsScaler(SignalDetector):
     '''SynApps Scaler Record interface'''
+    _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     def __init__(self, record, numchan=8, *args, **kwargs):
         super(EpicsScaler, self).__init__(*args, **kwargs)
         self._record = record
@@ -75,6 +76,14 @@ class EpicsScaler(SignalDetector):
         Reset thet autocount status
         """
         self.count_mode.value = self._autocount
+
+    def _done_acquiring(self, timestamp=None, value=None, **kwargs):
+        '''Call when acquisition has completed.  Runs SUB_DONE subscription.'''
+
+        self._run_subs(sub_type=self._SUB_REQ_DONE, timestamp=timestamp,
+                       value=value, success=True,
+                       **kwargs)
+        self._reset_sub(self._SUB_REQ_DONE)
 
     def acquire(self, **kwargs):
         """Start the scaler counting and return status
