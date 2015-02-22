@@ -193,6 +193,8 @@ class Scan(object):
 
     def __enter__(self):
         """Entry point for context manager"""
+        self.check_paths()
+        self.configure_detectors()
         self.pre_scan()
 
     def __exit__(self, exec_type, exec_value, tb):
@@ -231,9 +233,6 @@ class Scan(object):
         # the KeyboardInterrupt
 
         with self:
-            self.check_paths()
-            self.configure_detectors()
-
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
 

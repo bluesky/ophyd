@@ -8,6 +8,7 @@ import hashlib
 import getpass
 import time
 import filestore.api as fs
+import binascii
 import uuid
 
 
@@ -92,6 +93,10 @@ class AreaDetectorFileStore(AreaDetector):
         self._uid_cache.clear()
 
         self._make_filename()
+        self._filestore_res = fs.insert_resource('AD_HDF5', self._filename,
+                                                 {'frame_per_point':
+                                                  self._num_images.value})
+
         self._write_plugin('FilePath', self.file_path, as_string=True)
         self._write_plugin('FileName', self._filename, as_string=True)
         if self._read_plugin('FilePathExists') == 0:
@@ -108,16 +113,15 @@ class AreaDetectorFileStore(AreaDetector):
     def deconfigure(self, *args, **kwargs):
         self._write_plugin('Capture', 0, wait=True)
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
-        res = fs.insert_resource('AD_HDF5', self._filename,
-                                 {'frame_per_point': self._num_images.value})
         for i, uid in enumerate(self._uid_cache):
-            fs.insert_datum(res, uid, {'point_number': i})
+            fs.insert_datum(self._filestore_res, uid, {'point_number': i})
 
     @property
     def source(self):
         src = super(AreaDetectorFileStore, self).source
         src.update({'{}_{}'.format(self.name, 'image'):
-                    'FILESTORE:TEST'})
+                    'FILESTORE:{}'.format(binascii.b2a_hex(
+                        self._filestore_res.id.binary))})
 
         # Insert into here any additional parts for source
         return src
