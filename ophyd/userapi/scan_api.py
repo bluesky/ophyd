@@ -97,6 +97,7 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
+        print(data)
         data = {key: np.array(value)[:,0]
                 for key, value in data.iteritems()}
         keys = data.keys()
