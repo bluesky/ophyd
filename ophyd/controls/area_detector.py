@@ -103,3 +103,16 @@ class AreaDetectorFileStore(AreaDetector):
     def deconfigure(self, *args, **kwargs):
         self._write_plugin('Capture', 0, wait=True)
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+
+    @property
+    def source(self):
+        src = AreaDetector.source(self)
+        print(src)
+        # Insert into here any additional parts for source
+        return src
+
+    def read(self):
+        val = AreaDetector.read(self)
+        print(val)
+        # Add to val any parts to insert into MDS
+        return val
