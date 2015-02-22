@@ -122,7 +122,7 @@ class Scan(object):
     following steps are taken:
 
     * :py:meth:`check_paths`
-    * :py:meth:`setup_detectors`
+    * :py:meth:`configure_detectors`
     * :py:meth:`setup_triggers`
 
     After configuring the detectors and triggers the trajectory is loaded
@@ -202,6 +202,7 @@ class Scan(object):
         """Exit point for context manager"""
         logger.debug("Scan context manager exited with %s", str(exec_value))
         traceback.print_tb(tb)
+        self.deconfigure_detectors()
         self.post_scan()
         return False
 
@@ -213,25 +214,13 @@ class Scan(object):
         """Routine run after scan has completed"""
         pass
 
-    def setup_detectors(self):
-        """Routine run to setup detectors before scan starts
+    def configure_detectors(self):
+        """Routine run to setup detectors before scan starts"""
+        [det.configure() for det in self.detectors]
 
-        Parameters
-        ----------
-        detectors : list of Ophyd Objects
-            List of the detectors to configure.
-        """
-        pass
-
-    def setup_triggers(self):
-        """Routine run to setup triggers before scan starts
-
-        Parameters
-        ----------
-        triggers : list of OphydObjects
-            List of the triggers to configure.
-        """
-        pass
+    def deconfigure_detectors(self):
+        """Routine run to setup detectors before scan starts"""
+        [det.deconfigure() for det in self.detectors]
 
     def run(self, **kwargs):
         """Run the scan
@@ -246,8 +235,7 @@ class Scan(object):
 
         with self:
             self.check_paths()
-            self.setup_detectors()
-            self.setup_triggers()
+            self.configure_detectors()
 
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
@@ -258,7 +246,6 @@ class Scan(object):
             detectors = [SignalDetector(det) if not isinstance(det, Detector)
                          else det for det in self.detectors]
             scan_args['detectors'] = detectors
-            scan_args['triggers'] = self.triggers
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
             scan_args['custom'] = {}
@@ -308,21 +295,6 @@ class Scan(object):
         self._shared_config['default_detectors'] = detectors
 
     @property
-    def default_triggers(self):
-        """Return the default triggers
-
-        Returns
-        -------
-        list of OphydObjects
-        """
-        return self._shared_config['default_triggers']
-
-    @default_triggers.setter
-    def default_triggers(self, triggers):
-        """Set the default triggers"""
-        self._shared_config['default_triggers'] = triggers
-
-    @property
     def user_detectors(self):
         """Return the user detectors
 
@@ -336,34 +308,6 @@ class Scan(object):
     def user_detectors(self, detectors):
         """Set the user detectors"""
         self._shared_config['user_detectors'] = detectors
-
-    @property
-    def user_triggers(self):
-        """Return the user triggers
-
-        Returns
-        -------
-        list of OphydObjects
-        """
-        return self._shared_config['user_triggers']
-
-    @user_triggers.setter
-    def user_triggers(self, triggers):
-        """Set the user triggers"""
-        self._shared_config['user_triggers'] = triggers
-
-    @property
-    def triggers(self):
-        """Return the triggers for this scan
-
-        The triggers of the scan is a concatenation of the list of triggers
-        for this scan instance and the default triggers which is a singleton.
-
-        Returns
-        -------
-        list of OphydObjects
-        """
-        return self._shared_config['user_triggers'] + self.default_triggers
 
     @property
     def detectors(self):

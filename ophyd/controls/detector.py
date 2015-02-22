@@ -20,7 +20,7 @@ class DetectorStatus(object):
         self.done = True
 
 
-class Detector(SignalGroup):
+class Detector(object):
     '''A Base Detector class
 
     Subclass from this to implement your own detectors
@@ -59,17 +59,19 @@ class Detector(SignalGroup):
         status.done = True
         return status
 
-    #def read(self, **kwargs):
-    #    '''Retrieve data from instrumentation, format it, and return it.
-    #    '''
-    #    raise NotImplementedError('Detector.read must be implemented')
+    def read(self, **kwargs):
+        '''Retrieve data from instrumentation, format it, and return it.
+        '''
+        raise NotImplementedError('Detector.read must be implemented')
 
-    #def source(self, **kwargs):
-    #    '''Get source info for a given detector'''
-    #    raise NotImplementedError('Detector.source must be implemented')
+    def source(self, **kwargs):
+        '''Get source info for a given detector'''
+        raise NotImplementedError('Detector.source must be implemented')
 
 
-class SignalDetector(Detector):
+class SignalDetector(SignalGroup, Detector):
+    SUB_ACQ_DONE = 'acq_done'  # requested acquire
+
     def __init__(self, signal=None, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
         if signal is not None:
@@ -78,4 +80,31 @@ class SignalDetector(Detector):
             elif isinstance(signal, Signal):
                 self.add_signal(signal)
             else:
-                raise ValueError('signal must be Signal or SignalGroup instance')
+                raise ValueError('Must be Signal or SignalGroup instance')
+
+        self._acq_signal = None
+
+    def acquire(self, **kwargs):
+        """Start acquisition"""
+
+        if self._acq_signal is not None:
+            def done_acquisition(**kwargs):
+                self._done_acquiring()
+
+            self._acq_signal.put(1, wait=False,
+                                 callback=done_acquisition)
+            status = DetectorStatus(self)
+            self.subscribe(status._finished,
+                           event_type=self.SUB_ACQ_DONE, run=False)
+            return status
+        else:
+            return Detector.acquire(self)
+
+    def _done_acquiring(self, timestamp=None, value=None, **kwargs):
+        '''Call when acquisition has completed.'''
+        self._run_subs(sub_type=self.SUB_ACQ_DONE, timestamp=timestamp,
+                       value=value, success=True,
+                       **kwargs)
+        self._reset_sub(self.SUB_ACQ_DONE)
+
+
