@@ -57,28 +57,34 @@ class AreaDetectorHDF5(AreaDetector):
     def __init__(self, *args, **kwargs):
         super(AreaDetectorHDF5, self).__init__(*args, **kwargs)
         self._file_plugin = 'HDF1:'
-        self._file_path = '/GPFS/xf23id/xf23id1/test_2'
+        self.file_path = '/GPFS/xf23id/xf23id1/test_2/'
 
-    def _write_plugin(self, name, value, wait=True):
+    def _write_plugin(self, name, value, wait=True, as_string=False,
+                      verify=True):
         caput('{}{}{}'.format(self._basename, self._file_plugin, name),
               value, wait=wait)
+        if verify:
+            val = self._read_plugin(name, as_string=as_string)
+            if val != value:
+                raise IOError('Unable to correctly set {}'.format(name))
 
-    def _read_plugin(self, name):
+    def _read_plugin(self, name, **kwargs):
         return caget('{}{}{}_RBV'.format(self._basename,
-                                         self._file_plugin, name))
+                                         self._file_plugin, name),
+                     **kwargs)
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorHDF5, self).configure(*args, **kwargs)
 
         self._filename = md5('{}{}'.format(time(), self._basename)).hexdigest()
 
-        self._write_plugin('FilePath', self._file_path)
-        self._write_plugin('FileName', self._filename)
+        self._write_plugin('FilePath', self.file_path, as_string=True)
+        self._write_plugin('FileName', self._filename, as_string=True)
         if self._read_plugin('FilePathExists') == 0:
             raise Exception('File Path does not exits on server')
         self._write_plugin('AutoIncrement', 1)
         self._write_plugin('FileNumber', 0)
-        self._write_plugin('FileTemplate', '%s%s_%3.3d.h5')
+        self._write_plugin('FileTemplate', '%s%s_%3.3d.h5', as_string=True)
         self._write_plugin('NumCapture', 0)
         self._write_plugin('AutoSave', 1)
         self._write_plugin('FileWriteMode', 2)
@@ -87,4 +93,4 @@ class AreaDetectorHDF5(AreaDetector):
 
     def deconfigure(self, *args, **kwargs):
         super(AreaDetectorHDF5, self).deconfigure(*args, **kwargs)
-        self._write_plugin('Capture', 0, wait=False)
+        self._write_plugin('Capture', 0, wait=True)

@@ -123,9 +123,8 @@ class Scan(object):
 
     * :py:meth:`check_paths`
     * :py:meth:`configure_detectors`
-    * :py:meth:`setup_triggers`
 
-    After configuring the detectors and triggers the trajectory is loaded
+    After configuring the detectors the trajectory is loaded
     into the positioners using the :py:meth:`set_trajectory` method.
     Finally the :py:class:`RunEngine` is initialised from the scans config
     and executed using the :py:meth:`start_run()` method.
@@ -138,10 +137,8 @@ class Scan(object):
     ----------
     TODO
     """
-    _shared_config = {'default_triggers': [],
-                      'default_detectors': [],
+    _shared_config = {'default_detectors': [],
                       'user_detectors': [],
-                      'user_triggers': [],
                       'scan_data': None, }
 
     def __init__(self, *args, **kwargs):
@@ -382,11 +379,6 @@ class AScan(Scan):
                                                            min(path),
                                                            max(path)))
         msg.append('')
-        msg.append('Triggers:')
-        for trig in self.triggers:
-            msg.append('{:<30}'.format(trig.name))
-
-        msg.append('')
         msg.append('Detectors:')
         for det in self.detectors:
             msg.append('{:<30}'.format(det.name))
@@ -410,7 +402,6 @@ class AScan(Scan):
         d = {}
         d['id'] = self.scan_id
         d['command'] = self.scan_command
-        d['triggers'] = repr(self.triggers)
         d['detectors'] = repr(self.detectors)
         d['positioners'] = repr(self.positioners)
         d['start'] = repr(self.start)
@@ -577,9 +568,6 @@ class Count(Scan):
         lmsg.append('Scan ID         : {}'.format(self.scan_id))
         lmsg.append('')
         lmsg.append(msg)
-        lmsg.append('Triggers:')
-        for trig in self.triggers:
-            lmsg.append('{:<30}'.format(trig.name))
         lmsg.append('')
         lmsg.append('{0:=^80}'.format(''))
         for p in self.detectors:
@@ -590,7 +578,6 @@ class Count(Scan):
 
         d = {}
         d['id'] = self.scan_id
-        d['triggers'] = repr(self.triggers)
         d['detectors'] = repr(self.detectors)
         d['values'] = repr(self.last_data.data_dict)
         if self.logbook is not None:
