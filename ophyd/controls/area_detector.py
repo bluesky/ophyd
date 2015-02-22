@@ -107,7 +107,6 @@ class AreaDetectorFileStore(AreaDetector):
     @property
     def source(self):
         src = super(AreaDetectorFileStore, self).source
-        print(src)
         src.update({'{}_{}'.format(self.name, 'image'):
                     'FILESTORE:TEST'})
 
@@ -115,8 +114,7 @@ class AreaDetectorFileStore(AreaDetector):
         return src
 
     def read(self):
-        val = AreaDetector.read(self)
-        print(val)
+        val = super(AreaDetectorFileStore, self).read()
         val.update({'{}_{}'.format(self.name, 'image'):
                     'HASHME'})
         # Add to val any parts to insert into MDS
