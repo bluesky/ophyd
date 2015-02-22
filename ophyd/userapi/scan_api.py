@@ -240,9 +240,7 @@ class Scan(object):
             # Create the dict to pass to the run-engine
 
             scan_args = dict()
-            detectors = [SignalDetector(det) if not isinstance(det, Detector)
-                         else det for det in self.detectors]
-            scan_args['detectors'] = detectors
+            scan_args['detectors'] = self.detectors
             scan_args['positioners'] = self.positioners
             scan_args['settle_time'] = self.settle_time
             scan_args['custom'] = {}
@@ -289,6 +287,9 @@ class Scan(object):
     @default_detectors.setter
     def default_detectors(self, detectors):
         """Set the default detectors"""
+        detectors = [SignalDetector(det, name=det.name)
+                     if not isinstance(det, Detector)
+                     else det for det in detectors]
         self._shared_config['default_detectors'] = detectors
 
     @property
@@ -304,6 +305,9 @@ class Scan(object):
     @user_detectors.setter
     def user_detectors(self, detectors):
         """Set the user detectors"""
+        detectors = [SignalDetector(det, name=det.name)
+                     if not isinstance(det, Detector)
+                     else det for det in detectors]
         self._shared_config['user_detectors'] = detectors
 
     @property

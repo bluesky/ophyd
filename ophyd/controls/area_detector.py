@@ -2,8 +2,10 @@ from __future__ import print_function
 from .detector import SignalDetector
 from .signal import EpicsSignal
 from epics import caget, caput
-from hashlib import md5
-from time import time
+import platform
+import hashlib
+import getpass
+import time
 
 
 class AreaDetector(SignalDetector):
@@ -53,9 +55,9 @@ class AreaDetector(SignalDetector):
         self._acquire.put(self._old_acquire, wait=False)
 
 
-class AreaDetectorHDF5(AreaDetector):
+class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
-        super(AreaDetectorHDF5, self).__init__(*args, **kwargs)
+        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
         self._file_plugin = 'HDF1:'
         self.file_path = '/GPFS/xf23id/xf23id1/test_2/'
 
@@ -64,6 +66,7 @@ class AreaDetectorHDF5(AreaDetector):
         caput('{}{}{}'.format(self._basename, self._file_plugin, name),
               value, wait=wait)
         if verify:
+            time.sleep(0.1)
             val = self._read_plugin(name, as_string=as_string)
             if val != value:
                 raise IOError('Unable to correctly set {}'.format(name))
@@ -73,11 +76,17 @@ class AreaDetectorHDF5(AreaDetector):
                                          self._file_plugin, name),
                      **kwargs)
 
+    def _make_filename(self):
+        self._filename = hashlib.sha1('{}{}{}{}'
+                                      .format(time.time(),
+                                              platform.node(),
+                                              getpass.getuser(),
+                                              self._basename)).hexdigest()
+
     def configure(self, *args, **kwargs):
-        super(AreaDetectorHDF5, self).configure(*args, **kwargs)
+        super(AreaDetectorFileStore, self).configure(*args, **kwargs)
 
-        self._filename = md5('{}{}'.format(time(), self._basename)).hexdigest()
-
+        self._make_filename()
         self._write_plugin('FilePath', self.file_path, as_string=True)
         self._write_plugin('FileName', self._filename, as_string=True)
         if self._read_plugin('FilePathExists') == 0:
@@ -92,5 +101,5 @@ class AreaDetectorHDF5(AreaDetector):
         self._write_plugin('Capture', 1, wait=False)
 
     def deconfigure(self, *args, **kwargs):
-        super(AreaDetectorHDF5, self).deconfigure(*args, **kwargs)
         self._write_plugin('Capture', 0, wait=True)
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
