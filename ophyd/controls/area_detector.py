@@ -2,11 +2,13 @@ from __future__ import print_function
 from .detector import SignalDetector
 from .signal import EpicsSignal
 from epics import caget, caput
+from collections import deque
 import platform
 import hashlib
 import getpass
 import time
-
+import filestore.api as fs
+import uuid
 
 class AreaDetector(SignalDetector):
     def __init__(self, basename, *args, **kwargs):
@@ -60,6 +62,7 @@ class AreaDetectorFileStore(AreaDetector):
         super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
         self._file_plugin = 'HDF1:'
         self.file_path = '/GPFS/xf23id/xf23id1/test_2/'
+        self._uid_cache = deque()
 
     def _write_plugin(self, name, value, wait=True, as_string=False,
                       verify=True):
@@ -85,6 +88,7 @@ class AreaDetectorFileStore(AreaDetector):
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
+        self._uid_cache.clear()
 
         self._make_filename()
         self._write_plugin('FilePath', self.file_path, as_string=True)
@@ -103,6 +107,10 @@ class AreaDetectorFileStore(AreaDetector):
     def deconfigure(self, *args, **kwargs):
         self._write_plugin('Capture', 0, wait=True)
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+        res = fs.insert_resource('AD_HDF5', self._filename,
+                                 {'frame_per_point': self._num_images.value})
+        for i, uid in enumerate(self._uid_cache):
+            fs.insert_datum(res, uid, {'point_number': i})
 
     @property
     def source(self):
@@ -114,8 +122,10 @@ class AreaDetectorFileStore(AreaDetector):
         return src
 
     def read(self):
+        uid = str(uuid.uuid4())
         val = super(AreaDetectorFileStore, self).read()
         val.update({'{}_{}'.format(self.name, 'image'):
-                    'HASHME'})
+                    uid})
+        self._uid_cache.append(uid)
         # Add to val any parts to insert into MDS
         return val
