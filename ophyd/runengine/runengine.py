@@ -12,7 +12,7 @@ from ..controls.signal import SignalGroup
 
 from metadatastore import api as mds
 
-# Data formatting helper function
+
 def _get_info(positioners=None, detectors=None, data=None):
     """Helper function to extract information from the positioners/detectors
     and send it over to metadatastore so that ophyd is insulated from mds
@@ -27,8 +27,8 @@ def _get_info(positioners=None, detectors=None, data=None):
     data : dict
         Dictionary of actual data
     """
-    src = {}
-    [src.update(x.source) for x in (detectors + positioners)]
+    desc = {}
+    [desc.update(x.describe) for x in (detectors + positioners)]
 
     info_dict = {}
     for name, value in data.iteritems():
@@ -46,9 +46,12 @@ def _get_info(positioners=None, detectors=None, data=None):
 
         if shape:
             dtype = 'array'
-        info_dict.update({name: {'dtype': dtype,
-                                 'shape': shape,
-                                 'source': src[name]}})
+
+        d = {'dtype': dtype, 'shape': shape}
+        d.update(desc[name])
+        d = {name: d}
+        print(d)
+        info_dict.update(d)
 
     return info_dict
 

@@ -3,9 +3,6 @@ from .detector import SignalDetector
 from .signal import EpicsSignal
 from epics import caget, caput
 from collections import deque
-import platform
-import hashlib
-import getpass
 import time
 import filestore.api as fs
 import binascii
@@ -66,6 +63,13 @@ class AreaDetectorFileStore(AreaDetector):
         self.file_path = '/GPFS/xf23id/xf23id1/test_2/'
         self._uid_cache = deque()
 
+        for n in range(3):
+            sig = self._ad_signal('{}ArraySize{}'
+                                  .format(self._file_plugin, n),
+                                  '_arraysize{}'.format(n),
+                                  private=True)
+            self.add_signal(sig)
+
     def _write_plugin(self, name, value, wait=True, as_string=False,
                       verify=True):
         caput('{}{}{}'.format(self._basename, self._file_plugin, name),
@@ -82,11 +86,8 @@ class AreaDetectorFileStore(AreaDetector):
                      **kwargs)
 
     def _make_filename(self):
-        self._filename = hashlib.sha1('{}{}{}{}'
-                                      .format(time.time(),
-                                              platform.node(),
-                                              getpass.getuser(),
-                                              self._basename)).hexdigest()
+        uid = str(uuid.uuid4())
+        self._filename = uid
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
@@ -117,14 +118,22 @@ class AreaDetectorFileStore(AreaDetector):
             fs.insert_datum(self._filestore_res, uid, {'point_number': i})
 
     @property
-    def source(self):
-        src = super(AreaDetectorFileStore, self).source
-        src.update({'{}_{}'.format(self.name, 'image'):
-                    'FILESTORE:{}'.format(binascii.b2a_hex(
-                        self._filestore_res.id.binary))})
+    def describe(self):
+        desc = super(AreaDetectorFileStore, self).describe
+
+        size = (self._num_images.value,
+                self._arraysize1.value,
+                self._arraysize0.value)
+        print('Size = {}'.format(size))
+
+        desc.update({'{}_{}'.format(self.name, 'image'):
+                    {'external': 'FILESTORE:{}'.format(binascii.b2a_hex(
+                        self._filestore_res.id.binary)),
+                     'source': 'PV:{}'.format(self._basename),
+                     'shape': size, 'dtype': 'array'}})
 
         # Insert into here any additional parts for source
-        return src
+        return desc
 
     def read(self):
         uid = str(uuid.uuid4())

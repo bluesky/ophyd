@@ -38,7 +38,9 @@ class Signal(OphydObject):
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
-    def __init__(self, separate_readback=False, value=None, setpoint=None, **kwargs):
+    def __init__(self, separate_readback=False,
+                 value=None, setpoint=None, private=False, **kwargs):
+
         self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, **kwargs)
 
@@ -46,6 +48,10 @@ class Signal(OphydObject):
         self._readback = value
 
         self._separate_readback = separate_readback
+
+        # Define some signals as private to not use them in data collection.
+
+        self._private = private
 
     def __repr__(self):
         repr = ['value={0.value!r}'.format(self)]
@@ -132,6 +138,16 @@ class Signal(OphydObject):
             return {'alias': self.alias,
                     'value': self.value,
                     }
+
+    @property
+    def describe(self):
+        """Return the description as a dictionary"""
+        return {self.name: {'source': 'SIM:{}'.format(self.name)}}
+
+    @property
+    def private(self):
+        """Return if this signal is private (not measured in DAQ"""
+        return self._private
 
 
 class EpicsSignal(Signal):
@@ -299,8 +315,8 @@ class EpicsSignal(Signal):
             return
 
         if not (low_limit <= value <= high_limit):
-            raise LimitError('Value {} outside of range: [{}, {}]'.format(value,
-                                                                          low_limit, high_limit))
+            raise LimitError('Value {} outside of range: [{}, {}]'
+                             .format(value, low_limit, high_limit))
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
     #       ... but, there should be a mode of operation without using
@@ -380,22 +396,17 @@ class EpicsSignal(Signal):
         value = self._fix_type(value)
         Signal.put(self, value, timestamp=timestamp)
 
-    def read(self):
-        '''See :func:`Signal.read`'''
+    # def read(self):
+    #    '''See :func:`Signal.read`'''
 
-        ret = Signal.read(self)
-        if self._read_pv is not None:
-            ret['read_pv'] = self.pvname
+    #    ret = Signal.read(self)
+    #    if self._read_pv is not None:
+    #        ret['read_pv'] = self.pvname
 
-        if self._write_pv is not None:
-            ret['write_pv'] = self.setpoint_pvname
+    #    if self._write_pv is not None:
+    #        ret['write_pv'] = self.setpoint_pvname
 
-        return ret
-
-    @property
-    def source(self):
-        """Return the source as a dictionary"""
-        return {self.name: 'SIM:{}'.format(self.name)}
+    #    return ret
 
     @property
     def report(self):
@@ -415,15 +426,15 @@ class EpicsSignal(Signal):
                 }
 
     @property
-    def source(self):
-        """Return the source as a dictionary
+    def describe(self):
+        """Return the description as a dictionary
 
         Returns
         -------
         dict
-            Dictionary of name and formatted source string
+            Dictionary of name and formatted description string
         """
-        return {self.name: 'PV:{}'.format(self._read_pv.pvname)}
+        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname)}}
 
     def read(self):
         """Read the signal and format for data collection
@@ -489,10 +500,10 @@ class SignalGroup(OphydObject):
             if prop_name:
                 setattr(self, prop_name, signal)
 
-    def read(self):
-        '''See :func:`Signal.read`'''
-        return dict((signal.alias, signal.read())
-                    for signal in self._signals)
+    # def read(self):
+    #     '''See :func:`Signal.read`'''
+    #     return dict((signal.alias, signal.read())
+    #                 for signal in self._signals)
 
     def get(self, **kwargs):
         return [signal.get(**kwargs) for signal in self._signals]
@@ -544,13 +555,14 @@ class SignalGroup(OphydObject):
         return [signal.report for signal in self._signals]
 
     @property
-    def source(self):
-        sources = {}
-        [sources.update(signal.source) for signal in self._signals]
-        return sources
+    def describe(self):
+        descs = {}
+        [descs.update(signal.describe)
+         for signal in self._signals if not signal.private]
+        return descs
 
     def read(self):
         values = {}
-        [values.update(signal.read()) for signal in self._signals]
+        [values.update(signal.read())
+         for signal in self._signals if not signal.private]
         return values
-
