@@ -238,11 +238,7 @@ class RunEngine(object):
             seq_num += 1
             # update the 'data' object from detvals dict
             for k, v in detvals.items():
-                try:
-                    data[k].append(v)
-                except KeyError:
-                    data[k] = []
-                    data[k].append(v)
+                data[k].append(v)
 
             if kwargs.get('positioners') is None:
                 break
@@ -255,10 +251,8 @@ class RunEngine(object):
         # ATM, these are both lists
         names = [o.name for o in kwargs.get('positioners')]
         for det in kwargs.get('detectors'):
-            if isinstance(det, SignalGroup):
-                names += [o.name for o in det.signals]
-            else:
-                names.append(det.name)
+            names += det.describe.keys()
+
         return names
 
     def start_run(self, runid, start_args=None, end_args=None, scan_args=None):
