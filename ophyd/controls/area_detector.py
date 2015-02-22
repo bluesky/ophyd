@@ -55,6 +55,17 @@ class AreaDetector(SignalDetector):
         self._image_mode.put(self._old_image_mode, wait=True)
         self._acquire.put(self._old_acquire, wait=False)
 
+    def read(self, *args, **kwargs):
+        """Read the areadetector waiting for the stats plugins"""
+
+        # Super Hacky to wait for stats plugins to update
+        while not all([(self._acquire.timestamp -
+                        getattr(self, '_total{}'.format(n)).timestamp)
+                       < 0 for n in range(1, 6)]):
+            time.sleep(0.01)
+
+        return super(AreaDetector, self).read(*args, **kwargs)
+
 
 class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
@@ -124,7 +135,6 @@ class AreaDetectorFileStore(AreaDetector):
         size = (self._num_images.value,
                 self._arraysize1.value,
                 self._arraysize0.value)
-        print('Size = {}'.format(size))
 
         desc.update({'{}_{}'.format(self.name, 'image'):
                     {'external': 'FILESTORE:{}'.format(binascii.b2a_hex(
@@ -141,6 +151,5 @@ class AreaDetectorFileStore(AreaDetector):
         val.update({'{}_{}'.format(self.name, 'image'):
                     {'value': uid, 'timestamp': time.time()}})
         self._uid_cache.append(uid)
-        print(val)
-        # Add to val any parts to insert into MDS
+
         return val

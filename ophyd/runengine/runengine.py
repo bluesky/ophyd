@@ -50,7 +50,6 @@ def _get_info(positioners=None, detectors=None, data=None):
         d = {'dtype': dtype, 'shape': shape}
         d.update(desc[name])
         d = {name: d}
-        print(d)
         info_dict.update(d)
 
     return info_dict
