@@ -10,6 +10,7 @@ import time
 import filestore.api as fs
 import uuid
 
+
 class AreaDetector(SignalDetector):
     def __init__(self, basename, *args, **kwargs):
         super(AreaDetector, self).__init__(*args, **kwargs)
@@ -125,7 +126,8 @@ class AreaDetectorFileStore(AreaDetector):
         uid = str(uuid.uuid4())
         val = super(AreaDetectorFileStore, self).read()
         val.update({'{}_{}'.format(self.name, 'image'):
-                    uid})
+                    {'value': uid, 'timestamp': time.time()}})
         self._uid_cache.append(uid)
+        print(val)
         # Add to val any parts to insert into MDS
         return val

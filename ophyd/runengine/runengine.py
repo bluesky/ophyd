@@ -235,7 +235,11 @@ class RunEngine(object):
             seq_num += 1
             # update the 'data' object from detvals dict
             for k, v in detvals.items():
-                data[k].append(v)
+                try:
+                    data[k].append(v)
+                except KeyError:
+                    data[k] = []
+                    data[k].append(v)
 
             if kwargs.get('positioners') is None:
                 break
