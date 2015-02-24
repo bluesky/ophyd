@@ -686,7 +686,7 @@ class Count(Scan):
         if self.logbook is not None:
             self.logbook.log('\n'.join(lmsg), ensure=True,
                              properties={'OphydCount': d},
-                             logbooks=['Data Aquisition'])
+                             logbooks=['Data Acquisition'])
 
     def _fmt_count(self):
         """Format the count results
