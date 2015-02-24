@@ -5,27 +5,30 @@ from epics import caget, caput
 from collections import deque
 import time
 import filestore.api as fs
-import binascii
 import uuid
 
 
 class AreaDetector(SignalDetector):
-    def __init__(self, basename, *args, **kwargs):
+    def __init__(self, basename, use_stats=True, *args, **kwargs):
         super(AreaDetector, self).__init__(*args, **kwargs)
         self._basename = basename
+        self._use_stats = use_stats
 
         signals = []
-        signals.append(self._ad_signal('cam1:Acquire', '_acquire'))
+        signals.append(self._ad_signal('cam1:Acquire', '_acquire',
+                                       private=True))
         signals.append(self._ad_signal('cam1:AcquireTime', '_acquire_time'))
-        signals.append(self._ad_signal('cam1:NumImages', '_num_images'))
-        signals.append(self._ad_signal('cam1:ImageMode', '_image_mode'))
+        signals.append(self._ad_signal('cam1:NumImages', '_num_images',
+                                       private=True))
+        signals.append(self._ad_signal('cam1:ImageMode', '_image_mode',
+                                       private=True))
 
-        # Add Stats Signals
-
-        for n in range(1, 6):
-            signals.append(self._ad_signal('Stats{}:Total'.format(n),
-                                           '_total{}'.format(n),
-                                           rw=False))
+        if self._use_stats:
+            # Add Stats Signals
+            for n in range(1, 6):
+                signals.append(self._ad_signal('Stats{}:Total'.format(n),
+                                               '_total{}'.format(n),
+                                               rw=False))
 
         for sig in signals:
             self.add_signal(sig)
@@ -38,6 +41,13 @@ class AreaDetector(SignalDetector):
                            write_pv='{}{}'.format(self._basename, suffix),
                            name='{}{}'.format(self.name, alias),
                            alias=alias, **kwargs)
+
+    def __repr__(self):
+        repr = ['basename={0._basename!r}'.format(self),
+                'use_stats={0._use_stats!r}'.format(self),
+                ]
+
+        return self._get_repr(repr)
 
     def configure(self, **kwargs):
         """Configure areaDetctor detector"""
@@ -58,11 +68,12 @@ class AreaDetector(SignalDetector):
     def read(self, *args, **kwargs):
         """Read the areadetector waiting for the stats plugins"""
 
-        # Super Hacky to wait for stats plugins to update
-        while not all([(self._acquire.timestamp -
-                        getattr(self, '_total{}'.format(n)).timestamp)
-                       < 0 for n in range(1, 6)]):
-            time.sleep(0.01)
+        if self._use_stats:
+            # Super Hacky to wait for stats plugins to update
+            while not all([(self._acquire.timestamp -
+                           getattr(self, '_total{}'.format(n)).timestamp)
+                          < 0 for n in range(1, 6)]):
+                time.sleep(0.01)
 
         return super(AreaDetector, self).read(*args, **kwargs)
 
@@ -124,9 +135,9 @@ class AreaDetectorFileStore(AreaDetector):
 
     def deconfigure(self, *args, **kwargs):
         self._write_plugin('Capture', 0, wait=True)
-        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
         for i, uid in enumerate(self._uid_cache):
             fs.insert_datum(self._filestore_res, uid, {'point_number': i})
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
     @property
     def describe(self):
@@ -137,19 +148,19 @@ class AreaDetectorFileStore(AreaDetector):
                 self._arraysize0.value)
 
         desc.update({'{}_{}'.format(self.name, 'image'):
-                    {'external': 'FILESTORE:{}'.format(binascii.b2a_hex(
-                        self._filestore_res.id.binary)),
-                     'source': 'PV:{}'.format(self._basename),
-                     'shape': size, 'dtype': 'array'}})
+                     {'external': 'FILESTORE:',  # TODO: Need to fix
+                      'source': 'PV:{}'.format(self._basename),
+                      'shape': size, 'dtype': 'array'}})
 
         # Insert into here any additional parts for source
         return desc
 
     def read(self):
-        uid = str(uuid.uuid4())
         val = super(AreaDetectorFileStore, self).read()
+        uid = str(uuid.uuid4())
         val.update({'{}_{}'.format(self.name, 'image'):
-                    {'value': uid, 'timestamp': time.time()}})
+                    {'value': uid,
+                     'timestamp': self._acq_signal.timestamp}})
         self._uid_cache.append(uid)
 
         return val

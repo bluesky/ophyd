@@ -1,6 +1,5 @@
 from __future__ import print_function
 # import logging
-import sys
 import getpass
 import os
 import time
@@ -8,7 +7,7 @@ from threading import Thread
 from Queue import Queue
 import numpy as np
 from ..session import register_object
-from ..controls.signal import SignalGroup
+from ..controls.detector import Detector
 
 from metadatastore import api as mds
 
@@ -171,6 +170,7 @@ class RunEngine(object):
         dets = kwargs.get('detectors')
         data = kwargs.get('data')
         positioners = kwargs.get('positioners')
+        triggers = [pos for pos in positioners if isinstance(pos, Detector)]
 
         # creation of the event descriptor should be delayed until the first
         # event comes in. Set it to None for now
@@ -186,7 +186,7 @@ class RunEngine(object):
                 break
 
             # Trigger detector acquisision
-            acq_status = [det.acquire() for det in dets]
+            acq_status = [trig.acquire() for trig in triggers]
 
             while any([not stat.done for stat in acq_status]):
                 time.sleep(0.05)
