@@ -243,10 +243,12 @@ class SessionManager(object):
            Then, persists the scan_id using IPython's "%store" magics.
         '''
         self['_scan_id'] += 1
-        return self['_scan_id']
+        return self.persist_var('_scan_id', value=self['_scan_id'])
 
     def set_scan_id(self, value):
+        '''Set scan_id to value, then persist via IPython "%store" magic.'''
         self['_scan_id'] = value
+        self.persist_var('_scan_id', value=value)
 
     def __getitem__(self, key):
         '''Grab variables from the IPython namespace'''
