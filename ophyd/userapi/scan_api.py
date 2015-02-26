@@ -12,7 +12,7 @@ from IPython.utils.coloransi import TermColors as tc
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
-from ..controls import Detector, SignalDetector
+from ..controls import Detector
 
 session_manager = get_session_manager()
 logger = session_manager._logger
@@ -215,11 +215,13 @@ class Scan(object):
 
     def configure_detectors(self):
         """Routine run to setup detectors before scan starts"""
-        [det.configure() for det in self.detectors]
+        [det.configure() for det in self.detectors
+         if isinstance(det, Detector)]
 
     def deconfigure_detectors(self):
         """Routine run to setup detectors before scan starts"""
-        [det.deconfigure() for det in self.detectors]
+        [det.deconfigure() for det in self.detectors
+         if isinstance(det, Detector)]
 
     def run(self, **kwargs):
         """Run the scan
@@ -286,9 +288,6 @@ class Scan(object):
     @default_detectors.setter
     def default_detectors(self, detectors):
         """Set the default detectors"""
-        detectors = [SignalDetector(det, name=det.name)
-                     if not isinstance(det, Detector)
-                     else det for det in detectors]
         self._shared_config['default_detectors'] = detectors
 
     @property
@@ -304,9 +303,6 @@ class Scan(object):
     @user_detectors.setter
     def user_detectors(self, detectors):
         """Set the user detectors"""
-        detectors = [SignalDetector(det, name=det.name)
-                     if not isinstance(det, Detector)
-                     else det for det in detectors]
         self._shared_config['user_detectors'] = detectors
 
     @property

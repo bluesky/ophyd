@@ -170,7 +170,7 @@ class RunEngine(object):
         dets = kwargs.get('detectors')
         data = kwargs.get('data')
         positioners = kwargs.get('positioners')
-        triggers = [pos for pos in positioners if isinstance(pos, Detector)]
+        triggers = [det for det in dets if isinstance(det, Detector)]
 
         # creation of the event descriptor should be delayed until the first
         # event comes in. Set it to None for now
@@ -203,8 +203,7 @@ class RunEngine(object):
             # Format dict for MDS
 
             detvals = mds.format_events(detvals)
-            # TODO: timestamp this datapoint?
-            # data.update({'timestamp': time.time()})
+
             # pass data onto Demuxer for distribution
             print('datapoint[{}]: {}'.format(seq_num, detvals))
             # grab the current time as a timestamp that describes when the
@@ -212,13 +211,12 @@ class RunEngine(object):
             bundle_time = time.time()
             # actually insert the event into metadataStore
             try:
-                print('\n\ninserting event {}\n------------------'.format(seq_num))
-                event = mds.insert_event(event_descriptor=event_descriptor,
-                                         time=bundle_time, data=detvals,
-                                         seq_num=seq_num)
+                mds.insert_event(event_descriptor=event_descriptor,
+                                 time=bundle_time, data=detvals,
+                                 seq_num=seq_num)
             except mds.EventDescriptorIsNoneError:
                 # the time when the event descriptor was created
-                print('event_descriptor has not been created. creating it now...')
+                # print('event_descriptor has not been created. creating ...')
                 evdesc_creation_time = time.time()
                 data_key_info = _get_info(positioners=kwargs.get('positioners'),
                                           detectors=dets, data=detvals)
@@ -226,13 +224,9 @@ class RunEngine(object):
                 event_descriptor = mds.insert_event_descriptor(
                     run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
-                print('\n\nevent_descriptor: {}\n'.format(vars(event_descriptor)))
-                # insert the event again. this time it better damn well work
-                print('\n\ninserting event {}\n------------------'.format(seq_num))
-                event = mds.insert_event(event_descriptor=event_descriptor,
-                                         time=bundle_time, data=detvals,
-                                         seq_num=seq_num)
-            print('\n\nevent {}\n--------\n{}'.format(seq_num, vars(event)))
+                mds.insert_event(event_descriptor=event_descriptor,
+                                 time=bundle_time, data=detvals,
+                                 seq_num=seq_num)
 
             seq_num += 1
             # update the 'data' object from detvals dict

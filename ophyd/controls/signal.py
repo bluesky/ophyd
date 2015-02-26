@@ -39,7 +39,7 @@ class Signal(OphydObject):
     SUB_VALUE = 'value'
 
     def __init__(self, separate_readback=False,
-                 value=None, setpoint=None, private=False, **kwargs):
+                 value=None, setpoint=None, **kwargs):
 
         self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, **kwargs)
@@ -48,10 +48,6 @@ class Signal(OphydObject):
         self._readback = value
 
         self._separate_readback = separate_readback
-
-        # Define some signals as private to not use them in data collection.
-
-        self._private = private
 
     def __repr__(self):
         repr = ['value={0.value!r}'.format(self)]
@@ -143,11 +139,6 @@ class Signal(OphydObject):
     def describe(self):
         """Return the description as a dictionary"""
         return {self.name: {'source': 'SIM:{}'.format(self.name)}}
-
-    @property
-    def private(self):
-        """Return if this signal is private (not measured in DAQ"""
-        return self._private
 
 
 class EpicsSignal(Signal):
@@ -500,11 +491,6 @@ class SignalGroup(OphydObject):
             if prop_name:
                 setattr(self, prop_name, signal)
 
-    # def read(self):
-    #     '''See :func:`Signal.read`'''
-    #     return dict((signal.alias, signal.read())
-    #                 for signal in self._signals)
-
     def get(self, **kwargs):
         return [signal.get(**kwargs) for signal in self._signals]
 
@@ -557,12 +543,10 @@ class SignalGroup(OphydObject):
     @property
     def describe(self):
         descs = {}
-        [descs.update(signal.describe)
-         for signal in self._signals if not signal.private]
+        [descs.update(signal.describe) for signal in self._signals]
         return descs
 
     def read(self):
         values = {}
-        [values.update(signal.read())
-         for signal in self._signals if not signal.private]
+        [values.update(signal.read()) for signal in self._signals]
         return values

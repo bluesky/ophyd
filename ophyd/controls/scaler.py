@@ -26,29 +26,26 @@ class EpicsScaler(SignalDetector):
         Eventually need to provide PR1..16 -- preset counts too.
         '''
         name = self.name
-        signals = [EpicsSignal(record_field(record, 'CNT'),
-                               alias='_count',
-                               name=''.join([name, '_count']),
-                               private=True),
-                   EpicsSignal(record_field(record, 'CONT'),
-                               alias='_count_mode',
-                               name=''.join([name, '_count_mode']),
-                               private=True),
-                   EpicsSignal(record_field(record, 'T'),
-                               alias='_time',
-                               name=''.join([name, '_time'])),
-                   EpicsSignal(record_field(record, 'TP'),
-                               alias='_preset_time',
-                               name=''.join([name, '_preset_time']))
-                   ]
+        self.add_signal(EpicsSignal(record_field(record, 'CNT'),
+                        alias='_count',
+                        name=''.join([name, '_count'])),
+                        recordable=False)
+        self.add_signal(EpicsSignal(record_field(record, 'CONT'),
+                        alias='_count_mode',
+                        name=''.join([name, '_count_mode'])),
+                        recordable=False)
+        self.add_signal(EpicsSignal(record_field(record, 'T'),
+                        alias='_time',
+                        name=''.join([name, '_time'])))
+        self.add_signal(EpicsSignal(record_field(record, 'TP'),
+                        alias='_preset_time',
+                        name=''.join([name, '_preset_time'])))
 
         for ch in range(1, numchan + 1):
             pv = '{}{}'.format(record_field(record, 'S'), ch)
-            signals.append(EpicsSignal(pv, rw=False,
-                                       alias='_chan{}'.format(ch),
-                                       name='{}_chan{}'.format(name, ch)))
-
-        for sig in signals:
+            sig = EpicsSignal(pv, rw=False,
+                              alias='_chan{}'.format(ch),
+                              name='{}_chan{}'.format(name, ch))
             self.add_signal(sig)
 
         self._acq_signal = self._count

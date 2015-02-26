@@ -74,6 +74,9 @@ class SignalDetector(SignalGroup, Detector):
 
     def __init__(self, signal=None, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
+        self._acq_signal = None
+        self._recordable = []
+
         if signal is not None:
             if isinstance(signal, SignalGroup):
                 [self.add_signal(sig) for sig in signal.signals]
@@ -82,7 +85,14 @@ class SignalDetector(SignalGroup, Detector):
             else:
                 raise ValueError('Must be Signal or SignalGroup instance')
 
-        self._acq_signal = None
+    def add_signal(self, signal, recordable=True, **kwargs):
+        """Add a signal to the Detector"""
+
+        # Make a recordable list then call the add_signal method
+
+        if recordable:
+            self._recordable.append(signal)
+        super(SignalDetector, self).add_signal(signal, **kwargs)
 
     def acquire(self, **kwargs):
         """Start acquisition"""
@@ -107,4 +117,15 @@ class SignalDetector(SignalGroup, Detector):
                        **kwargs)
         self._reset_sub(self.SUB_ACQ_DONE)
 
+    def read(self, *args, **kwargs):
+        """Read the recordable detector and return the data"""
+        rtn = {}
+        [rtn.update(sig.read()) for sig in self._recordable]
+        return rtn
 
+    @property
+    def describe(self):
+        """Describe the readable signals"""
+        rtn = {}
+        [rtn.update(sig.describe) for sig in self._recordable]
+        return rtn
