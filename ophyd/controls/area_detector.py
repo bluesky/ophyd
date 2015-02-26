@@ -21,19 +21,18 @@ class AreaDetector(SignalDetector):
                         recordable=False)
         self.add_signal(self._ad_signal('cam1:ImageMode', '_image_mode'),
                         recordable=False)
-        self.add_signal(self._ad_signal('cam1:AcquireTime', '_acquire_time'))
-        self.add_signal(self._ad_signal('cam1:NumImages', '_num_images'))
+        self.add_signal(self._ad_signal('cam1:AcquireTime', '_acquire_time'),
+                        add_property=True)
+        self.add_signal(self._ad_signal('cam1:NumImages', '_num_images'),
+                        add_property=True)
 
-        signals = []
         if self._use_stats:
             # Add Stats Signals
             for n in range(1, 6):
-                signals.append(self._ad_signal('Stats{}:Total'.format(n),
-                                               '_total{}'.format(n),
-                                               rw=False))
-
-        for sig in signals:
-            self.add_signal(sig)
+                self.add_signal(self._ad_signal('Stats{}:Total'.format(n),
+                                                '_stats_total{}'.format(n),
+                                                rw=False),
+                                add_property=True)
 
         self.add_acquire_signal(self._acquire)
 
@@ -73,7 +72,7 @@ class AreaDetector(SignalDetector):
         if self._use_stats:
             # Super Hacky to wait for stats plugins to update
             while not all([(self._acquire.timestamp -
-                           getattr(self, '_total{}'.format(n)).timestamp)
+                           getattr(self, '_stats_total{}'.format(n)).timestamp)
                           < 0 for n in range(1, 6)]):
                 time.sleep(0.01)
 
@@ -115,6 +114,9 @@ class AreaDetectorFileStore(AreaDetector):
                                         self._file_plugin),
                         recordable=False)
         self.add_signal(self._ad_signal('NumCaptured', '_num_captured',
+                                        self._file_plugin),
+                        recordable=False)
+        self.add_signal(self._ad_signal('FilePathExists', '_filepath_exists',
                                         self._file_plugin),
                         recordable=False)
 
@@ -173,6 +175,10 @@ class AreaDetectorFileStore(AreaDetector):
         self._write_plugin('FileWriteMode', 2)
         self._write_plugin('EnableCallbacks', 1)
 
+        if not self._filepath_exists.value:
+            raise IOError("Path {} does not exits on IOC!! Please Check"
+                          .format(self._file_path.value))
+
         self._capture.put(1, wait=False)
 
     def _captured_changed(self, value, *args, **kwargs):
@@ -194,9 +200,13 @@ class AreaDetectorFileStore(AreaDetector):
     def describe(self):
         desc = super(AreaDetectorFileStore, self).describe
 
-        size = (self._num_images.value,
-                self._arraysize1.value,
-                self._arraysize0.value)
+        if self._num_images.value > 1:
+            size = (self._num_images.value,
+                    self._arraysize1.value,
+                    self._arraysize0.value)
+        else:
+            size = (self._arraysize1.value,
+                    self._arraysize0.value)
 
         desc.update({'{}_{}'.format(self.name, 'image'):
                      {'external': 'FILESTORE:',  # TODO: Need to fix
