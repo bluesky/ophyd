@@ -178,9 +178,9 @@ class RunEngine(object):
 
         seq_num = 0
         while self._scan_state is True:
-            print('self._scan_state is True in self._start_scan')
+            # print('self._scan_state is True in self._start_scan')
             posvals = self._move_positioners(**kwargs)
-            print('moved positioners')
+            # print('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break

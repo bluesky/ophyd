@@ -85,14 +85,33 @@ class SignalDetector(SignalGroup, Detector):
             else:
                 raise ValueError('Must be Signal or SignalGroup instance')
 
-    def add_signal(self, signal, recordable=True, **kwargs):
+    def add_signal(self, signal, recordable=True,
+                   add_property=False, **kwargs):
         """Add a signal to the Detector"""
 
         # Make a recordable list then call the add_signal method
 
         if recordable:
             self._recordable.append(signal)
+
         super(SignalDetector, self).add_signal(signal, **kwargs)
+
+        if add_property:
+            # Add the signal as a property using
+            # Getters and Setters
+            name = signal.alias.lstrip('_')
+
+            def fget(self):
+                return getattr(self, signal.alias).value
+
+            def fset(self, value):
+                getattr(self, signal.alias).value = value
+
+            setattr(self.__class__, name, property(fget, fset))
+
+    def add_acquire_signal(self, sig, **kwargs):
+        """Add an aquire signal to the detector"""
+        self._acq_signal = sig
 
     def acquire(self, **kwargs):
         """Start acquisition"""

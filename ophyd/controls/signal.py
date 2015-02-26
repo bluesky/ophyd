@@ -387,18 +387,6 @@ class EpicsSignal(Signal):
         value = self._fix_type(value)
         Signal.put(self, value, timestamp=timestamp)
 
-    # def read(self):
-    #    '''See :func:`Signal.read`'''
-
-    #    ret = Signal.read(self)
-    #    if self._read_pv is not None:
-    #        ret['read_pv'] = self.pvname
-
-    #    if self._write_pv is not None:
-    #        ret['write_pv'] = self.setpoint_pvname
-
-    #    return ret
-
     @property
     def report(self):
         # FIXME:

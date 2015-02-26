@@ -11,50 +11,68 @@ logger = logging.getLogger(__name__)
 class EpicsScaler(SignalDetector):
     '''SynApps Scaler Record interface'''
     def __init__(self, record, numchan=8, *args, **kwargs):
-        super(EpicsScaler, self).__init__(*args, **kwargs)
         self._record = record
         self._numchan = numchan
-        '''Which record fields do we need to expose here (minimally)?
 
-        CNT     -- start/stop counting
-        CONT    -- OneShot/AutoCount
-        G1..16  -- Gate Control, Yes/No
-        S1..16  -- Counts
-        T       -- Elapsed time
-        TP      -- Preset time (duration to count over)
+        super(EpicsScaler, self).__init__(*args, **kwargs)
 
-        Eventually need to provide PR1..16 -- preset counts too.
-        '''
-        name = self.name
         self.add_signal(EpicsSignal(record_field(record, 'CNT'),
                         alias='_count',
-                        name=''.join([name, '_count'])),
+                        name=''.join([self.name, '_count'])),
                         recordable=False)
         self.add_signal(EpicsSignal(record_field(record, 'CONT'),
                         alias='_count_mode',
-                        name=''.join([name, '_count_mode'])),
+                        name=''.join([self.name, '_count_mode'])),
                         recordable=False)
         self.add_signal(EpicsSignal(record_field(record, 'T'),
                         alias='_time',
-                        name=''.join([name, '_time'])))
+                        name=''.join([self.name, '_time'])))
         self.add_signal(EpicsSignal(record_field(record, 'TP'),
                         alias='_preset_time',
-                        name=''.join([name, '_preset_time'])))
+                        name=''.join([self.name, '_preset_time'])),
+                        recordable=False, add_property=True)
+        self.add_signal(EpicsSignal(record_field(record, 'TP1'),
+                        alias='_auto_count_time',
+                        name=''.join([self.name, '_auto_count_time'])),
+                        recordable=False, add_property=True)
 
         for ch in range(1, numchan + 1):
             pv = '{}{}'.format(record_field(record, 'S'), ch)
             sig = EpicsSignal(pv, rw=False,
                               alias='_chan{}'.format(ch),
-                              name='{}_chan{}'.format(name, ch))
-            self.add_signal(sig)
+                              name='{}_chan{}'.format(self.name, ch))
+            self.add_signal(sig, add_property=True)
 
-        self._acq_signal = self._count
+            pv = '{}{}'.format(record_field(record, 'PR'), ch)
+            sig = EpicsSignal(pv, rw=True,
+                              alias='_preset{}'.format(ch),
+                              name='{}_preset{}'.format(self.name, ch))
+            self.add_signal(sig, add_property=True, recordable=False)
+
+            pv = '{}{}'.format(record_field(record, 'G'), ch)
+            sig = EpicsSignal(pv, rw=True,
+                              alias='_gate{}'.format(ch),
+                              name='{}_gate{}'.format(self.name, ch))
+            self.add_signal(sig, add_property=True, recordable=False)
+
+        self.add_acquire_signal(self._count)
+
+    @property
+    def auto_count(self):
+        """Return the autocount status"""
+        return (self._count_mode.value == 1)
+
+    @auto_count.setter
+    def auto_count(self, val):
+        """Set the autocount status"""
+        if val:
+            self._count_mode.value = 1
+        else:
+            self._count_mode.value = 0
 
     def __repr__(self):
         repr = ['record={0._record!r}'.format(self),
-                'numchan={0._numchan!r}'.format(self),
-                ]
-
+                'numchan={0._numchan!r}'.format(self)]
         return self._get_repr(repr)
 
     def configure(self, **kwargs):
@@ -63,7 +81,6 @@ class EpicsScaler(SignalDetector):
         Configure the scaler by setting autocount to off. The state will
         be restored by deconfigure
 
-        TODO: Could set acquisition time here
         """
         self._autocount = self._count_mode.value
         self._count_mode.value = 0

@@ -1,7 +1,7 @@
 from __future__ import print_function
 from .detector import SignalDetector
 from .signal import EpicsSignal
-from epics import caget, caput
+from epics import caput
 from collections import deque
 import time
 from datetime import datetime
@@ -11,7 +11,8 @@ import uuid
 
 
 class AreaDetector(SignalDetector):
-    def __init__(self, basename, use_stats=True, *args, **kwargs):
+    def __init__(self, basename, use_stats=True,
+                 *args, **kwargs):
         super(AreaDetector, self).__init__(*args, **kwargs)
         self._basename = basename
         self._use_stats = use_stats
@@ -34,7 +35,7 @@ class AreaDetector(SignalDetector):
         for sig in signals:
             self.add_signal(sig)
 
-        self._acq_signal = self._acquire
+        self.add_acquire_signal(self._acquire)
 
     def _ad_signal(self, suffix, alias, plugin='', **kwargs):
         """Return a signal made from areaDetector database"""
@@ -46,8 +47,7 @@ class AreaDetector(SignalDetector):
 
     def __repr__(self):
         repr = ['basename={0._basename!r}'.format(self),
-                'use_stats={0._use_stats!r}'.format(self),
-                ]
+                'use_stats={0._use_stats!r}'.format(self)]
 
         return self._get_repr(repr)
 
@@ -82,12 +82,12 @@ class AreaDetector(SignalDetector):
 
 class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
-        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
-        self._file_plugin = 'HDF1:'
-        self._file_template = '%s%s_%3.3d.h5'
+        self.store_file_path = kwargs.pop('file_path')
+        self.ioc_file_path = kwargs.pop('ioc_file_path', None)
+        self._file_plugin = kwargs.pop('plugin_name', 'HDF1:')
+        self._file_template = kwargs.pop('file_template', '%s%s_%3.3d.h5')
 
-        self.store_file_path = None
-        self.ioc_file_path = None
+        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
 
         self._uid_cache = deque()
 
@@ -102,21 +102,21 @@ class AreaDetectorFileStore(AreaDetector):
         self.add_signal(self._ad_signal('FilePath', '_file_path',
                                         self._file_plugin,
                                         string=True),
-                       recordable=False)
+                        recordable=False)
         self.add_signal(self._ad_signal('FileName', '_file_name',
                                         self._file_plugin,
                                         string=True),
-                       recordable=False)
+                        recordable=False)
         self.add_signal(self._ad_signal('FileTemplate', '_file_template',
                                         self._file_plugin,
                                         string=True),
-                       recordable=False)
+                        recordable=False)
         self.add_signal(self._ad_signal('Capture', '_capture',
                                         self._file_plugin),
-                       recordable=False)
+                        recordable=False)
         self.add_signal(self._ad_signal('NumCaptured', '_num_captured',
                                         self._file_plugin),
-                       recordable=False)
+                        recordable=False)
 
     def _write_plugin(self, name, value, wait=True, as_string=False,
                       verify=True):
@@ -134,13 +134,14 @@ class AreaDetectorFileStore(AreaDetector):
         path = os.path.join(self.store_file_path, *tree)
         self._store_file_path = path
         self._store_filename = self._file_template.value % (path,
-                                                      self._filename, seq)
+                                                            self._filename, seq)
 
         if self.ioc_file_path:
             path = os.path.join(self.ioc_file_path, *tree)
             self._ioc_file_path = path
             self._ioc_filename = self._file_template.value % (path,
-                                                        self._filename, seq)
+                                                              self._filename,
+                                                              seq)
 
         else:
             self._ioc_file_path = self._store_file_path
@@ -179,7 +180,6 @@ class AreaDetectorFileStore(AreaDetector):
             self._num_captured.clear_sub(self._captured_changed)
             # Close the capture plugin (closes the file)
             self._capture.put(0, wait=True)
-
 
     def deconfigure(self, *args, **kwargs):
         self._total_images = self._num_images.value * len(self._uid_cache)
