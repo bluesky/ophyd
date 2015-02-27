@@ -146,7 +146,6 @@ class AreaDetectorFileStore(AreaDetector):
 
         self._write_plugin('AutoIncrement', 1)
         self._write_plugin('FileNumber', 0)
-        self._write_plugin('FileTemplate', '%s%s_%3.3d.h5', as_string=True)
         self._write_plugin('AutoSave', 1)
 
     @property
@@ -213,6 +212,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
         self._write_plugin('NumCapture', 0)
         self._write_plugin('FileWriteMode', 2)
         self._write_plugin('EnableCallbacks', 1)
+        self._write_plugin('FileTemplate', '%s%s_%3.3d.h5', as_string=True)
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
 
@@ -269,6 +269,7 @@ class AreaDetectorFileStoreDriver(AreaDetectorFileStore):
 
     def configure(self, *args, **kwargs):
         self._image_mode.put(0, wait=True)
+        self._write_plugin('FileTemplate', '%s%s_%3.3d.spe', as_string=True)
         super(AreaDetectorFileStoreDriver, self).configure(*args, **kwargs)
 
     def deconfigure(self, *args, **kwargs):
