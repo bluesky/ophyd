@@ -59,7 +59,6 @@ class AreaDetector(SignalDetector):
 
         # Set the image mode to multiple
         self._old_image_mode = self._image_mode.get()
-        self._image_mode.put(1, wait=True)
 
     def deconfigure(self, **kwargs):
         """DeConfigure areaDetector detector"""
@@ -69,12 +68,12 @@ class AreaDetector(SignalDetector):
     def read(self, *args, **kwargs):
         """Read the areadetector waiting for the stats plugins"""
 
-        if self._use_stats:
-            # Super Hacky to wait for stats plugins to update
-            while not all([(self._acquire.timestamp -
-                           getattr(self, '_stats_total{}'.format(n)).timestamp)
-                          < 0 for n in range(1, 6)]):
-                time.sleep(0.01)
+        # if self._use_stats:
+        #    # Super Hacky to wait for stats plugins to update
+        #    while not all([(self._acquire.timestamp -
+        #                   getattr(self, '_stats_total{}'.format(n)).timestamp)
+        #                  < 0 for n in range(1, 6)]):
+        #        time.sleep(0.01)
 
         return super(AreaDetector, self).read(*args, **kwargs)
 
@@ -83,7 +82,6 @@ class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
         self.store_file_path = kwargs.pop('file_path')
         self.ioc_file_path = kwargs.pop('ioc_file_path', None)
-        self._file_plugin = kwargs.pop('plugin_name', 'HDF1:')
         self._file_template = kwargs.pop('file_template', '%s%s_%3.3d.h5')
 
         super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
@@ -91,12 +89,6 @@ class AreaDetectorFileStore(AreaDetector):
         self._uid_cache = deque()
 
         # Create the signals for the fileplugin
-
-        for n in range(3):
-            sig = self._ad_signal('{}ArraySize{}'
-                                  .format(self._file_plugin, n),
-                                  '_arraysize{}'.format(n))
-            self.add_signal(sig, recordable=False)
 
         self.add_signal(self._ad_signal('FilePath', '_file_path',
                                         self._file_plugin,
@@ -144,7 +136,6 @@ class AreaDetectorFileStore(AreaDetector):
             self._ioc_filename = self._file_template.value % (path,
                                                               self._filename,
                                                               seq)
-
         else:
             self._ioc_file_path = self._store_file_path
             self._ioc_filename = self._store_filename
@@ -153,48 +144,10 @@ class AreaDetectorFileStore(AreaDetector):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
         self._uid_cache.clear()
 
-        self._make_filename()
-        self._filestore_res = fs.insert_resource('AD_HDF5',
-                                                 self._store_filename,
-                                                 {'frame_per_point':
-                                                  self._num_images.value})
-
-        # Wait here to make sure we are not still capturing data
-
-        while self._capture.value == 1:
-            print('[!!] Still capturing data .... waiting.')
-            time.sleep(1)
-
-        self._file_path.put(self._ioc_file_path, wait=True)
-        self._file_name.put(self._filename, wait=True)
         self._write_plugin('AutoIncrement', 1)
         self._write_plugin('FileNumber', 0)
         self._write_plugin('FileTemplate', '%s%s_%3.3d.h5', as_string=True)
-        self._write_plugin('NumCapture', 0)
         self._write_plugin('AutoSave', 1)
-        self._write_plugin('FileWriteMode', 2)
-        self._write_plugin('EnableCallbacks', 1)
-
-        if not self._filepath_exists.value:
-            raise IOError("Path {} does not exits on IOC!! Please Check"
-                          .format(self._file_path.value))
-
-        self._capture.put(1, wait=False)
-
-    def _captured_changed(self, value, *args, **kwargs):
-        if value == self._total_images:
-            self._num_captured.clear_sub(self._captured_changed)
-            # Close the capture plugin (closes the file)
-            self._capture.put(0, wait=True)
-
-    def deconfigure(self, *args, **kwargs):
-        self._total_images = self._num_images.value * len(self._uid_cache)
-        self._num_captured.subscribe(self._captured_changed)
-
-        for i, uid in enumerate(self._uid_cache):
-            fs.insert_datum(self._filestore_res, uid, {'point_number': i})
-
-        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
     @property
     def describe(self):
@@ -225,3 +178,103 @@ class AreaDetectorFileStore(AreaDetector):
         self._uid_cache.append(uid)
 
         return val
+
+
+class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
+    def __init__(self, *args, **kwargs):
+        self._file_plugin = 'HDF1:'
+
+        super(AreaDetectorFileStoreHDF5, self).__init__(*args, **kwargs)
+
+        # Create Signals for the shape
+
+        for n in range(2):
+            sig = self._ad_signal('{}ArraySize{}'
+                                  .format(self._file_plugin, n),
+                                  '_arraysize{}'.format(n))
+            self.add_signal(sig, recordable=False)
+
+    def configure(self, *args, **kwargs):
+
+        # Wait here to make sure we are not still capturing data
+        while self._capture.value == 1:
+            print('[!!] Still capturing data .... waiting.')
+            time.sleep(1)
+
+        self._make_filename()
+        self._filestore_res = fs.insert_resource('AD_HDF5',
+                                                 self._store_filename,
+                                                 {'frame_per_point':
+                                                  self._num_images.value})
+
+        super(AreaDetectorFileStoreHDF5, self).configure(*args, **kwargs)
+
+        self._image_mode.put(1, wait=True)
+        self._write_plugin('NumCapture', 0)
+        self._write_plugin('FileWriteMode', 2)
+        self._write_plugin('EnableCallbacks', 1)
+        self._file_path.put(self._ioc_file_path, wait=True)
+        self._file_name.put(self._filename, wait=True)
+
+        if not self._filepath_exists.value:
+            raise IOError("Path {} does not exits on IOC!! Please Check"
+                          .format(self._file_path.value))
+
+        self._capture.put(1, wait=False)
+
+    def _captured_changed(self, value, *args, **kwargs):
+        if value == self._total_images:
+            self._num_captured.clear_sub(self._captured_changed)
+            # Close the capture plugin (closes the file)
+            self._capture.put(0, wait=True)
+
+    def deconfigure(self, *args, **kwargs):
+        self._total_images = self._num_images.value * len(self._uid_cache)
+        self._num_captured.subscribe(self._captured_changed)
+
+        for i, uid in enumerate(self._uid_cache):
+            fs.insert_datum(self._filestore_res, uid, {'point_number': i})
+
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+
+
+class AreaDetectorFileStoreDriver(AreaDetectorFileStore):
+    def __init__(self, *args, **kwargs):
+        self._file_plugin = 'cam1:'
+        super(AreaDetectorFileStoreDriver, self).__init__(*args, **kwargs)
+
+        sig = self._ad_signal('{}ArraySizeX'
+                              .format(self._file_plugin),
+                              '_arraysize0')
+        self.add_signal(sig, recordable=False)
+
+        sig = self._ad_signal('{}ArraySizeY'
+                              .format(self._file_plugin),
+                              '_arraysize1')
+        self.add_signal(sig, recordable=False)
+
+        self._filename_cache = deque()
+
+    def acquire(self, *args, **kwargs):
+
+        self._make_filename()
+        self._file_path.put(self._ioc_file_path, wait=True)
+        self._file_name.put(self._filename, wait=True)
+        self._write_plugin('FileNumber', 0)
+        self._filename_cache.append(self._store_filename)
+
+        rtn = super(AreaDetectorFileStoreDriver, self).acquire(*args, **kwargs)
+        print(rtn)
+        return rtn
+
+    def configure(self, *args, **kwargs):
+        self._image_mode.put(0, wait=True)
+        super(AreaDetectorFileStoreDriver, self).configure(*args, **kwargs)
+
+    def deconfigure(self, *args, **kwargs):
+
+        for uid, fname in zip(self._uid_cache, self._filename_cache):
+            res = fs.insert_resource('AD_SPE', fname)
+            fs.insert_datum(res, uid)
+
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
