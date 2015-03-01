@@ -238,10 +238,11 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
 
-class AreaDetectorFileStoreDriver(AreaDetectorFileStore):
+class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
     def __init__(self, *args, **kwargs):
         self._file_plugin = 'cam1:'
-        super(AreaDetectorFileStoreDriver, self).__init__(*args, **kwargs)
+        self._file_template = '%s%s_%6.6d.spe'
+        super(AreaDetectorFileStorePrinceton, self).__init__(*args, **kwargs)
 
         sig = self._ad_signal('{}ArraySizeX'
                               .format(self._file_plugin),
@@ -253,29 +254,27 @@ class AreaDetectorFileStoreDriver(AreaDetectorFileStore):
                               '_arraysize1')
         self.add_signal(sig, recordable=False)
 
-        self._filename_cache = deque()
-
-    def acquire(self, *args, **kwargs):
-
+    def configure(self, *args, **kwargs):
+        self._image_mode.put(0, wait=True)
+        super(AreaDetectorFileStorePrinceton, self).configure(*args, **kwargs)
+        self._write_plugin('FileTemplate', self._file_template, as_string=True)
         self._make_filename()
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0)
-        self._filename_cache.append(self._store_filename)
-
-        rtn = super(AreaDetectorFileStoreDriver, self).acquire(*args, **kwargs)
-        print(rtn)
-        return rtn
-
-    def configure(self, *args, **kwargs):
-        self._image_mode.put(0, wait=True)
-        self._write_plugin('FileTemplate', '%s%s_%3.3d.spe', as_string=True)
-        super(AreaDetectorFileStoreDriver, self).configure(*args, **kwargs)
+        self._filestore_res = fs.insert_resource('AD_SPE',
+                                                 self.store_file_path,
+                                                 {'template':
+                                                  self._file_template,
+                                                  'filename':
+                                                  self._filename,
+                                                  'frame_per_point':
+                                                  self._num_images.value})
 
     def deconfigure(self, *args, **kwargs):
 
-        for uid, fname in zip(self._uid_cache, self._filename_cache):
-            res = fs.insert_resource('AD_SPE', fname)
-            fs.insert_datum(res, uid)
+        for i, uid in enumerate(self._uid_cache):
+            fs.insert_datum(self._filestore_res, uid,
+                            {'point_number': i})
 
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
