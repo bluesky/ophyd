@@ -30,8 +30,8 @@ def estimate(x, y):
     stats['x_at_ymin'] = x[y.argmin()]
     stats['x_at_ymax'] = x[y.argmax()]
     # Calculate CEN from derivative
-    zero_cross = np.where(np.diff(np.sign(y -
-                 (stats['ymax'] + stats['ymin'])/2)))[0]
+    zero_cross = np.where(np.diff(np.sign(y - (stats['ymax']
+                                               + stats['ymin'])/2)))[0]
     if zero_cross.size == 2:
         stats['cen'] = (x[zero_cross].sum() / 2,
                         (stats['ymax'] + stats['ymin'])/2)
@@ -602,14 +602,14 @@ class AScan(Scan):
 
 
 class DScan(AScan):
-    def pre_scan(self):
-        """Prescan store starting positions and change paths
+    def setup_scan(self, *args, **kwargs):
+        """Store starting positions and change paths
 
-        This prescan routine stores the current position of the positioners
+        This setup_scan routine stores the current position of the positioners
         upon execution and then sets the paths to the difference between the
         current position and the scan range.
         """
-        super(DScan, self).pre_scan()
+        super(DScan, self).setup_scan(*args, **kwargs)
         self._start_positions = [p.position for p in self.positioners]
         self.paths = [np.array(path) + start
                       for path, start in zip(self.paths, self._start_positions)]
