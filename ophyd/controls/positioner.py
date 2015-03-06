@@ -293,14 +293,21 @@ class EpicsMotor(Positioner):
         Positioner.__init__(self, name=name, **kwargs)
 
         signals = [EpicsSignal(self.field_pv('RBV'), rw=False,
-                               alias='_user_readback'),
+                               alias='_user_readback',
+                               recordable=True,
+                               name=name),
                    EpicsSignal(self.field_pv('VAL'),
                                alias='_user_setpoint',
-                               limits=True),
-                   EpicsSignal(self.field_pv('EGU'), alias='_egu'),
-                   EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
-                   EpicsSignal(self.field_pv('DMOV'), alias='_done_move'),
-                   EpicsSignal(self.field_pv('STOP'), alias='_stop'),
+                               limits=True,
+                               recordable=False),
+                   EpicsSignal(self.field_pv('EGU'), alias='_egu',
+                               recordable=False),
+                   EpicsSignal(self.field_pv('MOVN'), alias='_is_moving',
+                               recordable=False),
+                   EpicsSignal(self.field_pv('DMOV'), alias='_done_move',
+                               recordable=False),
+                   EpicsSignal(self.field_pv('STOP'), alias='_stop',
+                               recordable=False),
                    # EpicsSignal(self.field_pv('RDBD'), alias='retry_deadband'),
                    ]
 
@@ -401,15 +408,6 @@ class EpicsMotor(Positioner):
         return {self._name: self.position,
                 'pv': self._user_readback.pvname}
 
-    @property
-    def describe(self):
-        desc = self._user_readback.describe[self._user_readback.name]
-        return {self.name: desc}
-
-    def read(self):
-        val = self._user_readback.read()[self._user_readback.name]
-        return {self.name: val}
-
 
 # TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
 class PVPositioner(Positioner):
@@ -473,10 +471,12 @@ class PVPositioner(Positioner):
             self._limits = tuple(limits)
 
         signals = []
-        self.add_signal(EpicsSignal(setpoint, alias='_setpoint', limits=True))
+        self.add_signal(EpicsSignal(setpoint, alias='_setpoint', limits=True,
+                                    recordable=False))
 
         if readback is not None:
-            self.add_signal(EpicsSignal(readback, alias='_readback'))
+            self.add_signal(EpicsSignal(readback, alias='_readback',
+                                        name=self.name))
 
             self._readback.subscribe(self._pos_changed)
 
@@ -485,10 +485,12 @@ class PVPositioner(Positioner):
             self._setpoint.subscribe(self._pos_changed)
 
         if act is not None:
-            self.add_signal(EpicsSignal(act, alias='_actuate'))
+            self.add_signal(EpicsSignal(act, alias='_actuate',
+                                        recordable=False))
 
         if stop is not None:
-            self.add_signal(EpicsSignal(stop, alias='_stop'))
+            self.add_signal(EpicsSignal(stop, alias='_stop',
+                                        recordable=False))
 
         if done is None and not self._put_complete:
             # TODO is this exception worthy?
@@ -496,7 +498,8 @@ class PVPositioner(Positioner):
                           % self.name)
 
         if done is not None:
-            self.add_signal(EpicsSignal(done, alias='_done'))
+            self.add_signal(EpicsSignal(done, alias='_done',
+                                        recordable=False))
 
             self._done.subscribe(self._move_changed)
         else:
@@ -653,15 +656,6 @@ class PVPositioner(Positioner):
     @property
     def report(self):
         return {self._name: self.position, 'pv': self._readback.pvname}
-
-    @property
-    def describe(self):
-        desc = self._readback.describe[self._readback.name]
-        return {self.name: desc}
-
-    def read(self):
-        val = self._readback.read()[self._readback.name]
-        return {self.name: val}
 
     @property
     def limits(self):

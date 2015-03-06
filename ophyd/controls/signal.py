@@ -34,20 +34,29 @@ class Signal(OphydObject):
         The initial value
     setpoint : any, optional
         The initial setpoint value
+    recordable : bool
+        A flag to indicate if the signal is recordable by DAQ
     '''
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
     def __init__(self, separate_readback=False,
-                 value=None, setpoint=None, **kwargs):
+                 value=None, setpoint=None,
+                 recordable=True, **kwargs):
 
         self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, **kwargs)
 
         self._setpoint = setpoint
         self._readback = value
+        self._recordable = recordable
 
         self._separate_readback = separate_readback
+
+    @property
+    def recordable(self):
+        """Return if this signal is recordable by the DAQ"""
+        return self._recordable
 
     def __repr__(self):
         repr = ['value={0.value!r}'.format(self)]
@@ -119,7 +128,7 @@ class Signal(OphydObject):
 
     def read(self):
         '''Put the status of the signal into a simple dictionary format
-        for serialization.
+        for data acquisition
 
         Returns
         -------
@@ -530,11 +539,21 @@ class SignalGroup(OphydObject):
 
     @property
     def describe(self):
+        """Describe for data acquisition the signals of the group
+
+        This property uses the `recordable` flag in ophyd to filter
+        the returned signals of the signal group"""
         descs = {}
-        [descs.update(signal.describe) for signal in self._signals]
+        [descs.update(signal.describe) for signal in self._signals
+         if signal.recordable]
         return descs
 
     def read(self):
+        """Read signals for data acquisition
+
+        This method uses the `recordable` flag in ophyd to filter
+        the returned signals of the signal group"""
         values = {}
-        [values.update(signal.read()) for signal in self._signals]
+        [values.update(signal.read()) for signal in self._signals
+         if signal.recordable]
         return values

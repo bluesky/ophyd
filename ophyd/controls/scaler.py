@@ -18,23 +18,23 @@ class EpicsScaler(SignalDetector):
 
         self.add_signal(EpicsSignal(record_field(record, 'CNT'),
                         alias='_count',
-                        name=''.join([self.name, '_count'])),
-                        recordable=False)
+                        name=''.join([self.name, '_count']),
+                        recordable=False))
         self.add_signal(EpicsSignal(record_field(record, 'CONT'),
                         alias='_count_mode',
-                        name=''.join([self.name, '_count_mode'])),
-                        recordable=False)
+                        name=''.join([self.name, '_count_mode']),
+                        recordable=False))
         self.add_signal(EpicsSignal(record_field(record, 'T'),
                         alias='_time',
                         name=''.join([self.name, '_time'])))
         self.add_signal(EpicsSignal(record_field(record, 'TP'),
                         alias='_preset_time',
-                        name=''.join([self.name, '_preset_time'])),
-                        recordable=False, add_property=True)
+                        name=''.join([self.name, '_preset_time']),
+                        recordable=False), add_property=True)
         self.add_signal(EpicsSignal(record_field(record, 'TP1'),
                         alias='_auto_count_time',
-                        name=''.join([self.name, '_auto_count_time'])),
-                        recordable=False, add_property=True)
+                        name=''.join([self.name, '_auto_count_time']),
+                        recordable=False), add_property=True)
 
         for ch in range(1, numchan + 1):
             pv = '{}{}'.format(record_field(record, 'S'), ch)
@@ -46,14 +46,16 @@ class EpicsScaler(SignalDetector):
             pv = '{}{}'.format(record_field(record, 'PR'), ch)
             sig = EpicsSignal(pv, rw=True,
                               alias='_preset{}'.format(ch),
-                              name='{}_preset{}'.format(self.name, ch))
-            self.add_signal(sig, add_property=True, recordable=False)
+                              name='{}_preset{}'.format(self.name, ch),
+                              recordable=False)
+            self.add_signal(sig, add_property=True)
 
             pv = '{}{}'.format(record_field(record, 'G'), ch)
             sig = EpicsSignal(pv, rw=True,
                               alias='_gate{}'.format(ch),
-                              name='{}_gate{}'.format(self.name, ch))
-            self.add_signal(sig, add_property=True, recordable=False)
+                              name='{}_gate{}'.format(self.name, ch),
+                              recordable=False)
+            self.add_signal(sig, add_property=True)
 
         self.add_acquire_signal(self._count)
 

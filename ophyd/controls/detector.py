@@ -16,7 +16,7 @@ class DetectorStatus(object):
         self.done = False
         self.detector = detector
 
-    def _finished(self, success=True, **kwargs):
+    def _finished(self, **kwargs):
         self.done = True
 
 
@@ -71,11 +71,11 @@ class Detector(object):
 
 class SignalDetector(SignalGroup, Detector):
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
+    SUB_ACQ_DONE_DARK = 'acq_done'  # requested acquire
 
     def __init__(self, signal=None, *args, **kwargs):
         super(SignalDetector, self).__init__(*args, **kwargs)
         self._acq_signal = None
-        self._recordable = []
 
         if signal is not None:
             if isinstance(signal, SignalGroup):
@@ -85,14 +85,10 @@ class SignalDetector(SignalGroup, Detector):
             else:
                 raise ValueError('Must be Signal or SignalGroup instance')
 
-    def add_signal(self, signal, recordable=True,
-                   add_property=False, **kwargs):
+    def add_signal(self, signal, add_property=False, **kwargs):
         """Add a signal to the Detector"""
 
         # Make a recordable list then call the add_signal method
-
-        if recordable:
-            self._recordable.append(signal)
 
         super(SignalDetector, self).add_signal(signal, **kwargs)
 
@@ -134,17 +130,5 @@ class SignalDetector(SignalGroup, Detector):
         self._run_subs(sub_type=self.SUB_ACQ_DONE, timestamp=timestamp,
                        value=value, success=True,
                        **kwargs)
+
         self._reset_sub(self.SUB_ACQ_DONE)
-
-    def read(self, *args, **kwargs):
-        """Read the recordable detector and return the data"""
-        rtn = {}
-        [rtn.update(sig.read()) for sig in self._recordable]
-        return rtn
-
-    @property
-    def describe(self):
-        """Describe the readable signals"""
-        rtn = {}
-        [rtn.update(sig.describe) for sig in self._recordable]
-        return rtn
