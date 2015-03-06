@@ -52,18 +52,22 @@ class AreaDetector(SignalDetector):
 
         # Setup signals on camera
         self.add_signal(self._ad_signal('cam1:Acquire', '_acquire',
-                        recordable=False))
+                                        recordable=False))
         self.add_signal(self._ad_signal('cam1:ImageMode', '_image_mode',
-                        recordable=False))
+                                        recordable=False))
         self.add_signal(self._ad_signal('cam1:AcquireTime', '_acquire_time'),
                         add_property=True)
         self.add_signal(self._ad_signal('cam1:AcquirePeriod',
                                         '_acquire_period'),
                         add_property=True)
-        self.add_signal(self._ad_signal('cam1:NumImages', '_num_images'),
+        self.add_signal(self._ad_signal('cam1:NumImages', '_num_images',
+                                        recordable=False),
+                        add_property=True)
+        self.add_signal(self._ad_signal('cam1:NumExposures', '_num_exposures',
+                                        recordable=False),
                         add_property=True)
         self.add_signal(self._ad_signal('cam1:ArrayCounter', '_array_counter',
-                        recordable=False))
+                                        recordable=False))
 
         if self._use_stats:
             # Add Stats Signals
@@ -215,8 +219,10 @@ class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
         self.store_file_path = os.path.join(kwargs.pop('file_path'), '')
         self.ioc_file_path = kwargs.pop('ioc_file_path', None)
+
         if self.ioc_file_path:
             self.ioc_file_path = os.path.join(self.ioc_file_path, '')
+
         self._uid_cache = deque()
         self._uid_cache_darkfield = deque()
 
@@ -327,6 +333,32 @@ class AreaDetectorFileStore(AreaDetector):
 
 class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
     def __init__(self, *args, **kwargs):
+        """Initialize the AreaDetector class
+
+        Parameters
+        ----------
+        basename : str
+            The EPICS PV basename of the areaDetector
+        stats : list
+            If true, provide data from total counts from the stats plugins
+            from the list. For example for stats 1..5 use range(1,6)
+        shutter : Signal or str
+            Either a ophyd signal or a string to form an EpicsSignal from.
+            This signal is used to inhibit the shutter for forming dark frames.
+        shutter_rb : str
+            If shutter is an str, then use this as the readback PV
+        shutter_val : tuple
+            These are the values to send to the signal shutter to inhibit or
+            enable the shutter. (0, 1) will send 0 to enable the shutter and
+            1 to inhibit tthe shutter.
+        file_path : str
+            The file path of where the data is stored. The tree (year / month
+            day) is added to the path before writing to the IOC
+        ioc_file_path : str
+            If not None, this path is sent to the IOC while file_path is
+            sent to the file store. This allows for windows style mounts
+            where the unix path is different from the windows path.
+        """
         super(AreaDetectorFileStoreHDF5, self).__init__(*args, **kwargs)
 
         self._file_plugin = 'HDF1:'
@@ -378,7 +410,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
         self._write_plugin('AutoIncrement', 1)
         self._write_plugin('FileNumber', 0)
         self._write_plugin('AutoSave', 1)
-        self._write_plugin('NumCapture', 1000000)
+        self._write_plugin('NumCapture', 10000000)
         self._write_plugin('FileWriteMode', 2)
         self._write_plugin('EnableCallbacks', 1)
 
@@ -396,12 +428,16 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
                                                  {'frame_per_point':
                                                   self._num_images.value})
 
+        # Place into capture mode
+
         self._capture.put(1, wait=False)
 
     def _captured_changed(self, value, *args, **kwargs):
         if value == self._total_images:
             self._num_captured.clear_sub(self._captured_changed)
+
             # Close the capture plugin (closes the file)
+
             self._capture.put(0, wait=True)
 
     def deconfigure(self, *args, **kwargs):
@@ -413,22 +449,46 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
 
 class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
     def __init__(self, *args, **kwargs):
+        """Initialize the AreaDetector class
+
+        Parameters
+        ----------
+        basename : str
+            The EPICS PV basename of the areaDetector
+        stats : list
+            If true, provide data from total counts from the stats plugins
+            from the list. For example for stats 1..5 use range(1,6)
+        shutter : Signal or str
+            Either a ophyd signal or a string to form an EpicsSignal from.
+            This signal is used to inhibit the shutter for forming dark frames.
+        shutter_rb : str
+            If shutter is an str, then use this as the readback PV
+        shutter_val : tuple
+            These are the values to send to the signal shutter to inhibit or
+            enable the shutter. (0, 1) will send 0 to enable the shutter and
+            1 to inhibit tthe shutter.
+        file_path : str
+            The file path of where the data is stored. The tree (year / month
+            day) is added to the path before writing to the IOC
+        ioc_file_path : str
+            If not None, this path is sent to the IOC while file_path is
+            sent to the file store. This allows for windows style mounts
+            where the unix path is different from the windows path.
+        """
         super(AreaDetectorFileStorePrinceton, self).__init__(*args, **kwargs)
 
         self._file_plugin = 'cam1:'
         self.file_template = '%s%s_%6.6d.spe'
 
-        sig = self._ad_signal('{}ArraySizeX'
-                              .format(self._file_plugin),
-                              '_arraysize0',
-                              recordable=False)
-        self.add_signal(sig)
+        self.add_signal(self._ad_signal('{}ArraySizeX'
+                                        .format(self._file_plugin),
+                                        '_arraysize0',
+                                        recordable=False))
 
-        sig = self._ad_signal('{}ArraySizeY'
-                              .format(self._file_plugin),
-                              '_arraysize1',
-                              recordable=False)
-        self.add_signal(sig)
+        self.add_signal(self._ad_signal('{}ArraySizeY'
+                                        .format(self._file_plugin),
+                                        '_arraysize1',
+                                        recordable=False))
 
         self.add_signal(self._ad_signal('FilePath', '_file_path',
                                         self._file_plugin,
