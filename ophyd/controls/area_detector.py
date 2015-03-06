@@ -69,6 +69,7 @@ class AreaDetector(SignalDetector):
         self.add_signal(self._ad_signal('cam1:ArrayCounter', '_array_counter',
                                         recordable=False))
 
+        self._stats = stats
         if self._use_stats:
             # Add Stats Signals
             for n in stats:
@@ -76,6 +77,8 @@ class AreaDetector(SignalDetector):
                                                 '_stats_total{}'.format(n),
                                                 rw=False),
                                 add_property=True)
+        self._shutter_val = shutter
+        self._shutter_rb_val = shutter_rb
 
         if shutter:
             if isinstance(shutter, Signal):
@@ -121,7 +124,10 @@ class AreaDetector(SignalDetector):
 
     def __repr__(self):
         repr = ['basename={0._basename!r}'.format(self),
-                'use_stats={0._use_stats!r}'.format(self)]
+                'stats={0._stats!r}'.format(self),
+                'shutter={0._shutter_val!r}'.format(self),
+                'shutter_rb={0._shutter_rb_val!r}'.format(self),
+                'shutter_val={0._shutter_value!r}'.format(self)]
 
         return self._get_repr(repr)
 
@@ -227,6 +233,17 @@ class AreaDetectorFileStore(AreaDetector):
         self._uid_cache_darkfield = deque()
 
         super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
+
+    def __repr__(self):
+        repr = ['basename={0._basename!r}'.format(self),
+                'stats={0._stats!r}'.format(self),
+                'shutter={0._shutter_val!r}'.format(self),
+                'shutter_rb={0._shutter_rb_val!r}'.format(self),
+                'shutter_val={0._shutter_value!r}'.format(self),
+                'file_path={0.store_file_path!r}'.format(self),
+                'ioc_file_path={0.ioc_file_path!r}'.format(self)]
+
+        return self._get_repr(repr)
 
     def _write_plugin(self, name, value, wait=True, as_string=False,
                       verify=True):
