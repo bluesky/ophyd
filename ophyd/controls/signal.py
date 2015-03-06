@@ -144,7 +144,6 @@ class Signal(OphydObject):
                     'value': self.value,
                     }
 
-    @property
     def describe(self):
         """Return the description as a dictionary"""
         return {self.name: {'source': 'SIM:{}'.format(self.name)}}
@@ -413,7 +412,6 @@ class EpicsSignal(Signal):
                 'pv': pv
                 }
 
-    @property
     def describe(self):
         """Return the description as a dictionary
 
@@ -537,7 +535,6 @@ class SignalGroup(OphydObject):
     def report(self):
         return [signal.report for signal in self._signals]
 
-    @property
     def describe(self):
         """Describe for data acquisition the signals of the group
 

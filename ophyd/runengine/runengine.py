@@ -27,7 +27,7 @@ def _get_info(positioners=None, detectors=None, data=None):
         Dictionary of actual data
     """
     desc = {}
-    [desc.update(x.describe) for x in (detectors + positioners)]
+    [desc.update(x.describe()) for x in (detectors + positioners)]
 
     info_dict = {}
     for name, value in data.iteritems():
@@ -244,7 +244,7 @@ class RunEngine(object):
         # ATM, these are both lists
         names = [o.name for o in kwargs.get('positioners')]
         for det in kwargs.get('detectors'):
-            names += det.describe.keys()
+            names += det.describe().keys()
 
         return names
 

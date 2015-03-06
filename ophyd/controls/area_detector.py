@@ -242,7 +242,6 @@ class AreaDetectorFileStore(AreaDetector):
 
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
-    @property
     def describe(self):
         desc = super(AreaDetectorFileStore, self).describe
 
