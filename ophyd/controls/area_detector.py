@@ -1,6 +1,6 @@
 from __future__ import print_function
 from .detector import SignalDetector, DetectorStatus
-from .signal import EpicsSignal
+from .signal import EpicsSignal, Signal
 from epics import caput
 from collections import deque
 import time
@@ -14,16 +14,43 @@ class AreaDetector(SignalDetector):
     SUB_ACQ_DONE_ONE = 'acq_done_1'
     SUB_ACQ_DONE_TWO = 'acq_done_2'
 
-    def __init__(self, basename, use_stats=True,
-                 shutter_pv=None, shutter_pv_rb=None, shutter_pv_val=(0,1),
+    def __init__(self, basename, stats=range(1, 6),
+                 shutter=None, shutter_rb=None, shutter_val=(0, 1),
                  *args, **kwargs):
+        """Initialize the AreaDetector class
+
+        Parameters
+        ----------
+        basename : str
+            The EPICS PV basename of the areaDetector
+        stats : list
+            If true, provide data from total counts from the stats plugins
+            from the list. For example for stats 1..5 use range(1,6)
+        shutter : Signal or str
+            Either a ophyd signal or a string to form an EpicsSignal from.
+            This signal is used to inhibit the shutter for forming dark frames.
+        shutter_rb : str
+            If shutter is an str, then use this as the readback PV
+        shutter_val : tuple
+            These are the values to send to the signal shutter to inhibit or
+            enable the shutter. (0, 1) will send 0 to enable the shutter and
+            1 to inhibit tthe shutter.
+        """
+
         super(AreaDetector, self).__init__(*args, **kwargs)
         self._basename = basename
-        self._use_stats = use_stats
+        if stats:
+            self._use_stats = True
+        else:
+            self._use_stats = False
+
+        # Acquisition mode (Multiple Images)
+        self._image_acq_mode = 1
 
         # Default to not taking darkfield images
         self._darkfield_int = 0
 
+        # Setup signals on camera
         self.add_signal(self._ad_signal('cam1:Acquire', '_acquire',
                         recordable=False))
         self.add_signal(self._ad_signal('cam1:ImageMode', '_image_mode',
@@ -35,20 +62,27 @@ class AreaDetector(SignalDetector):
                         add_property=True)
         self.add_signal(self._ad_signal('cam1:NumImages', '_num_images'),
                         add_property=True)
+        self.add_signal(self._ad_signal('cam1:ArrayCounter', '_array_counter',
+                        recordable=False))
 
         if self._use_stats:
             # Add Stats Signals
-            for n in range(1, 6):
+            for n in stats:
                 self.add_signal(self._ad_signal('Stats{}:Total'.format(n),
                                                 '_stats_total{}'.format(n),
                                                 rw=False),
                                 add_property=True)
 
-        if shutter_pv:
-            self.add_signal(EpicsSignal(write_pv=shutter_pv,
-                                        read_pv=shutter_pv_rb,
-                                        rw=True, alias='_shutter'))
-            self._shutter_value = shutter_pv_val
+        if shutter:
+            if isinstance(shutter, Signal):
+                self._add_signal(shutter, prop_name='_shutter')
+            else:
+                self.add_signal(EpicsSignal(write_pv=shutter,
+                                            read_pv=shutter_rb,
+                                            name='{}_shutter'.format(self.name),
+                                            rw=True, alias='_shutter',
+                                            recordable=False))
+            self._shutter_value = shutter_val
         else:
             self._shutter = None
             self._shutter_value = None
@@ -91,17 +125,19 @@ class AreaDetector(SignalDetector):
         """Configure areaDetctor detector"""
 
         # Stop Acquisition
-        self._old_acquire = self._acquire.get()
+        self._old_acquire = self._acquire.value
         self._acquire.put(0, wait=True)
+        self._array_counter.value = 0
 
         # Set the image mode to multiple
-        self._old_image_mode = self._image_mode.get()
+        self._old_image_mode = self._image_mode.value
+        self._image_mode.value = self._image_acq_mode
         self._acquire_number = 0
 
     def deconfigure(self, **kwargs):
         """DeConfigure areaDetector detector"""
         self._image_mode.put(self._old_image_mode, wait=True)
-        self._acquire.put(self._old_acquire, wait=False)
+        self._acquire.value = self._old_acquire
 
     @property
     def darkfield_interval(self):
@@ -243,7 +279,7 @@ class AreaDetectorFileStore(AreaDetector):
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
     def describe(self):
-        desc = super(AreaDetectorFileStore, self).describe
+        desc = super(AreaDetectorFileStore, self).describe()
 
         if self._num_images.value > 1:
             size = (self._num_images.value,
@@ -369,8 +405,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
             self._capture.put(0, wait=True)
 
     def deconfigure(self, *args, **kwargs):
-        self._total_images = (self._num_images.value * (len(self._uid_cache) +
-                              len(self._uid_cache_darkfield)))
+        self._total_images = self._array_counter.value
         self._num_captured.subscribe(self._captured_changed)
 
         super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
@@ -411,7 +446,8 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
                                         self._file_plugin,
                                         recordable=False))
 
-        # For the shutter, use the disable or enable from
+        # Acquisition mode (single image)
+        self._image_acq_mode = 0
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStorePrinceton, self).configure(*args, **kwargs)
@@ -427,5 +463,4 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
                                                   self._file_template.value,
                                                   'filename':
                                                   self._filename,
-                                                  'frame_per_point':
-                                                  self._num_images.value})
+                                                  'frame_per_point': 1})

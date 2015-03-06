@@ -541,7 +541,7 @@ class SignalGroup(OphydObject):
         This property uses the `recordable` flag in ophyd to filter
         the returned signals of the signal group"""
         descs = {}
-        [descs.update(signal.describe) for signal in self._signals
+        [descs.update(signal.describe()) for signal in self._signals
          if signal.recordable]
         return descs
 

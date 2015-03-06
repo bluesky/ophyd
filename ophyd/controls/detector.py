@@ -64,7 +64,7 @@ class Detector(object):
         '''
         raise NotImplementedError('Detector.read must be implemented')
 
-    def source(self, **kwargs):
+    def describe(self, **kwargs):
         '''Get source info for a given detector'''
         raise NotImplementedError('Detector.source must be implemented')
 

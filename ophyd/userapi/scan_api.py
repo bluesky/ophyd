@@ -386,17 +386,8 @@ class AScan(Scan):
 
         msg.append('{0:=^80}'.format(''))
 
-        for p in self.positioners:
-            try:
-                msg.append('PV:{}'.format(p.report['pv']))
-            except:
-                pass
-
-        for p in self.detectors:
-            try:
-                [msg.append(val) for key, val in p.source().iteritems()]
-            except:
-                pass
+        for p in self.positioners + self.detectors:
+            [msg.append(d['source']) for d in p.describe().values()]
 
         d = {}
         d['id'] = self.scan_id
