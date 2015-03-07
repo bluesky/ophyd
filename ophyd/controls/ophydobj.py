@@ -80,7 +80,9 @@ class OphydObject(object):
 
         try:
             args, kwargs = self._sub_cache[sub_type]
-        except KeyError:
+        except KeyError as ex:
+            self._ses_logger.error('Subscription %s callback exception (%s)' %
+                                   (sub_type, self), exc_info=ex)
             pass
         else:
             # Cached kwargs includes sub_type

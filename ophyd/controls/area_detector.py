@@ -11,8 +11,9 @@ import uuid
 
 
 class AreaDetector(SignalDetector):
-    SUB_ACQ_DONE_ONE = 'acq_done_1'
-    SUB_ACQ_DONE_TWO = 'acq_done_2'
+    _SUB_ACQ_DONE = 'acq_done'
+    _SUB_DONE = 'done'
+    _SUB_ACQ_CHECK = 'acq_check'
 
     def __init__(self, basename, stats=range(1, 6),
                  shutter=None, shutter_rb=None, shutter_val=(0, 1),
@@ -38,7 +39,10 @@ class AreaDetector(SignalDetector):
         """
 
         super(AreaDetector, self).__init__(*args, **kwargs)
+
         self._basename = basename
+        self._proc_plugin = 'Proc1:'
+
         if stats:
             self._use_stats = True
         else:
@@ -49,6 +53,7 @@ class AreaDetector(SignalDetector):
 
         # Default to not taking darkfield images
         self._darkfield_int = 0
+        self._take_darkfield = False
 
         # Setup signals on camera
         self.add_signal(self._ad_signal('cam1:Acquire', '_acquire',
@@ -71,18 +76,26 @@ class AreaDetector(SignalDetector):
 
         self._stats = stats
         if self._use_stats:
+
+            self._stats_counter = 0
+
             # Add Stats Signals
             for n in stats:
-                self.add_signal(self._ad_signal('Stats{}:Total'.format(n),
-                                                '_stats_total{}'.format(n),
-                                                rw=False),
-                                add_property=True)
+                # Here are the total counts (for point counters)
+
+                sig = self._ad_signal('Stats{}:Total'.format(n),
+                                      '_stats_total{}'.format(n),
+                                      rw=False, recordable=True)
+
+                self.add_signal(sig, add_property=True)
+                sig.subscribe(self._stats_changed)
+
         self._shutter_val = shutter
         self._shutter_rb_val = shutter_rb
 
         if shutter:
             if isinstance(shutter, Signal):
-                self._add_signal(shutter, prop_name='_shutter')
+                self.add_signal(shutter, prop_name='_shutter')
             else:
                 self.add_signal(EpicsSignal(write_pv=shutter,
                                             read_pv=shutter_rb,
@@ -96,23 +109,38 @@ class AreaDetector(SignalDetector):
 
         # Run a subscription on the acquire signal
 
+        self._acq_count = 0
         self.add_acquire_signal(self._acquire)
         self._acquire.subscribe(self._acquire_changed)
 
-        # Acq Count is used to signal if this is the first or
-        # second acquire per acquisition
+        # FInally subscribe to our check_if_finished
 
-        self._acq_count = 0
+        self.subscribe(self._check_if_finished,
+                       event_type=self._SUB_ACQ_CHECK,
+                       run=False)
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         if (old_value == 1) and (value == 0):
             # Negative going edge is done acquiring
-            if self._acq_count == 1:
-                self._run_subs(sub_type=self.SUB_ACQ_DONE_ONE)
-                self._reset_sub(self.SUB_ACQ_DONE_ONE)
-            elif self._acq_count == 2:
-                self._run_subs(sub_type=self.SUB_ACQ_DONE_TWO)
-                self._reset_sub(self.SUB_ACQ_DONE_TWO)
+            self._acq_count += 1
+            self._run_subs(sub_type=self._SUB_ACQ_DONE)
+            self._run_subs(sub_type=self._SUB_ACQ_CHECK)
+
+    def _stats_changed(self, **kwargs):
+        self._stats_counter += 1
+        self._run_subs(sub_type=self._SUB_ACQ_CHECK)
+
+    def _check_if_finished(self, **kwargs):
+        if self._use_stats:
+            nstats = len(self._stats) * self._acq_num
+            if (self._stats_counter == nstats) and (self._acq_count
+                                                    == self._acq_num):
+                self._run_subs(sub_type=self._SUB_DONE)
+                self._reset_sub(self._SUB_DONE)
+        else:
+            if self._acq_count == self._acq_num:
+                self._run_subs(sub_type=self._SUB_DONE)
+                self._reset_sub(self._SUB_DONE)
 
     def _ad_signal(self, suffix, alias, plugin='', **kwargs):
         """Return a signal made from areaDetector database"""
@@ -121,6 +149,11 @@ class AreaDetector(SignalDetector):
                            write_pv=basename,
                            name='{}{}'.format(self.name, alias),
                            alias=alias, **kwargs)
+
+    def _write_plugin(self, name, value, plugin, wait=True, as_string=False,
+                      verify=True):
+        caput('{}{}{}'.format(self._basename, plugin, name),
+              value, wait=wait)
 
     def __repr__(self):
         repr = ['basename={0._basename!r}'.format(self),
@@ -142,7 +175,25 @@ class AreaDetector(SignalDetector):
         # Set the image mode to multiple
         self._old_image_mode = self._image_mode.value
         self._image_mode.value = self._image_acq_mode
+
+        # If using the stats, configure the proc plugin
+
+        if self._use_stats:
+            self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
+            self._write_plugin('EnableFilter', 1, self._proc_plugin)
+            self._write_plugin('FilterType', 2, self._proc_plugin)
+            self._write_plugin('AutoResetFilter', 1, self._proc_plugin)
+            self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+            self._write_plugin('NumFilter', self._num_images.value,
+                               self._proc_plugin)
+            self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+
+        # Set the counter for number of acquisitions
+
         self._acquire_number = 0
+
+        # Setup subscriptions
+
 
     def deconfigure(self, **kwargs):
         """DeConfigure areaDetector detector"""
@@ -178,6 +229,12 @@ class AreaDetector(SignalDetector):
         if self._shutter:
             self._shutter.put(self._shutter_value[value], wait=True)
 
+    def _start_acquire(self, **kwargs):
+        """Do an actual acquisiiton"""
+        if self._acq_count < self._acq_num:
+            self._set_shutter(self._acq_count % 2)
+            self._acq_signal.put(1, wait=False)
+
     def acquire(self, **kwargs):
         """Start acquisition including dark frames"""
 
@@ -185,40 +242,56 @@ class AreaDetector(SignalDetector):
         # image to be taken after a lightfield
         # First lets set if we need to take one
 
-        status = DetectorStatus(self)
-
         if self.darkfield_interval:
             val = (self._acquire_number % self.darkfield_interval)
-            self._take_darkfield = (val == 0)
+            if val == 0:
+                self._acq_num = 2
+                self._take_darkfield = True
+            else:
+                self._acq_num = 1
+                self._take_darkfield = False
         else:
+            self._acq_num = 1
             self._take_darkfield = False
+
+        if self._use_stats:
+            self._stats_counter = 0
+
+        # Setup the return status
+
+        status = DetectorStatus(self)
 
         def finished(**kwargs):
             self._acquire_number += 1
             status._finished()
 
-        def acquire_darkfield(**kwargs):
-            self._set_shutter(1)
-            self._acq_count = 2
-            self._acq_signal.put(1, wait=False)
+        # Set acquire count, and subscriptions
 
-        # Acquire lighfield image
+        self._acq_count = 0
+        self.subscribe(finished,
+                       event_type=self._SUB_DONE, run=False)
+        self._reset_sub(self._SUB_ACQ_DONE)
+        self.subscribe(self._start_acquire,
+                       event_type=self._SUB_ACQ_DONE, run=False)
 
-        self._set_shutter(0)
-        self._acq_count = 1
-        self._acq_signal.put(1, wait=False)
-        if self._take_darkfield:
-
-            self.subscribe(acquire_darkfield,
-                           event_type=self.SUB_ACQ_DONE_ONE, run=False)
-            self.subscribe(finished,
-                           event_type=self.SUB_ACQ_DONE_TWO, run=False)
-        else:
-
-            self.subscribe(finished,
-                           event_type=self.SUB_ACQ_DONE_ONE, run=False)
+        self._start_acquire()
 
         return status
+
+#            if self._use_stats:
+#                self.subscribe(finished,
+#                               event_type=self.SUB_STATS_DONE, run=False)
+#            else:
+#                self.subscribe(finished,
+#                               event_type=self.SUB_ACQ_DONE_TWO, run=False)
+#        else:
+#            if self._use_stats:
+#                self.subscribe(finished,
+#                               event_type=self.SUB_STATS_DONE, run=False)
+#            else:
+#                self.subscribe(finished,
+#                               event_type=self.SUB_ACQ_DONE_ONE, run=False)
+#
 
 
 class AreaDetectorFileStore(AreaDetector):
@@ -244,11 +317,6 @@ class AreaDetectorFileStore(AreaDetector):
                 'ioc_file_path={0.ioc_file_path!r}'.format(self)]
 
         return self._get_repr(repr)
-
-    def _write_plugin(self, name, value, wait=True, as_string=False,
-                      verify=True):
-        caput('{}{}{}'.format(self._basename, self._file_plugin, name),
-              value, wait=wait)
 
     def _make_filename(self, seq=0):
         uid = str(uuid.uuid4())
@@ -424,12 +492,12 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
         self._image_mode.put(1, wait=True)
 
         self._file_template.put(self.file_template, wait=True)
-        self._write_plugin('AutoIncrement', 1)
-        self._write_plugin('FileNumber', 0)
-        self._write_plugin('AutoSave', 1)
-        self._write_plugin('NumCapture', 10000000)
-        self._write_plugin('FileWriteMode', 2)
-        self._write_plugin('EnableCallbacks', 1)
+        self._write_plugin('AutoIncrement', 1, self._file_plugin)
+        self._write_plugin('FileNumber', 0, self._file_plugin)
+        self._write_plugin('AutoSave', 1, self._file_plugin)
+        self._write_plugin('NumCapture', 10000000, self._file_plugin)
+        self._write_plugin('FileWriteMode', 2, self._file_plugin)
+        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
         self._make_filename()
 
@@ -533,7 +601,7 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
         self._make_filename()
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
-        self._write_plugin('FileNumber', 0)
+        self._write_plugin('FileNumber', 0, self._file_plugin)
         self._filestore_res = fs.insert_resource('AD_SPE',
                                                  self._store_file_path,
                                                  {'template':
