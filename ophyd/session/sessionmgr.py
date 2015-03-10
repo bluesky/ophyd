@@ -122,7 +122,7 @@ class SessionManager(object):
 
     def persist_var(self, name, value=0, desc=None):
         if not self.in_ipython:
-            return
+            return value
 
         config = self.ipy_config
         if not self.autorestore:
