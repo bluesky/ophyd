@@ -125,7 +125,6 @@ class SessionManager(object):
         if not self.in_ipython:
             return value
 
-        config = self.ipy_config
         if not self.autorestore:
             warnings.warn('StoreMagic.autorestore not enabled; '
                           'variable persistence disabled')
@@ -182,7 +181,6 @@ class SessionManager(object):
 
         One ctrl-D stops the scan, two confirms exit
         '''
-
 
         run = self._run_engine
         if run is not None and run.running:
