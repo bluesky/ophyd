@@ -72,7 +72,8 @@ class SessionManager(object):
             self._cas = caServer('OPHYD_SESSION:')
             # TODO config should override this?
         else:
-            self._logger.info('pcaspy is unavailable; channel access server disabled')
+            self._logger.info(
+                'pcaspy is unavailable; channel access server disabled')
             self._cas = None
 
         atexit.register(self._cleanup)
@@ -126,7 +127,8 @@ class SessionManager(object):
 
         config = self.ipy_config
         if not self.autorestore:
-            warnings.warn('StoreMagic.autorestore not enabled; variable persistence disabled')
+            warnings.warn('StoreMagic.autorestore not enabled; '
+                          'variable persistence disabled')
 
             if name not in self:
                 self[name] = value
@@ -214,12 +216,12 @@ class SessionManager(object):
             raise TypeError('%s cannot be registered with the session.' % obj)
         return self._logger
 
-    #TODO: should swallow and gracefully notify the user of changes
+    # TODO: should swallow and gracefully notify the user of changes
     def notify_connection(self, msg):
         self._logger.debug('connection notification: %s' % msg)
 
     def stop_all(self):
-        #TODO: fixme - add RunEngines to registry
+        # TODO: fixme - add RunEngines to registry
         if self._run_engine is not None:
             self._run_engine.stop()
 
@@ -231,7 +233,7 @@ class SessionManager(object):
     def get_positioners(self):
         return self._registry['positioners']
 
-    #TODO: should we let this raise a KeyError exception? Probably...
+    # TODO: should we let this raise a KeyError exception? Probably...
     def get_positioner(self, pos):
         return self._registry['positioners'][pos]
 
