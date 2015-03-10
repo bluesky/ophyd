@@ -25,9 +25,16 @@ class _FakeIPython(object):
     def _no_op(self, *args, **kwargs):
         pass
 
+    class _no_class(object):
+        def __getattr__(self, key):
+            def _no_op(*args, **kwargs):
+                pass
+            return _no_op
+
     config = None
     ask_exit = _no_op
     push = _no_op
+    events = _no_class()
     run_line_magic = _no_op
     __getattr__ = _no_op
     __setattr__ = _no_op
@@ -80,6 +87,15 @@ class SessionManager(object):
 
         self.persist_var('_persisting', [], desc='persistence list')
         self.persist_var('_scan_id', 1, desc='Scan ID')
+
+        # IPython >= 2
+        try:
+            self._ip.events.register('post_execute',
+                               lambda: self.persist_var('_scan_id'))
+        except AttributeError:
+            # IPython 1.x
+            self._ip.register_post_execute(
+                lambda: self.persist_var('_scan_id'))
 
     def _setup_sigint(self):
         '''Setup the signal interrupt handler'''
