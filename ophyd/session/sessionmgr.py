@@ -132,19 +132,20 @@ class SessionManager(object):
 
             if name not in self:
                 self[name] = value
-                self._logger.debug('Setting %s = %s' % (name, value))
+                self._logger.debug('Setting %s = %s', name, value)
             return self[name]
 
         if name not in self:
             if desc is not None:
-                self._logger.debug('SessionManager could not find %s (%s).' % (name, desc))
-                self._logger.debug('Resetting %s to %s' % (name, value))
+                self._logger.debug('SessionManager could not find %s (%s).',
+                                   name, desc)
+                self._logger.debug('Resetting %s to %s', name, value)
 
             self[name] = value
         else:
             value = self[name]
             if desc is not None:
-                self._logger.debug('Last %s = %s' % (desc, self[name]))
+                self._logger.debug('Last %s = %s', desc, self[name])
 
         if name not in self.persisting:
             self.persisting.append(name)
@@ -218,7 +219,7 @@ class SessionManager(object):
 
     # TODO: should swallow and gracefully notify the user of changes
     def notify_connection(self, msg):
-        self._logger.debug('connection notification: %s' % msg)
+        self._logger.debug('connection notification: %s', msg)
 
     def stop_all(self):
         # TODO: fixme - add RunEngines to registry
