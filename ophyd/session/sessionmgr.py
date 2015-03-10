@@ -138,7 +138,7 @@ class SessionManager(object):
             if desc is not None:
                 self._logger.debug('SessionManager could not find %s (%s).',
                                    name, desc)
-                self._logger.debug('Resetting %s to %s', name, value)
+            self._logger.debug('Resetting %s to %s', name, value)
 
             self[name] = value
         else:
