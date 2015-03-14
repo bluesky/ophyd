@@ -608,4 +608,4 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
                                                   self._file_template.value,
                                                   'filename':
                                                   self._filename,
-                                                  'frame_per_point': 1})
+                                                  'frame_per_point': self._num_images.value})
