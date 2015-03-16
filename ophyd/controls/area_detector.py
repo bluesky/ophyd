@@ -240,18 +240,12 @@ class AreaDetector(SignalDetector):
         # Here start a chain which allows for a darkfield
         # image to be taken after a lightfield
         # First lets set if we need to take one
-
+        self._acq_num = 1
+        self._take_darkfield = False
         if self.darkfield_interval:
-            val = (self._acquire_number % self.darkfield_interval)
-            if val == 0:
-                self._acq_num = 2
+            if (self._acquire_number % self.darkfield_interval) == 0:
+                self._acq_num += 1
                 self._take_darkfield = True
-            else:
-                self._acq_num = 1
-                self._take_darkfield = False
-        else:
-            self._acq_num = 1
-            self._take_darkfield = False
 
         if self._use_stats:
             self._stats_counter = 0
