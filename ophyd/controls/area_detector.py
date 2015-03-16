@@ -133,8 +133,8 @@ class AreaDetector(SignalDetector):
     def _check_if_finished(self, **kwargs):
         if self._use_stats:
             nstats = len(self._stats) * self._acq_num
-            if (self._stats_counter == nstats) and (self._acq_count
-                                                    == self._acq_num):
+            if ((self._stats_counter == nstats) and
+                 (self._acq_count == self._acq_num)):
                 self._run_subs(sub_type=self._SUB_DONE)
                 self._reset_sub(self._SUB_DONE)
         else:
@@ -193,7 +193,6 @@ class AreaDetector(SignalDetector):
         self._acquire_number = 0
 
         # Setup subscriptions
-
 
     def deconfigure(self, **kwargs):
         """DeConfigure areaDetector detector"""
@@ -602,10 +601,8 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
-        self._filestore_res = fs.insert_resource('AD_SPE',
-                                                 self._store_file_path,
-                                                 {'template':
-                                                  self._file_template.value,
-                                                  'filename':
-                                                  self._filename,
-                                                  'frame_per_point': 1})
+        self._filestore_res = fs.insert_resource(
+            'AD_SPE', self._store_file_path,
+            {'template': self._file_template.value,
+             'filename': self._filename,
+             'frame_per_point': self._num_images.value})

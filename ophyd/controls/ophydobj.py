@@ -195,15 +195,15 @@ class OphydObject(object):
         return self._get_repr()
 
     def _get_repr(self, info=None):
-        repr = []
+        _repr = []
 
         if self._name:
-            repr.append('name={0._name!r}'.format(self))
+            _repr.append('name={0._name!r}'.format(self))
 
         if info:
-            repr.extend(info)
+            _repr.extend(info)
 
         if self._alias:
-            repr.append('alias={0._alias!r}'.format(self))
+            _repr.append('alias={0._alias!r}'.format(self))
 
-        return '{}({})'.format(self.__class__.__name__, ', '.join(repr))
+        return '{}({})'.format(self.__class__.__name__, ', '.join(_repr))
