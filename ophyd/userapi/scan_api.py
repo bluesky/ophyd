@@ -654,7 +654,7 @@ class Count(Scan):
 
         msg = self._fmt_count()
 
-        logger.info('\n'+msg+'\n')
+        logger.info(msg)
 
         # Make a logbook entry
 
