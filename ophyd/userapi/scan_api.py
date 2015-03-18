@@ -520,14 +520,16 @@ class DScan(AScan):
                   for pos, start in
                   zip(self.positioners, self._start_positions)]
 
-        print("\n")
-        print(tc.Red + "Moving positioners back to start positions.......",
-              end='')
-        sys.stdout.flush()
+#        print("\n")
+#        print(tc.Red + "Moving positioners back to start positions.......",
+#              end='')
+#        sys.stdout.flush()
+        logger.info("Moving positioners back to start positions.......")
         while any(not stat.done for stat in status):
             sleep(0.01)
 
-        print(tc.Green + " Done.")
+#        print(tc.Green + " Done.")
+        logger.info(tc.Green + " Done.")
 
 
 class Count(Scan):
@@ -551,9 +553,11 @@ class Count(Scan):
 
         msg = self._fmt_count()
 
-        print('')
-        print(msg)
-        print('')
+#        print('')
+#        print(msg)
+#        print('')
+
+        logger.info('\n'+msg+'\n')
 
         # Make a logbook entry
 
