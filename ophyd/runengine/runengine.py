@@ -7,10 +7,11 @@ import time
 from threading import Thread
 from Queue import Queue
 import numpy as np
+
 from ..session import register_object
 from ..controls.signal import SignalGroup
-
 from metadatastore import api as mds
+
 
 # Data formatting helper function
 def _get_info(positioners=None, detectors=None, data=None):
@@ -36,7 +37,7 @@ def _get_info(positioners=None, detectors=None, data=None):
         """Internal function to grab info from a detector
         """
         # grab 'value' from [value, timestamp]
-        val = np.asarray(data[detector.name][0]) 
+        val = np.asarray(data[detector.name][0])
 
         dtype = 'number'
         try:
@@ -59,6 +60,7 @@ def _get_info(positioners=None, detectors=None, data=None):
             pv_info.update(get_det_info(det))
 
     return pv_info
+
 
 class Demuxer(object):
     '''Demultiplexer
@@ -117,7 +119,7 @@ class RunEngine(object):
 
     def __init__(self, logger):
         self._demuxer = Demuxer()
-        self._logger = register_object(self)
+        self._sessionmgr = register_object(self)
         self._scan_state = False
 
     # start/stop/pause/resume are external api methods
@@ -140,13 +142,13 @@ class RunEngine(object):
     def _run_start(self, arg):
         # run any registered user functions
         # save user data (if any), and run_header
-        print('Begin Run...')
+        self._sessionmgr._logger.info('Begin Run...')
 
     def _end_run(self, arg):
         state = arg.get('state', 'success')
         bre = arg['run_start']
         mds.insert_run_stop(bre, time.time(), exit_status=state)
-        print('End Run...')
+        self._sessionmgr._logger.info('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
         try:
@@ -171,7 +173,6 @@ class RunEngine(object):
             for pos in positioners}
 
     def _start_scan(self, **kwargs):
-        # print('Starting Scan...{}'.format(kwargs))
         run_start = kwargs.get('run_start')
         dets = kwargs.get('detectors')
         trigs = kwargs.get('triggers')
@@ -181,16 +182,29 @@ class RunEngine(object):
         # event comes in. Set it to None for now
         event_descriptor = None
 
+        #provide header for formatted list of positioners and detectors in INFO
+        #channel
+        names = list()
+        for pos in kwargs.get('positioners'):
+            names.append(pos.name)
+        for det in dets:
+            if isinstance(det, SignalGroup):
+                for sig in det.signals:
+                    names.append(sig.name)
+            else:
+                names.append(det.name)
+
+        self._sessionmgr._logger.info(self._demunge_names(names))
         seq_num = 0
         while self._scan_state is True:
-            print('self._scan_state is True in self._start_scan')
+            self._sessionmgr._logger.debug(
+                'self._scan_state is True in self._start_scan')
             posvals = self._move_positioners(**kwargs)
-            print('moved positioners')
+            self._sessionmgr._logger.debug('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
             # execute user code
-            # print('execute user code')
             # detvals = {d.name: d.value for d in dets}
             # TODO: handle triggers here (pvs that cause detectors to fire)
             if trigs is not None:
@@ -204,7 +218,6 @@ class RunEngine(object):
                 if isinstance(det, SignalGroup):
                     # If we have a signal group, loop over all names
                     # and signals
-                    # print('vars(det) in ophyd _start_scan', vars(det))
                     for sig in det.signals:
                         detvals.update({sig.name: {
                             'timestamp': sig.timestamp[sig.pvname.index(sig.report['pv'])],
@@ -218,19 +231,21 @@ class RunEngine(object):
             # TODO: timestamp this datapoint?
             # data.update({'timestamp': time.time()})
             # pass data onto Demuxer for distribution
-            print('datapoint[{}]: {}'.format(seq_num, detvals))
+            self._sessionmgr._logger.info(self._demunge_values(detvals, names))
             # grab the current time as a timestamp that describes when the
             # event data was bundled together
             bundle_time = time.time()
             # actually insert the event into metadataStore
             try:
-                print('\n\ninserting event {}\n------------------'.format(seq_num))
+                self._sessionmgr._logger.debug(
+                    'inserting event %d------------------',seq_num)
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
             except mds.EventDescriptorIsNoneError:
                 # the time when the event descriptor was created
-                print('event_descriptor has not been created. creating it now...')
+                self._sessionmgr._logger.debug(
+                    'event_descriptor has not been created. creating it now...')
                 evdesc_creation_time = time.time()
                 data_key_info = _get_info(positioners=kwargs.get('positioners'),
                                           detectors=dets, data=detvals)
@@ -238,13 +253,16 @@ class RunEngine(object):
                 event_descriptor = mds.insert_event_descriptor(
                     run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
-                print('\n\nevent_descriptor: {}\n'.format(vars(event_descriptor)))
+                self._sessionmgr._logger.debug(
+                    'event_descriptor: %s',vars(event_descriptor))
                 # insert the event again. this time it better damn well work
-                print('\n\ninserting event {}\n------------------'.format(seq_num))
+                self._sessionmgr._logger.debug(
+                    'inserting event %d------------------',seq_num)
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
-            print('\n\nevent {}\n--------\n{}'.format(seq_num, vars(event)))
+            self._sessionmgr._logger.debug('event %d--------',seq_num)
+            self._sessionmgr._logger.debug('%s',vars(event))
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -257,6 +275,28 @@ class RunEngine(object):
                 break
         self._scan_state = False
         return
+
+    def _demunge_values(self, vals, keys):
+        '''Helper function to format scan values
+
+        Parameters
+        ----------
+        vals :  dict
+        '''
+        msg = ''.join('{}\t'.format(vals[name][0]) for name in keys)
+        return msg
+
+    def _demunge_names(self, names):
+        '''Helper function to format scan device names
+
+        Parameters
+        ----------
+        names : list of device names
+        '''
+        unique_names = [name for i, name in enumerate(names) if name not in
+            names[:i]]
+        msg = ''.join('{}\t'.format(name) for name in unique_names)
+        return msg
 
     def _get_data_keys(self, **kwargs):
         # ATM, these are both lists
