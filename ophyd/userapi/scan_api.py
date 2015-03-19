@@ -583,6 +583,7 @@ class Count(Scan):
             detectors
         """
         rtn = []
+        rtn.append('\n')
         rtn.append('{:<28} | {}'.format('Detector', 'Value'))
         rtn.append('{0:=^60}'.format(''))
         data = collections.OrderedDict(sorted(self.last_data.data_dict.items()))

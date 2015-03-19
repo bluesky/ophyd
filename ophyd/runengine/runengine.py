@@ -166,7 +166,6 @@ class RunEngine(object):
             for pos in positioners}
 
     def _start_scan(self, **kwargs):
-        # print('Starting Scan...{}'.format(kwargs))
         run_start = kwargs.get('run_start')
         dets = kwargs.get('detectors')
         data = kwargs.get('data')
@@ -210,24 +209,29 @@ class RunEngine(object):
             # Read detector values
             detvals = {}
             for det in dets:
-                detvals.update(det.read())
-            for pos in positioners:
-                detvals.update(pos.read())
-
-            # Format dict for MDS
-
+                if isinstance(det, SignalGroup):
+                    # If we have a signal group, loop over all names
+                    # and signals
+                    for sig in det.signals:
+                        detvals.update({sig.name: {
+                            'timestamp': sig.timestamp[sig.pvname.index(sig.report['pv'])],
+                            'value': sig.value}})
+                else:
+                    detvals.update({
+                        det.name: {'timestamp': det.timestamp,
+                                   'value': det.value}})
+            detvals.update(posvals)
             detvals = mds.format_events(detvals)
 
             # pass data onto Demuxer for distribution
-            self._sessionmgr._logger.info(
-                '{}'.format(self._demunge_values(detvals, names)))
+            self._sessionmgr._logger.info(self._demunge_values(detvals, names))
             # grab the current time as a timestamp that describes when the
             # event data was bundled together
             bundle_time = time.time()
             # actually insert the event into metadataStore
             try:
                 self._sessionmgr._logger.debug(
-                    'inserting event {}------------------'.format(seq_num))
+                    'inserting event %d------------------',seq_num)
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
@@ -243,16 +247,15 @@ class RunEngine(object):
                     run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
                 self._sessionmgr._logger.debug(
-                    'event_descriptor: {}'.format(vars(event_descriptor)))
+                    'event_descriptor: %s',vars(event_descriptor))
                 # insert the event again. this time it better damn well work
                 self._sessionmgr._logger.debug(
-                    'inserting event {}------------------'.format(seq_num))
+                    'inserting event %d------------------',seq_num)
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
-            self._sessionmgr._logger.debug('event {}--------'.format(seq_num,
-                vars(event)))
-            self._sessionmgr._logger.debug('{}'.format(vars(event)))
+            self._sessionmgr._logger.debug('event %d--------',seq_num)
+            self._sessionmgr._logger.debug('%s',vars(event))
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -271,7 +274,7 @@ class RunEngine(object):
 
         Parameters
         ----------
-        vals : Ordered dict
+        vals :  dict
         '''
         msg = ''.join('{}\t'.format(vals[name][0]) for name in keys)
         return msg
