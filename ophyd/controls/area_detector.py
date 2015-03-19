@@ -606,3 +606,79 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
             {'template': self._file_template.value,
              'filename': self._filename,
              'frame_per_point': self._num_images.value})
+
+class AreaDetectorFileStoreTIFF(AreaDetectorFileStore):
+    def __init__(self, *args, **kwargs):
+        """Initialize the AreaDetector class
+
+        Parameters
+        ----------
+        basename : str
+            The EPICS PV basename of the areaDetector
+        stats : list
+            If true, provide data from total counts from the stats plugins
+            from the list. For example for stats 1..5 use range(1,6)
+        shutter : Signal or str
+            Either a ophyd signal or a string to form an EpicsSignal from.
+            This signal is used to inhibit the shutter for forming dark frames.
+        shutter_rb : str
+            If shutter is an str, then use this as the readback PV
+        shutter_val : tuple
+            These are the values to send to the signal shutter to inhibit or
+            enable the shutter. (0, 1) will send 0 to enable the shutter and
+            1 to inhibit tthe shutter.
+        file_path : str
+            The file path of where the data is stored. The tree (year / month
+            day) is added to the path before writing to the IOC
+        ioc_file_path : str
+            If not None, this path is sent to the IOC while file_path is
+            sent to the file store. This allows for windows style mounts
+            where the unix path is different from the windows path.
+        """
+        super(AreaDetectorFileStoreTIFF, self).__init__(*args, **kwargs)
+
+        self._file_plugin = 'TIFF1:'
+        self.file_template = '%s%s_%6.6d.tiff'
+
+        self.add_signal(self._ad_signal('{}ArraySize0'
+                                        .format(self._file_plugin),
+                                        '_arraysize0',
+                                        recordable=False))
+
+        self.add_signal(self._ad_signal('{}ArraySize1'
+                                        .format(self._file_plugin),
+                                        '_arraysize1',
+                                        recordable=False))
+
+        self.add_signal(self._ad_signal('FilePath', '_file_path',
+                                        self._file_plugin,
+                                        string=True,
+                                        recordable=False))
+        self.add_signal(self._ad_signal('FileName', '_file_name',
+                                        self._file_plugin,
+                                        string=True,
+                                        recordable=False))
+        self.add_signal(self._ad_signal('FileTemplate', '_file_template',
+                                        self._file_plugin,
+                                        string=True,
+                                        recordable=False))
+        self.add_signal(self._ad_signal('FilePathExists', '_filepath_exists',
+                                        self._file_plugin,
+                                        recordable=False))
+
+        # Acquisition mode (single image)
+        self._image_acq_mode = 0
+
+    def configure(self, *args, **kwargs):
+        super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
+        self._image_mode.put(0, wait=True)
+        self._file_template.put(self.file_template, wait=True)
+        self._make_filename()
+        self._file_path.put(self._ioc_file_path, wait=True)
+        self._file_name.put(self._filename, wait=True)
+        self._write_plugin('FileNumber', 0, self._file_plugin)
+        self._filestore_res = fs.insert_resource(
+            'AD_TIFF', self._store_file_path,
+            {'template': self._file_template.value,
+             'filename': self._filename,
+             'frame_per_point': self._num_images.value})
