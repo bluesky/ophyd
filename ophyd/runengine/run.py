@@ -1,6 +1,9 @@
 from __future__ import print_function
 
-from threading import Thread
+import threading
+import Queue
+
+from ..controls.ophydobj import OphydObject
 
 
 class Run(object):
@@ -29,10 +32,15 @@ class RunEngine(object):
 
     def __init__(self):
         self._fsm_thread = threading.Thread(target=self._fsm)
-        self._fsmq = threading.Queue()
+        self._fsm_thread.daemon = True
+        self._fsmq = Queue.Queue()
+        self._fsm_thread.start()
 
 
-   def _fsm(self):
-       while True:
-           msg = self._fsmq.get(block=True)
+    def _fsm(self):
+        while True:
+            msg = self._fsmq.get(block=True)
+            print(msg)
 
+    def message(self, msg):
+        self._fsmq.put(msg, block=False)
