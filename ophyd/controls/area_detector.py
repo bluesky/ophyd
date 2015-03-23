@@ -296,7 +296,9 @@ class AreaDetectorFileStore(AreaDetector):
             self.ioc_file_path = os.path.join(self.ioc_file_path, '')
 
         self._uid_cache = deque()
-        self._uid_cache_darkfield = deque()
+        self._abs_trigger_count = 0
+        self._last_dark_uid = None
+        self._last_light_uid = None
 
         super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
 
@@ -338,29 +340,7 @@ class AreaDetectorFileStore(AreaDetector):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
         self._uid_cache.clear()
         self._uid_cache_darkfield.clear()
-
-    def deconfigure(self, *args, **kwargs):
-
-        i = 0
-        m = 0
-
-        # It is late and i am tired and this should be done better ...
-
-        for n, uid in enumerate(self._uid_cache):
-            fs.insert_datum(self._filestore_res, str(uid), {'point_number': i})
-
-            # Now do dark frames
-            if self.darkfield_interval:
-                if not (n % self.darkfield_interval):
-                    i += 1
-                    uid_dark = str(self._uid_cache_darkfield[m])
-                    m += 1
-                    fs.insert_datum(self._filestore_res, uid_dark,
-                                    {'point_number': i})
-
-            i += 1
-
-        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+        self._abs_trigger_count = 0
 
     def describe(self):
         desc = super(AreaDetectorFileStore, self).describe()
@@ -388,27 +368,64 @@ class AreaDetectorFileStore(AreaDetector):
         return desc
 
     def read(self):
+        # run the base read
         val = super(AreaDetectorFileStore, self).read()
-        uid = str(uuid.uuid4())
+        # add a new uid + frame index to the internal cache
+        self._uid_cache.append((str(uuid.uuid4()),
+                                self._abs_trigger_count))
+        # stash it for later use
+        self._last_light_uid = self._uid_cache[-1]
+        # increment the collected frame count (super important)
+        self._abs_trigger_count += 1
+        #  update the value dictionary
         val.update({'{}_{}_lightfield'.format(self.name, 'image'):
-                    {'value': uid,
+                    {'value': self._last_light_uid[0],
                      'timestamp': self._acq_signal.timestamp}})
-        self._uid_cache.append(uid)
-
+        # if we are collecting dark field images
         if self._darkfield_int:
             if self._take_darkfield:
-                self._uid_cache_darkfield.append(str(uuid.uuid4()))
+                # assume we have _taken_ a dark field collection after the last
+                # light field
 
-            uid = self._uid_cache_darkfield[-1]
-
+                # add an entry to the cache
+                self._uid_cache.append((str(uuid.uuid4()),
+                                        self._abs_trigger_count))
+                # stash it individually for later reuse
+                self._last_dark_uid = self._uid_cache[-1]
+                # update the trigger count
+                self._abs_trigger_count += 1
+            # update the value dictionary with the uid of the most recent
+            # dark field collection
             val.update({'{}_{}_darkfield'.format(self.name, 'image'):
-                        {'value': uid,
+                        {'value': self._last_dark_uid[0],
                         'timestamp': self._acq_signal.timestamp}})
 
         return val
 
 
-class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
+class AreaDetectorFSBulkEntry(AreaDetectorFileStore):
+    def deconfigure(self, *args, **kwargs):
+
+        for uid, i in self._uid_cache:
+            fs.insert_datum(self._filestore_res, str(uid), {'point_number': i})
+
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+
+
+class AreaDetectorFSInterativeWrite(AreaDetectorFileStore):
+    def read(self):
+        val = super(AreaDetectorFileStore, self).read()
+
+        fs.insert_datum(self._filestore_res, self._last_light_uid[0],
+                        {'point_number': self._last_light_uid[1]})
+        if self._take_darkfield:
+            fs.insert_datum(self._filestore_res, self._last_dark_uid[0],
+                            {'point_number': self._last_dark_uid[1]})
+
+        return val
+
+
+class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
 
@@ -524,7 +541,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
         super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
 
 
-class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
+class AreaDetectorFileStorePrinceton(AreaDetectorFSInterativeWrite):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
 
