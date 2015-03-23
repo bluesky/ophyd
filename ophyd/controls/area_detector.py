@@ -409,12 +409,12 @@ class AreaDetectorFSBulkEntry(AreaDetectorFileStore):
         for uid, i in self._uid_cache:
             fs.insert_datum(self._filestore_res, str(uid), {'point_number': i})
 
-        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+        super(AreaDetectorFSBulkEntry, self).deconfigure(*args, **kwargs)
 
 
-class AreaDetectorFSInterativeWrite(AreaDetectorFileStore):
+class AreaDetectorFSIterativeWrite(AreaDetectorFileStore):
     def read(self):
-        val = super(AreaDetectorFileStore, self).read()
+        val = super(AreaDetectorFSIterativeWrite, self).read()
 
         fs.insert_datum(self._filestore_res, self._last_light_uid[0],
                         {'point_number': self._last_light_uid[1]})
@@ -541,7 +541,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
 
 
-class AreaDetectorFileStorePrinceton(AreaDetectorFSInterativeWrite):
+class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
 
