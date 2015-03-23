@@ -397,10 +397,9 @@ class AreaDetectorFileStore(AreaDetector):
 
         if self._darkfield_int:
             if self._take_darkfield:
-                uid = str(uuid.uuid4())
-                self._uid_cache_darkfield.append(uid)
-            else:
-                uid = self._uid_cache_darkfield[-1]
+                self._uid_cache_darkfield.append(str(uuid.uuid4()))
+
+            uid = self._uid_cache_darkfield[-1]
 
             val.update({'{}_{}_darkfield'.format(self.name, 'image'):
                         {'value': uid,
