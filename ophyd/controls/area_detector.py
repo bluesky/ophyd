@@ -339,7 +339,6 @@ class AreaDetectorFileStore(AreaDetector):
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
         self._uid_cache.clear()
-        self._uid_cache_darkfield.clear()
         self._abs_trigger_count = 0
 
     def describe(self):
