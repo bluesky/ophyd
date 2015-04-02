@@ -173,8 +173,8 @@ class AreaDetector(SignalDetector):
         self._array_counter.value = 0
 
         # Set the image mode to multiple
-        self._old_image_mode = self._image_mode.value
-        self._image_mode.value = self._image_acq_mode
+        #self._old_image_mode = self._image_mode.value
+        #self._image_mode.value = self._image_acq_mode
 
         # If using the stats, configure the proc plugin
 
@@ -196,7 +196,7 @@ class AreaDetector(SignalDetector):
 
     def deconfigure(self, **kwargs):
         """DeConfigure areaDetector detector"""
-        self._image_mode.put(self._old_image_mode, wait=True)
+        # self._image_mode.put(self._old_image_mode, wait=True)
         self._acquire.value = self._old_acquire
 
     @property
@@ -240,18 +240,12 @@ class AreaDetector(SignalDetector):
         # Here start a chain which allows for a darkfield
         # image to be taken after a lightfield
         # First lets set if we need to take one
-
+        self._acq_num = 1
+        self._take_darkfield = False
         if self.darkfield_interval:
-            val = (self._acquire_number % self.darkfield_interval)
-            if val == 0:
-                self._acq_num = 2
+            if (self._acquire_number % self.darkfield_interval) == 0:
+                self._acq_num += 1
                 self._take_darkfield = True
-            else:
-                self._acq_num = 1
-                self._take_darkfield = False
-        else:
-            self._acq_num = 1
-            self._take_darkfield = False
 
         if self._use_stats:
             self._stats_counter = 0
@@ -302,7 +296,9 @@ class AreaDetectorFileStore(AreaDetector):
             self.ioc_file_path = os.path.join(self.ioc_file_path, '')
 
         self._uid_cache = deque()
-        self._uid_cache_darkfield = deque()
+        self._abs_trigger_count = 0
+        self._last_dark_uid = None
+        self._last_light_uid = None
 
         super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
 
@@ -343,30 +339,7 @@ class AreaDetectorFileStore(AreaDetector):
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
         self._uid_cache.clear()
-        self._uid_cache_darkfield.clear()
-
-    def deconfigure(self, *args, **kwargs):
-
-        i = 0
-        m = 0
-
-        # It is late and i am tired and this should be done better ...
-
-        for n, uid in enumerate(self._uid_cache):
-            fs.insert_datum(self._filestore_res, str(uid), {'point_number': i})
-
-            # Now do dark frames
-            if self.darkfield_interval:
-                if not (n % self.darkfield_interval):
-                    i += 1
-                    uid_dark = str(self._uid_cache_darkfield[m])
-                    m += 1
-                    fs.insert_datum(self._filestore_res, uid_dark,
-                                    {'point_number': i})
-
-            i += 1
-
-        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+        self._abs_trigger_count = 0
 
     def describe(self):
         desc = super(AreaDetectorFileStore, self).describe()
@@ -394,28 +367,64 @@ class AreaDetectorFileStore(AreaDetector):
         return desc
 
     def read(self):
+        # run the base read
         val = super(AreaDetectorFileStore, self).read()
-        uid = str(uuid.uuid4())
+        # add a new uid + frame index to the internal cache
+        self._uid_cache.append((str(uuid.uuid4()),
+                                self._abs_trigger_count))
+        # stash it for later use
+        self._last_light_uid = self._uid_cache[-1]
+        # increment the collected frame count (super important)
+        self._abs_trigger_count += 1
+        #  update the value dictionary
         val.update({'{}_{}_lightfield'.format(self.name, 'image'):
-                    {'value': uid,
+                    {'value': self._last_light_uid[0],
                      'timestamp': self._acq_signal.timestamp}})
-        self._uid_cache.append(uid)
-
+        # if we are collecting dark field images
         if self._darkfield_int:
             if self._take_darkfield:
-                uid = str(uuid.uuid4())
-                self._uid_cache_darkfield.append(uid)
-            else:
-                uid = self._uid_cache_darkfield[-1]
+                # assume we have _taken_ a dark field collection after the last
+                # light field
 
+                # add an entry to the cache
+                self._uid_cache.append((str(uuid.uuid4()),
+                                        self._abs_trigger_count))
+                # stash it individually for later reuse
+                self._last_dark_uid = self._uid_cache[-1]
+                # update the trigger count
+                self._abs_trigger_count += 1
+            # update the value dictionary with the uid of the most recent
+            # dark field collection
             val.update({'{}_{}_darkfield'.format(self.name, 'image'):
-                        {'value': uid,
+                        {'value': self._last_dark_uid[0],
                         'timestamp': self._acq_signal.timestamp}})
 
         return val
 
 
-class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
+class AreaDetectorFSBulkEntry(AreaDetectorFileStore):
+    def deconfigure(self, *args, **kwargs):
+
+        for uid, i in self._uid_cache:
+            fs.insert_datum(self._filestore_res, str(uid), {'point_number': i})
+
+        super(AreaDetectorFSBulkEntry, self).deconfigure(*args, **kwargs)
+
+
+class AreaDetectorFSIterativeWrite(AreaDetectorFileStore):
+    def read(self):
+        val = super(AreaDetectorFSIterativeWrite, self).read()
+
+        fs.insert_datum(self._filestore_res, self._last_light_uid[0],
+                        {'point_number': self._last_light_uid[1]})
+        if self._take_darkfield:
+            fs.insert_datum(self._filestore_res, self._last_dark_uid[0],
+                            {'point_number': self._last_dark_uid[1]})
+
+        return val
+
+
+class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
 
@@ -488,7 +497,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
             print('[!!] Still capturing data .... waiting.')
             time.sleep(1)
 
-        self._image_mode.put(1, wait=True)
+        # self._image_mode.put(1, wait=True)
 
         self._file_template.put(self.file_template, wait=True)
         self._write_plugin('AutoIncrement', 1, self._file_plugin)
@@ -531,7 +540,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFileStore):
         super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
 
 
-class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
+class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
 
@@ -595,7 +604,7 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStorePrinceton, self).configure(*args, **kwargs)
-        self._image_mode.put(0, wait=True)
+        #self._image_mode.put(0, wait=True)
         self._file_template.put(self.file_template, wait=True)
         self._make_filename()
         self._file_path.put(self._ioc_file_path, wait=True)
@@ -603,6 +612,82 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFileStore):
         self._write_plugin('FileNumber', 0, self._file_plugin)
         self._filestore_res = fs.insert_resource(
             'AD_SPE', self._store_file_path,
+            {'template': self._file_template.value,
+             'filename': self._filename,
+             'frame_per_point': self._num_images.value})
+
+class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
+    def __init__(self, *args, **kwargs):
+        """Initialize the AreaDetector class
+
+        Parameters
+        ----------
+        basename : str
+            The EPICS PV basename of the areaDetector
+        stats : list
+            If true, provide data from total counts from the stats plugins
+            from the list. For example for stats 1..5 use range(1,6)
+        shutter : Signal or str
+            Either a ophyd signal or a string to form an EpicsSignal from.
+            This signal is used to inhibit the shutter for forming dark frames.
+        shutter_rb : str
+            If shutter is an str, then use this as the readback PV
+        shutter_val : tuple
+            These are the values to send to the signal shutter to inhibit or
+            enable the shutter. (0, 1) will send 0 to enable the shutter and
+            1 to inhibit tthe shutter.
+        file_path : str
+            The file path of where the data is stored. The tree (year / month
+            day) is added to the path before writing to the IOC
+        ioc_file_path : str
+            If not None, this path is sent to the IOC while file_path is
+            sent to the file store. This allows for windows style mounts
+            where the unix path is different from the windows path.
+        """
+        super(AreaDetectorFileStoreTIFF, self).__init__(*args, **kwargs)
+
+        self._file_plugin = 'TIFF1:'
+        self.file_template = '%s%s_%6.6d.tiff'
+
+        self.add_signal(self._ad_signal('{}ArraySize0'
+                                        .format(self._file_plugin),
+                                        '_arraysize0',
+                                        recordable=False))
+
+        self.add_signal(self._ad_signal('{}ArraySize1'
+                                        .format(self._file_plugin),
+                                        '_arraysize1',
+                                        recordable=False))
+
+        self.add_signal(self._ad_signal('FilePath', '_file_path',
+                                        self._file_plugin,
+                                        string=True,
+                                        recordable=False))
+        self.add_signal(self._ad_signal('FileName', '_file_name',
+                                        self._file_plugin,
+                                        string=True,
+                                        recordable=False))
+        self.add_signal(self._ad_signal('FileTemplate', '_file_template',
+                                        self._file_plugin,
+                                        string=True,
+                                        recordable=False))
+        self.add_signal(self._ad_signal('FilePathExists', '_filepath_exists',
+                                        self._file_plugin,
+                                        recordable=False))
+
+        # Acquisition mode (single image)
+        self._image_acq_mode = 0
+
+    def configure(self, *args, **kwargs):
+        super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
+        # self._image_mode.put(0, wait=True)
+        self._file_template.put(self.file_template, wait=True)
+        self._make_filename()
+        self._file_path.put(self._ioc_file_path, wait=True)
+        self._file_name.put(self._filename, wait=True)
+        self._write_plugin('FileNumber', 0, self._file_plugin)
+        self._filestore_res = fs.insert_resource(
+            'AD_TIFF', self._store_file_path,
             {'template': self._file_template.value,
              'filename': self._filename,
              'frame_per_point': self._num_images.value})
