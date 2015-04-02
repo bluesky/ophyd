@@ -150,7 +150,7 @@ class Scan(object):
             self._shared_config['scan_data'] = collections.deque(maxlen=100)
         self._data_buffer = self._shared_config['scan_data']
 
-        self.settle_time = None
+        self.settle_time = 0 
 
         self.paths = list()
         self.positioners = list()
@@ -223,7 +223,7 @@ class Scan(object):
         [det.deconfigure() for det in self.detectors
          if isinstance(det, Detector)]
 
-    def run(self, **kwargs):
+    def run(self, *args, **kwargs):
         """Run the scan
 
         The main loop of the scan. This routine runs the scan and calls the
@@ -243,8 +243,11 @@ class Scan(object):
             scan_args = dict()
             scan_args['detectors'] = self.detectors
             scan_args['positioners'] = self.positioners
-            scan_args['settle_time'] = self.settle_time
-            scan_args['custom'] = {}
+
+            scan_args['settle_time'] = kwargs.pop('settle_time', 0)
+
+            # let 'custom' be assigned to all remaining kwargs 
+            scan_args['custom'] = kwargs
 
             # Run the scan!
             data = self._run_eng.start_run(self.scan_id,
