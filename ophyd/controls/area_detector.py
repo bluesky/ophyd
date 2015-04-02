@@ -616,7 +616,7 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
              'filename': self._filename,
              'frame_per_point': self._num_images.value})
 
-class AreaDetectorFileStoreTIFF(AreaDetectorFileStore):
+class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
 
