@@ -17,7 +17,7 @@ from ..controls import Detector
 session_manager = get_session_manager()
 logger = session_manager._logger
 
-__all__ = ['AScan', 'DScan', 'Scan', 'Data', 'Count']
+__all__ = ['AScan', 'DScan', 'Data', 'Count']
 
 
 def estimate(x, y):
@@ -110,7 +110,7 @@ class Data(object):
 
 
 class Scan(object):
-    """Class for configuring and running a scan
+    """Abstract base class for configuring and running a scan
 
     This class performs setup and calls the Ophyd RunEngine to start a scan
     (run). It cah be inhereted to overload the configuration or add additional
