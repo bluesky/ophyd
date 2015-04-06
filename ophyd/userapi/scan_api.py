@@ -150,7 +150,7 @@ class Scan(object):
             self._shared_config['scan_data'] = collections.deque(maxlen=100)
         self._data_buffer = self._shared_config['scan_data']
 
-        self.settle_time = 0 
+        self.settle_time = 0
 
         self.paths = list()
         self.positioners = list()
@@ -244,9 +244,10 @@ class Scan(object):
             scan_args['detectors'] = self.detectors
             scan_args['positioners'] = self.positioners
 
-            scan_args['settle_time'] = kwargs.pop('settle_time', 0)
+            scan_args['settle_time'] = kwargs.pop('settle_time',
+                                                  self.settle_time)
 
-            # let 'custom' be assigned to all remaining kwargs 
+            # let 'custom' be assigned to all remaining kwargs
             scan_args['custom'] = kwargs
 
             # Run the scan!
