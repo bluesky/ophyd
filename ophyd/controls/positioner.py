@@ -207,7 +207,8 @@ class Positioner(SignalGroup):
                 time.sleep(0.05)
 
                 if check_timeout():
-                    raise TimeoutError('Failed to move %s to %s in %s s (no motion)' %
+                    raise TimeoutError('Failed to move %s to %s '
+                                       'in %s s (no motion)' %
                                        (self, position, timeout))
 
             while self.moving:
@@ -291,13 +292,22 @@ class EpicsMotor(Positioner):
         name = kwargs.pop('name', record)
         Positioner.__init__(self, name=name, **kwargs)
 
-        signals = [EpicsSignal(self.field_pv('RBV'), rw=False, alias='_user_readback'),
-                   EpicsSignal(self.field_pv('VAL'), alias='_user_setpoint',
-                               limits=True),
-                   EpicsSignal(self.field_pv('EGU'), alias='_egu'),
-                   EpicsSignal(self.field_pv('MOVN'), alias='_is_moving'),
-                   EpicsSignal(self.field_pv('DMOV'), alias='_done_move'),
-                   EpicsSignal(self.field_pv('STOP'), alias='_stop'),
+        signals = [EpicsSignal(self.field_pv('RBV'), rw=False,
+                               alias='_user_readback',
+                               recordable=True,
+                               name=name),
+                   EpicsSignal(self.field_pv('VAL'),
+                               alias='_user_setpoint',
+                               limits=True,
+                               recordable=False),
+                   EpicsSignal(self.field_pv('EGU'), alias='_egu',
+                               recordable=False),
+                   EpicsSignal(self.field_pv('MOVN'), alias='_is_moving',
+                               recordable=False),
+                   EpicsSignal(self.field_pv('DMOV'), alias='_done_move',
+                               recordable=False),
+                   EpicsSignal(self.field_pv('STOP'), alias='_stop',
+                               recordable=False),
                    # EpicsSignal(self.field_pv('RDBD'), alias='retry_deadband'),
                    ]
 
@@ -383,8 +393,8 @@ class EpicsMotor(Positioner):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
 
-        logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
-                                                           self, self._moving, value))
+        logger.debug('[ts=%s] %s moving: %s (value=%s)'
+                     % (fmt_time(timestamp), self, self._moving, value))
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
@@ -461,10 +471,12 @@ class PVPositioner(Positioner):
             self._limits = tuple(limits)
 
         signals = []
-        self.add_signal(EpicsSignal(setpoint, alias='_setpoint', limits=True))
+        self.add_signal(EpicsSignal(setpoint, alias='_setpoint', limits=True,
+                                    recordable=False))
 
         if readback is not None:
-            self.add_signal(EpicsSignal(readback, alias='_readback'))
+            self.add_signal(EpicsSignal(readback, alias='_readback',
+                                        name=self.name))
 
             self._readback.subscribe(self._pos_changed)
 
@@ -473,17 +485,21 @@ class PVPositioner(Positioner):
             self._setpoint.subscribe(self._pos_changed)
 
         if act is not None:
-            self.add_signal(EpicsSignal(act, alias='_actuate'))
+            self.add_signal(EpicsSignal(act, alias='_actuate',
+                                        recordable=False))
 
         if stop is not None:
-            self.add_signal(EpicsSignal(stop, alias='_stop'))
+            self.add_signal(EpicsSignal(stop, alias='_stop',
+                                        recordable=False))
 
         if done is None and not self._put_complete:
             # TODO is this exception worthy?
-            warnings.warn('Positioner %s has no way of knowing motion status' % self.name)
+            warnings.warn('Positioner %s has no way of knowing motion status'
+                          % self.name)
 
         if done is not None:
-            self.add_signal(EpicsSignal(done, alias='_done'))
+            self.add_signal(EpicsSignal(done, alias='_done',
+                                        recordable=False))
 
             self._done.subscribe(self._move_changed)
         else:
@@ -542,10 +558,12 @@ class PVPositioner(Positioner):
             self._done_moving(timestamp=self._setpoint.timestamp)
         elif self._started_moving and self._moving:
             # TODO better exceptions
-            raise TimeoutError('Failed to move %s to %s (put complete done, still moving)' %
+            raise TimeoutError('Failed to move %s to %s'
+                               '(put complete done, still moving)' %
                                (self, position))
         else:
-            raise TimeoutError('Failed to move %s to %s (no motion, put complete)' %
+            raise TimeoutError('Failed to move %s to %s'
+                               '(no motion, put complete)' %
                                (self, position))
 
     def _move_wait(self, position, **kwargs):
@@ -556,13 +574,13 @@ class PVPositioner(Positioner):
             self._move_wait_pc(position, **kwargs)
         else:
             self._setpoint.put(position, wait=True)
-            logger.debug('Setpoint set: %s = %s' % (self._setpoint.setpoint_pvname,
-                                                    position))
+            logger.debug('Setpoint set: %s = %s' %
+                         (self._setpoint.setpoint_pvname, position))
 
             if self._actuate is not None:
                 self._actuate.put(self._act_val, wait=True)
-                logger.debug('Actuating: %s = %s' % (self._actuate.setpoint_pvname,
-                                                     self._act_val))
+                logger.debug('Actuating: %s = %s'
+                             % (self._actuate.setpoint_pvname, self._act_val))
 
     def _move_async(self, position, **kwargs):
         '''Move and do not wait until motion is complete (asynchronous)'''
@@ -612,8 +630,8 @@ class PVPositioner(Positioner):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
 
-        logger.debug('[ts=%s] %s moving: %s (value=%s)' % (fmt_time(timestamp),
-                                                           self, self._moving, value))
+        logger.debug('[ts=%s] %s moving: %s (value=%s)' %
+                     (fmt_time(timestamp), self, self._moving, value))
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,

@@ -1,6 +1,5 @@
 from __future__ import print_function
 # import logging
-import sys
 import getpass
 import os
 import time
@@ -8,11 +7,11 @@ from threading import Thread
 from Queue import Queue
 import numpy as np
 from ..session import register_object
-from ..controls.signal import SignalGroup
+from ..controls.detector import Detector
 
 from metadatastore import api as mds
 
-# Data formatting helper function
+
 def _get_info(positioners=None, detectors=None, data=None):
     """Helper function to extract information from the positioners/detectors
     and send it over to metadatastore so that ophyd is insulated from mds
@@ -27,16 +26,15 @@ def _get_info(positioners=None, detectors=None, data=None):
     data : dict
         Dictionary of actual data
     """
-    pv_info = {pos.name: {'source': pos.report['pv'],
-                          'dtype': 'number',
-                          'shape': None}
-               for pos in positioners}
+    desc = {}
+    [desc.update(x.describe()) for x in (detectors + positioners)]
 
-    def get_det_info(detector):
+    info_dict = {}
+    for name, value in data.iteritems():
         """Internal function to grab info from a detector
         """
         # grab 'value' from [value, timestamp]
-        val = np.asarray(data[detector.name][0]) 
+        val = np.asarray(value[0])
 
         dtype = 'number'
         try:
@@ -44,21 +42,17 @@ def _get_info(positioners=None, detectors=None, data=None):
         except AttributeError:
             # val is probably a float...
             shape = None
-        source = "PV:{}".format(detector.pvname)
 
         if shape:
             dtype = 'array'
-        return {detector.name: {'source': source, 'dtype': dtype,
-                                'shape': shape}}
 
-    for det in detectors:
-        if isinstance(det, SignalGroup):
-            for sig in det.signals:
-                pv_info.update(get_det_info(sig))
-        else:
-            pv_info.update(get_det_info(det))
+        d = {'dtype': dtype, 'shape': shape}
+        d.update(desc[name])
+        d = {name: d}
+        info_dict.update(d)
 
-    return pv_info
+    return info_dict
+
 
 class Demuxer(object):
     '''Demultiplexer
@@ -174,8 +168,9 @@ class RunEngine(object):
         # print('Starting Scan...{}'.format(kwargs))
         run_start = kwargs.get('run_start')
         dets = kwargs.get('detectors')
-        trigs = kwargs.get('triggers')
         data = kwargs.get('data')
+        positioners = kwargs.get('positioners')
+        triggers = [det for det in dets if isinstance(det, Detector)]
 
         # creation of the event descriptor should be delayed until the first
         # event comes in. Set it to None for now
@@ -183,40 +178,32 @@ class RunEngine(object):
 
         seq_num = 0
         while self._scan_state is True:
-            print('self._scan_state is True in self._start_scan')
+            # print('self._scan_state is True in self._start_scan')
             posvals = self._move_positioners(**kwargs)
-            print('moved positioners')
+            # print('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
-            # execute user code
-            # print('execute user code')
-            # detvals = {d.name: d.value for d in dets}
-            # TODO: handle triggers here (pvs that cause detectors to fire)
-            if trigs is not None:
-                for t in trigs:
-                    t.put(1, wait=True)
-            # TODO: again, WTF is with the delays required? CA is too fast,
-            # and python is too slow (or vice versa!)
+
+            # Trigger detector acquisision
+            acq_status = [trig.acquire() for trig in triggers]
+
+            while any([not stat.done for stat in acq_status]):
+                time.sleep(0.05)
+
             time.sleep(0.05)
+
+            # Read detector values
             detvals = {}
             for det in dets:
-                if isinstance(det, SignalGroup):
-                    # If we have a signal group, loop over all names
-                    # and signals
-                    # print('vars(det) in ophyd _start_scan', vars(det))
-                    for sig in det.signals:
-                        detvals.update({sig.name: {
-                            'timestamp': sig.timestamp[sig.pvname.index(sig.report['pv'])],
-                            'value': sig.value}})
-                else:
-                    detvals.update({
-                        det.name: {'timestamp': det.timestamp,
-                                   'value': det.value}})
-            detvals.update(posvals)
+                detvals.update(det.read())
+            for pos in positioners:
+                detvals.update(pos.read())
+
+            # Format dict for MDS
+
             detvals = mds.format_events(detvals)
-            # TODO: timestamp this datapoint?
-            # data.update({'timestamp': time.time()})
+
             # pass data onto Demuxer for distribution
             print('datapoint[{}]: {}'.format(seq_num, detvals))
             # grab the current time as a timestamp that describes when the
@@ -224,13 +211,12 @@ class RunEngine(object):
             bundle_time = time.time()
             # actually insert the event into metadataStore
             try:
-                print('\n\ninserting event {}\n------------------'.format(seq_num))
-                event = mds.insert_event(event_descriptor=event_descriptor,
-                                         time=bundle_time, data=detvals,
-                                         seq_num=seq_num)
+                mds.insert_event(event_descriptor=event_descriptor,
+                                 time=bundle_time, data=detvals,
+                                 seq_num=seq_num)
             except mds.EventDescriptorIsNoneError:
                 # the time when the event descriptor was created
-                print('event_descriptor has not been created. creating it now...')
+                # print('event_descriptor has not been created. creating ...')
                 evdesc_creation_time = time.time()
                 data_key_info = _get_info(positioners=kwargs.get('positioners'),
                                           detectors=dets, data=detvals)
@@ -238,13 +224,9 @@ class RunEngine(object):
                 event_descriptor = mds.insert_event_descriptor(
                     run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
-                print('\n\nevent_descriptor: {}\n'.format(vars(event_descriptor)))
-                # insert the event again. this time it better damn well work
-                print('\n\ninserting event {}\n------------------'.format(seq_num))
-                event = mds.insert_event(event_descriptor=event_descriptor,
-                                         time=bundle_time, data=detvals,
-                                         seq_num=seq_num)
-            print('\n\nevent {}\n--------\n{}'.format(seq_num, vars(event)))
+                mds.insert_event(event_descriptor=event_descriptor,
+                                 time=bundle_time, data=detvals,
+                                 seq_num=seq_num)
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -262,10 +244,8 @@ class RunEngine(object):
         # ATM, these are both lists
         names = [o.name for o in kwargs.get('positioners')]
         for det in kwargs.get('detectors'):
-            if isinstance(det, SignalGroup):
-                names += [o.name for o in det.signals]
-            else:
-                names.append(det.name)
+            names += det.describe().keys()
+
         return names
 
     def start_run(self, runid, start_args=None, end_args=None, scan_args=None):

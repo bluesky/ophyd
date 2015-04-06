@@ -1,7 +1,6 @@
 from __future__ import print_function
 import numpy as np
 from time import sleep
-import six
 import sys
 import collections
 import itertools
@@ -13,11 +12,12 @@ from IPython.utils.coloransi import TermColors as tc
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
+from ..controls import Detector
 
 session_manager = get_session_manager()
 logger = session_manager._logger
 
-__all__ = ['AScan', 'DScan', 'Scan', 'Data', 'Count']
+__all__ = ['AScan', 'DScan', 'Data', 'Count']
 
 
 def estimate(x, y):
@@ -97,6 +97,8 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
+        data = {key: np.array(value)[:,0]
+                for key, value in data.iteritems()}
         keys = data.keys()
         values = [np.array(a) for a in data.values()]
         keys = [''.join([ch if ch in (string.ascii_letters + string.digits)
@@ -108,7 +110,7 @@ class Data(object):
 
 
 class Scan(object):
-    """Class for configuring and running a scan
+    """Abstract base class for configuring and running a scan
 
     This class performs setup and calls the Ophyd RunEngine to start a scan
     (run). It cah be inhereted to overload the configuration or add additional
@@ -120,10 +122,9 @@ class Scan(object):
     following steps are taken:
 
     * :py:meth:`check_paths`
-    * :py:meth:`setup_detectors`
-    * :py:meth:`setup_triggers`
+    * :py:meth:`configure_detectors`
 
-    After configuring the detectors and triggers the trajectory is loaded
+    After configuring the detectors the trajectory is loaded
     into the positioners using the :py:meth:`set_trajectory` method.
     Finally the :py:class:`RunEngine` is initialised from the scans config
     and executed using the :py:meth:`start_run()` method.
@@ -136,10 +137,8 @@ class Scan(object):
     ----------
     TODO
     """
-    _shared_config = {'default_triggers': [],
-                      'default_detectors': [],
+    _shared_config = {'default_detectors': [],
                       'user_detectors': [],
-                      'user_triggers': [],
                       'scan_data': None, }
 
     def __init__(self, *args, **kwargs):
@@ -151,13 +150,10 @@ class Scan(object):
             self._shared_config['scan_data'] = collections.deque(maxlen=100)
         self._data_buffer = self._shared_config['scan_data']
 
-        self.settle_time = None
+        self.settle_time = 0 
 
         self.paths = list()
         self.positioners = list()
-
-        self._plotx = None
-        self._ploty = None
 
         try:
             self.logbook = session_manager['olog_client']
@@ -197,13 +193,17 @@ class Scan(object):
 
     def __enter__(self):
         """Entry point for context manager"""
+        self.check_paths()
+        self.configure_detectors()
         self.pre_scan()
 
     def __exit__(self, exec_type, exec_value, tb):
         """Exit point for context manager"""
         logger.debug("Scan context manager exited with %s", str(exec_value))
         traceback.print_tb(tb)
+        self.deconfigure_detectors()
         self.post_scan()
+        return False
 
     def pre_scan(self):
         """Routine run before scan starts"""
@@ -213,64 +213,17 @@ class Scan(object):
         """Routine run after scan has completed"""
         pass
 
-    def setup_detectors(self, detectors):
-        """Routine run to setup detectors before scan starts
+    def configure_detectors(self):
+        """Routine run to setup detectors before scan starts"""
+        [det.configure() for det in self.detectors
+         if isinstance(det, Detector)]
 
-        Parameters
-        ----------
-        detectors : list of Ophyd Objects
-            List of the detectors to configure.
-        """
-        pass
+    def deconfigure_detectors(self):
+        """Routine run to setup detectors before scan starts"""
+        [det.deconfigure() for det in self.detectors
+         if isinstance(det, Detector)]
 
-    def setup_triggers(self, triggers):
-        """Routine run to setup triggers before scan starts
-
-        Parameters
-        ----------
-        triggers : list of OphydObjects
-            List of the triggers to configure.
-        """
-        pass
-
-    def format_plot(self):
-        """Guess the positioners and detectors that the user cares about
-
-        Returns
-        -------
-        plotx : str
-            The default positioners to set as the x axis
-        ploty : list
-            The list of positioners/detectors to plot on the y axis
-        """
-
-        pos_names = [pos.name for pos in self.positioners]
-        det_names = [det.name for det in self.detectors]
-        valid_names = pos_names + det_names
-        # default value for the x axis
-        if len(self.positioners) > 0:
-            plotx = self.positioners[0].name
-            # if plotx is not a valid string, ignore it. if it is, make
-            # sure that it is in the positioners/detectors that the
-            # scan knows about
-            if isinstance(self._plotx, six.string_types):
-                if self._plotx:
-                    for name in valid_names:
-                        if name in self._plotx:
-                            plotx = name
-                            break
-        else:
-            plotx = None
-
-        ploty = []
-        # checking validity of self._ploty
-        for name in valid_names:
-            if self._ploty is not None:
-                if name in self._ploty:
-                    ploty.append(name)
-        return plotx, ploty
-
-    def run(self, **kwargs):
+    def run(self, *args, **kwargs):
         """Run the scan
 
         The main loop of the scan. This routine runs the scan and calls the
@@ -282,10 +235,6 @@ class Scan(object):
         # the KeyboardInterrupt
 
         with self:
-            self.check_paths()
-            self.setup_detectors(self.detectors)
-            self.setup_triggers(self.triggers)
-
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
 
@@ -293,15 +242,12 @@ class Scan(object):
 
             scan_args = dict()
             scan_args['detectors'] = self.detectors
-            scan_args['triggers'] = self.triggers
             scan_args['positioners'] = self.positioners
-            scan_args['settle_time'] = self.settle_time
-            scan_args['custom'] = {}
-            plotx, ploty = self.format_plot()
-            if plotx:
-                scan_args['custom']['plotx'] = plotx
-            if ploty:
-                scan_args['custom']['ploty'] = ploty
+
+            scan_args['settle_time'] = kwargs.pop('settle_time', 0)
+
+            # let 'custom' be assigned to all remaining kwargs 
+            scan_args['custom'] = kwargs
 
             # Run the scan!
             data = self._run_eng.start_run(self.scan_id,
@@ -348,21 +294,6 @@ class Scan(object):
         self._shared_config['default_detectors'] = detectors
 
     @property
-    def default_triggers(self):
-        """Return the default triggers
-
-        Returns
-        -------
-        list of OphydObjects
-        """
-        return self._shared_config['default_triggers']
-
-    @default_triggers.setter
-    def default_triggers(self, triggers):
-        """Set the default triggers"""
-        self._shared_config['default_triggers'] = triggers
-
-    @property
     def user_detectors(self):
         """Return the user detectors
 
@@ -376,34 +307,6 @@ class Scan(object):
     def user_detectors(self, detectors):
         """Set the user detectors"""
         self._shared_config['user_detectors'] = detectors
-
-    @property
-    def user_triggers(self):
-        """Return the user triggers
-
-        Returns
-        -------
-        list of OphydObjects
-        """
-        return self._shared_config['user_triggers']
-
-    @user_triggers.setter
-    def user_triggers(self, triggers):
-        """Set the user triggers"""
-        self._shared_config['user_triggers'] = triggers
-
-    @property
-    def triggers(self):
-        """Return the triggers for this scan
-
-        The triggers of the scan is a concatenation of the list of triggers
-        for this scan instance and the default triggers which is a singleton.
-
-        Returns
-        -------
-        list of OphydObjects
-        """
-        return self._shared_config['user_triggers'] + self.default_triggers
 
     @property
     def detectors(self):
@@ -478,11 +381,6 @@ class AScan(Scan):
                                                            min(path),
                                                            max(path)))
         msg.append('')
-        msg.append('Triggers:')
-        for trig in self.triggers:
-            msg.append('{:<30}'.format(trig.name))
-
-        msg.append('')
         msg.append('Detectors:')
         for det in self.detectors:
             msg.append('{:<30}'.format(det.name))
@@ -491,16 +389,12 @@ class AScan(Scan):
 
         msg.append('{0:=^80}'.format(''))
 
-        for p in self.positioners + self.triggers + self.detectors:
-            try:
-                msg.append('PV:{}'.format(p.report['pv']))
-            except KeyError:
-                pass
+        for p in self.positioners + self.detectors:
+            [msg.append(d['source']) for d in p.describe().values()]
 
         d = {}
         d['id'] = self.scan_id
         d['command'] = self.scan_command
-        d['triggers'] = repr(self.triggers)
         d['detectors'] = repr(self.detectors)
         d['positioners'] = repr(self.positioners)
         d['start'] = repr(self.start)
@@ -667,20 +561,16 @@ class Count(Scan):
         lmsg.append('Scan ID         : {}'.format(self.scan_id))
         lmsg.append('')
         lmsg.append(msg)
-        lmsg.append('Triggers:')
-        for trig in self.triggers:
-            lmsg.append('{:<30}'.format(trig.name))
         lmsg.append('')
         lmsg.append('{0:=^80}'.format(''))
-        for p in self.triggers + self.detectors:
+        for p in self.detectors:
             try:
-                lmsg.append('PV:{}'.format(p.report['pv']))
-            except KeyError:
+                [lmsg.append(val) for key, val in p.source().iteritems()]
+            except:
                 pass
 
         d = {}
         d['id'] = self.scan_id
-        d['triggers'] = repr(self.triggers)
         d['detectors'] = repr(self.detectors)
         d['values'] = repr(self.last_data.data_dict)
         if self.logbook is not None:

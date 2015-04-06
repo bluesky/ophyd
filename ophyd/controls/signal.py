@@ -34,18 +34,29 @@ class Signal(OphydObject):
         The initial value
     setpoint : any, optional
         The initial setpoint value
+    recordable : bool
+        A flag to indicate if the signal is recordable by DAQ
     '''
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
-    def __init__(self, separate_readback=False, value=None, setpoint=None, **kwargs):
+    def __init__(self, separate_readback=False,
+                 value=None, setpoint=None,
+                 recordable=True, **kwargs):
+
         self._default_sub = self.SUB_VALUE
         OphydObject.__init__(self, **kwargs)
 
         self._setpoint = setpoint
         self._readback = value
+        self._recordable = recordable
 
         self._separate_readback = separate_readback
+
+    @property
+    def recordable(self):
+        """Return if this signal is recordable by the DAQ"""
+        return self._recordable
 
     def __repr__(self):
         repr = ['value={0.value!r}'.format(self)]
@@ -117,7 +128,7 @@ class Signal(OphydObject):
 
     def read(self):
         '''Put the status of the signal into a simple dictionary format
-        for serialization.
+        for data acquisition
 
         Returns
         -------
@@ -132,6 +143,10 @@ class Signal(OphydObject):
             return {'alias': self.alias,
                     'value': self.value,
                     }
+
+    def describe(self):
+        """Return the description as a dictionary"""
+        return {self.name: {'source': 'SIM:{}'.format(self.name)}}
 
 
 class EpicsSignal(Signal):
@@ -299,8 +314,8 @@ class EpicsSignal(Signal):
             return
 
         if not (low_limit <= value <= high_limit):
-            raise LimitError('Value {} outside of range: [{}, {}]'.format(value,
-                                                                          low_limit, high_limit))
+            raise LimitError('Value {} outside of range: [{}, {}]'
+                             .format(value, low_limit, high_limit))
 
     # TODO: monitor updates self._readback - this shouldn't be necessary
     #       ... but, there should be a mode of operation without using
@@ -380,18 +395,6 @@ class EpicsSignal(Signal):
         value = self._fix_type(value)
         Signal.put(self, value, timestamp=timestamp)
 
-    def read(self):
-        '''See :func:`Signal.read`'''
-
-        ret = Signal.read(self)
-        if self._read_pv is not None:
-            ret['read_pv'] = self.pvname
-
-        if self._write_pv is not None:
-            ret['write_pv'] = self.setpoint_pvname
-
-        return ret
-
     @property
     def report(self):
         # FIXME:
@@ -408,6 +411,28 @@ class EpicsSignal(Signal):
         return {self.name: value,
                 'pv': pv
                 }
+
+    def describe(self):
+        """Return the description as a dictionary
+
+        Returns
+        -------
+        dict
+            Dictionary of name and formatted description string
+        """
+        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname)}}
+
+    def read(self):
+        """Read the signal and format for data collection
+
+        Returns
+        -------
+        dict
+            Dictionary of value timestamp pairs
+        """
+
+        return {self.name: {'value': self.value,
+                            'timestamp': self.timestamp}}
 
 
 class SignalGroup(OphydObject):
@@ -461,11 +486,6 @@ class SignalGroup(OphydObject):
             if prop_name:
                 setattr(self, prop_name, signal)
 
-    def read(self):
-        '''See :func:`Signal.read`'''
-        return dict((signal.alias, signal.read())
-                    for signal in self._signals)
-
     def get(self, **kwargs):
         return [signal.get(**kwargs) for signal in self._signals]
 
@@ -514,3 +534,23 @@ class SignalGroup(OphydObject):
     @property
     def report(self):
         return [signal.report for signal in self._signals]
+
+    def describe(self):
+        """Describe for data acquisition the signals of the group
+
+        This property uses the `recordable` flag in ophyd to filter
+        the returned signals of the signal group"""
+        descs = {}
+        [descs.update(signal.describe()) for signal in self._signals
+         if signal.recordable]
+        return descs
+
+    def read(self):
+        """Read signals for data acquisition
+
+        This method uses the `recordable` flag in ophyd to filter
+        the returned signals of the signal group"""
+        values = {}
+        [values.update(signal.read()) for signal in self._signals
+         if signal.recordable]
+        return values
