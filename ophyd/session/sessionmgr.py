@@ -25,9 +25,16 @@ class _FakeIPython(object):
     def _no_op(self, *args, **kwargs):
         pass
 
+    class _no_class(object):
+        def __getattr__(self, key):
+            def _no_op(*args, **kwargs):
+                pass
+            return _no_op
+
     config = None
     ask_exit = _no_op
     push = _no_op
+    events = _no_class()
     run_line_magic = _no_op
     __getattr__ = _no_op
     __setattr__ = _no_op
@@ -72,13 +79,23 @@ class SessionManager(object):
             self._cas = caServer('OPHYD_SESSION:')
             # TODO config should override this?
         else:
-            self._logger.info('pcaspy is unavailable; channel access server disabled')
+            self._logger.info(
+                'pcaspy is unavailable; channel access server disabled')
             self._cas = None
 
         atexit.register(self._cleanup)
 
         self.persist_var('_persisting', [], desc='persistence list')
         self.persist_var('_scan_id', 1, desc='Scan ID')
+
+        # IPython >= 2
+        try:
+            self._ip.events.register('post_execute',
+                               lambda: self.persist_var('_scan_id'))
+        except AttributeError:
+            # IPython 1.x
+            self._ip.register_post_execute(
+                lambda: self.persist_var('_scan_id'))
 
     def _setup_sigint(self):
         '''Setup the signal interrupt handler'''
@@ -124,25 +141,26 @@ class SessionManager(object):
         if not self.in_ipython:
             return value
 
-        config = self.ipy_config
         if not self.autorestore:
-            warnings.warn('StoreMagic.autorestore not enabled; variable persistence disabled')
+            warnings.warn('StoreMagic.autorestore not enabled; '
+                          'variable persistence disabled')
 
             if name not in self:
                 self[name] = value
-                self._logger.debug('Setting %s = %s' % (name, value))
+                self._logger.debug('Setting %s = %s', name, value)
             return self[name]
 
         if name not in self:
             if desc is not None:
-                self._logger.debug('SessionManager could not find %s (%s).' % (name, desc))
-                self._logger.debug('Resetting %s to %s' % (name, value))
+                self._logger.debug('SessionManager could not find %s (%s).',
+                                   name, desc)
+            self._logger.debug('Resetting %s to %s', name, value)
 
             self[name] = value
         else:
             value = self[name]
             if desc is not None:
-                self._logger.debug('Last %s = %s' % (desc, self[name]))
+                self._logger.debug('Last %s = %s', desc, self[name])
 
         if name not in self.persisting:
             self.persisting.append(name)
@@ -180,7 +198,6 @@ class SessionManager(object):
         One ctrl-D stops the scan, two confirms exit
         '''
 
-
         run = self._run_engine
         if run is not None and run.running:
             self.stop_all()
@@ -214,12 +231,12 @@ class SessionManager(object):
             raise TypeError('%s cannot be registered with the session.' % obj)
         return self._logger
 
-    #TODO: should swallow and gracefully notify the user of changes
+    # TODO: should swallow and gracefully notify the user of changes
     def notify_connection(self, msg):
-        self._logger.debug('connection notification: %s' % msg)
+        self._logger.debug('connection notification: %s', msg)
 
     def stop_all(self):
-        #TODO: fixme - add RunEngines to registry
+        # TODO: fixme - add RunEngines to registry
         if self._run_engine is not None:
             self._run_engine.stop()
 
@@ -231,7 +248,7 @@ class SessionManager(object):
     def get_positioners(self):
         return self._registry['positioners']
 
-    #TODO: should we let this raise a KeyError exception? Probably...
+    # TODO: should we let this raise a KeyError exception? Probably...
     def get_positioner(self, pos):
         return self._registry['positioners'][pos]
 
