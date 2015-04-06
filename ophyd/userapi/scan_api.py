@@ -521,14 +521,11 @@ class DScan(AScan):
                   for pos, start in
                   zip(self.positioners, self._start_positions)]
 
-        print("\n")
-        print(tc.Red + "Moving positioners back to start positions.......",
-              end='')
-        sys.stdout.flush()
+        logger.info("Moving positioners back to start positions.......")
         while any(not stat.done for stat in status):
             sleep(0.01)
 
-        print(tc.Green + " Done.")
+        logger.info(tc.Green + " Done.")
 
 
 class Count(Scan):
@@ -552,9 +549,7 @@ class Count(Scan):
 
         msg = self._fmt_count()
 
-        print('')
-        print(msg)
-        print('')
+        logger.info(msg)
 
         # Make a logbook entry
 
@@ -589,6 +584,7 @@ class Count(Scan):
             detectors
         """
         rtn = []
+        rtn.append('\n')
         rtn.append('{:<28} | {}'.format('Detector', 'Value'))
         rtn.append('{0:=^60}'.format(''))
         data = collections.OrderedDict(sorted(self.last_data.data_dict.items()))
