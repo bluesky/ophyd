@@ -81,7 +81,10 @@ class OphydObject(object):
         try:
             args, kwargs = self._sub_cache[sub_type]
         except KeyError as ex:
-            self._ses_logger.error('Subscription %s callback exception (%s)' %
+            # This can be called before the cache is even created,
+            # so we don't think this is actually a problem.
+            # TODO: Reflect on this in a peaceful silence.
+            self._ses_logger.debug('Subscription %s callback exception (%s)' %
                                    (sub_type, self), exc_info=ex)
             pass
         else:
