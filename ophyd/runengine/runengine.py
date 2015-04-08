@@ -10,7 +10,6 @@ from Queue import Queue
 import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
-from ..controls.signal import SignalGroup
 from metadatastore import api as mds
 
 
@@ -184,14 +183,8 @@ class RunEngine(object):
         # provide header for formatted list of positioners and detectors in
         # INFO channel
         names = list()
-        for pos in kwargs.get('positioners'):
-            names.append(pos.name)
-        for det in dets:
-            if isinstance(det, SignalGroup):
-                for sig in det.signals:
-                    names.append(sig.name)
-            else:
-                names.append(det.name)
+        for pos in positioners + dets:
+            names.extend(pos.describe().keys())
 
         self.logger.info(self._demunge_names(names))
         seq_num = 0
@@ -212,22 +205,11 @@ class RunEngine(object):
 
             time.sleep(0.05)
             # Read detector values
-            detvals = {}
-            for det in dets:
-                if isinstance(det, SignalGroup):
-                    # If we have a signal group, loop over all names
-                    # and signals
-                    for sig in det.signals:
-                        detvals.update({sig.name: {
-                            'timestamp':
-                            det.timestamp[sig.pvname.index(sig.report['pv'])],
-                            'value': sig.value}})
-                else:
-                    detvals.update({
-                        det.name: {'timestamp': det.timestamp,
-                                   'value': det.value}})
-            detvals.update(posvals)
-            detvals = mds.format_events(detvals)
+            tmp_detvals = {}
+            for det in dets + positioners:
+                tmp_detvals.update(det.read())
+
+            detvals = mds.format_events(tmp_detvals)
 
             # pass data onto Demuxer for distribution
             self.logger.info(self._demunge_values(detvals, names))
