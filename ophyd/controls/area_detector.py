@@ -43,11 +43,6 @@ class AreaDetector(SignalDetector):
         self._basename = basename
         self._proc_plugin = 'Proc1:'
 
-        if stats:
-            self._use_stats = True
-        else:
-            self._use_stats = False
-
         # Acquisition mode (Multiple Images)
         self._image_acq_mode = 1
 
@@ -74,6 +69,7 @@ class AreaDetector(SignalDetector):
         self.add_signal(self._ad_signal('cam1:ArrayCounter', '_array_counter',
                                         recordable=False))
 
+        self._use_stats = bool(stats)
         self._stats = stats
         if self._use_stats:
 
