@@ -34,10 +34,6 @@ def _get_info(positioners=None, detectors=None, data=None):
     for name, value in data.iteritems():
         """Internal function to grab info from a detector
         """
-        if name not in desc:
-            # i.e., this was collected, but not intentionally.
-            continue
-
         # grab 'value' from [value, timestamp]
         val = np.asarray(value[0])
 
