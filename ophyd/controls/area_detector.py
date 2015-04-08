@@ -89,6 +89,7 @@ class AreaDetector(SignalDetector):
 
         self._shutter_val = shutter
         self._shutter_rb_val = shutter_rb
+        self._acq_num = None
 
         if shutter:
             if isinstance(shutter, Signal):
