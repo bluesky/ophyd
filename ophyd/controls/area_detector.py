@@ -88,7 +88,8 @@ class AreaDetector(SignalDetector):
                                       rw=False, recordable=True)
 
                 self.add_signal(sig, add_property=True)
-                sig.subscribe(self._stats_changed)
+
+                #sig.subscribe(self._stats_changed)
 
         self._shutter_val = shutter
         self._shutter_rb_val = shutter_rb
@@ -126,21 +127,10 @@ class AreaDetector(SignalDetector):
             self._run_subs(sub_type=self._SUB_ACQ_DONE)
             self._run_subs(sub_type=self._SUB_ACQ_CHECK)
 
-    def _stats_changed(self, **kwargs):
-        self._stats_counter += 1
-        self._run_subs(sub_type=self._SUB_ACQ_CHECK)
-
     def _check_if_finished(self, **kwargs):
-        if self._use_stats:
-            nstats = len(self._stats) * self._acq_num
-            if ((self._stats_counter == nstats) and
-                 (self._acq_count == self._acq_num)):
-                self._run_subs(sub_type=self._SUB_DONE)
-                self._reset_sub(self._SUB_DONE)
-        else:
-            if self._acq_count == self._acq_num:
-                self._run_subs(sub_type=self._SUB_DONE)
-                self._reset_sub(self._SUB_DONE)
+        if self._acq_count == self._acq_num:
+            self._run_subs(sub_type=self._SUB_DONE)
+            self._reset_sub(self._SUB_DONE)
 
     def _ad_signal(self, suffix, alias, plugin='', **kwargs):
         """Return a signal made from areaDetector database"""
@@ -187,6 +177,12 @@ class AreaDetector(SignalDetector):
             self._write_plugin('NumFilter', self._num_images.value,
                                self._proc_plugin)
             self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+
+            # Turn on the stats plugins
+            for i in self._stats:
+                self._write_plugin('EnableCallbacks', 1, 'Stats{}:'.format(i))
+                self._write_plugin('BlockingCallbacks', 1, 'Stats{}:'.format(i))
+                self._write_plugin('ComputeStatistics', 1, 'Stats{}:'.format(i))
 
         # Set the counter for number of acquisitions
 
@@ -247,9 +243,6 @@ class AreaDetector(SignalDetector):
                 self._acq_num += 1
                 self._take_darkfield = True
 
-        if self._use_stats:
-            self._stats_counter = 0
-
         # Setup the return status
 
         status = DetectorStatus(self)
@@ -270,21 +263,6 @@ class AreaDetector(SignalDetector):
         self._start_acquire()
 
         return status
-
-#            if self._use_stats:
-#                self.subscribe(finished,
-#                               event_type=self.SUB_STATS_DONE, run=False)
-#            else:
-#                self.subscribe(finished,
-#                               event_type=self.SUB_ACQ_DONE_TWO, run=False)
-#        else:
-#            if self._use_stats:
-#                self.subscribe(finished,
-#                               event_type=self.SUB_STATS_DONE, run=False)
-#            else:
-#                self.subscribe(finished,
-#                               event_type=self.SUB_ACQ_DONE_ONE, run=False)
-#
 
 
 class AreaDetectorFileStore(AreaDetector):
