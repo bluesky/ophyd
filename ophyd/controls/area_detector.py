@@ -163,8 +163,8 @@ class AreaDetector(SignalDetector):
         self._array_counter.value = 0
 
         # Set the image mode to multiple
-        #self._old_image_mode = self._image_mode.value
-        #self._image_mode.value = self._image_acq_mode
+        self._old_image_mode = self._image_mode.value
+        self._image_mode.value = self._image_acq_mode
 
         # If using the stats, configure the proc plugin
 
@@ -192,7 +192,7 @@ class AreaDetector(SignalDetector):
 
     def deconfigure(self, **kwargs):
         """DeConfigure areaDetector detector"""
-        # self._image_mode.put(self._old_image_mode, wait=True)
+        self._image_mode.put(self._old_image_mode, wait=True)
         self._acquire.value = self._old_acquire
 
     @property
@@ -582,7 +582,6 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStorePrinceton, self).configure(*args, **kwargs)
-        #self._image_mode.put(0, wait=True)
         self._file_template.put(self.file_template, wait=True)
         self._make_filename()
         self._file_path.put(self._ioc_file_path, wait=True)
