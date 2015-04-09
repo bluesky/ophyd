@@ -8,4 +8,4 @@ logger.addHandler(logging.NullHandler())
 from .controls import *
 from .session import get_session_manager
 
-__version__ = 'v0.0.6'
+__version__ = 'v0.0.7rc1'
