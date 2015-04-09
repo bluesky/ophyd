@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(name='ophyd',
-      version='0.0.7rc1',
+      version='0.0.7rc2',
       license='BSD',
       packages=['ophyd',
                 'ophyd.session',
