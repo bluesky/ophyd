@@ -10,10 +10,7 @@ from Queue import Queue
 import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
-from ..controls.signal import SignalGroup
 from metadatastore import api as mds
-
-
 
 
 def _get_info(positioners=None, detectors=None, data=None):
@@ -37,10 +34,6 @@ def _get_info(positioners=None, detectors=None, data=None):
     for name, value in data.iteritems():
         """Internal function to grab info from a detector
         """
-        if name not in desc:
-            # i.e., this was collected, but not intentionally.
-            continue
-
         # grab 'value' from [value, timestamp]
         val = np.asarray(value[0])
 
@@ -60,7 +53,6 @@ def _get_info(positioners=None, detectors=None, data=None):
         info_dict.update(d)
 
     return info_dict
-
 
 
 class Demuxer(object):
@@ -165,8 +157,8 @@ class RunEngine(object):
         if settle_time is not None:
             time.sleep(settle_time)
 
-        # use metadatastore to format the events so that ophyd is insulated from
-        # metadatastore spec changes
+        # use metadatastore to format the events so that ophyd is insulated
+        # from metadatastore spec changes
         return {
             pos.name: {
                 'timestamp': pos.timestamp[pos.pvname.index(pos.report['pv'])],
@@ -184,17 +176,11 @@ class RunEngine(object):
         # event comes in. Set it to None for now
         event_descriptor = None
 
-        #provide header for formatted list of positioners and detectors in INFO
-        #channel
+        # provide header for formatted list of positioners and detectors in
+        # INFO channel
         names = list()
-        for pos in kwargs.get('positioners'):
-            names.append(pos.name)
-        for det in dets:
-            if isinstance(det, SignalGroup):
-                for sig in det.signals:
-                    names.append(sig.name)
-            else:
-                names.append(det.name)
+        for pos in positioners + dets:
+            names.extend(pos.describe().keys())
 
         self.logger.info(self._demunge_names(names))
         seq_num = 0
@@ -215,21 +201,11 @@ class RunEngine(object):
 
             time.sleep(0.05)
             # Read detector values
-            detvals = {}
-            for det in dets:
-                if isinstance(det, SignalGroup):
-                    # If we have a signal group, loop over all names
-                    # and signals
-                    for sig in det.signals:
-                        detvals.update({sig.name: {
-                            'timestamp': det.timestamp[sig.pvname.index(sig.report['pv'])],
-                            'value': sig.value}})
-                else:
-                    detvals.update({
-                        det.name: {'timestamp': det.timestamp,
-                                   'value': det.value}})
-            detvals.update(posvals)
-            detvals = mds.format_events(detvals)
+            tmp_detvals = {}
+            for det in dets + positioners:
+                tmp_detvals.update(det.read())
+
+            detvals = mds.format_events(tmp_detvals)
 
             # pass data onto Demuxer for distribution
             self.logger.info(self._demunge_values(detvals, names))
@@ -239,41 +215,42 @@ class RunEngine(object):
             # actually insert the event into metadataStore
             try:
                 self.logger.debug(
-                    'inserting event %d------------------',seq_num)
+                    'inserting event %d------------------', seq_num)
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
             except mds.EventDescriptorIsNoneError:
                 # the time when the event descriptor was created
                 self.logger.debug(
-                    'event_descriptor has not been created. creating it now...')
+                    'event_descriptor has not been created. '
+                    'creating it now...')
                 evdesc_creation_time = time.time()
-                data_key_info = _get_info(positioners=kwargs.get('positioners'),
-                                          detectors=dets, data=detvals)
+                data_key_info = _get_info(
+                    positioners=kwargs.get('positioners'),
+                    detectors=dets, data=detvals)
 
                 event_descriptor = mds.insert_event_descriptor(
                     run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
                 self.logger.debug(
-                    'event_descriptor: %s',vars(event_descriptor))
+                    'event_descriptor: %s', vars(event_descriptor))
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
-                    'inserting event %d------------------',seq_num)
+                    'inserting event %d------------------', seq_num)
                 event = mds.insert_event(event_descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
-            self.logger.debug('event %d--------',seq_num)
-            self.logger.debug('%s',vars(event))
+            self.logger.debug('event %d--------', seq_num)
+            self.logger.debug('%s', vars(event))
 
             seq_num += 1
             # update the 'data' object from detvals dict
             for k, v in detvals.items():
                 data[k].append(v)
 
-            if kwargs.get('positioners') is None:
+            if not positioners:
                 break
-            if len(kwargs.get('positioners')) == 0:
-                break
+
         self._scan_state = False
         return
 
@@ -295,7 +272,7 @@ class RunEngine(object):
         names : list of device names
         '''
         unique_names = [name for i, name in enumerate(names) if name not in
-            names[:i]]
+                        names[:i]]
         msg = ''.join('{}\t'.format(name) for name in unique_names)
         return msg
 
@@ -346,7 +323,8 @@ class RunEngine(object):
         run_start = mds.insert_run_start(
             time=recorded_time, beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
-        pretty_time = datetime.datetime.fromtimestamp(recorded_time).isoformat()
+        pretty_time = datetime.datetime.fromtimestamp(
+                                          recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
         self.logger.info("Time: %s",  pretty_time)
         self.logger.info("uid: %s", str(run_start.uid))
