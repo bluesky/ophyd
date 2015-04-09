@@ -649,8 +649,8 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
                                         self._file_plugin,
                                         recordable=False))
 
-        # Acquisition mode (single image)
-        self._image_acq_mode = 0
+        # Acquisition mode (multiple images)
+        self._image_acq_mode = 1
 
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
@@ -660,8 +660,14 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
+        self._write_plugin('AutoSave', 1, self._file_plugin)
+        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
         self._filestore_res = fs.insert_resource(
             'AD_TIFF', self._store_file_path,
             {'template': self._file_template.value,
              'filename': self._filename,
              'frame_per_point': self._num_images.value})
+
+    def deconfigure(self, *args, **kwargs):
+        self._write_plugin('EnableCallbacks', 0, self._file_plugin)
+        super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
