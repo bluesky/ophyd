@@ -1,5 +1,6 @@
 from __future__ import print_function
 import logging
+from warnings import warn
 import getpass
 import os
 import datetime
@@ -165,7 +166,7 @@ class RunEngine(object):
                 'value': pos.position}
             for pos in positioners}
 
-    def _start_scan(self, run_start=None, detectors=None,
+    def _start_scan(self, scan=None, run_start=None, detectors=None,
                     data=None, positioners=None, **kwargs):
 
         dets = detectors
@@ -233,6 +234,10 @@ class RunEngine(object):
                     data_keys=mds.format_data_keys(data_key_info))
                 self.logger.debug(
                     'event_descriptor: %s', vars(event_descriptor))
+                # If this fails, the scan will be stopped before the first data
+                # is recorded. Users can always turn off plotting and retry.
+                scan.setup_plot(event_descriptor)
+
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
                     'inserting event %d------------------', seq_num)
@@ -241,6 +246,13 @@ class RunEngine(object):
                                          seq_num=seq_num)
             self.logger.debug('event %d--------', seq_num)
             self.logger.debug('%s', vars(event))
+
+            try:
+                scan.update_plot(event)
+            except Exception as exc:
+                # Never kill a scan because of a plotting problem.
+                warn("Plotting failed with the exception: {0}".format(exc))
+                pass
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -287,12 +299,12 @@ class RunEngine(object):
 
         return names
 
-    def start_run(self, runid, start_args=None, end_args=None, scan_args=None):
+    def start_run(self, scan, start_args=None, end_args=None, scan_args=None):
         """
 
         Parameters
         ----------
-        runid : sortable
+        scan : Scan instance
         start_args
         end_args
         scan_args
@@ -302,6 +314,7 @@ class RunEngine(object):
         data : dict
             {data_name: []}
         """
+        runid = scan.scan_id
         if start_args is None:
             start_args = {}
         if end_args is None:
@@ -340,6 +353,7 @@ class RunEngine(object):
         data = defaultdict(list)
 
         scan_args['data'] = data
+        scan_args['scan'] = scan  # used for callbacks
 
         self._run_start(start_args)
         self._scan_thread = Thread(target=self._start_scan,
