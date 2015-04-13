@@ -165,11 +165,10 @@ class RunEngine(object):
                 'value': pos.position}
             for pos in positioners}
 
-    def _start_scan(self, **kwargs):
-        run_start = kwargs.get('run_start')
-        dets = kwargs.get('detectors')
-        data = kwargs.get('data')
-        positioners = kwargs.get('positioners')
+    def _start_scan(self, run_start=None, detectors=None,
+                    data=None, positioners=None, **kwargs):
+
+        dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
 
         # creation of the event descriptor should be delayed until the first
@@ -226,7 +225,7 @@ class RunEngine(object):
                     'creating it now...')
                 evdesc_creation_time = time.time()
                 data_key_info = _get_info(
-                    positioners=kwargs.get('positioners'),
+                    positioners=positioners,
                     detectors=dets, data=detvals)
 
                 event_descriptor = mds.insert_event_descriptor(
