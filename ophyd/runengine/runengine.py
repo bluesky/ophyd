@@ -275,7 +275,7 @@ class RunEngine(object):
         msg = ''.join('{}\t'.format(name) for name in unique_names)
         return msg
 
-    def _get_data_keys(self, positioners=None, detectors=None, **kwargs):
+    def _get_data_keys(self, positioners=None, detectors=None):
         if positioners is None:
             positioners = []
         if detectors is None:
