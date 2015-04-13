@@ -9,12 +9,14 @@ import string
 import traceback
 
 from IPython.utils.coloransi import TermColors as tc
+from matplotlib.cbook import CallbackRegistry
 from filestore.api import retrieve
 from mongoengine import DoesNotExist
 
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
+from ..utils.plotting import PlotManager
 from ..controls import Detector
 
 session_manager = get_session_manager()
@@ -143,6 +145,7 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -154,7 +157,9 @@ class Scan(object):
         self._data_buffer = self._shared_config['scan_data']
 
         self.settle_time = 0
+        self._cb_registry = CallbackRegistry()
         self.autoplot = True
+        self._plot_mgr = PlotManager()
 
         self.paths = list()
         self.positioners = list()
@@ -211,6 +216,7 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
+        self._plot_mgr.update_positioners(self.positioners)
         pass
 
     def post_scan(self):
@@ -333,101 +339,59 @@ class Scan(object):
         """
         return self._shared_config['user_detectors'] + self.default_detectors
 
-    def setup_plot(self, event_descriptor):
-        if not self.autoplot:
-            return
-        scalars = []
-        images = []
-        cubes = []
-        for key, val in six.iteritems(event_descriptor.data_keys):
-            if val['shape'] is None:
-                scalars.append(key)
-                continue
-            ndim = len(val['shape'])
-            if ndim == 2:
-                images.append(key)
-            elif ndim == 3:
-                cubes.append(key)
-            else:
-                pass  # >3D data just won't be shown
+    def register_callback(self, name, func):
+        """
+        Register a callback function.
 
-        if len(positioners) == 1:
-            self._x = positioners[0]
-            if self._x not in scalars:
-                raise NotImplementedError("Not sure how to plot this. Turn of "
-                                          "the scan's autoplot attribute.")
-            scalars.remove(self._x)
+        The Run Engine will execute callback functions at the start and end
+        of a scan, and after the insertion of new Event Descriptors
+        and Events.
+
+        Parameters
+        ----------
+        name: {'start', 'stop', 'descriptor', 'event'}
+        func: callable with signature f(Scan, mongoengine.Document)
+        """
+        if name not in self.valid_callbacks:
+            raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
+        self._cb_registry.connect(name, func)
+
+    def emit_event(self, event):
+        "Called by the Run Engine after each new event is created."
+        self._cb_registry.process('event', event)
+
+    def emit_descriptor(self, descriptor):
+        "Called by the Run Engine after each new event desc is created."
+        self._cb_registry.process('descriptor', descriptor)
+
+    def emit_start(self, start):
+        "Called by the Run Engine after a scan is started."
+        self._cb_registry.process('start', start)
+
+    def emit_stop(self, stop):
+        "Called by the Run Engine after a scan is stopped."
+        self._cb_registry.process('stop', stop)
+
+    @property
+    def autoplot(self):
+        return self._autoplot
+
+    @autoplot.setter
+    def autoplot(self, val):
+        if bool(val) = self._autoplot:
+            return
+        self._autoplot = bool(val)
+        cb_reg = self._cb_registry  # for brevity
+        if val:
+            # when a callback is registered, it returns an integer ID
+            # that can be used to deregister it.
+            self._plot_callback_ids = []
+            cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
+            self._plot_callback_ids.append(cid)
+            cid = cb_reg.connect('event', self._plot_mgr.update_plot)
+            self._plot_callback_ids.append(cid)
         else:
-            self._x_name = None  # plot against seq_num
-        self._cube_names = cubes
-
-        # Build figures, axes, lines.
-        self._scalar_fig, axes = plt.subplots(len(scalars), sharex=True)
-        self._scalar_axes = {name: ax for name, ax in zip(scalars, axes)}
-        self._scalar_lines = {name: ax.plot([], [])[0]}
-        self._scalar_fig.subplots_adjust()
-        for name, ax in six.iteritems(self._scalar_axes):
-            ax.set(title=name)
-        self._image_figs = {name: plt.figure() for name in in images + cubes}
-        self._image_axes = {fig.add_axes((0, 0, 1, 1)) for fig in self._image_figs}
-        self._img_objs = {}  # will hold AxesImage objects
-        self._img_uids = {name: deque() for name in images + cubes}
-
-    def update_plot(self, event):
-        if not self.autoplot:
-            return
-        # Add a data point to the subplot for each scalar.
-        x_val = event[self._x_name][0]  # unpack value from raw Event
-        for name, ax in self._scalar_axes:
-            y_val = event[name][0]  # unpack value from raw Event
-            line = self._scalar_lines[name]
-            old_x, old_y = line.get_data()
-            x = np.append(old_x, x_val)
-            y = np.append(old_y, y_val)
-            line.set_data(x, y)
-        self._scalar_fig.canvas.draw()
-
-        # Try to get the latest image, or a recent image,
-        # to update each image figure.
-        for name, ax in self._image_axes:
-            datum_uid = event[name][0]
-            img_array = None
-            try:
-                img_array = retrieve(datum_uid)
-            except DoesNotExist:
-                # Data may not be readable yet.
-                # Try uids in cache, starting with the most recent one.
-                uids = self._img_uids[name]
-                for i, datum_uid in enumerate(uids):
-                    try:
-                        img_array = filestore.retrieve(datum_uid)
-                    except filestore.DatumNotFound
-                        continue
-                    else:
-                        # To avoid ever showing an image that is older
-                        # than we one we just found,
-                        # remove all older images from the cache.
-                        for _ in len(uids) - i:
-                            self.uids.pop()
-                        break
-                self._img_uids[name].appendleft(datum_uid)
-
-            # No image available? Skip this update.
-            if img_array is None:
-                continue
-
-            # If this is an image cube, sum along the first axis
-            # and display it like an image.
-            # TODO: Display volumes for real.
-            if name in self._cube_names:
-                img_array = img_array.sum(0)
-
-            # Update the image.
-            if name not in self._img_objs:
-                self._img_obj[name] = ax.imshow(img_array)
-            else:
-                img_obj.set_array(img_array)
-            self._img_figs[name].canvas.draw()
+            [cg_reg.disconnect(cid) for cid in self._plot_callback_ids]
 
 
 class AScan(Scan):

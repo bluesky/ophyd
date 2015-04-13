@@ -141,7 +141,9 @@ class RunEngine(object):
     def _end_run(self, arg):
         state = arg.get('state', 'success')
         bre = arg['run_start']
-        mds.insert_run_stop(bre, time.time(), exit_status=state)
+        scan = arg['scan']
+        rs = mds.insert_run_stop(bre, time.time(), exit_status=state)
+        scan.emit_stop(rs)
         self.logger.info('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -236,7 +238,7 @@ class RunEngine(object):
                     'event_descriptor: %s', vars(event_descriptor))
                 # If this fails, the scan will be stopped before the first data
                 # is recorded. Users can always turn off plotting and retry.
-                scan.setup_plot(event_descriptor)
+                scan.emit_descriptor(event_descriptor)
 
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
@@ -247,12 +249,7 @@ class RunEngine(object):
             self.logger.debug('event %d--------', seq_num)
             self.logger.debug('%s', vars(event))
 
-            try:
-                scan.update_plot(event)
-            except Exception as exc:
-                # Never kill a scan because of a plotting problem.
-                warn("Plotting failed with the exception: {0}".format(exc))
-                pass
+            scan.emit_event(event)
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -339,6 +336,7 @@ class RunEngine(object):
         run_start = mds.insert_run_start(
             time=recorded_time, beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
+        scan.emit_start(run_start)
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
@@ -369,6 +367,7 @@ class RunEngine(object):
             self._scan_state = False
             self._scan_thread.join()
             end_args['state'] = 'abort'
+            end_args['scan'] = scan
         finally:
             self._end_run(end_args)
 
