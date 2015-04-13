@@ -164,6 +164,11 @@ class Scan(object):
         self._autoplot = None
         self.autoplot = True
 
+        self.ev_queue = Queue()
+        self.desc_queue = Queue()
+        self._register_scan_callback('event', self._push_to_ev_queue)
+        self._register_scan_callback('descriptor', self._push_to_desc_queue)
+
         self.paths = list()
         self.positioners = list()
 
@@ -344,20 +349,34 @@ class Scan(object):
 
     def register_callback(self, name, func):
         """
-        Register a callback function.
+        Register a callback function to be processed by the main thread.
 
-        The Run Engine will execute callback functions at the start and end
+        The Run Engine can execute callback functions at the start and end
         of a scan, and after the insertion of new Event Descriptors
         and Events.
 
         Parameters
         ----------
         name: {'start', 'stop', 'descriptor', 'event'}
-        func: callable with signature f(Scan, mongoengine.Document)
+        func: callable with signature ``f(mongoengine.Document)``
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
-        self._scan_cb_registry.connect(name, func)
+        return self.cb_registry.connect(name, func)
+
+    def _register_scan_callback(self, name, func):
+        """Register a callback to be processed by the scan thread.
+
+        Like register_callback above, but private and referring to
+        a different callback registry.
+        """
+        return self._scan_cb_registry.connect(name, func)
+
+    def _push_to_ev_queue(self, event):
+        self.ev_queue.put(event)
+
+    def _push_to_desc_queue(self, descriptor):
+        self.desc_queue.put(descriptor)
 
     def emit_event(self, event):
         "Called by the Run Engine after each new event is created."
@@ -384,14 +403,14 @@ class Scan(object):
         if bool(val) == self._autoplot:
             return
         self._autoplot = bool(val)
-        cb_reg = self._cb_registry  # for brevity
+        cb_reg = self.cb_registry  # for brevity
         if val:
             # when a callback is registered, it returns an integer ID
             # that can be used to deregister it.
             self._plot_callback_ids = []
-            cid = cb_reg.connect('descriptor', self.add_to_queue)
+            cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
             self._plot_callback_ids.append(cid)
-            cid = cb_reg.connect('event', self.add_to_queue)
+            cid = cb_reg.connect('event', self._plot_mgr.update_plot)
             self._plot_callback_ids.append(cid)
         else:
             [cb_reg.disconnect(cid) for cid in self._plot_callback_ids]

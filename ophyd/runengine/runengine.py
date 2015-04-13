@@ -7,7 +7,7 @@ import datetime
 import time
 from collections import defaultdict
 from threading import Thread
-from Queue import Queue
+from Queue import Queue, Empty
 import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
@@ -364,9 +364,24 @@ class RunEngine(object):
         self._scan_thread.start()
         end_args['scan'] = scan
         try:
+            setup = False
             while self._scan_state is True:
-                time.sleep(0.10)
-                scan._cb_registry.process('event', event_queue.pop())
+                try:
+                    descriptor = scan.desc_queue.get(timeout=0.05)
+                except Empty:
+                    pass
+                else:
+                    scan.cb_registry.process('descriptor',  descriptor)
+                    setup = True
+                if not setup:
+                    continue
+                try:
+                    event = scan.ev_queue.get(timeout=0.05)
+                except Empty:
+                    pass
+                else:
+                    scan.cb_registry.process('descriptor',  descriptor)
+                    scan.cb_registry.process('event', event)
             	for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
                     print(f_mgr)
                     f_mgr.canvas.figure.show()
