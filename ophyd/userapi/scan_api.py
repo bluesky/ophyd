@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from time import sleep
 import sys
 import collections
+from Queue import Queue
 import itertools
 import string
 import traceback
@@ -36,7 +37,7 @@ def estimate(x, y):
     stats['x_at_ymax'] = x[y.argmax()]
     # Calculate CEN from derivative
     zero_cross = np.where(np.diff(np.sign(y - (stats['ymax']
- stats['ymin'])/2)))[0]
+                                               + stats['ymin'])/2)))[0]
     if zero_cross.size == 2:
         stats['cen'] = (x[zero_cross].sum() / 2,
                         (stats['ymax'] + stats['ymin'])/2)
@@ -157,9 +158,11 @@ class Scan(object):
         self._data_buffer = self._shared_config['scan_data']
 
         self.settle_time = 0
-        self._cb_registry = CallbackRegistry()
-        self.autoplot = True
+        self._scan_cb_registry = CallbackRegistry()  # process on scan thread
+        self.cb_registry = CallbackRegistry()  # process on main thread
         self._plot_mgr = PlotManager()
+        self._autoplot = None
+        self.autoplot = True
 
         self.paths = list()
         self.positioners = list()
@@ -347,23 +350,23 @@ class Scan(object):
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
-        self._cb_registry.connect(name, func)
+        self._scan_cb_registry.connect(name, func)
 
     def emit_event(self, event):
         "Called by the Run Engine after each new event is created."
-        self._cb_registry.process('event', event)
+        self._scan_cb_registry.process('event', event)
 
     def emit_descriptor(self, descriptor):
         "Called by the Run Engine after each new event desc is created."
-        self._cb_registry.process('descriptor', descriptor)
+        self._scan_cb_registry.process('descriptor', descriptor)
 
     def emit_start(self, start):
         "Called by the Run Engine after a scan is started."
-        self._cb_registry.process('start', start)
+        self._scan_cb_registry.process('start', start)
 
     def emit_stop(self, stop):
         "Called by the Run Engine after a scan is stopped."
-        self._cb_registry.process('stop', stop)
+        self._scan_cb_registry.process('stop', stop)
 
     @property
     def autoplot(self):
@@ -371,7 +374,7 @@ class Scan(object):
 
     @autoplot.setter
     def autoplot(self, val):
-        if bool(val) = self._autoplot:
+        if bool(val) == self._autoplot:
             return
         self._autoplot = bool(val)
         cb_reg = self._cb_registry  # for brevity
@@ -379,12 +382,12 @@ class Scan(object):
             # when a callback is registered, it returns an integer ID
             # that can be used to deregister it.
             self._plot_callback_ids = []
-            cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
+            cid = cb_reg.connect('descriptor', self.add_to_queue)
             self._plot_callback_ids.append(cid)
-            cid = cb_reg.connect('event', self._plot_mgr.update_plot)
+            cid = cb_reg.connect('event', self.add_to_queue)
             self._plot_callback_ids.append(cid)
         else:
-            [cg_reg.disconnect(cid) for cid in self._plot_callback_ids]
+            [cb_reg.disconnect(cid) for cid in self._plot_callback_ids]
 
 
 class AScan(Scan):
