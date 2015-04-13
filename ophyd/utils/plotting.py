@@ -1,3 +1,5 @@
+import six
+import numpy as np
 import matplotlib.pyplot as plt
 
 
@@ -5,16 +7,17 @@ class PlotManager(object):
 
     def update_positioners(self, positioners):
         if len(positioners) == 1:
-            self._x_name = positioners[0]
+            self._x_name = positioners[0].name
         else:
             self._x_name = None  # plot against seq_num
 
-    def setup_plot(event_descriptor):
+    def setup_plot(self, event_descriptor):
         scalars = []
         images = []
         cubes = []
         for key, val in six.iteritems(event_descriptor.data_keys):
-            if val['shape'] is None:
+            print key, val['shape']
+            if not val['shape']:
                 scalars.append(key)
                 continue
             ndim = len(val['shape'])
@@ -25,41 +28,45 @@ class PlotManager(object):
             else:
                 pass  # >3D data just won't be shown
 
-            if self._x not in scalars:
+            if self._x_name not in scalars:
                 raise NotImplementedError("Not sure how to plot this. Turn "
                                           "of the self's autoplot attribute.")
-            scalars.remove(self._x)
+            scalars.remove(self._x_name)
         self._cube_names = cubes
 
         # Build figures, axes, lines.
         self._scalar_fig, axes = plt.subplots(len(scalars), sharex=True)
         self._scalar_axes = {name: ax for name, ax in zip(scalars, axes)}
-        self._scalar_lines = {name: ax.plot([], [])[0]}
-        self._scalar_fig.subplots_adjust()
+        self._scalar_lines = {name: ax.plot([], [])[0]
+                              for name, ax in six.iteritems(self._scalar_axes)}
         for name, ax in six.iteritems(self._scalar_axes):
             ax.set(title=name)
-        self._image_figs = {name: plt.figure() for name in in images + cubes}
-        self._image_axes = {fig.add_axes((0, 0, 1, 1))
-                            for fig in self._image_figs}
+        self._scalar_fig.subplots_adjust()
+        self._scalar_fig.canvas.show()
+        self._image_figs = {name: plt.figure() for name in images + cubes}
+        self._image_axes = {name: fig.add_axes((0, 0, 1, 1))
+                            for name, fig in six.iteritems(self._image_figs)}
         self._img_objs = {}  # will hold AxesImage objects
         self._img_uids = {name: deque() for name in images + cubes}
+        for fig in six.itervalues(self._image_figs):
+           fig.canvas.show()
 
-    def update_plot(event):
+    def update_plot(self, event):
         # Add a data point to the subplot for each scalar.
-        x_val = event[self._x_name][0]  # unpack value from raw Event
-        for name, ax in self._scalar_axes:
-            y_val = event[name][0]  # unpack value from raw Event
+        x_val = event.data[self._x_name][0]  # unpack value from raw Event
+        for name, ax in six.iteritems(self._scalar_axes):
+            y_val = event.data[name][0]  # unpack value from raw Event
             line = self._scalar_lines[name]
             old_x, old_y = line.get_data()
             x = np.append(old_x, x_val)
             y = np.append(old_y, y_val)
             line.set_data(x, y)
-        self._scalar_fig.canvas.draw()
+            _refresh_axes(ax)
 
         # Try to get the latest image, or a recent image,
         # to update each image figure.
-        for name, ax in self._image_axes:
-            datum_uid = event[name][0]
+        for name, ax in six.iteritems(self._image_axes):
+            datum_uid = event.data[name][0]
             img_array = None
             try:
                 img_array = retrieve(datum_uid)
@@ -70,7 +77,7 @@ class PlotManager(object):
                 for i, datum_uid in enumerate(uids):
                     try:
                         img_array = filestore.retrieve(datum_uid)
-                    except filestore.DatumNotFound
+                    except filestore.DatumNotFound:
                         continue
                     else:
                         # To avoid ever showing an image that is older
@@ -96,4 +103,10 @@ class PlotManager(object):
                 self._img_obj[name] = ax.imshow(img_array)
             else:
                 img_obj.set_array(img_array)
-            self._img_figs[name].canvas.draw()
+
+
+def _refresh_axes(ax):
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 1)
+    ax.relim(visible_only=True)
+    ax.autoscale_view(tight=True)

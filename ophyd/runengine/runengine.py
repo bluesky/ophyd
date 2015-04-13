@@ -12,6 +12,7 @@ import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
 from metadatastore import api as mds
+import matplotlib.pyplot as plt
 
 
 def _get_info(positioners=None, detectors=None, data=None):
@@ -236,10 +237,7 @@ class RunEngine(object):
                     data_keys=mds.format_data_keys(data_key_info))
                 self.logger.debug(
                     'event_descriptor: %s', vars(event_descriptor))
-                # If this fails, the scan will be stopped before the first data
-                # is recorded. Users can always turn off plotting and retry.
                 scan.emit_descriptor(event_descriptor)
-
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
                     'inserting event %d------------------', seq_num)
@@ -250,6 +248,10 @@ class RunEngine(object):
             self.logger.debug('%s', vars(event))
 
             scan.emit_event(event)
+            for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
+                # TODO Use this in the future, or just plt.draw_all I guess?
+                # if force or f_mgr.canvas.figure.stale:
+                f_mgr.canvas.draw()
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -360,14 +362,20 @@ class RunEngine(object):
         self._scan_thread.daemon = True
         self._scan_state = True
         self._scan_thread.start()
+        end_args['scan'] = scan
         try:
             while self._scan_state is True:
                 time.sleep(0.10)
+                scan._cb_registry.process('event', event_queue.pop())
+            	for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
+                    print(f_mgr)
+                    f_mgr.canvas.figure.show()
+                    f_mgr.canvas.draw()
+                    f_mgr.canvas.flush_events()
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()
             end_args['state'] = 'abort'
-            end_args['scan'] = scan
         finally:
             self._end_run(end_args)
 
