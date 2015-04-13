@@ -283,7 +283,7 @@ class RunEngine(object):
         # ATM, these are both lists
         names = [o.name for o in positioners]
         for det in detectors:
-            names += det.describe().keys()
+            names.extend(det.describe().keys())
 
         return names
 
