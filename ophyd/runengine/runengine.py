@@ -329,7 +329,7 @@ class RunEngine(object):
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
-        self.logger.info("Time: %s",  pretty_time)
+        self.logger.info("Time: %s", pretty_time)
         self.logger.info("uid: %s", str(run_start.uid))
 
         # stash bre for later use
