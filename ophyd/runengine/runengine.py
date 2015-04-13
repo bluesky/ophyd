@@ -275,10 +275,14 @@ class RunEngine(object):
         msg = ''.join('{}\t'.format(name) for name in unique_names)
         return msg
 
-    def _get_data_keys(self, **kwargs):
+    def _get_data_keys(self, positioners=None, detectors=None, **kwargs):
+        if positioners is None:
+            positioners = []
+        if detectors is None:
+            detectors = []
         # ATM, these are both lists
-        names = [o.name for o in kwargs.get('positioners')]
-        for det in kwargs.get('detectors'):
+        names = [o.name for o in positioners]
+        for det in detectors:
             names += det.describe().keys()
 
         return names
