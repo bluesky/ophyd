@@ -701,5 +701,14 @@ class AreaDetectorFileStoreTIFFSquashing(AreaDetectorFileStoreTIFF):
                                    'frame_per_point': 1})
 
     def _extra_AD_configuration(self):
-        # TODO insert AD setup magic
-        pass
+        # set up processing to pre-smash image stack
+        self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
+        self._write_plugin('EnableFilter', 1, self._proc_plugin)
+        self._write_plugin('FilterType', 2, self._proc_plugin)
+        self._write_plugin('AutoResetFilter', 1, self._proc_plugin)
+        self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+        self._write_plugin('NumFilter', self._num_images.value,
+                           self._proc_plugin)
+        self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+        self._wiret_plugin('NDArrayPort', self._proc_plugin,
+                           self._file_plugin)
