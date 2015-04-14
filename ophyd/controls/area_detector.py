@@ -679,6 +679,7 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
+        self._extra_AD_configuration()
         self._filestore_res = self._insert_fs_resource()
 
     def _insert_fs_resource(self):
@@ -686,3 +687,6 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
                                   {'template': self._file_template.value,
                                    'filename': self._filename,
                                    'frame_per_point': self._num_images.value})
+
+    def _extra_AD_configuration(self):
+        pass
