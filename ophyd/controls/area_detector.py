@@ -506,14 +506,15 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
             raise IOError("Path {} does not exits on IOC!! Please Check"
                           .format(self._file_path.value))
 
-        self._filestore_res = fs.insert_resource('AD_HDF5',
-                                                 self._store_filename,
-                                                 {'frame_per_point':
-                                                  self._num_images.value})
-
+        self._filestore_res = self._insert_fs_resource()
         # Place into capture mode
-
         self._capture.put(1, wait=False)
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_HDF5',
+                                   self._store_filename,
+                                   {'frame_per_point':
+                                    self._num_images.value})
 
     def _captured_changed(self, value, *args, **kwargs):
         if value == self._total_images:
@@ -599,11 +600,13 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
-        self._filestore_res = fs.insert_resource(
-            'AD_SPE', self._store_file_path,
-            {'template': self._file_template.value,
-             'filename': self._filename,
-             'frame_per_point': self._num_images.value})
+        self._filestore_res = self._insert_fs_resource()
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_SPE', self._store_file_path,
+                                  {'template': self._file_template.value,
+                                   'filename': self._filename,
+                                  'frame_per_point': self._num_images.value})
 
 
 class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
@@ -676,8 +679,10 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
-        self._filestore_res = fs.insert_resource(
-            'AD_TIFF', self._store_file_path,
-            {'template': self._file_template.value,
-             'filename': self._filename,
-             'frame_per_point': self._num_images.value})
+        self._filestore_res = self._insert_fs_resource()
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_TIFF', self._store_file_path,
+                                  {'template': self._file_template.value,
+                                   'filename': self._filename,
+                                   'frame_per_point': self._num_images.value})
