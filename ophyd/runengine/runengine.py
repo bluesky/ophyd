@@ -165,11 +165,10 @@ class RunEngine(object):
                 'value': pos.position}
             for pos in positioners}
 
-    def _start_scan(self, **kwargs):
-        run_start = kwargs.get('run_start')
-        dets = kwargs.get('detectors')
-        data = kwargs.get('data')
-        positioners = kwargs.get('positioners')
+    def _start_scan(self, run_start=None, detectors=None,
+                    data=None, positioners=None, **kwargs):
+
+        dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
 
         # creation of the event descriptor should be delayed until the first
@@ -226,7 +225,7 @@ class RunEngine(object):
                     'creating it now...')
                 evdesc_creation_time = time.time()
                 data_key_info = _get_info(
-                    positioners=kwargs.get('positioners'),
+                    positioners=positioners,
                     detectors=dets, data=detvals)
 
                 event_descriptor = mds.insert_event_descriptor(
@@ -276,11 +275,15 @@ class RunEngine(object):
         msg = ''.join('{}\t'.format(name) for name in unique_names)
         return msg
 
-    def _get_data_keys(self, **kwargs):
+    def _get_data_keys(self, positioners=None, detectors=None):
+        if positioners is None:
+            positioners = []
+        if detectors is None:
+            detectors = []
         # ATM, these are both lists
-        names = [o.name for o in kwargs.get('positioners')]
-        for det in kwargs.get('detectors'):
-            names += det.describe().keys()
+        names = [o.name for o in positioners]
+        for det in detectors:
+            names.extend(det.describe().keys())
 
         return names
 
@@ -326,7 +329,7 @@ class RunEngine(object):
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
-        self.logger.info("Time: %s",  pretty_time)
+        self.logger.info("Time: %s", pretty_time)
         self.logger.info("uid: %s", str(run_start.uid))
 
         # stash bre for later use
