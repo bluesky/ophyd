@@ -85,7 +85,7 @@ class AreaDetector(SignalDetector):
 
                 self.add_signal(sig, add_property=True)
 
-                #sig.subscribe(self._stats_changed)
+                # sig.subscribe(self._stats_changed)
 
         self._shutter_val = shutter
         self._shutter_rb_val = shutter_rb
@@ -97,7 +97,8 @@ class AreaDetector(SignalDetector):
             else:
                 self.add_signal(EpicsSignal(write_pv=shutter,
                                             read_pv=shutter_rb,
-                                            name='{}_shutter'.format(self.name),
+                                            name='{}_shutter'.format(
+                                                self.name),
                                             rw=True, alias='_shutter',
                                             recordable=False))
             self._shutter_value = shutter_val
@@ -177,9 +178,12 @@ class AreaDetector(SignalDetector):
 
             # Turn on the stats plugins
             for i in self._stats:
-                self._write_plugin('EnableCallbacks', 1, 'Stats{}:'.format(i))
-                self._write_plugin('BlockingCallbacks', 1, 'Stats{}:'.format(i))
-                self._write_plugin('ComputeStatistics', 1, 'Stats{}:'.format(i))
+                self._write_plugin('EnableCallbacks', 1,
+                                   'Stats{}:'.format(i))
+                self._write_plugin('BlockingCallbacks', 1,
+                                   'Stats{}:'.format(i))
+                self._write_plugin('ComputeStatistics', 1,
+                                   'Stats{}:'.format(i))
 
         # Set the counter for number of acquisitions
 
@@ -270,12 +274,17 @@ class AreaDetectorFileStore(AreaDetector):
         if self.ioc_file_path:
             self.ioc_file_path = os.path.join(self.ioc_file_path, '')
 
+        self._reset_state()
+
+        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
+
+    def _reset_state(self):
         self._uid_cache = deque()
         self._abs_trigger_count = 0
         self._last_dark_uid = None
         self._last_light_uid = None
-
-        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
+        self._filestore_res = None
+        self._filename = ''
 
     def __repr__(self):
         repr = ['basename={0._basename!r}'.format(self),
@@ -299,7 +308,8 @@ class AreaDetectorFileStore(AreaDetector):
         path = os.path.join(self.store_file_path, *tree)
         self._store_file_path = path
         self._store_filename = self._file_template.value % (path,
-                                                            self._filename, seq)
+                                                            self._filename,
+                                                            seq)
 
         if self.ioc_file_path:
             path = os.path.join(self.ioc_file_path, *tree)
@@ -375,6 +385,11 @@ class AreaDetectorFileStore(AreaDetector):
                         'timestamp': self._acq_signal.timestamp}})
 
         return val
+
+    def deconfigure(self, *args, **kwargs):
+        # clear state used during collection.
+        self._reset_state()
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
 
 class AreaDetectorFSBulkEntry(AreaDetectorFileStore):
@@ -491,14 +506,15 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
             raise IOError("Path {} does not exits on IOC!! Please Check"
                           .format(self._file_path.value))
 
-        self._filestore_res = fs.insert_resource('AD_HDF5',
-                                                 self._store_filename,
-                                                 {'frame_per_point':
-                                                  self._num_images.value})
-
+        self._filestore_res = self._insert_fs_resource()
         # Place into capture mode
-
         self._capture.put(1, wait=False)
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_HDF5',
+                                   self._store_filename,
+                                   {'frame_per_point':
+                                    self._num_images.value})
 
     def _captured_changed(self, value, *args, **kwargs):
         if value == self._total_images:
@@ -584,11 +600,14 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
-        self._filestore_res = fs.insert_resource(
-            'AD_SPE', self._store_file_path,
-            {'template': self._file_template.value,
-             'filename': self._filename,
-             'frame_per_point': self._num_images.value})
+        self._filestore_res = self._insert_fs_resource()
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_SPE', self._store_file_path,
+                                  {'template': self._file_template.value,
+                                   'filename': self._filename,
+                                  'frame_per_point': self._num_images.value})
+
 
 class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
     def __init__(self, *args, **kwargs):
@@ -649,9 +668,6 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
                                         self._file_plugin,
                                         recordable=False))
 
-        # Acquisition mode (single image)
-        self._image_acq_mode = 0
-
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
         # self._image_mode.put(0, wait=True)
@@ -660,8 +676,37 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
         self._file_path.put(self._ioc_file_path, wait=True)
         self._file_name.put(self._filename, wait=True)
         self._write_plugin('FileNumber', 0, self._file_plugin)
-        self._filestore_res = fs.insert_resource(
-            'AD_TIFF', self._store_file_path,
-            {'template': self._file_template.value,
-             'filename': self._filename,
-             'frame_per_point': self._num_images.value})
+        self._extra_AD_configuration()
+        self._filestore_res = self._insert_fs_resource()
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_TIFF', self._store_file_path,
+                                  {'template': self._file_template.value,
+                                   'filename': self._filename,
+                                   'frame_per_point': self._num_images.value})
+
+    def _extra_AD_configuration(self):
+        pass
+
+
+class AreaDetectorFileStoreTIFFSquashing(AreaDetectorFileStoreTIFF):
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_TIFF', self._store_file_path,
+                                  {'template': self._file_template.value,
+                                   'filename': self._filename,
+                                   'frame_per_point': 1})
+
+    def _extra_AD_configuration(self):
+        # set up processing to pre-smash image stack
+        self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
+        self._write_plugin('EnableFilter', 1, self._proc_plugin)
+        self._write_plugin('FilterType', 2, self._proc_plugin)
+        self._write_plugin('AutoResetFilter', 1, self._proc_plugin)
+        self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+        self._write_plugin('NumFilter', self._num_images.value,
+                           self._proc_plugin)
+        self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+        self._write_plugin('NDArrayPort',
+                           self._proc_plugin.strip(':').upper(),
+                           self._file_plugin)
