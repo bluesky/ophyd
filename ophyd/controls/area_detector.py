@@ -85,7 +85,7 @@ class AreaDetector(SignalDetector):
 
                 self.add_signal(sig, add_property=True)
 
-                #sig.subscribe(self._stats_changed)
+                # sig.subscribe(self._stats_changed)
 
         self._shutter_val = shutter
         self._shutter_rb_val = shutter_rb
@@ -97,7 +97,8 @@ class AreaDetector(SignalDetector):
             else:
                 self.add_signal(EpicsSignal(write_pv=shutter,
                                             read_pv=shutter_rb,
-                                            name='{}_shutter'.format(self.name),
+                                            name='{}_shutter'.format(
+                                                self.name),
                                             rw=True, alias='_shutter',
                                             recordable=False))
             self._shutter_value = shutter_val
@@ -177,9 +178,12 @@ class AreaDetector(SignalDetector):
 
             # Turn on the stats plugins
             for i in self._stats:
-                self._write_plugin('EnableCallbacks', 1, 'Stats{}:'.format(i))
-                self._write_plugin('BlockingCallbacks', 1, 'Stats{}:'.format(i))
-                self._write_plugin('ComputeStatistics', 1, 'Stats{}:'.format(i))
+                self._write_plugin('EnableCallbacks', 1,
+                                   'Stats{}:'.format(i))
+                self._write_plugin('BlockingCallbacks', 1,
+                                   'Stats{}:'.format(i))
+                self._write_plugin('ComputeStatistics', 1,
+                                   'Stats{}:'.format(i))
 
         # Set the counter for number of acquisitions
 
@@ -299,7 +303,8 @@ class AreaDetectorFileStore(AreaDetector):
         path = os.path.join(self.store_file_path, *tree)
         self._store_file_path = path
         self._store_filename = self._file_template.value % (path,
-                                                            self._filename, seq)
+                                                            self._filename,
+                                                            seq)
 
         if self.ioc_file_path:
             path = os.path.join(self.ioc_file_path, *tree)
@@ -589,6 +594,7 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
             {'template': self._file_template.value,
              'filename': self._filename,
              'frame_per_point': self._num_images.value})
+
 
 class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
     def __init__(self, *args, **kwargs):
