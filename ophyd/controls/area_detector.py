@@ -710,5 +710,6 @@ class AreaDetectorFileStoreTIFFSquashing(AreaDetectorFileStoreTIFF):
         self._write_plugin('NumFilter', self._num_images.value,
                            self._proc_plugin)
         self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
-        self._write_plugin('NDArrayPort', self._proc_plugin.strip(':'),
+        self._write_plugin('NDArrayPort',
+                           self._proc_plugin.strip(':').upper(),
                            self._file_plugin)
