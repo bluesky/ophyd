@@ -690,3 +690,16 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
 
     def _extra_AD_configuration(self):
         pass
+
+
+class AreaDetectorFileStoreTIFFSquashing(AreaDetectorFileStoreTIFF):
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_TIFF', self._store_file_path,
+                                  {'template': self._file_template.value,
+                                   'filename': self._filename,
+                                   'frame_per_point': 1})
+
+    def _extra_AD_configuration(self):
+        # TODO insert AD setup magic
+        pass
