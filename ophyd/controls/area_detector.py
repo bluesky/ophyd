@@ -274,12 +274,17 @@ class AreaDetectorFileStore(AreaDetector):
         if self.ioc_file_path:
             self.ioc_file_path = os.path.join(self.ioc_file_path, '')
 
+        self._reset_state()
+
+        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
+
+    def _reset_state(self):
         self._uid_cache = deque()
         self._abs_trigger_count = 0
         self._last_dark_uid = None
         self._last_light_uid = None
-
-        super(AreaDetectorFileStore, self).__init__(*args, **kwargs)
+        self._filestore_res = None
+        self._filename = ''
 
     def __repr__(self):
         repr = ['basename={0._basename!r}'.format(self),
@@ -380,6 +385,11 @@ class AreaDetectorFileStore(AreaDetector):
                         'timestamp': self._acq_signal.timestamp}})
 
         return val
+
+    def deconfigure(self, *args, **kwargs):
+        # clear state used during collection.
+        self._reset_state()
+        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
 
 class AreaDetectorFSBulkEntry(AreaDetectorFileStore):
