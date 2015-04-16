@@ -229,11 +229,17 @@ class Scan(object):
         The main loop of the scan. This routine runs the scan and calls the
         ophyd runengine.
         """
+
+        # Raise if no detectors are associated with a scan instance,
+        # and do it prior to context manager __entry__
+        if not len(self.detectors) > 0:
+            raise ValueError('Must specify at least one detector for scan.')
+
+        # Must have scan_id prior to OLog entry in ctx mgr __entry__
         self.scan_id = session_manager.get_next_scan_id()
 
         # Run this in a context manager to capture
         # the KeyboardInterrupt
-
         with self:
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
