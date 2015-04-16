@@ -31,10 +31,10 @@ def estimate(x, y):
     stats['x_at_ymax'] = x[y.argmax()]
     # Calculate CEN from derivative
     zero_cross = np.where(np.diff(np.sign(y - (stats['ymax']
-                                               + stats['ymin'])/2)))[0]
+                                               + stats['ymin']) / 2)))[0]
     if zero_cross.size == 2:
         stats['cen'] = (x[zero_cross].sum() / 2,
-                        (stats['ymax'] + stats['ymin'])/2)
+                        (stats['ymax'] + stats['ymin']) / 2)
     elif zero_cross.size == 1:
         stats['cen'] = x[zero_cross[0]]
     if zero_cross.size == 2:
@@ -97,7 +97,7 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
-        data = {key: np.array(value)[:,0]
+        data = {key: np.array(value)[:, 0]
                 for key, value in data.iteritems()}
         keys = data.keys()
         values = [np.array(a) for a in data.values()]
@@ -268,7 +268,8 @@ class Scan(object):
 
         Returns
         -------
-        :py:class:`collections.deque` object containing :py:class:`Data` objects
+        :py:class:`collections.deque` object containing
+        :py:class:`Data` objects
         """
         return self._data_buffer
 
@@ -493,7 +494,7 @@ class AScan(Scan):
 
             for p, b, e in zip(iter_pos, begin, end):
                 pos.append(p)
-                path = b + ((e-b) * grid[d])
+                path = b + ((e - b) * grid[d])
                 paths.append(path)
 
         self.positioners = pos
@@ -513,7 +514,8 @@ class DScan(AScan):
         super(DScan, self).setup_scan(*args, **kwargs)
         self._start_positions = [p.position for p in self.positioners]
         self.paths = [np.array(path) + start
-                      for path, start in zip(self.paths, self._start_positions)]
+                      for path, start in zip(self.paths,
+                                             self._start_positions)]
 
     def post_scan(self):
         """Post Scan Move to start positions
