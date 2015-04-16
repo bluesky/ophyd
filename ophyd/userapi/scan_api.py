@@ -31,10 +31,10 @@ def estimate(x, y):
     stats['x_at_ymax'] = x[y.argmax()]
     # Calculate CEN from derivative
     zero_cross = np.where(np.diff(np.sign(y - (stats['ymax']
-                                               + stats['ymin'])/2)))[0]
+                                               + stats['ymin']) / 2)))[0]
     if zero_cross.size == 2:
         stats['cen'] = (x[zero_cross].sum() / 2,
-                        (stats['ymax'] + stats['ymin'])/2)
+                        (stats['ymax'] + stats['ymin']) / 2)
     elif zero_cross.size == 1:
         stats['cen'] = x[zero_cross[0]]
     if zero_cross.size == 2:
@@ -97,7 +97,7 @@ class Data(object):
     @data_dict.setter
     def data_dict(self, data):
         """Set the data dictionary"""
-        data = {key: np.array(value)[:,0]
+        data = {key: np.array(value)[:, 0]
                 for key, value in data.iteritems()}
         keys = data.keys()
         values = [np.array(a) for a in data.values()]
@@ -229,11 +229,17 @@ class Scan(object):
         The main loop of the scan. This routine runs the scan and calls the
         ophyd runengine.
         """
+
+        # Raise if no detectors are associated with a scan instance,
+        # and do it prior to context manager __entry__
+        if not self.detectors:
+            raise ValueError('Must specify at least one detector for scan.')
+
+        # Must have scan_id prior to OLog entry in ctx mgr __entry__
         self.scan_id = session_manager.get_next_scan_id()
 
         # Run this in a context manager to capture
         # the KeyboardInterrupt
-
         with self:
             for pos, path in zip(self.positioners, self.paths):
                 pos.set_trajectory(path)
@@ -262,7 +268,8 @@ class Scan(object):
 
         Returns
         -------
-        :py:class:`collections.deque` object containing :py:class:`Data` objects
+        :py:class:`collections.deque` object containing
+        :py:class:`Data` objects
         """
         return self._data_buffer
 
@@ -487,7 +494,7 @@ class AScan(Scan):
 
             for p, b, e in zip(iter_pos, begin, end):
                 pos.append(p)
-                path = b + ((e-b) * grid[d])
+                path = b + ((e - b) * grid[d])
                 paths.append(path)
 
         self.positioners = pos
@@ -507,7 +514,8 @@ class DScan(AScan):
         super(DScan, self).setup_scan(*args, **kwargs)
         self._start_positions = [p.position for p in self.positioners]
         self.paths = [np.array(path) + start
-                      for path, start in zip(self.paths, self._start_positions)]
+                      for path, start in zip(self.paths,
+                                             self._start_positions)]
 
     def post_scan(self):
         """Post Scan Move to start positions
