@@ -248,10 +248,6 @@ class RunEngine(object):
             self.logger.debug('%s', vars(event))
 
             scan.emit_event(event)
-            for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
-                # TODO Use this in the future, or just plt.draw_all I guess?
-                # if force or f_mgr.canvas.figure.stale:
-                f_mgr.canvas.draw()
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -364,7 +360,6 @@ class RunEngine(object):
         self._scan_thread.start()
         end_args['scan'] = scan
         try:
-            setup = False
             while self._scan_state is True:
                 try:
                     descriptor = scan.desc_queue.get(timeout=0.05)
@@ -372,21 +367,12 @@ class RunEngine(object):
                     pass
                 else:
                     scan.cb_registry.process('descriptor',  descriptor)
-                    setup = True
-                if not setup:
-                    continue
                 try:
                     event = scan.ev_queue.get(timeout=0.05)
                 except Empty:
                     pass
                 else:
-                    scan.cb_registry.process('descriptor',  descriptor)
                     scan.cb_registry.process('event', event)
-            	for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
-                    print(f_mgr)
-                    f_mgr.canvas.figure.show()
-                    f_mgr.canvas.draw()
-                    f_mgr.canvas.flush_events()
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()

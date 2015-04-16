@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 
 class PlotManager(object):
 
+    def __init__(self):
+        self._has_figures = False
+
     def update_positioners(self, positioners):
         if len(positioners) == 1:
             self._x_name = positioners[0].name
@@ -12,6 +15,7 @@ class PlotManager(object):
             self._x_name = None  # plot against seq_num
 
     def setup_plot(self, event_descriptor):
+        self._has_figures = True
         scalars = []
         images = []
         cubes = []
@@ -42,16 +46,17 @@ class PlotManager(object):
         for name, ax in six.iteritems(self._scalar_axes):
             ax.set(title=name)
         self._scalar_fig.subplots_adjust()
-        self._scalar_fig.canvas.show()
         self._image_figs = {name: plt.figure() for name in images + cubes}
         self._image_axes = {name: fig.add_axes((0, 0, 1, 1))
                             for name, fig in six.iteritems(self._image_figs)}
         self._img_objs = {}  # will hold AxesImage objects
         self._img_uids = {name: deque() for name in images + cubes}
-        for fig in six.itervalues(self._image_figs):
-           fig.canvas.show()
+        show_all_figures()
 
     def update_plot(self, event):
+        if not self._has_figures:
+            # setup_plot has not been called; we have to wait.
+            return
         # Add a data point to the subplot for each scalar.
         x_val = event.data[self._x_name][0]  # unpack value from raw Event
         for name, ax in six.iteritems(self._scalar_axes):
@@ -103,6 +108,7 @@ class PlotManager(object):
                 self._img_obj[name] = ax.imshow(img_array)
             else:
                 img_obj.set_array(img_array)
+        draw_all_figures()
 
 
 def _refresh_axes(ax):
@@ -110,3 +116,14 @@ def _refresh_axes(ax):
     ax.set_ylim(0, 1)
     ax.relim(visible_only=True)
     ax.autoscale_view(tight=True)
+
+
+def show_all_figures():
+    for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
+        f_mgr.canvas.figure.show()
+
+
+def draw_all_figures():
+    for f_mgr in plt._pylab_helpers.Gcf.get_all_fig_managers():
+        f_mgr.canvas.draw()
+        f_mgr.canvas.flush_events()
