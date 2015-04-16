@@ -232,7 +232,7 @@ class Scan(object):
 
         # Raise if no detectors are associated with a scan instance,
         # and do it prior to context manager __entry__
-        if not len(self.detectors) > 0:
+        if not self.detectors:
             raise ValueError('Must specify at least one detector for scan.')
 
         # Must have scan_id prior to OLog entry in ctx mgr __entry__
