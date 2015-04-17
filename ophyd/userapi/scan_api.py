@@ -146,7 +146,7 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
-    valid_callbacks = ['start', 'stop', 'event', 'descriptor']
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor', 'pre-scan', 'post-scan']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -224,11 +224,12 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        self._plot_mgr.update_positioners(self.positioners)
+        self._scan_cb_registry.process('pre-scan', self.positioners, self.detectors)
         pass
 
     def post_scan(self):
         """Routine run after scan has completed"""
+        self._scan_cb_registry.process('post-scan', self.positioners, self.detectors)
         pass
 
     def configure_detectors(self):
@@ -357,8 +358,12 @@ class Scan(object):
 
         Parameters
         ----------
-        name: {'start', 'stop', 'descriptor', 'event'}
-        func: callable with signature ``f(mongoengine.Document)``
+        name: {'pre-scan', 'start', 'descriptor', 'event', 'stop', 'post-scan'}
+        func: callable
+            start, descriptor, event, stop callbacks expect signature
+            ``f(mongoengine.Document)``
+            pre-scan and post-scan callbacks expect signature
+            ``f(positioners, detectors)``(
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
@@ -411,6 +416,8 @@ class Scan(object):
             cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
             self._plot_callback_ids.append(cid)
             cid = cb_reg.connect('event', self._plot_mgr.update_plot)
+            self._plot_callback_ids.append(cid)
+            cid = cb_reg.connect('pre-scan', self._plot_mgr.update_positioners)
             self._plot_callback_ids.append(cid)
         else:
             [cb_reg.disconnect(cid) for cid in self._plot_callback_ids]
