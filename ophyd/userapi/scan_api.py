@@ -356,7 +356,7 @@ class Scan(object):
             start, descriptor, event, stop callbacks expect signature
             ``f(mongoengine.Document)``
             pre-scan and post-scan callbacks expect signature
-            ``f(positioners, detectors)``(
+            ``f(positioners, detectors)``)
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
