@@ -320,6 +320,14 @@ class RunEngine(object):
             owner = getpass.getuser()
         runid = str(runid)
 
+        # The values of every positioner have a special, immutable
+        # significance: we vary them intentionally. These are
+        # the 'trajectory variables'.
+        positioners = scan_args.get('positioners', None)
+        if positioners is not None:
+            positioner_names = [p.name for p in positioners]
+            custom['trajectory_vars'] = positioner_names
+
         blc = mds.insert_beamline_config(beamline_config, time=time.time())
         # insert the run_start into metadatastore
         recorded_time = time.time()
