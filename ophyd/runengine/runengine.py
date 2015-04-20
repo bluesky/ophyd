@@ -147,7 +147,7 @@ class RunEngine(object):
         scan.emit_stop(rs)
         self.logger.info('End Run...')
 
-    def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
+    def _move_positioners(self, positioners=None, settle_time=None):
         try:
             status = [pos.move_next(wait=False)[1] for pos in positioners]
         except StopIteration:
@@ -169,9 +169,9 @@ class RunEngine(object):
                 'value': pos.position}
             for pos in positioners}
 
-    def _start_scan(self, scan=None, run_start=None, detectors=None,
-                    data=None, positioners=None, **kwargs):
-
+    def _start_scan(self, run_start=None, detectors=None,
+                    data=None, positioners=None, settle_time=None,
+                    **kwargs):
         dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
 
@@ -190,7 +190,7 @@ class RunEngine(object):
         while self._scan_state is True:
             self.logger.debug(
                 'self._scan_state is True in self._start_scan')
-            posvals = self._move_positioners(**kwargs)
+            posvals = self._move_positioners(positioners, settle_time)
             self.logger.debug('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
@@ -345,7 +345,9 @@ class RunEngine(object):
         scan_args['run_start'] = run_start
         end_args['run_start'] = run_start
 
-        keys = self._get_data_keys(**scan_args)
+        keys = self._get_data_keys(
+            positioners=scan_args.get('positioners', None),
+            detectors=scan_args.get('detectors', None))
         data = defaultdict(list)
 
         scan_args['data'] = data
