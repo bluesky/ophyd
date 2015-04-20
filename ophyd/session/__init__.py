@@ -4,7 +4,7 @@ import sys
 import logging
 import warnings
 
-LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
+LOG_FORMAT = "%(asctime)-15s [%(levelname)s] %(message)s"
 OPHYD_LOGGER = 'ophyd_session'
 
 

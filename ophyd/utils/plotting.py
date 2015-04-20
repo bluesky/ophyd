@@ -1,12 +1,16 @@
 import six
 import numpy as np
 import matplotlib.pyplot as plt
+from filestore.api import retrieve
+from mongoengine import DoesNotExist
+from collections import deque
 
 
 class PlotManager(object):
 
     def __init__(self):
         self._has_figures = False
+        self._x_name = None
 
     def update_positioners(self, positioners, detectors):
         if len(positioners) == 1:
@@ -20,7 +24,6 @@ class PlotManager(object):
         images = []
         cubes = []
         for key, val in six.iteritems(event_descriptor.data_keys):
-            print key, val['shape']
             if not val['shape']:
                 scalars.append(key)
                 continue
@@ -81,8 +84,8 @@ class PlotManager(object):
                 uids = self._img_uids[name]
                 for i, datum_uid in enumerate(uids):
                     try:
-                        img_array = filestore.retrieve(datum_uid)
-                    except filestore.DatumNotFound:
+                        img_array = retrieve(datum_uid)
+                    except DoesNotExist:
                         continue
                     else:
                         # To avoid ever showing an image that is older
@@ -107,7 +110,7 @@ class PlotManager(object):
             if name not in self._img_objs:
                 self._img_obj[name] = ax.imshow(img_array)
             else:
-                img_obj.set_array(img_array)
+                self._img_obj.set_array(img_array)
         draw_all_figures()
 
 

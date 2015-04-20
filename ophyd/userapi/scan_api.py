@@ -1,6 +1,5 @@
 from __future__ import print_function
 import numpy as np
-import matplotlib.pyplot as plt
 from time import sleep
 import sys
 import collections
@@ -11,8 +10,6 @@ import traceback
 
 from IPython.utils.coloransi import TermColors as tc
 from matplotlib.cbook import CallbackRegistry
-from filestore.api import retrieve
-from mongoengine import DoesNotExist
 
 from ..runengine import RunEngine
 from ..session import get_session_manager
@@ -146,7 +143,8 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
-    valid_callbacks = ['start', 'stop', 'event', 'descriptor', 'pre-scan', 'post-scan']
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor', 'pre-scan',
+                       'post-scan']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -185,7 +183,8 @@ class Scan(object):
 
         >>>scan.run(*args, **kwargs)
         """
-        self.run(*args, **kwargs)
+        raise NotImplementedError("Scan is an Abstract Base Class. Subclass "
+                                  "and override __call__")
 
     def check_paths(self):
         """Check the positioner paths
@@ -204,9 +203,9 @@ class Scan(object):
                 try:
                     pos.check_value(p)
                 except LimitError:
-                    raise ValueError('Scan moves positioner {} \
-                                     out of limits {},{}'.format(
-                                     pos.name, pos.low_limit, pos.high_limit))
+                    raise ValueError(
+                        'Scan moves positioner {} out of limits {},{}'
+                        ''.format(pos.name, pos.low_limit, pos.high_limit))
 
     def __enter__(self):
         """Entry point for context manager"""
@@ -224,13 +223,13 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        self._scan_cb_registry.process('pre-scan', self.positioners, self.detectors)
-        pass
+        self.cb_registry.process(
+            'pre-scan', self.positioners, self.detectors)
 
     def post_scan(self):
         """Routine run after scan has completed"""
-        self._scan_cb_registry.process('post-scan', self.positioners, self.detectors)
-        pass
+        self.cb_registry.process(
+            'post-scan', self.positioners, self.detectors)
 
     def configure_detectors(self):
         """Routine run to setup detectors before scan starts"""
@@ -248,7 +247,6 @@ class Scan(object):
         The main loop of the scan. This routine runs the scan and calls the
         ophyd runengine.
         """
-
         # Raise if no detectors are associated with a scan instance,
         # and do it prior to context manager __entry__
         if not self.detectors:
@@ -276,8 +274,7 @@ class Scan(object):
             scan_args['custom'] = kwargs
 
             # Run the scan!
-            data = self._run_eng.start_run(self,
-                                           scan_args=scan_args)
+            data = self._run_eng.start_run(self, scan_args=scan_args)
 
             self._data_buffer.append(Data(data))
 
@@ -366,7 +363,7 @@ class Scan(object):
             ``f(positioners, detectors)``)
         """
         if name not in self.valid_callbacks:
-            raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
+            raise ValueError("Valid callbacks: %s" % self.valid_callbacks)
         return self.cb_registry.connect(name, func)
 
     def _register_scan_callback(self, name, func):
@@ -384,19 +381,19 @@ class Scan(object):
         self.desc_queue.put(descriptor)
 
     def emit_event(self, event):
-        "Called by the Run Engine after each new event is created."
+        """Called by the Run Engine after each new event is created."""
         self._scan_cb_registry.process('event', event)
 
     def emit_descriptor(self, descriptor):
-        "Called by the Run Engine after each new event desc is created."
+        """Called by the Run Engine after each new event desc is created."""
         self._scan_cb_registry.process('descriptor', descriptor)
 
     def emit_start(self, start):
-        "Called by the Run Engine after a scan is started."
+        """Called by the Run Engine after a scan is started."""
         self._scan_cb_registry.process('start', start)
 
     def emit_stop(self, stop):
-        "Called by the Run Engine after a scan is stopped."
+        """Called by the Run Engine after a scan is stopped."""
         self._scan_cb_registry.process('stop', stop)
 
     @property
@@ -409,7 +406,7 @@ class Scan(object):
             return
         self._autoplot = bool(val)
         cb_reg = self.cb_registry  # for brevity
-        if val:
+        if self._autoplot:
             # when a callback is registered, it returns an integer ID
             # that can be used to deregister it.
             self._plot_callback_ids = []
@@ -465,17 +462,15 @@ class AScan(Scan):
 
         # Print header
 
-        msg = ['Scan Command    : {}'.format(self.scan_command)]
-        msg.append('Scan ID         : {}'.format(self.scan_id))
-        msg.append('Scan Dimension  : {}'.format(self.dimension))
-        msg.append('Scan Datapoints : {} ({})'.format(self.datapoints,
-                                                      np.prod(self.datapoints)))
+        msg = ['Scan Command    : {}'.format(self.scan_command),
+               'Scan ID         : {}'.format(self.scan_id),
+               'Scan Dimension  : {}'.format(self.dimension),
+               'Scan Datapoints : {} ({})'.format(
+                   self.datapoints, np.prod(self.datapoints)),
+               '',
+               '{:<30} {:<20} {:<20}:'.format('Positioners', 'Min', 'Max')]
 
         # Print positioners and start and stop values
-
-        msg.append('')
-        msg.append('{:<30} {:<20} {:<20}:'.format('Positioners',
-                                                  'Min', 'Max'))
 
         for pos, path in zip(self.positioners, self.paths):
             msg.append('{:<30} {:<20.8f} {:<20.8f}'.format(pos.name,
@@ -551,7 +546,6 @@ class AScan(Scan):
 
         # This is an n-dimensional scan. We take the dims from
         # the length of npts.
-
         positioners = ensure_iterator(positioners)
         start = ensure_iterator(start)
         stop = ensure_iterator(stop)

@@ -171,7 +171,7 @@ class RunEngine(object):
 
     def _start_scan(self, run_start=None, detectors=None,
                     data=None, positioners=None, settle_time=None,
-                    **kwargs):
+                    scan=None, **kw):
         dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
 
@@ -336,7 +336,7 @@ class RunEngine(object):
             beamline_config=blc, scan_id=runid, custom=custom)
         scan.emit_start(run_start)
         pretty_time = datetime.datetime.fromtimestamp(
-                                          recorded_time).isoformat()
+            recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
         self.logger.info("Time: %s", pretty_time)
         self.logger.info("uid: %s", str(run_start.uid))
