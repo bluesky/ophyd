@@ -52,6 +52,8 @@ class PauseScanCondition(object):
         self.killers_note = ""
         self.resume_message = ""
         self.pause_timeout = pause_timeout
+        if resume_timeout is None:
+            resume_timeout = pause_timeout
         self.resume_timeout = resume_timeout
         self.kill_timeout = kill_timeout
         self.pause_timer = None
@@ -126,11 +128,14 @@ class PauseScanCondition(object):
             The currently executing run_engine from ophyd
         """
         resume_message = self.resuming_callable(run_engine)
+        print('resume_message: %s' % resume_message)
         if resume_message:
-            # stop the countdown!
-            self.doomsday_clock.cancel()
+            print('resuming!')
+            if self.doomsday_clock:
+                # stop the countdown!
+                self.doomsday_clock.cancel()
+                del self.doomsday_clock
             # delete the Timer instances
-            del self.doomsday_clock
             del self.resume_timer
             # only stash the resume message if it is True
             self.resume_message = resume_message
@@ -138,6 +143,7 @@ class PauseScanCondition(object):
             self._was_paused = False
             self.pause_message = ""
         else:
+            print("not resuming yet...")
             # clear the resume_timer's status and restart it
             self.resume_timer.finished.clear()
             self.resume_timer.run()
@@ -150,27 +156,27 @@ class PauseScanCondition(object):
         run_engine : ophyd.run_engine.run_engine
             The currently executing run_engine from ophyd
         """
-        pause_message = self.pausing_callable(run_engine)
-        if pause_message:
-            # only stash the pause message if is a non-empty string
-            self.pause_message = pause_message
-            # clear the old resume message
-            self.resume_message = ""
-            print("run_engine: %s" % run_engine)
-            run_engine.pause(self)
-            self._was_paused = True
-            # create and start a resume timer
-            self.resume_timer = Timer(self.resume_timeout, self._resume,
-                                      args=[run_engine])
-            self.resume_timer.start()
-            self.resume_timer.run()
-            # create and start a kill timer if there is a kill_timeout
-            # and a killing_callable
-            if self.kill_timeout and self.killing_callable:
-                self.doomsday_clock = Timer(self.kill_timeout, self._kill,
-                                            args=[run_engine])
-                self.doomsday_clock.start()
-                self.doomsday_clock.run()
+        if not self._was_paused:
+            pause_message = self.pausing_callable(run_engine)
+            if pause_message:
+                # only stash the pause message if is a non-empty string
+                self.pause_message = pause_message
+                # clear the old resume message
+                self.resume_message = ""
+                run_engine.pause(self)
+                self._was_paused = True
+                # create and start a resume timer
+                self.resume_timer = Timer(self.resume_timeout, self._resume,
+                                          args=[run_engine])
+                self.resume_timer.start()
+                self.resume_timer.run()
+                # create and start a kill timer if there is a kill_timeout
+                # and a killing_callable
+                if self.kill_timeout and self.killing_callable:
+                    self.doomsday_clock = Timer(self.kill_timeout, self._kill,
+                                                args=[run_engine])
+                    self.doomsday_clock.start()
+                    self.doomsday_clock.run()
 
         if self.continue_checking_for_pause:
             # clear the pause_timer's status and restart it
