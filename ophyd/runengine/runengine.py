@@ -205,7 +205,7 @@ class RunEngine(object):
         flag is checked, the scan will resume
         """
         # remove the pausing_callable from the list
-        self._pausers.remove(pausing_callable.name)
+        self._pausers.remove(pausing_callable)
         self.logger.info("Scan no longer paused by: %s" % pausing_callable)
         if self._pausers:
             self.logger.info("Scan is still waiting on %s" % self._pausers)
@@ -241,8 +241,9 @@ class RunEngine(object):
         kill()
         # keep checking until the scan is unpaused
         while self._pause:
-            self.logger.info("in _check_scan_status waiting for self.pause to "
-                             "be False. It's value is currently %s" % self._pause)
+            self.logger.info("in _check_scan_status waiting for self._pause to "
+                             "be False. It's value is currently %s" %
+                             self._pause)
             kill()
             time.sleep(self.pause_time)
 
