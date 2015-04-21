@@ -143,8 +143,10 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
-    valid_callbacks = ['start', 'stop', 'event', 'descriptor', 'pre-scan',
-                       'post-scan']
+    valid_callbacks = ['run-start', 'event', 'event-descriptor', 'run-stop',
+                       'pre-scan', 'post-scan',
+                       'pre-move', 'during-move', 'post-move',
+                       'pre-trigger', 'during-trigger', 'post-trigger']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -165,7 +167,7 @@ class Scan(object):
         self.ev_queue = Queue()
         self.desc_queue = Queue()
         self._register_scan_callback('event', self._push_to_ev_queue)
-        self._register_scan_callback('descriptor', self._push_to_desc_queue)
+        self._register_scan_callback('event-descriptor', self._push_to_desc_queue)
 
         self.paths = list()
         self.positioners = list()
@@ -223,8 +225,7 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        self.cb_registry.process(
-            'pre-scan', self.positioners, self.detectors)
+        self.cb_registry.process('pre-scan', self)
 
     def post_scan(self):
         """Routine run after scan has completed"""
@@ -355,12 +356,13 @@ class Scan(object):
 
         Parameters
         ----------
-        name: {'pre-scan', 'start', 'descriptor', 'event', 'stop', 'post-scan'}
+        name: {'pre-scan', 'run-start', 'event-descriptor', 'event', 'run-stop',
+               'post-scan'}
         func: callable
-            start, descriptor, event, stop callbacks expect signature
-            ``f(mongoengine.Document)``
+            run-start, event-descriptor, event, run-stop callbacks expect
+            signature ``f(mongoengine.Document)``
             pre-scan and post-scan callbacks expect signature
-            ``f(positioners, detectors)``)
+            ``f(ScanObject)``)
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: %s" % self.valid_callbacks)
@@ -386,7 +388,7 @@ class Scan(object):
 
     def emit_descriptor(self, descriptor):
         """Called by the Run Engine after each new event desc is created."""
-        self._scan_cb_registry.process('descriptor', descriptor)
+        self._scan_cb_registry.process('event-descriptor', descriptor)
 
     def emit_start(self, start):
         """Called by the Run Engine after a scan is started."""
@@ -410,7 +412,7 @@ class Scan(object):
             # when a callback is registered, it returns an integer ID
             # that can be used to deregister it.
             self._plot_callback_ids = []
-            cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
+            cid = cb_reg.connect('event-descriptor', self._plot_mgr.setup_plot)
             self._plot_callback_ids.append(cid)
             cid = cb_reg.connect('event', self._plot_mgr.update_plot)
             self._plot_callback_ids.append(cid)

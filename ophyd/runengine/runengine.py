@@ -368,7 +368,7 @@ class RunEngine(object):
                 except Empty:
                     pass
                 else:
-                    scan.cb_registry.process('descriptor',  descriptor)
+                    scan.cb_registry.process('event-descriptor',  descriptor)
                 try:
                     event = scan.ev_queue.get(timeout=0.05)
                 except Empty:

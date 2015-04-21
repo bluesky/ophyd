@@ -12,9 +12,9 @@ class PlotManager(object):
         self._has_figures = False
         self._x_name = None
 
-    def update_positioners(self, positioners, detectors):
-        if len(positioners) == 1:
-            self._x_name = positioners[0].name
+    def update_positioners(self, scan_obj):
+        if len(scan_obj.positioners) == 1:
+            self._x_name = scan_obj.positioners[0].name
         else:
             self._x_name = None  # plot against seq_num
 
