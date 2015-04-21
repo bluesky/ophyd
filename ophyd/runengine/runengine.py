@@ -1,4 +1,7 @@
-from __future__ import print_function
+from __future__ import print_function, division
+
+import six
+
 import logging
 from warnings import warn
 import getpass
@@ -6,13 +9,13 @@ import os
 import datetime
 import time
 from collections import defaultdict
-from threading import Thread
+from threading import Thread, Timer
 from Queue import Queue, Empty
 import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
 from metadatastore import api as mds
-import matplotlib.pyplot as plt
+import traceback
 
 
 def _get_info(positioners=None, detectors=None, data=None):
@@ -103,19 +106,64 @@ class Demuxer(object):
         return
 
 
-class RunEngine(object):
-    '''The run engine
+class KillScanException(RuntimeError):
+    """Exception that gets raised when a KillScanCondition is met
 
-    Parameters
+    Attributes
+    ----------
+    killers : list
+        List of callables that told the RunEngine to kill itself
+    """
+    def __init__(self, killers):
+        super(KillScanException, self).__init__("Scan killed: %s" % killers)
+
+
+class RunEngine(object):
+    """The run engine
+
+    Attributes
     ----------
     logger : logging.Logger
-    '''
+    scan : ophyd.scan_api.Scan
+        the ophyd.scan_api.Scan object that called the RunEngine
+    pause : bool
+        True: Pause the scan
+        False: Do not pause the scan
+    _pausers : set
+        Set of callables that have paused the scan
+    pause_time : int
+        If ``self.pause``, wait ``pause_time`` before checking if ``self.pause``
+        is True
+    kill : bool
+        True: kill the scan
+    _killers : set
+        Set of callables that have asked the scan to terminate
+    """
 
-    def __init__(self, logger):
+    def __init__(self, logger, pause_time=.1):
         self._demuxer = Demuxer()
         self._sessionmgr = register_object(self)
         self._scan_state = False
         self.logger = self._sessionmgr._logger
+        self.logger.setLevel(logging.DEBUG)
+
+        # the currently executing scan thread
+        self._scan_thread = None
+        # the ophyd.scan_api.Scan object that called the RunEngine
+        self.scan = None
+
+        # boolean flag to pause the scan
+        self._pause = False
+        self._pausers = set()
+        # if self._pause is True, check with `_pause_time` frequency until
+        # it is False
+        self.pause_time = pause_time  # ms
+        # boolean flag to kill the scan
+        self._kill = False
+        self._killers = set()
+        # lists of threading.Timer objects that set the _pause/_kill attrs
+        self._pause_timers = []
+        self._kill_timers = []
 
     # start/stop/pause/resume are external api methods
     def start(self):
@@ -128,11 +176,41 @@ class RunEngine(object):
     def running(self):
         return self._scan_state
 
-    def pause(self):
-        pass
+    def kill(self, killing_callable):
+        """Kill the scan
 
-    def resume(self):
-        pass
+        Set the kill instance attribute to True so that the next time the flag
+        is checked, the scan will raise a ``ScanKilledException`` and exit
+        """
+        self._killers.add(killing_callable)
+        self._kill = True
+
+    def pause(self, pausing_callable):
+        """Pause the scan.
+
+        Set the pause instance attribute to True so that the next time the flag
+        is checked, the scan will wait until it is False
+        """
+        self.logger.info("Scan is being paused by: {}"
+                         "".format(pausing_callable))
+        self.logger.info("Scan is additionally waiting on {}"
+                         "".format(self._pausers))
+        self._pausers.add(pausing_callable)
+        self._pause = True
+
+    def resume(self, pausing_callable):
+        """Resume the scan
+
+        Set the pause instance attribute to False so that the next time the
+        flag is checked, the scan will resume
+        """
+        # remove the pausing_callable from the list
+        self._pausers.remove(pausing_callable.name)
+        self.logger.info("Scan no longer paused by: %s" % pausing_callable)
+        if self._pausers:
+            self.logger.info("Scan is still waiting on %s" % self._pausers)
+        else:
+            self._pause = False
 
     def _run_start(self, arg):
         # run any registered user functions
@@ -140,14 +218,38 @@ class RunEngine(object):
         self.logger.info('Begin Run...')
 
     def _end_run(self, arg):
+        # start up the pause scan conditions
+        for pause_scan_condition in self.scan.pause_scan_conditions:
+            pause_scan_condition.stop_checking()
+
         state = arg.get('state', 'success')
         bre = arg['run_start']
-        scan = arg['scan']
-        rs = mds.insert_run_stop(bre, time.time(), exit_status=state)
-        scan.emit_stop(rs)
+        reason = arg.pop('verbose_end_condition', '')
+        rs = mds.insert_run_stop(bre, time.time(), exit_status=state,
+                                 reason=reason)
+        self.scan.emit_stop(rs)
         self.logger.info('End Run...')
 
+    def _check_scan_status(self):
+        """Helper function to check kill/pause statuses
+
+        """
+        # check for a kill signal first
+        def kill():
+            if self._kill:
+                raise KillScanException(self._killers)
+        kill()
+        # keep checking until the scan is unpaused
+        while self._pause:
+            self.logger.info("in _check_scan_status waiting for self.pause to "
+                             "be False. It's value is currently %s" % self._pause)
+            kill()
+            time.sleep(self.pause_time)
+
     def _move_positioners(self, positioners=None, settle_time=None):
+        self.logger.info('pre-move')
+        self._check_scan_status()
+        self.scan.cb_registry.process('pre-move',  self)
         try:
             status = [pos.move_next(wait=False)[1] for pos in positioners]
         except StopIteration:
@@ -157,12 +259,17 @@ class RunEngine(object):
         time.sleep(0.05)
         # TODO: this should iterate at most N times to catch hangups
         while not all(s.done for s in status):
+            self.logger.info('during move')
             time.sleep(0.1)
+
         if settle_time is not None:
             time.sleep(settle_time)
 
         # use metadatastore to format the events so that ophyd is insulated
         # from metadatastore spec changes
+        self._check_scan_status()
+        self.logger.info('post-move')
+        self.scan.cb_registry.process('post-move',  self)
         return {
             pos.name: {
                 'timestamp': pos.timestamp[pos.pvname.index(pos.report['pv'])],
@@ -171,7 +278,7 @@ class RunEngine(object):
 
     def _start_scan(self, run_start=None, detectors=None,
                     data=None, positioners=None, settle_time=None,
-                    scan=None, **kw):
+                    **kw):
         dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
 
@@ -188,32 +295,45 @@ class RunEngine(object):
         self.logger.info(self._demunge_names(names))
         seq_num = 0
         while self._scan_state is True:
-            self.logger.debug(
-                'self._scan_state is True in self._start_scan')
+            self.logger.debug('self._scan_state is still True in self._start_scan')
             posvals = self._move_positioners(positioners, settle_time)
             self.logger.debug('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
+                self.logger.debug('posvals is None. Breaking out.')
                 break
 
             # Trigger detector acquisision
+            self._check_scan_status()
+            self.logger.info('processing pre-trigger callbacks')
+            self.scan.cb_registry.process('pre-trigger',  self)
+            self.logger.debug('gathering acquire status')
             acq_status = [trig.acquire() for trig in triggers]
 
             while any([not stat.done for stat in acq_status]):
+                self.logger.info('waiting for acquisition to be finished')
                 time.sleep(0.05)
-
-            time.sleep(0.05)
+            self.logger.info('acquisition finished')
+            self._check_scan_status()
+            self.logger.debug('processing post-trigger callbacks')
+            self.scan.cb_registry.process('post-trigger',  self)
             # Read detector values
             tmp_detvals = {}
+            self.logger.debug('gathering detector values')
             for det in dets + positioners:
-                tmp_detvals.update(det.read())
+                read_val = det.read()
+                self.logger.debug('updating temp vals: {}'.format(read_val))
+                tmp_detvals.update(read_val)
 
+
+            self.logger.debug('formatting event for mds')
             detvals = mds.format_events(tmp_detvals)
 
-            # pass data onto Demuxer for distribution
+            self.logger.debug('passing data onto Demuxer for distribution')
             self.logger.info(self._demunge_values(detvals, names))
             # grab the current time as a timestamp that describes when the
             # event data was bundled together
+            self.logger.debug('grabbing bundle time')
             bundle_time = time.time()
             # actually insert the event into metadataStore
             try:
@@ -237,7 +357,7 @@ class RunEngine(object):
                     data_keys=mds.format_data_keys(data_key_info))
                 self.logger.debug(
                     'event_descriptor: %s', vars(event_descriptor))
-                scan.emit_descriptor(event_descriptor)
+                self.scan.emit_descriptor(event_descriptor)
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
                     'inserting event %d------------------', seq_num)
@@ -247,7 +367,7 @@ class RunEngine(object):
             self.logger.debug('event %d--------', seq_num)
             self.logger.debug('%s', vars(event))
 
-            scan.emit_event(event)
+            self.scan.emit_event(event)
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -309,7 +429,9 @@ class RunEngine(object):
         data : dict
             {data_name: []}
         """
-        runid = scan.scan_id
+        # stash the current scan
+        self.scan = scan
+        runid = self.scan.scan_id
         if start_args is None:
             start_args = {}
         if end_args is None:
@@ -334,7 +456,7 @@ class RunEngine(object):
         run_start = mds.insert_run_start(
             time=recorded_time, beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
-        scan.emit_start(run_start)
+        self.scan.emit_start(run_start)
         pretty_time = datetime.datetime.fromtimestamp(
             recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
@@ -361,25 +483,47 @@ class RunEngine(object):
         self._scan_state = True
         self._scan_thread.start()
         end_args['scan'] = scan
+        # start up the pause scan conditions
+        for pause_scan_condition in scan.pause_scan_conditions:
+            pause_scan_condition(self)
         try:
             while self._scan_state is True:
+                self.logger.debug('scan state is still true')
+                if np.random.random() < 0.05:
+                    self._pause = True
+                    self.logger.warning("Pausing run engine")
+                elif self._pause:
+                    self._pause = False
+                    self.logger.warning("Releasing pause on run engine")
                 try:
-                    descriptor = scan.desc_queue.get(timeout=0.05)
+                    while True:
+                        self.logger.debug('trying to get something from the '
+                                          'scan.desc_queue')
+                        descriptor = self.scan.desc_queue.get(timeout=0.05)
+                        self.logger.debug('processing the event-descriptor signal')
+                        self.scan.cb_registry.process('event-descriptor',
+                                                      descriptor)
+                except Empty as e:
+                    pass
+                try:
+                    while True:
+                        self.logger.debug('trying to get something from the '
+                                          'scan.ev_queue')
+                        event = self.scan.ev_queue.get(timeout=0.05)
+                        self.logger.debug('processing the event signal')
+                        self.scan.cb_registry.process('event', event)
                 except Empty:
                     pass
-                else:
-                    scan.cb_registry.process('event-descriptor',  descriptor)
-                try:
-                    event = scan.ev_queue.get(timeout=0.05)
-                except Empty:
-                    pass
-                else:
-                    scan.cb_registry.process('event', event)
-        except KeyboardInterrupt:
+                self.logger.debug('sleeping for 1 second')
+                time.sleep(1)
+        except (KeyboardInterrupt, KillScanException):
             self._scan_state = False
             self._scan_thread.join()
             end_args['state'] = 'abort'
+            end_args['verbose_end_condition'] = traceback.format_exc()
         finally:
             self._end_run(end_args)
+        # clear the stashed scan
+        self.scan = None
 
         return data

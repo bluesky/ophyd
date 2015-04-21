@@ -172,6 +172,8 @@ class Scan(object):
         self.paths = list()
         self.positioners = list()
 
+        self.pause_scan_conditions = []
+
         try:
             self.logbook = session_manager['olog_client']
         except KeyError:
@@ -346,6 +348,9 @@ class Scan(object):
         """
         return self._shared_config['user_detectors'] + self.default_detectors
 
+    def add_scan_condition(self, scan_condition):
+        self.pause_scan_conditions.append(scan_condition)
+        
     def register_callback(self, name, func):
         """
         Register a callback function to be processed by the main thread.
@@ -356,13 +361,17 @@ class Scan(object):
 
         Parameters
         ----------
-        name: {'pre-scan', 'run-start', 'event-descriptor', 'event', 'run-stop',
-               'post-scan'}
+        name: {'pre-scan', 'post-scan'.
+               'run-start', 'event-descriptor', 'event', 'run-stop',
+               'pre-move', 'during-move', 'post-move', 'pre-trigger',
+               'during-trigger', 'post-trigger'
+               }
         func: callable
             run-start, event-descriptor, event, run-stop callbacks expect
-            signature ``f(mongoengine.Document)``
+                signature ``f(mongoengine.Document)``
             pre-scan and post-scan callbacks expect signature
-            ``f(ScanObject)``)
+                ``f(ScanObject)``)
+            move and trigger callbacks expect signature ``f(RunEngineInstance)``
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: %s" % self.valid_callbacks)
