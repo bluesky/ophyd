@@ -3,15 +3,18 @@ import numpy as np
 from time import sleep
 import sys
 import collections
+from Queue import Queue
 import itertools
 import string
 import traceback
 
 from IPython.utils.coloransi import TermColors as tc
+from matplotlib.cbook import CallbackRegistry
 
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
+from ..utils.plotting import PlotManager
 from ..controls import Detector
 
 session_manager = get_session_manager()
@@ -31,7 +34,7 @@ def estimate(x, y):
     stats['x_at_ymax'] = x[y.argmax()]
     # Calculate CEN from derivative
     zero_cross = np.where(np.diff(np.sign(y - (stats['ymax']
-                                               + stats['ymin']) / 2)))[0]
+                                               + stats['ymin'])/2)))[0]
     if zero_cross.size == 2:
         stats['cen'] = (x[zero_cross].sum() / 2,
                         (stats['ymax'] + stats['ymin']) / 2)
@@ -140,6 +143,10 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
+    valid_callbacks = ['run-start', 'event', 'event-descriptor', 'run-stop',
+                       'pre-scan', 'post-scan',
+                       'pre-move', 'during-move', 'post-move',
+                       'pre-trigger', 'during-trigger', 'post-trigger']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -151,9 +158,21 @@ class Scan(object):
         self._data_buffer = self._shared_config['scan_data']
 
         self.settle_time = 0
+        self._scan_cb_registry = CallbackRegistry()  # process on scan thread
+        self.cb_registry = CallbackRegistry()  # process on main thread
+        self._plot_mgr = PlotManager()
+        self._autoplot = None
+        self.autoplot = True
+
+        self.ev_queue = Queue()
+        self.desc_queue = Queue()
+        self._register_scan_callback('event', self._push_to_ev_queue)
+        self._register_scan_callback('event-descriptor', self._push_to_desc_queue)
 
         self.paths = list()
         self.positioners = list()
+
+        self.pause_scan_conditions = []
 
         try:
             self.logbook = session_manager['olog_client']
@@ -168,7 +187,8 @@ class Scan(object):
 
         >>>scan.run(*args, **kwargs)
         """
-        self.run(*args, **kwargs)
+        raise NotImplementedError("Scan is an Abstract Base Class. Subclass "
+                                  "and override __call__")
 
     def check_paths(self):
         """Check the positioner paths
@@ -187,9 +207,9 @@ class Scan(object):
                 try:
                     pos.check_value(p)
                 except LimitError:
-                    raise ValueError('Scan moves positioner {} \
-                                     out of limits {},{}'.format(
-                                     pos.name, pos.low_limit, pos.high_limit))
+                    raise ValueError(
+                        'Scan moves positioner {} out of limits {},{}'
+                        ''.format(pos.name, pos.low_limit, pos.high_limit))
 
     def __enter__(self):
         """Entry point for context manager"""
@@ -207,11 +227,12 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        pass
+        self.cb_registry.process('pre-scan', self)
 
     def post_scan(self):
         """Routine run after scan has completed"""
-        pass
+        self.cb_registry.process(
+            'post-scan', self.positioners, self.detectors)
 
     def configure_detectors(self):
         """Routine run to setup detectors before scan starts"""
@@ -229,7 +250,6 @@ class Scan(object):
         The main loop of the scan. This routine runs the scan and calls the
         ophyd runengine.
         """
-
         # Raise if no detectors are associated with a scan instance,
         # and do it prior to context manager __entry__
         if not self.detectors:
@@ -257,8 +277,7 @@ class Scan(object):
             scan_args['custom'] = kwargs
 
             # Run the scan!
-            data = self._run_eng.start_run(self.scan_id,
-                                           scan_args=scan_args)
+            data = self._run_eng.start_run(self, scan_args=scan_args)
 
             self._data_buffer.append(Data(data))
 
@@ -329,6 +348,88 @@ class Scan(object):
         """
         return self._shared_config['user_detectors'] + self.default_detectors
 
+    def add_scan_condition(self, scan_condition):
+        self.pause_scan_conditions.append(scan_condition)
+        
+    def register_callback(self, name, func):
+        """
+        Register a callback function to be processed by the main thread.
+
+        The Run Engine can execute callback functions at the start and end
+        of a scan, and after the insertion of new Event Descriptors
+        and Events.
+
+        Parameters
+        ----------
+        name: {'pre-scan', 'post-scan'.
+               'run-start', 'event-descriptor', 'event', 'run-stop',
+               'pre-move', 'during-move', 'post-move', 'pre-trigger',
+               'during-trigger', 'post-trigger'
+               }
+        func: callable
+            run-start, event-descriptor, event, run-stop callbacks expect
+                signature ``f(mongoengine.Document)``
+            pre-scan and post-scan callbacks expect signature
+                ``f(ScanObject)``)
+            move and trigger callbacks expect signature ``f(RunEngineInstance)``
+        """
+        if name not in self.valid_callbacks:
+            raise ValueError("Valid callbacks: %s" % self.valid_callbacks)
+        return self.cb_registry.connect(name, func)
+
+    def _register_scan_callback(self, name, func):
+        """Register a callback to be processed by the scan thread.
+
+        Like register_callback above, but private and referring to
+        a different callback registry.
+        """
+        return self._scan_cb_registry.connect(name, func)
+
+    def _push_to_ev_queue(self, event):
+        self.ev_queue.put(event)
+
+    def _push_to_desc_queue(self, descriptor):
+        self.desc_queue.put(descriptor)
+
+    def emit_event(self, event):
+        """Called by the Run Engine after each new event is created."""
+        self._scan_cb_registry.process('event', event)
+
+    def emit_descriptor(self, descriptor):
+        """Called by the Run Engine after each new event desc is created."""
+        self._scan_cb_registry.process('event-descriptor', descriptor)
+
+    def emit_start(self, start):
+        """Called by the Run Engine after a scan is started."""
+        self._scan_cb_registry.process('start', start)
+
+    def emit_stop(self, stop):
+        """Called by the Run Engine after a scan is stopped."""
+        self._scan_cb_registry.process('stop', stop)
+
+    @property
+    def autoplot(self):
+        return self._autoplot
+
+    @autoplot.setter
+    def autoplot(self, val):
+        if bool(val) == self._autoplot:
+            return
+        self._autoplot = bool(val)
+        cb_reg = self.cb_registry  # for brevity
+        if self._autoplot:
+            # when a callback is registered, it returns an integer ID
+            # that can be used to deregister it.
+            self._plot_callback_ids = []
+            cid = cb_reg.connect('event-descriptor', self._plot_mgr.setup_plot)
+            self._plot_callback_ids.append(cid)
+            cid = cb_reg.connect('event', self._plot_mgr.update_plot)
+            self._plot_callback_ids.append(cid)
+            cid = cb_reg.connect('pre-scan', self._plot_mgr.update_positioners)
+            self._plot_callback_ids.append(cid)
+        else:
+            [cb_reg.disconnect(cid) for cid in self._plot_callback_ids]
+
 
 class AScan(Scan):
     """Class for running N-Dimensional Scan
@@ -372,17 +473,15 @@ class AScan(Scan):
 
         # Print header
 
-        msg = ['Scan Command    : {}'.format(self.scan_command)]
-        msg.append('Scan ID         : {}'.format(self.scan_id))
-        msg.append('Scan Dimension  : {}'.format(self.dimension))
-        msg.append('Scan Datapoints : {} ({})'.format(self.datapoints,
-                                                      np.prod(self.datapoints)))
+        msg = ['Scan Command    : {}'.format(self.scan_command),
+               'Scan ID         : {}'.format(self.scan_id),
+               'Scan Dimension  : {}'.format(self.dimension),
+               'Scan Datapoints : {} ({})'.format(
+                   self.datapoints, np.prod(self.datapoints)),
+               '',
+               '{:<30} {:<20} {:<20}:'.format('Positioners', 'Min', 'Max')]
 
         # Print positioners and start and stop values
-
-        msg.append('')
-        msg.append('{:<30} {:<20} {:<20}:'.format('Positioners',
-                                                  'Min', 'Max'))
 
         for pos, path in zip(self.positioners, self.paths):
             msg.append('{:<30} {:<20.8f} {:<20.8f}'.format(pos.name,
@@ -458,7 +557,6 @@ class AScan(Scan):
 
         # This is an n-dimensional scan. We take the dims from
         # the length of npts.
-
         positioners = ensure_iterator(positioners)
         start = ensure_iterator(start)
         stop = ensure_iterator(stop)
@@ -547,6 +645,10 @@ class Count(Scan):
     A log entry is created if the logbook is setup which records the
     result of the scan.
     """
+    def __init__(self, *args, **kwargs):
+        super(Count, self).__init__(*args, **kwargs)
+        self.autoplot = False
+
     def post_scan(self):
         """Post-scan print data
 
