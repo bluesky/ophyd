@@ -25,13 +25,18 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx',
+extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.coverage', 'sphinx.ext.mathjax',
-              'sphinx.ext.viewcode', 'sphinxcontrib.napoleon']
+              'sphinx.ext.viewcode', 'sphinxcontrib.napoleon',
+              'sphinx.ext.autosummary']
 
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+# Generate the API documentation when building
+autosummary_generate = True
+numpydoc_show_class_members = False
 
 # The suffix of source filenames.
 source_suffix = '.rst'
@@ -249,3 +254,26 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+class MyMock(object):
+
+    __all__ = []
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return MyMock()
+
+    def __getattr__(self, name):
+        if name in ('__file__', '__path__'):
+            return '/dev/null'
+        elif name == 'c_byte':
+            return 0
+        else:
+            return MyMock()
+
+
+MOCK_MODULES = ['epics', 'epics.pv', 'epics.ca', 'pcaspy']
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = MyMock()

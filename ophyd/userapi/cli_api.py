@@ -9,6 +9,7 @@ from StringIO import StringIO
 import collections
 
 from IPython.utils.coloransi import TermColors as tc
+from IPython.utils.signatures import signature
 
 from epics import caget, caput
 
@@ -57,7 +58,10 @@ def ensure(*ensure_args):
                                             "is expected to be an instance of "
                                             "{}".format(n, t))
 
-            f(*args, **kwargs)
+            return f(*args, **kwargs)
+        full_signature = '{funcname}{args}\n\n'.format(funcname=f.__name__,
+                                                   args=str(signature(f)))
+        wrapper.__doc__ = full_signature + f.__doc__
         return wrapper
     return wrap
 
