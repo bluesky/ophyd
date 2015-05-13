@@ -7,12 +7,7 @@ class PlotManager(object):
 
     def __init__(self):
         self._has_figures = False
-
-    def update_positioners(self, positioners, detectors):
-        if len(positioners) == 1:
-            self._x_name = positioners[0].name
-        else:
-            self._x_name = None  # plot against seq_num
+        self._x_name = None  # plot against seq_num
 
     def setup_plot(self, event_descriptor):
         self._has_figures = True

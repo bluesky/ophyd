@@ -146,8 +146,7 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
-    valid_callbacks = ['start', 'stop', 'event', 'descriptor',
-                       'pre-scan', 'post-scan']
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -229,14 +228,10 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        self._scan_cb_registry.process('pre-scan',
-                                       self.positioners, self.detectors)
         pass
 
     def post_scan(self):
         """Routine run after scan has completed"""
-        self._scan_cb_registry.process('post-scan',
-                                       self.positioners, self.detectors)
         pass
 
     def configure_detectors(self):
@@ -411,8 +406,6 @@ class Scan(object):
             cid = self.subscribe('descriptor', self._plot_mgr.setup_plot)
             self._plot_callback_ids.append(cid)
             cid = self.subscribe('event', self._plot_mgr.update_plot)
-            self._plot_callback_ids.append(cid)
-            cid = self.subscribe('pre-scan', self._plot_mgr.update_positioners)
             self._plot_callback_ids.append(cid)
         else:
             [self.unsubscribe(cid) for cid in self._plot_callback_ids]
@@ -795,10 +788,7 @@ class Dispatcher(object):
         ----------
         name: {'start', 'descriptor', 'event', 'stop'}
         func: callable
-            start, descriptor, event, stop callbacks expect signature
-            ``f(mongoengine.Document)``
-            pre-scan and post-scan callbacks expect signature
-            ``f(positioners, detectors)``)
+            expecting signature like ``f(mongoengine.Document)``
         """
         if name not in self.valid_callbacks:
             raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
