@@ -22,10 +22,16 @@ For basic scanning commands, see the next page.
 Positioners and Detectors in Ophyd
 ----------------------------------
 
-In Python, everything is an "object." Ophyd represents beamline intruments,
+Ophyd represents beamline intruments,
 including motors, detectors, and any other hardware, as a Python objects.
+Any device that can be written to (in EPICS jargon, "put" to) is considered
+a positioner. Thus, positioners include things like temperature controllers
+that might not intuitively seems like they fit that title.
 
+*Any* device can be used as a detector. Even devices that are being used as
+positioners can be read from (in EPICS jargon, they respond to "get").
 
+The next page covers how to choose detectors and positioners for a scan.
 
 Where are my positioners?
 ^^^^^^^^^^^^^^^^^^^^^^^^^
