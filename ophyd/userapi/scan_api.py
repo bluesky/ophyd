@@ -225,12 +225,14 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        self._scan_cb_registry.process('pre-scan', self.positioners, self.detectors)
+        self._scan_cb_registry.process('pre-scan',
+                                       self.positioners, self.detectors)
         pass
 
     def post_scan(self):
         """Routine run after scan has completed"""
-        self._scan_cb_registry.process('post-scan', self.positioners, self.detectors)
+        self._scan_cb_registry.process('post-scan',
+                                       self.positioners, self.detectors)
         pass
 
     def configure_detectors(self):
