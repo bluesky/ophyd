@@ -146,7 +146,8 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
-    valid_callbacks = ['start', 'stop', 'event', 'descriptor', 'pre-scan', 'post-scan']
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor',
+                       'pre-scan', 'post-scan']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
