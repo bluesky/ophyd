@@ -361,18 +361,7 @@ class RunEngine(object):
         end_args['scan'] = scan
         try:
             while self._scan_state is True:
-                try:
-                    descriptor = scan.desc_queue.get(timeout=0.05)
-                except Empty:
-                    pass
-                else:
-                    scan.cb_registry.process('descriptor',  descriptor)
-                try:
-                    event = scan.ev_queue.get(timeout=0.05)
-                except Empty:
-                    pass
-                else:
-                    scan.cb_registry.process('event', event)
+                scan.dispatcher.process()
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()

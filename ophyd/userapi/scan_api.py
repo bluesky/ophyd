@@ -160,7 +160,7 @@ class Scan(object):
 
         self.settle_time = 0
         self._scan_cb_registry = CallbackRegistry()  # process on scan thread
-        self.cb_registry = CallbackRegistry()  # process on main thread
+        self.dispatcher = Dispatcher(scan)
         self._plot_mgr = PlotManager()
         self._autoplot = None
         self.autoplot = True
@@ -355,32 +355,15 @@ class Scan(object):
         """
         return self._shared_config['user_detectors'] + self.default_detectors
 
-    def register_callback(self, name, func):
-        """
-        Register a callback function to be processed by the main thread.
-
-        The Run Engine can execute callback functions at the start and end
-        of a scan, and after the insertion of new Event Descriptors
-        and Events.
-
-        Parameters
-        ----------
-        name: {'pre-scan', 'start', 'descriptor', 'event', 'stop', 'post-scan'}
-        func: callable
-            start, descriptor, event, stop callbacks expect signature
-            ``f(mongoengine.Document)``
-            pre-scan and post-scan callbacks expect signature
-            ``f(positioners, detectors)``)
-        """
-        if name not in self.valid_callbacks:
-            raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
-        return self.cb_registry.connect(name, func)
+    self.subscribe = self.dispatcher.subscribe  # pass through
 
     def _register_scan_callback(self, name, func):
         """Register a callback to be processed by the scan thread.
 
-        Like register_callback above, but private and referring to
-        a different callback registry.
+        Unlike subscribe, functions registered here will be processed on the
+        scan thread. They are guaranteed to be run (there is no Queue
+        involved) and they block the scan's progress until they return.
+        Use subscribe for any non-critical functions.
         """
         return self._scan_cb_registry.connect(name, func)
 
@@ -421,19 +404,18 @@ class Scan(object):
         if bool(val) == self._autoplot:
             return
         self._autoplot = bool(val)
-        cb_reg = self.cb_registry  # for brevity
         if val:
             # when a callback is registered, it returns an integer ID
             # that can be used to deregister it.
             self._plot_callback_ids = []
-            cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
+            cid = self.subscribe('descriptor', self._plot_mgr.setup_plot)
             self._plot_callback_ids.append(cid)
-            cid = cb_reg.connect('event', self._plot_mgr.update_plot)
+            cid = self.subscribe('event', self._plot_mgr.update_plot)
             self._plot_callback_ids.append(cid)
-            cid = cb_reg.connect('pre-scan', self._plot_mgr.update_positioners)
+            cid = self.subscribe('pre-scan', self._plot_mgr.update_positioners)
             self._plot_callback_ids.append(cid)
         else:
-            [cb_reg.disconnect(cid) for cid in self._plot_callback_ids]
+            [self.unsubscribe(cid) for cid in self._plot_callback_ids]
 
 
 class AScan(Scan):
@@ -770,3 +752,65 @@ def cmdline_to_str(*args, **kwargs):
             msg.append('{}={}'.format(key, objects_to_str(value)))
 
     return ''.join(msg)
+
+
+class Dispatcher(object):
+    """Dispatch documents to user-defined consumers on the main thread."""
+    TIMEOUT = 0.05  # seconds to wait on getting from Queues
+
+    def __init__(self, scan):
+        self.scan = scan
+        self.cb_registry = CallbackRegistry()  # process on main thread
+        self.valid_callbacks = ['start', 'descriptor', 'event', 'stop']
+
+    def _process_if_available(self, queue, name):
+        try:
+            document = queue.get(timeout=self.TIMEOUT)
+        except Empty:
+            pass
+        else:
+            self.cb_registry.process(name, document)
+
+    def process_event_queue(self):
+        self.process_if_available(self.scan.event_queue, 'event')
+
+    def process_descriptor_queue(self):
+        self.process_if_available(self.scan.descriptor_queue, 'descriptor')
+
+    def process_start_queue(self):
+        self.process_if_available(self.scan.start_queue, 'start')
+
+    def process_stop_queue(self):
+        self.process_if_available(self.scan.stop_queue, 'stop')
+
+    def subscribe(self, name, func):
+        """
+        Register a function to consume Event documents.
+
+        The Run Engine can execute callback functions at the start and end
+        of a scan, and after the insertion of new Event Descriptors
+        and Events.
+
+        Parameters
+        ----------
+        name: {'start', 'descriptor', 'event', 'stop'}
+        func: callable
+            start, descriptor, event, stop callbacks expect signature
+            ``f(mongoengine.Document)``
+            pre-scan and post-scan callbacks expect signature
+            ``f(positioners, detectors)``)
+        """
+        if name not in self.valid_callbacks:
+            raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
+        return self.cb_registry.connect(name, func)
+
+    def unsubscribe(self, callback_id):
+        """
+        Unregister a callback function using its integer ID.
+
+        Parameters
+        ----------
+        callback_id : int
+            the ID issued by `subscribe`
+        """
+        self.cb_registry.disconnect(callback_id)
