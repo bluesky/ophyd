@@ -36,7 +36,6 @@ requirements:
     - python
     - pyepics
     - pcaspy
-    - metadatastore
     - six
     - ipython
     - pyolog

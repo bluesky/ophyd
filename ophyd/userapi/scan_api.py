@@ -776,6 +776,12 @@ class Dispatcher(object):
     def process_stop_queue(self):
         self.process_if_available(self.scan.stop_queue, 'stop')
 
+    def process_all(self):
+        self.process_start_queue()
+        self.process_descriptor_queue()
+        self.process_event_queue()
+        self.process_stop_queue()
+
     def subscribe(self, name, func):
         """
         Register a function to consume Event documents.
