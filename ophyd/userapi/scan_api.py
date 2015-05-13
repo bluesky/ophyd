@@ -167,8 +167,12 @@ class Scan(object):
 
         self.ev_queue = Queue()
         self.desc_queue = Queue()
+        self.start_queue = Queue()
+        self.stop_queue = Queue()
         self._register_scan_callback('event', self._push_to_ev_queue)
         self._register_scan_callback('descriptor', self._push_to_desc_queue)
+        self._register_scan_callback('run_start', self._push_to_start_queue)
+        self._register_scan_callback('run_stop', self._push_to_stop_queue)
 
         self.paths = list()
         self.positioners = list()
@@ -385,6 +389,12 @@ class Scan(object):
 
     def _push_to_desc_queue(self, descriptor):
         self.desc_queue.put(descriptor)
+
+    def _push_to_start_queue(self, start):
+        self.start_queue.put(start)
+
+    def _push_to_stop_queue(self, stop):
+        self.stop_queue.put(stop)
 
     def emit_event(self, event):
         "Called by the Run Engine after each new event is created."
