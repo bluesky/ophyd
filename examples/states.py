@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import time
 
-from ophyd.runengine.state import State
+from ophyd.runengine.state import State, FSM
 
 
 class StateTest(State):
@@ -10,7 +10,7 @@ class StateTest(State):
         State.__init__(self)
 
         def hello( *args, **kwargs):
-            print('Entering %s' % kwargs.get('obj').name)
+            print('Entering %s\n' % kwargs.get('obj').name)
 
         def gbye(*args, **kwargs):
             print('Leaving %s\n' % kwargs.get('obj').name)
@@ -42,12 +42,21 @@ def test():
     susp = Suspended()
     acq = Acquiring()
 
-    idle.change_state(idle)
-    idle.change_state(acq)
-    acq.change_state(susp)
-    susp.change_state(susp)
-    susp.change_state(acq)
-    acq.change_state(idle)
+    states = [idle, acq, susp]
 
+    fsm = FSM(states=states, initial=idle)
+
+    try:
+        fsm.state = idle
+        fsm.state = acq
+        fsm.state = susp
+        fsm.state = acq
+        # try transitions to self. Should skip the on_enter() method
+        for i in range(3):
+            fsm.state = acq
+    except KeyboardInterrupt:
+        print('Caught SIGINT...')
+        fsm.state = idle
+    
 if __name__ == '__main__':
     test()
