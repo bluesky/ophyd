@@ -1,10 +1,11 @@
+from __future__ import print_function
+
 from ..controls.ophydobj import OphydObject
 
 
 class State(OphydObject):
-    '''Base class for use in FSM pattern (a la GoF State pattern).
+    '''Base class for use in FSM pattern.
 
-       Subclasses must NOT override the change_state method.
        Subclasses MUST override the state_action method.
     '''
     SUB_ENTRY = 'entry'
@@ -14,27 +15,43 @@ class State(OphydObject):
         self._entered = False
         if name is None:
             name = self.__class__.__name__
+        else:
+            self.name = name
 
         self._default_sub = None
         OphydObject.__init__(self, name=name, register=False)
 
-    def state_action(self):
+    def state_action(self, *args, **kwargs):
         raise NotImplementedError("Subclasses must implement the state_action method.")
 
-    def on_entry(self):
+    def on_entry(self, *args, **kwargs):
         if not self._entered:
             self._entered = True
-            self._run_subs(sub_type=self.SUB_ENTRY)
+            self._run_subs(sub_type=self.SUB_ENTRY, *args, **kwargs)
 
-    def on_exit(self):
-        self._run_subs(sub_type=self.SUB_EXIT)
+    def on_exit(self, *args, **kwargs):
+        self._run_subs(sub_type=self.SUB_EXIT, *args, **kwargs)
         self._entered = False
 
-    def change_state(self, next_state):
-        if next_state == self:
-            self.on_entry()
-            self.state_action()
+
+class FSM(object):
+    def __init__(self, states=None, initial=None):
+        self._states = states
+        self._state = initial
+
+    @property
+    def state(self):
+        return self._state.name
+
+    @state.setter
+    def state(self, state, *args, **kwargs):
+        print('Current state = ', self._state, ', new state = ', state)
+        # Is this a transition to the same state?
+        if state == self._state:
+            self._state.on_entry()
+            self._state.state_action()
         else:
-            self.on_exit()
-            next_state.on_entry()
-            next_state.state_action()
+            self._state.on_exit()
+            state.on_entry()
+            self._state = state
+            self._state.state_action()
