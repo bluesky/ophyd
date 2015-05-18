@@ -7,8 +7,10 @@ python:
 
 install:
   - conda update --yes conda
-  - conda config --add channels tacaswell
-  - conda create -n testenv --yes epics-base python pyepics pcaspy metadatastore six ipython matplotlib pyolog nose
+  - conda create -n testenv --yes pip nose setuptools
+  - conda install -n testenv -c danielballan --yes readline epics-base
+  - conda install -n testenv -c tacaswell --yes pyepics pcaspy metadatastore six ipython matplotlib pyolog nose
+  - conda update -n testenv -c danielballan --yes readline epics-base
   - source activate testenv
   - python setup.py install
 
