@@ -262,7 +262,7 @@ class RunEngine(object):
 
         return names
 
-    def start_run(self, scan, start_args=None, end_args=None, scan_args=None):
+    def start_run(self, scan, start_args=None, end_args=None, scan_kwargs=None):
         """
 
         Parameters
@@ -270,7 +270,7 @@ class RunEngine(object):
         scan : Scan instance
         start_args
         end_args
-        scan_args
+        scan_kwargs
 
         Returns
         -------
@@ -282,15 +282,15 @@ class RunEngine(object):
             start_args = {}
         if end_args is None:
             end_args = {}
-        if scan_args is None:
-            scan_args = {}
+        if scan_kwargs is None:
+            scan_kwargs = {}
 
         # format the begin run event information
-        beamline_id = scan_args.get('beamline_id', None)
+        beamline_id = scan_kwargs.get('beamline_id', None)
         if beamline_id is None:
             beamline_id = os.uname()[1].split('-')[0]
-        custom = scan_args.get('custom', None)
-        owner = scan_args.get('owner', None)
+        custom = scan_kwargs.get('custom', None)
+        owner = scan_kwargs.get('owner', None)
         if owner is None:
             owner = getpass.getuser()
         scan_id= str(runid)
@@ -307,7 +307,7 @@ class RunEngine(object):
         self.logger.info("Time: %s", pretty_time)
         self.logger.info("uid: %s", str(run_start.uid))
 
-        keys = self._get_data_keys(**scan_args)
+        keys = self._get_data_keys(**scan_kwargs)
         data = defaultdict(list)
 
         scan_kwargs = {data=data)
