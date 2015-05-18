@@ -1,0 +1,25 @@
+language: python
+
+python:
+  - 2.7
+  - 3.4
+
+install:
+  - conda update --yes conda
+  - conda config --add channels tacaswell
+  - conda create -n testenv --yes epics-base python pyepics pcaspy metadatastore six ipython matplotlib pyolog
+  - source activate testenv
+  - python setup.py install
+
+before_install:
+  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; 
+    then 
+        wget http://repo.continuum.io/miniconda/Miniconda-3.7.3-Linux-x86_64.sh -O miniconda.sh; 
+    else 
+        wget http://repo.continuum.io/miniconda/Miniconda3-3.7.3-Linux-x86_64.sh -O miniconda.sh; 
+    fi
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b -p /home/travis/mc
+  - export PATH=/home/travis/mc/bin:$PATH
+
+script: nosetests
