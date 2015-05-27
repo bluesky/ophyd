@@ -1,3 +1,5 @@
+[![Code Health](https://landscape.io/github/NSLS-II/ophyd/master/landscape.svg?style=flat)](https://landscape.io/github/NSLS-II/ophyd/master)
+
 Ophyd Data Collection Framework
 ==================================
 Project structure::
