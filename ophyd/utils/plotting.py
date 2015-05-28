@@ -9,8 +9,16 @@ class PlotManager(object):
     def __init__(self):
         self._has_figures = False
         self._x_name = None  # plot against seq_num
+        # TODO Guess what to plot against.
+
+    def reset(self, doc):
+        # doc is not used, merely conforming to callback signature
+        self._has_figures = False
 
     def setup_plot(self, event_descriptor):
+        # Ignore any event_descriptor other than the first one we see.
+        if self._has_figures:
+            return
         self.point_counter = count()
         self._has_figures = True
         scalars = []

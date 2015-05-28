@@ -375,6 +375,8 @@ class Scan(object):
             self._plot_callback_ids.append(cid)
             cid = self.subscribe('event', self._plot_mgr.update_plot)
             self._plot_callback_ids.append(cid)
+            cid = self.subscribe('stop', self._plot_mgr.reset)
+            self._plot_callback_ids.append(cid)
         else:
             [self.unsubscribe(cid) for cid in self._plot_callback_ids]
 
