@@ -7,10 +7,10 @@
    :synopsis:
 '''
 
-from __future__ import print_function
+from __future__ import (print_function, absolute_import)
 import ctypes
 import threading
-import Queue as queue
+from six.moves import queue
 import warnings
 
 import epics

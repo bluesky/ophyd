@@ -1,11 +1,11 @@
 """Command Line Interface to opyd objects"""
 
-from __future__ import print_function
+from __future__ import (print_function, absolute_import)
 import time
 import functools
 import sys
 from contextlib import contextmanager, closing
-from StringIO import StringIO
+from six import StringIO
 import collections
 
 from IPython.utils.coloransi import TermColors as tc
