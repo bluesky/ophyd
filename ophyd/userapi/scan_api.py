@@ -280,7 +280,7 @@ class Scan(object):
             scan_kwargs['custom'] = kwargs
 
             # Run the scan!
-            data = self._run_eng.start_run(self, **kwargs)
+            data = self._run_eng.start_run(self, **scan_kwargs)
 
             self._data_buffer.append(Data(data))
 

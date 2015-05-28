@@ -139,7 +139,7 @@ class RunEngine(object):
         scan.emit_stop(doc)
         self.logger.info('End of Run.')
 
-    def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
+    def _move_positioners(self, positioners, settle_time):
         try:
             status = [pos.move_next(wait=False)[1] for pos in positioners]
         except StopIteration:
@@ -150,7 +150,6 @@ class RunEngine(object):
         # TODO: this should iterate at most N times to catch hangups
         while not all(s.done for s in status):
             time.sleep(0.1)
-        if settle_time is not None:
             time.sleep(settle_time)
 
         return {
@@ -158,8 +157,8 @@ class RunEngine(object):
                        pos.position)
             for pos in positioners}
 
-    def _start_scan(self, scan, run_start_uid, detectors=None,
-                    data=None, positioners=None):
+    def _start_scan(self, scan, run_start_uid, data,
+                    detectors, positioners, settle_time):
 
         dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
@@ -176,7 +175,7 @@ class RunEngine(object):
         while self._scan_state is True:
             self.logger.debug(
                 'self._scan_state is True in self._start_scan')
-            posvals = self._move_positioners(**kwargs)
+            posvals = self._move_positioners(positioners, settle_time)
             self.logger.debug('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
@@ -264,30 +263,38 @@ class RunEngine(object):
 
         return names
 
-    def start_run(self, scan, **kwargs):
+    def start_run(self, scan, positioners=None, detectors=None,
+                  settle_time=0,
+                  owner=None, beamline_id=None, custom=None):
         """
 
         Parameters
         ----------
         scan : Scan instance
+        positioners : list, optional
+        detectors : list, optional
+        settle_time : float, optioanl
+            Units are seconds. By default, 0.
+        owner : str, optional
+        beamline_id : str, optional
+        custom : dict, optional
 
         Returns
         -------
         data : dict
             {data_name: []}
         """
-        runid = scan.scan_id
+        scan_id = str(scan.scan_id)
 
         # format the begin run event information
-        beamline_id = kwargs.get('beamline_id', None)
         if beamline_id is None:
             beamline_id = os.uname()[1].split('-')[0]
-        custom = kwargs.get('custom', {})
-        owner = kwargs.get('owner', None)
+        if custom is None:
+            cutstom = None
         if owner is None:
             owner = getpass.getuser()
-        scan_id= str(runid)
 
+        # Emit RunStart Document
         recorded_time = time.time()
         run_start_uid = str(uuid.uuid4())
         doc = dict(uid=run_start_uid,
@@ -296,19 +303,18 @@ class RunEngine(object):
         scan.emit_start(doc)
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
-        self.logger.info("Scan ID: %s", runid)
+        self.logger.info("Scan ID: %s", scan_id)
         self.logger.info("Time: %s", pretty_time)
         self.logger.info("uid: %s", str(run_start_uid))
 
-        keys = self._get_data_keys(**kwargs)
-        data = defaultdict(list)
-        kwargs['data'] = data
+        keys = self._get_data_keys(positioners, detectors)
+        data = defaultdict(list)  # will hold output from Scan Thread
 
         self.logger.info('Beginning Run...')
         self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
-                                   args=(scan, run_start_uid),
-                                   kwargs=kwargs)
+                                   args=(scan, run_start_uid, data,
+                                         positioners, detectors, settle_time))
         self._scan_thread.daemon = True
         self._scan_state = True
         self._scan_thread.start()
