@@ -15,7 +15,7 @@ from ..controls.detector import Detector
 import matplotlib.pyplot as plt
 
 
-def _build_data_keys(positioners=None, detectors=None, data=None):
+def _build_data_keys(positioners=None, detectors=None, readings=None):
     """Helper function to extract information from the positioners/detectors
     and assemble it according to our document specification.
 
@@ -25,14 +25,14 @@ def _build_data_keys(positioners=None, detectors=None, data=None):
         List of ophyd positioners
     detectors : list
         List of ophyd detectors, optional
-    data : dict
+    readings : dict
         Dictionary of actual data
     """
     desc = {}
     [desc.update(x.describe()) for x in (detectors + positioners)]
 
     info_dict = {}
-    for name, payload in data.iteritems():
+    for name, payload in readings.iteritems():
         """Internal function to grab info from a detector
         """
         # grab 'value' from payload
@@ -154,13 +154,12 @@ class RunEngine(object):
     def _start_scan(self, scan, run_start_uid, data,
                     positioners, detectors, settle_time):
 
-        dets = detectors
-        triggers = [det for det in dets if isinstance(det, Detector)]
+        triggers = [det for det in detectors if isinstance(det, Detector)]
 
         # provide header for formatted list of positioners and detectors in
         # INFO channel
         names = list()
-        for pos in positioners + dets:
+        for pos in positioners + detectors:
             names.extend(pos.describe().keys())
 
         self.logger.info(self._demunge_names(names))
@@ -183,34 +182,35 @@ class RunEngine(object):
 
             time.sleep(0.05)
             # Read detector values
-            values = {}
-            for det in dets + positioners:
-                values.update(det.read())
+            readings = {}
+            for readable in detectors + positioners:
+                readings.update(readable.read())
 
             if event_descriptor is None:
                 # Build and emit a descriptor.
                 evdesc_creation_time = time.time()
-                data_keys = _build_data_keys(
-                    positioners=positioners,
-                    detectors=dets, data=values)
-                evdesc_uid = uuid.uuid4()
+                data_keys = _build_data_keys(positioners, detectors, readings)
+                evdesc_uid = str(uuid.uuid4())
                 doc = dict(run_start=run_start_uid, time=evdesc_creation_time,
                            data_keys=data_keys, uid=evdesc_uid)
                 scan.emit_descriptor(doc)
                 self.logger.debug('Emitted Event Descriptor:\n%s', doc)
             # Build and emit and Event.
             bundle_time = time.time()
-            ev_uid = uuid.uuid4()
+            ev_uid = str(uuid.uuid4())
             doc = dict(event_descriptor=evdesc_uid,
-                       time=bundle_time, data=values, seq_num=seq_num,
+                       time=bundle_time, data=readings, seq_num=seq_num,
                        uid=ev_uid)
             scan.emit_event(doc)
             self.logger.debug('Emitted Event %d:\n%s' % (seq_num, doc))
 
             seq_num += 1
-            # update the 'data' object from values dict
-            for k, v in values.items():
-                data[k].append(v)
+            # update the 'data' object from readings dict
+            print('values', readings)
+            for name, payload in readings.items():
+                print('name', name, 'payload', payload)
+                print('data', data)
+                data[name].append(payload)
 
             if not positioners:
                 break
@@ -290,6 +290,7 @@ class RunEngine(object):
                    time=recorded_time, beamline_id=beamline_id, owner=owner,
                    scan_id=scan_id, **custom)
         scan.emit_start(doc)
+        scan.dispatcher.process_start_queue()
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", scan_id)
@@ -307,6 +308,7 @@ class RunEngine(object):
         self._scan_thread.daemon = True
         self._scan_state = True
         self._scan_thread.start()
+        exit_status = 'success'  # unless overridden below
         try:
             while self._scan_state is True:
                 scan.dispatcher.process_descriptor_queue()
@@ -323,5 +325,6 @@ class RunEngine(object):
                        exit_status=exit_status)
             scan.emit_stop(doc)
             self.logger.info('End of Run.')
+            scan.dispatcher.process_stop_queue()
 
         return data

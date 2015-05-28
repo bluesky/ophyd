@@ -1,4 +1,5 @@
 import six
+from itertools import count
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,6 +11,7 @@ class PlotManager(object):
         self._x_name = None  # plot against seq_num
 
     def setup_plot(self, event_descriptor):
+        self.point_counter = count()
         self._has_figures = True
         scalars = []
         images = []
@@ -53,9 +55,13 @@ class PlotManager(object):
             # setup_plot has not been called; we have to wait.
             return
         # Add a data point to the subplot for each scalar.
-        x_val = event['data'][self._x_name][0]  # unpack value from raw Event
+        point_num = next(self.point_counter)
+        if self._x_name is not None:
+            x_val = event['data'][self._x_name]['value']
+        else:
+            x_val = point_num
         for name, ax in six.iteritems(self._scalar_axes):
-            y_val = event['data'][name][0]  # unpack value from raw Event
+            y_val = event['data'][name]['value']
             line = self._scalar_lines[name]
             old_x, old_y = line.get_data()
             x = np.append(old_x, x_val)
@@ -66,7 +72,7 @@ class PlotManager(object):
         # Try to get the latest image, or a recent image,
         # to update each image figure.
         for name, ax in six.iteritems(self._image_axes):
-            datum_uid = event['data'][name][0]
+            datum_uid = event['data'][name]['value']
             img_array = None
             try:
                 img_array = retrieve(datum_uid)

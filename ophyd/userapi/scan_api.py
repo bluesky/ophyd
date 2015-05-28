@@ -172,8 +172,17 @@ class Scan(object):
         self.stop_queue = Queue()
         self._register_scan_callback('event', self._push_to_event_queue)
         self._register_scan_callback('descriptor', self._push_to_descriptor_queue)
-        self._register_scan_callback('run_start', self._push_to_start_queue)
-        self._register_scan_callback('run_stop', self._push_to_stop_queue)
+        self._register_scan_callback('start', self._push_to_start_queue)
+        self._register_scan_callback('stop', self._push_to_stop_queue)
+
+        # In case anyone was using data_buffer, we more or less support it here.
+        # We should probably remove this later once more useful callbacks are
+        # available.
+        self._data_buffer = collections.deque()
+        self._temp_data_buffer = collections.deque()
+        self.subscribe('start', self.start_temp_data_buffer)
+        self.subscribe('event', self.append_to_temp_data_buffer)
+        self.subscribe('stop', self.append_to_data_buffer)
 
         self.paths = list()
         self.positioners = list()
@@ -766,15 +775,19 @@ class Dispatcher(object):
 
     def process_event_queue(self):
         self._process_if_available(self.scan.event_queue, 'event')
+        logger.debug("Processed event subscriptions")
 
     def process_descriptor_queue(self):
         self._process_if_available(self.scan.descriptor_queue, 'descriptor')
+        logger.debug("Processed descriptor subscriptions")
 
     def process_start_queue(self):
         self._process_if_available(self.scan.start_queue, 'start')
+        logger.debug("Processed start subscriptions")
 
     def process_stop_queue(self):
         self._process_if_available(self.scan.stop_queue, 'stop')
+        logger.debug("Processed stop subscriptions")
 
     def process_all(self):
         self.process_start_queue()
@@ -797,7 +810,7 @@ class Dispatcher(object):
             expecting signature like ``f(mongoengine.Document)``
         """
         if name not in self.valid_callbacks:
-            raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
+            raise ValueError("Valid callbacks: {0}".format(self.valid_callbacks))
         return self.cb_registry.connect(name, func)
 
     def unsubscribe(self, callback_id):
