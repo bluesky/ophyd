@@ -206,10 +206,7 @@ class RunEngine(object):
 
             seq_num += 1
             # update the 'data' object from readings dict
-            print('values', readings)
             for name, payload in readings.items():
-                print('name', name, 'payload', payload)
-                print('data', data)
                 data[name].append(payload)
 
             if not positioners:

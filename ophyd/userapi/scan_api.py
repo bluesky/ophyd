@@ -631,7 +631,7 @@ class Count(Scan):
         d = {}
         d['id'] = self.scan_id
         d['detectors'] = repr(self.detectors)
-        d['values'] = repr(self.last_data.data_dict)
+        d['values'] = repr(self.last_data[0]['data'])
         if self.logbook is not None:
             self.logbook.log('\n'.join(lmsg), ensure=True,
                              properties={'OphydCount': d},
@@ -650,9 +650,8 @@ class Count(Scan):
         rtn.append('\n')
         rtn.append('{:<28} | {}'.format('Detector', 'Value'))
         rtn.append('{0:=^60}'.format(''))
-        data = collections.OrderedDict(sorted(self.last_data.data_dict.items()))
-        for x, y in data.iteritems():
-            rtn.append('{:<30} {}'.format(x, y))
+        for data_key, payload in self.last_data[0]['data'].items():
+            rtn.append('{:<30} {}'.format(data_key, payload['value']))
         rtn.append('')
         return '\n'.join(rtn)
 
