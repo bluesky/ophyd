@@ -14,7 +14,7 @@ class PlotManager(object):
         scalars = []
         images = []
         cubes = []
-        for key, val in six.iteritems(event_descriptor.data_keys):
+        for key, val in six.iteritems(event_descriptor['data_keys']):
             print key, val['shape']
             if not val['shape']:
                 scalars.append(key)
@@ -53,9 +53,9 @@ class PlotManager(object):
             # setup_plot has not been called; we have to wait.
             return
         # Add a data point to the subplot for each scalar.
-        x_val = event.data[self._x_name][0]  # unpack value from raw Event
+        x_val = event['data'][self._x_name][0]  # unpack value from raw Event
         for name, ax in six.iteritems(self._scalar_axes):
-            y_val = event.data[name][0]  # unpack value from raw Event
+            y_val = event['data'][name][0]  # unpack value from raw Event
             line = self._scalar_lines[name]
             old_x, old_y = line.get_data()
             x = np.append(old_x, x_val)
@@ -66,7 +66,7 @@ class PlotManager(object):
         # Try to get the latest image, or a recent image,
         # to update each image figure.
         for name, ax in six.iteritems(self._image_axes):
-            datum_uid = event.data[name][0]
+            datum_uid = event['data'][name][0]
             img_array = None
             try:
                 img_array = retrieve(datum_uid)

@@ -363,10 +363,10 @@ class Scan(object):
         return self._scan_cb_registry.connect(name, func)
 
     def _push_to_event_queue(self, event):
-        self.ev_queue.put(event)
+        self.event_queue.put(event)
 
     def _push_to_descriptor_queue(self, descriptor):
-        self.desc_queue.put(descriptor)
+        self.descriptor_queue.put(descriptor)
 
     def _push_to_start_queue(self, start):
         self.start_queue.put(start)

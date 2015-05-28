@@ -15,7 +15,7 @@ from ..controls.detector import Detector
 import matplotlib.pyplot as plt
 
 
-def _get_info(positioners=None, detectors=None, data=None):
+def _build_data_keys(positioners=None, detectors=None, data=None):
     """Helper function to extract information from the positioners/detectors
     and assemble it according to our document specification.
 
@@ -32,11 +32,11 @@ def _get_info(positioners=None, detectors=None, data=None):
     [desc.update(x.describe()) for x in (detectors + positioners)]
 
     info_dict = {}
-    for name, value in data.iteritems():
+    for name, payload in data.iteritems():
         """Internal function to grab info from a detector
         """
-        # grab 'value' from [value, timestamp]
-        val = np.asarray(value[0])
+        # grab 'value' from payload
+        val = np.asarray(payload['value'])
 
         dtype = 'number'
         try:
@@ -133,12 +133,6 @@ class RunEngine(object):
     def resume(self):
         pass
 
-    def _end_run(self, scan, run_start_uid, exit_status):
-        doc = dict(run_start=run_start_uid, time=time.time(),
-                   exit_status=exit_status)
-        scan.emit_stop(doc)
-        self.logger.info('End of Run.')
-
     def _move_positioners(self, positioners, settle_time):
         try:
             status = [pos.move_next(wait=False)[1] for pos in positioners]
@@ -158,7 +152,7 @@ class RunEngine(object):
             for pos in positioners}
 
     def _start_scan(self, scan, run_start_uid, data,
-                    detectors, positioners, settle_time):
+                    positioners, detectors, settle_time):
 
         dets = detectors
         triggers = [det for det in dets if isinstance(det, Detector)]
@@ -189,38 +183,33 @@ class RunEngine(object):
 
             time.sleep(0.05)
             # Read detector values
-            tmp_detvals = {}
+            values = {}
             for det in dets + positioners:
-                tmp_detvals.update(det.read())
-
-            detvals = mds.format_events(tmp_detvals)
-
-            # pass data onto Demuxer for distribution
-            self.logger.info(self._demunge_values(detvals, names))
+                values.update(det.read())
 
             if event_descriptor is None:
                 # Build and emit a descriptor.
                 evdesc_creation_time = time.time()
-                data_key_info = _get_info(
+                data_keys = _build_data_keys(
                     positioners=positioners,
-                    detectors=dets, data=detvals)
+                    detectors=dets, data=values)
                 evdesc_uid = uuid.uuid4()
                 doc = dict(run_start=run_start_uid, time=evdesc_creation_time,
-                           data_keys=data_key_info, uid=evdesc_uid)
+                           data_keys=data_keys, uid=evdesc_uid)
                 scan.emit_descriptor(doc)
-                self.logger.debug('Emitted Event Descriptor:\n%s', vars(doc))
+                self.logger.debug('Emitted Event Descriptor:\n%s', doc)
             # Build and emit and Event.
             bundle_time = time.time()
             ev_uid = uuid.uuid4()
             doc = dict(event_descriptor=evdesc_uid,
-                       time=bundle_time, data=detvals, seq_num=seq_num,
+                       time=bundle_time, data=values, seq_num=seq_num,
                        uid=ev_uid)
-            self.emit_event(doc)
-            self.logger.debug('Emitted Event %d:\n%s' % (seq_num, vars(doc)))
+            scan.emit_event(doc)
+            self.logger.debug('Emitted Event %d:\n%s' % (seq_num, doc))
 
             seq_num += 1
-            # update the 'data' object from detvals dict
-            for k, v in detvals.items():
+            # update the 'data' object from values dict
+            for k, v in values.items():
                 data[k].append(v)
 
             if not positioners:
@@ -330,6 +319,9 @@ class RunEngine(object):
             exit_status = 'fail'
             raise err
         finally:
-            self._end_run(scan, run_start_uid, exit_status)
+            doc = dict(run_start=run_start_uid, time=time.time(),
+                       exit_status=exit_status)
+            scan.emit_stop(doc)
+            self.logger.info('End of Run.')
 
         return data
