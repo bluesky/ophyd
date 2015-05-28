@@ -61,3 +61,9 @@ target/
 # PyCharm
 .idea/
 .ropeproject
+
+# notebook checkpoints
+.ipynb_checkpoints
+
+# generated docs
+doc/source/generated
