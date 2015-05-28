@@ -60,61 +60,6 @@ class OphydList(list):
         pass
 
 
-class Data(object):
-    """Class for containing scan data
-
-    This is a small object for containing data from a scan as objects. The
-    data can be set on initialization or using the :py:meth:`data_dict`
-    proprty. Data which has a length greater than 1 is stored as numpy
-    arrays.
-
-    Parameters
-    ----------
-    data : dict
-        Dictionary of data from scan
-    """
-
-    def __init__(self, data=None):
-        """Initialize class with data
-
-        """
-        if data is not None:
-            self.data_dict = data
-
-    def _estimate(self, xname, yname):
-        """Estimate peak parameters"""
-        self._estimate_dict = estimate(self.data_dict[xname],
-                                       self.data_dict[yname])
-
-    def estimate(self, xname, yname):
-        self._estimate(xname, yname)
-        return self._estimate_dict
-
-    def cen(self, xname, yname):
-        """Calculate the center from FWHM"""
-        self._estimate(xname, yname)
-        return self._estimate_dict['cen']
-
-    @property
-    def data_dict(self):
-        """Dictionary of data objects"""
-        return self._data_dict
-
-    @data_dict.setter
-    def data_dict(self, data):
-        """Set the data dictionary"""
-        data = {key: np.array(value)[:, 0]
-                for key, value in data.iteritems()}
-        keys = data.keys()
-        values = [np.array(a) for a in data.values()]
-        keys = [''.join([ch if ch in (string.ascii_letters + string.digits)
-                        else '_'
-                        for ch in key]) for key in keys]
-        self._data_dict = {key: value for key, value in zip(keys, values)}
-        for key, value in zip(keys, values):
-            setattr(self, key, value)
-
-
 class Scan(object):
     """Abstract base class for configuring and running a scan
 
@@ -191,6 +136,22 @@ class Scan(object):
             self.logbook = session_manager['olog_client']
         except KeyError:
             self.logbook = None
+
+    # In case anyone was using data_buffer, we more or less support it here.
+    # We should probably remove this later once more useful callbacks are
+    # available.
+
+    def start_temp_data_buffer(self, doc):
+        # document is not used; we're just using the hook
+        self._temp_data_buffer.clear()
+
+    def append_to_temp_data_buffer(self, doc):
+        self._temp_data_buffer.append(doc)
+
+    def append_to_data_buffer(self, doc):
+        # document is not used; we're just using the hook
+        self._data_buffer.append(list(self._temp_data_buffer))
+        self._temp_data_buffer.clear()
 
     def __call__(self, *args, **kwargs):
         """Start a run
@@ -290,8 +251,6 @@ class Scan(object):
 
             # Run the scan!
             data = self._run_eng.start_run(self, **scan_kwargs)
-
-            self._data_buffer.append(Data(data))
 
     @property
     def data(self):
