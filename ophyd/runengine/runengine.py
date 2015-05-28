@@ -133,7 +133,7 @@ class RunEngine(object):
     def resume(self):
         pass
 
-    def _end_run(self, run_start_uid, exit_status):
+    def _end_run(self, scan, run_start_uid, exit_status):
         doc = dict(run_start=run_start_uid, time=time.time(),
                    exit_status=exit_status)
         scan.emit_stop(doc)
@@ -264,15 +264,12 @@ class RunEngine(object):
 
         return names
 
-    def start_run(self, scan, start_args=None, end_args=None, scan_kwargs=None):
+    def start_run(self, scan, **kwargs):
         """
 
         Parameters
         ----------
         scan : Scan instance
-        start_args
-        end_args
-        scan_kwargs
 
         Returns
         -------
@@ -280,19 +277,13 @@ class RunEngine(object):
             {data_name: []}
         """
         runid = scan.scan_id
-        if start_args is None:
-            start_args = {}
-        if end_args is None:
-            end_args = {}
-        if scan_kwargs is None:
-            scan_kwargs = {}
 
         # format the begin run event information
-        beamline_id = scan_kwargs.get('beamline_id', None)
+        beamline_id = kwargs.get('beamline_id', None)
         if beamline_id is None:
             beamline_id = os.uname()[1].split('-')[0]
-        custom = scan_kwargs.get('custom', None)
-        owner = scan_kwargs.get('owner', None)
+        custom = kwargs.get('custom', {})
+        owner = kwargs.get('owner', None)
         if owner is None:
             owner = getpass.getuser()
         scan_id= str(runid)
@@ -307,18 +298,17 @@ class RunEngine(object):
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
         self.logger.info("Time: %s", pretty_time)
-        self.logger.info("uid: %s", str(run_start.uid))
+        self.logger.info("uid: %s", str(run_start_uid))
 
-        keys = self._get_data_keys(**scan_kwargs)
+        keys = self._get_data_keys(**kwargs)
         data = defaultdict(list)
-
-        scan_kwargs = dict(data=data)
+        kwargs['data'] = data
 
         self.logger.info('Beginning Run...')
         self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
                                    args=(scan, run_start_uid),
-                                   kwargs=scan_kwargs)
+                                   kwargs=kwargs)
         self._scan_thread.daemon = True
         self._scan_state = True
         self._scan_thread.start()
@@ -334,6 +324,6 @@ class RunEngine(object):
             exit_status = 'fail'
             raise err
         finally:
-            self._end_run(run_start_uid, exit_status)
+            self._end_run(scan, run_start_uid, exit_status)
 
         return data

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from time import sleep
 import sys
 import collections
-from Queue import Queue
+from Queue import Queue, Empty
 import itertools
 import string
 import traceback
@@ -166,12 +166,12 @@ class Scan(object):
         self._autoplot = None
         self.autoplot = True
 
-        self.ev_queue = Queue()
-        self.desc_queue = Queue()
+        self.event_queue = Queue()
+        self.descriptor_queue = Queue()
         self.start_queue = Queue()
         self.stop_queue = Queue()
-        self._register_scan_callback('event', self._push_to_ev_queue)
-        self._register_scan_callback('descriptor', self._push_to_desc_queue)
+        self._register_scan_callback('event', self._push_to_event_queue)
+        self._register_scan_callback('descriptor', self._push_to_descriptor_queue)
         self._register_scan_callback('run_start', self._push_to_start_queue)
         self._register_scan_callback('run_stop', self._push_to_stop_queue)
 
@@ -246,7 +246,7 @@ class Scan(object):
         [det.deconfigure() for det in self.detectors
          if isinstance(det, Detector)]
 
-    def run(self, *args, **kwargs):
+    def run(self, **kwargs):
         """Run the scan
 
         The main loop of the scan. This routine runs the scan and calls the
@@ -269,19 +269,18 @@ class Scan(object):
 
             # Create the dict to pass to the run-engine
 
-            scan_args = dict()
-            scan_args['detectors'] = self.detectors
-            scan_args['positioners'] = self.positioners
+            scan_kwargs = dict()
+            scan_kwargs['detectors'] = self.detectors
+            scan_kwargs['positioners'] = self.positioners
 
-            scan_args['settle_time'] = kwargs.pop('settle_time',
+            scan_kwargs['settle_time'] = kwargs.pop('settle_time',
                                                   self.settle_time)
 
             # let 'custom' be assigned to all remaining kwargs
-            scan_args['custom'] = kwargs
+            scan_kwargs['custom'] = kwargs
 
             # Run the scan!
-            data = self._run_eng.start_run(self,
-                                           scan_args=scan_args)
+            data = self._run_eng.start_run(self, **kwargs)
 
             self._data_buffer.append(Data(data))
 
@@ -363,10 +362,10 @@ class Scan(object):
         """
         return self._scan_cb_registry.connect(name, func)
 
-    def _push_to_ev_queue(self, event):
+    def _push_to_event_queue(self, event):
         self.ev_queue.put(event)
 
-    def _push_to_desc_queue(self, descriptor):
+    def _push_to_descriptor_queue(self, descriptor):
         self.desc_queue.put(descriptor)
 
     def _push_to_start_queue(self, start):
@@ -766,16 +765,16 @@ class Dispatcher(object):
             self.cb_registry.process(name, document)
 
     def process_event_queue(self):
-        self.process_if_available(self.scan.event_queue, 'event')
+        self._process_if_available(self.scan.event_queue, 'event')
 
     def process_descriptor_queue(self):
-        self.process_if_available(self.scan.descriptor_queue, 'descriptor')
+        self._process_if_available(self.scan.descriptor_queue, 'descriptor')
 
     def process_start_queue(self):
-        self.process_if_available(self.scan.start_queue, 'start')
+        self._process_if_available(self.scan.start_queue, 'start')
 
     def process_stop_queue(self):
-        self.process_if_available(self.scan.stop_queue, 'stop')
+        self._process_if_available(self.scan.stop_queue, 'stop')
 
     def process_all(self):
         self.process_start_queue()
