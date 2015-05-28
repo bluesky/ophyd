@@ -155,7 +155,7 @@ class RunEngine(object):
 
         return {
             pos.name: (pos.timestamp[pos.pvname.index(pos.report['pv'])],
-                       pos.position}
+                       pos.position)
             for pos in positioners}
 
     def _start_scan(self, scan, run_start_uid, detectors=None,
@@ -312,12 +312,12 @@ class RunEngine(object):
         keys = self._get_data_keys(**scan_kwargs)
         data = defaultdict(list)
 
-        scan_kwargs = {data=data)
+        scan_kwargs = dict(data=data)
 
         self.logger.info('Beginning Run...')
         self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
-                                   args=(scan, run_start_uid)
+                                   args=(scan, run_start_uid),
                                    kwargs=scan_kwargs)
         self._scan_thread.daemon = True
         self._scan_state = True

@@ -159,7 +159,9 @@ class Scan(object):
 
         self.settle_time = 0
         self._scan_cb_registry = CallbackRegistry()  # process on scan thread
-        self.dispatcher = Dispatcher(scan)
+        self.dispatcher = Dispatcher(self)
+    	self.subscribe = self.dispatcher.subscribe  # pass through
+    	self.unsubscribe = self.dispatcher.unsubscribe  # pass through
         self._plot_mgr = PlotManager()
         self._autoplot = None
         self.autoplot = True
@@ -350,7 +352,6 @@ class Scan(object):
         """
         return self._shared_config['user_detectors'] + self.default_detectors
 
-    self.subscribe = self.dispatcher.subscribe  # pass through
 
     def _register_scan_callback(self, name, func):
         """Register a callback to be processed by the scan thread.
