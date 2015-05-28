@@ -133,10 +133,9 @@ class RunEngine(object):
     def resume(self):
         pass
 
-
     def _end_run(self, run_start_uid, exit_status):
-        doc = {run_start=run_start_id, time=time.time(),
-               exit_status=exit_status}
+        doc = dict(run_start=run_start_uid, time=time.time(),
+                   exit_status=exit_status)
         scan.emit_stop(doc)
         self.logger.info('End of Run.')
 
@@ -206,14 +205,17 @@ class RunEngine(object):
                 data_key_info = _get_info(
                     positioners=positioners,
                     detectors=dets, data=detvals)
-                doc = dict(run_start=run_start, time=evdesc_creation_time,
-                           data_keys=data_key_info)
+                evdesc_uid = uuid.uuid4()
+                doc = dict(run_start=run_start_uid, time=evdesc_creation_time,
+                           data_keys=data_key_info, uid=evdesc_uid)
                 scan.emit_descriptor(doc)
                 self.logger.debug('Emitted Event Descriptor:\n%s', vars(doc))
             # Build and emit and Event.
             bundle_time = time.time()
-            doc = dict(event_descriptor_uid=event_descriptor_uid,
-                       time=bundle_time, data=detvals, seq_num=seq_num)
+            ev_uid = uuid.uuid4()
+            doc = dict(event_descriptor=evdesc_uid,
+                       time=bundle_time, data=detvals, seq_num=seq_num,
+                       uid=ev_uid)
             self.emit_event(doc)
             self.logger.debug('Emitted Event %d:\n%s' % (seq_num, vars(doc)))
 
