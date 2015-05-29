@@ -7,7 +7,7 @@ def register_mds(scan):
 
     Parameters
     ----------
-    scan : ophyd.userapi.scan_api.Scan
+    scan : ophyd.scans.Scan
     """
     scan._register_scan_callback('event', mdscmd.insert_event)
     scan._register_scan_callback('descriptor', mdscmd.insert_event_descriptor)

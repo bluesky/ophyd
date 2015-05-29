@@ -1,9 +1,9 @@
 Scan commands and API for ophyd
 *******************************
 
-.. automodule:: ophyd.userapi
+.. automodule:: ophyd
 
-.. automodule:: ophyd.userapi.scan_api
+.. automodule:: ophyd.scans
    :members:
    :undoc-members:
    :special-members: __call__
