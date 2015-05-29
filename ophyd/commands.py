@@ -12,8 +12,8 @@ from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
 
-from ..controls.positioner import EpicsMotor, Positioner, PVPositioner
-from ..session import get_session_manager
+from .controls.positioner import EpicsMotor, Positioner, PVPositioner
+from .session import get_session_manager
 
 session_mgr = get_session_manager()
 

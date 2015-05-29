@@ -14,11 +14,11 @@ from matplotlib.cbook import CallbackRegistry
 from filestore.api import retrieve
 from mongoengine import DoesNotExist
 
-from ..runengine import RunEngine
-from ..session import get_session_manager
-from ..utils import LimitError
-from ..utils.plotting import PlotManager
-from ..controls import Detector
+from .runengine import RunEngine
+from .session import get_session_manager
+from .utils import LimitError
+from .utils.plotting import PlotManager
+from .controls import Detector
 
 session_manager = get_session_manager()
 logger = session_manager._logger
