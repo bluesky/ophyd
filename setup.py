@@ -9,7 +9,5 @@ setup(name='ophyd',
                 'ophyd.controls',
                 'ophyd.controls.cas',
                 'ophyd.controls.areadetector',
-                'ophyd.runengine',
-                'ophyd.userapi',
                 'ophyd.utils',
-                'ophyd.writers'])
+                'ophyd.tests'])
