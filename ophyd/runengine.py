@@ -10,8 +10,8 @@ from collections import defaultdict
 from threading import Thread
 from Queue import Queue, Empty
 import numpy as np
-from ..session import register_object
-from ..controls.detector import Detector
+from .session import register_object
+from .controls.detector import Detector
 import matplotlib.pyplot as plt
 
 
