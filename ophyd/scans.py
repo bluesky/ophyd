@@ -9,10 +9,10 @@ import traceback
 
 from IPython.utils.coloransi import TermColors as tc
 
-from ..runengine import RunEngine
-from ..session import get_session_manager
-from ..utils import LimitError
-from ..controls import Detector
+from .runengine import RunEngine
+from .session import get_session_manager
+from .utils import LimitError
+from .controls import Detector
 
 session_manager = get_session_manager()
 logger = session_manager._logger
