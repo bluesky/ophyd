@@ -179,13 +179,14 @@ class EpicsSignal(Signal):
         Use automonitor with epics.PV
     '''
     def __init__(self, read_pv, write_pv=None,
-                 rw=True, pv_kw={},
+                 rw=True, pv_kw=None,
                  put_complete=False,
                  string=False,
                  limits=False,
                  auto_monitor=None,
                  **kwargs):
-
+        if pv_kw is None:
+            pv_kw = dict()
         self._read_pv = None
         self._write_pv = None
         self._put_complete = put_complete
