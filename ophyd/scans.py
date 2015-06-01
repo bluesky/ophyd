@@ -17,7 +17,7 @@ from .controls import Detector
 session_manager = get_session_manager()
 logger = session_manager._logger
 
-__all__ = ['AScan', 'DScan', 'Data', 'Count']
+__all__ = ['AScan', 'DScan', 'Count']
 
 
 def estimate(x, y):
