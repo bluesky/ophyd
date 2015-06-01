@@ -10,7 +10,7 @@
 from __future__ import print_function
 import ctypes
 import threading
-import Queue as queue
+from queue import Queue as queue
 import warnings
 
 import epics
