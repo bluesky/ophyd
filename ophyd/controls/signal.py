@@ -146,7 +146,9 @@ class Signal(OphydObject):
 
     def describe(self):
         """Return the description as a dictionary"""
-        return {self.name: {'source': 'SIM:{}'.format(self.name)}}
+        return {self.name: {'source': 'SIM:{}'.format(self.name),
+                            'dtype': 'number',
+                            'shape': []}}
 
 
 class EpicsSignal(Signal):
@@ -421,7 +423,9 @@ class EpicsSignal(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname)}}
+        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname),
+                            'dtype': 'number',
+                            'shape': []}}
 
     def read(self):
         """Read the signal and format for data collection
