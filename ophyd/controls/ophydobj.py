@@ -8,7 +8,7 @@
 '''
 
 from __future__ import print_function
-
+from collections import defaultdict
 import time
 
 from ..session import register_object
@@ -44,7 +44,7 @@ class OphydObject(object):
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
-        self._sub_cache = {}
+        self._sub_cache = defaultdict(lambda: None)
         self._ses_logger = None
 
         if register:
@@ -77,13 +77,9 @@ class OphydObject(object):
         cb
             The callback
         '''
-
-        try:
-            args, kwargs = self._sub_cache[sub_type]
-        except KeyError as ex:
-            pass
-        else:
-            # Cached kwargs includes sub_type
+        cached = self._sub_cache[sub_type]
+        if cached:
+            args, kwargs = cached
             self._run_sub(cb, *args, **kwargs)
 
     def _run_subs(self, *args, **kwargs):
