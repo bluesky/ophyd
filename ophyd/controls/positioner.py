@@ -274,6 +274,24 @@ class Positioner(SignalGroup):
         '''
         return self._moving
 
+    def set(self, new_position, *, wait=True,
+            moved_cb=None, timeout=30.0):
+        """
+        New API for controlling movers.
+
+
+        Parameters
+        ----------
+        new_position : dict
+            A dictionary of new positions keyed on axes name.  This is
+            symmetric with read such that `mot.set(mot.read())` works as
+            as expected.
+        """
+        val = new_position[self.name]
+        if len(val) > 1:
+            raise ValueError("trying to move something we don't know about")
+        return self.move(val, wait=wait, moved_cb=moved_cb, timeout=timeout)
+
 
 class EpicsMotor(Positioner):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
