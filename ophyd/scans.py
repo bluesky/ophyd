@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from time import sleep
 import sys
 import collections
-from Queue import Queue, Empty
+from queue import Queue, Empty
 import itertools
 import string
 import traceback
@@ -105,8 +105,8 @@ class Scan(object):
         self.settle_time = 0
         self._scan_cb_registry = CallbackRegistry()  # process on scan thread
         self.dispatcher = Dispatcher(self)
-    	self.subscribe = self.dispatcher.subscribe  # pass through
-    	self.unsubscribe = self.dispatcher.unsubscribe  # pass through
+        self.subscribe = self.dispatcher.subscribe  # pass through
+        self.unsubscribe = self.dispatcher.unsubscribe  # pass through
         self._plot_mgr = PlotManager()
         self._autoplot = None
         self.autoplot = True

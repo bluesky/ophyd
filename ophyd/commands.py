@@ -5,7 +5,7 @@ import time
 import functools
 import sys
 from contextlib import contextmanager, closing
-from StringIO import StringIO
+from io import StringIO
 import collections
 
 from IPython.utils.coloransi import TermColors as tc

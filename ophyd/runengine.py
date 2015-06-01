@@ -1,6 +1,5 @@
 from __future__ import print_function
 import logging
-from warnings import warn
 import getpass
 import os
 import uuid
@@ -8,11 +7,10 @@ import datetime
 import time
 from collections import defaultdict
 from threading import Thread
-from Queue import Queue, Empty
+from queue import Queue
 import numpy as np
 from .session import register_object
 from .controls.detector import Detector
-import matplotlib.pyplot as plt
 
 
 def _build_data_keys(positioners=None, detectors=None, readings=None):

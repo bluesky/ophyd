@@ -25,7 +25,7 @@ class PlotManager(object):
         images = []
         cubes = []
         for key, val in six.iteritems(event_descriptor['data_keys']):
-            print key, val['shape']
+            print(key, val['shape'])
             if not val['shape']:
                 scalars.append(key)
                 continue
