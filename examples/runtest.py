@@ -1,22 +1,47 @@
 from __future__ import print_function
 
-from ophyd.runengine.run import *
+import time
+
+from ophyd.runengine.run import Run
 
 
-def foo(msg='foo'):
+def startrun(msg='client_startrun', **kwargs):
+    print(msg)
+    time.sleep(2)
+
+def endrun(msg='client_endrun', **kwargs):
     print(msg)
 
-def bar(msg='bar'):
+def pauserun(msg='client_pauserun', **kwargs):
+    print(msg)
+    time.sleep(2)
+
+def resumerun(msg='client_resumerun', **kwargs):
     print(msg)
 
-def baz(msg='baz'):
+def scanning(msg='client_scanning', **kwargs):
     print(msg)
+    print('moving')
+    print('waiting')
+    print('acquiring')
+    print('waiting')
+    print('reading')
+    print('saving\n\n')
+    time.sleep(1)
 
-run_num = 11
+# a Run with no callbacks should generate start/end_run
+# and nothing else
+print('\n\ntry a basic run...\n\n')
+run = Run()
+run.start()
 
-run = Run(run_num)
+print('\n\ntry some subscriptions\n\n')
+run = Run()
 
-run.trigger(foo, every=Run.BEGIN_RUN, msg='\n\n\tFoo msg...\n\n')
-run.trigger(bar, every=Run.END_RUN, msg='\n\n\tBar msg...\n\n')
-run.trigger(baz, every=Run.SCAN_EV, msg='\n\n\tBaz msg...\n\n')
+run.subscribe(startrun, event_type='start_run')
+run.subscribe(endrun, event_type='end_run')
+run.subscribe(pauserun, event_type='pause_run')
+run.subscribe(resumerun, event_type='resume_run')
+run.subscribe(scanning, event_type='scan')
+
 run.start()
