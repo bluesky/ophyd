@@ -15,26 +15,26 @@ class StateTest(State):
         def gbye(*args, **kwargs):
             print('Leaving %s\n' % kwargs.get('obj').name)
 
-        self.subscribe(hello, event_type='entry', run=False)
-        self.subscribe(gbye, event_type='exit', run=False)
-
-class Acquiring(StateTest):
-    def state_action(self):
-        for i in range(3):
+        def action(*args, **kwargs):
             print('In %s, doing stuff...' % self.name)
+            if args or kwargs:
+                print('args = ', args, 'kwargs = ', kwargs)
             time.sleep(1)
 
 
-class Idle(StateTest):
-    def state_action(self):
-        print('In %s, doing stuff...' % self.name)
-        time.sleep(1)
+        self.subscribe(hello, event_type='entry')
+        self.subscribe(gbye, event_type='exit')
+        self.subscribe(action, event_type='state')
 
+
+class Acquiring(StateTest):
+    pass
+
+class Idle(StateTest):
+    pass
 
 class Suspended(StateTest):
-    def state_action(self):
-        print('In %s, doing stuff...' % self.name)
-        time.sleep(1)
+    pass
 
 
 def test():
@@ -44,19 +44,15 @@ def test():
 
     states = [idle, acq, susp]
 
-    fsm = FSM(states=states, initial=idle)
+    fsm = FSM(states=states, initial=idle, verbose=False)
 
     try:
-        fsm.state = idle
-        fsm.state = acq
-        fsm.state = susp
-        fsm.state = acq
-        # try transitions to self. Should skip the on_enter() method
-        for i in range(3):
-            fsm.state = acq
+        while True:
+            fsm.state(acq)
     except KeyboardInterrupt:
         print('Caught SIGINT...')
-        fsm.state = idle
+        fsm.state(susp, kw='world')
+        fsm.state(idle)
     
 if __name__ == '__main__':
     test()
