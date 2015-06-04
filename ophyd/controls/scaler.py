@@ -14,7 +14,7 @@ class EpicsScaler(SignalDetector):
         self._record = record
         self._numchan = numchan
 
-        super(EpicsScaler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.add_signal(EpicsSignal(record_field(record, 'CNT'),
                         alias='_count',

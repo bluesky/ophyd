@@ -27,7 +27,7 @@ class Detector(object):
     '''
 
     def __init__(self, *args, **kwargs):
-        super(Detector, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def configure(self, *args, **kwargs):
         '''Configure the detector for data collection.
@@ -59,6 +59,9 @@ class Detector(object):
         status.done = True
         return status
 
+    def trigger(self, **kwargs):
+        return self.acquire(**kwargs)
+
     def read(self, **kwargs):
         '''Retrieve data from instrumentation, format it, and return it.
         '''
@@ -74,7 +77,7 @@ class SignalDetector(SignalGroup, Detector):
     SUB_ACQ_DONE_DARK = 'acq_done'  # requested acquire
 
     def __init__(self, signal=None, *args, **kwargs):
-        super(SignalDetector, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._acq_signal = None
 
         if signal is not None:

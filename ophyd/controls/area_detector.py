@@ -278,6 +278,7 @@ class AreaDetector(SignalDetector):
         return status
 
 
+
 class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
         self.store_file_path = os.path.join(kwargs.pop('file_path'), '')

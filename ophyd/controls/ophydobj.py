@@ -39,6 +39,7 @@ class OphydObject(object):
     _default_sub = None
 
     def __init__(self, name=None, alias=None, register=True):
+        super().__init__()
         self._name = name
         self._alias = alias
 

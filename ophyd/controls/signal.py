@@ -45,7 +45,7 @@ class Signal(OphydObject):
                  recordable=True, **kwargs):
 
         self._default_sub = self.SUB_VALUE
-        OphydObject.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         self._setpoint = setpoint
         self._readback = value
@@ -209,7 +209,7 @@ class EpicsSignal(Signal):
                 separate_readback = True
 
         name = kwargs.pop('name', read_pv)
-        Signal.__init__(self, separate_readback=separate_readback, name=name,
+        super().__init__(separate_readback=separate_readback, name=name,
                         **kwargs)
 
         self._read_pv = epics.PV(read_pv, form=get_pv_form(),
@@ -440,7 +440,11 @@ class EpicsSignal(Signal):
                             'timestamp': self.timestamp}}
 
     def trigger(self):
-        pass
+        try:
+            super().trigger()
+        except AttributeError:
+            pass
+        
 
 
 class SignalGroup(OphydObject):
@@ -453,7 +457,7 @@ class SignalGroup(OphydObject):
     '''
 
     def __init__(self, signals=None, **kwargs):
-        OphydObject.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         self._signals = []
 
