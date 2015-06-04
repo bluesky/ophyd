@@ -15,12 +15,8 @@ from epics import caget, caput
 from .controls.positioner import EpicsMotor, Positioner, PVPositioner
 from .session import get_session_manager
 
-session_mgr = get_session_manager()
-
-try:
-    logbook = session_mgr['olog_client']
-except KeyError:
-    logbook = None
+session_manager = None
+logbook = None
 
 __all__ = ['mov',
            'movr',
@@ -211,6 +207,12 @@ def set_lm(positioner, limits):
                lim2, p.name, prec=FMT_PREC)
 
     print(msg)
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager.get('olog_client', None)
     if logbook:
         logbook.log(msg)
 
@@ -277,9 +279,15 @@ def set_pos(positioner, position):
             print('Unable to set position of positioner {0}'.format(p.name))
 
     print(msg)
-
-    lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
-    logbook.log(msg + '\n' + lmsg)
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager.get('olog_client', None)
+    if logbook:
+        lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
+        logbook.log(msg + '\n' + lmsg)
 
 
 @ensure(Positioner)
@@ -309,8 +317,11 @@ def wh_pos(positioners=None):
 
     >>>wh_pos([m1, m2, m3])
     """
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
     if positioners is None:
-        pos = session_mgr.get_positioners()
+        pos = session_manager.get_positioners()
         positioners = [pos[k] for k in sorted(pos)]
 
     _print_pos(positioners, file=sys.stdout)
@@ -335,7 +346,7 @@ def log_pos(positioners=None):
             The ID of the logbook entry returned by the logbook.log method.
     """
     if positioners is None:
-        pos = session_mgr.get_positioners()
+        pos = session_manager.get_positioners()
         positioners = [pos[k] for k in sorted(pos)]
 
     msg = ''
@@ -354,10 +365,15 @@ def log_pos(positioners=None):
     pdict = {}
     pdict['objects'] = repr(positioners)
     pdict['values'] = repr({p.name: p.position for p in positioners})
-
-    # make the logbook entry
-    id = logbook.log(msg, properties={'OphydPositioners': pdict},
-                     ensure=True)
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager.get('olog_client', None)
+    if logbook:
+        id = logbook.log(msg, properties={'OphydPositioners': pdict},
+                         ensure=True)
 
     print('Logbook positions added as Logbook ID {}'.format(id))
     return id
@@ -474,6 +490,12 @@ def logbook_to_objects(id=None, **kwargs):
     """Search the logbook and return positioners"""
     if logbook is None:
         raise NotImplemented("No logbook is avaliable")
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager.get('olog_client', None)
 
     entry = logbook.find(id=id, **kwargs)
     if len(entry) != 1:

@@ -287,10 +287,7 @@ class Positioner(SignalGroup):
             symmetric with read such that `mot.set(mot.read())` works as
             as expected.
         """
-        val = new_position[self.name]
-        if len(val) > 1:
-            raise ValueError("trying to move something we don't know about")
-        return self.move(val, wait=wait, moved_cb=moved_cb, timeout=timeout)
+        return self.move(new_position, wait=wait, moved_cb=moved_cb, timeout=timeout)
 
 
 class EpicsMotor(Positioner):

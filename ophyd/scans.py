@@ -20,10 +20,10 @@ from .utils import LimitError
 from .utils.plotting import PlotManager
 from .controls import Detector
 
-session_manager = get_session_manager()
-logger = session_manager._logger
+session_manager = None
+logger = None
 
-__all__ = ['AScan', 'DScan', 'Data', 'Count']
+__all__ = ['AScan', 'DScan', 'Count']
 
 
 def estimate(x, y):
@@ -131,6 +131,9 @@ class Scan(object):
 
         self.paths = list()
         self.positioners = list()
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
 
         try:
             self.logbook = session_manager['olog_client']
@@ -192,6 +195,12 @@ class Scan(object):
 
     def __exit__(self, exec_type, exec_value, tb):
         """Exit point for context manager"""
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         logger.debug("Scan context manager exited with %s", str(exec_value))
         traceback.print_tb(tb)
         self.deconfigure_detectors()
@@ -575,6 +584,12 @@ class DScan(AScan):
         starting position (as recorded by :py:meth:`pre_scan`) once the scan
         has finished.
         """
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         super(DScan, self).post_scan()
         status = [pos.move(start, wait=False)
                   for pos, start in
@@ -608,6 +623,12 @@ class Count(Scan):
         This post-scan routine prints the scan results to the screen and
         if the logbook is setup prints the results to the screen
         """
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         super(Count, self).post_scan()
 
         msg = self._fmt_count()
@@ -734,18 +755,42 @@ class Dispatcher(object):
             self.cb_registry.process(name, document)
 
     def process_event_queue(self):
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         self._process_if_available(self.scan.event_queue, 'event')
         logger.debug("Processed event subscriptions")
 
     def process_descriptor_queue(self):
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         self._process_if_available(self.scan.descriptor_queue, 'descriptor')
         logger.debug("Processed descriptor subscriptions")
 
     def process_start_queue(self):
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         self._process_if_available(self.scan.start_queue, 'start')
         logger.debug("Processed start subscriptions")
 
     def process_stop_queue(self):
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         self._process_if_available(self.scan.stop_queue, 'stop')
         logger.debug("Processed stop subscriptions")
 
