@@ -439,6 +439,9 @@ class EpicsSignal(Signal):
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
 
+    def trigger(self):
+        pass
+
 
 class SignalGroup(OphydObject):
     '''Create a group or collection of related signals
