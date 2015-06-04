@@ -265,6 +265,8 @@ class AreaDetector(SignalDetector):
 
         return status
 
+    trigger = acquire
+
 
 class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
