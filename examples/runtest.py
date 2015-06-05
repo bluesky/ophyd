@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import time
+import sys
 
 from ophyd.runengine.run import Run
 
@@ -28,6 +29,16 @@ def scanning(msg='client_scanning', **kwargs):
     print('reading')
     print('saving\n\n')
     time.sleep(1)
+
+# Test things that DON'T work yet
+run = Run()
+events = ['periodic', 'signal', 'scaler']
+def foo(): pass
+for ev in events:
+    try:
+        run.subscribe(foo, event_type=ev)
+    except NotImplementedError as ex:
+        print(ex)
 
 # a Run with no callbacks should generate start/end_run
 # and nothing else
