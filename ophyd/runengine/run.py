@@ -73,12 +73,16 @@ class Run(OphydObject):
         self.subscribe(self._default_start_run, event_type='start_run')
         self.subscribe(self._default_end_run, event_type='end_run')
         self.subscribe(self._default_pause_run, event_type='pause_run')
+        self.subscribe(self._default_resume_run, event_type='resume_run')
 
     def _default_start_run(self, **kwargs):
         print('start_run')
 
     def _default_end_run(self, **kwargs):
         print('end_run')
+
+    def _default_resume_run(self, **kwargs):
+        print('resume_run')
 
     def _default_pause_run(self, **kwargs):
         print('pause_run')
@@ -90,11 +94,11 @@ class Run(OphydObject):
         if 'scan' in event_type:
             self._acq.subscribe(cb, event_type='state', run=False)
         elif 'periodic' in event_type:
-            pass
+            raise NotImplementedError('Periodic events not available yet')
         elif 'signal' in event_type:
-            pass
+            raise NotImplementedError('Signal events not available yet')
         elif 'scaler' in event_type:
-            pass
+            raise NotImplementedError('Scaler events not available yet')
         else:
             OphydObject.subscribe(self, cb, event_type=event_type, run=False)
     
