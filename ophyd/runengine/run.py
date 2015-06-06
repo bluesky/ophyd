@@ -36,16 +36,35 @@ class Idle(State):
 
 
 class Run(OphydObject):
+    ''' A state-machine for controlling scans.
+
+        Upon construction, a Run enters the Idle state.
+        After configuration with appropriate scan-types,
+        a Run can be made to execute a scan by transitioning
+        to the Acquiring state via Run.start().
+        
+        Issuing Run.stop() (or Ctrl-C) will terminate an executing 
+        Run and its scan(s). Similarly, Run.pause() will suspend 
+        acquisition until Run.resume() or Run.stop() is issued.
+
+        Examples:
+        ------------
+        Generate a Run that produces only start_run and end_run events:
+
+        run = Run()
+        run.start()
+        
+    '''
 
     SUB_START_RUN = 'start_run'
     SUB_END_RUN = 'end_run'
     SUB_PAUSE_RUN = 'pause_run'
     SUB_RESUME_RUN = 'resume_run'
     
-    SUB_SCAN = 'scan'
-    SUB_PERIODIC = 'periodic'
-    SUB_SCALER = 'scaler'
-    SUB_SIGNAL = 'signal'
+    SUB_SCAN = 'trajectory_scan'
+    SUB_PERIODIC = 'periodic_scan'
+    SUB_SCALER = 'scaler_scan'
+    SUB_SIGNAL = 'signal_scan'
 
 
     def __init__(self, **kwargs):
@@ -89,15 +108,24 @@ class Run(OphydObject):
         while True:
             time.sleep(0.1)
 
-    def subscribe(self, cb, event_type=None):
+    # Need kwargs here to carry "period", "signal", and "scaler" 
+    # supplementary arguments ("when", "what signal", "scaling factor").
+    def subscribe(self, cb, event_type=None, **kwargs):
+        ''' Subscribe to Run events.
+
+            Add callbacks for Run start, stop, pause, resume event
+            and add callbacks Scan types: trajectory scans, period scans,
+            signal scans, and scaler scans.
+
+        '''
         # wrap callbacks for each subscription-type in our own special sauce
-        if 'scan' in event_type:
+        if 'trajectory_scan' in event_type:
             self._acq.subscribe(cb, event_type='state', run=False)
-        elif 'periodic' in event_type:
+        elif 'periodic_scan' in event_type:
             raise NotImplementedError('Periodic events not available yet')
-        elif 'signal' in event_type:
+        elif 'signal_scan' in event_type:
             raise NotImplementedError('Signal events not available yet')
-        elif 'scaler' in event_type:
+        elif 'scaler_scan' in event_type:
             raise NotImplementedError('Scaler events not available yet')
         else:
             OphydObject.subscribe(self, cb, event_type=event_type, run=False)
