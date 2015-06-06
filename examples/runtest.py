@@ -53,6 +53,6 @@ run.subscribe(startrun, event_type='start_run')
 run.subscribe(endrun, event_type='end_run')
 run.subscribe(pauserun, event_type='pause_run')
 run.subscribe(resumerun, event_type='resume_run')
-run.subscribe(scanning, event_type='scan')
+run.subscribe(scanning, event_type='trajectory_scan')
 
 run.start()
