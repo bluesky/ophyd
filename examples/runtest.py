@@ -32,7 +32,7 @@ def scanning(msg='client_scanning', **kwargs):
 
 # Test things that DON'T work yet
 run = Run()
-events = ['periodic', 'signal', 'scaler']
+events = ['periodic_scan', 'signal_scan', 'scaler_scan']
 def foo(): pass
 for ev in events:
     try:
