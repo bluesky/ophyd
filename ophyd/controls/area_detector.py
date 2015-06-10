@@ -668,9 +668,6 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
                                         self._file_plugin,
                                         recordable=False))
 
-        # Acquisition mode (single image)
-        self._image_acq_mode = 0
-
     def configure(self, *args, **kwargs):
         super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
         # self._image_mode.put(0, wait=True)
