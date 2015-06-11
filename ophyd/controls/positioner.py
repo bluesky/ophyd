@@ -196,7 +196,8 @@ class Positioner(SignalGroup):
         '''
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
-
+        
+        status = MoveStatus(self, position)
         if wait:
             t0 = time.time()
 
@@ -217,17 +218,19 @@ class Positioner(SignalGroup):
                 if check_timeout():
                     raise TimeoutError('Failed to move %s to %s in %s s' %
                                        (self, position, timeout))
-
+            
+            status._finished()
+            
         else:
             if moved_cb is not None:
                 self.subscribe(moved_cb, event_type=self._SUB_REQ_DONE,
                                run=False)
 
-            status = MoveStatus(self, position)
+        
             self.subscribe(status._finished,
                            event_type=self._SUB_REQ_DONE, run=False)
 
-            return status
+        return status
 
     def _done_moving(self, timestamp=None, value=None, **kwargs):
         '''Call when motion has completed.  Runs SUB_DONE subscription.'''
