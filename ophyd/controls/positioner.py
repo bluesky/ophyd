@@ -277,7 +277,7 @@ class Positioner(SignalGroup):
         '''
         return self._moving
 
-    def set(self, new_position, *, wait=True,
+    def set(self, new_position, *, wait=False,
             moved_cb=None, timeout=30.0):
         """
         New API for controlling movers.
