@@ -214,7 +214,7 @@ def set_lm(positioner, limits):
     if session_manager is None:
         session_manager = get_session_manager()
     if logbook is None:
-        logbook = session_manager.get('olog_client', None)
+        logbook = session_manager['olog_client']
     if logbook:
         logbook.log(msg)
 
@@ -286,7 +286,7 @@ def set_pos(positioner, position):
     if session_manager is None:
         session_manager = get_session_manager()
     if logbook is None:
-        logbook = session_manager.get('olog_client', None)
+        logbook = session_manager['olog_client']
     if logbook:
         lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
         logbook.log(msg + '\n' + lmsg)
@@ -347,10 +347,15 @@ def log_pos(positioners=None):
         int
             The ID of the logbook entry returned by the logbook.log method.
     """
+    global session_manager
+    global logbook
+    if session_manager is None:
+        session_manager = get_session_manager()
     if positioners is None:
         pos = session_manager.get_positioners()
         positioners = [pos[k] for k in sorted(pos)]
-
+    if logbook is None:
+        logbook = session_manager['olog_client']
     msg = ''
 
     with closing(StringIO()) as sio:
@@ -367,12 +372,7 @@ def log_pos(positioners=None):
     pdict = {}
     pdict['objects'] = repr(positioners)
     pdict['values'] = repr({p.name: p.position for p in positioners})
-    global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if logbook is None:
-        logbook = session_manager.get('olog_client', None)
+    
     if logbook:
         id = logbook.log(msg, properties={'OphydPositioners': pdict},
                          ensure=True)
@@ -406,7 +406,7 @@ def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
 
     print('')
     stat = []
-    for key, value in objects.iteritems():
+    for key, value in objects.items():
         newpos = logpos[key]
         oldpos = value.position
         try:
@@ -463,7 +463,7 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
         objects = {x: objects[x] for x in keys}
 
     print('')
-    for key, value in objects.iteritems():
+    for key, value in objects.items():
         try:
             diff.append(value.position - oldpos[key])
             pos.append(value)
@@ -490,15 +490,15 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
 
 def logbook_to_objects(id=None, **kwargs):
     """Search the logbook and return positioners"""
-    if logbook is None:
-        raise NotImplemented("No logbook is avaliable")
+
     global logbook
     global session_manager
     if session_manager is None:
         session_manager = get_session_manager()
     if logbook is None:
-        logbook = session_manager.get('olog_client', None)
-
+        logbook = session_manager['olog_client']
+    if logbook is None:
+        raise NotImplemented("No logbook is avaliable")
     entry = logbook.find(id=id, **kwargs)
     if len(entry) != 1:
         raise ValueError("Search of logbook was not unique, please refine"
