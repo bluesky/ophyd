@@ -17,6 +17,7 @@ class AreaDetector(SignalDetector):
 
     def __init__(self, basename, stats=range(1, 6),
                  shutter=None, shutter_rb=None, shutter_val=(0, 1),
+                 cam='cam1:', proc_plugin='Proc1:',
                  *args, **kwargs):
         """Initialize the AreaDetector class
 
@@ -24,6 +25,10 @@ class AreaDetector(SignalDetector):
         ----------
         basename : str
             The EPICS PV basename of the areaDetector
+        cam : str
+            The camera suffix (usually 'cam1:')
+        proc_plugin : str
+            The process plugin suffix
         stats : list
             If true, provide data from total counts from the stats plugins
             from the list. For example for stats 1..5 use range(1,6)
@@ -35,13 +40,14 @@ class AreaDetector(SignalDetector):
         shutter_val : tuple
             These are the values to send to the signal shutter to inhibit or
             enable the shutter. (0, 1) will send 0 to enable the shutter and
-            1 to inhibit tthe shutter.
+            1 to inhibit the shutter.
         """
 
         super(AreaDetector, self).__init__(*args, **kwargs)
 
         self._basename = basename
-        self._proc_plugin = 'Proc1:'
+        self._cam = cam
+        self._proc_plugin = proc_plugin
 
         # Acquisition mode (Multiple Images)
         self._image_acq_mode = 1
@@ -51,22 +57,28 @@ class AreaDetector(SignalDetector):
         self._take_darkfield = False
 
         # Setup signals on camera
-        self.add_signal(self._ad_signal('cam1:Acquire', '_acquire',
+        self.add_signal(self._ad_signal('{}Acquire'.format(self._cam),
+                                        '_acquire',
                                         recordable=False))
-        self.add_signal(self._ad_signal('cam1:ImageMode', '_image_mode',
+        self.add_signal(self._ad_signal('{}ImageMode'.format(self._cam),
+                                        '_image_mode',
                                         recordable=False))
-        self.add_signal(self._ad_signal('cam1:AcquireTime', '_acquire_time'),
+        self.add_signal(self._ad_signal('{}AcquireTime'.format(self._cam),
+                                        '_acquire_time'),
                         add_property=True)
-        self.add_signal(self._ad_signal('cam1:AcquirePeriod',
+        self.add_signal(self._ad_signal('{}AcquirePeriod'.format(self._cam),
                                         '_acquire_period'),
                         add_property=True)
-        self.add_signal(self._ad_signal('cam1:NumImages', '_num_images',
+        self.add_signal(self._ad_signal('{}NumImages'.format(self._cam),
+                                        '_num_images',
                                         recordable=False),
                         add_property=True)
-        self.add_signal(self._ad_signal('cam1:NumExposures', '_num_exposures',
+        self.add_signal(self._ad_signal('{}NumExposures'.format(self._cam),
+                                        '_num_exposures',
                                         recordable=False),
                         add_property=True)
-        self.add_signal(self._ad_signal('cam1:ArrayCounter', '_array_counter',
+        self.add_signal(self._ad_signal('{}ArrayCounter'.format(self._cam),
+                                        '_array_counter',
                                         recordable=False))
 
         self._use_stats = bool(stats)
@@ -422,6 +434,10 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         ----------
         basename : str
             The EPICS PV basename of the areaDetector
+        cam : str
+            The camera suffix (usually 'cam1:')
+        proc_plugin : str
+            The process plugin suffix
         stats : list
             If true, provide data from total counts from the stats plugins
             from the list. For example for stats 1..5 use range(1,6)
@@ -433,7 +449,9 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         shutter_val : tuple
             These are the values to send to the signal shutter to inhibit or
             enable the shutter. (0, 1) will send 0 to enable the shutter and
-            1 to inhibit tthe shutter.
+            1 to inhibit the shutter.
+        file_plugin : str
+            The file plugin suffix (e.g., 'HDF1:')
         file_path : str
             The file path of where the data is stored. The tree (year / month
             day) is added to the path before writing to the IOC
@@ -442,9 +460,10 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
             sent to the file store. This allows for windows style mounts
             where the unix path is different from the windows path.
         """
+        self._file_plugin = kwargs.pop('file_plugin', 'HDF1:')
+
         super(AreaDetectorFileStoreHDF5, self).__init__(*args, **kwargs)
 
-        self._file_plugin = 'HDF1:'
         self.file_template = '%s%s_%6.6d.h5'
 
         # Create Signals for the shape
@@ -512,9 +531,9 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
     def _insert_fs_resource(self):
         return fs.insert_resource('AD_HDF5',
-                                   self._store_filename,
-                                   {'frame_per_point':
-                                    self._num_images.value})
+                                  self._store_filename,
+                                  {'frame_per_point':
+                                   self._num_images.value})
 
     def _captured_changed(self, value, *args, **kwargs):
         if value == self._total_images:
@@ -539,6 +558,10 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         ----------
         basename : str
             The EPICS PV basename of the areaDetector
+        cam : str
+            The camera suffix (usually 'cam1:')
+        proc_plugin : str
+            The process plugin suffix
         stats : list
             If true, provide data from total counts from the stats plugins
             from the list. For example for stats 1..5 use range(1,6)
@@ -550,7 +573,9 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         shutter_val : tuple
             These are the values to send to the signal shutter to inhibit or
             enable the shutter. (0, 1) will send 0 to enable the shutter and
-            1 to inhibit tthe shutter.
+            1 to inhibit the shutter.
+        file_plugin : str
+            The file plugin suffix (e.g., 'cam1:')
         file_path : str
             The file path of where the data is stored. The tree (year / month
             day) is added to the path before writing to the IOC
@@ -559,9 +584,10 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
             sent to the file store. This allows for windows style mounts
             where the unix path is different from the windows path.
         """
+        self._file_plugin = kwargs.pop('file_plugin', 'cam1:')
+
         super(AreaDetectorFileStorePrinceton, self).__init__(*args, **kwargs)
 
-        self._file_plugin = 'cam1:'
         self.file_template = '%s%s_%6.6d.spe'
 
         self.add_signal(self._ad_signal('{}ArraySizeX'
@@ -606,7 +632,7 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         return fs.insert_resource('AD_SPE', self._store_file_path,
                                   {'template': self._file_template.value,
                                    'filename': self._filename,
-                                  'frame_per_point': self._num_images.value})
+                                   'frame_per_point': self._num_images.value})
 
 
 class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
@@ -617,6 +643,10 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
         ----------
         basename : str
             The EPICS PV basename of the areaDetector
+        cam : str
+            The camera suffix (usually 'cam1:')
+        proc_plugin : str
+            The process plugin suffix
         stats : list
             If true, provide data from total counts from the stats plugins
             from the list. For example for stats 1..5 use range(1,6)
@@ -628,7 +658,9 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
         shutter_val : tuple
             These are the values to send to the signal shutter to inhibit or
             enable the shutter. (0, 1) will send 0 to enable the shutter and
-            1 to inhibit tthe shutter.
+            1 to inhibit the shutter.
+        file_plugin : str
+            The file plugin suffix (e.g., 'TIFF1:')
         file_path : str
             The file path of where the data is stored. The tree (year / month
             day) is added to the path before writing to the IOC
@@ -637,9 +669,10 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
             sent to the file store. This allows for windows style mounts
             where the unix path is different from the windows path.
         """
+        self._file_plugin = kwargs.pop('file_plugin', 'TIFF1:')
+
         super(AreaDetectorFileStoreTIFF, self).__init__(*args, **kwargs)
 
-        self._file_plugin = 'TIFF1:'
         self.file_template = '%s%s_%6.6d.tiff'
 
         self.add_signal(self._ad_signal('{}ArraySize0'
