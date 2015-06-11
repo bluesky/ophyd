@@ -186,7 +186,7 @@ class RunEngine(object):
         while self._scan_state is True:
             self.logger.debug(
                 'self._scan_state is True in self._start_scan')
-            posvals = self._move_positioners(**kwargs)
+            posvals = self._move_positioners(positioners=positioners, **kwargs)
             self.logger.debug('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
@@ -275,7 +275,7 @@ class RunEngine(object):
         msg = ''.join('{}\t'.format(name) for name in unique_names)
         return msg
 
-    def _get_data_keys(self, positioners=None, detectors=None):
+    def _get_data_keys(self, positioners=None, detectors=None, **kwargs):
         if positioners is None:
             positioners = []
         if detectors is None:
