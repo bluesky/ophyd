@@ -21,7 +21,7 @@ class Suspended(State):
             print(self._name)
             time.sleep(5)
 
-        self.subscribe(do_stuff, event_type='state', run=False)
+        self.subscribe(do_stuff, event_type='state')
 
 
 class Idle(State):
@@ -32,7 +32,7 @@ class Idle(State):
             print(self._name)
             time.sleep(1)
 
-        self.subscribe(do_stuff, event_type='state', run=False)
+        self.subscribe(do_stuff, event_type='state')
 
 
 class Run(OphydObject):
