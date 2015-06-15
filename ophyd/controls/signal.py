@@ -179,29 +179,17 @@ class EpicsSignal(Signal):
         Check limits prior to writing value
     auto_monitor : bool, optional
         Use automonitor with epics.PV
-    dtype : type, optional
+    dtype : {float, int, string}
         Defaults to float.
-        This is the datatype that the value from epics will be returned as.
-        Note that this says nothing about the precision of the value, simply
-        what its type should be.
-        Can be any valid python or numpy type. Some examples to get you
-        started...
-        `complex`, `float`, `int`, `uint`, `byte`, `bool`, `string`
-        {'complex': [numpy.complex64, numpy.complex128, numpy.complex256],
-         'float': [numpy.float16, numpy.float32, numpy.float64, numpy.float128],
-         'int': [numpy.int8, numpy.int16, numpy.int32, numpy.int64],
-         'others': [bool, object, str, str, numpy.void],
-         'uint': [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64]}
+        This is the type that read() will be return.
     formatter : str, optional
-        - Defaults to '%f'
-        - The old-style python format that this number should use.
-        - Use case: Truncate the measurement to a physically reasonable
-        value. Consider a motor whose encoder has a minimum step size of
-        0.001 units.  Epics will return a value with >10 decimal places,
-        7 of which are meaningless.  Passing '%.3f' will result in a value
-        rounded to the nearest thousandth. E.g., if epics returns 1.0017,
-        and you provide a value of '%.3f', the read() method will now return
-        1.002
+        Defaults to '%f'
+        The primary use case of `formatter` is to truncate decimals. Consider a
+        motor whose encoder moves in steps of 0.001 units.  Epics will often
+        return a value with >10 decimal places, 7 of which are meaningless.
+        Passing '%.3f' will result in a value rounded to the nearest
+        thousandth. E.g., if epics returns 1.0017, and you provide a value of
+        '%.3f', the read() method will now return 1.002.
         See https://docs.python.org/2/library/stdtypes.html#string-formatting-operations
         for the exact detail of how % string formatting works in python.
     """
@@ -214,6 +202,7 @@ class EpicsSignal(Signal):
                  dtype=None,
                  formatter=None,
                  **kwargs):
+
         if pv_kw is None:
             pv_kw = dict()
         self._read_pv = None
@@ -227,6 +216,10 @@ class EpicsSignal(Signal):
 
         if dtype is None:
             dtype = float
+        valid_dtypes = ['float', 'int', 'str']
+        if dtype.__name__ not in valid_dtypes:
+            raise ValueError("dtype must be one of {}. You provided {"
+                             "}".format(valid_dtypes, dtype))
         self.dtype = dtype
         if formatter is None:
             formatter = '%f'
