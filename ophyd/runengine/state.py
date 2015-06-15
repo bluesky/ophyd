@@ -22,7 +22,7 @@ class State(OphydObject):
         self._default_sub = None
         OphydObject.__init__(self, name=name, register=False)
 
-    def subscribe(self, cb, event_type=None, run=True):
+    def subscribe(self, cb, event_type=None):
         OphydObject.subscribe(self, cb, event_type=event_type, run=False)
 
     def state_action(self, *args, **kwargs):
