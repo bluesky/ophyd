@@ -1,17 +1,23 @@
 from __future__ import print_function
 import numpy as np
+import matplotlib.pyplot as plt
 from time import sleep
 import sys
 import collections
+from Queue import Queue, Empty
 import itertools
 import string
 import traceback
 
 from IPython.utils.coloransi import TermColors as tc
+from matplotlib.cbook import CallbackRegistry
+from filestore.api import retrieve
+from mongoengine import DoesNotExist
 
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
+from ..utils.plotting import PlotManager
 from ..controls import Detector
 
 session_manager = get_session_manager()
@@ -54,61 +60,6 @@ class OphydList(list):
         pass
 
 
-class Data(object):
-    """Class for containing scan data
-
-    This is a small object for containing data from a scan as objects. The
-    data can be set on initialization or using the :py:meth:`data_dict`
-    proprty. Data which has a length greater than 1 is stored as numpy
-    arrays.
-
-    Parameters
-    ----------
-    data : dict
-        Dictionary of data from scan
-    """
-
-    def __init__(self, data=None):
-        """Initialize class with data
-
-        """
-        if data is not None:
-            self.data_dict = data
-
-    def _estimate(self, xname, yname):
-        """Estimate peak parameters"""
-        self._estimate_dict = estimate(self.data_dict[xname],
-                                       self.data_dict[yname])
-
-    def estimate(self, xname, yname):
-        self._estimate(xname, yname)
-        return self._estimate_dict
-
-    def cen(self, xname, yname):
-        """Calculate the center from FWHM"""
-        self._estimate(xname, yname)
-        return self._estimate_dict['cen']
-
-    @property
-    def data_dict(self):
-        """Dictionary of data objects"""
-        return self._data_dict
-
-    @data_dict.setter
-    def data_dict(self, data):
-        """Set the data dictionary"""
-        data = {key: np.array(value)[:, 0]
-                for key, value in data.iteritems()}
-        keys = data.keys()
-        values = [np.array(a) for a in data.values()]
-        keys = [''.join([ch if ch in (string.ascii_letters + string.digits)
-                        else '_'
-                        for ch in key]) for key in keys]
-        self._data_dict = {key: value for key, value in zip(keys, values)}
-        for key, value in zip(keys, values):
-            setattr(self, key, value)
-
-
 class Scan(object):
     """Abstract base class for configuring and running a scan
 
@@ -140,6 +91,7 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -151,6 +103,31 @@ class Scan(object):
         self._data_buffer = self._shared_config['scan_data']
 
         self.settle_time = 0
+        self._scan_cb_registry = CallbackRegistry()  # process on scan thread
+        self.dispatcher = Dispatcher(self)
+    	self.subscribe = self.dispatcher.subscribe  # pass through
+    	self.unsubscribe = self.dispatcher.unsubscribe  # pass through
+        self._plot_mgr = PlotManager()
+        self._autoplot = None
+        self.autoplot = True
+
+        self.event_queue = Queue()
+        self.descriptor_queue = Queue()
+        self.start_queue = Queue()
+        self.stop_queue = Queue()
+        self._register_scan_callback('event', self._push_to_event_queue)
+        self._register_scan_callback('descriptor', self._push_to_descriptor_queue)
+        self._register_scan_callback('start', self._push_to_start_queue)
+        self._register_scan_callback('stop', self._push_to_stop_queue)
+
+        # In case anyone was using data_buffer, we more or less support it here.
+        # We should probably remove this later once more useful callbacks are
+        # available.
+        self._data_buffer = collections.deque()
+        self._temp_data_buffer = collections.deque()
+        self.subscribe('start', self.start_temp_data_buffer)
+        self.subscribe('event', self.append_to_temp_data_buffer)
+        self.subscribe('stop', self.append_to_data_buffer)
 
         self.paths = list()
         self.positioners = list()
@@ -159,6 +136,22 @@ class Scan(object):
             self.logbook = session_manager['olog_client']
         except KeyError:
             self.logbook = None
+
+    # In case anyone was using data_buffer, we more or less support it here.
+    # We should probably remove this later once more useful callbacks are
+    # available.
+
+    def start_temp_data_buffer(self, doc):
+        # document is not used; we're just using the hook
+        self._temp_data_buffer.clear()
+
+    def append_to_temp_data_buffer(self, doc):
+        self._temp_data_buffer.append(doc)
+
+    def append_to_data_buffer(self, doc):
+        # document is not used; we're just using the hook
+        self._data_buffer.append(list(self._temp_data_buffer))
+        self._temp_data_buffer.clear()
 
     def __call__(self, *args, **kwargs):
         """Start a run
@@ -223,7 +216,7 @@ class Scan(object):
         [det.deconfigure() for det in self.detectors
          if isinstance(det, Detector)]
 
-    def run(self, *args, **kwargs):
+    def run(self, **kwargs):
         """Run the scan
 
         The main loop of the scan. This routine runs the scan and calls the
@@ -246,21 +239,18 @@ class Scan(object):
 
             # Create the dict to pass to the run-engine
 
-            scan_args = dict()
-            scan_args['detectors'] = self.detectors
-            scan_args['positioners'] = self.positioners
+            scan_kwargs = dict()
+            scan_kwargs['detectors'] = self.detectors
+            scan_kwargs['positioners'] = self.positioners
 
-            scan_args['settle_time'] = kwargs.pop('settle_time',
+            scan_kwargs['settle_time'] = kwargs.pop('settle_time',
                                                   self.settle_time)
 
             # let 'custom' be assigned to all remaining kwargs
-            scan_args['custom'] = kwargs
+            scan_kwargs['custom'] = kwargs
 
             # Run the scan!
-            data = self._run_eng.start_run(self.scan_id,
-                                           scan_args=scan_args)
-
-            self._data_buffer.append(Data(data))
+            data = self._run_eng.start_run(self, **scan_kwargs)
 
     @property
     def data(self):
@@ -328,6 +318,67 @@ class Scan(object):
         list of OphydObjects
         """
         return self._shared_config['user_detectors'] + self.default_detectors
+
+
+    def _register_scan_callback(self, name, func):
+        """Register a callback to be processed by the scan thread.
+
+        Unlike subscribe, functions registered here will be processed on the
+        scan thread. They are guaranteed to be run (there is no Queue
+        involved) and they block the scan's progress until they return.
+        Use subscribe for any non-critical functions.
+        """
+        return self._scan_cb_registry.connect(name, func)
+
+    def _push_to_event_queue(self, event):
+        self.event_queue.put(event)
+
+    def _push_to_descriptor_queue(self, descriptor):
+        self.descriptor_queue.put(descriptor)
+
+    def _push_to_start_queue(self, start):
+        self.start_queue.put(start)
+
+    def _push_to_stop_queue(self, stop):
+        self.stop_queue.put(stop)
+
+    def emit_event(self, event):
+        "Called by the Run Engine after each new event is created."
+        self._scan_cb_registry.process('event', event)
+
+    def emit_descriptor(self, descriptor):
+        "Called by the Run Engine after each new event desc is created."
+        self._scan_cb_registry.process('descriptor', descriptor)
+
+    def emit_start(self, start):
+        "Called by the Run Engine after a scan is started."
+        self._scan_cb_registry.process('start', start)
+
+    def emit_stop(self, stop):
+        "Called by the Run Engine after a scan is stopped."
+        self._scan_cb_registry.process('stop', stop)
+
+    @property
+    def autoplot(self):
+        return self._autoplot
+
+    @autoplot.setter
+    def autoplot(self, val):
+        if bool(val) == self._autoplot:
+            return
+        self._autoplot = bool(val)
+        if val:
+            # when a callback is registered, it returns an integer ID
+            # that can be used to deregister it.
+            self._plot_callback_ids = []
+            cid = self.subscribe('descriptor', self._plot_mgr.setup_plot)
+            self._plot_callback_ids.append(cid)
+            cid = self.subscribe('event', self._plot_mgr.update_plot)
+            self._plot_callback_ids.append(cid)
+            cid = self.subscribe('stop', self._plot_mgr.reset)
+            self._plot_callback_ids.append(cid)
+        else:
+            [self.unsubscribe(cid) for cid in self._plot_callback_ids]
 
 
 class AScan(Scan):
@@ -547,6 +598,10 @@ class Count(Scan):
     A log entry is created if the logbook is setup which records the
     result of the scan.
     """
+    def __init__(self, *args, **kwargs):
+        super(Count, self).__init__(*args, **kwargs)
+        self.autoplot = False
+
     def post_scan(self):
         """Post-scan print data
 
@@ -576,7 +631,7 @@ class Count(Scan):
         d = {}
         d['id'] = self.scan_id
         d['detectors'] = repr(self.detectors)
-        d['values'] = repr(self.last_data.data_dict)
+        d['values'] = repr(self.last_data[0]['data'])
         if self.logbook is not None:
             self.logbook.log('\n'.join(lmsg), ensure=True,
                              properties={'OphydCount': d},
@@ -595,9 +650,8 @@ class Count(Scan):
         rtn.append('\n')
         rtn.append('{:<28} | {}'.format('Detector', 'Value'))
         rtn.append('{0:=^60}'.format(''))
-        data = collections.OrderedDict(sorted(self.last_data.data_dict.items()))
-        for x, y in data.iteritems():
-            rtn.append('{:<30} {}'.format(x, y))
+        for data_key, payload in self.last_data[0]['data'].items():
+            rtn.append('{:<30} {}'.format(data_key, payload['value']))
         rtn.append('')
         return '\n'.join(rtn)
 
@@ -660,3 +714,72 @@ def cmdline_to_str(*args, **kwargs):
             msg.append('{}={}'.format(key, objects_to_str(value)))
 
     return ''.join(msg)
+
+
+class Dispatcher(object):
+    """Dispatch documents to user-defined consumers on the main thread."""
+    TIMEOUT = 0.05  # seconds to wait on getting from Queues
+
+    def __init__(self, scan):
+        self.scan = scan
+        self.cb_registry = CallbackRegistry()  # process on main thread
+        self.valid_callbacks = ['start', 'descriptor', 'event', 'stop']
+
+    def _process_if_available(self, queue, name):
+        try:
+            document = queue.get(timeout=self.TIMEOUT)
+        except Empty:
+            pass
+        else:
+            self.cb_registry.process(name, document)
+
+    def process_event_queue(self):
+        self._process_if_available(self.scan.event_queue, 'event')
+        logger.debug("Processed event subscriptions")
+
+    def process_descriptor_queue(self):
+        self._process_if_available(self.scan.descriptor_queue, 'descriptor')
+        logger.debug("Processed descriptor subscriptions")
+
+    def process_start_queue(self):
+        self._process_if_available(self.scan.start_queue, 'start')
+        logger.debug("Processed start subscriptions")
+
+    def process_stop_queue(self):
+        self._process_if_available(self.scan.stop_queue, 'stop')
+        logger.debug("Processed stop subscriptions")
+
+    def process_all(self):
+        self.process_start_queue()
+        self.process_descriptor_queue()
+        self.process_event_queue()
+        self.process_stop_queue()
+
+    def subscribe(self, name, func):
+        """
+        Register a function to consume Event documents.
+
+        The Run Engine can execute callback functions at the start and end
+        of a scan, and after the insertion of new Event Descriptors
+        and Events.
+
+        Parameters
+        ----------
+        name: {'start', 'descriptor', 'event', 'stop'}
+        func: callable
+            expecting signature like ``f(mongoengine.Document)``
+        """
+        if name not in self.valid_callbacks:
+            raise ValueError("Valid callbacks: {0}".format(self.valid_callbacks))
+        return self.cb_registry.connect(name, func)
+
+    def unsubscribe(self, callback_id):
+        """
+        Unregister a callback function using its integer ID.
+
+        Parameters
+        ----------
+        callback_id : int
+            the ID issued by `subscribe`
+        """
+        self.cb_registry.disconnect(callback_id)

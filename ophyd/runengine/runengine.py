@@ -1,22 +1,23 @@
 from __future__ import print_function
 import logging
+from warnings import warn
 import getpass
 import os
+import uuid
 import datetime
 import time
 from collections import defaultdict
 from threading import Thread
-from Queue import Queue
+from Queue import Queue, Empty
 import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
-from metadatastore import api as mds
+import matplotlib.pyplot as plt
 
 
-def _get_info(positioners=None, detectors=None, data=None):
+def _build_data_keys(positioners=None, detectors=None, readings=None):
     """Helper function to extract information from the positioners/detectors
-    and send it over to metadatastore so that ophyd is insulated from mds
-    spec changes
+    and assemble it according to our document specification.
 
     Parameters
     ----------
@@ -24,18 +25,18 @@ def _get_info(positioners=None, detectors=None, data=None):
         List of ophyd positioners
     detectors : list
         List of ophyd detectors, optional
-    data : dict
+    readings : dict
         Dictionary of actual data
     """
     desc = {}
     [desc.update(x.describe()) for x in (detectors + positioners)]
 
     info_dict = {}
-    for name, value in data.iteritems():
+    for name, payload in readings.iteritems():
         """Internal function to grab info from a detector
         """
-        # grab 'value' from [value, timestamp]
-        val = np.asarray(value[0])
+        # grab 'value' from payload
+        val = np.asarray(payload['value'])
 
         dtype = 'number'
         try:
@@ -132,18 +133,7 @@ class RunEngine(object):
     def resume(self):
         pass
 
-    def _run_start(self, arg):
-        # run any registered user functions
-        # save user data (if any), and run_header
-        self.logger.info('Begin Run...')
-
-    def _end_run(self, arg):
-        state = arg.get('state', 'success')
-        bre = arg['run_start']
-        mds.insert_run_stop(bre, time.time(), exit_status=state)
-        self.logger.info('End Run...')
-
-    def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
+    def _move_positioners(self, positioners, settle_time):
         try:
             status = [pos.move_next(wait=False)[1] for pos in positioners]
         except StopIteration:
@@ -154,39 +144,31 @@ class RunEngine(object):
         # TODO: this should iterate at most N times to catch hangups
         while not all(s.done for s in status):
             time.sleep(0.1)
-        if settle_time is not None:
             time.sleep(settle_time)
 
-        # use metadatastore to format the events so that ophyd is insulated
-        # from metadatastore spec changes
         return {
-            pos.name: {
-                'timestamp': pos.timestamp[pos.pvname.index(pos.report['pv'])],
-                'value': pos.position}
+            pos.name: (pos.timestamp[pos.pvname.index(pos.report['pv'])],
+                       pos.position)
             for pos in positioners}
 
-    def _start_scan(self, run_start=None, detectors=None,
-                    data=None, positioners=None, **kwargs):
+    def _start_scan(self, scan, run_start_uid, data,
+                    positioners, detectors, settle_time):
 
-        dets = detectors
-        triggers = [det for det in dets if isinstance(det, Detector)]
-
-        # creation of the event descriptor should be delayed until the first
-        # event comes in. Set it to None for now
-        event_descriptor = None
+        triggers = [det for det in detectors if isinstance(det, Detector)]
 
         # provide header for formatted list of positioners and detectors in
         # INFO channel
         names = list()
-        for pos in positioners + dets:
+        for pos in positioners + detectors:
             names.extend(pos.describe().keys())
 
         self.logger.info(self._demunge_names(names))
         seq_num = 0
+        event_descriptor = None  # created once the first Event is created
         while self._scan_state is True:
             self.logger.debug(
                 'self._scan_state is True in self._start_scan')
-            posvals = self._move_positioners(**kwargs)
+            posvals = self._move_positioners(positioners, settle_time)
             self.logger.debug('moved positioners')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
@@ -200,52 +182,32 @@ class RunEngine(object):
 
             time.sleep(0.05)
             # Read detector values
-            tmp_detvals = {}
-            for det in dets + positioners:
-                tmp_detvals.update(det.read())
+            readings = {}
+            for readable in detectors + positioners:
+                readings.update(readable.read())
 
-            detvals = mds.format_events(tmp_detvals)
-
-            # pass data onto Demuxer for distribution
-            self.logger.info(self._demunge_values(detvals, names))
-            # grab the current time as a timestamp that describes when the
-            # event data was bundled together
-            bundle_time = time.time()
-            # actually insert the event into metadataStore
-            try:
-                self.logger.debug(
-                    'inserting event %d------------------', seq_num)
-                event = mds.insert_event(event_descriptor=event_descriptor,
-                                         time=bundle_time, data=detvals,
-                                         seq_num=seq_num)
-            except mds.EventDescriptorIsNoneError:
-                # the time when the event descriptor was created
-                self.logger.debug(
-                    'event_descriptor has not been created. '
-                    'creating it now...')
+            if event_descriptor is None:
+                # Build and emit a descriptor.
                 evdesc_creation_time = time.time()
-                data_key_info = _get_info(
-                    positioners=positioners,
-                    detectors=dets, data=detvals)
-
-                event_descriptor = mds.insert_event_descriptor(
-                    run_start=run_start, time=evdesc_creation_time,
-                    data_keys=mds.format_data_keys(data_key_info))
-                self.logger.debug(
-                    'event_descriptor: %s', vars(event_descriptor))
-                # insert the event again. this time it better damn well work
-                self.logger.debug(
-                    'inserting event %d------------------', seq_num)
-                event = mds.insert_event(event_descriptor=event_descriptor,
-                                         time=bundle_time, data=detvals,
-                                         seq_num=seq_num)
-            self.logger.debug('event %d--------', seq_num)
-            self.logger.debug('%s', vars(event))
+                data_keys = _build_data_keys(positioners, detectors, readings)
+                evdesc_uid = str(uuid.uuid4())
+                doc = dict(run_start=run_start_uid, time=evdesc_creation_time,
+                           data_keys=data_keys, uid=evdesc_uid)
+                scan.emit_descriptor(doc)
+                self.logger.debug('Emitted Event Descriptor:\n%s', doc)
+            # Build and emit and Event.
+            bundle_time = time.time()
+            ev_uid = str(uuid.uuid4())
+            doc = dict(event_descriptor=evdesc_uid,
+                       time=bundle_time, data=readings, seq_num=seq_num,
+                       uid=ev_uid)
+            scan.emit_event(doc)
+            self.logger.debug('Emitted Event %d:\n%s' % (seq_num, doc))
 
             seq_num += 1
-            # update the 'data' object from detvals dict
-            for k, v in detvals.items():
-                data[k].append(v)
+            # update the 'data' object from readings dict
+            for name, payload in readings.items():
+                data[name].append(payload)
 
             if not positioners:
                 break
@@ -287,75 +249,79 @@ class RunEngine(object):
 
         return names
 
-    def start_run(self, runid, start_args=None, end_args=None, scan_args=None):
+    def start_run(self, scan, positioners=None, detectors=None,
+                  settle_time=0,
+                  owner=None, beamline_id=None, custom=None):
         """
 
         Parameters
         ----------
-        runid : sortable
-        start_args
-        end_args
-        scan_args
+        scan : Scan instance
+        positioners : list, optional
+        detectors : list, optional
+        settle_time : float, optioanl
+            Units are seconds. By default, 0.
+        owner : str, optional
+        beamline_id : str, optional
+        custom : dict, optional
 
         Returns
         -------
         data : dict
             {data_name: []}
         """
-        if start_args is None:
-            start_args = {}
-        if end_args is None:
-            end_args = {}
-        if scan_args is None:
-            scan_args = {}
+        scan_id = str(scan.scan_id)
 
         # format the begin run event information
-        beamline_id = scan_args.get('beamline_id', None)
         if beamline_id is None:
             beamline_id = os.uname()[1].split('-')[0]
-        custom = scan_args.get('custom', None)
-        beamline_config = scan_args.get('beamline_config', None)
-        owner = scan_args.get('owner', None)
+        if custom is None:
+            cutstom = None
         if owner is None:
             owner = getpass.getuser()
-        runid = str(runid)
 
-        blc = mds.insert_beamline_config(beamline_config, time=time.time())
-        # insert the run_start into metadatastore
+        # Emit RunStart Document
         recorded_time = time.time()
-        run_start = mds.insert_run_start(
-            time=recorded_time, beamline_id=beamline_id, owner=owner,
-            beamline_config=blc, scan_id=runid, custom=custom)
+        run_start_uid = str(uuid.uuid4())
+        doc = dict(uid=run_start_uid,
+                   time=recorded_time, beamline_id=beamline_id, owner=owner,
+                   scan_id=scan_id, **custom)
+        scan.emit_start(doc)
+        scan.dispatcher.process_start_queue()
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
-        self.logger.info("Scan ID: %s", runid)
+        self.logger.info("Scan ID: %s", scan_id)
         self.logger.info("Time: %s", pretty_time)
-        self.logger.info("uid: %s", str(run_start.uid))
+        self.logger.info("uid: %s", str(run_start_uid))
 
-        # stash bre for later use
-        scan_args['run_start'] = run_start
-        end_args['run_start'] = run_start
+        keys = self._get_data_keys(positioners, detectors)
+        data = defaultdict(list)  # will hold output from Scan Thread
 
-        keys = self._get_data_keys(**scan_args)
-        data = defaultdict(list)
-
-        scan_args['data'] = data
-
-        self._run_start(start_args)
+        self.logger.info('Beginning Run...')
         self._scan_thread = Thread(target=self._start_scan,
                                    name='Scanner',
-                                   kwargs=scan_args)
+                                   args=(scan, run_start_uid, data,
+                                         positioners, detectors, settle_time))
         self._scan_thread.daemon = True
         self._scan_state = True
         self._scan_thread.start()
+        exit_status = 'success'  # unless overridden below
         try:
             while self._scan_state is True:
-                time.sleep(0.10)
+                scan.dispatcher.process_descriptor_queue()
+                scan.dispatcher.process_event_queue()
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()
-            end_args['state'] = 'abort'
+            exit_status = 'abort'
+        except Exception as err:
+            exit_status = 'fail'
+            raise err
         finally:
-            self._end_run(end_args)
+            doc = dict(run_start=run_start_uid, time=time.time(),
+                       exit_status=exit_status)
+            scan.emit_stop(doc)
+            self.logger.info('End of Run.')
+            scan.dispatcher.process_stop_queue()
 
         return data
