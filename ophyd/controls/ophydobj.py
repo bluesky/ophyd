@@ -57,6 +57,95 @@ class StatusBase():
             self._cb = cb
 
 
+class MoveStatus(StatusBase):
+    '''Asynchronous movement status
+
+    Parameters
+    ----------
+    positioner : Positioner
+    target : float or array-like
+        Target position
+    done : bool, optional
+        Whether or not the motion has already completed
+    start_ts : float, optional
+        The motion start timestamp
+
+    Attributes
+    ----------
+    pos : Positioner
+    target : float or array-like
+        Target position
+    done : bool
+        Whether or not the motion has already completed
+    start_ts : float
+        The motion start timestamp
+    finish_ts : float
+        The motion completd timestamp
+    finish_pos : float or ndarray
+        The final position
+    success : bool
+        Motion successfully completed
+    '''
+
+    def __init__(self, positioner, target, done=False,
+                 start_ts=None):
+        # call the base class
+        super().__init__()
+
+        self.done = done
+        if start_ts is None:
+            start_ts = time.time()
+
+        self.pos = positioner
+        self.target = target
+        self.start_ts = start_ts
+        self.finish_ts = None
+        self.finish_pos = None
+
+    @property
+    def error(self):
+        if self.finish_pos is not None:
+            finish_pos = self.finish_pos
+        else:
+            finish_pos = self.pos.position
+
+        try:
+            return np.array(finish_pos) - np.array(self.target)
+        except:
+            return None
+
+    def _finished(self, success=True, timestamp=None, **kwargs):
+        self.success = success
+
+        if timestamp is None:
+            timestamp = time.time()
+        self.finish_ts = timestamp
+        self.finish_pos = self.pos.position
+        # run super last so that all the state is ready before the
+        # callback runs
+        super()._finished()
+
+    @property
+    def elapsed(self):
+        if self.finish_ts is None:
+            return time.time() - self.start_ts
+        else:
+            return self.finish_ts - self.start_ts
+
+    def __str__(self):
+        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
+               'success={1.success})'.format(self.__class__.__name__,
+                                             self)
+
+    __repr__ = __str__
+
+
+class DetectorStatus(StatusBase):
+    def __init__(self, detector):
+        super().__init__()
+        self.detector = detector
+
+
 class OphydObject(object):
     '''The base class for all objects in Ophyd
 

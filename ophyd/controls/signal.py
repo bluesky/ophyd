@@ -16,8 +16,7 @@ import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
 from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
-from .ophydobj import OphydObject
-
+from .ophydobj import OphydObject, DetectorStatus
 
 logger = logging.getLogger(__name__)
 
@@ -441,10 +440,11 @@ class EpicsSignal(Signal):
 
     def trigger(self):
         try:
-            super().trigger()
+            return super().trigger()
         except AttributeError:
-            pass
-        
+            d = DetectorStatus(self)
+            d._finished()
+            return d
 
 
 class SignalGroup(OphydObject):
@@ -566,3 +566,11 @@ class SignalGroup(OphydObject):
         [values.update(signal.read()) for signal in self._signals
          if signal.recordable]
         return values
+
+    def trigger(self):
+        try:
+            return super().trigger()
+        except AttributeError:
+            d = DetectorStatus(self)
+            d._finished()
+            return d

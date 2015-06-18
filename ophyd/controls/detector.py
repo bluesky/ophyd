@@ -9,13 +9,7 @@
 
 from __future__ import print_function
 from .signal import (Signal, SignalGroup)
-from .ophydobj import StatusBase
-
-
-class DetectorStatus(StatusBase):
-    def __init__(self, detector):
-        super().__init__()
-        self.detector = detector
+from .ophydobj import DetectorStatus
 
 
 class Detector(object):
