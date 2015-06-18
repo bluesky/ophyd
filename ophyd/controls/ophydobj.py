@@ -26,10 +26,12 @@ class StatusBase():
         self.success = False
 
     def _finished(self, *args, **kwargs):
-        if args:
-            print("this should be empty: {}".format(args))
-        if kwargs:
-            print("this should be empty: {}".format(kwargs))
+        # args/kwargs are not really used, but are passed.
+        # uncomment these if you want to go hunting
+        # if args:
+        #     print("this should be empty: {}".format(args))
+        # if kwargs:
+        #     print("this should be empty: {}".format(kwargs))
         self.done = True
 
         if self._cb is not None:
