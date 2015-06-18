@@ -14,6 +14,47 @@ import time
 from ..session import register_object
 
 
+class StatusBase():
+    """
+    This is a base class that provides a single-slot
+    call back for finished.
+    """
+    def __init__(self):
+        super().__init__()
+        self._cb = None
+        self.done = False
+        self.success = False
+
+    def _finished(self, *args, **kwargs):
+        if args:
+            print("this should be empty: {}".format(args))
+        if kwargs:
+            print("this should be empty: {}".format(kwargs))
+        self.done = True
+
+        if self._cb is not None:
+            self._cb()
+            self._cb = None
+
+    @property
+    def finished_cb(self):
+        """
+        Callback to be run when the status is marked as finished
+
+        The call back has no arguments
+        """
+        return self._cb
+
+    @finished_cb.setter
+    def finished_cb(self, cb):
+        if self._cb is not None:
+            raise RuntimeError("Can not change the call back")
+        if self.done:
+            cb()
+        else:
+            self._cb = cb
+
+
 class OphydObject(object):
     '''The base class for all objects in Ophyd
 

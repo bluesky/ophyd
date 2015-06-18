@@ -9,15 +9,13 @@
 
 from __future__ import print_function
 from .signal import (Signal, SignalGroup)
+from .ophydobj import StatusBase
 
 
-class DetectorStatus(object):
+class DetectorStatus(StatusBase):
     def __init__(self, detector):
-        self.done = False
+        super().__init__()
         self.detector = detector
-
-    def _finished(self, **kwargs):
-        self.done = True
 
 
 class Detector(object):

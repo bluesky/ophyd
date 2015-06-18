@@ -18,11 +18,12 @@ from epics.pv import fmt_time
 from .signal import (EpicsSignal, SignalGroup)
 from ..utils import TimeoutError
 from ..utils.epics_pvs import record_field
+from .ophydobj import StatusBase
 
 logger = logging.getLogger(__name__)
 
 
-class MoveStatus(object):
+class MoveStatus(StatusBase):
     '''Asynchronous movement status
 
     Parameters
@@ -54,13 +55,15 @@ class MoveStatus(object):
 
     def __init__(self, positioner, target, done=False,
                  start_ts=None):
+        # call the base class
+        super().__init__()
+
+        self.done = done
         if start_ts is None:
             start_ts = time.time()
 
         self.pos = positioner
         self.target = target
-        self.done = False
-        self.success = False
         self.start_ts = start_ts
         self.finish_ts = None
         self.finish_pos = None
@@ -77,11 +80,16 @@ class MoveStatus(object):
         except:
             return None
 
-    def _finished(self, success=True, **kwargs):
-        self.done = True
+    def _finished(self, success=True, timestamp=None, **kwargs):
         self.success = success
-        self.finish_ts = kwargs.get('timestamp', time.time())
+
+        if timestamp is None:
+            timestamp = time.time()
+        self.finish_ts = timestamp
         self.finish_pos = self.pos.position
+        # run super last so that all the state is ready before the
+        # callback runs
+        super()._finished()
 
     @property
     def elapsed(self):
@@ -196,7 +204,7 @@ class Positioner(SignalGroup):
         '''
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
-        
+
         status = MoveStatus(self, position)
         if wait:
             t0 = time.time()
@@ -218,15 +226,15 @@ class Positioner(SignalGroup):
                 if check_timeout():
                     raise TimeoutError('Failed to move %s to %s in %s s' %
                                        (self, position, timeout))
-            
+
             status._finished()
-            
+
         else:
             if moved_cb is not None:
                 self.subscribe(moved_cb, event_type=self._SUB_REQ_DONE,
                                run=False)
 
-        
+
             self.subscribe(status._finished,
                            event_type=self._SUB_REQ_DONE, run=False)
 
