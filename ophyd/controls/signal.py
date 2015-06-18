@@ -12,6 +12,7 @@ from __future__ import print_function
 import logging
 import time
 
+import numpy as np
 import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
@@ -182,16 +183,10 @@ class EpicsSignal(Signal):
     dtype : {float, int, string}
         Defaults to float.
         This is the type that read() will be return.
-    formatter : str, optional
-        Defaults to '%f'
-        The primary use case of `formatter` is to truncate decimals. Consider a
-        motor whose encoder moves in steps of 0.001 units.  Epics will often
-        return a value with >10 decimal places, 7 of which are meaningless.
-        Passing '%.3f' will result in a value rounded to the nearest
-        thousandth. E.g., if epics returns 1.0017, and you provide a value of
-        '%.3f', the read() method will now return 1.002.
-        See https://docs.python.org/2/library/stdtypes.html#string-formatting-operations
-        for the exact detail of how % string formatting works in python.
+    num_decimals : int, optional
+        Round the value of this signal.
+        if num_decimals < 0, round to that many decimals before the '.'
+        if num_decimals > 0, round to that many decimals after the '.'
     """
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw=None,
@@ -200,7 +195,7 @@ class EpicsSignal(Signal):
                  limits=False,
                  auto_monitor=None,
                  dtype=None,
-                 formatter=None,
+                 num_decimals=None,
                  **kwargs):
 
         if pv_kw is None:
@@ -221,9 +216,9 @@ class EpicsSignal(Signal):
             raise ValueError("dtype must be one of {}. You provided {"
                              "}".format(valid_dtypes, dtype))
         self.dtype = dtype
-        if formatter is None:
-            formatter = '%f'
-        self.formatter = formatter
+        if num_decimals is None:
+            num_decimals = 'all'
+        self.num_decimals = num_decimals
 
         separate_readback = False
 
@@ -452,7 +447,7 @@ class EpicsSignal(Signal):
         """
         return {self.name: {'source': 'PV:%s' % self._read_pv.pvname,
                             'dtype': self.dtype,
-                            'formatter': self.formatter,
+                            'num_decimals': self.num_decimals,
                             'shape': []}}
 
     def read(self):
@@ -467,7 +462,9 @@ class EpicsSignal(Signal):
             Dictionary of value timestamp pairs
             {'value': value, 'timestamp': timestamp}
         """
-        value = self.describe()['dtype'](self.formatter % self.value)
+        if self.num_decimals != 'all':
+            value = np.round(self.value, self.num_decimals)
+        value = self.describe()['dtype'](value)
         return {self.name: {'value': value,
                             'timestamp': self.timestamp}}
 
