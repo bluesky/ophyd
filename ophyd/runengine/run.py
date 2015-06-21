@@ -1,8 +1,10 @@
 from __future__ import print_function
 
 import time
-from threading import Thread, Event
+import threading
 import Queue
+import uuid
+import functools
 
 from ..controls.ophydobj import OphydObject
 from ..runengine.state import State, FSM
@@ -34,6 +36,28 @@ class Idle(State):
             time.sleep(1)
 
         self.subscribe(do_stuff, event_type='state')
+
+
+class Event(object):
+    def __init__(self, fcn):
+        self.seq_num = 0
+        self.uuid = str(uuid.uuid4())
+        self.desc = None # event descriptor
+        self.time = None
+        self.data = None
+        self.fcn = fcn
+        # scaler_events are 2-tuples - (fcn, scale)
+        self.scaler_events = []
+        functools.update_wrapper(self, fcn)
+
+    def __call__(self, *args, **kwargs):
+        self.fcn(*args, **kwargs)
+
+        for callback, scale_factor in self.scaler_events:
+            if not (self.seq_num + 1) % scale_factor:
+                callback(*args, **kwargs)
+
+        self.seq_num += 1
 
 
 class Run(OphydObject):
@@ -73,7 +97,8 @@ class Run(OphydObject):
         self._cmdq = Queue.Queue()
         self._STARTED = False
         self._threads = {}
-        self._thread_ev = Event()
+        self._thread_ev = threading.Event()
+        self._events = {}
 
         self._idle = Idle()
         self._acq = Acquiring(threads=self._threads)
@@ -126,16 +151,32 @@ class Run(OphydObject):
             self._acq.subscribe(cb, event_type='state')
         elif 'periodic_scan' in event_type:
             if 'periodic' not in self._threads:
-                period = kwargs.pop('period')
+                period = kwargs.pop('period', None)
+                if period is None:
+                    raise ValueError('No period specified for Periodic event %s' % cb)
+
+                cb = Event(cb)
                 timer = TimerThread(cb, self._thread_ev,
                                 period, name='periodic', **kwargs)
+                self._events[cb.__name__] = cb
                 self._threads[timer.name] = timer
             else:
                 raise ValueError('Multiple Periodic events not available')
         elif 'signal_scan' in event_type:
             raise NotImplementedError('Signal events not available yet')
         elif 'scaler_scan' in event_type:
-            raise NotImplementedError('Scaler events not available yet')
+            event = kwargs.pop('event', None)
+            if event is None:
+                raise ValueError('No event argument provided for %s' % cb)
+            scale = kwargs.pop('scale', None)
+            if scale is None:
+                raise ValueError('No scaling factor given for event %s' % cb)
+            scale = int(scale)
+            # add the callback to the Event to be scaled
+            cb = Event(cb)
+            scaled_event = self._events[event.__name__]
+            scaled_event.scaler_events.append((cb, scale))
+            self._events[cb.__name__] = cb
         else:
             OphydObject.subscribe(self, cb, event_type=event_type, run=False)
     
@@ -219,7 +260,7 @@ class Run(OphydObject):
         [self._reset_sub(s) for s in self._subs]
 
 
-class TimerThread(Thread):
+class TimerThread(threading.Thread):
     def __init__(self, fcn, event, period, *args, **kwargs):
         self._period = period
         self._event = event
