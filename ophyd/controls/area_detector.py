@@ -228,7 +228,7 @@ class AreaDetector(SignalDetector):
     def _start_acquire(self, **kwargs):
         """Do an actual acquisiiton"""
         if self._acq_count < self._acq_num:
-            self._set_shutter(self._acq_count % 2 + 1)
+            self._set_shutter((self._acq_count + 1) % 2)
             self._acq_signal.put(1, wait=False)
 
     def acquire(self, **kwargs):
