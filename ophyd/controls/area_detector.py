@@ -196,6 +196,9 @@ class AreaDetector(SignalDetector):
 
         # If using the stats, configure the proc plugin
 
+        # Enable images to be saved
+        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
+
         if self._use_stats:
             self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
             self._write_plugin('EnableFilter', 1, self._proc_plugin)
@@ -638,7 +641,6 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         self._write_plugin('AutoSave', 1, self._file_plugin)
         self._write_plugin('NumCapture', 0, self._file_plugin)
         self._write_plugin('FileWriteMode', 2, self._file_plugin)
-        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
         self._make_filename()
 
