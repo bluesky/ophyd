@@ -153,7 +153,7 @@ class AreaDetector(SignalDetector):
         return self._get_repr(repr)
 
     def configure(self, **kwargs):
-        """Configure areaDetctor detector"""
+        """Configure AreaDetector detector"""
 
         # Stop Acquisition
         self._old_acquire = self._acquire.value
@@ -165,6 +165,9 @@ class AreaDetector(SignalDetector):
         self._image_mode.value = self._image_acq_mode
 
         # If using the stats, configure the proc plugin
+
+        # Enable images to be saved
+        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
         if self._use_stats:
             self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
@@ -495,7 +498,6 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         self._write_plugin('AutoSave', 1, self._file_plugin)
         self._write_plugin('NumCapture', 10000000, self._file_plugin)
         self._write_plugin('FileWriteMode', 2, self._file_plugin)
-        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
         self._make_filename()
 
