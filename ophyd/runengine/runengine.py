@@ -1,16 +1,18 @@
 from __future__ import print_function
 import logging
+from warnings import warn
 import getpass
 import os
 import datetime
 import time
 from collections import defaultdict
 from threading import Thread
-from Queue import Queue
+from Queue import Queue, Empty
 import numpy as np
 from ..session import register_object
 from ..controls.detector import Detector
 from metadatastore import api as mds
+import matplotlib.pyplot as plt
 
 
 def _get_info(positioners=None, detectors=None, data=None):
@@ -140,7 +142,9 @@ class RunEngine(object):
     def _end_run(self, arg):
         state = arg.get('state', 'success')
         bre = arg['run_start']
-        mds.insert_run_stop(bre, time.time(), exit_status=state)
+        scan = arg['scan']
+        rs = mds.insert_run_stop(bre, time.time(), exit_status=state)
+        scan.emit_stop(rs)
         self.logger.info('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -165,7 +169,7 @@ class RunEngine(object):
                 'value': pos.position}
             for pos in positioners}
 
-    def _start_scan(self, run_start=None, detectors=None,
+    def _start_scan(self, scan=None, run_start=None, detectors=None,
                     data=None, positioners=None, **kwargs):
 
         dets = detectors
@@ -233,6 +237,7 @@ class RunEngine(object):
                     data_keys=mds.format_data_keys(data_key_info))
                 self.logger.debug(
                     'event_descriptor: %s', vars(event_descriptor))
+                scan.emit_descriptor(event_descriptor)
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
                     'inserting event %d------------------', seq_num)
@@ -241,6 +246,8 @@ class RunEngine(object):
                                          seq_num=seq_num)
             self.logger.debug('event %d--------', seq_num)
             self.logger.debug('%s', vars(event))
+
+            scan.emit_event(event)
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -287,12 +294,12 @@ class RunEngine(object):
 
         return names
 
-    def start_run(self, runid, start_args=None, end_args=None, scan_args=None):
+    def start_run(self, scan, start_args=None, end_args=None, scan_args=None):
         """
 
         Parameters
         ----------
-        runid : sortable
+        scan : Scan instance
         start_args
         end_args
         scan_args
@@ -302,6 +309,7 @@ class RunEngine(object):
         data : dict
             {data_name: []}
         """
+        runid = scan.scan_id
         if start_args is None:
             start_args = {}
         if end_args is None:
@@ -326,6 +334,7 @@ class RunEngine(object):
         run_start = mds.insert_run_start(
             time=recorded_time, beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
+        scan.emit_start(run_start)
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
@@ -340,6 +349,7 @@ class RunEngine(object):
         data = defaultdict(list)
 
         scan_args['data'] = data
+        scan_args['scan'] = scan  # used for callbacks
 
         self._run_start(start_args)
         self._scan_thread = Thread(target=self._start_scan,
@@ -348,9 +358,21 @@ class RunEngine(object):
         self._scan_thread.daemon = True
         self._scan_state = True
         self._scan_thread.start()
+        end_args['scan'] = scan
         try:
             while self._scan_state is True:
-                time.sleep(0.10)
+                try:
+                    descriptor = scan.desc_queue.get(timeout=0.05)
+                except Empty:
+                    pass
+                else:
+                    scan.cb_registry.process('descriptor',  descriptor)
+                try:
+                    event = scan.ev_queue.get(timeout=0.05)
+                except Empty:
+                    pass
+                else:
+                    scan.cb_registry.process('event', event)
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()

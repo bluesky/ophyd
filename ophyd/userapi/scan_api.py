@@ -1,17 +1,23 @@
 from __future__ import print_function
 import numpy as np
+import matplotlib.pyplot as plt
 from time import sleep
 import sys
 import collections
+from Queue import Queue
 import itertools
 import string
 import traceback
 
 from IPython.utils.coloransi import TermColors as tc
+from matplotlib.cbook import CallbackRegistry
+from filestore.api import retrieve
+from mongoengine import DoesNotExist
 
 from ..runengine import RunEngine
 from ..session import get_session_manager
 from ..utils import LimitError
+from ..utils.plotting import PlotManager
 from ..controls import Detector
 
 session_manager = get_session_manager()
@@ -140,6 +146,7 @@ class Scan(object):
     _shared_config = {'default_detectors': [],
                       'user_detectors': [],
                       'scan_data': None, }
+    valid_callbacks = ['start', 'stop', 'event', 'descriptor', 'pre-scan', 'post-scan']
 
     def __init__(self, *args, **kwargs):
         super(Scan, self).__init__(*args, **kwargs)
@@ -151,6 +158,16 @@ class Scan(object):
         self._data_buffer = self._shared_config['scan_data']
 
         self.settle_time = 0
+        self._scan_cb_registry = CallbackRegistry()  # process on scan thread
+        self.cb_registry = CallbackRegistry()  # process on main thread
+        self._plot_mgr = PlotManager()
+        self._autoplot = None
+        self.autoplot = True
+
+        self.ev_queue = Queue()
+        self.desc_queue = Queue()
+        self._register_scan_callback('event', self._push_to_ev_queue)
+        self._register_scan_callback('descriptor', self._push_to_desc_queue)
 
         self.paths = list()
         self.positioners = list()
@@ -207,10 +224,12 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
+        self._scan_cb_registry.process('pre-scan', self.positioners, self.detectors)
         pass
 
     def post_scan(self):
         """Routine run after scan has completed"""
+        self._scan_cb_registry.process('post-scan', self.positioners, self.detectors)
         pass
 
     def configure_detectors(self):
@@ -257,7 +276,7 @@ class Scan(object):
             scan_args['custom'] = kwargs
 
             # Run the scan!
-            data = self._run_eng.start_run(self.scan_id,
+            data = self._run_eng.start_run(self,
                                            scan_args=scan_args)
 
             self._data_buffer.append(Data(data))
@@ -328,6 +347,80 @@ class Scan(object):
         list of OphydObjects
         """
         return self._shared_config['user_detectors'] + self.default_detectors
+
+    def register_callback(self, name, func):
+        """
+        Register a callback function to be processed by the main thread.
+
+        The Run Engine can execute callback functions at the start and end
+        of a scan, and after the insertion of new Event Descriptors
+        and Events.
+
+        Parameters
+        ----------
+        name: {'pre-scan', 'start', 'descriptor', 'event', 'stop', 'post-scan'}
+        func: callable
+            start, descriptor, event, stop callbacks expect signature
+            ``f(mongoengine.Document)``
+            pre-scan and post-scan callbacks expect signature
+            ``f(positioners, detectors)``)
+        """
+        if name not in self.valid_callbacks:
+            raise ValueError("Valid callbacks: {0}".format(valid_callbacks))
+        return self.cb_registry.connect(name, func)
+
+    def _register_scan_callback(self, name, func):
+        """Register a callback to be processed by the scan thread.
+
+        Like register_callback above, but private and referring to
+        a different callback registry.
+        """
+        return self._scan_cb_registry.connect(name, func)
+
+    def _push_to_ev_queue(self, event):
+        self.ev_queue.put(event)
+
+    def _push_to_desc_queue(self, descriptor):
+        self.desc_queue.put(descriptor)
+
+    def emit_event(self, event):
+        "Called by the Run Engine after each new event is created."
+        self._scan_cb_registry.process('event', event)
+
+    def emit_descriptor(self, descriptor):
+        "Called by the Run Engine after each new event desc is created."
+        self._scan_cb_registry.process('descriptor', descriptor)
+
+    def emit_start(self, start):
+        "Called by the Run Engine after a scan is started."
+        self._scan_cb_registry.process('start', start)
+
+    def emit_stop(self, stop):
+        "Called by the Run Engine after a scan is stopped."
+        self._scan_cb_registry.process('stop', stop)
+
+    @property
+    def autoplot(self):
+        return self._autoplot
+
+    @autoplot.setter
+    def autoplot(self, val):
+        if bool(val) == self._autoplot:
+            return
+        self._autoplot = bool(val)
+        cb_reg = self.cb_registry  # for brevity
+        if val:
+            # when a callback is registered, it returns an integer ID
+            # that can be used to deregister it.
+            self._plot_callback_ids = []
+            cid = cb_reg.connect('descriptor', self._plot_mgr.setup_plot)
+            self._plot_callback_ids.append(cid)
+            cid = cb_reg.connect('event', self._plot_mgr.update_plot)
+            self._plot_callback_ids.append(cid)
+            cid = cb_reg.connect('pre-scan', self._plot_mgr.update_positioners)
+            self._plot_callback_ids.append(cid)
+        else:
+            [cb_reg.disconnect(cid) for cid in self._plot_callback_ids]
 
 
 class AScan(Scan):
@@ -547,6 +640,10 @@ class Count(Scan):
     A log entry is created if the logbook is setup which records the
     result of the scan.
     """
+    def __init__(self, *args, **kwargs):
+        super(Count, self).__init__(*args, **kwargs)
+        self.autoplot = False
+
     def post_scan(self):
         """Post-scan print data
 
