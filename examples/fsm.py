@@ -52,8 +52,8 @@ states = [Stopped(name='stopped'), Acquiring(name='acquiring'),
           Suspended(name='suspended')]
 
 
-fsm = FSM('stopped', states=states, trigger_map=trigger_map)
-ofsm = FSM('One', states=ordered_map, ordered=True, loop=True)
-ofsm2 = FSM('stopped', states=states, ordered=True, loop=True)
-ofsm3 = FSM('One', states=ordered_map, ordered=True, loop=False)
-ofsm4 = FSM('stopped', states=states, ordered=True, loop=False)
+fsm = FSM(initial='stopped', states=states, trigger_map=trigger_map)
+ofsm = FSM(initial='One', states=ordered_map, ordered=True, loop=True)
+ofsm2 = FSM(initial='stopped', states=states, ordered=True, loop=True)
+ofsm3 = FSM(initial='One', states=ordered_map, ordered=True, loop=False)
+ofsm4 = FSM(initial='stopped', states=states, ordered=True, loop=False)
