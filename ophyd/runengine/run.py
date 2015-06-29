@@ -7,7 +7,7 @@ import uuid
 import functools
 
 from ..controls.ophydobj import OphydObject
-from ..runengine.state import State, FSM
+from ..runengine.fsm import FSM, State
 
 
 class Acquiring(State):
@@ -106,7 +106,7 @@ class Run(OphydObject):
         self._suspd = Suspended() 
         self._states = [self._idle, self._acq, self._suspd]
         # Inheritance (multiple) may be a better fit here...
-        self._fsm = FSM(states=self._states, initial=self._idle)
+        self._fsm = FSM(states=self._states, initial=self._idle.name)
         self._curr_state = self._fsm.state
 
         OphydObject.__init__(self, register=False, **kwargs)
@@ -195,7 +195,7 @@ class Run(OphydObject):
 
             #self._cmdq.put(self._acq, block=False)
             #self._run()
-            self._acq.state_action()
+            self._acq()
             self._wait_threads()
 
     def stop(self):
