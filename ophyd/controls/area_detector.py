@@ -513,7 +513,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         self._write_plugin('AutoIncrement', 1, self._file_plugin)
         self._write_plugin('FileNumber', 0, self._file_plugin)
         self._write_plugin('AutoSave', 1, self._file_plugin)
-        self._write_plugin('NumCapture', 10000000, self._file_plugin)
+        self._write_plugin('NumCapture', 0, self._file_plugin)
         self._write_plugin('FileWriteMode', 2, self._file_plugin)
         self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
