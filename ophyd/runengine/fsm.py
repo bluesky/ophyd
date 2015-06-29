@@ -49,7 +49,7 @@ class Trigger(object):
         self._ordered = ordered
         
     def __call__(self, *args, **kwargs):
-        if self._fsm.state in self._src:
+        if self._fsm.state in self._src or self._fsm.state == '_initial':
             # trigger entry to dest(ination) state
             logging.debug('trig = %s, src = %s, dest = %s', self._name,
                             self._fsm.state, self._dest)
@@ -83,23 +83,24 @@ class FSM(object):
         if states:
             self.add_states(states)           
 
+        if not initial:
+            initial = '_initial'
+            self.add_states([initial])
+        
         if ordered:
             if len(states) < 2:
                 raise ValueError('Cannot have < 2 states in ordered FSM')
             if trigger_map is not None:
-                raise ValueError('An orrdered FSM cannot specify a trigger_map')
+                raise ValueError('An ordered FSM cannot specify a trigger_map')
 
+            dest = None
             # states will get modified - make a copy
             states_cp = copy.copy(states)
-            trigger_map = [ ['next_state', states_cp, states_cp[1]], ]
-            if not initial:
-                initial = states[0]
-
-        # FIXME: listify this
-        self.add_states([initial])
-
-        # _state is the current State the machine is in
-        self._state = self._states[initial]
+            if initial:
+                dest = states_cp[0]
+            else:
+                dest = states_cp[1]
+            trigger_map = [ ['next_state', states_cp, dest], ]
 
         self._triggers = {}
         if trigger_map:
@@ -136,6 +137,9 @@ class FSM(object):
                         _trig = Trigger(self, src, dest, trig, ordered=ordered)
                         setattr(self, trig, _trig)
                     self._triggers[trig] = _trig
+
+        # _state is the current State the machine is in
+        self._state = self._states[initial]
 
     def __getitem__(self, item):
         return self._states[item]
