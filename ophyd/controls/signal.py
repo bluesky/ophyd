@@ -447,6 +447,34 @@ class EpicsSignal(Signal):
             return d
 
 
+class SkepticalSignal(EpicsSignal):
+    def trigger(self):
+        d = DetectorStatus(self)
+        # scary assumption
+        cur = self.read()[self._name]
+        old_time = cur['timestamp']
+
+        def local(old_value, value, timestamp, **kwargs):
+            if old_time == timestamp:
+                # the time stamp has not changed.  Given that
+                # this function is being called by a subscription
+                # on value changed, this should never happen
+                return
+            # tell the status object we are done
+            d._finished()
+            # disconnect this function
+            self.clear_sub(local)
+
+        self.subscribe(local, self.SUB_VALUE)
+
+        return d
+
+    def _set_readback(self, value, **kwargs):
+        if value == 0.0:
+            return
+        return super()._set_readback(value, **kwargs)
+
+
 class SignalGroup(OphydObject):
     '''Create a group or collection of related signals
 
