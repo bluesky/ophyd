@@ -591,8 +591,10 @@ class SignalGroup(OphydObject):
         This method uses the `recordable` flag in ophyd to filter
         the returned signals of the signal group"""
         values = {}
-        [values.update(signal.read()) for signal in self._signals
-         if signal.recordable]
+        for signal in self._signals:
+            if signal.recordable:
+                values.update(signal.read())
+
         return values
 
     def trigger(self):
