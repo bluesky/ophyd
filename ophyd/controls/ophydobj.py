@@ -10,6 +10,7 @@
 from __future__ import print_function
 from collections import defaultdict
 import time
+import numpy as np
 
 from ..session import register_object
 
