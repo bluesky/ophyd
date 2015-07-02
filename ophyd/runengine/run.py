@@ -125,16 +125,36 @@ class Run(OphydObject):
     def _default_start_run(self, **kwargs):
         print('start_run')
 
-    def _default_end_run(self, **kwargs):
-        print('end_run')
+   def _begin_run(self, *args, **kwargs):
+        # TODO: emit begin_run_event
+        print('\n\nbegin_run_event\n\n')
 
-    def _default_resume_run(self, **kwargs):
-        print('resume_run')
+    def _end_run(self, status=None, **kwargs):
+        # TODO: emit end_run_event
+        print('\n\nend_run_event\n\n')
+        if status:
+            print('status =', status)
 
-    def _default_pause_run(self, **kwargs):
-        print('pause_run')
-        while True:
-            time.sleep(0.1)
+    def _trajectory_scan(self, scan):
+        for state in scan:
+            if not self._thread_ev.is_set():
+                scan.next_state(scan)
+            else:
+                # TODO: make custom exception here.
+                # If ScanContexts are catching these, some differentiation
+                # is required.
+                raise ThreadCancel('\nrun._thread_ev was set\n')
+
+        data = copy.copy(scan.data)
+        scan.data_buf.append(data)
+        scan.data.clear()
+
+    def _add_event(self, ev_type, cb):
+        # NOTE - cb is a Scan object here
+        event = Event(self._trajectory_scan, name=ev_type)
+        thread = ScanContext(event, cb, self, name=ev_type)
+        self._events[event.__name__] = event
+        self._threads[thread.name] = thread
 
     # Need kwargs here to carry "period", "signal", and "scaler" 
     # supplementary arguments ("when", "what signal", "scaling factor").
