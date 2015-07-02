@@ -1,5 +1,6 @@
 import logging
-import copy
+from itertools import cycle
+from collections import OrderedDict
 
 from ..controls.ophydobj import OphydObject
 
@@ -9,23 +10,30 @@ logging.basicConfig(level=logging.DEBUG)
 
 class State(OphydObject):
     '''Base class for use in FSM pattern.
-
-       Subclasses MUST override the state_action method.
     '''
     SUB_ENTRY = 'entry'
     SUB_EXIT = 'exit'
     SUB_STATE = 'state'
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, state_cb=None, entry_cb=None, exit_cb=None):
         self._entered = False
         if name is None:
             name = self.__class__.__name__
 
         self._default_sub = None
-        OphydObject.__init__(self, name=name, register=False)
+        super(State, self).__init__(name=name, register=False)
 
-    def subscribe(self, cb, event_type=None):
-        OphydObject.subscribe(self, cb, event_type=event_type, run=False)
+        if state_cb:
+            self.subscribe(state_cb)
+
+        if entry_cb:
+            self.subscribe(entry_cb, event_type='entry')
+
+        if exit_cb:
+            self.subscribe(exit_cb, event_type='exit')
+
+    def subscribe(self, cb, event_type='state'):
+        super(State, self).subscribe(cb, event_type=event_type, run=False)
 
     def __call__(self, *args, **kwargs):
         self._run_subs(sub_type=self.SUB_STATE, *args, **kwargs) 
@@ -47,18 +55,21 @@ class Trigger(object):
         self._dest = dest
         self._name = name
         self._ordered = ordered
-        
+
+    @property
+    def name(self):
+        return self._name
+
     def __call__(self, *args, **kwargs):
         if self._fsm.state in self._src or self._fsm.state == '_initial':
             # trigger entry to dest(ination) state
             logging.debug('trig = %s, src = %s, dest = %s', self._name,
                             self._fsm.state, self._dest)
-            logging.debug('args = %s, kwargs = %s', args, kwargs)
 
             # transition out of current state - call the state's on_exit( )
-            self._fsm._states[self._fsm.state].on_exit(*args, **kwargs)
+            self._fsm[self._fsm.state].on_exit(*args, **kwargs)
 
-            new_state = self._fsm._states[self._dest]
+            new_state = self._fsm[self._dest]
 
             self._fsm.state = new_state
             new_state.on_entry(*args, **kwargs)
@@ -79,14 +90,12 @@ class FSM(object):
                  ordered=False, loop=False):
 
         self._state_iter = None
-        self._states = {}
-        if states:
-            self.add_states(states)           
+        self._initial = None
+        self._states = OrderedDict()
 
-        if not initial:
-            initial = '_initial'
-            self.add_states([initial])
-        
+        if states:
+            self._add_states(states)
+
         if ordered:
             if len(states) < 2:
                 raise ValueError('Cannot have < 2 states in ordered FSM')
@@ -94,32 +103,37 @@ class FSM(object):
                 raise ValueError('An ordered FSM cannot specify a trigger_map')
 
             dest = None
-            # states will get modified - make a copy
-            states_cp = copy.copy(states)
-            if initial:
-                dest = states_cp[0]
+            if initial in states:
+                dest = states[(states.index(initial) + 1) % len(states)]
+                self._initial = self._states[initial]
             else:
-                dest = states_cp[1]
-            trigger_map = [ ['next_state', states_cp, dest], ]
+                dest = states[0]
+            trigger_map = [ ['next_state', states, dest], ]
+
+        if not initial:
+            initial = '_initial'
+            self._add_states([initial])
+            self._initial = self._states[initial]
 
         self._triggers = {}
         if trigger_map:
             for trig, src, dest in trigger_map:
                 # dest MUST be a single string or State
-                self.add_states([dest])
+                self._add_states([dest])
 
                 # src could be a list of source-states
                 if not isinstance(src, list):
                     src = [src]
                 # assume src is a string
-                self.add_states(src)
+                self._add_states(src)
 
                 if not trig in self._triggers:
                     _trig = None
                     if isinstance(trig, Trigger):
                         # add new Trigger attr to self
-                        setattr(self, trig.name, trig)
-                        _trig = trig.name
+                        if not hasattr(self, trig):
+                            setattr(self, trig.name, trig)
+                            _trig = trig.name
                     else:
                         # trig must be a simple string
                         # create a new Trigger if we don't already have one
@@ -131,11 +145,13 @@ class FSM(object):
                         if isinstance(dest, State):
                             dest = dest.name
 
-                        if ordered and not loop:
-                            self._state_iter = src
+                        if ordered:
+                            self._state_iter = src if not loop else cycle(src)
 
                         _trig = Trigger(self, src, dest, trig, ordered=ordered)
-                        setattr(self, trig, _trig)
+                        if not hasattr(self, trig):
+                            setattr(self, trig, _trig)
+
                     self._triggers[trig] = _trig
 
         # _state is the current State the machine is in
@@ -147,7 +163,7 @@ class FSM(object):
     def __iter__(self):
         return iter(self._state_iter)
 
-    def add_states(self, states):
+    def _add_states(self, states):
         for state in states:
             if not state in self._states:
                 if not isinstance(state, State):
