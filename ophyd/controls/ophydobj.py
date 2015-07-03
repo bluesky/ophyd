@@ -174,7 +174,10 @@ class OphydObject(object):
     def __init__(self, name=None, alias=None, register=True):
         super().__init__()
         self._name = name
-        self._alias = alias
+        if alias is None:
+            self._alias = name
+        else:
+            self._alias = alias
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
@@ -195,7 +198,10 @@ class OphydObject(object):
 
         try:
             cb(*args, **kwargs)
+        except StopIteration as si:
+            raise si
         except Exception as ex:
+            raise ex
             sub_type = kwargs['sub_type']
             self._ses_logger.error('Subscription %s callback exception (%s)' %
                                    (sub_type, self), exc_info=ex)
