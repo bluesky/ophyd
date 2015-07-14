@@ -182,19 +182,34 @@ class RunEngine(object):
         self.logger.info(self._demunge_names(names))
         seq_num = 0
         while self._scan_state is True:
-            self.logger.debug(
-                'self._scan_state is True in self._start_scan')
+            self.logger.debug('self._scan_state is True in self._start_scan')
+            self.logger.debug('Moving positioners...')
             posvals = self._move_positioners(positioners=positioners, **kwargs)
-            self.logger.debug('moved positioners')
+            self.logger.debug('Moved positioners.')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
 
             # Trigger detector acquisision
+            self.logger.debug('Triggering detectors')
             acq_status = [trig.acquire() for trig in triggers]
-
+        
+            t0 = time.time()
+            last_warning = 0
             while any([not stat.done for stat in acq_status]):
                 time.sleep(0.05)
+
+                elapsed = time.time() - t0
+                if elapsed > 3.0:
+                    if abs(last_warning - elapsed) < 3.0:
+                        continue
+
+                    for stat in acq_status:
+                        if not stat.done:
+                            self.logger.debug('Waiting on detector %s', stat.detector)
+                    last_warning = elapsed
+
+            self.logger.debug('Detectors triggered')
 
             time.sleep(0.05)
             # Read detector values
@@ -202,6 +217,7 @@ class RunEngine(object):
             for det in dets + positioners:
                 tmp_detvals.update(det.read())
 
+            self.logger.debug('Detectors read')
             detvals = mds.format_events(tmp_detvals)
 
             # pass data onto Demuxer for distribution

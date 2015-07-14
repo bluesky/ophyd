@@ -207,21 +207,25 @@ class Scan(object):
 
     def pre_scan(self):
         """Routine run before scan starts"""
-        pass
+        logger.debug('Pre-scan')
 
     def post_scan(self):
         """Routine run after scan has completed"""
-        pass
+        logger.debug('Post-scan')
 
     def configure_detectors(self):
         """Routine run to setup detectors before scan starts"""
-        [det.configure() for det in self.detectors
-         if isinstance(det, Detector)]
+        for det in self.detectors:
+            if isinstance(det, Detector):
+                logger.debug('Configuring detector %s', det)
+                det.configure()
 
     def deconfigure_detectors(self):
         """Routine run to setup detectors before scan starts"""
-        [det.deconfigure() for det in self.detectors
-         if isinstance(det, Detector)]
+        for det in self.detectors:
+            if isinstance(det, Detector):
+                logger.debug('Deconfiguring detector %s', det)
+                det.deconfigure()
 
     def run(self, *args, **kwargs):
         """Run the scan
@@ -237,11 +241,13 @@ class Scan(object):
 
         # Must have scan_id prior to OLog entry in ctx mgr __entry__
         self.scan_id = session_manager.get_next_scan_id()
+        logger.debug('Scan id: %s', self.scan_id)
 
         # Run this in a context manager to capture
         # the KeyboardInterrupt
         with self:
             for pos, path in zip(self.positioners, self.paths):
+                logger.debug('Positioner trajectory: %s', pos)
                 pos.set_trajectory(path)
 
             # Create the dict to pass to the run-engine
@@ -256,6 +262,7 @@ class Scan(object):
             # let 'custom' be assigned to all remaining kwargs
             scan_args['custom'] = kwargs
 
+            logger.debug('Running the scan...')
             # Run the scan!
             data = self._run_eng.start_run(self.scan_id,
                                            scan_args=scan_args)
@@ -409,6 +416,7 @@ class AScan(Scan):
         d['stop'] = repr(self.stop)
         d['npts'] = repr(self.npts)
         if self.logbook is not None:
+            logger.debug('Creating olog entry')
             self.logbook.log('\n'.join(msg), properties={'OphydScan': d},
                              ensure=True,
                              logbooks=['Data Acquisition'])
@@ -578,6 +586,7 @@ class Count(Scan):
         d['detectors'] = repr(self.detectors)
         d['values'] = repr(self.last_data.data_dict)
         if self.logbook is not None:
+            logger.debug('Creating olog entry')
             self.logbook.log('\n'.join(lmsg), ensure=True,
                              properties={'OphydCount': d},
                              logbooks=['Data Acquisition'])
