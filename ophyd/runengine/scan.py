@@ -32,11 +32,9 @@ def wait_all(scan, **kwargs):
     return all(s.done for s in scan.wait_status)
 
 def pos_read(scan, **kwargs):
-    scan.data.update({pos.name: pos.read() for pos in scan.positioners})
-
     event = kwargs.get('event', None)
     if event:
-        event.save(data)
+        event.save(scan.positioners)
 
 def det_acquire(scan, **kwargs):
     detectors = [det for det in scan.detectors
@@ -44,11 +42,9 @@ def det_acquire(scan, **kwargs):
     scan.wait_status = [det.acquire() for det in detectors]
 
 def det_read(scan, **kwargs):
-    scan.data.update({det.name: det.read() for det in scan.detectors})
-
     event = kwargs.get('event', None)
     if event:
-        event.save(data)
+        event.save(scan.detectors)
 
 
 class Scan(FSM):
@@ -132,7 +128,11 @@ class PeriodScan(Scan):
             scale = 1
             if duration > 0.0 and duration >= self.period:
                 scale = int(np.ceil(duration/period))
-            self.run.subscribe(self.stop, event_type='scaler_scan',
+
+            def run_stop(run, *args, **kwargs):
+                run.stop(status='success')
+
+            self.run.subscribe(run_stop, event_type='scaler_scan',
                                event='periodic', scale=scale)
 
         self.path_gen = self.path_iter(self.period)
