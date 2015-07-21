@@ -130,6 +130,14 @@ class AreaDetector(SignalDetector):
                        event_type=self._SUB_ACQ_CHECK,
                        run=False)
 
+    @property
+    def count_time(self):
+        return self.acquire_time * self.num_images
+
+    @count_time.setter
+    def count_time(self, val):
+        self.acquire_time = val / self.num_images
+
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         if (old_value == 1) and (value == 0):
             # Negative going edge is done acquiring

@@ -60,6 +60,14 @@ class EpicsScaler(SignalDetector):
         self.add_acquire_signal(self._count)
 
     @property
+    def count_time(self):
+        return self._preset_time.value
+
+    @count_time.setter
+    def count_time(self, val):
+        self._preset_time.put(val)
+
+    @property
     def auto_count(self):
         """Return the autocount status"""
         return (self._count_mode.value == 1)
