@@ -193,20 +193,28 @@ class RunEngine(object):
                 break
 
             # Trigger detector acquisision
+            self.logger.debug('about to acquire')
             acq_status = [trig.acquire() for trig in triggers]
+            self.logger.debug('sleeping, waiting for acquire status to report done')
 
             while any([not stat.done for stat in acq_status]):
                 time.sleep(0.05)
 
             time.sleep(0.05)
             # Read detector values
+            self.logger.debug('reading det values')
             tmp_detvals = {}
             for det in dets + positioners:
+                self.logger.debug('about to read %s' % det)
+                det.read()
+                self.logger.debug('about to update %s' % det)
                 tmp_detvals.update(det.read())
 
+            self.logger.debug('building events')
             detvals = mds.format_events(tmp_detvals)
 
             # pass data onto Demuxer for distribution
+            self.logger.debug('demuxer, a totally great plan')
             self.logger.info(self._demunge_values(detvals, names))
             # grab the current time as a timestamp that describes when the
             # event data was bundled together
