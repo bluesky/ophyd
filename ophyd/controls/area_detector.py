@@ -362,7 +362,9 @@ class AreaDetectorFileStore(AreaDetector):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
         self._uid_cache.clear()
         self._abs_trigger_count = 0
-        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
+        # turn on file saving
+        if self._file_plugin:
+            self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
     def describe(self):
         desc = super(AreaDetectorFileStore, self).describe()
@@ -427,7 +429,9 @@ class AreaDetectorFileStore(AreaDetector):
     def deconfigure(self, *args, **kwargs):
         # clear state used during collection.
         self._reset_state()
-        self._write_plugin('EnableCallbacks', 0, self._file_plugin)
+        # turn off file saving
+        if self._file_plugin:
+            self._write_plugin('EnableCallbacks', 0, self._file_plugin)
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
 
@@ -451,6 +455,89 @@ class AreaDetectorFSIterativeWrite(AreaDetectorFileStore):
                             {'point_number': self._last_dark_uid[1]})
 
         return val
+
+
+class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
+    def deconfigure(self, *args, **kwargs):
+
+        for (uid, i), seq_id in zip(self._uid_cache, self._seq_cache):
+            fs.insert_datum(self._filestore_res, str(uid), {'seq_id': int(seq_id)})
+
+        super(AreaDetectorFileStoreEiger, self).deconfigure(*args, **kwargs)
+
+    def read(self, *args, **kwargs):
+        ret = super(AreaDetectorFileStoreEiger, self).read(*args, **kwargs)
+        self._seq_cache.append(self.sequenceid.value)
+        return ret
+
+    def _reset_state(self):
+        super(AreaDetectorFileStoreEiger, self)._reset_state()
+        self._seq_cache = deque()
+
+    def __init__(self, *args, **kwargs):
+        super(AreaDetectorFileStoreEiger, self).__init__(*args, **kwargs)
+        self._seq_cache = deque()
+
+        self.add_signal(self._ad_signal('{}MaxSizeX'.format(self._cam),
+                                  '_arraysize{}'.format(0),
+                                  recordable=False))
+
+        self.add_signal(self._ad_signal('{}MaxSizeY'.format(self._cam),
+                                  '_arraysize{}'.format(1),
+                                  recordable=False))
+
+        self.add_signal(self._ad_signal('{}FWNamePattern'.format(self._cam),
+                                        '_name_pattern',
+                                        recordable=False))
+
+
+        self.add_signal(EpicsSignal('{}{}SequenceId'.format(self._basename,
+                                                            self._cam),
+                                    name='{}{}'.format(self.name, 'sequenceid'),
+                                    alias='sequenceid'))
+
+        self.add_signal(self._ad_signal('{}FWNImagesPerFile'.format(self._cam),
+                                        '_nimages_per_file',
+                                        recordable=False))
+
+        self.add_signal(self._ad_signal('{}FilePath'.format(self._cam),
+                                        '_file_path',
+                                        string=True,
+                                        recordable=False))
+
+
+        self._master_base = ''
+        self._file_plugin = None
+
+
+    def _insert_fs_resource(self):
+        return fs.insert_resource('AD_EIGER',
+                                  self._master_base,
+                                  {'frame_per_point':
+                                   self._num_images.value})
+
+    def configure(self, *args, **kwargs):
+        super(AreaDetectorFileStoreEiger, self).configure(*args, **kwargs)
+        # we are dropping the last stanza because
+        # a) the eiger ioc insists that it add it's own sequence number to
+        #    everything and $id must be in the name pattern or the IOC will
+        #    restart it's self
+        # b) uid_$id is one character too long for the string pv
+        uid = '-'.join(str(uuid.uuid4()).split('-')[:-1])
+
+        # The tree is the year / month / day
+        date = datetime.now().date()
+        tree = (str(date.year), str(date.month), str(date.day), '')
+
+        path = os.path.join(self.store_file_path, *tree)
+        self._store_file_path = path
+
+
+        self._master_base = os.path.join(path, uid)
+        self._file_path.value = path
+        self._name_pattern.value = '{}_$id'.format(uid)
+        self._filestore_res = self._insert_fs_resource()
+
 
 
 class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
