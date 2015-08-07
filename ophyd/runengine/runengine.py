@@ -1,5 +1,4 @@
 from __future__ import print_function
-import logging
 import getpass
 import os
 import datetime
@@ -150,8 +149,9 @@ class RunEngine(object):
         # status now holds the MoveStatus() instances
         time.sleep(0.05)
         # TODO: this should iterate at most N times to catch hangups
-        while not all(s.done for s in status):
+        while self._scan_state and not all(s.done for s in status):
             time.sleep(0.1)
+
         if settle_time is not None:
             time.sleep(settle_time)
 
@@ -190,13 +190,18 @@ class RunEngine(object):
             if posvals is None:
                 break
 
+            if not self._scan_state:
+                self.logger.warning('Scan interrupted [moving positioners]')
+                break
+
             # Trigger detector acquisision
             self.logger.debug('Triggering detectors')
             acq_status = [trig.acquire() for trig in triggers]
-        
+
             t0 = time.time()
             last_warning = 0
-            while any([not stat.done for stat in acq_status]):
+            while (self._scan_state and
+                   any(not stat.done for stat in acq_status)):
                 time.sleep(0.05)
 
                 elapsed = time.time() - t0
@@ -206,8 +211,13 @@ class RunEngine(object):
 
                     for stat in acq_status:
                         if not stat.done:
-                            self.logger.debug('Waiting on detector %s', stat.detector)
+                            self.logger.debug('Waiting on detector %s',
+                                              stat.detector)
                     last_warning = elapsed
+
+            if not self._scan_state:
+                self.logger.warning('Scan interrupted [detectors]')
+                break
 
             self.logger.debug('Detectors triggered')
 
