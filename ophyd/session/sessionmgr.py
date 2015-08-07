@@ -9,7 +9,7 @@ import epics
 from ..controls.positioner import Positioner
 from ..controls.signal import (OphydObject, Signal, SignalGroup)
 from ..utils.epics_pvs import MonitorDispatcher
-from ..runengine import RunEngine
+from ..runengine.run import Run
 
 try:
     from ..controls.cas import caServer
@@ -184,7 +184,7 @@ class SessionManager(object):
 
 
         run = self._run_engine
-        if run is not None and run.running:
+        if run is not None and run.state in ('acquiring', 'suspended'):
             self.stop_all()
             run.stop()
         else:
@@ -205,10 +205,9 @@ class SessionManager(object):
             self._update_registry(obj, 'positioners')
         elif isinstance(obj, (Signal, SignalGroup)):
             self._update_registry(obj, 'signals')
-        elif isinstance(obj, RunEngine):
-            if self._run_engine is None:
-                self._logger.debug('Registering RunEngine.')
-                self._run_engine = obj
+        elif isinstance(obj, Run):
+            self._logger.debug('Registering RunEngine.')
+            self._run_engine = obj
         elif isinstance(obj, OphydObject):
             # TODO
             pass
@@ -223,7 +222,10 @@ class SessionManager(object):
     def stop_all(self):
         #TODO: fixme - add RunEngines to registry
         if self._run_engine is not None:
-            self._run_engine.stop()
+            if self._run_engine.state == 'acquiring':
+                self._run_engine.pause()
+            elif self._run_engine.state == 'suspended':
+                self._run_engine.stop(status='abort')
 
         for pos in self._registry['positioners'].values():
             if pos.moving is True:

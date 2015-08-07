@@ -14,7 +14,7 @@ import traceback
 
 from ..controls.ophydobj import OphydObject
 from .fsm import FSM, State
-#from ..session import session
+from ..session import register_object
 import random
 
 
@@ -211,6 +211,8 @@ class Run(FSM, OphydObject):
                                     event_type='entry')
         self['suspended'].subscribe(self._stop_threads,
                                          event_type='entry')
+
+        self._session = register_object(self, set_vars=False)
 
     def _start_threads(self, *args, **kwargs):
         if self._threads:
