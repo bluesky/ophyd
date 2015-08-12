@@ -171,6 +171,17 @@ class FSM(object):
                     state = State(name=state)
                 self._states[state.name] = state
 
+    def reset(self):
+        # FSM.reset() only make sense for an 'ordered' FSM
+        if hasattr(self, 'next_state'):
+            keys = self._states.keys()
+            self.next_state._dest = keys[(keys.index(self._initial.name) + 1) %
+                                         len(keys)]
+
+            self.state = self._initial
+        else:
+            raise ValueError('Only ordered state machines can be reset')
+
     @property
     def state(self):
         return self._state.name
