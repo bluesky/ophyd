@@ -1,6 +1,5 @@
 import logging
 import time
-import copy
 import functools
 
 import numpy as np
@@ -46,6 +45,12 @@ def det_read(scan, **kwargs):
     if event:
         event.save(scan.detectors)
 
+def br_cb(br_doc, **kwargs):
+    logging.debug('begin_run_doc = %s', br_doc)
+
+def er_cb(er_doc, **kwargs):
+    logging.debug('end_run_doc = %s', er_doc)
+
 def rewind(scan, **kwargs):
             logging.debug('\n\n rewinding scan path \n\n')
             # rewind path to current_pt and make a new trajectory over that
@@ -75,6 +80,8 @@ class Scan(FSM):
         self.run = Run()
 
         self.run.subscribe(self, event_type='trajectory_scan')
+        self.run.subscribe(br_cb, event_type='begin_run')
+        self.run.subscribe(er_cb, event_type='end_run')
         self.run.subscribe(rewind, event_type='resume_run')
 
         self.path = np.linspace(st, end, npts+1).tolist()
@@ -129,7 +136,10 @@ class PeriodScan(Scan):
             If duration is None, the scan will run until canceled externally.
         '''
         self.run = Run()
+
         self.run.subscribe(self, event_type='periodic_scan')
+        self.run.subscribe(br_cb, event_type='begin_run')
+        self.run.subscribe(er_cb, event_type='end_run')
 
         if period < 0.0:
             period = 0
