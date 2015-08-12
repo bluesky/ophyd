@@ -134,9 +134,9 @@ class Event(object):
 
             self.desc = RunDocs.descriptor(self._run.begin_run_event, elems,
                                            event_type=self.__name__)
+            self._run.evq.put(self.desc)
             event_doc = RunDocs.event(self.desc, self.seq_num, elems)
-            print('\nevent descriptor =', self.desc, '\n')
-            print('\nevent = ', event_doc, '\n')
+            self._run.evq.put(event_doc)
         elif not self._dq.empty():
             elems = {}
             while not self._dq.empty():
@@ -144,7 +144,7 @@ class Event(object):
 
             # TODO: sanity checking on elems vs self.descriptor
             event_doc = RunDocs.event(self.desc, self.seq_num, elems)
-            print('\nevent = ', event_doc, '\n')
+            self._run.evq.put(event_doc)
 
         # actuate scaler_events, if we have any for this event
         for callback, scale_factor in self.scaler_events:
@@ -195,12 +195,10 @@ class Run(FSM, OphydObject):
                     ['stop', ['acquiring', 'suspended'], 'stopped'] ]
  
     def __init__(self, **kwargs):
-        self._run_state = None
-        # Blocking-Queue for start/stop/pause/resume commands.
-        self._cmdq = Queue.Queue()
         self._threads = {}
         self._thread_ev = threading.Event()
         self._events = {}
+        self.evq = Queue.Queue()
 
         super(Run, self).__init__(initial='stopped',
                                   trigger_map=Run.trigger_map)
@@ -209,13 +207,39 @@ class Run(FSM, OphydObject):
         self['stopped'].subscribe(self._begin_run, event_type='exit')
         # TODO: must also clean up any state here from previous run
         self['stopped'].subscribe(self._stop_threads, event_type='entry')
+        self['stopped'].subscribe(self._empty_evq, event_type='entry')
         self['stopped'].subscribe(self._end_run)
         self['acquiring'].subscribe(self._start_threads,
                                     event_type='entry')
+        self['acquiring'].subscribe(self._tend_evq)
         self['suspended'].subscribe(self._stop_threads,
                                          event_type='entry')
 
         self._session = register_object(self, set_vars=False)
+
+    def _tend_evq(self, *args, **kwargs):
+        while self.state == 'acquiring':
+            try:
+                msg = self.evq.get(block=True, timeout=0.1)
+            except Queue.Empty:
+                continue
+            except KeyboardInterrupt:
+                # TODO: check for and distributee evq contents
+                return
+
+            if 'seq_num' in msg:
+                print('\n\nevent =', msg, '\n\n')
+            elif 'keys' in msg:
+                print('\n\nevent descriptor =', msg, '\n\n')
+
+    def _empty_evq(self, *args, **kwargs):
+        while not self.evq.empty():
+            msg = self.evq.get(block=False)
+
+            if 'seq_num' in msg:
+                print('\n\nevent =', msg, '\n\n')
+            elif 'keys' in msg:
+                print('\n\nevent descriptor =', msg, '\n\n')
 
     def _start_threads(self, *args, **kwargs):
         if self._threads:
@@ -231,17 +255,16 @@ class Run(FSM, OphydObject):
             self._thread_ev.set()
 
     def _begin_run(self, *args, **kwargs):
-        # TODO: emit begin_run_event
         print('\n\nbegin_run_event\n\n')
         self.begin_run_event = RunDocs.begin_run()
-        print(self.begin_run_event)
+        #print(self.begin_run_event)
+        self._run_subs(self.begin_run_event, sub_type='begin_run')
 
     def _end_run(self, status=None, reason=None, **kwargs):
-        # TODO: emit end_run_event
         print('\n\nend_run_event\n\n')
         self.end_run_event = RunDocs.end_run(self.begin_run_event, status,
                                              reason=reason)
-        print(self.end_run_event)
+        self._run_subs(self.end_run_event, sub_type='end_run')
 
     def _trajectory_scan(self, scan, **kwargs):
         for state in scan:
