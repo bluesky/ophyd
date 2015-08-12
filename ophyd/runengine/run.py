@@ -122,7 +122,8 @@ class Event(object):
             functools.update_wrapper(self, fcn)
 
     def __call__(self, *args, **kwargs):
-        ret = self.fcn(*args, **kwargs)
+        if self.fcn(*args, **kwargs) is False:
+            return
 
         # create an Event Descriptor if we don't have one and Event.save()
         # has been invoked
@@ -152,8 +153,6 @@ class Event(object):
 
         self.seq_num += 1
 
-        return ret
-
     def save(self, elems):
         vals = {e: e.read() for e in elems}
         self._dq.put(vals)
@@ -180,6 +179,10 @@ class Run(FSM, OphydObject):
         
     '''
 
+    SUB_BEGIN_RUN = 'begin_run'
+    SUB_END_RUN = 'end_run'
+    SUB_PAUSE_RUN = 'pause_run'
+    SUB_RESUME_RUN = 'resume_run'
     SUB_SCAN = 'trajectory_scan'
     SUB_PERIODIC = 'periodic_scan'
     SUB_SCALER = 'scaler_scan'
@@ -245,11 +248,7 @@ class Run(FSM, OphydObject):
             if not self._thread_ev.is_set():
                 scan.next_state(scan, **kwargs)
             else:
-                return
-
-        data = copy.copy(scan.data)
-        scan.data_buf.append(data)
-        scan.data.clear()
+                return False
 
     def _add_event(self, ev_type, cb):
         # NOTE - cb is a Scan object here
@@ -295,6 +294,8 @@ class Run(FSM, OphydObject):
             self._events[cb.__name__] = cb
         elif 'signal_scan' in event_type:
             raise NotImplementedError('Signal events not supported. Yet')
+        elif 'resume_run' in event_type:
+            self['suspended'].subscribe(cb, event_type='exit')
         else:
             OphydObject.subscribe(self, cb, event_type=event_type, run=False)
  
