@@ -314,6 +314,7 @@ class EpicsMotor(Positioner):
                                    **kwargs)
         except KeyboardInterrupt:
             self.stop()
+            raise
 
     def __repr__(self):
         return self._get_repr(['record={!r}'.format(self._record)])
