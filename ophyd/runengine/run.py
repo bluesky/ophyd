@@ -6,7 +6,6 @@ import Queue
 import uuid
 import functools
 import logging
-import copy
 import os
 import getpass
 import grp
@@ -34,78 +33,68 @@ class Session(object):
 
 session = Session()
 
+def doc_begin_run(scan_id=None, group=None, owner=None, beamline_config=None,
+              beamline_id=None, **kwargs):
+    br_doc = {'uid': str(uuid.uuid4()), 'time': time.time()}
 
-class RunDocs(object):
-    def __init__(self, **kwargs):
-        super(RunDocs, self).__init__()
-        self.doc = {'uid': str(uuid.uuid4()), 'time': time.time()}
+    if scan_id is None:
+        scan_id = session.get_scan_id()
+    br_doc['scan_id'] = scan_id
 
-    @classmethod
-    def begin_run(cls, scan_id=None, group=None, owner=None,
-                  beamline_config=None, beamline_id=None, **kwargs):
-        br_doc = cls().doc
+    if group is None:
+        group = grp.getgrgid(os.getgid()).gr_name
+    br_doc['group'] = group
 
-        if scan_id is None:
-            scan_id = session.get_scan_id()
-        br_doc['scan_id'] = scan_id
+    if owner is None:
+        owner = getpass.getuser()
+    br_doc['owner'] = owner
 
-        if group is None:
-            group = grp.getgrgid(os.getgid()).gr_name
-        br_doc['group'] = group
+    if beamline_config is None:
+        beamline_config = session.get_beamline_config()
+    br_doc['beamline_config'] = beamline_config
 
-        if owner is None:
-            owner = getpass.getuser()
-        br_doc['owner'] = owner
+    if beamline_id is None:
+        beamline_id = session.get_beamline_id()
+    br_doc['beamline_id'] = beamline_id
 
-        if beamline_config is None:
-            beamline_config = session.get_beamline_config()
-        br_doc['beamline_config'] = beamline_config
+    if kwargs:
+        br_doc.update(kwargs)
 
-        if beamline_id is None:
-            beamline_id = session.get_beamline_id()
-        br_doc['beamline_id'] = beamline_id
+    return br_doc
 
-        if kwargs:
-            br_doc.update(kwargs)
+def doc_end_run(br_event, state, reason=None):
+    er_doc = {'uid': str(uuid.uuid4()), 'time': time.time()}
 
-        return br_doc
+    er_doc['begin_run_event'] = br_event['uid']
 
-    @classmethod
-    def end_run(cls, br_event, state, reason=None):
-        er_doc = cls().doc
+    if state in ('success', 'abort', 'fail'):
+        er_doc['completion_state'] = state
+    else:
+        raise ValueError('Completion state must be one of success|abort|fail')
 
-        er_doc['begin_run_event'] = br_event['uid']
+    if reason is not None:
+        er_doc['reason'] = reason
 
-        if state in ('success', 'abort', 'fail'):
-            er_doc['completion_state'] = state
-        else:
-            raise ValueError('Completion state must be one of success|abort|fail')
+    return er_doc
 
-        if reason is not None:
-            er_doc['reason'] = reason
+def doc_descriptor(br_event, sources, **kwargs):
+    desc = {'uid': str(uuid.uuid4()), 'time': time.time()}
 
-        return er_doc
+    desc['begin_run_event'] = br_event['uid']
+    desc['keys'] = {src.name: src.describe() for src in sources}
+    if kwargs:
+        desc.update(kwargs)
 
-    @classmethod
-    def descriptor(cls, br_event, sources, **kwargs):
-        desc = cls().doc
+    return desc
 
-        desc['begin_run_event'] = br_event['uid']
-        desc['keys'] = {src.name: src.describe() for src in sources}
-        if kwargs:
-            desc.update(kwargs)
+def doc_event(desc, seq_num, elems):
+    event = {'uid': str(uuid.uuid4()), 'time': time.time()}
 
-        return desc
+    event['descriptor'] = desc['uid']
+    event['seq_num'] = seq_num
+    event['data'] = {k.name: v for k,v in elems.iteritems()}
 
-    @classmethod
-    def event(cls, desc, seq_num, elems):
-        event = cls().doc
-
-        event['descriptor'] = desc['uid']
-        event['seq_num'] = seq_num
-        event['data'] = {k.name: v for k,v in elems.iteritems()}
-
-        return event
+    return event
 
 
 class Event(object):
@@ -132,10 +121,10 @@ class Event(object):
             while not self._dq.empty():
                 elems.update(self._dq.get(False))
 
-            self.desc = RunDocs.descriptor(self._run.begin_run_event, elems,
+            self.desc = doc_descriptor(self._run.begin_run_event, elems,
                                            event_type=self.__name__)
             self._run.evq.put(self.desc)
-            event_doc = RunDocs.event(self.desc, self.seq_num, elems)
+            event_doc = doc_event(self.desc, self.seq_num, elems)
             self._run.evq.put(event_doc)
         elif not self._dq.empty():
             elems = {}
@@ -143,7 +132,7 @@ class Event(object):
                 elems.update(self._dq.get(False))
 
             # TODO: sanity checking on elems vs self.descriptor
-            event_doc = RunDocs.event(self.desc, self.seq_num, elems)
+            event_doc = doc_event(self.desc, self.seq_num, elems)
             self._run.evq.put(event_doc)
 
         # actuate scaler_events, if we have any for this event
@@ -256,13 +245,13 @@ class Run(FSM, OphydObject):
 
     def _begin_run(self, *args, **kwargs):
         print('\n\nbegin_run_event\n\n')
-        self.begin_run_event = RunDocs.begin_run()
+        self.begin_run_event = doc_begin_run()
         #print(self.begin_run_event)
         self._run_subs(self.begin_run_event, sub_type='begin_run')
 
     def _end_run(self, status=None, reason=None, **kwargs):
         print('\n\nend_run_event\n\n')
-        self.end_run_event = RunDocs.end_run(self.begin_run_event, status,
+        self.end_run_event = doc_end_run(self.begin_run_event, status,
                                              reason=reason)
         self._run_subs(self.end_run_event, sub_type='end_run')
 
