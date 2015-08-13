@@ -223,7 +223,7 @@ class SessionManager(object):
         if self._run_engine is not None:
             self._run_engine.stop()
 
-        for pos in self._registry['positioners'].itervalues():
+        for pos in self._registry['positioners'].values():
             if pos.moving is True:
                 pos.stop()
                 self._logger.debug('Stopped %s' % pos)
