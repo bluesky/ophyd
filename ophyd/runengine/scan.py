@@ -52,7 +52,7 @@ def rewind(scan, **kwargs):
     rewind_pt = scan.path.index(scan.current_pt[0])
     remaining_path = scan.path[rewind_pt:]
     logging.debug('remaining path = %s\n\n', remaining_path)
-    scan.path_gen = scan._path_iter(remaining_path)
+    scan.path_gen = scan.path_iter(remaining_path)
 
     scan.reset()
 
@@ -75,7 +75,8 @@ class Scan(FSM):
         self.run = Run()
 
         self.run.subscribe(self, event_type='trajectory_scan')
-        self.run.subscribe(rewind, event_type='resume_run')
+        self.run.subscribe(functools.partial(rewind, scan=self),
+                           event_type='resume_run')
 
         self.path = np.linspace(st, end, npts+1).tolist()
         self.path_gen = self.path_iter(self.path)
