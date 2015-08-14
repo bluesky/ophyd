@@ -1,5 +1,4 @@
 from __future__ import print_function
-import logging
 import getpass
 import os
 import datetime
@@ -138,9 +137,7 @@ class RunEngine(object):
         self.logger.info('Begin Run...')
 
     def _end_run(self, arg):
-        state = arg.get('state', 'success')
-        bre = arg['run_start']
-        mds.insert_run_stop(bre, time.time(), exit_status=state)
+        mds.insert_run_stop(time=time.time(), **arg)
         self.logger.info('End Run...')
 
     def _move_positioners(self, positioners=None, settle_time=None, **kwargs):
@@ -152,8 +149,9 @@ class RunEngine(object):
         # status now holds the MoveStatus() instances
         time.sleep(0.05)
         # TODO: this should iterate at most N times to catch hangups
-        while not all(s.done for s in status):
+        while self._scan_state and not all(s.done for s in status):
             time.sleep(0.1)
+
         if settle_time is not None:
             time.sleep(settle_time)
 
@@ -184,19 +182,44 @@ class RunEngine(object):
         self.logger.info(self._demunge_names(names))
         seq_num = 0
         while self._scan_state is True:
-            self.logger.debug(
-                'self._scan_state is True in self._start_scan')
+            self.logger.debug('self._scan_state is True in self._start_scan')
+            self.logger.debug('Moving positioners...')
             posvals = self._move_positioners(positioners=positioners, **kwargs)
-            self.logger.debug('moved positioners')
+            self.logger.debug('Moved positioners.')
             # if we're done iterating over positions, get outta Dodge
             if posvals is None:
                 break
 
+            if not self._scan_state:
+                self.logger.warning('Scan interrupted [moving positioners]')
+                break
+
             # Trigger detector acquisision
+            self.logger.debug('Triggering detectors')
             acq_status = [trig.acquire() for trig in triggers]
 
-            while any([not stat.done for stat in acq_status]):
+            t0 = time.time()
+            last_warning = 0
+            while (self._scan_state and
+                   any(not stat.done for stat in acq_status)):
                 time.sleep(0.05)
+
+                elapsed = time.time() - t0
+                if elapsed > 3.0:
+                    if abs(last_warning - elapsed) < 3.0:
+                        continue
+
+                    for stat in acq_status:
+                        if not stat.done:
+                            self.logger.debug('Waiting on detector %s',
+                                              stat.detector)
+                    last_warning = elapsed
+
+            if not self._scan_state:
+                self.logger.warning('Scan interrupted [detectors]')
+                break
+
+            self.logger.debug('Detectors triggered')
 
             time.sleep(0.05)
             # Read detector values
@@ -204,6 +227,7 @@ class RunEngine(object):
             for det in dets + positioners:
                 tmp_detvals.update(det.read())
 
+            self.logger.debug('Detectors read')
             detvals = mds.format_events(tmp_detvals)
 
             # pass data onto Demuxer for distribution
@@ -215,7 +239,7 @@ class RunEngine(object):
             try:
                 self.logger.debug(
                     'inserting event %d------------------', seq_num)
-                event = mds.insert_event(event_descriptor=event_descriptor,
+                event = mds.insert_event(descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
             except mds.EventDescriptorIsNoneError:
@@ -232,15 +256,15 @@ class RunEngine(object):
                     run_start=run_start, time=evdesc_creation_time,
                     data_keys=mds.format_data_keys(data_key_info))
                 self.logger.debug(
-                    'event_descriptor: %s', vars(event_descriptor))
+                    'event_descriptor: %s', event_descriptor)
                 # insert the event again. this time it better damn well work
                 self.logger.debug(
                     'inserting event %d------------------', seq_num)
-                event = mds.insert_event(event_descriptor=event_descriptor,
+                event = mds.insert_event(descriptor=event_descriptor,
                                          time=bundle_time, data=detvals,
                                          seq_num=seq_num)
             self.logger.debug('event %d--------', seq_num)
-            self.logger.debug('%s', vars(event))
+            self.logger.debug('%s', event)
 
             seq_num += 1
             # update the 'data' object from detvals dict
@@ -323,18 +347,18 @@ class RunEngine(object):
         blc = mds.insert_beamline_config(beamline_config, time=time.time())
         # insert the run_start into metadatastore
         recorded_time = time.time()
-        run_start = mds.insert_run_start(
+        run_start_uid = mds.insert_run_start(
             time=recorded_time, beamline_id=beamline_id, owner=owner,
             beamline_config=blc, scan_id=runid, custom=custom)
         pretty_time = datetime.datetime.fromtimestamp(
                                           recorded_time).isoformat()
         self.logger.info("Scan ID: %s", runid)
         self.logger.info("Time: %s", pretty_time)
-        self.logger.info("uid: %s", str(run_start.uid))
+        self.logger.info("uid: %s", run_start_uid)
 
         # stash bre for later use
-        scan_args['run_start'] = run_start
-        end_args['run_start'] = run_start
+        scan_args['run_start'] = run_start_uid
+        end_args['run_start'] = run_start_uid
 
         keys = self._get_data_keys(**scan_args)
         data = defaultdict(list)
@@ -354,7 +378,7 @@ class RunEngine(object):
         except KeyboardInterrupt:
             self._scan_state = False
             self._scan_thread.join()
-            end_args['state'] = 'abort'
+            end_args['exit_status'] = 'abort'
         finally:
             self._end_run(end_args)
 

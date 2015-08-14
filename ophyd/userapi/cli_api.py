@@ -14,6 +14,8 @@ from epics import caget, caput
 
 from ..controls.positioner import EpicsMotor, Positioner, PVPositioner
 from ..session import get_session_manager
+from prettytable import PrettyTable
+import numpy as np
 
 session_mgr = get_session_manager()
 
@@ -576,32 +578,44 @@ def catch_keyboard_interrupt(positioners):
 def _print_pos(positioners, file=sys.stdout):
     """Pretty Print the positioners to file"""
     print('', file=file)
-
-    pos = [p.position for p in positioners]
+    pos = []
+    for p in positioners:
+        try:
+            pos.append(p.position)
+        except TypeError as te:
+            pos.append(None)
+            # no idea why this i sbeing raised
+            print("%s raised by %s" % (te, p))
+#    pos = [p.position for p in positioners]
 
     # Print out header
+    pt = PrettyTable(['Positioner', 'Value', 'Low Limit', 'High Limit'])
+    pt.align = 'r'
+    pt.align['Positioner'] = 'l'
+    pt.float_format = '8.5'
+#    print_header(len=4*(FMT_LEN+3)+1, file=file)
+    #print_string('Positioner', pre='| ', post=' | ', file=file)
+    #print_string('Value', post=' | ', file=file)
+    #print_string('Low Limit', post=' | ', file=file)
+    #print_string('High Limit', post=' |\n', file=file)
 
-    print_header(len=4*(FMT_LEN+3)+1, file=file)
-    print_string('Positioner', pre='| ', post=' | ', file=file)
-    print_string('Value', post=' | ', file=file)
-    print_string('Low Limit', post=' | ', file=file)
-    print_string('High Limit', post=' |\n', file=file)
-
-    print_header(len=4*(FMT_LEN+3)+1, file=file)
+    #print_header(len=4*(FMT_LEN+3)+1, file=file)
 
     for p, v in zip(positioners, pos):
-        print_string(p.name, pre='| ', post=' | ', file=file)
+        if pos is None:
+            continue
+        name = p.name
         if v is not None:
             if hasattr(p, 'precision'):
                 prec = p.precision
             else:
                 prec = FMT_PREC
-            print_value(v, egu=p.egu, prec=prec,
-                        post=' | ', file=file)
+            value = np.round(v, decimals=prec)
         else:
-            print_string('INVALID', post=' | ', file=file)
-        print_value(p.low_limit, egu=p.egu, post=' | ', file=file)
-        print_value(p.high_limit, egu=p.egu, post=' |\n', file=file)
+            value = 'INVALID'
+        pt.add_row([p.name, value, p.low_limit, p.high_limit])
+#        print_value(p.low_limit, egu=p.egu, post=' | ', file=file)
+#        print_value(p.high_limit, egu=p.egu, post=' |\n', file=file)
 
-    print_header(len=4*(FMT_LEN+3)+1, file=file)
-    print('', file=file)
+ #   print_header(len=4*(FMT_LEN+3)+1, file=file)
+    print(pt, file=file)
