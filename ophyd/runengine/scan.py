@@ -6,6 +6,7 @@ import numpy as np
 
 from .fsm import FSM, State
 from .run import Run
+from .dochandler import DocHandler
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -45,21 +46,15 @@ def det_read(scan, **kwargs):
     if event:
         event.save(scan.detectors)
 
-def br_cb(br_doc, **kwargs):
-    logging.debug('begin_run_doc = %s', br_doc)
-
-def er_cb(er_doc, **kwargs):
-    logging.debug('end_run_doc = %s', er_doc)
-
 def rewind(scan, **kwargs):
-            logging.debug('\n\n rewinding scan path \n\n')
-            # rewind path to current_pt and make a new trajectory over that
-            rewind_pt = scan.path.index(scan.current_pt[0])
-            remaining_path = scan.path[rewind_pt:]
-            logging.debug('remaining path = %s\n\n', remaining_path)
-            scan.path_gen = scan._path_iter(remaining_path)
+    logging.debug('\n\n rewinding scan path \n\n')
+    # rewind path to current_pt and make a new trajectory over that
+    rewind_pt = scan.path.index(scan.current_pt[0])
+    remaining_path = scan.path[rewind_pt:]
+    logging.debug('remaining path = %s\n\n', remaining_path)
+    scan.path_gen = scan._path_iter(remaining_path)
 
-            scan.reset()
+    scan.reset()
 
 
 class Scan(FSM):
@@ -80,13 +75,13 @@ class Scan(FSM):
         self.run = Run()
 
         self.run.subscribe(self, event_type='trajectory_scan')
-        self.run.subscribe(br_cb, event_type='begin_run')
-        self.run.subscribe(er_cb, event_type='end_run')
         self.run.subscribe(rewind, event_type='resume_run')
 
         self.path = np.linspace(st, end, npts+1).tolist()
         self.path_gen = self.path_iter(self.path)
         self.positioners = pos if isinstance(pos, list) else [pos]
+
+        doc_hdlr = DocHandler(self.run, ['begin_run', 'end_run', '*'])
 
         if execute:
             self.run.start()
@@ -138,8 +133,6 @@ class PeriodScan(Scan):
         self.run = Run()
 
         self.run.subscribe(self, event_type='periodic_scan')
-        self.run.subscribe(br_cb, event_type='begin_run')
-        self.run.subscribe(er_cb, event_type='end_run')
 
         if period < 0.0:
             period = 0
@@ -157,6 +150,8 @@ class PeriodScan(Scan):
                                event='periodic', scale=scale)
 
         self.path_gen = self.path_iter(self.period)
+
+        doc_hdlr = DocHandler(self.run, ['begin_run', 'end_run', '*'])
 
         if execute:
             self.run.start()

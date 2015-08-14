@@ -123,9 +123,10 @@ class Event(object):
 
             self.desc = doc_descriptor(self._run.begin_run_event, elems,
                                            event_type=self.__name__)
-            self._run.evq.put(self.desc)
+            self._run.evq.put((self.__name__, self.desc))
             event_doc = doc_event(self.desc, self.seq_num, elems)
-            self._run.evq.put(event_doc)
+            self._run.evq.put((self.__name__, event_doc))
+            self._run.evq.join()
         elif not self._dq.empty():
             elems = {}
             while not self._dq.empty():
@@ -133,7 +134,8 @@ class Event(object):
 
             # TODO: sanity checking on elems vs self.descriptor
             event_doc = doc_event(self.desc, self.seq_num, elems)
-            self._run.evq.put(event_doc)
+            self._run.evq.put((self.__name__, event_doc))
+            self._run.evq.join()
 
         # actuate scaler_events, if we have any for this event
         for callback, scale_factor in self.scaler_events:
@@ -206,6 +208,10 @@ class Run(FSM, OphydObject):
 
         self._session = register_object(self, set_vars=False)
 
+    def _publish_run_doc(self, event, doc):
+        self._run_subs(doc, sub_type=event)
+        self.evq.task_done()
+
     def _tend_evq(self, *args, **kwargs):
         while self.state == 'acquiring':
             try:
@@ -213,22 +219,15 @@ class Run(FSM, OphydObject):
             except Queue.Empty:
                 continue
             except KeyboardInterrupt:
-                # TODO: check for and distributee evq contents
+                # TODO: check for and distribute evq contents
                 return
 
-            if 'seq_num' in msg:
-                print('\n\nevent =', msg, '\n\n')
-            elif 'keys' in msg:
-                print('\n\nevent descriptor =', msg, '\n\n')
+            self._publish_run_doc(*msg)
 
     def _empty_evq(self, *args, **kwargs):
         while not self.evq.empty():
             msg = self.evq.get(block=False)
-
-            if 'seq_num' in msg:
-                print('\n\nevent =', msg, '\n\n')
-            elif 'keys' in msg:
-                print('\n\nevent descriptor =', msg, '\n\n')
+            self._publish_run_doc(*msg)
 
     def _start_threads(self, *args, **kwargs):
         if self._threads:
@@ -308,6 +307,14 @@ class Run(FSM, OphydObject):
             raise NotImplementedError('Signal events not supported. Yet')
         elif 'resume_run' in event_type:
             self['suspended'].subscribe(cb, event_type='exit')
+        elif event_type == '*':
+            for event in self._events:
+                # If no one has subscribed for Run Docs from event_type,
+                # create that subscription type now and subscribe the client
+                if not event in self._subs:
+                    self._subs[event] = list()
+
+                OphydObject.subscribe(self, cb, event_type=event, run=False)
         else:
             OphydObject.subscribe(self, cb, event_type=event_type, run=False)
  
