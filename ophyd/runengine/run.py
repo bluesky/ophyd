@@ -81,7 +81,11 @@ def doc_descriptor(br_event, sources, **kwargs):
     desc = {'uid': str(uuid.uuid4()), 'time': time.time()}
 
     desc['begin_run_event'] = br_event['uid']
-    desc['keys'] = {src.name: src.describe() for src in sources}
+    desc['keys'] = dict()
+    for src in sources.keys():
+        name, value = src.describe().popitem()
+        desc['keys'][name] = value
+
     if kwargs:
         desc.update(kwargs)
 
@@ -92,7 +96,8 @@ def doc_event(desc, seq_num, elems):
 
     event['descriptor'] = desc['uid']
     event['seq_num'] = seq_num
-    event['data'] = {k.name: v for k,v in elems.iteritems()}
+    event['data'] = dict()
+    [event['data'].update(elem) for elem in elems.values()]
 
     return event
 
