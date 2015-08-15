@@ -10,6 +10,34 @@
 import functools
 
 
+def memoize(max_size=128):
+    '''
+    Function decorator
+
+    Caches the wrapped function's return value.
+    Defaults to maximum 128 items in the cache.
+
+    .. note:: keyword arguments are not supported (TODO)
+    .. note:: naive random cache clearing, should improve (TODO)
+    '''
+    def factory(func):
+        cache = {}
+        
+        @functools.wraps(func)
+        def wrapper(*args):
+            if args in cache:
+                return cache[args]
+            result = func(*args)
+            if len(cache) > max_size:
+                del cache[random.choice(cache.keys())]
+            cache[args] = result
+            return result
+            
+        return wrapper
+        
+    return factory
+
+
 def cached_retval(fcn):
     '''Function decorator
 
