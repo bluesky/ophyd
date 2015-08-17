@@ -1,0 +1,2 @@
+include versioneer.py
+include ophyd/_version.py
