@@ -179,10 +179,10 @@ class Run(FSM, OphydObject):
     SUB_END_RUN = 'end_run'
     SUB_PAUSE_RUN = 'pause_run'
     SUB_RESUME_RUN = 'resume_run'
-    SUB_SCAN = 'trajectory_scan'
-    SUB_PERIODIC = 'periodic_scan'
-    SUB_SCALER = 'scaler_scan'
-    SUB_SIGNAL = 'signal_scan'
+#    SUB_SCAN = 'trajectory_scan'
+#    SUB_PERIODIC = 'periodic_scan'
+#    SUB_SCALER = 'scaler_scan'
+#    SUB_SIGNAL = 'signal_scan'
 
     # trigger_map = ['trigger', ['src state_1',,,], 'destination state']
     trigger_map = [ ['start', 'stopped', 'acquiring'],
@@ -272,16 +272,41 @@ class Run(FSM, OphydObject):
         thread = ScanContext(event, cb, self, name=ev_type)
         self._events[event.__name__] = event
         self._threads[thread.name] = thread
+        self._subs[event.__name__] = list()
 
     # Need kwargs here to carry "period", "signal", and "scaler" 
     # supplementary arguments ("when", "what signal", "scaling factor").
-    def subscribe(self, cb, event_type=None, **kwargs):
-        ''' Subscribe to Run events.
+    def trigger(self, cb, event_type=None, **kwargs):
+        ''' Configure Run with callbacks for scan types.
 
             Add callbacks for Run start, stop, pause, resume event
             and add callbacks Scan types: trajectory scans, period scans,
             signal scans, and scaler scans.
 
+        Parameters:
+        ------------
+        cb: callable
+            If event_type is 'trajectory_scan' or 'periodic_scan', cb must
+            be a Scan instance.
+
+        event_type: string
+            One of 'trajectory_scan', 'periodic_scan', 'scaler_scan',
+            'signal_scan', 'pause_run', or 'resume_run'.
+
+        kwargs:
+            If event_type is 'scaler_scan', the following keyword arguments
+            are required:
+
+            event: string
+                   The name of the event to scale
+
+            scale: integer
+                   Invoke callback, cb, every 'scale' number of 'event'(s)
+
+                   Eg:
+                   run.trigger(timer, event_type='periodic_scan')
+                   run.trigger(mycb, event_type='scaler_scan', event='timer',
+                               scale=4)
         '''
         # wrap callbacks for each subscription-type in our own special sauce
         if 'trajectory_scan' in event_type:
@@ -308,17 +333,30 @@ class Run(FSM, OphydObject):
             scaled_event = self._events[event]
             scaled_event.scaler_events.append((cb, scale))
             self._events[cb.__name__] = cb
+            self._subs[cb.__name__] = list()
         elif 'signal_scan' in event_type:
             raise NotImplementedError('Signal events not supported. Yet')
+        elif 'pause_run' in event_type:
+            self['suspended'].subscribe(cb, event_type='enter')
         elif 'resume_run' in event_type:
             self['suspended'].subscribe(cb, event_type='exit')
-        elif event_type == '*':
-            for event in self._events:
-                # If no one has subscribed for Run Docs from event_type,
-                # create that subscription type now and subscribe the client
-                if not event in self._subs:
-                    self._subs[event] = list()
+        else:
+            raise ValueError('%s is not a supported event.' % event_type)
+ 
+    def subscribe(self, cb, event_type=None):
+        '''Subscribe to receive Run Docs.
 
+        Parameters:
+        -----------
+        cb: callable
+            The callback to invoke for 'event_type' Run Docs
+        event_type: string
+            One of 'begin_run' or 'end_run' or any of the registered
+            trigger events (see Run.trigger). '*' may be used to subscribe
+            to all Run Doc producing events.
+        '''
+        if event_type == '*':
+            for event in self._events:
                 OphydObject.subscribe(self, cb, event_type=event, run=False)
         else:
             OphydObject.subscribe(self, cb, event_type=event_type, run=False)

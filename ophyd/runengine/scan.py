@@ -74,8 +74,8 @@ class Scan(FSM):
     def __call__(self, pos, st, end, npts, execute=True, **kwargs):
         self.run = Run()
 
-        self.run.subscribe(self, event_type='trajectory_scan')
-        self.run.subscribe(functools.partial(rewind, scan=self),
+        self.run.trigger(self, event_type='trajectory_scan')
+        self.run.trigger(functools.partial(rewind, scan=self),
                            event_type='resume_run')
 
         self.path = np.linspace(st, end, npts+1).tolist()
@@ -133,7 +133,7 @@ class PeriodScan(Scan):
         '''
         self.run = Run()
 
-        self.run.subscribe(self, event_type='periodic_scan')
+        self.run.trigger(self, event_type='periodic_scan')
 
         if period < 0.0:
             period = 0
@@ -147,7 +147,7 @@ class PeriodScan(Scan):
             def run_stop(run, *args, **kwargs):
                 run.stop(status='success')
 
-            self.run.subscribe(run_stop, event_type='scaler_scan',
+            self.run.trigger(run_stop, event_type='scaler_scan',
                                event='periodic', scale=scale)
 
         self.path_gen = self.path_iter(self.period)
