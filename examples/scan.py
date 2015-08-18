@@ -25,13 +25,13 @@ class NullPositioner(Positioner):
 
         return status
 
+    # Override read(), as this object has no internal Signal(s)
     def read(self):
-        return {self.name: {'value': self._position, 'timestamp': time.time()}}
+        return {self.name: [self._position, time.time()]}
 
     def describe(self):
         """Return the description as a dictionary"""
         return {self.name: {'source': 'SIM:{}'.format(self.name)}}
-
 
 
 class NullDetector(Signal):
@@ -42,10 +42,6 @@ class NullDetector(Signal):
     def acquire(self):
         time.sleep(3)
         return self
-
-    def read(self):
-        return {self.name: {'value': self.value, 'timestamp': time.time()}}
-
 
 ######################################################
 ### create a 1-d Trajectory and Periodic scans 
