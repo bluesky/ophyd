@@ -133,16 +133,9 @@ class Signal(OphydObject):
         Returns
         -------
             dict
+                {sig.name: [sig.value, timestamp]}
         '''
-        if self._separate_readback:
-            return {'alias': self.alias,
-                    'setpoint': self.setpoint,
-                    'readback': self.readback,
-                    }
-        else:
-            return {'alias': self.alias,
-                    'value': self.value,
-                    }
+        return {self.name: [self.value, time.time()]}
 
     def describe(self):
         """Return the description as a dictionary"""
@@ -428,11 +421,10 @@ class EpicsSignal(Signal):
         Returns
         -------
         dict
-            Dictionary of value timestamp pairs
+            Dictionary of {sig.name: [sig.value, sig.timestamp]}
         """
 
-        return {self.name: {'value': self.value,
-                            'timestamp': self.timestamp}}
+        return {self.name: [self.value, self.timestamp]}
 
 
 class SignalGroup(OphydObject):

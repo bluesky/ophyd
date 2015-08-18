@@ -11,5 +11,4 @@ setup(name='ophyd',
                 'ophyd.controls.areadetector',
                 'ophyd.runengine',
                 'ophyd.userapi',
-                'ophyd.utils',
-                'ophyd.writers'])
+                'ophyd.utils'])
