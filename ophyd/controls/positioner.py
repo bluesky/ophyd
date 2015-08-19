@@ -230,9 +230,10 @@ class EpicsMotor(Positioner):
         The record to use
     '''
 
-    def __init__(self, record, **kwargs):
+    def __init__(self, record, settle_time=0.05, **kwargs):
         self._record = record
 
+        self.settle_time = float(settle_time)
         name = kwargs.pop('name', record)
         Positioner.__init__(self, name=name, **kwargs)
 
@@ -404,7 +405,7 @@ class PVPositioner(Positioner):
         self._done_val = done_val
         self._act_val = act_val
         self._put_complete = bool(put_complete)
-        self._settle_time = float(settle_time)
+        self.settle_time = float(settle_time)
 
         self._actuate = None
         self._stop = None
@@ -497,7 +498,9 @@ class PVPositioner(Positioner):
         if not has_done:
             self._move_changed(value=False)
         else:
-            time.sleep(self._settle_time)
+            # Does this ever get called? Bluesky will take care of this
+            # itself, so this can probably go away. - TAC & DBA
+            time.sleep(self.settle_time)
 
         if self._started_moving and not self._moving:
             self._done_moving(timestamp=self._setpoint.timestamp)
@@ -620,7 +623,7 @@ class PVPositioner(Positioner):
             repr.append('done={0._done.pvname!r}'.format(self))
             repr.append('done_val={0._done_val!r}'.format(self))
         repr.append('put_complete={0._put_complete!r}'.format(self))
-        repr.append('settle_time={0._settle_time!r}'.format(self))
+        repr.append('settle_time={0.settle_time!r}'.format(self))
         repr.append('limits={0._limits!r}'.format(self))
 
         return self._get_repr(repr)
