@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 import signal
 import atexit
@@ -93,6 +94,7 @@ class SessionManager(object):
         self._logger.debug('Calling SessionManager SIGINT handler...')
         self.stop_all()
         self._orig_sigint_hdlr(sig, frame)
+        raise KeyboardInterrupt
 
     @property
     def persisting(self):
