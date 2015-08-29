@@ -12,6 +12,7 @@ from __future__ import print_function
 import logging
 import time
 
+import numpy as np
 import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
@@ -150,7 +151,7 @@ class Signal(OphydObject):
 
 
 class EpicsSignal(Signal):
-    '''An EPICS signal, comprised of either one or two EPICS PVs
+    """An EPICS signal, comprised of either one or two EPICS PVs
 
     =======  =========  =====  ==========================================
     read_pv  write_pv   rw     Result
@@ -177,15 +178,26 @@ class EpicsSignal(Signal):
         Check limits prior to writing value
     auto_monitor : bool, optional
         Use automonitor with epics.PV
-    '''
+    dtype : {float, int, string}
+        Defaults to float.
+        This is the type that read() will be return.
+    num_decimals : int, optional
+        Round the value of this signal.
+        if num_decimals < 0, round to that many decimals before the '.'
+        if num_decimals > 0, round to that many decimals after the '.'
+    """
     def __init__(self, read_pv, write_pv=None,
                  rw=True, pv_kw={},
                  put_complete=False,
                  string=False,
                  limits=False,
                  auto_monitor=None,
+                 dtype=None,
+                 num_decimals=None,
                  **kwargs):
 
+        if pv_kw is None:
+            pv_kw = dict()
         self._read_pv = None
         self._write_pv = None
         self._put_complete = put_complete
@@ -194,6 +206,17 @@ class EpicsSignal(Signal):
         self._rw = rw
         self._pv_kw = pv_kw
         self._auto_monitor = auto_monitor
+
+        if dtype is None:
+            dtype = float
+        valid_dtypes = ['float', 'int', 'str']
+        if dtype.__name__ not in valid_dtypes:
+            raise ValueError("dtype must be one of {}. You provided {"
+                             "}".format(valid_dtypes, dtype))
+        self.dtype = dtype
+        if num_decimals is None:
+            num_decimals = 'all'
+        self.num_decimals = num_decimals
 
         separate_readback = False
 
@@ -420,18 +443,27 @@ class EpicsSignal(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname)}}
+        return {self.name: {'source': 'PV:%s' % self._read_pv.pvname,
+                            'dtype': self.dtype,
+                            'num_decimals': self.num_decimals,
+                            'shape': []}}
 
     def read(self):
-        """Read the signal and format for data collection
+        """Read the signal and combine it with its timestamp.
+
+        This value is formatted according to the values in self.dtype and
+        self.format
 
         Returns
         -------
         dict
             Dictionary of value timestamp pairs
+            {'value': value, 'timestamp': timestamp}
         """
-
-        return {self.name: {'value': self.value,
+        if self.num_decimals != 'all':
+            value = np.round(self.value, self.num_decimals)
+        value = self.describe()['dtype'](value)
+        return {self.name: {'value': value,
                             'timestamp': self.timestamp}}
 
 
