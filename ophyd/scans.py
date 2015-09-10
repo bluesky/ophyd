@@ -9,15 +9,15 @@ import traceback
 
 from IPython.utils.coloransi import TermColors as tc
 
-from ..runengine import RunEngine
-from ..session import get_session_manager
-from ..utils import LimitError
-from ..controls import Detector
+from .runengine import RunEngine
+from .session import get_session_manager
+from .utils import LimitError
+from .controls import Detector
 
-session_manager = get_session_manager()
-logger = session_manager._logger
+session_manager = None
+logger = None
 
-__all__ = ['AScan', 'DScan', 'Data', 'Count']
+__all__ = ['AScan', 'DScan', 'Count']
 
 
 def estimate(x, y):
@@ -154,6 +154,9 @@ class Scan(object):
 
         self.paths = list()
         self.positioners = list()
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
 
         try:
             self.logbook = session_manager['olog_client']
@@ -199,6 +202,12 @@ class Scan(object):
 
     def __exit__(self, exec_type, exec_value, tb):
         """Exit point for context manager"""
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         logger.debug("Scan context manager exited with %s", str(exec_value))
         traceback.print_tb(tb)
         self.deconfigure_detectors()
@@ -532,6 +541,12 @@ class DScan(AScan):
         starting position (as recorded by :py:meth:`pre_scan`) once the scan
         has finished.
         """
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         super(DScan, self).post_scan()
         status = [pos.move(start, wait=False)
                   for pos, start in
@@ -561,6 +576,12 @@ class Count(Scan):
         This post-scan routine prints the scan results to the screen and
         if the logbook is setup prints the results to the screen
         """
+        global logger
+        global session_manager
+        if session_manager is None:
+            session_manager = get_session_manager()
+        if logger is None:
+            logger = session_manager._logger
         super(Count, self).post_scan()
 
         msg = self._fmt_count()

@@ -16,8 +16,7 @@ import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
 from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
-from .ophydobj import OphydObject
-
+from .ophydobj import OphydObject, DetectorStatus
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class Signal(OphydObject):
                  recordable=True, **kwargs):
 
         self._default_sub = self.SUB_VALUE
-        OphydObject.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         self._setpoint = setpoint
         self._readback = value
@@ -146,7 +145,9 @@ class Signal(OphydObject):
 
     def describe(self):
         """Return the description as a dictionary"""
-        return {self.name: {'source': 'SIM:{}'.format(self.name)}}
+        return {self.name: {'source': 'SIM:{}'.format(self.name),
+                            'dtype': 'number',
+                            'shape': []}}
 
 
 class EpicsSignal(Signal):
@@ -179,13 +180,14 @@ class EpicsSignal(Signal):
         Use automonitor with epics.PV
     '''
     def __init__(self, read_pv, write_pv=None,
-                 rw=True, pv_kw={},
+                 rw=True, pv_kw=None,
                  put_complete=False,
                  string=False,
                  limits=False,
                  auto_monitor=None,
                  **kwargs):
-
+        if pv_kw is None:
+            pv_kw = dict()
         self._read_pv = None
         self._write_pv = None
         self._put_complete = put_complete
@@ -206,7 +208,7 @@ class EpicsSignal(Signal):
                 separate_readback = True
 
         name = kwargs.pop('name', read_pv)
-        Signal.__init__(self, separate_readback=separate_readback, name=name,
+        super().__init__(separate_readback=separate_readback, name=name,
                         **kwargs)
 
         self._read_pv = epics.PV(read_pv, form=get_pv_form(),
@@ -420,7 +422,9 @@ class EpicsSignal(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname)}}
+        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname),
+                            'dtype': 'number',
+                            'shape': []}}
 
     def read(self):
         """Read the signal and format for data collection
@@ -434,6 +438,42 @@ class EpicsSignal(Signal):
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
 
+    def trigger(self):
+        try:
+            return super().trigger()
+        except AttributeError:
+            d = DetectorStatus(self)
+            d._finished()
+            return d
+
+
+class SkepticalSignal(EpicsSignal):
+    def trigger(self):
+        d = DetectorStatus(self)
+        # scary assumption
+        cur = self.read()[self._name]
+        old_time = cur['timestamp']
+
+        def local(old_value, value, timestamp, **kwargs):
+            if old_time == timestamp:
+                # the time stamp has not changed.  Given that
+                # this function is being called by a subscription
+                # on value changed, this should never happen
+                return
+            # tell the status object we are done
+            d._finished()
+            # disconnect this function
+            self.clear_sub(local)
+
+        self.subscribe(local, self.SUB_VALUE)
+
+        return d
+
+    def _set_readback(self, value, **kwargs):
+        if value == 0.0:
+            return
+        return super()._set_readback(value, **kwargs)
+
 
 class SignalGroup(OphydObject):
     '''Create a group or collection of related signals
@@ -445,7 +485,7 @@ class SignalGroup(OphydObject):
     '''
 
     def __init__(self, signals=None, **kwargs):
-        OphydObject.__init__(self, **kwargs)
+        super().__init__(**kwargs)
 
         self._signals = []
 
@@ -551,6 +591,16 @@ class SignalGroup(OphydObject):
         This method uses the `recordable` flag in ophyd to filter
         the returned signals of the signal group"""
         values = {}
-        [values.update(signal.read()) for signal in self._signals
-         if signal.recordable]
+        for signal in self._signals:
+            if signal.recordable:
+                values.update(signal.read())
+
         return values
+
+    def trigger(self):
+        try:
+            return super().trigger()
+        except AttributeError:
+            d = DetectorStatus(self)
+            d._finished()
+            return d

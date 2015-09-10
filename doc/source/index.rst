@@ -11,8 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   cli_api
-   scan_api
+   commands
+   scans
 
 Indices and tables
 ==================

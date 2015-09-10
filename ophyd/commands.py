@@ -1,3 +1,4 @@
+
 """Command Line Interface to opyd objects"""
 
 from __future__ import print_function
@@ -5,24 +6,20 @@ import time
 import functools
 import sys
 from contextlib import contextmanager, closing
-from StringIO import StringIO
+from io import StringIO
 import collections
 
 from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
 
-from ..controls.positioner import EpicsMotor, Positioner, PVPositioner
-from ..session import get_session_manager
+from .controls.positioner import EpicsMotor, Positioner, PVPositioner
+from .session import get_session_manager
 from prettytable import PrettyTable
 import numpy as np
 
-session_mgr = get_session_manager()
-
-try:
-    logbook = session_mgr['olog_client']
-except KeyError:
-    logbook = None
+session_manager = None
+logbook = None
 
 __all__ = ['mov',
            'movr',
@@ -213,6 +210,12 @@ def set_lm(positioner, limits):
                lim2, p.name, prec=FMT_PREC)
 
     print(msg)
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager['olog_client']
     if logbook:
         logbook.log(msg)
 
@@ -279,9 +282,15 @@ def set_pos(positioner, position):
             print('Unable to set position of positioner {0}'.format(p.name))
 
     print(msg)
-
-    lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
-    logbook.log(msg + '\n' + lmsg)
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager['olog_client']
+    if logbook:
+        lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
+        logbook.log(msg + '\n' + lmsg)
 
 
 @ensure(Positioner)
@@ -311,8 +320,11 @@ def wh_pos(positioners=None):
 
     >>>wh_pos([m1, m2, m3])
     """
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
     if positioners is None:
-        pos = session_mgr.get_positioners()
+        pos = session_manager.get_positioners()
         positioners = [pos[k] for k in sorted(pos)]
 
     _print_pos(positioners, file=sys.stdout)
@@ -336,10 +348,15 @@ def log_pos(positioners=None):
         int
             The ID of the logbook entry returned by the logbook.log method.
     """
+    global session_manager
+    global logbook
+    if session_manager is None:
+        session_manager = get_session_manager()
     if positioners is None:
-        pos = session_mgr.get_positioners()
+        pos = session_manager.get_positioners()
         positioners = [pos[k] for k in sorted(pos)]
-
+    if logbook is None:
+        logbook = session_manager['olog_client']
     msg = ''
 
     with closing(StringIO()) as sio:
@@ -357,9 +374,9 @@ def log_pos(positioners=None):
     pdict['objects'] = repr(positioners)
     pdict['values'] = repr({p.name: p.position for p in positioners})
 
-    # make the logbook entry
-    id = logbook.log(msg, properties={'OphydPositioners': pdict},
-                     ensure=True)
+    if logbook:
+        id = logbook.log(msg, properties={'OphydPositioners': pdict},
+                         ensure=True)
 
     print('Logbook positions added as Logbook ID {}'.format(id))
     return id
@@ -390,7 +407,7 @@ def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
 
     print('')
     stat = []
-    for key, value in objects.iteritems():
+    for key, value in objects.items():
         newpos = logpos[key]
         oldpos = value.position
         try:
@@ -447,7 +464,7 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
         objects = {x: objects[x] for x in keys}
 
     print('')
-    for key, value in objects.iteritems():
+    for key, value in objects.items():
         try:
             diff.append(value.position - oldpos[key])
             pos.append(value)
@@ -474,9 +491,15 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
 
 def logbook_to_objects(id=None, **kwargs):
     """Search the logbook and return positioners"""
+
+    global logbook
+    global session_manager
+    if session_manager is None:
+        session_manager = get_session_manager()
+    if logbook is None:
+        logbook = session_manager['olog_client']
     if logbook is None:
         raise NotImplemented("No logbook is avaliable")
-
     entry = logbook.find(id=id, **kwargs)
     if len(entry) != 1:
         raise ValueError("Search of logbook was not unique, please refine"
@@ -570,7 +593,9 @@ def catch_keyboard_interrupt(positioners):
         for p in positioners:
             p.stop()
             print("{}[--] Stopping {}{}".format(tc.Red, tc.LightRed, p.name))
-
+        print(tc.Normal, end='')
+        blink(True)
+        raise
     print(tc.Normal, end='')
     blink(True)
 

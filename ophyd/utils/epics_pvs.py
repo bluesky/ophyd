@@ -10,13 +10,13 @@
 from __future__ import print_function
 import ctypes
 import threading
-import Queue as queue
+import queue
 import warnings
 
 import epics
+from boltons.cacheutils import cached, LRU
 
 from . import errors
-from .decorators import cached_retval
 
 __all__ = ['split_record_field',
            'strip_field',
@@ -216,7 +216,10 @@ def waveform_to_string(value, type_=str, delim=''):
     return value
 
 
-@cached_retval
+pv_forms = LRU(128)  # Cache the 128 least recently used (LRU) items.
+
+
+@cached(pv_forms)
 def get_pv_form():
     '''Get the PV form that should be used for pyepics
 

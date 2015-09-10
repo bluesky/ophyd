@@ -18,84 +18,10 @@ from epics.pv import fmt_time
 from .signal import (EpicsSignal, SignalGroup)
 from ..utils import TimeoutError
 from ..utils.epics_pvs import record_field
+from .ophydobj import MoveStatus
 
 logger = logging.getLogger(__name__)
 
-
-class MoveStatus(object):
-    '''Asynchronous movement status
-
-    Parameters
-    ----------
-    positioner : Positioner
-    target : float or array-like
-        Target position
-    done : bool, optional
-        Whether or not the motion has already completed
-    start_ts : float, optional
-        The motion start timestamp
-
-    Attributes
-    ----------
-    pos : Positioner
-    target : float or array-like
-        Target position
-    done : bool
-        Whether or not the motion has already completed
-    start_ts : float
-        The motion start timestamp
-    finish_ts : float
-        The motion completd timestamp
-    finish_pos : float or ndarray
-        The final position
-    success : bool
-        Motion successfully completed
-    '''
-
-    def __init__(self, positioner, target, done=False,
-                 start_ts=None):
-        if start_ts is None:
-            start_ts = time.time()
-
-        self.pos = positioner
-        self.target = target
-        self.done = False
-        self.success = False
-        self.start_ts = start_ts
-        self.finish_ts = None
-        self.finish_pos = None
-
-    @property
-    def error(self):
-        if self.finish_pos is not None:
-            finish_pos = self.finish_pos
-        else:
-            finish_pos = self.pos.position
-
-        try:
-            return np.array(finish_pos) - np.array(self.target)
-        except:
-            return None
-
-    def _finished(self, success=True, **kwargs):
-        self.done = True
-        self.success = success
-        self.finish_ts = kwargs.get('timestamp', time.time())
-        self.finish_pos = self.pos.position
-
-    @property
-    def elapsed(self):
-        if self.finish_ts is None:
-            return time.time() - self.start_ts
-        else:
-            return self.finish_ts - self.start_ts
-
-    def __str__(self):
-        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
-               'success={1.success})'.format(self.__class__.__name__,
-                                             self)
-
-    __repr__ = __str__
 
 
 class Positioner(SignalGroup):
@@ -197,6 +123,7 @@ class Positioner(SignalGroup):
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
 
+        status = MoveStatus(self, position)
         if wait:
             t0 = time.time()
 
@@ -218,16 +145,18 @@ class Positioner(SignalGroup):
                     raise TimeoutError('Failed to move %s to %s in %s s' %
                                        (self, position, timeout))
 
+            status._finished()
+
         else:
             if moved_cb is not None:
                 self.subscribe(moved_cb, event_type=self._SUB_REQ_DONE,
                                run=False)
 
-            status = MoveStatus(self, position)
+
             self.subscribe(status._finished,
                            event_type=self._SUB_REQ_DONE, run=False)
 
-            return status
+        return status
 
     def _done_moving(self, timestamp=None, value=None, **kwargs):
         '''Call when motion has completed.  Runs SUB_DONE subscription.'''
@@ -274,6 +203,21 @@ class Positioner(SignalGroup):
         '''
         return self._moving
 
+    def set(self, new_position, *, wait=False,
+            moved_cb=None, timeout=30.0):
+        """
+        New API for controlling movers.
+
+
+        Parameters
+        ----------
+        new_position : dict
+            A dictionary of new positions keyed on axes name.  This is
+            symmetric with read such that `mot.set(mot.read())` works as
+            as expected.
+        """
+        return self.move(new_position, wait=wait, moved_cb=moved_cb, timeout=timeout)
+
 
 class EpicsMotor(Positioner):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
@@ -286,9 +230,10 @@ class EpicsMotor(Positioner):
         The record to use
     '''
 
-    def __init__(self, record, **kwargs):
+    def __init__(self, record, settle_time=0.05, **kwargs):
         self._record = record
 
+        self.settle_time = float(settle_time)
         name = kwargs.pop('name', record)
         Positioner.__init__(self, name=name, **kwargs)
 
@@ -370,6 +315,7 @@ class EpicsMotor(Positioner):
                                    **kwargs)
         except KeyboardInterrupt:
             self.stop()
+            raise
 
     def __repr__(self):
         return self._get_repr(['record={!r}'.format(self._record)])
@@ -459,7 +405,7 @@ class PVPositioner(Positioner):
         self._done_val = done_val
         self._act_val = act_val
         self._put_complete = bool(put_complete)
-        self._settle_time = float(settle_time)
+        self.settle_time = float(settle_time)
 
         self._actuate = None
         self._stop = None
@@ -552,7 +498,9 @@ class PVPositioner(Positioner):
         if not has_done:
             self._move_changed(value=False)
         else:
-            time.sleep(self._settle_time)
+            # Does this ever get called? Bluesky will take care of this
+            # itself, so this can probably go away. - TAC & DBA
+            time.sleep(self.settle_time)
 
         if self._started_moving and not self._moving:
             self._done_moving(timestamp=self._setpoint.timestamp)
@@ -675,7 +623,7 @@ class PVPositioner(Positioner):
             repr.append('done={0._done.pvname!r}'.format(self))
             repr.append('done_val={0._done_val!r}'.format(self))
         repr.append('put_complete={0._put_complete!r}'.format(self))
-        repr.append('settle_time={0._settle_time!r}'.format(self))
+        repr.append('settle_time={0.settle_time!r}'.format(self))
         repr.append('limits={0._limits!r}'.format(self))
 
         return self._get_repr(repr)

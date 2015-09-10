@@ -1,7 +1,7 @@
 User commands and API for ophyd
 *******************************
 
-.. automodule:: ophyd.userapi
+.. automodule:: ophyd
 
-.. automodule:: ophyd.userapi.cli_api
+.. automodule:: ophyd.commands
    :members:

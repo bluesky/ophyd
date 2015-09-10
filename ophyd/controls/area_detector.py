@@ -18,6 +18,7 @@ class AreaDetector(SignalDetector):
     def __init__(self, basename, stats=range(1, 6),
                  shutter=None, shutter_rb=None, shutter_val=(0, 1),
                  cam='cam1:', proc_plugin='Proc1:',
+                 use_image_mode=True, reset_acquire=True,
                  *args, **kwargs):
         """Initialize the AreaDetector class
 
@@ -55,6 +56,8 @@ class AreaDetector(SignalDetector):
         # Default to not taking darkfield images
         self._darkfield_int = 0
         self._take_darkfield = False
+        self._use_image_mode = use_image_mode
+        self._reset_acquire = reset_acquire
 
         # Setup signals on camera
         self.add_signal(self._ad_signal('{}Acquire'.format(self._cam),
@@ -97,8 +100,6 @@ class AreaDetector(SignalDetector):
 
                 self.add_signal(sig, add_property=True)
 
-                # sig.subscribe(self._stats_changed)
-
         self._shutter_val = shutter
         self._shutter_rb_val = shutter_rb
         self._acq_num = None
@@ -129,6 +130,14 @@ class AreaDetector(SignalDetector):
         self.subscribe(self._check_if_finished,
                        event_type=self._SUB_ACQ_CHECK,
                        run=False)
+
+    @property
+    def count_time(self):
+        return self.acquire_time * self.num_images
+
+    @count_time.setter
+    def count_time(self, val):
+        self.acquire_time = val / self.num_images
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         if (old_value == 1) and (value == 0):
@@ -169,12 +178,19 @@ class AreaDetector(SignalDetector):
 
         # Stop Acquisition
         self._old_acquire = self._acquire.value
-        self._acquire.put(0, wait=True)
+        self._acquire.put(0)
+        while self._acquire.value:
+            time.sleep(0.5)
+            print('[!!] Waiting for camera to stop acquiring ....')
         self._array_counter.value = 0
 
-        # Set the image mode to multiple
-        self._old_image_mode = self._image_mode.value
-        self._image_mode.value = self._image_acq_mode
+        if self._use_image_mode:
+            # Set the image mode to multiple
+            self._old_image_mode = self._image_mode.value
+            self._image_mode.value = self._image_acq_mode
+            while self._image_mode.value != self._image_acq_mode:
+                time.sleep(0.5)
+                print('[!!] Waiting for image mode to be set ....')
 
         # If using the stats, configure the proc plugin
 
@@ -187,6 +203,7 @@ class AreaDetector(SignalDetector):
             self._write_plugin('NumFilter', self._num_images.value,
                                self._proc_plugin)
             self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
+            self._write_plugin('ResetFilter', 1, self._proc_plugin)
 
             # Turn on the stats plugins
             for i in self._stats:
@@ -201,12 +218,19 @@ class AreaDetector(SignalDetector):
 
         self._acquire_number = 0
 
-        # Setup subscriptions
-
     def deconfigure(self, **kwargs):
-        """DeConfigure areaDetector detector"""
-        self._image_mode.put(self._old_image_mode, wait=True)
-        self._acquire.value = self._old_acquire
+        """Deconfigure areadetector detector"""
+        if self._use_image_mode:
+            self._image_mode.put(self._old_image_mode)
+            while self._image_mode.value != self._old_image_mode:
+                time.sleep(0.5)
+                print('[!!] Waiting for image mode to be set...')
+
+        if self._reset_acquire:
+            self._acquire.value = self._old_acquire
+            while self._acquire.value != self._old_acquire:
+                time.sleep(0.5)
+                print('[!!] Waiting for acquire mode to be set...')
 
     @property
     def darkfield_interval(self):
@@ -276,6 +300,7 @@ class AreaDetector(SignalDetector):
         self._start_acquire()
 
         return status
+
 
 
 class AreaDetectorFileStore(AreaDetector):
@@ -502,9 +527,11 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
         # Wait here to make sure we are not still capturing data
 
-        while self._capture.value == 1:
-            print('[!!] Still capturing data .... waiting.')
-            time.sleep(1)
+        if self._capture.value == 1:
+            while self._capture.value == 1:
+                print('[!!] Still capturing data .... waiting.')
+                time.sleep(1)
+            print('[--] DONE!')
 
         # self._image_mode.put(1, wait=True)
 
@@ -512,7 +539,7 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         self._write_plugin('AutoIncrement', 1, self._file_plugin)
         self._write_plugin('FileNumber', 0, self._file_plugin)
         self._write_plugin('AutoSave', 1, self._file_plugin)
-        self._write_plugin('NumCapture', 10000000, self._file_plugin)
+        self._write_plugin('NumCapture', 0, self._file_plugin)
         self._write_plugin('FileWriteMode', 2, self._file_plugin)
         self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
@@ -528,6 +555,10 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         self._filestore_res = self._insert_fs_resource()
         # Place into capture mode
         self._capture.put(1, wait=False)
+        while self._capture.value == 0:
+            print('[!!] Waiting for capture to start......')
+            time.sleep(0.5)
+        print('[--] DONE!')
 
     def _insert_fs_resource(self):
         return fs.insert_resource('AD_HDF5',
@@ -535,17 +566,12 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
                                   {'frame_per_point':
                                    self._num_images.value})
 
-    def _captured_changed(self, value, *args, **kwargs):
-        if value == self._total_images:
-            self._num_captured.clear_sub(self._captured_changed)
-
-            # Close the capture plugin (closes the file)
-
-            self._capture.put(0, wait=True)
-
     def deconfigure(self, *args, **kwargs):
-        self._total_images = self._array_counter.value
-        self._num_captured.subscribe(self._captured_changed)
+        while self._num_captured.value < self._acquire_number:
+            print('[!!] Waiting for capture to finish.... {} {}'.format(self._num_captured.value, self._array_counter.value))
+            time.sleep(0.5)
+        self._capture.put(0, wait=False)
+        print('[--] DONE!')
 
         super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
 

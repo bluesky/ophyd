@@ -14,7 +14,7 @@ class EpicsScaler(SignalDetector):
         self._record = record
         self._numchan = numchan
 
-        super(EpicsScaler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.add_signal(EpicsSignal(record_field(record, 'CNT'),
                         alias='_count',
@@ -58,6 +58,14 @@ class EpicsScaler(SignalDetector):
             self.add_signal(sig, add_property=True)
 
         self.add_acquire_signal(self._count)
+
+    @property
+    def count_time(self):
+        return self._preset_time.value
+
+    @count_time.setter
+    def count_time(self, val):
+        self._preset_time.put(val)
 
     @property
     def auto_count(self):

@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 from setuptools import setup
+import versioneer
+
 
 setup(name='ophyd',
-      version='0.0.6',
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
       license='BSD',
       packages=['ophyd',
                 'ophyd.session',
                 'ophyd.controls',
                 'ophyd.controls.cas',
                 'ophyd.controls.areadetector',
-                'ophyd.runengine',
-                'ophyd.userapi',
                 'ophyd.utils',
-                'ophyd.writers'])
+                'ophyd.tests'])

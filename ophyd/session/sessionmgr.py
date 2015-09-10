@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 import signal
 import atexit
@@ -93,6 +94,7 @@ class SessionManager(object):
         self._logger.debug('Calling SessionManager SIGINT handler...')
         self.stop_all()
         self._orig_sigint_hdlr(sig, frame)
+        raise KeyboardInterrupt
 
     @property
     def persisting(self):
@@ -155,6 +157,8 @@ class SessionManager(object):
         if self._dispatcher.is_alive():
             self._dispatcher.stop()
             self._dispatcher.join()
+
+        epics.ca.finalize_libca()
 
         if self._cas is not None:
             # Stopping the channel access server causes disconnections right as
@@ -223,7 +227,7 @@ class SessionManager(object):
         if self._run_engine is not None:
             self._run_engine.stop()
 
-        for pos in self._registry['positioners'].itervalues():
+        for pos in self._registry['positioners'].values():
             if pos.moving is True:
                 pos.stop()
                 self._logger.debug('Stopped %s' % pos)
