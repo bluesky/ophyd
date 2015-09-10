@@ -158,6 +158,8 @@ class SessionManager(object):
             self._dispatcher.stop()
             self._dispatcher.join()
 
+        epics.ca.finalize_libca()
+
         if self._cas is not None:
             # Stopping the channel access server causes disconnections right as
             # the program is quitting. To stop it from being noisy and
