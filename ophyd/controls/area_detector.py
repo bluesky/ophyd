@@ -18,6 +18,7 @@ class AreaDetector(SignalDetector):
     def __init__(self, basename, stats=range(1, 6),
                  shutter=None, shutter_rb=None, shutter_val=(0, 1),
                  cam='cam1:', proc_plugin='Proc1:',
+                 use_image_mode=True, reset_acquire=True,
                  *args, **kwargs):
         """Initialize the AreaDetector class
 
@@ -55,6 +56,8 @@ class AreaDetector(SignalDetector):
         # Default to not taking darkfield images
         self._darkfield_int = 0
         self._take_darkfield = False
+        self._use_image_mode = use_image_mode
+        self._reset_acquire = reset_acquire
 
         # Setup signals on camera
         self.add_signal(self._ad_signal('{}Acquire'.format(self._cam),
@@ -181,12 +184,13 @@ class AreaDetector(SignalDetector):
             print('[!!] Waiting for camera to stop acquiring ....')
         self._array_counter.value = 0
 
-        # Set the image mode to multiple
-        self._old_image_mode = self._image_mode.value
-        self._image_mode.value = self._image_acq_mode
-        while self._image_mode.value != self._image_acq_mode:
-            time.sleep(0.5)
-            print('[!!] Waiting for image mode to be set ....')
+        if self._use_image_mode:
+            # Set the image mode to multiple
+            self._old_image_mode = self._image_mode.value
+            self._image_mode.value = self._image_acq_mode
+            while self._image_mode.value != self._image_acq_mode:
+                time.sleep(0.5)
+                print('[!!] Waiting for image mode to be set ....')
 
         # If using the stats, configure the proc plugin
 
@@ -215,15 +219,18 @@ class AreaDetector(SignalDetector):
         self._acquire_number = 0
 
     def deconfigure(self, **kwargs):
-        """DeConfigure areaDetector detector"""
-        self._image_mode.put(self._old_image_mode)
-        while self._image_mode.value != self._old_image_mode:
-            time.sleep(0.5)
-            print('[!!] Waiting for image mode to be set...')
-        self._acquire.value = self._old_acquire
-        while self._acquire.value != self._old_acquire:
-            time.sleep(0.5)
-            print('[!!] Waiting for acquire mode to be set...')
+        """Deconfigure areadetector detector"""
+        if self._use_image_mode:
+            self._image_mode.put(self._old_image_mode)
+            while self._image_mode.value != self._old_image_mode:
+                time.sleep(0.5)
+                print('[!!] Waiting for image mode to be set...')
+
+        if self._reset_acquire:
+            self._acquire.value = self._old_acquire
+            while self._acquire.value != self._old_acquire:
+                time.sleep(0.5)
+                print('[!!] Waiting for acquire mode to be set...')
 
     @property
     def darkfield_interval(self):
