@@ -78,28 +78,28 @@ class Demuxer(object):
         self.thread.start()
 
     def stop(self):
-        self.demux = False
-        self.thread.join()
+        self._demux = False
+        self._thread.join()
 
-    def enqueue(self, data):
-        self.inpq.put(data)
+    def put(self, data):
+        self._inpq.put(data)
 
-    # return an  output queue to pull data from
-    def register(self):
-        outpq = Queue()
-        self.outpqs.append(outpq)
-        return outpq
+    def demux(self):
+        print('Demuxer: starting...')
+        while self._demux:
+            try:
+                # block waiting for input
+                inp = self._inpq.get(block=True, timeout=0.5)
+            except Empty:
+                continue
 
-    def demux(self, inpq, outpqs):
-        while self.demux:
-            # block waiting for input
-            inp = inpq.get(block=True)
+            # TODO debug statement
+            #print('Demuxer: %s' % inp)
 
-            # self.logger.debug('Demuxer: %s', inp)
-
-            for q in self.outpqs:
-                q.put(inp)
-        return
+            # distribute input to all handlers
+            for hdlr in self._handlers:
+                hdlr.put(inp)
+        print('Demuxer: bailing out...')
 
 
 class RunEngine(object):
