@@ -162,7 +162,7 @@ class ADSignal(object):
             # Happens when working on the class and not the object
             return self
 
-        pv = self.pv
+        pv = self.pv.format(self=obj)
         try:
             return obj._ad_signals[pv]
         except KeyError:
