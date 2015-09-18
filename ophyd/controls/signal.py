@@ -213,14 +213,14 @@ class EpicsSignal(Signal):
 
         self._read_pv = epics.PV(read_pv, form=get_pv_form(),
                                  callback=self._read_changed,
-                                 connection_callback=self._connected,
+                                 connection_callback=self._connection_cb,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
 
         if write_pv is not None:
             self._write_pv = epics.PV(write_pv, form=get_pv_form(),
                                       callback=self._write_changed,
-                                      connection_callback=self._connected,
+                                      connection_callback=self._connection_cb,
                                       auto_monitor=auto_monitor,
                                       **pv_kw)
         elif rw:
@@ -272,7 +272,7 @@ class EpicsSignal(Signal):
         repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
         return self._get_repr(repr)
 
-    def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
+    def _connection_cb(self, pvname=None, conn=None, pv=None, **kwargs):
         '''Connection callback from PyEpics'''
         if conn:
             msg = '%s connected' % pvname
@@ -283,6 +283,13 @@ class EpicsSignal(Signal):
             self._session.notify_connection(msg)
         else:
             self._ses_logger.debug(msg)
+
+    @property
+    def connected(self):
+        if self._write_pv is None:
+            return self._read_pv.connected
+        else:
+            return self._read_pv.connected and self._write_pv.connected
 
     @property
     def limits(self):
@@ -325,6 +332,11 @@ class EpicsSignal(Signal):
     def get(self, as_string=None, **kwargs):
         if as_string is None:
             as_string = self._string
+
+        if not self._read_pv.connected:
+            if not self._read_pv.wait_for_connection():
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._read_pv.pvname)
 
         ret = self._read_pv.get(as_string=as_string, **kwargs)
 
@@ -525,6 +537,10 @@ class SignalGroup(OphydObject):
 
             if prop_name:
                 setattr(self, prop_name, signal)
+
+    @property
+    def connected(self):
+        return all([sig.connected for sig in self._signals])
 
     def get(self, **kwargs):
         return [signal.get(**kwargs) for signal in self._signals]

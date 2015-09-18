@@ -259,11 +259,8 @@ class EpicsMotor(Positioner):
         for signal in signals:
             self.add_signal(signal)
 
-        self._moving = bool(self._is_moving.value)
         self._done_move.subscribe(self._move_changed)
         self._user_readback.subscribe(self._pos_changed)
-
-        self._set_position(self._user_readback.value)
 
     @property
     def precision(self):
@@ -291,7 +288,6 @@ class EpicsMotor(Positioner):
 
     def stop(self):
         self._stop.put(1, wait=False)
-
         Positioner.stop(self)
 
     @property
@@ -425,8 +421,6 @@ class PVPositioner(Positioner):
                                         name=self.name))
 
             self._readback.subscribe(self._pos_changed)
-
-            self._set_position(self._readback.value)
         else:
             self._setpoint.subscribe(self._pos_changed)
 
