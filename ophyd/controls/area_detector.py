@@ -362,6 +362,7 @@ class AreaDetectorFileStore(AreaDetector):
         super(AreaDetectorFileStore, self).configure(*args, **kwargs)
         self._uid_cache.clear()
         self._abs_trigger_count = 0
+        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
     def describe(self):
         desc = super(AreaDetectorFileStore, self).describe()
@@ -426,6 +427,7 @@ class AreaDetectorFileStore(AreaDetector):
     def deconfigure(self, *args, **kwargs):
         # clear state used during collection.
         self._reset_state()
+        self._write_plugin('EnableCallbacks', 0, self._file_plugin)
         super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
 
 
