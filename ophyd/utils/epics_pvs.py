@@ -17,7 +17,7 @@ import functools
 import epics
 from boltons.cacheutils import cached, LRU
 
-from . import errors
+from .errors import MinorAlarmError, get_alarm_class, DisconnectedError
 
 __all__ = ['split_record_field',
            'strip_field',
@@ -64,7 +64,7 @@ def record_field(record, field):
 
 def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
                 reason_field=None, reason_pv=None,
-                min_severity=errors.MinorAlarmError.severity):
+                min_severity=MinorAlarmError.severity):
     """Raise an exception if an alarm is set
 
     Raises
@@ -81,7 +81,7 @@ def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
 
     if severity >= min_severity:
         try:
-            error_class = errors.get_alarm_error(severity)
+            error_class = get_alarm_class(severity)
         except KeyError:
             pass
         else:
@@ -334,5 +334,5 @@ def raise_if_disconnected(fcn):
         if self.connected:
             return fcn(self, *args, **kwargs)
         else:
-            raise Exception('{} is not connected'.format(self.name))
+            raise DisconnectedError('{} is not connected'.format(self.name))
     return wrapper

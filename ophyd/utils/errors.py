@@ -27,6 +27,10 @@ class LimitError(ValueError, OpException):
     '''Value is outside of defined limits'''
     pass
 
+class DisconnectedError(OpException):
+    '''Signal or SignalGroup is not connected to EPICS'''
+    pass
+
 
 # - Alarms
 
