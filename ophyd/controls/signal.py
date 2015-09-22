@@ -15,7 +15,8 @@ import time
 import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
-from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
+from ..utils.epics_pvs import (get_pv_form,
+                               waveform_to_string, raise_if_disconnected)
 from .ophydobj import OphydObject, DetectorStatus
 
 logger = logging.getLogger(__name__)
@@ -227,11 +228,13 @@ class EpicsSignal(Signal):
             self._write_pv = self._read_pv
 
     @property
+    @raise_if_disconnected
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
         return self._read_pv.precision
 
     @property
+    @raise_if_disconnected
     def setpoint_ts(self):
         '''Timestamp of setpoint PV, according to EPICS'''
         if self._write_pv is None:
@@ -240,6 +243,7 @@ class EpicsSignal(Signal):
         return self._write_pv.timestamp
 
     @property
+    @raise_if_disconnected
     def timestamp(self):
         '''Timestamp of readback PV, according to EPICS'''
         return self._read_pv.timestamp
@@ -292,6 +296,7 @@ class EpicsSignal(Signal):
             return self._read_pv.connected and self._write_pv.connected
 
     @property
+    @raise_if_disconnected
     def limits(self):
         pv = self._write_pv
         pv.get_ctrlvars()
@@ -345,6 +350,7 @@ class EpicsSignal(Signal):
         else:
             return ret
 
+    @raise_if_disconnected
     def get_setpoint(self, **kwargs):
         '''Get the setpoint value (use only if the setpoint PV and the readback
         PV differ)
@@ -410,6 +416,7 @@ class EpicsSignal(Signal):
         Signal.put(self, value, timestamp=timestamp)
 
     @property
+    @raise_if_disconnected
     def report(self):
         # FIXME:
         if self._read_pv == self._write_pv:
@@ -438,6 +445,7 @@ class EpicsSignal(Signal):
                             'dtype': 'number',
                             'shape': []}}
 
+    @raise_if_disconnected
     def read(self):
         """Read the signal and format for data collection
 

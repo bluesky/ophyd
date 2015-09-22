@@ -3,7 +3,7 @@ import logging
 
 from .signal import EpicsSignal
 from .detector import SignalDetector
-from ..utils.epics_pvs import record_field
+from ..utils.epics_pvs import record_field, raise_if_disconnected
 
 logger = logging.getLogger(__name__)
 
@@ -60,19 +60,23 @@ class EpicsScaler(SignalDetector):
         self.add_acquire_signal(self._count)
 
     @property
+    @raise_if_disconnected
     def count_time(self):
         return self._preset_time.value
 
     @count_time.setter
+    @raise_if_disconnected
     def count_time(self, val):
         self._preset_time.put(val)
 
     @property
+    @raise_if_disconnected
     def auto_count(self):
         """Return the autocount status"""
         return (self._count_mode.value == 1)
 
     @auto_count.setter
+    @raise_if_disconnected
     def auto_count(self, val):
         """Set the autocount status"""
         if val:
@@ -85,6 +89,7 @@ class EpicsScaler(SignalDetector):
                 'numchan={0._numchan!r}'.format(self)]
         return self._get_repr(repr)
 
+    @raise_if_disconnected
     def configure(self, **kwargs):
         """Configure Scaler
 
@@ -95,6 +100,7 @@ class EpicsScaler(SignalDetector):
         self._autocount = self._count_mode.value
         self._count_mode.value = 0
 
+    @raise_if_disconnected
     def deconfigure(self, **kwargs):
         """Deconfigure Scaler
 

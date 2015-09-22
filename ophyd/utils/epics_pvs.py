@@ -12,6 +12,7 @@ import ctypes
 import threading
 import queue
 import warnings
+import functools
 
 import epics
 from boltons.cacheutils import cached, LRU
@@ -325,3 +326,13 @@ def records_from_db(fn):
         ret.append((rtype, record))
 
     return ret
+
+def raise_if_disconnected(fcn):
+    '''Decorator to catch attempted access to disconnected EPICS channels.'''
+    @functools.wraps(fcn)
+    def wrapper(self, *args, **kwargs):
+        if self.connected:
+            return fcn(self, *args, **kwargs)
+        else:
+            raise Exception('{} is not connected'.format(self.name))
+    return wrapper
