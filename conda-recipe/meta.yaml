@@ -34,6 +34,7 @@ requirements:
     - setuptools
   run:
     - python
+    - numpy
     - pyepics
     - pcaspy
     - metadatastore
@@ -49,11 +50,8 @@ test:
     - ophyd.controls
     - ophyd.controls.areadetector
     - ophyd.controls.cas
-    - ophyd.runengine
     - ophyd.session
-    - ophyd.userapi
     - ophyd.utils
-    - ophyd.writers
 
   #commands:
     # You can put test commands to be run here.  Use this to test that the
