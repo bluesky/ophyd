@@ -38,6 +38,7 @@ requirements:
     - pyepics
     - pcaspy
     - metadatastore
+    - filestore
     - six
     - ipython
     - pyolog
