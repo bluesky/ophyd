@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from ..utils import TimeoutError
+from ..utils import TimeoutError, DisconnectedError
 from .positioner import Positioner
 
 
@@ -138,7 +138,11 @@ class PseudoPositioner(Positioner):
                            event_type=real.SUB_DONE,
                            run=False)
 
-            self._real_cur_pos[real] = real.position
+            # If any physical mtrs are disconnected, swallow their exceptions
+            try:
+                self._real_cur_pos[real] = real.position
+            except DisconnectedError:
+                pass
 
             real.subscribe(self._real_pos_update,
                            event_type=real.SUB_READBACK,
@@ -168,6 +172,10 @@ class PseudoPositioner(Positioner):
                 ]
 
         return self._get_repr(repr)
+
+    @property
+    def connected(self):
+        return all([mtr.connected for mtr in self._real])
 
     def stop(self):
         for pos in self._real:
@@ -247,6 +255,9 @@ class PseudoPositioner(Positioner):
         '''A single real positioner has moved'''
         real = obj
         self._real_cur_pos[real] = value
+        # If not all real motors are connected, don't update position
+        if not self.connected:
+            return
         self._update_position()
 
     def _real_finished(self, obj=None, **kwargs):
