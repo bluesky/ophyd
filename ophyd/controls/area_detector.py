@@ -68,7 +68,8 @@ class AreaDetector(SignalDetector):
                         add_property=True)
         self.add_signal(self._ad_signal('cam1:ArrayCounter', '_array_counter',
                                         recordable=False))
-
+        # keep the same behavior as before
+        self._dark_before = False
         self._use_stats = bool(stats)
         self._stats = stats
         if self._use_stats:
@@ -198,6 +199,24 @@ class AreaDetector(SignalDetector):
         """DeConfigure areaDetector detector"""
         self._image_mode.put(self._old_image_mode, wait=True)
         self._acquire.value = self._old_acquire
+    
+    @property
+    def dark_before(self):
+        """Return if a dark should be taken after (True) or before (False)"""
+        return self._dark_before
+
+    @dark_before.setter
+    def dark_before(self, val):
+        """Set if a dark should be taken after (True) or before (False)
+
+        Parameters
+        ----------
+        val : bool
+            True: Take a dark after the light frame
+            False: Take a dark before the light frame
+        """
+        raise NotImplementedError("This doesn't do anything")
+        self._dark_before = val
 
     @property
     def darkfield_interval(self):
@@ -231,7 +250,11 @@ class AreaDetector(SignalDetector):
     def _start_acquire(self, **kwargs):
         """Do an actual acquisiiton"""
         if self._acq_count < self._acq_num:
-            self._set_shutter(self._acq_count % 2 + 1)
+        #    print('_acq_count, _acq_num = ',self._acq_count, ', ', self._acq_num)
+            # attempted hack to force dark frames to be collected first...
+            # doesn't actually work yet...
+            #self._set_shutter((self._acq_count + int(self.dark_before)) % 2)
+            self._set_shutter(self._acq_count % 2)
             self._acq_signal.put(1, wait=False)
 
     def acquire(self, **kwargs):
@@ -242,6 +265,7 @@ class AreaDetector(SignalDetector):
         # First lets set if we need to take one
         self._acq_num = 1
         self._take_darkfield = False
+#        print('_acquire_number = ', self._acquire_number)
         if self.darkfield_interval:
             if (self._acquire_number % self.darkfield_interval) == 0:
                 self._acq_num += 1
@@ -371,6 +395,7 @@ class AreaDetectorFileStore(AreaDetector):
         # if we are collecting dark field images
         if self._darkfield_int:
             if self._take_darkfield:
+               # print('appending to darkframe uid cache\n\n')
                 # assume we have _taken_ a dark field collection after the last
                 # light field
 
@@ -595,7 +620,7 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         # Acquisition mode (single image)
         self._image_acq_mode = 0
 
-    def configure(self, *args, **kwargs):
+    def cbleCallbacksonfigure(self, *args, **kwargs):
         super(AreaDetectorFileStorePrinceton, self).configure(*args, **kwargs)
         self._file_template.put(self.file_template, wait=True)
         self._make_filename()

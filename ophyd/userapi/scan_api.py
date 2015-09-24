@@ -402,6 +402,7 @@ class AScan(Scan):
         d['stop'] = repr(self.stop)
         d['npts'] = repr(self.npts)
         if self.logbook is not None:
+
             self.logbook.log('\n'.join(msg), properties={'OphydScan': d},
                              ensure=True,
                              logbooks=['Data Acquisition'])
