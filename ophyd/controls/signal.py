@@ -54,6 +54,11 @@ class Signal(OphydObject):
         self._separate_readback = separate_readback
 
     @property
+    def connected(self):
+        '''Subclasses should override this'''
+        return True
+
+    @property
     def recordable(self):
         """Return if this signal is recordable by the DAQ"""
         return self._recordable
