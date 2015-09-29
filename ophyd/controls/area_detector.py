@@ -8,6 +8,9 @@ from datetime import datetime
 import os
 import filestore.api as fs
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AreaDetector(SignalDetector):
@@ -181,7 +184,7 @@ class AreaDetector(SignalDetector):
         self._acquire.put(0)
         while self._acquire.value:
             time.sleep(0.5)
-            print('[!!] Waiting for camera to stop acquiring ....')
+            logger.debug'[!!] Waiting for camera to stop acquiring ....')
         self._array_counter.value = 0
 
         if self._use_image_mode:
@@ -190,7 +193,7 @@ class AreaDetector(SignalDetector):
             self._image_mode.value = self._image_acq_mode
             while self._image_mode.value != self._image_acq_mode:
                 time.sleep(0.5)
-                print('[!!] Waiting for image mode to be set ....')
+                logger.debug'[!!] Waiting for image mode to be set ....')
 
         # If using the stats, configure the proc plugin
 
@@ -224,13 +227,13 @@ class AreaDetector(SignalDetector):
             self._image_mode.put(self._old_image_mode)
             while self._image_mode.value != self._old_image_mode:
                 time.sleep(0.5)
-                print('[!!] Waiting for image mode to be set...')
+                logger.debug'[!!] Waiting for image mode to be set...')
 
         if self._reset_acquire:
             self._acquire.value = self._old_acquire
             while self._acquire.value != self._old_acquire:
                 time.sleep(0.5)
-                print('[!!] Waiting for acquire mode to be set...')
+                logger.debug'[!!] Waiting for acquire mode to be set...')
 
     @property
     def darkfield_interval(self):
@@ -618,9 +621,9 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
         if self._capture.value == 1:
             while self._capture.value == 1:
-                print('[!!] Still capturing data .... waiting.')
+                logger.debug'[!!] Still capturing data .... waiting.')
                 time.sleep(1)
-            print('[--] DONE!')
+            logger.debug'[--] DONE!')
 
         # self._image_mode.put(1, wait=True)
 
@@ -645,9 +648,9 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         # Place into capture mode
         self._capture.put(1, wait=False)
         while self._capture.value == 0:
-            print('[!!] Waiting for capture to start......')
+            logger.debug'[!!] Waiting for capture to start......')
             time.sleep(0.5)
-        print('[--] DONE!')
+        logger.debug'[--] DONE!')
 
     def _insert_fs_resource(self):
         return fs.insert_resource('AD_HDF5',
@@ -657,10 +660,10 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
     def deconfigure(self, *args, **kwargs):
         while self._num_captured.value < self._acquire_number:
-            print('[!!] Waiting for capture to finish.... {} {}'.format(self._num_captured.value, self._array_counter.value))
+            logger.debug'[!!] Waiting for capture to finish.... {} {}'.format(self._num_captured.value, self._array_counter.value))
             time.sleep(0.5)
         self._capture.put(0, wait=False)
-        print('[--] DONE!')
+        logger.debug'[--] DONE!')
 
         super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
 
