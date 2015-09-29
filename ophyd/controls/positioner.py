@@ -17,7 +17,7 @@ from epics.pv import fmt_time
 
 from .signal import (EpicsSignal, SignalGroup)
 from ..utils import TimeoutError
-from ..utils.epics_pvs import record_field
+from ..utils.epics_pvs import record_field, raise_if_disconnected
 from .ophydobj import MoveStatus
 
 logger = logging.getLogger(__name__)
@@ -176,6 +176,7 @@ class Positioner(SignalGroup):
         self._reset_sub(self._SUB_REQ_DONE)
 
     @property
+    @raise_if_disconnected
     def position(self):
         '''The current position of the motor in its engineering units
 
@@ -259,27 +260,28 @@ class EpicsMotor(Positioner):
         for signal in signals:
             self.add_signal(signal)
 
-        self._moving = bool(self._is_moving.value)
         self._done_move.subscribe(self._move_changed)
         self._user_readback.subscribe(self._pos_changed)
 
-        self._set_position(self._user_readback.value)
-
     @property
+    @raise_if_disconnected
     def precision(self):
         '''The precision of the readback PV, as reported by EPICS'''
         return self._user_readback.precision
 
     @property
+    @raise_if_disconnected
     def egu(self):
         '''Engineering units'''
         return self._egu.value
 
     @property
+    @raise_if_disconnected
     def limits(self):
         return self._user_setpoint.limits
 
     @property
+    @raise_if_disconnected
     def moving(self):
         '''Whether or not the motor is moving
 
@@ -289,9 +291,9 @@ class EpicsMotor(Positioner):
         '''
         return bool(self._is_moving.get(use_monitor=False))
 
+    @raise_if_disconnected
     def stop(self):
         self._stop.put(1, wait=False)
-
         Positioner.stop(self)
 
     @property
@@ -303,6 +305,7 @@ class EpicsMotor(Positioner):
         '''Return a full PV from the field name'''
         return record_field(self._record, field)
 
+    @raise_if_disconnected
     def move(self, position, wait=True,
              **kwargs):
 
@@ -350,6 +353,7 @@ class EpicsMotor(Positioner):
             self._done_moving(timestamp=timestamp, value=value)
 
     @property
+    @raise_if_disconnected
     def report(self):
         return {self._name: self.position,
                 'pv': self._user_readback.pvname}
@@ -425,8 +429,6 @@ class PVPositioner(Positioner):
                                         name=self.name))
 
             self._readback.subscribe(self._pos_changed)
-
-            self._set_position(self._readback.value)
         else:
             self._setpoint.subscribe(self._pos_changed)
 
@@ -459,6 +461,7 @@ class PVPositioner(Positioner):
         self._setpoint.check_value(pos)
 
     @property
+    @raise_if_disconnected
     def moving(self):
         '''Whether or not the motor is moving
 
@@ -551,6 +554,7 @@ class PVPositioner(Positioner):
             self._setpoint.put(position, wait=False,
                                callback=done_moving)
 
+    @raise_if_disconnected
     def move(self, position, wait=True, **kwargs):
         if wait:
             try:

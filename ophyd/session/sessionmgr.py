@@ -228,7 +228,7 @@ class SessionManager(object):
             self._run_engine.stop()
 
         for pos in self._registry['positioners'].values():
-            if pos.moving is True:
+            if pos.connected and pos.moving:
                 pos.stop()
                 self._logger.debug('Stopped %s' % pos)
 

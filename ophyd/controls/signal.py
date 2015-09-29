@@ -15,7 +15,8 @@ import time
 import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
-from ..utils.epics_pvs import (get_pv_form, waveform_to_string)
+from ..utils.epics_pvs import (get_pv_form,
+                               waveform_to_string, raise_if_disconnected)
 from .ophydobj import OphydObject, DetectorStatus
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,11 @@ class Signal(OphydObject):
         self._recordable = recordable
 
         self._separate_readback = separate_readback
+
+    @property
+    def connected(self):
+        '''Subclasses should override this'''
+        return True
 
     @property
     def recordable(self):
@@ -213,25 +219,27 @@ class EpicsSignal(Signal):
 
         self._read_pv = epics.PV(read_pv, form=get_pv_form(),
                                  callback=self._read_changed,
-                                 connection_callback=self._connected,
+                                 connection_callback=self._connection_cb,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
 
         if write_pv is not None:
             self._write_pv = epics.PV(write_pv, form=get_pv_form(),
                                       callback=self._write_changed,
-                                      connection_callback=self._connected,
+                                      connection_callback=self._connection_cb,
                                       auto_monitor=auto_monitor,
                                       **pv_kw)
         elif rw:
             self._write_pv = self._read_pv
 
     @property
+    @raise_if_disconnected
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
         return self._read_pv.precision
 
     @property
+    @raise_if_disconnected
     def setpoint_ts(self):
         '''Timestamp of setpoint PV, according to EPICS'''
         if self._write_pv is None:
@@ -240,6 +248,7 @@ class EpicsSignal(Signal):
         return self._write_pv.timestamp
 
     @property
+    @raise_if_disconnected
     def timestamp(self):
         '''Timestamp of readback PV, according to EPICS'''
         return self._read_pv.timestamp
@@ -272,7 +281,7 @@ class EpicsSignal(Signal):
         repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
         return self._get_repr(repr)
 
-    def _connected(self, pvname=None, conn=None, pv=None, **kwargs):
+    def _connection_cb(self, pvname=None, conn=None, pv=None, **kwargs):
         '''Connection callback from PyEpics'''
         if conn:
             msg = '%s connected' % pvname
@@ -285,6 +294,14 @@ class EpicsSignal(Signal):
             self._ses_logger.debug(msg)
 
     @property
+    def connected(self):
+        if self._write_pv is None:
+            return self._read_pv.connected
+        else:
+            return self._read_pv.connected and self._write_pv.connected
+
+    @property
+    @raise_if_disconnected
     def limits(self):
         pv = self._write_pv
         pv.get_ctrlvars()
@@ -326,6 +343,11 @@ class EpicsSignal(Signal):
         if as_string is None:
             as_string = self._string
 
+        if not self._read_pv.connected:
+            if not self._read_pv.wait_for_connection():
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._read_pv.pvname)
+
         ret = self._read_pv.get(as_string=as_string, **kwargs)
 
         if as_string:
@@ -333,6 +355,7 @@ class EpicsSignal(Signal):
         else:
             return ret
 
+    @raise_if_disconnected
     def get_setpoint(self, **kwargs):
         '''Get the setpoint value (use only if the setpoint PV and the readback
         PV differ)
@@ -398,6 +421,7 @@ class EpicsSignal(Signal):
         Signal.put(self, value, timestamp=timestamp)
 
     @property
+    @raise_if_disconnected
     def report(self):
         # FIXME:
         if self._read_pv == self._write_pv:
@@ -426,6 +450,7 @@ class EpicsSignal(Signal):
                             'dtype': 'number',
                             'shape': []}}
 
+    @raise_if_disconnected
     def read(self):
         """Read the signal and format for data collection
 
@@ -525,6 +550,10 @@ class SignalGroup(OphydObject):
 
             if prop_name:
                 setattr(self, prop_name, signal)
+
+    @property
+    def connected(self):
+        return all([sig.connected for sig in self._signals])
 
     def get(self, **kwargs):
         return [signal.get(**kwargs) for signal in self._signals]
