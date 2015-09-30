@@ -319,6 +319,10 @@ class OphydObject(object):
         '''
         pass
 
+    @property
+    def state(self):
+        return {}
+
     def __repr__(self):
         return self._get_repr()
 
