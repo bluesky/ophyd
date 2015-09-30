@@ -173,8 +173,10 @@ class AreaDetector(SignalDetector):
 
         return self._get_repr(repr)
 
-    def configure(self, **kwargs):
+    def configure(self, state=None):
         """Configure areaDetctor detector"""
+        if state is None:
+            state = {}
 
         # Stop Acquisition
         self._old_acquire = self._acquire.value
@@ -218,7 +220,7 @@ class AreaDetector(SignalDetector):
 
         self._acquire_number = 0
 
-    def deconfigure(self, **kwargs):
+    def deconfigure(self):
         """Deconfigure areadetector detector"""
         if self._use_image_mode:
             self._image_mode.put(self._old_image_mode)
@@ -358,8 +360,10 @@ class AreaDetectorFileStore(AreaDetector):
             self._ioc_file_path = self._store_file_path
             self._ioc_filename = self._store_filename
 
-    def configure(self, *args, **kwargs):
-        super(AreaDetectorFileStore, self).configure(*args, **kwargs)
+    def configure(self, state=None):
+        if state is None:
+            state = {}
+        super(AreaDetectorFileStore, self).configure(state=state)
         self._uid_cache.clear()
         self._abs_trigger_count = 0
         # turn on file saving
@@ -426,22 +430,22 @@ class AreaDetectorFileStore(AreaDetector):
 
         return val
 
-    def deconfigure(self, *args, **kwargs):
+    def deconfigure(self):
         # clear state used during collection.
         self._reset_state()
         # turn off file saving
         if self._file_plugin:
             self._write_plugin('EnableCallbacks', 0, self._file_plugin)
-        super(AreaDetectorFileStore, self).deconfigure(*args, **kwargs)
+        super(AreaDetectorFileStore, self).deconfigure()
 
 
 class AreaDetectorFSBulkEntry(AreaDetectorFileStore):
-    def deconfigure(self, *args, **kwargs):
+    def deconfigure(self):
 
         for uid, i in self._uid_cache:
             fs.insert_datum(self._filestore_res, str(uid), {'point_number': i})
 
-        super(AreaDetectorFSBulkEntry, self).deconfigure(*args, **kwargs)
+        super(AreaDetectorFSBulkEntry, self).deconfigure()
 
 
 class AreaDetectorFSIterativeWrite(AreaDetectorFileStore):
@@ -458,12 +462,12 @@ class AreaDetectorFSIterativeWrite(AreaDetectorFileStore):
 
 
 class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
-    def deconfigure(self, *args, **kwargs):
+    def deconfigure(self):
 
         for (uid, i), seq_id in zip(self._uid_cache, self._seq_cache):
             fs.insert_datum(self._filestore_res, str(uid), {'seq_id': int(seq_id)})
 
-        super(AreaDetectorFileStoreEiger, self).deconfigure(*args, **kwargs)
+        super(AreaDetectorFileStoreEiger, self).deconfigure()
 
     def read(self, *args, **kwargs):
         ret = super(AreaDetectorFileStoreEiger, self).read(*args, **kwargs)
@@ -516,8 +520,10 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
                                   {'frame_per_point':
                                    self._num_images.value})
 
-    def configure(self, *args, **kwargs):
-        super(AreaDetectorFileStoreEiger, self).configure(*args, **kwargs)
+    def configure(self, state=None):
+        if state is None:
+            state = {}
+        super(AreaDetectorFileStoreEiger, self).configure(state=state)
         # we are dropping the last stanza because
         # a) the eiger ioc insists that it add it's own sequence number to
         #    everything and $id must be in the name pattern or the IOC will
@@ -611,8 +617,10 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
                                         self._file_plugin,
                                         recordable=False))
 
-    def configure(self, *args, **kwargs):
-        super(AreaDetectorFileStoreHDF5, self).configure(*args, **kwargs)
+    def configure(self, state=None):
+        if state is None:
+            state = {}
+        super(AreaDetectorFileStoreHDF5, self).configure(state=state)
 
         # Wait here to make sure we are not still capturing data
 
@@ -655,14 +663,14 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
                                   {'frame_per_point':
                                    self._num_images.value})
 
-    def deconfigure(self, *args, **kwargs):
+    def deconfigure(self):
         while self._num_captured.value < self._acquire_number:
             print('[!!] Waiting for capture to finish.... {} {}'.format(self._num_captured.value, self._array_counter.value))
             time.sleep(0.5)
         self._capture.put(0, wait=False)
         print('[--] DONE!')
 
-        super(AreaDetectorFileStoreHDF5, self).deconfigure(*args, **kwargs)
+        super(AreaDetectorFileStoreHDF5, self).deconfigure()
 
 
 class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
@@ -734,8 +742,10 @@ class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
         # Acquisition mode (single image)
         self._image_acq_mode = 0
 
-    def configure(self, *args, **kwargs):
-        super(AreaDetectorFileStorePrinceton, self).configure(*args, **kwargs)
+    def configure(self, state=None):
+        if state is None:
+            state = {}
+        super(AreaDetectorFileStorePrinceton, self).configure(state=state)
         self._file_template.put(self.file_template, wait=True)
         self._make_filename()
         self._file_path.put(self._ioc_file_path, wait=True)
@@ -816,8 +826,10 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
                                         self._file_plugin,
                                         recordable=False))
 
-    def configure(self, *args, **kwargs):
-        super(AreaDetectorFileStoreTIFF, self).configure(*args, **kwargs)
+    def configure(self, state=None):
+        if state is None:
+            state = {}
+        super(AreaDetectorFileStoreTIFF, self).configure(state=state)
         # self._image_mode.put(0, wait=True)
         self._file_template.put(self.file_template, wait=True)
         self._make_filename()
