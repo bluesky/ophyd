@@ -119,13 +119,17 @@ def lookup_doc(cls_, pv):
 class ADSignal(object):
     '''A property-like descriptor
 
-    Don't create an EpicsSignal instance until it's accessed (i.e., lazy
-    evaluation)
+    This descriptor only creates an EpicsSignal instance when it's first
+    accessed and not on initialization.
+
+    Optionally, the prefix/suffix can include information from the instance the
+    ADSignal is on. On access, the combined prefix and suffix string are
+    formatted with str.format().
 
     Parameters
     ----------
     pv : str
-        The suffix portion of the PV
+        The suffix portion of the PV.
     has_rbv : bool, optional
         Whether or not a separate readback value pv exists
     doc : str, optional
@@ -134,11 +138,32 @@ class ADSignal(object):
     Attributes
     ----------
     pv : str
-        The suffix portion of the PV
+        The unformatted suffix portion of the PV
     has_rbv : bool, optional
         Whether or not a separate readback value pv exists
     doc : str, optional
         Docstring information
+
+    Examples
+    --------
+
+    >>> class SomeDetector(ADBase):
+    >>>     signal = ADSignal('Ch{self.channel}', rw=False)
+    >>>     enable = ADSignal('enable')
+    >>>
+    >>>     def __init__(self, prefix, channel=3, **kwargs):
+    >>>         super(SomeDetector, self).__init__(prefix, **kwargs)
+    >>>         self.channel = channel
+    >>>
+    >>> test = SomeDetector('my_prefix:')
+    >>> print(test.signal)
+    EpicsSignal(name='my_prefix.ch3', read_pv='my_prefix:Ch3', rw=False,
+                string=False, limits=False, put_complete=False, pv_kw={},
+                auto_monitor=None)
+
+    Only at the last line was the signal instantiated. Note how the channel
+    information from the object was formatted into the final PV string:
+        {prefix}{suffix} -> {prefix}Ch{self.channel} -> my_prefix:Ch3
     '''
 
     def __init__(self, pv, has_rbv=False, doc=None, **kwargs):
@@ -162,7 +187,7 @@ class ADSignal(object):
             # Happens when working on the class and not the object
             return self
 
-        pv = self.pv
+        pv = self.pv.format(self=obj)
         try:
             return obj._ad_signals[pv]
         except KeyError:
