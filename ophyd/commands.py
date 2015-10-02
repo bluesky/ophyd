@@ -575,8 +575,9 @@ def logbook_add_objects(objects, extra_pvs=None):
     reports = [o.report for o in objects]
     pvs = [report['pv'] for report in reports]
     names = [o.name for o in objects]
-    values = [str(v) for report in reports for k, v in report.items() if k != 'pv']
-    #values = [str(report[o.value) for o in objects]
+    values = [str(v) for report in reports
+              for k, v in report.items() if k != 'pv']
+
     if extra_pvs is not None:
         pvs += extra_pvs
         names += ['None' for e in extra_pvs]
