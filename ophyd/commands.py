@@ -14,6 +14,7 @@ from IPython.utils.coloransi import TermColors as tc
 from epics import caget, caput
 
 from .controls.positioner import EpicsMotor, Positioner, PVPositioner
+from .utils import DisconnectedError
 from .session import get_session_manager
 from prettytable import PrettyTable
 import numpy as np
@@ -607,40 +608,32 @@ def _print_pos(positioners, file=sys.stdout):
     for p in positioners:
         try:
             pos.append(p.position)
-        except TypeError as te:
+        except (DisconnectedError, TypeError):
             pos.append(None)
-            # no idea why this i sbeing raised
-            print("%s raised by %s" % (te, p))
-#    pos = [p.position for p in positioners]
 
     # Print out header
     pt = PrettyTable(['Positioner', 'Value', 'Low Limit', 'High Limit'])
     pt.align = 'r'
     pt.align['Positioner'] = 'l'
     pt.float_format = '8.5'
-#    print_header(len=4*(FMT_LEN+3)+1, file=file)
-    #print_string('Positioner', pre='| ', post=' | ', file=file)
-    #print_string('Value', post=' | ', file=file)
-    #print_string('Low Limit', post=' | ', file=file)
-    #print_string('High Limit', post=' |\n', file=file)
-
-    #print_header(len=4*(FMT_LEN+3)+1, file=file)
 
     for p, v in zip(positioners, pos):
         if pos is None:
             continue
-        name = p.name
         if v is not None:
-            if hasattr(p, 'precision'):
+            try:
                 prec = p.precision
-            else:
+            except (AttributeError, DisconnectedError):
                 prec = FMT_PREC
             value = np.round(v, decimals=prec)
         else:
             value = 'INVALID'
-        pt.add_row([p.name, value, p.low_limit, p.high_limit])
-#        print_value(p.low_limit, egu=p.egu, post=' | ', file=file)
-#        print_value(p.high_limit, egu=p.egu, post=' |\n', file=file)
 
- #   print_header(len=4*(FMT_LEN+3)+1, file=file)
+        try:
+            low_limit, high_limit = p.low_limit, p.high_limit
+        except DisconnectedError:
+            low_limit = high_limit = 'Disconnected'
+
+        pt.add_row([p.name, value, low_limit, high_limit])
+
     print(pt, file=file)
