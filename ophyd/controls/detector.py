@@ -21,12 +21,14 @@ class Detector(object):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def configure(self, *args, **kwargs):
+    def configure(self, state=None):
         '''Configure the detector for data collection.
 
         This method configures the Detector for data collection and is called
         before data collection starts.
         '''
+        if state is None:
+            state = {}
         pass
 
     def deconfigure(self):

@@ -90,18 +90,20 @@ class EpicsScaler(SignalDetector):
         return self._get_repr(repr)
 
     @raise_if_disconnected
-    def configure(self, **kwargs):
+    def configure(self, state=None):
         """Configure Scaler
 
         Configure the scaler by setting autocount to off. The state will
         be restored by deconfigure
 
         """
+        if state is None:
+            state = {}
         self._autocount = self._count_mode.value
         self._count_mode.value = 0
 
     @raise_if_disconnected
-    def deconfigure(self, **kwargs):
+    def deconfigure(self):
         """Deconfigure Scaler
 
         Reset thet autocount status
