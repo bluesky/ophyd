@@ -16,7 +16,7 @@ import numpy as np
 from epics.pv import fmt_time
 
 from .signal import (EpicsSignal, SignalGroup)
-from ..utils import TimeoutError
+from ..utils import TimeoutError, DisconnectedError
 from ..utils.epics_pvs import record_field, raise_if_disconnected
 from .ophydobj import MoveStatus
 
@@ -353,9 +353,13 @@ class EpicsMotor(Positioner):
             self._done_moving(timestamp=timestamp, value=value)
 
     @property
-    @raise_if_disconnected
     def report(self):
-        return {self._name: self.position,
+        try:
+            position = self.position
+        except DisconnectedError:
+            position = 'disconnected'
+
+        return {self._name: position,
                 'pv': self._user_readback.pvname}
 
 

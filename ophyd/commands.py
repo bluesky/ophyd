@@ -14,6 +14,7 @@ from IPython.utils.coloransi import TermColors as tc
 from epics import caget, caput
 
 from .controls.positioner import EpicsMotor, Positioner, PVPositioner
+from .utils import DisconnectedError
 from .session import get_session_manager
 from prettytable import PrettyTable
 import numpy as np
@@ -34,6 +35,7 @@ __all__ = ['mov',
 
 FMT_LEN = 18
 FMT_PREC = 6
+DISCONNECTED = 'disconnected'
 
 
 def ensure(*ensure_args):
@@ -371,8 +373,15 @@ def log_pos(positioners=None):
 
     # Create the property for storing motor posisions
     pdict = {}
+    pdict['values'] = {}
+    for p in positioners:
+        try:
+            pdict['values'][p.name] = p.position
+        except DisconnectedError:
+            pdict['values'][p.name] = DISCONNECTED
+
     pdict['objects'] = repr(positioners)
-    pdict['values'] = repr({p.name: p.position for p in positioners})
+    pdict['values'] = repr(pdict['values'])
 
     if logbook:
         id = logbook.log(msg, properties={'OphydPositioners': pdict},
@@ -409,21 +418,31 @@ def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
     stat = []
     for key, value in objects.items():
         newpos = logpos[key]
-        oldpos = value.position
+        if newpos == DISCONNECTED:
+            print('{}[!!] Unable to move positioner {} {}: position was stored'
+                  'as disconnected'.format(tc.Red, key, tc.Normal))
+            continue
+
+        try:
+            oldpos = value.position
+        except DisconnectedError:
+            print('{}[!!] Unable to move positioner {} {}: disconnected'
+                  ''.format(tc.Red, key, tc.Normal))
+            continue
+
         try:
             if not dry_run:
                 stat.append(value.move(newpos, wait=False))
-        except:
-            print('{}[!!] Unable to move positioner {}'
-                  .format(tc.Red, tc.Normal))
+        except Exception as ex:
+            print('{}[!!] Unable to move positioner {} {} ({}: {})'
+                  ''.format(tc.Red, key, tc.Normal, ex.__class__.__name__, ex))
         else:
             print('{}[**] Moving positioner {} to {}'
                   ' from current position of {}{}`'
-                  .format(tc.Green, value.name, newpos,
-                          oldpos, tc.Normal))
+                  ''.format(tc.Green, key, newpos, oldpos, tc.Normal))
 
     print('\n{}Waiting for positioners to complete .....'
-          .format(tc.LightGreen), end='')
+          ''.format(tc.LightGreen), end='')
 
     sys.stdout.flush()
 
@@ -449,7 +468,7 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
         in the log entry will be ignored.
     """
 
-    oldpos, objects = logbook_to_objects(id, **kwargs)
+    logpos, objects = logbook_to_objects(id, **kwargs)
     objects = collections.OrderedDict(sorted(objects.items()))
 
     # Cycle through positioners and compare position with old value
@@ -465,27 +484,42 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
 
     print('')
     for key, value in objects.items():
-        try:
-            diff.append(value.position - oldpos[key])
-            pos.append(value)
-            values.append(value.position)
-        except:
-            print('{}[!!] Unable to compare positioner {}{}'
-                  .format(tc.Red, key, tc.Normal))
+        oldpos = logpos[key]
+        if oldpos == DISCONNECTED:
+            print('{}[!!] Unable to compare position {} {}: position was stored'
+                  'as disconnected'.format(tc.Red, key, tc.Normal))
+            continue
 
-    print_header(len=3*(FMT_LEN+3)+1)
+        try:
+            newpos = value.position
+        except DisconnectedError:
+            print('{}[!!] Unable to compare position {} {}: disconnected'
+                  ''.format(tc.Red, key, tc.Normal))
+            continue
+
+        try:
+            diff.append(newpos - oldpos)
+        except Exception as ex:
+            print('{}[!!] Unable to compare position {}{}: ({}: {})'
+                  .format(tc.Red, key, tc.Normal, ex.__class__.__name__, ex))
+        else:
+            pos.append(value)
+            values.append(newpos)
+
+    header_len = 3 * (FMT_LEN + 3) + 1
+    print_header(len=header_len)
     print_string('Positioner', pre='| ', post=' | ')
     print_string('Value', post=' | ')
     print_string('Difference', post=' |\n')
 
-    print_header(len=3*(FMT_LEN+3)+1)
+    print_header(len=header_len)
 
     for p, v, d in zip(pos, values, diff):
         print_string(p.name, pre='| ', post=' | ')
         print_value(v, egu=p.egu, post=' | ')
         print_value(d, egu=p.egu, post=' |\n')
 
-    print_header(len=3*(FMT_LEN+3)+1)
+    print_header(len=header_len)
     print('')
 
 
@@ -538,9 +572,12 @@ def logbook_add_objects(objects, extra_pvs=None):
     msg += '{:-^120}\n'.format('')
 
     # Make a list of all PVs and positioners
-    pvs = [o.report['pv'] for o in objects]
+    reports = [o.report for o in objects]
+    pvs = [report['pv'] for report in reports]
     names = [o.name for o in objects]
-    values = [str(o.value) for o in objects]
+    values = [str(v) for report in reports
+              for k, v in report.items() if k != 'pv']
+
     if extra_pvs is not None:
         pvs += extra_pvs
         names += ['None' for e in extra_pvs]
@@ -607,40 +644,32 @@ def _print_pos(positioners, file=sys.stdout):
     for p in positioners:
         try:
             pos.append(p.position)
-        except TypeError as te:
+        except (DisconnectedError, TypeError):
             pos.append(None)
-            # no idea why this i sbeing raised
-            print("%s raised by %s" % (te, p))
-#    pos = [p.position for p in positioners]
 
     # Print out header
     pt = PrettyTable(['Positioner', 'Value', 'Low Limit', 'High Limit'])
     pt.align = 'r'
     pt.align['Positioner'] = 'l'
     pt.float_format = '8.5'
-#    print_header(len=4*(FMT_LEN+3)+1, file=file)
-    #print_string('Positioner', pre='| ', post=' | ', file=file)
-    #print_string('Value', post=' | ', file=file)
-    #print_string('Low Limit', post=' | ', file=file)
-    #print_string('High Limit', post=' |\n', file=file)
-
-    #print_header(len=4*(FMT_LEN+3)+1, file=file)
 
     for p, v in zip(positioners, pos):
         if pos is None:
             continue
-        name = p.name
         if v is not None:
-            if hasattr(p, 'precision'):
+            try:
                 prec = p.precision
-            else:
+            except (AttributeError, DisconnectedError):
                 prec = FMT_PREC
             value = np.round(v, decimals=prec)
         else:
-            value = 'INVALID'
-        pt.add_row([p.name, value, p.low_limit, p.high_limit])
-#        print_value(p.low_limit, egu=p.egu, post=' | ', file=file)
-#        print_value(p.high_limit, egu=p.egu, post=' |\n', file=file)
+            value = DISCONNECTED
 
- #   print_header(len=4*(FMT_LEN+3)+1, file=file)
+        try:
+            low_limit, high_limit = p.low_limit, p.high_limit
+        except DisconnectedError:
+            low_limit = high_limit = DISCONNECTED
+
+        pt.add_row([p.name, value, low_limit, high_limit])
+
     print(pt, file=file)
