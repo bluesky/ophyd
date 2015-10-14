@@ -30,19 +30,17 @@ fail() {
 
 cd $script_path/..
 
-if [ ! -d "doc" ]; then
-    echo "Unable to find doc path"
-    echo "`pwd`/doc"
-    exit 1
-fi
-
-COVERAGE_HTML=$script_path/doc/coverage
-rm -rf $COVERAGE_HTML
-mkdir $COVERAGE_HTML
-nosetests --with-coverage --cover-erase --cover-html --cover-html-dir=$COVERAGE_HTML \
-          --cover-tests --cover-package=ophyd -v \
-          --where=test
+#if [ ! -d "doc" ]; then
+#    echo "Unable to find doc path"
+#    echo "`pwd`/doc"
+#    exit 1
+#fi
+#
+#COVERAGE_HTML=$script_path/doc/coverage
+#rm -rf $COVERAGE_HTML
+#mkdir $COVERAGE_HTML
+nosetests --with-coverage --cover-tests --cover-package=ophyd -v --where=tests
           # --tests=test.test_cas_function
 
-view setup.py -c ":Coveragepy report"
+#view setup.py -c ":Coveragepy report"
 # view ophyd/controls/cas/function.py -c ":Coveragepy report"
