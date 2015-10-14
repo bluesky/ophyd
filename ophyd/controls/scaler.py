@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class EpicsScaler(SignalDetector):
     '''SynApps Scaler Record interface'''
-    def __init__(self, record, numchan=8, *args, **kwargs):
+    def __init__(self, record, numchan=8, chan_start=1, *args, **kwargs):
         self._record = record
         self._numchan = numchan
 
@@ -36,7 +36,7 @@ class EpicsScaler(SignalDetector):
                         name=''.join([self.name, '_auto_count_time']),
                         recordable=False), add_property=True)
 
-        for ch in range(1, numchan + 1):
+        for ch in range(chan_start, numchan + chan_start):
             pv = '{}{}'.format(record_field(record, 'S'), ch)
             sig = EpicsSignal(pv, rw=False,
                               alias='_chan{}'.format(ch),
