@@ -25,8 +25,6 @@ before_install:
   - conda config --set always_yes true
   - conda update conda --yes
   - conda config --add channels lightsource2
-  - conda config --add channels lightsource2-dev
-  - conda config --add channels ericdill
 
   # CONFIGURE USEFUL ENVIRONMENTAL VARIABLES
   - export OWNER_NAME=$(IFS="/"; arr=($TRAVIS_REPO_SLUG); echo ${arr[0]})
@@ -42,6 +40,7 @@ before_install:
   - conda create -n testenv python=$TRAVIS_PYTHON_VERSION boltons filestore numpy pcaspy prettytable pyepics epics-base
   # needed for the motor ioc
   - conda install -n testenv epics-synapps
+  - conda install -n testenv -c lightsource2 ncurses
   - source activate testenv
 
 install:
