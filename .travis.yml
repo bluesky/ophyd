@@ -42,6 +42,7 @@ before_install:
   - conda install -n testenv -c klauer epics-synapps
   - conda install -n testenv -c lightsource2 ncurses
   - source activate testenv
+  - python setup.py install
 
 install:
   - ldd --version
