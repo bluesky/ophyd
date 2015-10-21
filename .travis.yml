@@ -40,6 +40,8 @@ before_install:
   - git describe
   # INSTALL DEPS FOR BUILDING AND UPLOADING
   - conda create -n testenv python=$TRAVIS_PYTHON_VERSION boltons filestore numpy pcaspy prettytable pyepics epics-base
+  # needed for the motor ioc
+  - conda install -n testenv epics-asyn epics-synapps
   - source activate testenv
 
 install:
