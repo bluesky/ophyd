@@ -39,17 +39,16 @@ before_install:
   - echo "TRAVIS_COMMIT=$TRAVIS_COMMIT"
   - git describe
   # INSTALL DEPS FOR BUILDING AND UPLOADING
-  - conda create -n testenv python=$TRAVIS_PYTHON_VERSION
+  - conda create -n testenv python=$TRAVIS_PYTHON_VERSION boltons filestore numpy pcaspy prettytable pyepics epics-base
   - source activate testenv
 
 install:
-  - conda install boltons filestore numpy pcaspy prettytable pyepics epics-base
   - env
   - cd ..
   - git clone https://github.com/dchabot/motorsim
   - cd motorsim
   - echo "TEMPLATE_TOP=\$(EPICS_BASE)/templates/makeBaseApp/top" > configure/RELEASE
-  - echo "EPICS_BASE=${PREFIX}" >> configure/RELEASE
+  - echo "EPICS_BASE=${EPICS_BASE}" >> configure/RELEASE
   - cat configure/RELEASE
   - ls
   - make
