@@ -45,6 +45,7 @@ before_install:
   - source activate testenv
 
 install:
+  - ldd --version
   - env
   - cd ..
   - git clone https://github.com/dchabot/motorsim
