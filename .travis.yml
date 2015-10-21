@@ -15,13 +15,6 @@ matrix:
   - python: 3.5
 
 before_install:
-  - env
-  # `git describe` failed a couple of times if I don't `git fetch --unshallow`
-  - git fetch --unshallow
-  # GRAB THE HELPER SCRIPTS
-  - git clone https://github.com/ericdill/travis-little-helper ../travis-little-helper
-  # ECHO THE ENVIRONMENTAL VARIABLES THAT WERE SET
-
   # INSTALL CONDA
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
@@ -44,18 +37,11 @@ before_install:
   - echo "TRAVIS_COMMIT=$TRAVIS_COMMIT"
   - git describe
   # INSTALL DEPS FOR BUILDING AND UPLOADING
-  - conda install conda-build jinja2 anaconda-client
   - conda create -n testenv python=$TRAVIS_PYTHON_VERSION
   - source activate testenv
-  - conda install -c ericdill depfinder
-  # MAKE THE CONDA RECIPE
-  - wget https://raw.githubusercontent.com/ericdill/conda-skeletor-configs/master/ophyd/conda-skeletor.yml
-  - pip install https://github.com/ericdill/conda-skeletor/zipball/master#egg=conda_skeletor
-  - conda skeletor -p . -o conda-recipe -v
 
 install:
-  - conda install `python ../travis-little-helper/list_test_deps.py -p conda-recipe/meta.yaml`
-  - python setup.py install
+  - conda install boltons filestore ipython metadatastore numpy pcaspy prettytable pyepics
   # SOME DEBUG OUTPUT
   - python -c "import $REPO_NAME; print($REPO_NAME.__version__)"
 
