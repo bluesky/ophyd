@@ -39,7 +39,7 @@ before_install:
   # INSTALL DEPS FOR BUILDING AND UPLOADING
   - conda create -n testenv python=$TRAVIS_PYTHON_VERSION boltons filestore numpy pcaspy prettytable pyepics epics-base
   # needed for the motor ioc
-  - conda install -n testenv epics-synapps
+  - conda install -n testenv -c klauer epics-synapps
   - conda install -n testenv -c lightsource2 ncurses
   - source activate testenv
 
