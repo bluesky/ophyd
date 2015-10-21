@@ -15,6 +15,7 @@ matrix:
   - python: 3.5
 
 before_install:
+  - perl --version
   - env
   # INSTALL CONDA
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -43,11 +44,14 @@ before_install:
 
 install:
   - conda install boltons filestore numpy pcaspy prettytable pyepics epics-base
+  - env
   - cd ..
   - git clone https://github.com/dchabot/motorsim
   - cd motorsim
   - echo "TEMPLATE_TOP=\$(EPICS_BASE)/templates/makeBaseApp/top" > configure/RELEASE
   - echo "EPICS_BASE=${PREFIX}" >> configure/RELEASE
+  - cat configure/RELEASE
+  - ls
   - make
   - cd iocBoot/ioclocalhost
   - ./st.cmd &
