@@ -75,7 +75,7 @@ install:
   - ./st.cmd &
 
   # SOME DEBUG OUTPUT
-  # - python -c "import $REPO_NAME; print($REPO_NAME.__version__)"
+  - python -c "import $REPO_NAME; print($REPO_NAME.__version__)"
 
 script:
   # - python run_tests.py -v
