@@ -51,6 +51,9 @@ before_install:
   # INSTALL DEPS REQUIRED FOR MOTOR IOC
   - conda install -n testenv -c klauer epics-synapps
   - conda install -n testenv -c lightsource2 ncurses
+  # need to reactivate after installing epics-base so that the EPICS_BASE env
+  # var is set
+  - source activate testenv
 
 install:
   # INSTALL OPHYD
