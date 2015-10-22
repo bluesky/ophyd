@@ -41,6 +41,8 @@ before_install:
   - git describe
   # MAKE THE CONDA RECIPE
   - git clone https://github.com/ericdill/travis-little-helper ../travis-little-helper
+  - conda create -n testenv python=$TRAVIS_PYTHON_VERSION
+  - source activate testenv
   - conda install -c ericdill depfinder
   - wget https://raw.githubusercontent.com/ericdill/conda-skeletor-configs/master/ophyd/conda-skeletor.yml
   - pip install https://github.com/ericdill/conda-skeletor/zipball/master#egg=conda_skeletor
@@ -49,7 +51,6 @@ before_install:
   # INSTALL DEPS REQUIRED FOR MOTOR IOC
   - conda install -n testenv -c klauer epics-synapps
   - conda install -n testenv -c lightsource2 ncurses
-  - source activate testenv
 
 install:
   # INSTALL OPHYD
