@@ -10,7 +10,8 @@ services:
 
 matrix:
   include:
-  - python: 2.7
+  # ophyd is python 3+ only... https://github.com/NSLS-II/ophyd/blob/master/ophyd/controls/positioner.py#L207
+#  - python: 2.7
   - python: 3.4
   - python: 3.5
 
