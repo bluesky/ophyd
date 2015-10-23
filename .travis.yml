@@ -74,6 +74,13 @@ install:
   - make
   - cd iocBoot/ioclocalhost
   - ./st.cmd &
+  # areadetector IOC
+  - cd ../
+  - git clone https://github.com/dchabot/adsim
+  - pushd adsim/iocBoot/iocSimDetector
+  - export EPICS_CA_MAX_ARRAY_BYTES=10000000
+  - $EPICS_BASE/bin/linux-x86_64/simDetectorApp ./st.cmd.linux &
+  - popd
 
   # SOME DEBUG OUTPUT
   - python -c "import $REPO_NAME; print($REPO_NAME.__version__)"
@@ -81,4 +88,7 @@ install:
 script:
   # - python run_tests.py -v
   # - "$CONDA_BUILD_COMMAND"
+  - echo "Checking if the motor IOC is running:"
   - caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
+  - echo "Checking if the areaDetector IOC is running:"
+  - caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter
