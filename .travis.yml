@@ -45,9 +45,9 @@ before_install:
   - conda create -n testenv python=$TRAVIS_PYTHON_VERSION
   - source activate testenv
   - conda install -c ericdill depfinder
-  # - wget https://raw.githubusercontent.com/ericdill/conda-skeletor-configs/master/ophyd/conda-skeletor.yml
-  # - pip install https://github.com/ericdill/conda-skeletor/zipball/master#egg=conda_skeletor
-  # - conda skeletor -p . -o conda-recipe
+  - wget https://raw.githubusercontent.com/ericdill/conda-skeletor-configs/master/ophyd/conda-skeletor.yml
+  - pip install https://github.com/ericdill/conda-skeletor/zipball/master#egg=conda_skeletor
+  - conda skeletor -p . -o conda-recipe
 
   # INSTALL DEPS REQUIRED FOR MOTOR IOC
   - conda install -n testenv -c klauer epics-synapps
