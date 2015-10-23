@@ -39,6 +39,8 @@ before_install:
   - echo "OWNER_NAME=$OWNER_NAME"
   - echo "REPO_NAME=$REPO_NAME"
   - echo "TRAVIS_COMMIT=$TRAVIS_COMMIT"
+  - pwd
+  - ls
   - git describe
   # MAKE THE CONDA RECIPE
   - git clone https://github.com/ericdill/travis-little-helper ../travis-little-helper
