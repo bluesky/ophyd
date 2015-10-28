@@ -673,19 +673,10 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
 
     def _reset_state(self):
-        self._uid_cache = deque()
-        self._abs_trigger_count = 0
-        self._last_dark_uid = None
-
-        # ********************** Start ****************************
         self._last_gain8_dark_uid = None
         self._last_gain2_dark_uid = None
         self._last_gain1_dark_uid = None
-        # **********************  End  ****************************
-
-        self._last_light_uid = None
-        self._filestore_res = None
-        self._filename = ''
+        super()._reset_state()
 
     def read(self):
         # run the base read
