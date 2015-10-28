@@ -304,7 +304,6 @@ class AreaDetector(SignalDetector):
         return status
 
 
-
 class AreaDetectorFileStore(AreaDetector):
     def __init__(self, *args, **kwargs):
         self.store_file_path = os.path.join(kwargs.pop('file_path'), '')
@@ -465,7 +464,8 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
     def deconfigure(self):
 
         for (uid, i), seq_id in zip(self._uid_cache, self._seq_cache):
-            fs.insert_datum(self._filestore_res, str(uid), {'seq_id': int(seq_id)})
+            fs.insert_datum(self._filestore_res, str(uid),
+                            {'seq_id': int(seq_id)})
 
         super(AreaDetectorFileStoreEiger, self).deconfigure()
 
@@ -483,21 +483,21 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
         self._seq_cache = deque()
 
         self.add_signal(self._ad_signal('{}MaxSizeX'.format(self._cam),
-                                  '_arraysize{}'.format(0),
-                                  recordable=False))
+                                        '_arraysize{}'.format(0),
+                                        recordable=False))
 
         self.add_signal(self._ad_signal('{}MaxSizeY'.format(self._cam),
-                                  '_arraysize{}'.format(1),
-                                  recordable=False))
+                                        '_arraysize{}'.format(1),
+                                        recordable=False))
 
         self.add_signal(self._ad_signal('{}FWNamePattern'.format(self._cam),
                                         '_name_pattern',
                                         recordable=False))
 
-
         self.add_signal(EpicsSignal('{}{}SequenceId'.format(self._basename,
                                                             self._cam),
-                                    name='{}{}'.format(self.name, 'sequenceid'),
+                                    name='{}{}'.format(self.name,
+                                                       'sequenceid'),
                                     alias='sequenceid'))
 
         self.add_signal(self._ad_signal('{}FWNImagesPerFile'.format(self._cam),
@@ -509,10 +509,8 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
                                         string=True,
                                         recordable=False))
 
-
         self._master_base = ''
         self._file_plugin = None
-
 
     def _insert_fs_resource(self):
         return fs.insert_resource('AD_EIGER',
@@ -538,12 +536,10 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
         path = os.path.join(self.store_file_path, *tree)
         self._store_file_path = path
 
-
         self._master_base = os.path.join(path, uid)
         self._file_path.value = path
         self._name_pattern.value = '{}_$id'.format(uid)
         self._filestore_res = self._insert_fs_resource()
-
 
 
 class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
@@ -665,7 +661,8 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
     def deconfigure(self):
         while self._num_captured.value < self._acquire_number:
-            print('[!!] Waiting for capture to finish.... {} {}'.format(self._num_captured.value, self._array_counter.value))
+            print('[!!] Waiting for capture to finish.... {} {}'.format(
+                self._num_captured.value, self._array_counter.value))
             time.sleep(0.5)
         self._capture.put(0, wait=False)
         print('[--] DONE!')
@@ -673,7 +670,6 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         super(AreaDetectorFileStoreHDF5, self).deconfigure()
 
 
-#***********************************************************************************
 class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
 
     def _reset_state(self):
@@ -770,9 +766,10 @@ class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
         if self._acq_count < self._acq_num:
             self._set_shutter(self._acq_count % 2)
 
-            if (self._acq_count %2):
+            if (self._acq_count % 2):
                 # Save Current Gain Setting
                 from epics import caget
+                wait = True
                 initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
 
                 # Switch FCCD Gain Setting to 1
@@ -788,14 +785,15 @@ class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
                 self._acq_signal.put(1, wait=False)
 
                 # Restore Initial Gain Setting
-                caput('{}cam1:FRICGain'.format(self._basename), initial_gain, wait=wait)
+                caput('{}cam1:FRICGain'.format(self._basename),
+                      initial_gain, wait=wait)
             else:
                 self._acq_signal.put(1, wait=False)
 
     def acquire_dark(self, **kwargs):
         """Acquire dark images for all gains (1/2/8)"""
         self._set_shutter(self._acq_count % 2)
-
+        wait = True
         # Save Current Gain Setting
         from epics import caget
         initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
@@ -813,8 +811,8 @@ class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
         self._acq_signal.put(1, wait=False)
 
         # Restore Initial Gain Setting
-        caput('{}cam1:FRICGain'.format(self._basename), initial_gain, wait=wait)
-#***********************************************************************************
+        caput('{}cam1:FRICGain'.format(self._basename), initial_gain,
+              wait=wait)
 
 
 class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
