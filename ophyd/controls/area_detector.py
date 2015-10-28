@@ -14,7 +14,7 @@ class AreaDetector(SignalDetector):
     _SUB_ACQ_DONE = 'acq_done'
     _SUB_DONE = 'done'
     _SUB_ACQ_CHECK = 'acq_check'
-
+    _NUM_DARK_FIELD_CAPTURES = 1
     def __init__(self, basename, stats=range(1, 6),
                  shutter=None, shutter_rb=None, shutter_val=(0, 1),
                  cam='cam1:', proc_plugin='Proc1:',
@@ -266,7 +266,7 @@ class AreaDetector(SignalDetector):
     def _start_acquire(self, **kwargs):
         """Do an actual acquisiiton"""
         if self._acq_count < self._acq_num:
-            self._set_shutter(self._acq_count % 2)
+            self._set_shutter(self._acq_count % (1 + self._NUM_DARK_FIELD_CAPTURES))
             self._acq_signal.put(1, wait=False)
 
     def acquire(self, **kwargs):
@@ -279,7 +279,7 @@ class AreaDetector(SignalDetector):
         self._take_darkfield = False
         if self.darkfield_interval:
             if (self._acquire_number % self.darkfield_interval) == 0:
-                self._acq_num += 1
+                self._acq_num += self._NUM_DARK_FIELD_CAPTURES
                 self._take_darkfield = True
 
         # Setup the return status
@@ -671,12 +671,16 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
 
 class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
-
-    def _reset_state(self):
-        self._last_gain8_dark_uid = None
-        self._last_gain2_dark_uid = None
-        self._last_gain1_dark_uid = None
-        super()._reset_state()
+    _NUM_DARK_FIELD_CAPTURES = 3
+    def acquire(self):
+        # Save Current Gain Setting
+        initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
+        # run the base acquire
+        ret = super().acquire()
+        # reset this as dark frames _may_ have messed with this
+        # it is an implemenation detail that the light images are catpured first
+        # then the dark field images.  This is brittle as all get out.
+        caput('{}cam1:FRICGain'.format(self._basename), initial_gain, wait=wait)
 
     def read(self):
         # run the base read
@@ -696,112 +700,37 @@ class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
         if self._darkfield_int:
             if self._take_darkfield:
                 # assume we have _taken_ a dark field collection after the last
-                # light field
-
+                # light field (which means 3 extra images)
+                self._last_dark_uid = dict()
                 # add an entry to the cache
-                self._uid_cache.append((str(uuid.uuid4()),
-                                        self._abs_trigger_count))
-                # stash it individually for later reuse
-                self._last_dark_uid = self._uid_cache[-1]
-
-                # *************************** Start **************************
-                # add an entry for Gain 8 Dark to the cache
-                self._last_gain8_dark_uid = self._uid_cache[-1]
-                # *************************** END ****************************
-
-                # update the trigger count
-                self._abs_trigger_count += 1
-
-                # *************************  Start ***************************
-                # add an entry for Gain 2 Dark to the cache
-                self._uid_cache.append((str(uuid.uuid4()),
-                                        self._abs_trigger_count))
-                # stash it individually for later reuse
-                self._last_gain2_dark_uid = self._uid_cache[-1]
-                # update the trigger count
-                self._abs_trigger_count += 1
-
-                # add an entry for Gain 1 Dark to the cache
-                self._uid_cache.append((str(uuid.uuid4()),
-                                        self._abs_trigger_count))
-                # stash it individually for later reuse
-                self._last_gain1_dark_uid = self._uid_cache[-1]
-                # update the trigger count
-                self._abs_trigger_count += 1
-                # *************************** END ****************************
+                for gain in [2, 4, 8]:
+                    self._uid_cache.append((str(uuid.uuid4()), self._abs_trigger_count))
+                    self._abs_trigger_count += 1
+                    self._last_dark_uid[gain] = self._uid_cache[-1]
 
             # update the value dictionary with the uid of the most recent
             # dark field collection
-            val.update({'{}_{}_darkfield'.format(self.name, 'image'):
-                        {'value': self._last_dark_uid[0],
-                        'timestamp': self._acq_signal.timestamp}})
-
-            # *************************  Start ***************************
-            val.update({'{}_{}_darkfield_gain8'.format(self.name, 'image'):
-                        {'value': self._last_gain8_dark_uid[0],
-                        'timestamp': self._acq_signal.timestamp}})
-
-            val.update({'{}_{}_darkfield_gain2'.format(self.name, 'image'):
-                        {'value': self._last_gain2_dark_uid[0],
-                        'timestamp': self._acq_signal.timestamp}})
-
-            val.update({'{}_{}_darkfield_gain1'.format(self.name, 'image'):
-                        {'value': self._last_gain1_dark_uid[0],
-                        'timestamp': self._acq_signal.timestamp}})
-            # *************************** END ****************************
+            for gain, (uid, frame_number) in self._last_dark_uid.items():
+                val.update({'{}_{}_darkfield_gain{}'.format(self.name, 'image', gain):
+                            {'value': self._last_dark_uid[gain],
+                            'timestamp': self._acq_signal.timestamp}})
 
         return val
 
     def _start_acquire(self, **kwargs):
         """Do an actual acquisiiton"""
         if self._acq_count < self._acq_num:
-            self._set_shutter(self._acq_count % 2)
-
-            if (self._acq_count % 2):
-                # Save Current Gain Setting
-                wait = True
-                initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
-
-                # Switch FCCD Gain Setting to 1
-                caput('{}cam1:FRICGain'.format(self._basename), 0, wait=wait)
+            if self._acq_count % (1 + self._NUM_DARK_FIELD_CAPTURES):
+                # close the shutter
+                self._set_shutter(1)
+                # the gain sequence is (2, 1, 0) -> gain of (1, 2, 8)
+                gain = 3 - self._acq_count
+                caput('{}cam1:FRICGain'.format(self._basename), gain, wait=True)
                 self._acq_signal.put(1, wait=False)
-
-                # Switch FCCD Gain Setting to 2
-                caput('{}cam1:FRICGain'.format(self._basename), 1, wait=wait)
-                self._acq_signal.put(1, wait=False)
-
-                # Switch FCCD Gain Setting to 8
-                caput('{}cam1:FRICGain'.format(self._basename), 2, wait=wait)
-                self._acq_signal.put(1, wait=False)
-
-                # Restore Initial Gain Setting
-                caput('{}cam1:FRICGain'.format(self._basename),
-                      initial_gain, wait=wait)
             else:
+                # open the shutter
+                self._set_shutter(0)
                 self._acq_signal.put(1, wait=False)
-
-    def acquire_dark(self, **kwargs):
-        """Acquire dark images for all gains (1/2/8)"""
-        self._set_shutter(self._acq_count % 2)
-        wait = True
-        # Save Current Gain Setting
-        initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
-
-        # Switch FCCD Gain Setting to 1
-        caput('{}cam1:FRICGain'.format(self._basename), 2, wait=wait)
-        self._acq_signal.put(1, wait=False)
-
-        # Switch FCCD Gain Setting to 2
-        caput('{}cam1:FRICGain'.format(self._basename), 1, wait=wait)
-        self._acq_signal.put(1, wait=False)
-
-        # Switch FCCD Gain Setting to 8
-        caput('{}cam1:FRICGain'.format(self._basename), 0, wait=wait)
-        self._acq_signal.put(1, wait=False)
-
-        # Restore Initial Gain Setting
-        caput('{}cam1:FRICGain'.format(self._basename), initial_gain,
-              wait=wait)
 
 
 class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
