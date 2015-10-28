@@ -1,7 +1,7 @@
 from __future__ import print_function
 from .detector import SignalDetector, DetectorStatus
 from .signal import EpicsSignal, Signal
-from epics import caput
+from epics import caput, caget
 from collections import deque
 import time
 from datetime import datetime
@@ -759,7 +759,6 @@ class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
 
             if (self._acq_count % 2):
                 # Save Current Gain Setting
-                from epics import caget
                 wait = True
                 initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
 
@@ -786,7 +785,6 @@ class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
         self._set_shutter(self._acq_count % 2)
         wait = True
         # Save Current Gain Setting
-        from epics import caget
         initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
 
         # Switch FCCD Gain Setting to 1
