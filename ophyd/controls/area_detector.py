@@ -673,6 +673,150 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         super(AreaDetectorFileStoreHDF5, self).deconfigure()
 
 
+#***********************************************************************************
+class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
+
+    def _reset_state(self):
+        self._uid_cache = deque()
+        self._abs_trigger_count = 0
+        self._last_dark_uid = None
+
+        # ********************** Start ****************************
+        self._last_gain8_dark_uid = None
+        self._last_gain2_dark_uid = None
+        self._last_gain1_dark_uid = None
+        # **********************  End  ****************************
+
+        self._last_light_uid = None
+        self._filestore_res = None
+        self._filename = ''
+
+    def read(self):
+        # run the base read
+        val = super(AreaDetectorFileStore, self).read()
+        # add a new uid + frame index to the internal cache
+        self._uid_cache.append((str(uuid.uuid4()),
+                                self._abs_trigger_count))
+        # stash it for later use
+        self._last_light_uid = self._uid_cache[-1]
+        # increment the collected frame count (super important)
+        self._abs_trigger_count += 1
+        #  update the value dictionary
+        val.update({'{}_{}_lightfield'.format(self.name, 'image'):
+                    {'value': self._last_light_uid[0],
+                     'timestamp': self._acq_signal.timestamp}})
+        # if we are collecting dark field images
+        if self._darkfield_int:
+            if self._take_darkfield:
+                # assume we have _taken_ a dark field collection after the last
+                # light field
+
+                # add an entry to the cache
+                self._uid_cache.append((str(uuid.uuid4()),
+                                        self._abs_trigger_count))
+                # stash it individually for later reuse
+                self._last_dark_uid = self._uid_cache[-1]
+
+                # *************************** Start **************************
+                # add an entry for Gain 8 Dark to the cache
+                self._last_gain8_dark_uid = self._uid_cache[-1]
+                # *************************** END ****************************
+
+                # update the trigger count
+                self._abs_trigger_count += 1
+
+                # *************************  Start ***************************
+                # add an entry for Gain 2 Dark to the cache
+                self._uid_cache.append((str(uuid.uuid4()),
+                                        self._abs_trigger_count))
+                # stash it individually for later reuse
+                self._last_gain2_dark_uid = self._uid_cache[-1]
+                # update the trigger count
+                self._abs_trigger_count += 1
+
+                # add an entry for Gain 1 Dark to the cache
+                self._uid_cache.append((str(uuid.uuid4()),
+                                        self._abs_trigger_count))
+                # stash it individually for later reuse
+                self._last_gain1_dark_uid = self._uid_cache[-1]
+                # update the trigger count
+                self._abs_trigger_count += 1
+                # *************************** END ****************************
+
+            # update the value dictionary with the uid of the most recent
+            # dark field collection
+            val.update({'{}_{}_darkfield'.format(self.name, 'image'):
+                        {'value': self._last_dark_uid[0],
+                        'timestamp': self._acq_signal.timestamp}})
+
+            # *************************  Start ***************************
+            val.update({'{}_{}_darkfield_gain8'.format(self.name, 'image'):
+                        {'value': self._last_gain8_dark_uid[0],
+                        'timestamp': self._acq_signal.timestamp}})
+
+            val.update({'{}_{}_darkfield_gain2'.format(self.name, 'image'):
+                        {'value': self._last_gain2_dark_uid[0],
+                        'timestamp': self._acq_signal.timestamp}})
+
+            val.update({'{}_{}_darkfield_gain1'.format(self.name, 'image'):
+                        {'value': self._last_gain1_dark_uid[0],
+                        'timestamp': self._acq_signal.timestamp}})
+            # *************************** END ****************************
+
+        return val
+
+    def _start_acquire(self, **kwargs):
+        """Do an actual acquisiiton"""
+        if self._acq_count < self._acq_num:
+            self._set_shutter(self._acq_count % 2)
+
+            if (self._acq_count %2):
+                # Save Current Gain Setting
+                from epics import caget
+                initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
+
+                # Switch FCCD Gain Setting to 1
+                caput('{}cam1:FRICGain'.format(self._basename), 0, wait=wait)
+                self._acq_signal.put(1, wait=False)
+
+                # Switch FCCD Gain Setting to 2
+                caput('{}cam1:FRICGain'.format(self._basename), 1, wait=wait)
+                self._acq_signal.put(1, wait=False)
+
+                # Switch FCCD Gain Setting to 8
+                caput('{}cam1:FRICGain'.format(self._basename), 2, wait=wait)
+                self._acq_signal.put(1, wait=False)
+
+                # Restore Initial Gain Setting
+                caput('{}cam1:FRICGain'.format(self._basename), initial_gain, wait=wait)
+            else:
+                self._acq_signal.put(1, wait=False)
+
+    def acquire_dark(self, **kwargs):
+        """Acquire dark images for all gains (1/2/8)"""
+        self._set_shutter(self._acq_count % 2)
+
+        # Save Current Gain Setting
+        from epics import caget
+        initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
+
+        # Switch FCCD Gain Setting to 1
+        caput('{}cam1:FRICGain'.format(self._basename), 2, wait=wait)
+        self._acq_signal.put(1, wait=False)
+
+        # Switch FCCD Gain Setting to 2
+        caput('{}cam1:FRICGain'.format(self._basename), 1, wait=wait)
+        self._acq_signal.put(1, wait=False)
+
+        # Switch FCCD Gain Setting to 8
+        caput('{}cam1:FRICGain'.format(self._basename), 0, wait=wait)
+        self._acq_signal.put(1, wait=False)
+
+        # Restore Initial Gain Setting
+        caput('{}cam1:FRICGain'.format(self._basename), initial_gain, wait=wait)
+#***********************************************************************************
+
+
 class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
     def __init__(self, *args, **kwargs):
         """Initialize the AreaDetector class
