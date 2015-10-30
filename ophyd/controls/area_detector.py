@@ -196,9 +196,6 @@ class AreaDetector(SignalDetector):
 
         # If using the stats, configure the proc plugin
 
-        # Enable images to be saved
-        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
-
         if self._use_stats:
             self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
             self._write_plugin('EnableFilter', 1, self._proc_plugin)
