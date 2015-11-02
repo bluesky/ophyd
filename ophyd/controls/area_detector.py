@@ -638,7 +638,6 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
         self._write_plugin('AutoSave', 1, self._file_plugin)
         self._write_plugin('NumCapture', 0, self._file_plugin)
         self._write_plugin('FileWriteMode', 2, self._file_plugin)
-        self._write_plugin('EnableCallbacks', 1, self._file_plugin)
 
         self._make_filename()
 
@@ -851,21 +850,71 @@ class AreaDetectorFileStoreTIFF(AreaDetectorFSIterativeWrite):
 
 class AreaDetectorFileStoreTIFFSquashing(AreaDetectorFileStoreTIFF):
 
+    def __init__(self, *args, **kwargs):
+        super(AreaDetectorFileStoreTIFFSquashing, self).__init__(
+                *args, **kwargs)
+
+        self.add_signal(self._ad_signal('Proc1:NumFilter', '_num_filter',
+                                        recordable=False),
+                        add_property=True)
+
+    def set_images(self, num_images, num_filter):
+        """Set the number of images to collect and sum at each data point
+
+        NOTE: num_images must be divisible by num_filter!
+
+        Parameters
+        ----------
+        num_images : int
+            The TOTAL number of images to collect at each data point
+        num_filter : int
+            The number of images to sum at each data point.
+        """
+        if num_images % num_filter != 0:
+            raise ValueError(
+                "Ensure that num_images is divisible by num_filter. "
+                "num_images = %d, num_filter = %d" % (num_images, num_filter))
+        self.num_images = num_images
+        self.num_filter = num_filter
+
     def _insert_fs_resource(self):
+        frames_per_point = self._num_images.value / self._num_filter.value
         return fs.insert_resource('AD_TIFF', self._store_file_path,
                                   {'template': self._file_template.value,
                                    'filename': self._filename,
-                                   'frame_per_point': 1})
+                                   'frame_per_point': frames_per_point})
 
     def _extra_AD_configuration(self):
+        # reset the filter counter
+
+        self._write_plugin('ResetFilter', 1, self._proc_plugin)
+        # make sure that the number of total images is divisible by the
+        # the number of images to sum
+        num_images = self._num_images.value
+        num_filter = self._num_filter.value
+        if num_images % num_filter != 0:
+            raise ValueError(
+                "\n\nHEY!"
+                "\n\nYEAH, YOU"
+                "\n\nREAD THE FOLLOWING ERROR MESSAGE TO FIX "
+                "THIS PROBLEM\n\n"
+                "The number of total images to collect must be "
+                 "divisible by the number of images to sum at "
+                 "each data point. _num_images = %d, "
+                 "_num_filters = %d. \n"
+                 "Consider using the helper function "
+                 "set_images(num_images, num_filter) instead of "
+                 "setting these values manually." % (num_images, num_filter))
         # set up processing to pre-smash image stack
         self._write_plugin('EnableCallbacks', 1, self._proc_plugin)
         self._write_plugin('EnableFilter', 1, self._proc_plugin)
         self._write_plugin('FilterType', 2, self._proc_plugin)
         self._write_plugin('AutoResetFilter', 1, self._proc_plugin)
         self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
-        self._write_plugin('NumFilter', self._num_images.value,
-                           self._proc_plugin)
+        # set the number of images to filter
+        self._write_plugin('NumFilter', num_filter, self._proc_plugin)
+        # set the total number of images to take
+        self._write_plugin('NumImages', num_images, 'cam1:')
         self._write_plugin('FilterCallbacks', 1, self._proc_plugin)
         self._write_plugin('NDArrayPort',
                            self._proc_plugin.strip(':').upper(),
