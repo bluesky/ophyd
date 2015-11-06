@@ -445,9 +445,9 @@ class PVPositioner(Positioner):
                                         recordable=False))
 
         if done is None and not self._put_complete:
-            # TODO is this exception worthy?
-            warnings.warn('Positioner %s has no way of knowing motion status'
-                          % self.name)
+            msg = '''Positioner %s is mis-configured. A "done" Signal must be 
+                     provided or put_complete must be True.''' % self.name
+            raise ValueError(msg)
 
         if done is not None:
             self.add_signal(EpicsSignal(done, alias='_done',
