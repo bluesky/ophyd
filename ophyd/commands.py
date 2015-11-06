@@ -359,8 +359,8 @@ def wh_pos(positioners=None):
     _print_pos(positioners, file=sys.stdout)
 
 
-@ensure(Positioner)
-def log_pos(positioners=None):
+@ensure(Positioner, None)
+def log_pos(positioners=None, extra_msg=None):
     """Get the current position of Positioners and make a logbook entry.
 
     Print to the screen the position of the positioners and make a logbook text
@@ -377,13 +377,14 @@ def log_pos(positioners=None):
         The ID of the logbook entry returned by the logbook.log method.
     """
     logbook = get_logbook()
-    msg = ''
+    if extra_msg:
+        msg = extra_msg + '\n'
+    else:
+        msg = ''
 
     with closing(StringIO()) as sio:
         _print_pos(positioners, file=sio)
         msg += sio.getvalue()
-
-    print(msg)
 
     # Add the text representation of the positioners
 
