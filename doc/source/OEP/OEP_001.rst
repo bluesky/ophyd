@@ -36,6 +36,7 @@ Requirements
  - be able to change at run-time what is inserted into the result of
    ``read`` (ex, just return ROI values without saving full data)
  - deal with dark-frames
+ - 'frequency' attribute to set acquire time
 
 Implementation
 ==============
