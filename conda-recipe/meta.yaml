@@ -36,12 +36,10 @@ requirements:
     - python
     - numpy
     - pyepics
-    - metadatastore
     - filestore
     - six
     - ipython
     - pyolog
-    - boltons
 
 test:
   # Python imports
@@ -49,7 +47,6 @@ test:
     - ophyd
     - ophyd.controls
     - ophyd.controls.areadetector
-    - ophyd.session
     - ophyd.utils
 
   #commands:

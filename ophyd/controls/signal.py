@@ -15,7 +15,7 @@ import time
 import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
-from ..utils.epics_pvs import (get_pv_form,
+from ..utils.epics_pvs import (pv_form,
                                waveform_to_string, raise_if_disconnected)
 from .ophydobj import OphydObject, DetectorStatus
 
@@ -215,18 +215,16 @@ class EpicsSignal(Signal):
 
         name = kwargs.pop('name', read_pv)
         super().__init__(separate_readback=separate_readback, name=name,
-                        **kwargs)
+                         **kwargs)
 
-        self._read_pv = epics.PV(read_pv, form=get_pv_form(),
+        self._read_pv = epics.PV(read_pv, form=pv_form,
                                  callback=self._read_changed,
-                                 connection_callback=self._connection_cb,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
 
         if write_pv is not None:
-            self._write_pv = epics.PV(write_pv, form=get_pv_form(),
+            self._write_pv = epics.PV(write_pv, form=pv_form,
                                       callback=self._write_changed,
-                                      connection_callback=self._connection_cb,
                                       auto_monitor=auto_monitor,
                                       **pv_kw)
         elif rw:
@@ -280,13 +278,6 @@ class EpicsSignal(Signal):
         repr.append('pv_kw={0._pv_kw!r}'.format(self))
         repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
         return self._get_repr(repr)
-
-    def _connection_cb(self, pvname=None, conn=None, pv=None, **kwargs):
-        '''Connection callback from PyEpics'''
-        if conn:
-            msg = '%s connected' % pvname
-        else:
-            msg = '%s disconnected' % pvname
 
     @property
     def connected(self):

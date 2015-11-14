@@ -15,7 +15,6 @@ import warnings
 import functools
 
 import epics
-from boltons.cacheutils import cached, LRU
 
 from .errors import MinorAlarmError, get_alarm_class, DisconnectedError
 
@@ -216,11 +215,6 @@ def waveform_to_string(value, type_=str, delim=''):
     return value
 
 
-pv_forms = LRU(128)  # Cache the 128 least recently used (LRU) items.
-# ... supports up to 128 version of pyepics. Thanks dan!
-
-
-@cached(pv_forms)
 def get_pv_form():
     '''Get the PV form that should be used for pyepics
 
@@ -268,6 +262,9 @@ def get_pv_form():
         return 'native'
     else:
         return 'time'
+
+
+pv_form = get_pv_form()
 
 
 def records_from_db(fn):
@@ -326,6 +323,7 @@ def records_from_db(fn):
         ret.append((rtype, record))
 
     return ret
+
 
 def raise_if_disconnected(fcn):
     '''Decorator to catch attempted access to disconnected EPICS channels.'''
