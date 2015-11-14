@@ -36,7 +36,6 @@ requirements:
     - python
     - numpy
     - pyepics
-    - pcaspy
     - metadatastore
     - filestore
     - six
@@ -50,7 +49,6 @@ test:
     - ophyd
     - ophyd.controls
     - ophyd.controls.areadetector
-    - ophyd.controls.cas
     - ophyd.session
     - ophyd.utils
 

@@ -10,7 +10,6 @@ setup(name='ophyd',
       packages=['ophyd',
                 'ophyd.session',
                 'ophyd.controls',
-                'ophyd.controls.cas',
                 'ophyd.controls.areadetector',
                 'ophyd.utils',
                 'ophyd.tests'])
