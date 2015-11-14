@@ -131,7 +131,6 @@ class MonitorDispatcher(epics.ca.CAThread):
         The event queue
     '''
 
-    # TODO this needs to be setup by the session manager.
     def __init__(self, all_contexts=False, timeout=0.1,
                  callback_logger=None):
         epics.ca.CAThread.__init__(self, name='monitor_dispatcher')
@@ -218,6 +217,7 @@ def waveform_to_string(value, type_=str, delim=''):
 
 
 pv_forms = LRU(128)  # Cache the 128 least recently used (LRU) items.
+# ... supports up to 128 version of pyepics. Thanks dan!
 
 
 @cached(pv_forms)

@@ -15,11 +15,10 @@ from epics import caget, caput
 
 from .controls.positioner import EpicsMotor, Positioner, PVPositioner
 from .utils import DisconnectedError
-from .session import get_session_manager
+from .utils.startup import setup as setup_ophyd
 from prettytable import PrettyTable
 import numpy as np
 
-session_manager = None
 logbook = None
 
 __all__ = ['mov',
@@ -213,11 +212,6 @@ def set_lm(positioner, limits):
 
     print(msg)
     global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if logbook is None:
-        logbook = session_manager['olog_client']
     if logbook:
         logbook.log(msg)
 
@@ -285,11 +279,6 @@ def set_pos(positioner, position):
 
     print(msg)
     global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if logbook is None:
-        logbook = session_manager['olog_client']
     if logbook:
         lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
         logbook.log(msg + '\n' + lmsg)
@@ -300,8 +289,6 @@ def wh_pos(positioners=None):
     """Get the current position of Positioners and print to screen.
 
     Print to the screen the position of the positioners in a formated table.
-    If positioners is None then get all registered positioners from the
-    session manager.
 
     Parameters
     ----------
@@ -322,13 +309,6 @@ def wh_pos(positioners=None):
 
     >>>wh_pos([m1, m2, m3])
     """
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if positioners is None:
-        pos = session_manager.get_positioners()
-        positioners = [pos[k] for k in sorted(pos)]
-
     _print_pos(positioners, file=sys.stdout)
 
 
@@ -336,10 +316,9 @@ def wh_pos(positioners=None):
 def log_pos(positioners=None):
     """Get the current position of Positioners and make a logbook entry.
 
-    Print to the screen the position of the positioners and make a logbook
-    text entry. If positioners is None then get all registered positioners
-    from the session manager. This routine also creates session information
-    in the logbook so positions can be recovered.
+    Print to the screen the position of the positioners and make a logbook text
+    entry. This routine also creates session information in the logbook so
+    positions can be recovered.
 
     Parameters
     ----------
@@ -350,15 +329,7 @@ def log_pos(positioners=None):
         int
             The ID of the logbook entry returned by the logbook.log method.
     """
-    global session_manager
     global logbook
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if positioners is None:
-        pos = session_manager.get_positioners()
-        positioners = [pos[k] for k in sorted(pos)]
-    if logbook is None:
-        logbook = session_manager['olog_client']
     msg = ''
 
     with closing(StringIO()) as sio:
@@ -527,11 +498,6 @@ def logbook_to_objects(id=None, **kwargs):
     """Search the logbook and return positioners"""
 
     global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if logbook is None:
-        logbook = session_manager['olog_client']
     if logbook is None:
         raise NotImplemented("No logbook is avaliable")
     entry = logbook.find(id=id, **kwargs)

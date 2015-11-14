@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 
 def test():
     loggers = ('ophyd.controls.areadetector',
-               'ophyd.session',
                )
 
     config.setup_loggers(loggers)

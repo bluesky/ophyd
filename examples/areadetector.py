@@ -35,7 +35,6 @@ def test():
             logger.debug('(epics) %s %s=%s' % (name, signal.pvname, signal.value))
 
     loggers = ('ophyd.controls.areadetector',
-               'ophyd.session',
                )
 
     config.setup_loggers(loggers)

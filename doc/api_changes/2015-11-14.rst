@@ -1,3 +1,4 @@
-* Removed ophyd.controls.cas package
+* Removed ophyd.controls.cas
 * Removed ophyd.scans
 * Removed ophyd.runengine
+* Removed ophyd.session

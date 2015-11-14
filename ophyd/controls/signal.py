@@ -288,11 +288,6 @@ class EpicsSignal(Signal):
         else:
             msg = '%s disconnected' % pvname
 
-        if self._session is not None:
-            self._session.notify_connection(msg)
-        else:
-            self._ses_logger.debug(msg)
-
     @property
     def connected(self):
         if self._write_pv is None:

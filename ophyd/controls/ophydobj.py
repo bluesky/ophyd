@@ -12,8 +12,6 @@ from collections import defaultdict
 import time
 import numpy as np
 
-from ..session import register_object
-
 
 class StatusBase():
     """
@@ -152,7 +150,6 @@ class OphydObject(object):
 
     Handles:
     * Subscription/callback mechanism
-    * Registration with session manager
 
     Parameters
     ----------
@@ -160,8 +157,6 @@ class OphydObject(object):
         The name of the object.  If None, registration is disabled.
     alias : str, optional
         A [potentially simplified] alias of the object
-    register : bool, optional
-        Attempt to register with the session manager
 
     Attributes
     ----------
@@ -171,7 +166,7 @@ class OphydObject(object):
 
     _default_sub = None
 
-    def __init__(self, name=None, alias=None, register=True):
+    def __init__(self, name=None, alias=None):
         super().__init__()
         self._name = name
         self._alias = alias
@@ -180,9 +175,6 @@ class OphydObject(object):
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
         self._sub_cache = defaultdict(lambda: None)
         self._ses_logger = None
-
-        if register:
-            self._register()
 
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
@@ -223,8 +215,7 @@ class OphydObject(object):
         the type of callback to perform. All other positional arguments
         and kwargs are passed directly to the callback function.
 
-        No exceptions are raised when the callback functions fail;
-        they are merely logged with the session logger.
+        No exceptions are raised when the callback functions fail.
         '''
         sub_type = kwargs['sub_type']
 
@@ -296,10 +287,6 @@ class OphydObject(object):
                     pass
         else:
             self._subs[event_type].remove(cb)
-
-    def _register(self):
-        '''Register this object with the session'''
-        register_object(self)
 
     @property
     def name(self):

@@ -17,7 +17,6 @@ def test():
         logger.info('[callback] caget=%s' % rw_signal.get())
 
     loggers = ('ophyd.controls.signal',
-               'ophyd.session',
                )
 
     config.setup_loggers(loggers)

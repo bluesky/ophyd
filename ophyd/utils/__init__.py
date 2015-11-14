@@ -9,10 +9,10 @@
 
 import logging
 
+from .errors import *
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
-
-from .errors import *
 
 
 def enum(**enums):

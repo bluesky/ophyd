@@ -160,4 +160,3 @@ npbz = EpicsMotor('XF:23ID1-ES{Dif:Lens-Ax:BtmZ}Mtr', name = 'npbz')
 
 olog_handler = OlogHandler(logbooks='Data Acquisition')
 olog_handler.setLevel(logging.INFO)
-session_mgr._logger.addHandler(olog_handler)

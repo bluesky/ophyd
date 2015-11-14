@@ -17,7 +17,6 @@ def test():
 
     loggers = ('ophyd.controls.signal',
                'ophyd.controls.positioner',
-               'ophyd.session',
                )
 
     config.setup_loggers(loggers)
