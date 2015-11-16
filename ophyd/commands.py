@@ -5,6 +5,7 @@ from __future__ import print_function
 import time
 import functools
 import sys
+import warnings
 from contextlib import contextmanager, closing
 from io import StringIO
 import collections
@@ -43,7 +44,8 @@ DISCONNECTED = 'disconnected'
 def get_from_namespace(classes):
     ip = IPython.get_ipython()
     if ip is None:
-        # TODO: warning
+        warnings.warn('Unable to inspect Python global namespace; '
+                      'use IPython to enable these features.')
         return []
     else:
         return [val for var, val in sorted(ip.user_ns.items())

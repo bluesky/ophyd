@@ -17,6 +17,7 @@ m1 = EpicsMotor(rec1)
 m2 = EpicsMotor(rec2)
 m3 = EpicsMotor(rec3)
 
+
 # wait for positioners to connect...
 time.sleep(1.0)
 
@@ -29,9 +30,8 @@ mov(m1, 0.0)
 print('Moving m1 to 0.3 (relative):')
 movr(m1, 0.3)
 
-if ip is not None:
-    print('wh_pos getting all positioners available:')
-    wh_pos()
+print('wh_pos getting all positioners available, if running in IPython:')
+wh_pos()
 
 print('wh_pos of a single motor:')
 wh_pos([m1])
