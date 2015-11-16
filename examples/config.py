@@ -2,9 +2,6 @@
 
 import sys
 import logging
-import warnings
-
-import epics
 
 try:
     import ophyd
@@ -15,25 +12,6 @@ except ImportError:
 
 LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
 EXAMPLE_LOGGER = 'ophyd_examples'
-
-
-def setup_epics():
-    warnings.simplefilter('default')
-
-    # TODO in place of session setup
-    import atexit
-    from ophyd.utils.epics_pvs import MonitorDispatcher
-
-    def stop_dispatcher():
-        dispatcher.stop()
-
-    # It's important to use the same context in the callback dispatcher
-    # as the main thread, otherwise not-so-savvy users will be very
-    # confused
-    epics.ca.use_initial_context()
-    dispatcher = MonitorDispatcher()
-
-    atexit.register(stop_dispatcher)
 
 
 def setup_loggers(logger_names, fmt=LOG_FORMAT):
@@ -50,8 +28,7 @@ def setup_loggers(logger_names, fmt=LOG_FORMAT):
 setup_loggers((EXAMPLE_LOGGER, ))
 logger = logging.getLogger(EXAMPLE_LOGGER)
 
-
-setup_epics()
+ophyd.commands.setup_ophyd()
 
 
 motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',

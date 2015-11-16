@@ -26,6 +26,10 @@ def test():
 
     m1 = EpicsMotor(motor_record)
     # m2 = EpicsMotor('MLL:bad_record')
+
+    # give it some time to connect...
+    time.sleep(1.0)
+
     m1.subscribe(callback, event_type=m1.SUB_DONE)
 
     m1.subscribe(callback, event_type=m1.SUB_READBACK)
