@@ -36,6 +36,7 @@ requirements:
     - python
     - numpy
     - pyepics
+    - prettytable
     - filestore
     - six
     - ipython
