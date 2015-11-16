@@ -10,7 +10,12 @@
 from __future__ import print_function
 from collections import defaultdict
 import time
+import logging
+
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 class StatusBase():
@@ -174,7 +179,6 @@ class OphydObject(object):
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
         self._sub_cache = defaultdict(lambda: None)
-        self._ses_logger = None
 
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
@@ -189,8 +193,8 @@ class OphydObject(object):
             cb(*args, **kwargs)
         except Exception as ex:
             sub_type = kwargs['sub_type']
-            self._ses_logger.error('Subscription %s callback exception (%s)' %
-                                   (sub_type, self), exc_info=ex)
+            logger.error('Subscription %s callback exception (%s)', sub_type,
+                         self, exc_info=ex)
 
     def _run_cached_sub(self, sub_type, cb):
         '''Run a single subscription callback using the most recent
