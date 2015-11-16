@@ -85,21 +85,24 @@ def ensure(*ensure_args):
     def wrap(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            # First check if we have an iterable first
-            # on the first arg
-            # if not then make these all lists
+            # First check if we have an iterable first on the first arg.
+            # If not, then make these all lists
             if len(args) > 0:
                 if not hasattr(args[0], "__iter__"):
                     args = tuple([[a] for a in args])
             # Now do type checking ignoring None
             for n, (arg, t) in enumerate(zip(args, ensure_args)):
-                if t is not None:
-                    for x in arg:
-                        if not isinstance(x, t):
-                            raise TypeError("Incorect type in parameter list.\n"
-                                            "Parameter at position {} "
-                                            "is expected to be an instance of "
-                                            "{}".format(n, t))
+                if t is None:
+                    # Ignore when type is specified as None
+                    continue
+
+                invalid = [x for x in arg
+                           if not isinstance(x, t)]
+
+                if invalid:
+                    raise TypeError('Incorrect type in parameter list.\n'
+                                    'Parameter at 0-based position {} must be'
+                                    'an instance of {}'.format(n, t))
 
             f(*args, **kwargs)
         return wrapper
