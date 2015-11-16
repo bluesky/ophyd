@@ -46,7 +46,7 @@ def get_from_namespace(classes):
         # TODO: warning
         return []
     else:
-        return [val for var, val in ip.user_ns.items()
+        return [val for var, val in sorted(ip.user_ns.items())
                 if isinstance(val, classes)]
 
 
