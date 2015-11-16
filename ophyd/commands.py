@@ -42,6 +42,14 @@ DISCONNECTED = 'disconnected'
 
 
 def get_from_namespace(classes):
+    '''Get all instances of `classes` from the user namespace
+
+    Parameters
+    ----------
+    classes : type, or sequence of types
+        Passed directly to isinstance(), only instances of these classes
+        will be returned.
+    '''
     ip = IPython.get_ipython()
     if ip is None:
         warnings.warn('Unable to inspect Python global namespace; '
@@ -53,6 +61,7 @@ def get_from_namespace(classes):
 
 
 def get_all_positioners():
+    '''Get all positioners defined in the IPython namespace'''
     return get_from_namespace(Positioner)
 
 
