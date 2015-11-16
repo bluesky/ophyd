@@ -30,6 +30,7 @@ __all__ = ['mov',
            'log_pos',
            'log_pos_diff',
            'get_all_positioners',
+           'setup_ophyd',
            ]
 
 # Global Defs of certain strings
