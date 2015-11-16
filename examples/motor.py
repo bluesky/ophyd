@@ -10,10 +10,10 @@ from ophyd.utils.errors import LimitError
 
 def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-        logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
+        logger.info('[callback] [%s] (type=%s) value=%s', timestamp, sub_type, value)
 
     def done_moving(**kwargs):
-        logger.info('Done moving %s' % (kwargs, ))
+        logger.info('Done moving %s', kwargs)
 
     loggers = ('ophyd.controls.signal',
                'ophyd.controls.positioner',
@@ -59,7 +59,7 @@ def test():
     try:
         m1.move(high_lim + 1)
     except LimitError as ex:
-        logger.debug('Failed move, as expected (%s)' % ex)
+        logger.debug('Failed move, as expected (%s)', ex)
     else:
         raise ValueError('Move should have failed')
 
@@ -67,14 +67,14 @@ def test():
         m1.move(low_lim - 1)
         # LimitError is a ValueError, so either can be caught
     except ValueError as ex:
-        logger.debug('Failed move, as expected (%s)' % ex)
+        logger.debug('Failed move, as expected (%s)', ex)
     else:
         raise ValueError('Move should have failed')
 
     try:
         m1.check_value(low_lim - 1)
     except ValueError as ex:
-        logger.debug('Failed check_value, as expected (%s)' % ex)
+        logger.debug('Failed check_value, as expected (%s)', ex)
     else:
         raise ValueError('check_value should have failed')
 
@@ -82,7 +82,7 @@ def test():
     stat = m1.move(2, wait=False)
 
     while not stat.done:
-        logger.info('--> moving... %s error=%s' % (stat, stat.error))
+        logger.info('--> moving... %s error=%s', stat, stat.error)
         time.sleep(0.1)
 
     logger.debug(m1.get(as_string=True))
@@ -92,10 +92,10 @@ def test():
     logger.debug(m1.setpoint_pvname)
 
     fmt = '%%.%df' % m1.precision
-    logger.debug('precision formatting: %s '% fmt)
+    logger.debug('precision formatting: %s ', fmt)
 
     string_pos = fmt % m1.position
-    logger.debug('final position: %s' % string_pos)
+    logger.debug('final position: %s', string_pos)
 
 
 if __name__ == '__main__':
