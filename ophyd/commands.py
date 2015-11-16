@@ -9,6 +9,7 @@ from contextlib import contextmanager, closing
 from io import StringIO
 import collections
 
+import IPython
 from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
@@ -27,7 +28,8 @@ __all__ = ['mov',
            'wh_pos',
            'set_lm',
            'log_pos',
-           'log_pos_diff'
+           'log_pos_diff',
+           'get_all_positioners',
            ]
 
 # Global Defs of certain strings
@@ -35,6 +37,20 @@ __all__ = ['mov',
 FMT_LEN = 18
 FMT_PREC = 6
 DISCONNECTED = 'disconnected'
+
+
+def get_from_namespace(classes):
+    ip = IPython.get_ipython()
+    if ip is None:
+        # TODO: warning
+        return []
+    else:
+        return [val for var, val in ip.user_ns.items()
+                if isinstance(val, classes)]
+
+
+def get_all_positioners():
+    return get_from_namespace(Positioner)
 
 
 def ensure(*ensure_args):
@@ -605,6 +621,9 @@ def catch_keyboard_interrupt(positioners):
 
 def _print_pos(positioners, file=sys.stdout):
     """Pretty Print the positioners to file"""
+    if positioners is None:
+        positioners = get_all_positioners()
+
     print('', file=file)
     pos = []
     for p in positioners:
