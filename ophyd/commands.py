@@ -21,7 +21,6 @@ from .utils.startup import setup as setup_ophyd
 from prettytable import PrettyTable
 import numpy as np
 
-logbook = None
 
 __all__ = ['mov',
            'movr',
@@ -31,6 +30,7 @@ __all__ = ['mov',
            'log_pos',
            'log_pos_diff',
            'get_all_positioners',
+           'get_logbook',
            'setup_ophyd',
            ]
 
@@ -41,7 +41,7 @@ FMT_PREC = 6
 DISCONNECTED = 'disconnected'
 
 
-def get_from_namespace(classes):
+def instances_from_namespace(classes):
     '''Get all instances of `classes` from the user namespace
 
     Parameters
@@ -62,7 +62,23 @@ def get_from_namespace(classes):
 
 def get_all_positioners():
     '''Get all positioners defined in the IPython namespace'''
-    return get_from_namespace(Positioner)
+    return instances_from_namespace(Positioner)
+
+
+def var_from_namespace(var):
+    ip = IPython.get_ipython()
+    if ip is not None:
+        return ip.user_ns[var]
+    else:
+        raise RuntimeError('No IPython session')
+
+
+def get_logbook():
+    '''Get the logbook instance from the user namespace'''
+    try:
+        return var_from_namespace('logbook')
+    except (KeyError, RuntimeError):
+        return None
 
 
 def ensure(*ensure_args):
@@ -239,7 +255,7 @@ def set_lm(positioner, limits):
                lim2, p.name, prec=FMT_PREC)
 
     print(msg)
-    global logbook
+    logbook = get_logbook()
     if logbook:
         logbook.log(msg)
 
@@ -306,7 +322,7 @@ def set_pos(positioner, position):
             print('Unable to set position of positioner {0}'.format(p.name))
 
     print(msg)
-    global logbook
+    logbook = get_logbook()
     if logbook:
         lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
         logbook.log(msg + '\n' + lmsg)
@@ -324,7 +340,6 @@ def wh_pos(positioners=None):
 
     See Also
     --------
-
     log_pos : Log positioner values to logbook
 
     Examples
@@ -350,14 +365,14 @@ def log_pos(positioners=None):
 
     Parameters
     ----------
-        positioners : Positioner, list of Positioners or None
+    positioners : Positioner, list of Positioners or None
 
     Returns
     -------
-        int
-            The ID of the logbook entry returned by the logbook.log method.
+    int
+        The ID of the logbook entry returned by the logbook.log method.
     """
-    global logbook
+    logbook = get_logbook()
     msg = ''
 
     with closing(StringIO()) as sio:
@@ -525,9 +540,10 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
 def logbook_to_objects(id=None, **kwargs):
     """Search the logbook and return positioners"""
 
-    global logbook
+    logbook = get_logbook()
     if logbook is None:
-        raise NotImplemented("No logbook is avaliable")
+        raise RuntimeError("No logbook is available")
+
     entry = logbook.find(id=id, **kwargs)
     if len(entry) != 1:
         raise ValueError("Search of logbook was not unique, please refine"
@@ -540,8 +556,9 @@ def logbook_to_objects(id=None, **kwargs):
     try:
         obj = eval(prop['objects'])
         val = eval(prop['values'])
-    except:
-        raise RuntimeError('Unable to create objects from log entry')
+    except Exception as ex:
+        raise RuntimeError('Unable to create objects from log entry '
+                           '(%s)' % ex)
 
     objects = {o.name: o for o in obj}
     return val, objects
