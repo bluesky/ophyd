@@ -9,126 +9,33 @@
 '''
 
 from __future__ import print_function
-# import os
-import inspect
-import sys
 import logging
 from collections import OrderedDict
 
 import numpy as np
 
-try:
-    from gi.repository import Hkl as hkl_module
-    from gi.repository import GLib
-except ImportError as ex:
-    hkl_module = None
-
-    print('[!!] Failed to import Hkl library; diffractometer support '
-          'disabled (%s)' % ex,
-          file=sys.stderr)
-
-
 from ..controls import (Signal, PseudoPositioner)
-
+from .util import hkl_module, GLib
+from . import util
 
 logger = logging.getLogger(__name__)
 NM_KEV = 1.239842  # lambda = 1.24 / E (nm, keV or um, eV)
 
 
-def new_detector(dtype=0):
-    '''
-    Create a new HKL-library detector
-    '''
-    return hkl_module.Detector.factory_new(hkl_module.DetectorType(dtype))
-
-
-if hkl_module:
-    DIFF_TYPES = tuple(sorted(hkl_module.factories().keys()))
-    UserUnits = hkl_module.UnitEnum.USER
-    DefaultUnits = hkl_module.UnitEnum.DEFAULT
-
-    VALID_UNITS = (UserUnits, DefaultUnits)
-else:
-    DIFF_TYPES = ()
-
-
-class UsingEngine(object):
-    """
-    Context manager that uses a calculation engine temporarily (i.e., for the
-    duration of the context manager)
-    """
-    def __init__(self, calc, engine):
-        self.calc = calc
-
-    def __enter__(self):
-        self.old_engine = self.calc.engine
-
-    def __exit__(self, type_, value, traceback):
-        if self.old_engine is not None:
-            self.calc.engine = self.old_engine
-
-
-def to_numpy(mat):
-    """Convert an hkl ``Matrix`` to a numpy ndarray
-
-    Parameters
-    ----------
-    mat : Hkl.Matrix
-
-    Returns
-    -------
-    ndarray
-    """
-    if isinstance(mat, np.ndarray):
-        return mat
-
-    ret = np.zeros((3, 3))
-    for i in range(3):
-        for j in range(3):
-            ret[i, j] = mat.get(i, j)
-
-    return ret
-
-
-def to_hkl(arr):
-    """Convert a numpy ndarray to an hkl ``Matrix``
-
-    Parameters
-    ----------
-    arr : ndarray
-
-    Returns
-    -------
-    Hkl.Matrix
-    """
-    if isinstance(arr, hkl_module.Matrix):
-        return arr
-
-    arr = np.array(arr)
-
-    hklm = hkl_euler_matrix(0, 0, 0)
-    hklm.init(*arr.flatten())
-    return hklm
-
-
-def hkl_euler_matrix(euler_x, euler_y, euler_z):
-    return hkl_module.Matrix.new_euler(euler_x, euler_y, euler_z)
-
-
 class HklSample(object):
-    def __init__(self, calc, sample=None, units=None, **kwargs):
+    def __init__(self, calc, sample=None, units='user', **kwargs):
         if sample is None:
             sample = hkl_module.Sample.new('')
-
-        if units is None:
-            units = UserUnits
 
         self._calc = calc
         self._sample = sample
         self._sample_dict = calc._samples
-        self._units = units
 
-        assert units in VALID_UNITS
+        self._unit_name = units
+        try:
+            self._units = util.units[self._unit_name]
+        except KeyError:
+            raise ValueError('Invalid unit type')
 
         for name in ('lattice', 'name', 'U', 'UB', 'ux', 'uy', 'uz',
                      'reflections', ):
@@ -229,14 +136,14 @@ class HklSample(object):
         '''
         The crystal orientation matrix, U
         '''
-        return to_numpy(self._sample.U_get())
+        return util.to_numpy(self._sample.U_get())
 
     @U.setter
     def U(self, new_u):
-        self._sample.U_set(to_hkl(new_u))
+        self._sample.U_set(util.to_hkl(new_u))
 
     def _get_parameter(self, param):
-        return Parameter(param, units=self._units)
+        return Parameter(param, units=self._unit_name)
 
     @property
     def ux(self):
@@ -269,11 +176,11 @@ class HklSample(object):
         If written to, the B matrix will be kept constant:
             U * B = UB -> U = UB * B^-1
         '''
-        return to_numpy(self._sample.UB_get())
+        return util.to_numpy(self._sample.UB_get())
 
     @UB.setter
     def UB(self, new_ub):
-        self._sample.UB_set(to_hkl(new_ub))
+        self._sample.UB_set(util.to_hkl(new_ub))
 
     def _create_reflection(self, h, k, l, detector=None):
         '''
@@ -399,12 +306,10 @@ class HklSample(object):
 
 
 class Parameter(object):
-    def __init__(self, param, units=None):
-        if units is None:
-            units = UserUnits
-
+    def __init__(self, param, units='user'):
         self._param = param
-        self._units = units
+        # Sets unit_name and units through the setter:
+        self.units = units
 
     @property
     def hkl_parameter(self):
@@ -415,12 +320,12 @@ class Parameter(object):
 
     @property
     def units(self):
-        return self._units
+        return self._unit_name
 
     @units.setter
-    def units(self, units):
-        assert units in VALID_UNITS
-        self._units = units
+    def units(self, unit_name):
+        self._unit_name = unit_name
+        self._units = util.units[unit_name]
 
     @property
     def name(self):
@@ -475,7 +380,7 @@ class Parameter(object):
                 'fit={!r}'.format(self.fit),
                 ]
 
-        if self._units is UserUnits:
+        if self._unit_name == 'user':
             repr.append('units={!r}'.format(self.user_units))
         else:
             repr.append('units={!r}'.format(self.default_units))
@@ -645,25 +550,24 @@ class Engine(object):
 class CalcRecip(object):
     def __init__(self, dtype, engine='hkl',
                  sample='main', lattice=None,
-                 degrees=True, units=None,
+                 degrees=True, units='user',
                  lock_engine=False):
 
-        if units is None:
-            units = UserUnits
-
         self._engine = None  # set below with property
-        self._detector = new_detector()
+        self._detector = util.new_detector()
         self._degrees = bool(degrees)
         self._sample = None
         self._samples = {}
-        self._units = units
+        self._unit_name = units
+        self._units = util.units[self._unit_name]
         self._lock_engine = bool(lock_engine)
 
         try:
             self._factory = hkl_module.factories()[dtype]
         except KeyError:
-            raise ValueError('Invalid diffractometer type %r; '
-                             'choose from: %s' % (dtype, ', '.join(DIFF_TYPES)))
+            types = ', '.join(util.diffractometer_types)
+            raise ValueError('Invalid diffractometer type {!r}; choose from: {}'
+                             ''.format(dtype, types))
 
         self._geometry = self._factory.create_new_geometry()
         self._engine_list = self._factory.create_new_engine_list()
@@ -771,13 +675,13 @@ class CalcRecip(object):
     def add_sample(self, name, select=True,
                    **kwargs):
         if isinstance(name, hkl_module.Sample):
-            sample = HklSample(self, name, units=self._units,
+            sample = HklSample(self, name, units=self._unit_name,
                                **kwargs)
         elif isinstance(name, HklSample):
             sample = name
         else:
             sample = HklSample(self, sample=hkl_module.Sample.new(name),
-                               units=self._units,
+                               units=self._unit_name,
                                **kwargs)
 
         if sample.name in self._samples:
@@ -850,7 +754,7 @@ class CalcRecip(object):
         return self._engine.update()
 
     def _get_parameter(self, param):
-        return Parameter(param, units=self._units)
+        return Parameter(param, units=self._unit_name)
 
     def __getitem__(self, axis):
         if axis in self.physical_axis_names:
@@ -885,7 +789,7 @@ class CalcRecip(object):
             return solutions
 
     def using_engine(self, engine):
-        return UsingEngine(self, engine)
+        return util.UsingEngine(self, engine)
 
     def calc_linear_path(self, start, end, n, num_params=0, **kwargs):
         # start = [h1, k1, l1]

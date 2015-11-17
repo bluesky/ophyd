@@ -5,6 +5,7 @@ import config
 from ophyd.hkl.hkl import CalcRecip
 from ophyd.hkl.diffract import E4CH
 from ophyd.hkl.calc import (CalcE4CH, CalcK6C)
+from ophyd.hkl.util import diffractometer_types
 import ophyd.hkl.hkl as hkl_module
 from ophyd.controls.positioner import Positioner
 
@@ -31,7 +32,7 @@ def test():
 
     logger = config.logger
 
-    logger.info('Diffractometer types: %s' % ', '.join(hkl_module.DIFF_TYPES))
+    logger.info('Diffractometer types: %s' % ', '.join(diffractometer_types))
 
     logger.info('')
     logger.info('---- calck6c ----')
