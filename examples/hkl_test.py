@@ -2,9 +2,10 @@ from __future__ import print_function
 
 import config
 
-from ophyd.utils.hkl import (CalcRecip, CalcE4CH, CalcK6C,
-                             DiffE4CH)
-import ophyd.utils.hkl as hkl_module
+from ophyd.hkl.hkl import CalcRecip
+from ophyd.hkl.diffract import E4CH
+from ophyd.hkl.calc import (CalcE4CH, CalcK6C)
+import ophyd.hkl.hkl as hkl_module
 from ophyd.controls.positioner import Positioner
 
 
@@ -139,9 +140,9 @@ def test():
 
     logger.info('')
     logger.info('---- diffractometer ----')
-    diffr = DiffE4CH(positioners, name='my_diffractometer',
-                     energy=8.0,
-                     )
+    diffr = E4CH('my_diffractometer',
+                 real_positioners=positioners, energy=8.0,
+                 )
 
     calc = diffr.calc
     sample = calc.sample

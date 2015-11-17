@@ -962,23 +962,25 @@ class CalcRecip(object):
 
 
 class Diffractometer(PseudoPositioner):
-    def __init__(self, calc_class, real_positioners, calc_kw=None,
+    calc_class = None
+
+    def __init__(self, name, real_positioners, calc_kw=None,
                  decision_fcn=None, energy_signal=None, energy=8.0,
+                 calc_inst=None,
                  **kwargs):
 
-        if isinstance(calc_class, CalcRecip):
-            self._calc = calc_class
-        elif inspect.isclass(calc_class):
+        if calc_inst is not None:
+            if not isinstance(calc_inst, self.calc_class):
+                raise ValueError('Calculation instance must be derived from '
+                                 'the class {}'.format(self.calc_class))
+            self._calc = calc_inst
+
+        else:
             if calc_kw is None:
                 calc_kw = {}
 
             calc_kw = dict(calc_kw)
-            calc_kw.pop('lock_engine', True)
-            self._calc = calc_class(lock_engine=True, **calc_kw)
-        else:
-            raise ValueError('Must specify a calculation class or an instance '
-                             'of CalcRecip (or a derived class). Got: %s' %
-                             calc_class)
+            self._calc = self.calc_class(lock_engine=True, **calc_kw)
 
         if not self._calc.engine_locked:
             # Reason for this is that the engine determines the pseudomotor
@@ -992,12 +994,10 @@ class Diffractometer(PseudoPositioner):
 
         self._decision_fcn = decision_fcn
 
-        PseudoPositioner.__init__(self,
-                                  real_positioners,
-                                  forward=self.pseudo_to_real,
-                                  reverse=self.real_to_pseudo,
-                                  pseudo=pseudo_names,
-                                  **kwargs)
+        super().__init__(name, real_positioners,
+                         forward=self.pseudo_to_real,
+                         reverse=self.real_to_pseudo, pseudo=pseudo_names,
+                         **kwargs)
 
         if energy_signal is None:
             energy_signal = Signal(name='%s.energy' % self.name)
@@ -1073,47 +1073,3 @@ class Diffractometer(PseudoPositioner):
         #     # Restore the old state
         #     for name, pos in old_positions.items():
         #         calc[name] = pos
-
-
-def _create_classes(class_suffix, dtype):
-    '''
-    Create reciprocal calculation and diffractometer classes for a specific type
-    of diffractometer.
-    '''
-    # - calculation
-    def calc_init(self, **kwargs):
-        CalcRecip.__init__(self, dtype, **kwargs)
-
-    calc_name = 'Calc%s' % class_suffix
-    _dict = dict(__init__=calc_init,
-                 __doc__='Reciprocal space calculation helper for %s' % dtype)
-    globals()[calc_name] = type(calc_name, (CalcRecip, ), _dict)
-
-    calc_class = globals()[calc_name]
-
-    # - diffractometer pseudomotor
-    def diffr_init(self, *args, **kwargs):
-        Diffractometer.__init__(self, calc_class, *args, **kwargs)
-
-    diffr_class = 'Diff%s' % class_suffix
-    _dict = dict(__init__=diffr_init,
-                 __doc__='%s diffractometer pseudomotor' % dtype)
-    globals()[diffr_class] = type(diffr_class, (Diffractometer, ), _dict)
-
-
-# TODO can we make these names a bit better? ugh
-_create_classes('E4CH', 'E4CH')
-_create_classes('E4CV', 'E4CV')
-_create_classes('E6C', 'E6C')
-_create_classes('K4CV', 'K4CV')
-_create_classes('K6C', 'K6C')
-_create_classes('Petra3_p09_eh2', 'PETRA3 P09 EH2')
-_create_classes('SoleilMars', 'SOLEIL MARS')
-_create_classes('SoleilSiriusKappa', 'SOLEIL SIRIUS KAPPA')
-_create_classes('SoleilSiriusTurret', 'SOLEIL SIRIUS TURRET')
-_create_classes('SoleilSixsMed1p2', 'SOLEIL SIXS MED1+2')
-_create_classes('SoleilSixsMed2p2', 'SOLEIL SIXS MED2+2')
-_create_classes('SoleilSixs', 'SOLEIL SIXS')
-_create_classes('Med2p3', 'MED2+3')
-_create_classes('TwoC', 'TwoC')
-_create_classes('Zaxis', 'ZAXIS')
