@@ -3,7 +3,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from .hkl import (HklSample, Engine, Parameter)
+from .engine import (Engine, Parameter)
+from .sample import HklSample
 from . import util
 from .util import hkl_module
 

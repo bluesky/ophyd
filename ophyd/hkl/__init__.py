@@ -1,4 +1,11 @@
-''' '''
+'''
+:mod:`ophyd.hkl` - HKL calculation utilities
+============================================
+
+.. module:: ophyd.hkl
+   :synopsis:
+
+'''
 
 import logging
 

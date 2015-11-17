@@ -5,7 +5,6 @@ import config
 from ophyd.hkl.diffract import E4CH
 from ophyd.hkl.calc import (CalcRecip, CalcE4CH, CalcK6C)
 from ophyd.hkl.util import diffractometer_types
-import ophyd.hkl.hkl as hkl_module
 from ophyd.controls.positioner import Positioner
 
 
@@ -175,5 +174,3 @@ def test():
 
 if __name__ == '__main__':
     k6c, diffr = test()
-
-    print('hkl module is: ', hkl_module.hkl_module)
