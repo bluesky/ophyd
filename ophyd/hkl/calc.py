@@ -39,7 +39,12 @@ class CalcRecip(object):
         self._engine_list = self._factory.create_new_engine_list()
 
         if sample is not None:
-            self.add_sample(sample, lattice=lattice)
+            if isinstance(sample, HklSample):
+                if lattice is not None:
+                    sample.lattice = lattice
+                self.add_sample(sample)
+            else:
+                self.new_sample(sample, lattice=lattice)
 
         self.engine = engine
 
@@ -148,8 +153,6 @@ class CalcRecip(object):
             instance
         select : bool, optional
             Select the sample to focus calculations on
-        kwargs : dict
-            Keyword arguments are passed to
         '''
         if not isinstance(sample, (HklSample, hkl_module.Sample)):
             raise ValueError('Expected either an HklSample or a Sample '
@@ -171,14 +174,14 @@ class CalcRecip(object):
     def new_sample(self, name, select=True, **kwargs):
         '''Convenience function to add a sample by name
 
+        Keyword arguments are passed to the new HklSample initializer.
+
         Parameters
         ----------
         name : str
             The sample name
         select : bool, optional
             Select the sample to focus calculations on
-        kwargs : dict
-            Keyword arguments are passed to HklSample
         '''
         units = kwargs.pop('units', self._unit_name)
         sample = HklSample(self, sample=hkl_module.Sample.new(name),
