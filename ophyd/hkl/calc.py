@@ -138,20 +138,28 @@ class CalcRecip(object):
         self._sample = sample
         self._re_init()
 
-    def add_sample(self, name, select=True,
-                   **kwargs):
-        if isinstance(name, hkl_module.Sample):
-            sample = HklSample(self, name, units=self._unit_name,
-                               **kwargs)
-        elif isinstance(name, HklSample):
-            sample = name
-        else:
-            sample = HklSample(self, sample=hkl_module.Sample.new(name),
-                               units=self._unit_name,
-                               **kwargs)
+    def add_sample(self, sample, select=True):
+        '''Add an HklSample
+
+        Parameters
+        ----------
+        sample : HklSample instance
+            The sample name, or optionally an already-created HklSample
+            instance
+        select : bool, optional
+            Select the sample to focus calculations on
+        kwargs : dict
+            Keyword arguments are passed to
+        '''
+        if not isinstance(sample, (HklSample, hkl_module.Sample)):
+            raise ValueError('Expected either an HklSample or a Sample '
+                             'instance')
+
+        if isinstance(sample, hkl_module.Sample):
+            sample = HklSample(calc=self, sample=sample, units=self._unit_name)
 
         if sample.name in self._samples:
-            raise ValueError('Sample of name "%s" already exists' % name)
+            raise ValueError('Sample of name "%s" already exists' % sample.name)
 
         self._samples[sample.name] = sample
         if select:
@@ -159,6 +167,25 @@ class CalcRecip(object):
             self._re_init()
 
         return sample
+
+    def new_sample(self, name, select=True, **kwargs):
+        '''Convenience function to add a sample by name
+
+        Parameters
+        ----------
+        name : str
+            The sample name
+        select : bool, optional
+            Select the sample to focus calculations on
+        kwargs : dict
+            Keyword arguments are passed to HklSample
+        '''
+        units = kwargs.pop('units', self._unit_name)
+        sample = HklSample(self, sample=hkl_module.Sample.new(name),
+                           units=units,
+                           **kwargs)
+
+        return self.add_sample(sample, select=select)
 
     def _re_init(self):
         if self._engine is None:

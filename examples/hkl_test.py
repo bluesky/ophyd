@@ -73,9 +73,9 @@ def test():
 
     k6c.sample.name = 'main_sample'
 
-    sample2 = k6c.add_sample('sample2')
+    sample2 = k6c.new_sample('sample2')
     try:
-        k6c.add_sample('sample2')
+        k6c.new_sample('sample2')
     except ValueError:
         pass
     else:

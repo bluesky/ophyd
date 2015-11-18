@@ -256,7 +256,6 @@ class HklSample(object):
 
     @property
     def reflection_measured_angles(self):
-        # TODO: typo bug report (mesured)
         return self._refl_matrix(self._sample.get_reflection_measured_angle)
 
     @property
