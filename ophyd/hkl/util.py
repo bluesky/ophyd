@@ -98,3 +98,21 @@ def to_hkl(arr):
 
 def hkl_euler_matrix(euler_x, euler_y, euler_z):
     return hkl_module.Matrix.new_euler(euler_x, euler_y, euler_z)
+
+
+def _gi_info(gi_val):
+    def get(attr):
+        try:
+            getter = getattr(gi_val, attr)
+            # inspect.signature doesn't work on gi functions...
+            return getter()
+        except Exception as ex:
+            try:
+                return getter(units['user'])
+            except Exception:
+                return '({}: {})'.format(ex.__class__.__name__, ex)
+
+    return {attr: get(attr)
+            for attr in dir(gi_val)
+            if attr.endswith('_get')
+            }

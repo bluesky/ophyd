@@ -113,7 +113,7 @@ class CalcRecip(object):
         '''
         The name of the currently selected sample
         '''
-        return self._sample.name_get()
+        return self._sample.name
 
     @sample_name.setter
     def sample_name(self, new_name):
