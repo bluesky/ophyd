@@ -1,5 +1,5 @@
 import logging
-from collections import OrderedDict
+from collections import (OrderedDict, namedtuple)
 
 import numpy as np
 
@@ -187,8 +187,8 @@ class CalcRecip(object):
             return
 
         if self._geometry is None or self._detector is None or self._sample is None:
-            # raise ValueError('Not all parameters set (geometry, detector, sample)')
-            pass
+            raise ValueError('Not all parameters set (geometry, detector, sample)')
+            # pass
         else:
             self._engine_list.init(self._geometry, self._detector,
                                    self._sample.hkl_sample)
@@ -367,6 +367,8 @@ class CalcE4CV(CalcRecip):
 
 
 class CalcE6C(CalcRecip):
+    RealPos = namedtuple('RealPos', 'mu omega chi phi gamma delta')
+
     def __init__(self, **kwargs):
         super().__init__('E6C', **kwargs)
 

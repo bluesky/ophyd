@@ -1,6 +1,8 @@
 from __future__ import print_function
 import logging
 import sys
+from collections import namedtuple
+
 import numpy as np
 
 try:
@@ -18,9 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def new_detector(dtype=0):
-    '''
-    Create a new HKL-library detector
-    '''
+    '''Create a new HKL-library detector'''
     return hkl_module.Detector.factory_new(hkl_module.DetectorType(dtype))
 
 
@@ -116,3 +116,6 @@ def _gi_info(gi_val):
             for attr in dir(gi_val)
             if attr.endswith('_get')
             }
+
+
+Lattice = namedtuple('LatticeTuple', 'a b c alpha beta gamma')

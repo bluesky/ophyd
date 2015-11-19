@@ -7,12 +7,10 @@ import numpy as np
 from .engine import Parameter
 from .util import hkl_module
 from . import util
+from .util import Lattice
 
 
 logger = logging.getLogger(__name__)
-
-
-LatticeTuple = namedtuple('LatticeTuple', 'a b c alpha beta gamma')
 
 
 def check_lattice(lattice):
@@ -32,18 +30,18 @@ def check_lattice(lattice):
     beta = lattice.beta_get()
     gamma = lattice.gamma_get()
 
-    lt = LatticeTuple(a, b, c, alpha, beta, gamma)
+    lt = Lattice(a, b, c, alpha, beta, gamma)
     for k, v in lt._asdict().items():
         if v is None:
             raise ValueError('Lattice parameter "{}" unset or invalid'
                              ''.format(k))
 
-    lt = LatticeTuple(a.value_get(util.units['user']),
-                      b.value_get(util.units['user']),
-                      c.value_get(util.units['user']),
-                      alpha.value_get(util.units['user']),
-                      beta.value_get(util.units['user']),
-                      gamma.value_get(util.units['user']))
+    lt = Lattice(a.value_get(util.units['user']),
+                 b.value_get(util.units['user']),
+                 c.value_get(util.units['user']),
+                 alpha.value_get(util.units['user']),
+                 beta.value_get(util.units['user']),
+                 gamma.value_get(util.units['user']))
     logger.debug('Lattice OK: %s', lt)
 
 
@@ -154,9 +152,7 @@ class HklSample(object):
 
     @property
     def reciprocal(self):
-        '''
-        The reciprocal lattice
-        '''
+        '''The reciprocal lattice'''
         lattice = self._sample.lattice_get()
         reciprocal = lattice.copy()
         lattice.reciprocal(reciprocal)
@@ -164,18 +160,14 @@ class HklSample(object):
 
     @property
     def lattice(self):
-        '''
-        The lattice:
-            a, b, c, alpha, beta, gamma
+        '''The lattice (a, b, c, alpha, beta, gamma)
 
         a, b, c [nm]
         alpha, beta, gamma [deg]
         '''
         lattice = self._sample.lattice_get()
         lattice = lattice.get(self._units)
-
-        a, b, c, alpha, beta, gamma = lattice
-        return a, b, c, alpha, beta, gamma
+        return Lattice(*lattice)
 
     @lattice.setter
     def lattice(self, lattice):
