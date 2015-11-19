@@ -13,24 +13,17 @@ logger = logging.getLogger(__name__)
 class Parameter(object):
     def __init__(self, param, units='user'):
         self._param = param
-        # Sets unit_name and units through the setter:
-        self.units = units
+        self._unit_name = units
+        self._units = util.units[units]
 
     @property
     def hkl_parameter(self):
-        '''
-        The HKL library parameter object
-        '''
+        '''The HKL library parameter object'''
         return self._param
 
     @property
     def units(self):
         return self._unit_name
-
-    @units.setter
-    def units(self, unit_name):
-        self._unit_name = unit_name
-        self._units = util.units[unit_name]
 
     @property
     def name(self):
@@ -42,16 +35,12 @@ class Parameter(object):
 
     @property
     def user_units(self):
-        '''
-        A string representing the user unit type
-        '''
+        '''A string representing the user unit type'''
         return self._param.user_unit_get()
 
     @property
     def default_units(self):
-        '''
-        A string representing the default unit type
-        '''
+        '''A string representing the default unit type'''
         return self._param.default_unit_get()
 
     @value.setter
@@ -60,9 +49,7 @@ class Parameter(object):
 
     @property
     def fit(self):
-        '''
-        True if the parameter can be fit or not
-        '''
+        '''True if the parameter can be fit or not'''
         return bool(self._param.fit_get())
 
     @fit.setter
@@ -118,7 +105,7 @@ class Solution(object):
 
     @property
     def axis_values(self):
-        return self._geometry.axis_values_get(self.units)
+        return self._geometry.axis_values_get(self._engine._units)
 
     @property
     def units(self):
@@ -129,7 +116,7 @@ class Solution(object):
 
     def _repr_info(self):
         repr = ['{!r}'.format(self.axis_values),
-                'units={!r}'.format(self.units),
+                'units={!r}'.format(self._engine.units),
                 ]
 
         return repr
@@ -152,9 +139,7 @@ class Engine(object):
 
     @property
     def mode(self):
-        '''
-        HKL calculation mode (see also `HklCalc.modes`)
-        '''
+        '''HKL calculation mode (see also `HklCalc.modes`)'''
         return self._engine.current_mode_get()
 
     @mode.setter
@@ -175,9 +160,7 @@ class Engine(object):
         return tuple(self._solutions)
 
     def update(self):
-        '''
-        Calculate the pseudo axis positions from the real axis positions
-        '''
+        '''Calculate the pseudo axis positions from the real axis positions'''
         # TODO: though this works, maybe it could be named better on the hkl
         # side? either the 'get' function name or the fact that the EngineList
         # is more than just a list...
@@ -195,7 +178,7 @@ class Engine(object):
 
     @property
     def pseudo_axis_values(self):
-        return self._engine.pseudo_axis_values_get(self.units)
+        return self._engine.pseudo_axis_values_get(self._units)
 
     @property
     def pseudo_axes(self):
@@ -206,7 +189,7 @@ class Engine(object):
     def pseudo_axis_values(self, values):
         try:
             geometry_list = self._engine.pseudo_axis_values_set(values,
-                                                                self.units)
+                                                                self._units)
         except GLib.GError as ex:
             raise ValueError('Calculation failed (%s)' % ex)
 
@@ -231,10 +214,17 @@ class Engine(object):
 
     @property
     def units(self):
+        '''The units used for calculations'''
+        return self._calc.units
+
+    @property
+    def _units(self):
+        '''The (internal) units used for calculations'''
         return self._calc._units
 
     @property
     def engine(self):
+        '''The calculation engine'''
         return self._engine
 
     def _repr_info(self):

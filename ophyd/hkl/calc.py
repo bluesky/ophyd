@@ -50,9 +50,7 @@ class CalcRecip(object):
 
     @property
     def wavelength(self):
-        '''
-        The wavelength associated with the geometry, in nm
-        '''
+        '''The wavelength associated with the geometry, in nm'''
         # TODO hkl lib doesn't expose the getter, only the setter
         return self._geometry.wavelength_get(self._units)
 
@@ -62,9 +60,7 @@ class CalcRecip(object):
 
     @property
     def energy(self):
-        '''
-        The energy associated with the geometry, in keV
-        '''
+        '''The energy associated with the geometry, in keV'''
         return NM_KEV / self.wavelength
 
     @energy.setter
@@ -73,9 +69,7 @@ class CalcRecip(object):
 
     @property
     def engine_locked(self):
-        '''
-        If set, do not allow the engine to be changed post-initialization
-        '''
+        '''If set, do not allow the engine to be changed post-initialization'''
         return self._lock_engine
 
     @property
@@ -110,9 +104,7 @@ class CalcRecip(object):
 
     @property
     def sample_name(self):
-        '''
-        The name of the currently selected sample
-        '''
+        '''The name of the currently selected sample'''
         return self._sample.name
 
     @sample_name.setter
@@ -244,13 +236,16 @@ class CalcRecip(object):
         return self._engine.pseudo_axes
 
     def update(self):
-        '''
-        Calculate the pseudo axis positions from the real axis positions
-        '''
+        '''Calculate the pseudo axis positions from the real axis positions'''
         return self._engine.update()
 
     def _get_parameter(self, param):
         return Parameter(param, units=self._unit_name)
+
+    @property
+    def units(self):
+        '''The units used for calculations'''
+        return self._unit_name
 
     def __getitem__(self, axis):
         if axis in self.physical_axis_names:
