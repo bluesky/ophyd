@@ -119,3 +119,16 @@ def _gi_info(gi_val):
 
 
 Lattice = namedtuple('LatticeTuple', 'a b c alpha beta gamma')
+
+
+_position_tuples = {}
+
+
+def get_position_tuple(axis_names, class_name='Position'):
+    global _position_tuples
+
+    key = frozenset(axis_names)
+    if key not in _position_tuples:
+        _position_tuples[key] = namedtuple(class_name, tuple(axis_names))
+
+    return _position_tuples[key]

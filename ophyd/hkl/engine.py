@@ -91,7 +91,8 @@ class Parameter(object):
 
 
 class Solution(object):
-    def __init__(self, engine, list_item):
+    def __init__(self, engine, list_item, class_):
+        self._class = class_
         self._list_item = list_item.copy()
         self._geometry = list_item.geometry_get().copy()
         self._engine = engine
@@ -105,7 +106,7 @@ class Solution(object):
 
     @property
     def axis_values(self):
-        return self._geometry.axis_values_get(self._engine._units)
+        return self._class(*self._geometry.axis_values_get(self._engine._units))
 
     @property
     def units(self):
@@ -193,7 +194,7 @@ class Engine(object):
         except GLib.GError as ex:
             raise ValueError('Calculation failed (%s)' % ex)
 
-        self._solutions = [Solution(self, item)
+        self._solutions = [Solution(self, item, class_=self._calc.Position)
                            for item in geometry_list.items()]
 
     def __getitem__(self, name):

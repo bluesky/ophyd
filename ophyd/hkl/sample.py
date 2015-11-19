@@ -243,19 +243,22 @@ class HklSample(object):
         return hkl_module.SampleReflection.new(self._calc._geometry, detector,
                                                h, k, l)
 
-    # TODO: this appears to affect the internal state? it also does not return
-    #       a matrix, only an integer
-    def _compute_UB(self, r1, r2):
-        '''
-        Using the Busing and Levy method, compute the UB matrix for two
-        sample reflections, r1 and r2
-        '''
-        if not isinstance(r1, hkl_module.SampleReflection):
-            r1 = self._create_reflection(*r1)
-        if not isinstance(r2, hkl_module.SampleReflection):
-            r2 = self._create_reflection(*r2)
+    def compute_UB(self, r1, r2):
+        '''Compute the UB matrix with two reflections
 
-        # return hkl_matrix_to_numpy(self._sample.compute_UB_busing_levy(r1, r2))
+        Using the Busing and Levy method, compute the UB matrix for two sample
+        reflections, r1 and r2.
+
+        Note that this modifies the internal state of the sample and does not
+        return a UB matrix. To access it after computation, see `Sample.UB`.
+
+        Parameters
+        ----------
+        r1 : HklReflection
+            Reflection 1
+        r2 : HklReflection
+            Reflection 2
+        '''
         return self._sample.compute_UB_busing_levy(r1, r2)
 
     @property
@@ -272,15 +275,40 @@ class HklSample(object):
         for refl in refls:
             self.add_reflection(*refl)
 
-    def add_reflection(self, h, k, l, detector=None):
-        '''
-        Add a reflection, optionally specifying the detector to use
+    def add_reflection(self, h, k, l, detector=None, compute_ub=False):
+        '''Add a reflection, optionally specifying the detector to use
+
+        Parameters
+        ----------
+        h : float
+            Reflection h
+        k : float
+            Reflection k
+        l : float
+            Reflection l
+        detector : Hkl.Detector, optional
+            The detector
+        compute_ub : bool, optional
+            Calculate the UB matrix with the last two reflections
         '''
         if detector is None:
             detector = self._calc._detector
 
-        return self._sample.add_reflection(self._calc._geometry, detector,
-                                           h, k, l)
+        if compute_ub and len(self.reflections) < 1:
+            raise RuntimeError('Cannot calculate the UB matrix with less than two '
+                               'reflections')
+
+        if compute_ub:
+            r1 = self._sample.reflections_get()[-1]
+
+        r2 = self._sample.add_reflection(self._calc._geometry, detector,
+                                         h, k, l)
+
+        if compute_ub:
+            self.compute_UB(r1, r2)
+
+        return r2
+
 
     def remove_reflection(self, refl):
         '''

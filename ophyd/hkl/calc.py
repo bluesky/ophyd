@@ -49,6 +49,14 @@ class CalcRecip(object):
         self.engine = engine
 
     @property
+    def Position(self):
+        '''Dynamically-generated physical motor position class'''
+        # I know, I know, could be done more cleanly...
+        name = 'Pos{}'.format(self.__class__.__name__)
+        return util.get_position_tuple(self.physical_axis_names,
+                                       class_name=name)
+
+    @property
     def wavelength(self):
         '''The wavelength associated with the geometry, in nm'''
         # TODO hkl lib doesn't expose the getter, only the setter
@@ -367,8 +375,6 @@ class CalcE4CV(CalcRecip):
 
 
 class CalcE6C(CalcRecip):
-    RealPos = namedtuple('RealPos', 'mu omega chi phi gamma delta')
-
     def __init__(self, **kwargs):
         super().__init__('E6C', **kwargs)
 
