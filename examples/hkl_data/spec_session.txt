@@ -1,0 +1,376 @@
+1868.SIXC> pa
+
+Six-Circle Geometry, Chi, Phi and Mu fixed (mode 16)
+Frozen values:  Chi = -90, Phi = 0, Mu = 0
+Sector 0
+
+  Primary Reflection (at lambda 12.3984):
+   del th chi phi mu gam = 136.7 71.04 -90 0 0 -1.65
+                   H K L = 0 0 2
+
+  Secondary Reflection (at lambda 13.3):
+   del th chi phi mu gam = 164.94 158.22 -90 0 0 1.7
+                   H K L = 1 0 1
+
+  Lattice Constants (lengths / angles):
+              real space = 3.78 3.78 13.28 / 90 90 90
+        reciprocal space = 1.662 1.662 0.4731 / 90 90 90
+
+  Azimuthal Reference:
+               sigma tau = 0 0
+                   H K L = 0.013258 -0.0046803 -0.9999
+
+        Gamma-arm length = 585 mm
+          Gamma tracking = On
+
+  Monochromator:
+           d-spacing = 3.13542 Angstoms
+                  Lambda = 13.3
+
+  Cut Points:
+      del   th  chi  phi   mu  gam
+     -180 -180 -180 -180 -180 -180
+
+1867.SIXC> p LAMBDA
+13.3
+
+
+1860.SIXC> for (hh=hh_start; hh<hh_end; hh+=hh_step){
+1861.more> num_point = (hh - hh_start)/hh_step + 1
+1862.more> print num_point'.SIXC> ubr ' hh ' 0 1.5'
+1863.more> ubr hh 0 1.5
+1864.more> print '1001.SIXC> wh'
+1865.more> wh
+1866.more> }
+
+
+1.SIXC> ubr 0.21 0 1.5
+1001.SIXC> wh
+
+H K L =  0.21  8.551e-06  1.5
+Alpha = -85.703  Beta = -27.961  Azimuth = 0.079626
+Two Theta = 113.66  Omega = 28.871  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 113.6647   85.7031  -90.0000    0.0000    0.0000   -0.4700
+
+
+2.SIXC> ubr 0.212 0 1.5
+1001.SIXC> wh
+
+H K L =  0.212  -7.3436e-06  1.5
+Alpha = -86.082  Beta = -27.909  Azimuth = 0.071532
+Two Theta = 113.99  Omega = 29.086  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 113.9919   86.0823  -90.0000    0.0000    0.0000   -0.4650
+
+
+3.SIXC> ubr 0.214 0 1.5
+1001.SIXC> wh
+
+H K L =  0.214  1.5414e-06  1.5
+Alpha = -86.463  Beta = -27.859  Azimuth = 0.062947
+Two Theta = 114.32  Omega = 29.301  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 114.3230   86.4627  -90.0000    0.0000    0.0000   -0.4550
+
+
+4.SIXC> ubr 0.216 0 1.5
+1001.SIXC> wh
+
+H K L =  0.216  1.0437e-05  1.5
+Alpha = -86.844  Beta = -27.813  Azimuth = 0.054712
+Two Theta = 114.66  Omega = 29.515  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 114.6582   86.8443  -90.0000    0.0000    0.0000   -0.4450
+
+
+5.SIXC> ubr 0.218 0 1.5
+1001.SIXC> wh
+
+H K L =  0.218  -5.4594e-06  1.5
+Alpha = -87.227  Beta = -27.769  Azimuth = 0.04736
+Two Theta = 115  Omega = 29.728  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 114.9974   87.2271  -90.0000    0.0000    0.0000   -0.4400
+
+
+6.SIXC> ubr 0.22 0 1.5
+1001.SIXC> wh
+
+H K L =  0.22  3.4327e-06  1.5
+Alpha = -87.611  Beta = -27.729  Azimuth = 0.039733
+Two Theta = 115.34  Omega = 29.941  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 115.3406   87.6111  -90.0000    0.0000    0.0000   -0.4300
+
+
+7.SIXC> ubr 0.222 0 1.5
+1001.SIXC> wh
+
+H K L =  0.222  1.2324e-05  1.5
+Alpha = -87.996  Beta = -27.691  Azimuth = 0.032439
+Two Theta = 115.69  Omega = 30.152  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 115.6880   87.9964  -90.0000    0.0000    0.0000   -0.4200
+
+
+8.SIXC> ubr 0.224 0 1.5
+1001.SIXC> wh
+
+H K L =  0.224  -3.5895e-06  1.5
+Alpha = -88.383  Beta = -27.656  Azimuth = 0.025784
+Two Theta = 116.04  Omega = 30.363  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 116.0395   88.3830  -90.0000    0.0000    0.0000   -0.4150
+
+
+9.SIXC> ubr 0.226 0 1.5
+1001.SIXC> wh
+
+H K L =  0.226  5.3189e-06  1.5
+Alpha = -88.771  Beta = -27.624  Azimuth = 0.019068
+Two Theta = 116.39  Omega = 30.573  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 116.3953   88.7708  -90.0000    0.0000    0.0000   -0.4050
+
+
+10.SIXC> ubr 0.228 0 1.5
+1001.SIXC> wh
+
+H K L =  0.228  -1.0577e-05  1.5
+Alpha = -89.16  Beta = -27.595  Azimuth = 0.012832
+Two Theta = 116.75  Omega = 30.782  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 116.7554   89.1600  -90.0000    0.0000    0.0000   -0.4000
+
+
+11.SIXC> ubr 0.23 0 1.5
+1001.SIXC> wh
+
+H K L =  0.23  -1.6735e-06  1.5
+Alpha = -89.551  Beta = -27.569  Azimuth = 0.006676
+Two Theta = 117.12  Omega = 30.991  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 117.1198   89.5505  -90.0000    0.0000    0.0000   -0.3900
+
+
+12.SIXC> ubr 0.232 0 1.5
+1001.SIXC> wh
+
+H K L =  0.232  7.1942e-06  1.5
+Alpha = -89.942  Beta = -27.545  Azimuth = 0.00082988
+Two Theta = 117.49  Omega = 31.198  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 117.4885   89.9425  -90.0000    0.0000    0.0000   -0.3800
+
+
+13.SIXC> ubr 0.234 0 1.5
+1001.SIXC> wh
+
+H K L =  0.234  -8.6883e-06  1.5
+Alpha = -89.664  Beta = -27.525  Azimuth = -0.0047707
+Two Theta = 117.86  Omega = 31.405  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 117.8618   90.3358  -90.0000    0.0000    0.0000   -0.3750
+
+
+14.SIXC> ubr 0.236 0 1.5
+1001.SIXC> wh
+
+H K L =  0.236  1.9532e-07  1.5
+Alpha = -89.269  Beta = -27.508  Azimuth = -0.010079
+Two Theta = 118.24  Omega = 31.611  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 118.2395   90.7306  -90.0000    0.0000    0.0000   -0.3650
+
+
+15.SIXC> ubr 0.238 0 1.5
+1001.SIXC> wh
+
+H K L =  0.238  9.0977e-06  1.5
+Alpha = -88.873  Beta = -27.494  Azimuth = -0.015085
+Two Theta = 118.62  Omega = 31.816  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 118.6218   91.1268  -90.0000    0.0000    0.0000   -0.3550
+
+
+16.SIXC> ubr 0.24 0 1.5
+1001.SIXC> wh
+
+H K L =  0.24  -6.8054e-06  1.5
+Alpha = -88.475  Beta = -27.484  Azimuth = -0.020082
+Two Theta = 119.01  Omega = 32.02  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 119.0088   91.5246  -90.0000    0.0000    0.0000   -0.3500
+
+
+17.SIXC> ubr 0.242 0 1.5
+1001.SIXC> wh
+
+H K L =  0.242  2.1008e-06  1.5
+Alpha = -88.076  Beta = -27.476  Azimuth = -0.024569
+Two Theta = 119.4  Omega = 32.224  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 119.4004   91.9238  -90.0000    0.0000    0.0000   -0.3400
+
+
+18.SIXC> ubr 0.244 0 1.5
+1001.SIXC> wh
+
+H K L =  0.244  1.0994e-05  1.5
+Alpha = -87.675  Beta = -27.472  Azimuth = -0.028766
+Two Theta = 119.8  Omega = 32.426  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 119.7969   92.3247  -90.0000    0.0000    0.0000   -0.3300
+
+
+19.SIXC> ubr 0.246 0 1.5
+1001.SIXC> wh
+
+H K L =  0.246  -4.9091e-06  1.5
+Alpha = -87.273  Beta = -27.471  Azimuth = -0.033183
+Two Theta = 120.2  Omega = 32.628  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 120.1982   92.7272  -90.0000    0.0000    0.0000   -0.3250
+
+
+20.SIXC> ubr 0.248 0 1.5
+1001.SIXC> wh
+
+H K L =  0.248  3.9872e-06  1.5
+Alpha = -86.869  Beta = -27.473  Azimuth = -0.036875
+Two Theta = 120.6  Omega = 32.829  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 120.6044   93.1313  -90.0000    0.0000    0.0000   -0.3150
+
+
+21.SIXC> ubr 0.25 0 1.5
+1001.SIXC> wh
+
+H K L =  0.25  -1.1922e-05  1.5
+Alpha = -86.463  Beta = -27.478  Azimuth = -0.040942
+Two Theta = 121.02  Omega = 33.029  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 121.0157   93.5372  -90.0000    0.0000    0.0000   -0.3100
+
+
+22.SIXC> ubr 0.252 0 1.5
+1001.SIXC> wh
+
+H K L =  0.252  -3.0105e-06  1.5
+Alpha = -86.055  Beta = -27.487  Azimuth = -0.044138
+Two Theta = 121.43  Omega = 33.229  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 121.4321   93.9447  -90.0000    0.0000    0.0000   -0.3000
+
+
+23.SIXC> ubr 0.254 0 1.5
+1001.SIXC> wh
+
+H K L =  0.254  5.8644e-06  1.5
+Alpha = -85.646  Beta = -27.499  Azimuth = -0.047052
+Two Theta = 121.85  Omega = 33.427  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 121.8536   94.3541  -90.0000    0.0000    0.0000   -0.2900
+
+
+24.SIXC> ubr 0.256 0 1.5
+1001.SIXC> wh
+
+H K L =  0.256  -1.0034e-05  1.5
+Alpha = -85.235  Beta = -27.515  Azimuth = -0.050571
+Two Theta = 122.28  Omega = 33.625  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 122.2805   94.7653  -90.0000    0.0000    0.0000   -0.2850
+
+
+25.SIXC> ubr 0.258 0 1.5
+1001.SIXC> wh
+
+H K L =  0.258  -1.1321e-06  1.5
+Alpha = -84.822  Beta = -27.534  Azimuth = -0.052997
+Two Theta = 122.71  Omega = 33.822  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 122.7127   95.1783  -90.0000    0.0000    0.0000   -0.2750
+
+
+26.SIXC> ubr 0.26 0 1.5
+1001.SIXC> wh
+
+H K L =  0.26  7.7669e-06  1.5
+Alpha = -84.407  Beta = -27.557  Azimuth = -0.055142
+Two Theta = 123.15  Omega = 34.018  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 123.1505   95.5933  -90.0000    0.0000    0.0000   -0.2650
+
+
+27.SIXC> ubr 0.262 0 1.5
+1001.SIXC> wh
+
+H K L =  0.262  -8.1297e-06  1.5
+Alpha = -83.99  Beta = -27.583  Azimuth = -0.058125
+Two Theta = 123.59  Omega = 34.213  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 123.5939   96.0103  -90.0000    0.0000    0.0000   -0.2600
+
+
+28.SIXC> ubr 0.264 0 1.5
+1001.SIXC> wh
+
+H K L =  0.264  7.6257e-07  1.5
+Alpha = -83.571  Beta = -27.613  Azimuth = -0.059786
+Two Theta = 124.04  Omega = 34.408  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 124.0429   96.4293  -90.0000    0.0000    0.0000   -0.2500
+
+
+29.SIXC> ubr 0.266 0 1.5
+1001.SIXC> wh
+
+H K L =  0.266  9.6636e-06  1.5
+Alpha = -83.15  Beta = -27.647  Azimuth = -0.061167
+Two Theta = 124.5  Omega = 34.601  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 124.4978   96.8504  -90.0000    0.0000    0.0000   -0.2400
+
+
+30.SIXC> ubr 0.268 0 1.5
+1001.SIXC> wh
+
+H K L =  0.268  -6.2306e-06  1.5
+Alpha = -82.726  Beta = -27.685  Azimuth = -0.063619
+Two Theta = 124.96  Omega = 34.794  Lambda = 13.3
+
+    Delta     Theta       Chi       Phi        Mu     Gamma
+ 124.9587   97.2737  -90.0000    0.0000    0.0000   -0.2350
+
+
