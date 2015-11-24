@@ -234,6 +234,8 @@ def get_pv_form():
     -------
     {'native', 'time'}
     '''
+    def _fix_git_versioning(in_str):
+        return in_str.replace('-g', '+g')
 
     def _naive_parse_version(version):
         try:
@@ -254,7 +256,7 @@ def get_pv_form():
     except ImportError:
         parse_version = _naive_parse_version
 
-    version = parse_version(epics.__version__)
+    version = parse_version(_fix_git_versioning(epics.__version__))
 
     if version is None:
         warnings.warn('Unrecognized PyEpics version; using local timestamps',
