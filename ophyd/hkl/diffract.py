@@ -111,8 +111,8 @@ class Diffractometer(PseudoPositioner):
 
         calc.update()
 
-        logger.debug('real to pseudo: {}'.format(calc.pseudo_axis_values))
-        return calc.pseudo_axis_values
+        logger.debug('real to pseudo: {}'.format(calc.pseudo_positions))
+        return calc.pseudo_positions
 
         # finally:
         #     # Restore the old state

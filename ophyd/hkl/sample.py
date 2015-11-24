@@ -1,6 +1,5 @@
 from __future__ import print_function
 import logging
-from collections import namedtuple
 
 import numpy as np
 
@@ -8,6 +7,7 @@ from .engine import Parameter
 from .util import hkl_module
 from . import util
 from .util import Lattice
+from .context import TemporaryGeometry
 
 
 logger = logging.getLogger(__name__)
@@ -275,7 +275,7 @@ class HklSample(object):
         for refl in refls:
             self.add_reflection(*refl)
 
-    def add_reflection(self, h, k, l, detector=None, compute_ub=False):
+    def add_reflection(self, h, k, l, position=None, detector=None, compute_ub=False):
         '''Add a reflection, optionally specifying the detector to use
 
         Parameters
@@ -288,11 +288,16 @@ class HklSample(object):
             Reflection l
         detector : Hkl.Detector, optional
             The detector
+        position : tuple or namedtuple, optional
+            The physical motor position that this reflection corresponds to
+            If not specified, the current geometry of the calculation engine is
+            assumed.
         compute_ub : bool, optional
             Calculate the UB matrix with the last two reflections
         '''
+        calc = self._calc
         if detector is None:
-            detector = self._calc._detector
+            detector = calc._detector
 
         if compute_ub and len(self.reflections) < 1:
             raise RuntimeError('Cannot calculate the UB matrix with less than two '
@@ -301,19 +306,18 @@ class HklSample(object):
         if compute_ub:
             r1 = self._sample.reflections_get()[-1]
 
-        r2 = self._sample.add_reflection(self._calc._geometry, detector,
-                                         h, k, l)
+        with TemporaryGeometry(calc):
+            if position is not None:
+                calc.physical_positions = position
+            r2 = self._sample.add_reflection(calc._geometry, detector, h, k, l)
 
         if compute_ub:
             self.compute_UB(r1, r2)
 
         return r2
 
-
     def remove_reflection(self, refl):
-        '''
-        Remove a specific reflection
-        '''
+        '''Remove a specific reflection'''
         if not isinstance(refl, hkl_module.SampleReflection):
             index = self.reflections.index(refl)
             refl = self._sample.reflections_get()[index]
@@ -321,9 +325,7 @@ class HklSample(object):
         return self._sample.del_reflection(refl)
 
     def clear_reflections(self):
-        '''
-        Clear all reflections for the current sample
-        '''
+        '''Clear all reflections for the current sample'''
         reflections = self._sample.reflections_get()
         for refl in reflections:
             self._sample.del_reflection(refl)

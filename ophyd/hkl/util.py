@@ -37,22 +37,6 @@ else:
     units = {}
 
 
-class UsingEngine(object):
-    """
-    Context manager that uses a calculation engine temporarily (i.e., for the
-    duration of the context manager)
-    """
-    def __init__(self, calc, engine):
-        self.calc = calc
-
-    def __enter__(self):
-        self.old_engine = self.calc.engine
-
-    def __exit__(self, type_, value, traceback):
-        if self.old_engine is not None:
-            self.calc.engine = self.old_engine
-
-
 def to_numpy(mat):
     """Convert an hkl ``Matrix`` to a numpy ndarray
 

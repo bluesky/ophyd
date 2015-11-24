@@ -215,18 +215,20 @@ class CalcRecip(object):
         return self._geometry.axis_names_get()
 
     @property
-    def physical_axis_values(self):
+    def physical_positions(self):
         return self._geometry.axis_values_get(self._units)
 
-    @physical_axis_values.setter
-    def physical_axis_values(self, positions):
-        return self._geometry.axis_values_set(positions, self._units)
+    @physical_positions.setter
+    def physical_positions(self, positions):
+        # Set the physical motor positions and calculate the pseudo ones
+        self._geometry.axis_values_set(positions, self._units)
+        self.update()
 
     @property
     def physical_axes(self):
         keys = self.physical_axis_names
-        values = self.physical_axis_values
-        return OrderedDict(zip(keys, values))
+        positions = self.physical_positions
+        return OrderedDict(zip(keys, positions))
 
     @property
     def pseudo_axis_names(self):
@@ -234,9 +236,9 @@ class CalcRecip(object):
         return self._engine.pseudo_axis_names
 
     @property
-    def pseudo_axis_values(self):
+    def pseudo_positions(self):
         '''Pseudo axis positions/values from the current engine'''
-        return self._engine.pseudo_axis_values
+        return self._engine.pseudo_positions
 
     @property
     def pseudo_axes(self):
@@ -277,7 +279,7 @@ class CalcRecip(object):
                 raise ValueError('Engine unset')
 
             engine = self.engine
-            self.engine.pseudo_axis_values = position
+            self.engine.pseudo_positions = position
 
             solutions = self.engine.solutions
 
@@ -317,8 +319,7 @@ class CalcRecip(object):
         if end is not None:
             end = np.array(end)
             if start.size == end.size == num_params:
-                return path_fcn(start, end, n, num_params=num_params,
-                                **kwargs)
+                return path_fcn(start, end, n, num_params=num_params, **kwargs)
 
         else:
             positions = np.array(start)

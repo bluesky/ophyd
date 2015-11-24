@@ -105,7 +105,7 @@ class Solution(object):
         return self._geometry.axis_names_get()
 
     @property
-    def axis_values(self):
+    def positions(self):
         return self._class(*self._geometry.axis_values_get(self._engine._units))
 
     @property
@@ -116,7 +116,7 @@ class Solution(object):
         self._engine._engine_list.select_solution(self._list_item)
 
     def _repr_info(self):
-        repr = ['{!r}'.format(self.axis_values),
+        repr = ['{!r}'.format(self.positions),
                 'units={!r}'.format(self._engine.units),
                 ]
 
@@ -178,16 +178,16 @@ class Engine(object):
         return self._engine.pseudo_axis_names_get()
 
     @property
-    def pseudo_axis_values(self):
+    def pseudo_positions(self):
         return self._engine.pseudo_axis_values_get(self._units)
 
     @property
     def pseudo_axes(self):
         return OrderedDict(zip(self.pseudo_axis_names,
-                               self.pseudo_axis_values))
+                               self.pseudo_positions))
 
-    @pseudo_axis_values.setter
-    def pseudo_axis_values(self, values):
+    @pseudo_positions.setter
+    def pseudo_positions(self, values):
         try:
             geometry_list = self._engine.pseudo_axis_values_set(values,
                                                                 self._units)
@@ -211,7 +211,7 @@ class Engine(object):
             raise ValueError('Unknown axis name: %s' % name)
 
         values[idx] = float(value)
-        self.pseudo_axis_values = values
+        self.pseudo_positions = values
 
     @property
     def units(self):
