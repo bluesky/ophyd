@@ -102,7 +102,7 @@ class Diffractometer(PseudoPositioner):
             return self._decision_fcn(position, solutions)
         else:
             solutions[0].select()
-            return solutions[0].axis_values
+            return solutions[0].positions
 
     def real_to_pseudo(self, **real):
         calc = self._calc

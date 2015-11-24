@@ -7,10 +7,11 @@ class UsingEngine(object):
 
     def __enter__(self):
         self.old_engine = self.calc.engine
-        self.calc.engine = self.engine
+        if self.engine is not None:
+            self.calc.engine = self.engine
 
     def __exit__(self, type_, value, traceback):
-        if self.old_engine is not None:
+        if self.engine is not None:
             self.calc.engine = self.old_engine
 
 

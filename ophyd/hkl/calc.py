@@ -7,6 +7,7 @@ from .engine import (Engine, Parameter)
 from .sample import HklSample
 from . import util
 from .util import hkl_module
+from .context import UsingEngine
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +275,7 @@ class CalcRecip(object):
              use_first=False):
         # TODO default should probably not be `use_first` (or remove
         # completely?)
-        with self.using_engine(engine):
+        with UsingEngine(self, engine):
             if self.engine is None:
                 raise ValueError('Engine unset')
 
@@ -288,9 +289,6 @@ class CalcRecip(object):
                 solutions[0].select()
 
             return solutions
-
-    def using_engine(self, engine):
-        return util.UsingEngine(self, engine)
 
     def calc_linear_path(self, start, end, n, num_params=0, **kwargs):
         # start = [h1, k1, l1]
@@ -340,7 +338,7 @@ class CalcRecip(object):
     def __call__(self, start, end=None, n=100, engine=None,
                  path_type='linear', **kwargs):
 
-        with self.using_engine(engine):
+        with UsingEngine(self, engine):
             for pos in self.get_path(start, end=end, n=n,
                                      path_type=path_type, **kwargs):
                 yield self.calc(pos, engine=None,

@@ -204,7 +204,7 @@ class Engine(object):
             raise ValueError('Unknown axis name: %s' % name)
 
     def __setitem__(self, name, value):
-        values = self.pseudo_axis_values
+        values = self.pseudo_positions
         try:
             idx = self.pseudo_axis_names.index(name)
         except IndexError:
