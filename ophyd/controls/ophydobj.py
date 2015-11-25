@@ -337,3 +337,7 @@ class OphydObject(object):
             _repr.append('alias={0._alias!r}'.format(self))
 
         return '{}({})'.format(self.__class__.__name__, ', '.join(_repr))
+
+    # def __copy__(self):
+    #     info = dict(self._repr_info())
+    #     return self.__class__(**info)

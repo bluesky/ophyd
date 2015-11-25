@@ -53,6 +53,9 @@ class Signal(OphydObject):
         self._default_sub = self.SUB_VALUE
         super().__init__(**kwargs)
 
+        if not separate_readback and setpoint is None:
+            setpoint = value
+
         self._setpoint = setpoint
         self._readback = value
         self._recordable = recordable
@@ -128,15 +131,15 @@ class Signal(OphydObject):
 
         old_value = self._setpoint
         self._setpoint = value
+        self._setpoint_ts = kwargs.pop('timestamp', time.time())
 
         if not self._separate_readback:
             self._set_readback(value)
 
         if allow_cb:
-            timestamp = kwargs.pop('timestamp', time.time())
             self._run_subs(sub_type=Signal.SUB_SETPOINT,
                            old_value=old_value, value=value,
-                           timestamp=timestamp, **kwargs)
+                           timestamp=self._setpoint_ts, **kwargs)
 
     # getters/setters of properties are defined as lambdas so subclasses
     # can override them without redefining the property
@@ -144,9 +147,8 @@ class Signal(OphydObject):
                         lambda self, value: self.put(value),
                         doc='The setpoint value for the signal')
 
-    # - Readback value
     def get(self):
-        '''Get the readback value'''
+        '''The readback value'''
         return self._readback
 
     # - Value reads from readback, and writes to setpoint
@@ -158,12 +160,12 @@ class Signal(OphydObject):
         '''Set the readback value internally'''
         old_value = self._readback
         self._readback = value
+        self._timestamp = kwargs.pop('timestamp', time.time())
 
         if allow_cb:
-            timestamp = kwargs.pop('timestamp', time.time())
             self._run_subs(sub_type=Signal.SUB_VALUE,
                            old_value=old_value, value=value,
-                           timestamp=timestamp, **kwargs)
+                           timestamp=self._timestamp, **kwargs)
 
     def read(self):
         '''Put the status of the signal into a simple dictionary format
@@ -173,15 +175,14 @@ class Signal(OphydObject):
         -------
             dict
         '''
-        if self._separate_readback:
-            return {'alias': self.alias,
-                    'setpoint': self.setpoint,
-                    'readback': self.readback,
-                    }
-        else:
-            return {'alias': self.alias,
-                    'value': self.value,
-                    }
+        return {self.name: {'value': self.get(),
+                            'timestamp': self.timestamp}}
+
+    @property
+    def report(self):
+        return {self.name: self.get(),
+                'pv': None
+                }
 
     def describe(self):
         """Return the description as a dictionary"""
@@ -334,6 +335,9 @@ class EpicsSignal(Signal):
     @property
     @raise_if_disconnected
     def limits(self):
+        if self._write_pv is None:
+            raise ReadOnlyError('Read-only EPICS signal')
+
         pv = self._write_pv
         pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
@@ -353,9 +357,10 @@ class EpicsSignal(Signal):
         ------
         ValueError
         '''
+        if self._write_pv is None:
+            raise ReadOnlyError('Read-only EPICS signal')
         if value is None:
             raise ValueError('Cannot write None to epics PVs')
-
         if not self._check_limits:
             return
 
@@ -393,6 +398,9 @@ class EpicsSignal(Signal):
 
         Keyword arguments are passed on to epics.PV.get()
         '''
+        if self._write_pv is None:
+            raise ReadOnlyError('Read-only EPICS signal')
+
         if kwargs or self._setpoint is None:
             setpoint = self._write_pv.get(**kwargs)
             return self._fix_type(setpoint)
@@ -657,11 +665,23 @@ class SignalGroup(OphydObject):
 
     @property
     def pvname(self):
-        return [signal.pvname for signal in self._signals]
+        def get_pvname(signal):
+            try:
+                return signal.pvname
+            except AttributeError:
+                pass
+
+        return [get_pvname(signal) for signal in self._signals]
 
     @property
     def setpoint_pvname(self):
-        return [signal.setpoint_pvname for signal in self._signals]
+        def get_pvname(signal):
+            try:
+                return signal.setpoint_pvname
+            except AttributeError:
+                pass
+
+        return [get_pvname(signal) for signal in self._signals]
 
     @property
     def report(self):
