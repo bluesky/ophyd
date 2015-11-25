@@ -73,6 +73,10 @@ class Signal(OphydObject):
         '''Subclasses should override this'''
         return True
 
+    def wait_for_connection(self, timeout=0.0):
+        '''Wait for the underlying signals to initialize or connect'''
+        pass
+
     @property
     def setpoint_ts(self):
         '''Timestamp of the setpoint value'''
@@ -265,6 +269,17 @@ class EpicsSignal(Signal):
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
         return self._read_pv.precision
+
+    def wait_for_connection(self, timeout=1.0):
+        if not self._read_pv.connected:
+            if not self._read_pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._read_pv.pvname)
+
+        if self._write_pv is not None and not self._write_pv.connected:
+            if not self._write_pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._write_pv.pvname)
 
     @property
     @raise_if_disconnected
@@ -529,6 +544,7 @@ class SignalGroup(OphydObject):
         super().__init__(**kwargs)
 
         self._signals = []
+        self._index = {}
 
         if signals:
             for signal in signals:
@@ -545,7 +561,24 @@ class SignalGroup(OphydObject):
 
         return self._get_repr(repr)
 
-    def add_signal(self, signal, prop_name=None):
+    def __len__(self):
+        '''The number of signals'''
+        return len(self.signals)
+
+    def __getitem__(self, idx):
+        '''Get a signal by its index'''
+        return self._index[idx]
+
+    def __iter__(self):
+        '''Iterate over all signals by order of index'''
+        for idx, sig in sorted(self._index.items()):
+            yield sig
+
+    def iteritems(self):
+        '''Iterate over (index, signal)'''
+        yield from sorted(self._index.items())
+
+    def add_signal(self, signal, prop_name=None, index=None):
         '''Add a signal to the group.
 
         Parameters
@@ -556,16 +589,30 @@ class SignalGroup(OphydObject):
             The property name to use in the collection.
             e.g., if set to 'sig1', then `group.sig1` would be how to refer to
             the signal.
+        index : int, optional
+            Index of signal
         '''
 
-        if signal not in self._signals:
-            self._signals.append(signal)
+        if signal in self._signals:
+            return
 
-            if prop_name is None:
-                prop_name = signal.alias
+        self._signals.append(signal)
 
-            if prop_name:
-                setattr(self, prop_name, signal)
+        if prop_name:
+            setattr(self, prop_name, signal)
+
+        if index is None:
+            try:
+                index = max(self._index.keys()) + 1
+            except ValueError:
+                if len(self._index) == 0:
+                    # First entry
+                    index = 0
+                else:
+                    # Not sure what happened?
+                    raise
+
+        self._index[index] = signal
 
     @property
     def connected(self):
