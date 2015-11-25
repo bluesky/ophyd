@@ -13,15 +13,16 @@ import time
 
 from epics.pv import fmt_time
 
-from .signal import (EpicsSignal, SignalGroup)
+from .signal import EpicsSignal
 from ..utils import TimeoutError, DisconnectedError
 from ..utils.epics_pvs import record_field, raise_if_disconnected
 from .ophydobj import MoveStatus
-
+from .device import OphydDevice
+from .descriptors import (DevSignal, DevSignalRO)
 logger = logging.getLogger(__name__)
 
 
-class Positioner(SignalGroup):
+class Positioner(OphydDevice):
     '''A soft positioner.
 
     Subclass from this to implement your own positioners.
@@ -34,7 +35,7 @@ class Positioner(SignalGroup):
     _default_sub = SUB_READBACK
 
     def __init__(self, *args, **kwargs):
-        SignalGroup.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._started_moving = False
         self._moving = False
@@ -189,55 +190,41 @@ class EpicsMotor(Positioner):
     record : str
         The record to use
     '''
+    user_readback = DevSignalRO('.RBV', lazy=False)
+    user_setpoint = DevSignal('.VAL', limits=True, lazy=False)
+    motor_egu = DevSignal('.EGU', lazy=False)
+    _is_moving = DevSignalRO('.MOVN', lazy=False)
+    _done_move = DevSignalRO('.DMOV', lazy=False)
+    _stop = DevSignal('.STOP', lazy=False)
 
     def __init__(self, record, settle_time=0.05, **kwargs):
-        self._record = record
+        read_signals = kwargs.pop('read_signals', ['user_readback',
+                                                   'user_setpoint',
+                                                   'motor_egu',
+                                                   ])
+        super().__init__(record, read_signals=read_signals, **kwargs)
 
         self.settle_time = float(settle_time)
-        name = kwargs.pop('name', record)
-        Positioner.__init__(self, name=name, **kwargs)
-
-        signals = [EpicsSignal(self.field_pv('RBV'), rw=False,
-                               alias='_user_readback',
-                               recordable=True,
-                               name=name),
-                   EpicsSignal(self.field_pv('VAL'),
-                               alias='_user_setpoint',
-                               limits=True,
-                               recordable=False),
-                   EpicsSignal(self.field_pv('EGU'), alias='_egu',
-                               recordable=False),
-                   EpicsSignal(self.field_pv('MOVN'), alias='_is_moving',
-                               recordable=False),
-                   EpicsSignal(self.field_pv('DMOV'), alias='_done_move',
-                               recordable=False),
-                   EpicsSignal(self.field_pv('STOP'), alias='_stop',
-                               recordable=False),
-                   # EpicsSignal(self.field_pv('RDBD'), alias='retry_deadband'),
-                   ]
-
-        for signal in signals:
-            self.add_signal(signal)
 
         self._done_move.subscribe(self._move_changed)
-        self._user_readback.subscribe(self._pos_changed)
+        self.user_readback.subscribe(self._pos_changed)
 
     @property
     @raise_if_disconnected
     def precision(self):
         '''The precision of the readback PV, as reported by EPICS'''
-        return self._user_readback.precision
+        return self.user_readback.precision
 
     @property
     @raise_if_disconnected
     def egu(self):
         '''Engineering units'''
-        return self._egu.value
+        return self.motor_egu.get()
 
     @property
     @raise_if_disconnected
     def limits(self):
-        return self._user_setpoint.limits
+        return self.user_setpoint.limits
 
     @property
     @raise_if_disconnected
@@ -255,15 +242,6 @@ class EpicsMotor(Positioner):
         self._stop.put(1, wait=False)
         Positioner.stop(self)
 
-    @property
-    def record(self):
-        '''The EPICS record name'''
-        return self._record
-
-    def field_pv(self, field):
-        '''Return a full PV from the field name'''
-        return record_field(self._record, field)
-
     @raise_if_disconnected
     def move(self, position, wait=True,
              **kwargs):
@@ -271,7 +249,7 @@ class EpicsMotor(Positioner):
         self._started_moving = False
 
         try:
-            self._user_setpoint.put(position, wait=wait)
+            self.user_setpoint.put(position, wait=wait)
 
             return Positioner.move(self, position, wait=wait,
                                    **kwargs)
@@ -279,12 +257,9 @@ class EpicsMotor(Positioner):
             self.stop()
             raise
 
-    def __repr__(self):
-        return self._get_repr(['record={!r}'.format(self._record)])
-
     def check_value(self, pos):
         '''Check that the position is within the soft limits'''
-        self._user_setpoint.check_value(pos)
+        self.user_setpoint.check_value(pos)
 
     def _pos_changed(self, timestamp=None, value=None,
                      **kwargs):
@@ -319,7 +294,7 @@ class EpicsMotor(Positioner):
             position = 'disconnected'
 
         return {self._name: position,
-                'pv': self._user_readback.pvname}
+                'pv': self.user_readback.pvname}
 
 
 # TODO: make Signal aliases uniform between EpicsMotor and PVPositioner
