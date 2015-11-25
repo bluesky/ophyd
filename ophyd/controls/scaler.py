@@ -1,90 +1,60 @@
 from __future__ import print_function
 import logging
 
-from .signal import EpicsSignal
-from .detector import SignalDetector
-from ..utils.epics_pvs import record_field, raise_if_disconnected
+from ..utils.epics_pvs import raise_if_disconnected
+from .descriptors import (DevSignal, DevSignalRO, DevSignalRange)
+from .device import OphydDevice
 
 logger = logging.getLogger(__name__)
 
 
-class EpicsScaler(SignalDetector):
+class EpicsScaler(OphydDevice):
     '''SynApps Scaler Record interface'''
-    def __init__(self, record, numchan=8, chan_start=1, chan_pv=True,
-                 preset_pv=True, gate_pv=True, *args, **kwargs):
+    def _get_range(self, devsig):
+        return range(self._chan_start,
+                     self._numchan + self._chan_start)
+
+    count = DevSignal('.CNT', trigger=1)
+    count_mode = DevSignal('.CONT')
+    time = DevSignal('.T')
+    preset_time = DevSignal('.TP')
+    auto_count_time = DevSignal('.TP1')
+    channels = DevSignalRange(DevSignalRO, '.S{index:d}',
+                              range_=_get_range)
+    presets = DevSignalRange(DevSignal, '.PR{index:d}', range_=_get_range)
+    gates = DevSignalRange(DevSignal, '.G{index:d}', range_=_get_range)
+
+    def __init__(self, record, numchan=8, chan_start=1, **kwargs):
         self._record = record
         self._numchan = numchan
+        self._chan_start = chan_start
 
-        super().__init__(*args, **kwargs)
-
-        self.add_signal(EpicsSignal(record_field(record, 'CNT'),
-                        alias='_count',
-                        name=''.join([self.name, '_count']),
-                        recordable=False))
-        self.add_signal(EpicsSignal(record_field(record, 'CONT'),
-                        alias='_count_mode',
-                        name=''.join([self.name, '_count_mode']),
-                        recordable=False))
-        self.add_signal(EpicsSignal(record_field(record, 'T'),
-                        alias='_time',
-                        name=''.join([self.name, '_time'])))
-        self.add_signal(EpicsSignal(record_field(record, 'TP'),
-                        alias='_preset_time',
-                        name=''.join([self.name, '_preset_time']),
-                        recordable=False), add_property=True)
-        self.add_signal(EpicsSignal(record_field(record, 'TP1'),
-                        alias='_auto_count_time',
-                        name=''.join([self.name, '_auto_count_time']),
-                        recordable=False), add_property=True)
-
-        for ch in range(chan_start, numchan + chan_start):
-            if chan_pv:
-                pv = '{}{}'.format(record_field(record, 'S'), ch)
-                sig = EpicsSignal(pv, rw=False,
-                                  alias='_chan{}'.format(ch),
-                                  name='{}_chan{}'.format(self.name, ch))
-                self.add_signal(sig, add_property=True)
-            if preset_pv:
-                pv = '{}{}'.format(record_field(record, 'PR'), ch)
-                sig = EpicsSignal(pv, rw=True,
-                                  alias='_preset{}'.format(ch),
-                                  name='{}_preset{}'.format(self.name, ch),
-                                  recordable=False)
-                self.add_signal(sig, add_property=True)
-            if gate_pv:
-                pv = '{}{}'.format(record_field(record, 'G'), ch)
-                sig = EpicsSignal(pv, rw=True,
-                                  alias='_gate{}'.format(ch),
-                                  name='{}_gate{}'.format(self.name, ch),
-                                  recordable=False)
-                self.add_signal(sig, add_property=True)
-
-        self.add_acquire_signal(self._count)
+        super().__init__(record, **kwargs)
 
     @property
     @raise_if_disconnected
     def count_time(self):
-        return self._preset_time.value
+        return self.preset_time.value
 
     @count_time.setter
     @raise_if_disconnected
     def count_time(self, val):
-        self._preset_time.put(val)
+        self.preset_time.put(val)
 
     @property
     @raise_if_disconnected
     def auto_count(self):
         """Return the autocount status"""
-        return (self._count_mode.value == 1)
+        return (self.count_mode.value == 1)
 
     @auto_count.setter
     @raise_if_disconnected
     def auto_count(self, val):
         """Set the autocount status"""
         if val:
-            self._count_mode.value = 1
+            self.count_mode.value = 1
         else:
-            self._count_mode.value = 0
+            self.count_mode.value = 0
 
     def __repr__(self):
         repr = ['record={0._record!r}'.format(self),
@@ -95,19 +65,18 @@ class EpicsScaler(SignalDetector):
     def configure(self, state=None):
         """Configure Scaler
 
-        Configure the scaler by setting autocount to off. The state will
-        be restored by deconfigure
-
+        Configure the scaler by setting autocount to off. The state will be
+        restored by deconfigure
         """
         if state is None:
             state = {}
         self._autocount = self._count_mode.value
-        self._count_mode.value = 0
+        self.count_mode.value = 0
 
     @raise_if_disconnected
     def deconfigure(self):
         """Deconfigure Scaler
 
-        Reset thet autocount status
+        Reset the autocount status
         """
-        self._count_mode.value = self._autocount
+        self.count_mode.value = self._autocount
