@@ -57,7 +57,7 @@ def instances_from_namespace(classes):
         return []
     else:
         return [val for var, val in sorted(ip.user_ns.items())
-                if isinstance(val, classes)]
+                if isinstance(val, classes) and not var.startswith('_')]
 
 
 def get_all_positioners():
