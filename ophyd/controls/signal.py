@@ -36,13 +36,19 @@ class Signal(OphydObject):
         The initial setpoint value
     recordable : bool
         A flag to indicate if the signal is recordable by DAQ
+    timestamp : float, optional
+        The timestamp associated with the initial value. Defaults to the
+        current local time.
+    setpoint_ts : float, optional
+        The timestamp associated with the initial setpoint value. Defaults to
+        the current local time.
     '''
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
-    def __init__(self, separate_readback=False,
-                 value=None, setpoint=None,
-                 recordable=True, **kwargs):
+    def __init__(self, separate_readback=False, value=None, setpoint=None,
+                 recordable=True, timestamp=None, setpoint_ts=None,
+                 **kwargs):
 
         self._default_sub = self.SUB_VALUE
         super().__init__(**kwargs)
@@ -53,10 +59,29 @@ class Signal(OphydObject):
 
         self._separate_readback = separate_readback
 
+        if setpoint_ts is None:
+            setpoint_ts = time.time()
+
+        if timestamp is None:
+            timestamp = time.time()
+
+        self._timestamp = timestamp
+        self._setpoint_ts = setpoint_ts
+
     @property
     def connected(self):
         '''Subclasses should override this'''
         return True
+
+    @property
+    def setpoint_ts(self):
+        '''Timestamp of the setpoint value'''
+        return self._setpoint_ts
+
+    @property
+    def timestamp(self):
+        '''Timestamp of the readback value'''
+        return self._timestamp
 
     @property
     def recordable(self):
@@ -64,9 +89,14 @@ class Signal(OphydObject):
         return self._recordable
 
     def __repr__(self):
-        repr = ['value={0.value!r}'.format(self)]
+        repr = ['value={0.value!r}'.format(self),
+                'timestamp={0.timestamp}'.format(self),
+                ]
+
         if self._separate_readback:
             repr.append('setpoint={0.setpoint!r}'.format(self))
+            repr.append('setpoint_ts={0.setpoint_ts!r}'.format(self))
+
         return self._get_repr(repr)
 
     def get_setpoint(self):
