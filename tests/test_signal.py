@@ -17,11 +17,8 @@ import epics
 from ophyd.controls.signal import (Signal, SignalGroup,
                                    EpicsSignal)
 from ophyd.utils import ReadOnlyError
-from ophyd.session import get_session_manager
 
-server = None
 logger = logging.getLogger(__name__)
-session = get_session_manager()
 
 
 class FakeEpicsPV(object):
@@ -223,17 +220,11 @@ class FakePVTests(unittest.TestCase):
 
 
 def setUpModule():
-    global server
-    global session
-
     epics._PV = epics.PV
     epics.PV = FakeEpicsPV
 
 
 def tearDownModule():
-    if __name__ == '__main__':
-        epics.ca.destroy_context()
-
     logger.debug('Cleaning up')
     epics.PV = epics._PV
 
@@ -254,7 +245,7 @@ class SignalTests(unittest.TestCase):
         signal = Signal(name=name, alias=alias,
                         value=value, setpoint=setpoint,
                         timestamp=start_t, setpoint_ts=setpoint_t,
-                        separate_setpoint=separate)
+                        separate_readback=separate)
 
         self.assertEquals(signal.name, name)
         self.assertEquals(signal.alias, alias)
@@ -356,6 +347,7 @@ class SignalTests(unittest.TestCase):
         epics.PV = FakeEpicsPV
 
         signal = EpicsSignal('readpv', rw=False)
+        signal.wait_for_connection()
 
         signal.value
 
@@ -396,6 +388,7 @@ class SignalTests(unittest.TestCase):
         signal = EpicsSignal('readpv', write_pv='readpv',
                              limits=True)
 
+        signal.wait_for_connection()
         signal.check_value((signal.low_limit + signal.high_limit) / 2)
 
         try:
@@ -423,6 +416,7 @@ class SignalTests(unittest.TestCase):
         epics.PV = FakeEpicsPV
 
         signal = EpicsSignal('readpv', write_pv='writepv')
+        signal.wait_for_connection()
 
         self.assertEquals(signal.setpoint_pvname, 'writepv')
         self.assertEquals(signal.pvname, 'readpv')
@@ -453,6 +447,7 @@ class SignalTests(unittest.TestCase):
             self.assertIn(value, FakeEpicsWaveform.strings)
 
         signal = EpicsSignal('readpv', string=True)
+        signal.wait_for_connection()
 
         signal.subscribe(update_cb)
         self.assertIn(signal.value, FakeEpicsWaveform.strings)
@@ -466,7 +461,7 @@ class SignalTests(unittest.TestCase):
         signal = Signal(name=name, alias=alias,
                         value=value, setpoint=setpoint,
                         timestamp=start_t, setpoint_ts=setpoint_t,
-                        separate_setpoint=True)
+                        separate_readback=True)
 
         sig_copy = copy.copy(signal)
 
