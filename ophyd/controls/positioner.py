@@ -34,6 +34,7 @@ class Positioner(SignalGroup):
     SUB_DONE = 'done_moving'
     SUB_READBACK = 'readback'
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
+    _default_sub = SUB_READBACK
 
     def __init__(self, *args, **kwargs):
         SignalGroup.__init__(self, *args, **kwargs)
@@ -445,7 +446,7 @@ class PVPositioner(Positioner):
                                         recordable=False))
 
         if done is None and not self._put_complete:
-            msg = '''Positioner %s is mis-configured. A "done" Signal must be 
+            msg = '''Positioner %s is mis-configured. A "done" Signal must be
                      provided or put_complete must be True.''' % self.name
             raise ValueError(msg)
 

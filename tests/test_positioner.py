@@ -7,23 +7,14 @@ from copy import copy
 
 import epics
 from ophyd.controls.positioner import (Positioner, PVPositioner, EpicsMotor)
-from ophyd.session import get_session_manager
 
-server = None
 logger = logging.getLogger(__name__)
-session = get_session_manager()
 
 
 def setUpModule():
-    global server
-
-    # epics.PV = FakeEpicsPV
-
+    pass
 
 def tearDownModule():
-    if __name__ == '__main__':
-        epics.ca.destroy_context()
-
     logger.debug('Cleaning up')
 
 
@@ -43,7 +34,7 @@ class PositionerTests(unittest.TestCase):
         res = p.move(1, wait=False)
 
         self.assertTrue(res.done)
-        self.assertEquals(res.error, 0)
+        self.assertEqual(res.error, 0)
         self.assertGreater(res.elapsed, 0)
 
         repr(res)
@@ -56,10 +47,10 @@ class PositionerTests(unittest.TestCase):
         p.position
 
         pc = copy(p)
-        self.assertEquals(pc.position, p.position)
-        self.assertEquals(pc.moving, p.moving)
-        self.assertEquals(pc._timeout, p._timeout)
-        self.assertEquals(pc.egu, p.egu)
+        self.assertEqual(pc.position, p.position)
+        self.assertEqual(pc.moving, p.moving)
+        self.assertEqual(pc._timeout, p._timeout)
+        self.assertEqual(pc.egu, p.egu)
 
         p.set_trajectory([1, 2, 3])
         p.move_next()
@@ -72,6 +63,7 @@ class PositionerTests(unittest.TestCase):
 
     def test_epicsmotor(self):
         m = EpicsMotor(self.sim_pv)
+        m.wait_for_connection()
 
         m.limits
         m.check_value(0)
@@ -79,22 +71,22 @@ class PositionerTests(unittest.TestCase):
         m.stop()
         m.move(0.0, wait=True)
         time.sleep(0.1)
-        self.assertEquals(m.position, 0.0)
+        self.assertEqual(m.position, 0.0)
         m.move(0.1, wait=True)
         time.sleep(0.1)
-        self.assertEquals(m.position, 0.1)
+        self.assertEqual(m.position, 0.1)
         m.move(0.1, wait=True)
         time.sleep(0.1)
-        self.assertEquals(m.position, 0.1)
+        self.assertEqual(m.position, 0.1)
         m.move(0.0, wait=True)
         time.sleep(0.1)
-        self.assertEquals(m.position, 0.0)
+        self.assertEqual(m.position, 0.0)
 
         repr(m)
         str(m)
 
         mc = copy(m)
-        self.assertEquals(mc.record, m.record)
+        self.assertEqual(mc.record, m.record)
 
         res = m.move(0.2, wait=False)
 
@@ -102,10 +94,10 @@ class PositionerTests(unittest.TestCase):
             time.sleep(0.1)
 
         time.sleep(0.1)
-        self.assertEquals(m.position, 0.2)
+        self.assertEqual(m.position, 0.2)
 
         self.assertTrue(res.done)
-        self.assertEquals(res.error, 0)
+        self.assertEqual(res.error, 0)
         self.assertGreater(res.elapsed, 0)
 
         m.read()
@@ -125,12 +117,9 @@ class PVPosTest(unittest.TestCase):
     def test_pvpos(self):
         motor_record = self.sim_pv
         mrec = EpicsMotor(motor_record)
+        mrec.wait_for_connection()
 
-        m = PVPositioner(mrec.field_pv('VAL'))
-        try:
-            m.stop()
-        except RuntimeError:
-            pass
+        self.assertRaises(ValueError, PVPositioner, mrec.field_pv('VAL'))
 
         m = PVPositioner(mrec.field_pv('VAL'),
                          readback=mrec.field_pv('RBV'),
@@ -143,7 +132,7 @@ class PVPosTest(unittest.TestCase):
 
         mrec.move(0.1, wait=True)
         time.sleep(0.1)
-        self.assertEquals(m.position, 0.1)
+        self.assertEqual(m.position, 0.1)
 
         m.stop()
         m.limits
@@ -152,7 +141,7 @@ class PVPosTest(unittest.TestCase):
         str(m)
 
         mc = copy(m)
-        self.assertEquals(mc.report, m.report)
+        self.assertEqual(mc.report, m.report)
 
         m.report
         m.read()
@@ -160,6 +149,7 @@ class PVPosTest(unittest.TestCase):
     def test_put_complete(self):
         motor_record = self.sim_pv
         mrec = EpicsMotor(motor_record)
+        mrec.wait_for_connection()
 
         logger.info('--> PV Positioner, using put completion and a DONE pv')
         # PV positioner, put completion, done pv
@@ -231,7 +221,10 @@ class PVPosTest(unittest.TestCase):
                            stop=fm['stop'], stop_val=1,
                            done=fm['moving'], done_val=1,
                            put_complete=False,
+                           name='test_pvpositioner',
                            )
+
+        pos.wait_for_connection()
 
         pos.subscribe(callback, event_type=pos.SUB_DONE)
 
@@ -239,11 +232,11 @@ class PVPosTest(unittest.TestCase):
 
         logger.info('---- test #1 ----')
         logger.info('--> move to 1')
-        pos.move(1)
-        self.assertEquals(pos.position, 1)
+        pos.move(1, timeout=5)
+        self.assertEqual(pos.position, 1)
         logger.info('--> move to 0')
-        pos.move(0)
-        self.assertEquals(pos.position, 0)
+        pos.move(0, timeout=5)
+        self.assertEqual(pos.position, 0)
 
         logger.info('---- test #2 ----')
         logger.info('--> move to 1')
