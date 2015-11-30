@@ -1,9 +1,8 @@
 import time
 
-from .ophydobj import OphydObject
+from .ophydobj import (OphydObject, DeviceStatus)
 from .descriptors import (DevSignal, DevSignalArray)
 from ..utils import TimeoutError
-from .detector import DetectorStatus
 
 
 class DevSignalMeta(type):
@@ -68,15 +67,6 @@ class DeviceBase(metaclass=DevSignalMeta):
         # Instantiate first to kickoff connection process
         signals = [getattr(self, name) for name in names]
 
-        for sig in signals:
-            # TODO api decisions
-            if hasattr(sig, 'connect'):
-                sig.connect()
-            elif hasattr(sig, '_read_pv'):
-                sig._read_pv.connect(timeout=0.01)
-                if hasattr(sig, '_write_pv') and sig._write_pv is not None:
-                    sig._write_pv.connect(timeout=0.01)
-
         t0 = time.time()
         while timeout is None or (time.time() - t0) < timeout:
             connected = [sig.connected for sig in signals]
@@ -90,6 +80,10 @@ class DeviceBase(metaclass=DevSignalMeta):
         raise TimeoutError('Failed to connect to all signals: {}'
                            ''.format(', '.join(unconnected)))
 
+    @property
+    def connected(self):
+        return all(signal.connected for name, signal in self._signals.items())
+
     def read(self):
         # map names ("data keys") to actual values
         values = {}
@@ -100,8 +94,12 @@ class DeviceBase(metaclass=DevSignalMeta):
         return values
 
     def describe(self):
-        return {name: getattr(self, name).describe()
-                for name in self.read_signals}
+        desc = {}
+        for name in self.read_signals:
+            signal = getattr(self, name)
+            desc.update(signal.describe())
+
+        return desc
 
     def stop(self):
         "to be defined by subclass"
@@ -123,19 +121,18 @@ class OphydDevice(DeviceBase, OphydObject):
         OphydObject.__init__(self, name=name, alias=alias)
         DeviceBase.__init__(self, prefix, read_signals=read_signals)
 
-    @property
-    def connected(self):
-        return all(signal.connected for name, signal in self._signals.items())
+        # set should work using signature-stuff
 
     @property
     def trigger_signals(self):
         names = [attr for devsig, attr in self._sig_attrs.items()
-                 if devsig.trigger]
+                 if devsig.trigger_value is not None]
 
         return [getattr(self, name) for name in names]
 
     def trigger(self, **kwargs):
         """Start acquisition"""
+        # TODO mass confusion here
         signals = self.trigger_signals
         if len(signals) > 1:
             raise NotImplementedError('TODO more than one trigger')
@@ -143,7 +140,7 @@ class OphydDevice(DeviceBase, OphydObject):
             raise RuntimeError('Device has no trigger signal(s)')
 
         acq_signal = signals[0]
-        status = DetectorStatus(self)
+        status = DeviceStatus(self)
         self.subscribe(status._finished,
                        event_type=self.SUB_ACQ_DONE, run=False)
 
