@@ -14,7 +14,7 @@ class EpicsScaler(OphydDevice):
         return range(self._chan_start,
                      self._numchan + self._chan_start)
 
-    count = DevSignal('.CNT', trigger=1)
+    count = DevSignal('.CNT', trigger_value=1)
     count_mode = DevSignal('.CONT')
     time = DevSignal('.T')
     preset_time = DevSignal('.TP')
