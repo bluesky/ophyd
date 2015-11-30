@@ -16,7 +16,7 @@ class DevSignal:
     lazy : bool, optional
         Lazily instantiate the signal. If False, the signal will be instantiated
         upon object instantiation
-    trigger : any, optional
+    trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
     '''
@@ -25,12 +25,12 @@ class DevSignal:
     cls = EpicsSignal
 
     def __init__(self, suffix, write_suffix=None, lazy=False,
-                 trigger=None, attr=None, format_kw=None, **kwargs):
+                 trigger_value=None, attr=None, format_kw=None, **kwargs):
         self.suffix = suffix
         self.write_suffix = write_suffix
         self.kwargs = kwargs
         self.lazy = lazy
-        self.trigger = trigger
+        self.trigger_value = trigger_value
 
         # attr is set later when known
         self.attr = attr
@@ -111,7 +111,7 @@ class DevSignalArray:
         # self.cls = cls
         self.lazy = True
         self.suffix = suffix
-        self.trigger = False
+        self.trigger_value = None
 
     def get_name(self, instance, format_kw):
         '''Get a name for the device signal'''
