@@ -606,6 +606,9 @@ class SignalGroup(OphydObject):
 
         self._signals.append(signal)
 
+        if prop_name is None:
+            prop_name = signal.alias
+
         if prop_name:
             setattr(self, prop_name, signal)
 
@@ -716,3 +719,36 @@ class SignalGroup(OphydObject):
             d = DetectorStatus(self)
             d._finished()
             return d
+
+    def wait_for_connection(self, timeout=2.0):
+        '''Wait for signals to connect
+
+        Parameters
+        ----------
+        timeout : float or None
+            Overall timeout
+        '''
+        signals = self._signals
+
+        # start off the connection process
+        for sig in signals:
+            # TODO api decisions
+            if hasattr(sig, 'connect'):
+                sig.connect()
+            elif hasattr(sig, '_read_pv'):
+                sig._read_pv.connect(timeout=0.01)
+                if hasattr(sig, '_write_pv') and sig._write_pv is not None:
+                    sig._write_pv.connect(timeout=0.01)
+
+        t0 = time.time()
+        while timeout is None or (time.time() - t0) < timeout:
+            connected = [sig.connected for sig in signals]
+            if all(connected):
+                return
+            time.sleep(min((0.05, timeout / 10.0)))
+
+        unconnected = [sig.name for sig in signals
+                       if not sig.connected]
+
+        raise TimeoutError('Failed to connect to all signals: {}'
+                           ''.format(', '.join(unconnected)))
