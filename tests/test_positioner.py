@@ -52,15 +52,6 @@ class PositionerTests(unittest.TestCase):
         self.assertEqual(pc._timeout, p._timeout)
         self.assertEqual(pc.egu, p.egu)
 
-        p.set_trajectory([1, 2, 3])
-        p.move_next()
-        p.move_next()
-        p.move_next()
-        try:
-            p.move_next()
-        except StopIteration:
-            pass
-
     def test_epicsmotor(self):
         m = EpicsMotor(self.sim_pv)
         m.wait_for_connection()

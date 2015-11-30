@@ -10,8 +10,6 @@
 from __future__ import print_function
 import logging
 import time
-import warnings
-import numpy as np
 
 from epics.pv import fmt_time
 
@@ -21,7 +19,6 @@ from ..utils.epics_pvs import record_field, raise_if_disconnected
 from .ophydobj import MoveStatus
 
 logger = logging.getLogger(__name__)
-
 
 
 class Positioner(SignalGroup):
@@ -44,21 +41,7 @@ class Positioner(SignalGroup):
         self._default_sub = None
         self._position = None
         self._timeout = kwargs.get('timeout', 0.0)
-        self._trajectory = None
-        self._trajectory_idx = None
-        self._followed = []
         self._egu = kwargs.get('egu', '')
-
-    def set_trajectory(self, traj):
-        '''Set the trajectory of the motion
-
-        Parameters
-        ----------
-        traj : iterable
-            Sequence of positions to follow
-        '''
-        self._trajectory = iter(traj)
-        self._followed = []
 
     @property
     def egu(self):
@@ -75,30 +58,6 @@ class Positioner(SignalGroup):
     @property
     def high_limit(self):
         return self.limits[1]
-
-    @property
-    def next_pos(self):
-        '''Get the next point in the trajectory'''
-
-        if self._trajectory is None:
-            raise ValueError('Trajectory unset')
-
-        try:
-            next_pos = next(self._trajectory)
-        except StopIteration:
-            return None
-
-        self._followed.append(next_pos)
-        return next_pos
-
-    def move_next(self, **kwargs):
-        '''Move to the next point in the trajectory'''
-        pos = self.next_pos
-        if pos is None:
-            raise StopIteration('End of trajectory')
-
-        ret = self.move(pos, **kwargs)
-        return pos, ret
 
     def move(self, position, wait=True,
              moved_cb=None, timeout=30.0):
@@ -152,7 +111,6 @@ class Positioner(SignalGroup):
             if moved_cb is not None:
                 self.subscribe(moved_cb, event_type=self._SUB_REQ_DONE,
                                run=False)
-
 
             self.subscribe(status._finished,
                            event_type=self._SUB_REQ_DONE, run=False)
