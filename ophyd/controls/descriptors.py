@@ -24,7 +24,7 @@ class DevSignal:
     writable = True
     cls = EpicsSignal
 
-    def __init__(self, suffix, write_suffix=None, lazy=True,
+    def __init__(self, suffix, write_suffix=None, lazy=False,
                  trigger=None, attr=None, format_kw=None, **kwargs):
         self.suffix = suffix
         self.write_suffix = write_suffix
@@ -93,7 +93,8 @@ class DevSignalRO(DevSignal):
 
 class AdDevSignal(DevSignal):
     def __init__(self, suffix, **kwargs):
-        super().__init__(suffix + '_RBV', write_suffix=suffix, **kwargs)
+        super().__init__(suffix + '_RBV', write_suffix=suffix, lazy=True,
+                         **kwargs)
 
 
 class AdDevSignalRO(DevSignalRO):
