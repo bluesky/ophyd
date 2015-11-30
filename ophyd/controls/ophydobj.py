@@ -150,6 +150,12 @@ class DetectorStatus(StatusBase):
         self.detector = detector
 
 
+class DeviceStatus(StatusBase):
+    def __init__(self, device):
+        super().__init__()
+        self.device = device
+
+
 class OphydObject(object):
     '''The base class for all objects in Ophyd
 
