@@ -1,7 +1,7 @@
 from __future__ import print_function
 from .detector import SignalDetector, DetectorStatus
 from .signal import EpicsSignal, Signal
-from epics import caput
+from epics import caput, caget
 from collections import deque
 import time
 from datetime import datetime
@@ -14,7 +14,7 @@ class AreaDetector(SignalDetector):
     _SUB_ACQ_DONE = 'acq_done'
     _SUB_DONE = 'done'
     _SUB_ACQ_CHECK = 'acq_check'
-
+    _NUM_DARK_FIELD_CAPTURES = 1
     def __init__(self, basename, stats=range(1, 6),
                  shutter=None, shutter_rb=None, shutter_val=(0, 1),
                  cam='cam1:', proc_plugin='Proc1:',
@@ -266,7 +266,7 @@ class AreaDetector(SignalDetector):
     def _start_acquire(self, **kwargs):
         """Do an actual acquisiiton"""
         if self._acq_count < self._acq_num:
-            self._set_shutter(self._acq_count % 2)
+            self._set_shutter(self._acq_count % (1 + self._NUM_DARK_FIELD_CAPTURES))
             self._acq_signal.put(1, wait=False)
 
     def acquire(self, **kwargs):
@@ -279,7 +279,7 @@ class AreaDetector(SignalDetector):
         self._take_darkfield = False
         if self.darkfield_interval:
             if (self._acquire_number % self.darkfield_interval) == 0:
-                self._acq_num += 1
+                self._acq_num += self._NUM_DARK_FIELD_CAPTURES
                 self._take_darkfield = True
 
         # Setup the return status
@@ -302,7 +302,6 @@ class AreaDetector(SignalDetector):
         self._start_acquire()
 
         return status
-
 
 
 class AreaDetectorFileStore(AreaDetector):
@@ -465,7 +464,8 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
     def deconfigure(self):
 
         for (uid, i), seq_id in zip(self._uid_cache, self._seq_cache):
-            fs.insert_datum(self._filestore_res, str(uid), {'seq_id': int(seq_id)})
+            fs.insert_datum(self._filestore_res, str(uid),
+                            {'seq_id': int(seq_id)})
 
         super(AreaDetectorFileStoreEiger, self).deconfigure()
 
@@ -483,21 +483,21 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
         self._seq_cache = deque()
 
         self.add_signal(self._ad_signal('{}MaxSizeX'.format(self._cam),
-                                  '_arraysize{}'.format(0),
-                                  recordable=False))
+                                        '_arraysize{}'.format(0),
+                                        recordable=False))
 
         self.add_signal(self._ad_signal('{}MaxSizeY'.format(self._cam),
-                                  '_arraysize{}'.format(1),
-                                  recordable=False))
+                                        '_arraysize{}'.format(1),
+                                        recordable=False))
 
         self.add_signal(self._ad_signal('{}FWNamePattern'.format(self._cam),
                                         '_name_pattern',
                                         recordable=False))
 
-
         self.add_signal(EpicsSignal('{}{}SequenceId'.format(self._basename,
                                                             self._cam),
-                                    name='{}{}'.format(self.name, 'sequenceid'),
+                                    name='{}{}'.format(self.name,
+                                                       'sequenceid'),
                                     alias='sequenceid'))
 
         self.add_signal(self._ad_signal('{}FWNImagesPerFile'.format(self._cam),
@@ -509,10 +509,8 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
                                         string=True,
                                         recordable=False))
 
-
         self._master_base = ''
         self._file_plugin = None
-
 
     def _insert_fs_resource(self):
         return fs.insert_resource('AD_EIGER',
@@ -538,12 +536,10 @@ class AreaDetectorFileStoreEiger(AreaDetectorFileStore):
         path = os.path.join(self.store_file_path, *tree)
         self._store_file_path = path
 
-
         self._master_base = os.path.join(path, uid)
         self._file_path.value = path
         self._name_pattern.value = '{}_$id'.format(uid)
         self._filestore_res = self._insert_fs_resource()
-
 
 
 class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
@@ -664,12 +660,76 @@ class AreaDetectorFileStoreHDF5(AreaDetectorFSBulkEntry):
 
     def deconfigure(self):
         while self._num_captured.value < self._acquire_number:
-            print('[!!] Waiting for capture to finish.... {} {}'.format(self._num_captured.value, self._array_counter.value))
+            print('[!!] Waiting for capture to finish.... {} {}'.format(
+                self._num_captured.value, self._array_counter.value))
             time.sleep(0.5)
         self._capture.put(0, wait=False)
         print('[--] DONE!')
 
         super(AreaDetectorFileStoreHDF5, self).deconfigure()
+
+
+class AreaDetectorFileStoreFCCD(AreaDetectorFileStoreHDF5):
+    _NUM_DARK_FIELD_CAPTURES = 3
+    def acquire(self):
+        # Save Current Gain Setting
+        initial_gain = caget('{}cam1:FRICGain'.format(self._basename))
+        # run the base acquire
+        ret = super().acquire()
+        # reset this as dark frames _may_ have messed with this
+        # it is an implemenation detail that the light images are catpured first
+        # then the dark field images.  This is brittle as all get out.
+        caput('{}cam1:FRICGain'.format(self._basename), initial_gain, wait=wait)
+
+    def read(self):
+        # run the base read
+        val = super(AreaDetectorFileStore, self).read()
+        # add a new uid + frame index to the internal cache
+        self._uid_cache.append((str(uuid.uuid4()),
+                                self._abs_trigger_count))
+        # stash it for later use
+        self._last_light_uid = self._uid_cache[-1]
+        # increment the collected frame count (super important)
+        self._abs_trigger_count += 1
+        #  update the value dictionary
+        val.update({'{}_{}_lightfield'.format(self.name, 'image'):
+                    {'value': self._last_light_uid[0],
+                     'timestamp': self._acq_signal.timestamp}})
+        # if we are collecting dark field images
+        if self._darkfield_int:
+            if self._take_darkfield:
+                # assume we have _taken_ a dark field collection after the last
+                # light field (which means 3 extra images)
+                self._last_dark_uid = dict()
+                # add an entry to the cache
+                for gain in [2, 4, 8]:
+                    self._uid_cache.append((str(uuid.uuid4()), self._abs_trigger_count))
+                    self._abs_trigger_count += 1
+                    self._last_dark_uid[gain] = self._uid_cache[-1]
+
+            # update the value dictionary with the uid of the most recent
+            # dark field collection
+            for gain, (uid, frame_number) in self._last_dark_uid.items():
+                val.update({'{}_{}_darkfield_gain{}'.format(self.name, 'image', gain):
+                            {'value': self._last_dark_uid[gain],
+                            'timestamp': self._acq_signal.timestamp}})
+
+        return val
+
+    def _start_acquire(self, **kwargs):
+        """Do an actual acquisiiton"""
+        if self._acq_count < self._acq_num:
+            if self._acq_count % (1 + self._NUM_DARK_FIELD_CAPTURES):
+                # close the shutter
+                self._set_shutter(1)
+                # the gain sequence is (2, 1, 0) -> gain of (1, 2, 8)
+                gain = 3 - self._acq_count
+                caput('{}cam1:FRICGain'.format(self._basename), gain, wait=True)
+                self._acq_signal.put(1, wait=False)
+            else:
+                # open the shutter
+                self._set_shutter(0)
+                self._acq_signal.put(1, wait=False)
 
 
 class AreaDetectorFileStorePrinceton(AreaDetectorFSIterativeWrite):
