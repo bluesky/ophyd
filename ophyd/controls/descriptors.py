@@ -1,5 +1,3 @@
-# from ..utils.epics_pvs import raise_if_disconnected
-# from ..utils.errors import DisconnectedError
 from .signal import (EpicsSignal, SignalGroup)
 # from .signal import EpicsSignalRO
 
@@ -109,7 +107,7 @@ class DevSignalArray:
     def __init__(self, cls, suffix, **kwargs):
         self.kwargs = kwargs
         # self.cls = cls
-        self.lazy = True
+        self.lazy = False
         self.suffix = suffix
         self.trigger_value = None
 
@@ -152,7 +150,6 @@ class DevSignalArray:
 
         # get should return an indexable list
         if self.attr not in instance._signals:
-            # instance._signals[self.attr] = DevList(self)
             instance._signals[self.attr] = group = self.group_cls()
             for format_kw, obj_kw in self.get_kwlist(instance):
                 index, sig = self.create_signal(instance, format_kw,
