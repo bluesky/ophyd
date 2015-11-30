@@ -17,7 +17,7 @@ import epics
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
 from ..utils.epics_pvs import (pv_form,
                                waveform_to_string, raise_if_disconnected)
-from .ophydobj import OphydObject, DetectorStatus
+from .ophydobj import (OphydObject, DeviceStatus)
 
 logger = logging.getLogger(__name__)
 
@@ -506,14 +506,14 @@ class EpicsSignal(Signal):
         try:
             return super().trigger()
         except AttributeError:
-            d = DetectorStatus(self)
+            d = DeviceStatus(self)
             d._finished()
             return d
 
 
 class SkepticalSignal(EpicsSignal):
     def trigger(self):
-        d = DetectorStatus(self)
+        d = DeviceStatus(self)
         # scary assumption
         cur = self.read()[self._name]
         old_time = cur['timestamp']
@@ -716,7 +716,7 @@ class SignalGroup(OphydObject):
         try:
             return super().trigger()
         except AttributeError:
-            d = DetectorStatus(self)
+            d = DeviceStatus(self)
             d._finished()
             return d
 
