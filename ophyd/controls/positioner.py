@@ -196,12 +196,11 @@ class EpicsMotor(Positioner):
     _done_move = C(EpicsSignalRO, '.DMOV')
     _stop = C(EpicsSignal, '.STOP')
 
-    def __init__(self, record, settle_time=0.05, **kwargs):
-        read_signals = kwargs.pop('read_signals', ['user_readback',
-                                                   'user_setpoint',
-                                                   'motor_egu',
-                                                   ])
-        super().__init__(record, read_signals=read_signals, **kwargs)
+    def __init__(self, record, settle_time=0.05, read_signals=None, name=None):
+        if read_signals is None:
+            read_signals = ['user_readback', 'user_setpoint', 'motor_egu']
+
+        super().__init__(record, read_signals=read_signals, name=name)
 
         self.settle_time = float(settle_time)
 
