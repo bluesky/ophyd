@@ -169,23 +169,27 @@ class ComponentMeta(type):
         sig_dict = {attr: value for attr, value in clsdict.items()
                     if isinstance(value, (Component, DynamicComponent))}
 
-        dyn_components = {attr: cpt for attr, cpt in sig_dict.items()
-                          if isinstance(cpt, DynamicComponent)}
-
-        # Flatten out all signals from the dynamically generated sub-devices
-        for dyn_attr, dyn_cpt in dyn_components.items():
-            for attr in dyn_cpt.attrs:
-                if attr in sig_dict:
-                    raise ValueError('Attribute {} shadowed by sub-device {} '
-                                     'attribute'.format(attr, dyn_attr))
-                setattr(clsobj, attr, dyn_cpt.create_attr(attr))
-
         # maps component to attribute names
         clsobj._sig_attrs = {cpt: name
                              for name, cpt in sig_dict.items()}
 
         for cpt, attr in clsobj._sig_attrs.items():
             cpt.attr = attr
+
+        # since we have a hierarchy of devices/sub-devices, note which
+        # components belong to which device
+        clsobj._sig_owner = {}
+
+        for cpt_attr, cpt in sig_dict.items():
+            if isinstance(cpt, DynamicComponent):
+                # owner = None means the object itself
+                clsobj._sig_owner[cpt_attr] = None
+                for sub_attr in cpt.attrs:
+                    # the dynamiccomponent attribute owns each of its
+                    # sub-attributes
+                    clsobj._sig_owner[sub_attr] = cpt_attr
+            elif isinstance(cpt, Component):
+                clsobj._sig_owner[cpt_attr] = None
 
         # List Signal attribute names.
         clsobj.signal_names = list(sig_dict.keys())
@@ -249,11 +253,27 @@ class DeviceBase(metaclass=ComponentMeta):
     def connected(self):
         return all(signal.connected for name, signal in self._signals.items())
 
+    def _get_devattr(self, name):
+        '''Gets a device attribute which may come from a sub-device'''
+        try:
+            owner_attr = self._sig_owner[name]
+        except KeyError:
+            raise ValueError('Unknown read signal: {}'.format(name))
+
+        if owner_attr is None:
+            # None means this instance owns it
+            return getattr(self, name)
+        else:
+            # Otherwise, get the owner first
+            owner = getattr(self, owner_attr)
+            # Then the attribute
+            return getattr(owner, name)
+
     def read(self):
         # map names ("data keys") to actual values
         values = {}
         for name in self.read_signals:
-            signal = getattr(self, name)
+            signal = self._get_devattr(name)
             values.update(signal.read())
 
         return values
@@ -261,7 +281,7 @@ class DeviceBase(metaclass=ComponentMeta):
     def describe(self):
         desc = {}
         for name in self.read_signals:
-            signal = getattr(self, name)
+            signal = self._get_devattr(name)
             desc.update(signal.describe())
 
         return desc
