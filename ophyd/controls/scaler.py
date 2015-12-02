@@ -17,8 +17,8 @@ class EpicsScaler(OphydDevice):
     time = C(EpicsSignal, '.T')
     preset_time = C(EpicsSignal, '.TP')
     auto_count_time = C(EpicsSignal, '.TP1')
-    channels = DC('', DC.make_def(EpicsSignalRO, 'chan{index}', '.S{index:d}',
-                                  range(1, 33)))
+    channels = DC(DC.make_def(EpicsSignalRO, 'chan{index}', '.S{index:d}',
+                              range(1, 33)))
     # presets = DC('', DC.make_def(EpicsSignalRO, '.PR{index:d}')
     # gates = DC('', DC.make_def(EpicsSignalRO, '.G{index:d}')
 
