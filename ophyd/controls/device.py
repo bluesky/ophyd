@@ -56,15 +56,10 @@ class Component:
         else:
             return suffix
 
-    def get_name(self, instance):
-        '''Get a name for the device signal'''
-        name = self.kwargs.get('name', self.attr)
-        return '{}.{}'.format(instance.name, name)
-
     def create_component(self, instance):
         '''Create a component for the instance'''
         kwargs = self.kwargs.copy()
-        kwargs['name'] = self.get_name(instance)
+        kwargs['name'] = '{}.{}'.format(instance.name, self.attr)
 
         for kw in self.add_prefix:
             # If any keyword arguments need a prefix, tack it on
@@ -101,11 +96,6 @@ class DynamicComponent:
         # TODO: component compatibility
         self.trigger_value = None
 
-    def get_name(self, instance):
-        '''Get a name for the device signal'''
-        name = self.kwargs.get('name', self.attr)
-        return '{}.{}'.format(instance.name, name)
-
     def get_sub_prefix(self, instance):
         '''Get the sub prefix from an instance'''
         # Optionally use a separator from the instance
@@ -121,7 +111,7 @@ class DynamicComponent:
     def create_component(self, instance):
         '''Create a component for the instance'''
         kwargs = self.kwargs.copy()
-        kwargs['name'] = self.get_name(instance)
+        kwargs['name'] = '{}.{}'.format(instance.name, self.attr)
 
         sub_prefix = self.get_sub_prefix(instance)
 
