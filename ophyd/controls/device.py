@@ -85,15 +85,15 @@ class Component:
 
 
 class DynamicComponent:
-    def __init__(self, defn, clsname=None, **kwargs):
+    def __init__(self, defn, clsname=None):
         self.defn = defn
         self.clsname = clsname
         self.attr = None  # attr is set later by the device when known
         self.lazy = False
-        self.kwargs = kwargs
 
         # TODO: component compatibility
         self.trigger_value = None
+        self.attrs = list(defn.keys())
 
     def get_separator(self, instance):
         if hasattr(instance, '_sep'):
@@ -101,11 +101,14 @@ class DynamicComponent:
         else:
             return ''
 
+    def create_attr(self, attr_name):
+        cls, suffix, kwargs = self.defn[attr_name]
+        inst = Component(cls, suffix, **kwargs)
+        inst.attr = attr_name
+        return inst
+
     def create_component(self, instance):
         '''Create a component for the instance'''
-        kwargs = self.kwargs.copy()
-        kwargs['name'] = '{}.{}'.format(instance.name, self.attr)
-
         clsname = self.clsname
         if clsname is None:
             clsname = ''.join((instance.__class__.__name__,
@@ -115,11 +118,22 @@ class DynamicComponent:
                        __doc__='{} sub-device'.format(clsname),
                        )
 
-        for attr, (cls, suffix, kwargs) in self.defn.items():
-            clsdict[attr] = Component(cls, suffix, **kwargs)
+        for attr in self.defn.keys():
+            clsdict[attr] = self.create_attr(attr)
+
+        attrs = set(self.defn.keys())
+        inst_read = set(instance.read_signals)
+        if self.attr in inst_read:
+            # if the sub-device is in the read list, then add all attrs
+            read_signals = attrs
+        else:
+            # otherwise, only add the attributes that exist in the sub-device
+            # to the read_signals list
+            read_signals = inst_read.intersection(attrs)
 
         cls = type(clsname, (OphydDevice, ), clsdict)
-        return cls(instance.prefix, **self.kwargs)
+        return cls(instance.prefix, read_signals=list(read_signals),
+                   name='{}.{}'.format(instance.name, self.attr))
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -154,6 +168,17 @@ class ComponentMeta(type):
         # map component attribute names to Component classes
         sig_dict = {attr: value for attr, value in clsdict.items()
                     if isinstance(value, (Component, DynamicComponent))}
+
+        dyn_components = {attr: cpt for attr, cpt in sig_dict.items()
+                          if isinstance(cpt, DynamicComponent)}
+
+        # Flatten out all signals from the dynamically generated sub-devices
+        for dyn_attr, dyn_cpt in dyn_components.items():
+            for attr in dyn_cpt.attrs:
+                if attr in sig_dict:
+                    raise ValueError('Attribute {} shadowed by sub-device {} '
+                                     'attribute'.format(attr, dyn_attr))
+                setattr(clsobj, attr, dyn_cpt.create_attr(attr))
 
         # maps component to attribute names
         clsobj._sig_attrs = {cpt: name
