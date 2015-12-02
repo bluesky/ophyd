@@ -1,26 +1,26 @@
 import time
 
 from .ophydobj import (OphydObject, DeviceStatus)
-from .descriptors import (DevSignal, DevSignalArray)
+from .components import (Component, DynamicComponent)
 from ..utils import TimeoutError
 
 
-class DevSignalMeta(type):
-    '''Creates attributes for DevSignals by inspecting class definition'''
+class ComponentMeta(type):
+    '''Creates attributes for Components by inspecting class definition'''
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
 
-        # map DevSignal attribute names to DevSignal classes
+        # map component attribute names to Component classes
         sig_dict = {attr: value for attr, value in clsdict.items()
-                    if isinstance(value, (DevSignal, DevSignalArray))}
+                    if isinstance(value, (Component, DynamicComponent))}
 
-        # maps DevSignal to attribute names
-        clsobj._sig_attrs = {devsig: name
-                             for name, devsig in sig_dict.items()}
+        # maps component to attribute names
+        clsobj._sig_attrs = {cpt: name
+                             for name, cpt in sig_dict.items()}
 
-        for devsig, attr in clsobj._sig_attrs.items():
-            devsig.attr = attr
+        for cpt, attr in clsobj._sig_attrs.items():
+            cpt.attr = attr
 
         # List Signal attribute names.
         clsobj.signal_names = list(sig_dict.keys())
@@ -30,7 +30,7 @@ class DevSignalMeta(type):
         return clsobj
 
 
-class DeviceBase(metaclass=DevSignalMeta):
+class DeviceBase(metaclass=ComponentMeta):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be
@@ -48,8 +48,8 @@ class DeviceBase(metaclass=DevSignalMeta):
         self.read_signals = read_signals
 
         # Instantiate non-lazy signals
-        [getattr(self, attr) for devsig, attr in self._sig_attrs.items()
-         if not devsig.lazy]
+        [getattr(self, attr) for cpt, attr in self._sig_attrs.items()
+         if not cpt.lazy]
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):
         '''Wait for signals to connect
@@ -61,8 +61,8 @@ class DeviceBase(metaclass=DevSignalMeta):
         timeout : float or None
             Overall timeout
         '''
-        names = [attr for devsig, attr in self._sig_attrs.items()
-                 if not devsig.lazy or all_signals]
+        names = [attr for cpt, attr in self._sig_attrs.items()
+                 if not cpt.lazy or all_signals]
 
         # Instantiate first to kickoff connection process
         signals = [getattr(self, name) for name in names]
@@ -125,8 +125,8 @@ class OphydDevice(DeviceBase, OphydObject):
 
     @property
     def trigger_signals(self):
-        names = [attr for devsig, attr in self._sig_attrs.items()
-                 if devsig.trigger_value is not None]
+        names = [attr for cpt, attr in self._sig_attrs.items()
+                 if cpt.trigger_value is not None]
 
         return [getattr(self, name) for name in names]
 

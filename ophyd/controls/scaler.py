@@ -1,8 +1,9 @@
 from __future__ import print_function
 import logging
 
+from .signal import EpicsSignal
 from ..utils.epics_pvs import raise_if_disconnected
-from .descriptors import (DevSignal, DevSignalRO, DevSignalRange)
+from .components import (Component as C, DynamicComponent as DC)
 from .device import OphydDevice
 
 logger = logging.getLogger(__name__)
@@ -10,26 +11,17 @@ logger = logging.getLogger(__name__)
 
 class EpicsScaler(OphydDevice):
     '''SynApps Scaler Record interface'''
-    def _get_range(self, devsig):
-        return range(self._chan_start,
-                     self._numchan + self._chan_start)
 
-    count = DevSignal('.CNT', trigger_value=1)
-    count_mode = DevSignal('.CONT')
-    time = DevSignal('.T')
-    preset_time = DevSignal('.TP')
-    auto_count_time = DevSignal('.TP1')
-    channels = DevSignalRange(DevSignalRO, '.S{index:d}',
-                              range_=_get_range)
-    presets = DevSignalRange(DevSignal, '.PR{index:d}', range_=_get_range)
-    gates = DevSignalRange(DevSignal, '.G{index:d}', range_=_get_range)
-
-    def __init__(self, record, numchan=8, chan_start=1, **kwargs):
-        self._record = record
-        self._numchan = numchan
-        self._chan_start = chan_start
-
-        super().__init__(record, **kwargs)
+    count = C(EpicsSignal, '.CNT', trigger_value=1)
+    count_mode = C(EpicsSignal, '.CONT')
+    time = C(EpicsSignal, '.T')
+    preset_time = C(EpicsSignal, '.TP')
+    auto_count_time = C(EpicsSignal, '.TP1')
+    # channels = DC('Channels',
+    #               DC.field_range(EpicsSignalRO,
+    #                              'chan{index}', '.S{index:d}', range(1, 33)))
+    # presets = DC(EpicsSignalRO, '.PR{index:d}')
+    # gates = DC(EpicsSignalRO, '.G{index:d}')
 
     @property
     @raise_if_disconnected
@@ -55,11 +47,6 @@ class EpicsScaler(OphydDevice):
             self.count_mode.value = 1
         else:
             self.count_mode.value = 0
-
-    def __repr__(self):
-        repr = ['record={0._record!r}'.format(self),
-                'numchan={0._numchan!r}'.format(self)]
-        return self._get_repr(repr)
 
     @raise_if_disconnected
     def configure(self, state=None):

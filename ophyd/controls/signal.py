@@ -511,6 +511,16 @@ class EpicsSignal(Signal):
             return d
 
 
+class EpicsSignalRO(EpicsSignal):
+    def __init__(self, read_pv, **kwargs):
+
+        if 'write_pv' in kwargs:
+            raise ValueError('Read-only signals do not have a write_pv')
+            # TODO half-assed way to make this read-only
+
+        super().__init__(read_pv, rw=False, write_pv=None, **kwargs)
+
+
 class SkepticalSignal(EpicsSignal):
     def trigger(self):
         d = DeviceStatus(self)

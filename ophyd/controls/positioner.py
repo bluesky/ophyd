@@ -13,12 +13,12 @@ import time
 
 from epics.pv import fmt_time
 
-from .signal import EpicsSignal
+from .signal import (EpicsSignal, EpicsSignalRO)
 from ..utils import TimeoutError, DisconnectedError
-from ..utils.epics_pvs import record_field, raise_if_disconnected
+from ..utils.epics_pvs import raise_if_disconnected
 from .ophydobj import MoveStatus
 from .device import OphydDevice
-from .descriptors import (DevSignal, DevSignalRO)
+from .components import Component as C
 logger = logging.getLogger(__name__)
 
 
@@ -190,12 +190,12 @@ class EpicsMotor(Positioner):
     record : str
         The record to use
     '''
-    user_readback = DevSignalRO('.RBV', lazy=False)
-    user_setpoint = DevSignal('.VAL', limits=True, lazy=False)
-    motor_egu = DevSignal('.EGU', lazy=False)
-    _is_moving = DevSignalRO('.MOVN', lazy=False)
-    _done_move = DevSignalRO('.DMOV', lazy=False)
-    _stop = DevSignal('.STOP', lazy=False)
+    user_readback = C(EpicsSignalRO, '.RBV')
+    user_setpoint = C(EpicsSignal, '.VAL', limits=True)
+    motor_egu = C(EpicsSignal, '.EGU')
+    _is_moving = C(EpicsSignalRO, '.MOVN')
+    _done_move = C(EpicsSignalRO, '.DMOV')
+    _stop = C(EpicsSignal, '.STOP')
 
     def __init__(self, record, settle_time=0.05, **kwargs):
         read_signals = kwargs.pop('read_signals', ['user_readback',
