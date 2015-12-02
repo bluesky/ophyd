@@ -1,8 +1,168 @@
 import time
 
+from collections import OrderedDict
+
 from .ophydobj import (OphydObject, DeviceStatus)
-from .components import (Component, DynamicComponent)
 from ..utils import TimeoutError
+
+
+class Component:
+    '''A descriptor representing a device component (or signal)
+
+    Unrecognized keyword arguments will be passed directly to the component
+    class initializer.
+
+    Parameters
+    ----------
+    cls : class
+        Class of signal to create
+    suffix : str
+        The PV suffix, which gets appended onto the device prefix
+    add_prefix : sequence, optional
+        Arguments to attach the device prefix to.
+        Defaults to ('suffix', 'write_pv')
+    lazy : bool, optional
+        Lazily instantiate the signal. If False, the signal will be instantiated
+        upon object instantiation
+    trigger_value : any, optional
+        Mark as a signal to be set on trigger. The value is sent to the signal
+        at trigger time.
+    '''
+
+    def __init__(self, cls, suffix, lazy=False, trigger_value=None,
+                 add_prefix=None, **kwargs):
+        self.attr = None  # attr is set later by the device when known
+        self.cls = cls
+        self.kwargs = kwargs
+        self.lazy = lazy
+        self.suffix = suffix
+        self.trigger_value = trigger_value  # TODO discuss
+
+        if add_prefix is None:
+            add_prefix = ('suffix', 'write_pv')
+
+        self.add_prefix = tuple(add_prefix)
+
+    def get_pv_name(self, instance, attr, suffix):
+        '''Get pv name for a given suffix'''
+        if attr in self.add_prefix:
+            # Optionally use a separator from the instance
+            if hasattr(instance, '_sep'):
+                sep = instance._sep
+            else:
+                sep = ''
+
+            return sep.join((instance.prefix, suffix))
+        else:
+            return suffix
+
+    def get_name(self, instance):
+        '''Get a name for the device signal'''
+        name = self.kwargs.get('name', self.attr)
+        return '{}.{}'.format(instance.name, name)
+
+    def create_component(self, instance):
+        '''Create a component for the instance'''
+        kwargs = self.kwargs.copy()
+        kwargs['name'] = self.get_name(instance)
+
+        for kw in self.add_prefix:
+            # If any keyword arguments need a prefix, tack it on
+            if kw in kwargs:
+                suffix = self.get_pv_name(instance, kw, kwargs[kw])
+                kwargs[kw] = suffix
+
+        # Otherwise, we only have suffix to update
+        pv_name = self.get_pv_name(instance, 'suffix', self.suffix)
+        return self.cls(pv_name, **kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        if self.attr not in instance._signals:
+            instance._signals[self.attr] = self.create_component(instance)
+
+        return instance._signals[self.attr]
+
+    def __set__(self, instance, owner):
+        raise RuntimeError('Use .put()')
+
+
+class DynamicComponent:
+    def __init__(self, sub_prefix, *defns, clsname=None, **kwargs):
+        self.defns = defns
+        self.clsname = clsname
+        self.attr = None  # attr is set later by the device when known
+        self.lazy = False
+        self.kwargs = kwargs
+        self.sub_prefix = sub_prefix
+
+        # TODO: component compatibility
+        self.trigger_value = None
+
+    def get_name(self, instance):
+        '''Get a name for the device signal'''
+        name = self.kwargs.get('name', self.attr)
+        return '{}.{}'.format(instance.name, name)
+
+    def get_sub_prefix(self, instance):
+        '''Get the sub prefix from an instance'''
+        # Optionally use a separator from the instance
+        sep = self.get_separator(instance)
+        return sep.join((instance.prefix, self.sub_prefix))
+
+    def get_separator(self, instance):
+        if hasattr(instance, '_sep'):
+            return instance._sep
+        else:
+            return ''
+
+    def create_component(self, instance):
+        '''Create a component for the instance'''
+        kwargs = self.kwargs.copy()
+        kwargs['name'] = self.get_name(instance)
+
+        sub_prefix = self.get_sub_prefix(instance)
+
+        clsname = self.clsname
+        if clsname is None:
+            clsname = ''.join((instance.__class__.__name__,
+                               self.attr.capitalize()))
+
+        clsdict = dict(_sep=self.get_separator(instance),
+                       __doc__='{} sub-device'.format(clsname),
+                       )
+
+        for defn in self.defns:
+            for attr, (cls, suffix, kwargs) in defn.items():
+                clsdict[attr] = Component(cls, suffix, **kwargs)
+
+        cls = type(clsname, (OphydDevice, ), clsdict)
+        return cls(sub_prefix, **self.kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+
+        if self.attr not in instance._signals:
+            instance._signals[self.attr] = self.create_component(instance)
+
+        return instance._signals[self.attr]
+
+    def __set__(self, instance, owner):
+        raise RuntimeError('Use .put()')
+
+    @staticmethod
+    def make_def(cls, field_name, suffix, range_, format_key='index',
+                 **kwargs):
+        defn = OrderedDict()
+        for i in range_:
+            fmt_dict = {format_key: i}
+            attr = field_name.format(**fmt_dict)
+            defn[attr] = (cls, suffix.format(**fmt_dict), kwargs)
+
+        return defn
 
 
 class ComponentMeta(type):

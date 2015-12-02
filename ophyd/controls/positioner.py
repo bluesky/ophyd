@@ -17,8 +17,7 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from ..utils import TimeoutError, DisconnectedError
 from ..utils.epics_pvs import raise_if_disconnected
 from .ophydobj import MoveStatus
-from .device import OphydDevice
-from .components import Component as C
+from .device import (OphydDevice, Component as C)
 logger = logging.getLogger(__name__)
 
 
