@@ -85,22 +85,15 @@ class Component:
 
 
 class DynamicComponent:
-    def __init__(self, sub_prefix, *defns, clsname=None, **kwargs):
-        self.defns = defns
+    def __init__(self, defn, clsname=None, **kwargs):
+        self.defn = defn
         self.clsname = clsname
         self.attr = None  # attr is set later by the device when known
         self.lazy = False
         self.kwargs = kwargs
-        self.sub_prefix = sub_prefix
 
         # TODO: component compatibility
         self.trigger_value = None
-
-    def get_sub_prefix(self, instance):
-        '''Get the sub prefix from an instance'''
-        # Optionally use a separator from the instance
-        sep = self.get_separator(instance)
-        return sep.join((instance.prefix, self.sub_prefix))
 
     def get_separator(self, instance):
         if hasattr(instance, '_sep'):
@@ -113,8 +106,6 @@ class DynamicComponent:
         kwargs = self.kwargs.copy()
         kwargs['name'] = '{}.{}'.format(instance.name, self.attr)
 
-        sub_prefix = self.get_sub_prefix(instance)
-
         clsname = self.clsname
         if clsname is None:
             clsname = ''.join((instance.__class__.__name__,
@@ -124,12 +115,11 @@ class DynamicComponent:
                        __doc__='{} sub-device'.format(clsname),
                        )
 
-        for defn in self.defns:
-            for attr, (cls, suffix, kwargs) in defn.items():
-                clsdict[attr] = Component(cls, suffix, **kwargs)
+        for attr, (cls, suffix, kwargs) in self.defn.items():
+            clsdict[attr] = Component(cls, suffix, **kwargs)
 
         cls = type(clsname, (OphydDevice, ), clsdict)
-        return cls(sub_prefix, **self.kwargs)
+        return cls(instance.prefix, **self.kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
