@@ -24,26 +24,13 @@ class EpicsScaler(OphydDevice):
     '''SynApps Scaler Record interface'''
 
     count = C(EpicsSignal, '.CNT', trigger_value=1)
-    count_mode = C(EpicsSignal, '.CONT')
+    count_mode = C(EpicsSignal, '.CONT', string=True)
     time = C(EpicsSignal, '.T')
     preset_time = C(EpicsSignal, '.TP')
     auto_count_time = C(EpicsSignal, '.TP1')
     channels = DC(_scaler_fields('chan', '.S', range(1, 33)))
     presets = DC(_scaler_fields('preset', '.PR', range(1, 33)))
     gates = DC(_scaler_fields('gate', '.G', range(1, 33)))
-
-    @property
-    def auto_count(self):
-        """Return the autocount status"""
-        return (self.count_mode.get() == 1)
-
-    @auto_count.setter
-    def auto_count(self, val):
-        """Set the autocount status"""
-        if val:
-            self.count_mode.put(1)
-        else:
-            self.count_mode.put(0)
 
     def configure(self, state=None):
         """Configure Scaler
