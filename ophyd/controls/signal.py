@@ -34,8 +34,6 @@ class Signal(OphydObject):
         The initial value
     setpoint : any, optional
         The initial setpoint value
-    recordable : bool
-        A flag to indicate if the signal is recordable by DAQ
     timestamp : float, optional
         The timestamp associated with the initial value. Defaults to the
         current local time.
@@ -47,7 +45,7 @@ class Signal(OphydObject):
     SUB_VALUE = 'value'
 
     def __init__(self, separate_readback=False, value=None, setpoint=None,
-                 recordable=True, timestamp=None, setpoint_ts=None,
+                 timestamp=None, setpoint_ts=None,
                  **kwargs):
 
         self._default_sub = self.SUB_VALUE
@@ -58,7 +56,6 @@ class Signal(OphydObject):
 
         self._setpoint = setpoint
         self._readback = value
-        self._recordable = recordable
 
         self._separate_readback = separate_readback
 
@@ -89,11 +86,6 @@ class Signal(OphydObject):
     def timestamp(self):
         '''Timestamp of the readback value'''
         return self._timestamp
-
-    @property
-    def recordable(self):
-        """Return if this signal is recordable by the DAQ"""
-        return self._recordable
 
     def __repr__(self):
         repr = ['value={0.value!r}'.format(self),
