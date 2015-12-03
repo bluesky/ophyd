@@ -566,9 +566,6 @@ class SignalGroup(OphydObject):
         if self._signals:
             repr.append('signals={0._signals!r}'.format(self))
 
-        if self._alias:
-            repr.append('alias={0._alias!r}'.format(self))
-
         return self._get_repr(repr)
 
     def __len__(self):
@@ -607,9 +604,6 @@ class SignalGroup(OphydObject):
             return
 
         self._signals.append(signal)
-
-        if prop_name is None:
-            prop_name = signal.alias
 
         if prop_name:
             setattr(self, prop_name, signal)
@@ -693,24 +687,16 @@ class SignalGroup(OphydObject):
         return [signal.report for signal in self._signals]
 
     def describe(self):
-        """Describe for data acquisition the signals of the group
-
-        This property uses the `recordable` flag in ophyd to filter
-        the returned signals of the signal group"""
+        """Describe for data acquisition the signals of the group"""
         descs = {}
-        [descs.update(signal.describe()) for signal in self._signals
-         if signal.recordable]
+        [descs.update(signal.describe()) for signal in self._signals]
         return descs
 
     def read(self):
-        """Read signals for data acquisition
-
-        This method uses the `recordable` flag in ophyd to filter
-        the returned signals of the signal group"""
+        """Read signals for data acquisition"""
         values = {}
         for signal in self._signals:
-            if signal.recordable:
-                values.update(signal.read())
+            values.update(signal.read())
 
         return values
 

@@ -300,11 +300,11 @@ class OphydDevice(DeviceBase, OphydObject):
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
     def __init__(self, prefix=None, read_signals=None,
-                 name=None, alias=None):
+                 name=None):
         if name is None:
             name = prefix
 
-        OphydObject.__init__(self, name=name, alias=alias)
+        OphydObject.__init__(self, name=name)
         DeviceBase.__init__(self, prefix, read_signals=read_signals)
 
         # set should work using signature-stuff

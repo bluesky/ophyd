@@ -166,21 +166,17 @@ class OphydObject(object):
     ----------
     name : str, optional
         The name of the object.  If None, registration is disabled.
-    alias : str, optional
-        A [potentially simplified] alias of the object
 
     Attributes
     ----------
     name
-    alias
     '''
 
     _default_sub = None
 
-    def __init__(self, name=None, alias=None):
+    def __init__(self, name=None):
         super().__init__()
         self._name = name
-        self._alias = alias
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
@@ -307,11 +303,6 @@ class OphydObject(object):
     def name(self):
         return self._name
 
-    @property
-    def alias(self):
-        '''An alternative name for the signal'''
-        return self._alias
-
     def check_value(self, value, **kwargs):
         '''Check if the value is valid for this object
 
@@ -343,9 +334,6 @@ class OphydObject(object):
 
         if info:
             _repr.extend(info)
-
-        if self._alias:
-            _repr.append('alias={0._alias!r}'.format(self))
 
         return '{}({})'.format(self.__class__.__name__, ', '.join(_repr))
 

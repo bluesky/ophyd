@@ -10,7 +10,8 @@ from ophyd.utils.epics_pvs import record_field
 
 def test():
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-        logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
+        logger.info('[callback] [%s] (type=%s) value=%s', timestamp, sub_type,
+                    value)
 
         # Test that the monitor dispatcher works (you cannot use channel access in
         # callbacks without it)
@@ -27,7 +28,6 @@ def test():
     rbv = record_field(motor_record, 'RBV')
 
     rw_signal = EpicsSignal(rbv, write_pv=val)
-                            # put_complete=True)
     rw_signal.subscribe(callback, event_type=rw_signal.SUB_VALUE)
     rw_signal.subscribe(callback, event_type=rw_signal.SUB_SETPOINT)
 

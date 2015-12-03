@@ -240,15 +240,14 @@ class SignalTests(unittest.TestCase):
         start_t = time.time()
         setpoint_t = start_t + 1
 
-        name, alias = 'test', 't'
+        name = 'test'
         value, setpoint = 10.0, 20.0
-        signal = Signal(name=name, alias=alias,
+        signal = Signal(name=name,
                         value=value, setpoint=setpoint,
                         timestamp=start_t, setpoint_ts=setpoint_t,
                         separate_readback=separate)
 
         self.assertEquals(signal.name, name)
-        self.assertEquals(signal.alias, alias)
         self.assertEquals(signal.value, value)
         self.assertEquals(signal.get(), value)
         self.assertEquals(signal.setpoint, setpoint)
@@ -314,8 +313,7 @@ class SignalTests(unittest.TestCase):
         values = [10, 20, 30]
         timestamps = [start_t + i for i in range(len(values))]
 
-        signals = [Signal(name=name, alias=name + '.alias',
-                          value=value, timestamp=ts)
+        signals = [Signal(name=name, value=value, timestamp=ts)
                    for name, value, ts in zip(names, values, timestamps)]
 
         group = SignalGroup(signals=signals)
@@ -460,9 +458,9 @@ class SignalTests(unittest.TestCase):
         start_t = time.time()
         setpoint_t = start_t + 1
 
-        name, alias = 'test', 't'
+        name = 'test'
         value, setpoint = 10.0, 20.0
-        signal = Signal(name=name, alias=alias,
+        signal = Signal(name=name,
                         value=value, setpoint=setpoint,
                         timestamp=start_t, setpoint_ts=setpoint_t,
                         separate_readback=True)
@@ -471,7 +469,6 @@ class SignalTests(unittest.TestCase):
         # sig_copy = copy.copy(signal)
 
         # self.assertEquals(signal.name, sig_copy.name)
-        # self.assertEquals(signal.alias, sig_copy.alias)
         # self.assertEquals(signal.value, sig_copy.value)
         # self.assertEquals(signal.get(), sig_copy.get())
         # self.assertEquals(signal.setpoint, sig_copy.setpoint)
