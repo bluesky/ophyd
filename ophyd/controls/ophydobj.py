@@ -253,7 +253,7 @@ class OphydObject(object):
             generated
         event_type : str, optional
             The name of the event to subscribe to (if None, defaults to
-            SignalGroup._default_sub)
+            the default sub for the instance - obj._default_sub)
         run : bool, optional
             Run the callback now
         '''

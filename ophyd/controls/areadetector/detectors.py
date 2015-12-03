@@ -17,9 +17,18 @@ import re
 import sys
 
 from ..ophydobj import OphydObject
-from ..signal import (Signal, EpicsSignal, SignalGroup)
+from ..signal import (Signal, EpicsSignal)
 from . import docs
 from ...utils import enum
+
+
+# TODO: removal of signalgroup, need to move to OphydDevices here
+class SignalGroup:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def add_signal(self, *args, **kwargs):
+        pass
 
 
 logger = logging.getLogger(__name__)

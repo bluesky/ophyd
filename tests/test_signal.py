@@ -14,8 +14,7 @@ from numpy.testing import assert_array_equal
 
 import epics
 
-from ophyd.controls.signal import (Signal, SignalGroup,
-                                   EpicsSignal)
+from ophyd.controls.signal import (Signal, EpicsSignal)
 from ophyd.utils import ReadOnlyError
 
 logger = logging.getLogger(__name__)
@@ -305,42 +304,6 @@ class SignalTests(unittest.TestCase):
         signal.read()
         eval(repr(signal))
         signal.report
-
-    def test_signalgroup(self):
-        start_t = time.time()
-
-        names = ['s0', 's1', 's2']
-        values = [10, 20, 30]
-        timestamps = [start_t + i for i in range(len(values))]
-
-        signals = [Signal(name=name, value=value, timestamp=ts)
-                   for name, value, ts in zip(names, values, timestamps)]
-
-        group = SignalGroup(signals=signals)
-
-        assert_array_equal(group.value, values)
-        assert_array_equal(group.get(), values)
-        assert_array_equal(group.get_setpoint(), values)
-        assert_array_equal(group.signals, signals)
-        assert_array_equal(group.setpoint_ts,
-                           [sig.setpoint_ts for sig in signals])
-        assert_array_equal(group.timestamp, timestamps)
-
-        values = [30, 40, 50]
-        new_ts = time.time()
-        group.put(values, timestamp=new_ts)
-        assert_array_equal(group.value, values)
-        assert_array_equal(group.setpoint, values)
-
-        group.read()
-        group.report
-
-        eval(repr(group))
-
-        # TODO why do signalgroups have pvnames?
-        assert_array_equal(group.pvname, [None] * 3)
-        assert_array_equal(group.setpoint_pvname, [None] * 3)
-        assert_array_equal(group.setpoint_ts, [new_ts] * 3)
 
     def test_epicssignal_readonly(self):
         epics.PV = FakeEpicsPV
