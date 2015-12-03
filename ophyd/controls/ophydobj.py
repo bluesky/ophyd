@@ -253,16 +253,21 @@ class OphydObject(object):
         Parameters
         ----------
         cb : callable
-            A callable function (that takes kwargs)
-            to be run when the event is generated
+            A callable function (that takes kwargs) to be run when the event is
+            generated
         event_type : str, optional
-            The name of the event to subscribe to (if None,
-            defaults to SignalGroup._default_sub)
+            The name of the event to subscribe to (if None, defaults to
+            SignalGroup._default_sub)
         run : bool, optional
             Run the callback now
         '''
         if event_type is None:
             event_type = self._default_sub
+
+        if event_type is None:
+            raise ValueError('Subscription type not set and object {} of class '
+                             '{} has no default subscription set'
+                             ''.format(self.name, self.__class__.__name__))
 
         try:
             self._subs[event_type].append(cb)
