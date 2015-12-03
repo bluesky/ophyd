@@ -5,72 +5,81 @@ import time
 import epics
 
 import config
-from ophyd.controls import (PVPositioner, EpicsMotor)
-
+from ophyd.controls import PVPositioner
+from ophyd.controls.signal import (EpicsSignal, EpicsSignalRO)
+from ophyd.controls.device import (Component as C)
 
 logger = None
 
 
 def put_complete_test():
-    motor_record = config.motor_recs[0]
-    mrec = EpicsMotor(motor_record)
-
     logger.info('--> PV Positioner, using put completion and a DONE pv')
-    # PV positioner, put completion, done pv
-    pos = PVPositioner(mrec.field_pv('VAL'),
-                       readback=mrec.field_pv('RBV'),
-                       done=mrec.field_pv('MOVN'), done_val=0,
-                       put_complete=True,
-                       )
 
-    high_lim = pos._setpoint.high_limit
+    class MyPositioner(PVPositioner):
+        '''PV positioner, put completion with a done pv'''
+        setpoint = C(EpicsSignal, '.VAL')
+        readback = C(EpicsSignalRO, '.RBV')
+        done = C(EpicsSignalRO, '.MOVN')
+        done_value = 0
+        put_complete = True
+
+    pos = MyPositioner(config.motor_recs[0], name='mypos_pc_done')
+    pos.wait_for_connection()
+
+    high_lim = pos.setpoint.high_limit
     try:
         pos.check_value(high_lim + 1)
     except ValueError as ex:
-        logger.info('Check value for single failed, as expected (%s)' % ex)
+        logger.info('Check value for single failed, as expected (%s)', ex)
     else:
         print('high lim is %f' % high_lim)
         raise ValueError('check_value should have failed')
 
     stat = pos.move(1, wait=False)
-    logger.info('--> post-move request, moving=%s' % pos.moving)
+    logger.info('--> post-move request, moving=%s', pos.moving)
 
     while not stat.done:
-        logger.info('--> moving... %s error=%s' % (stat, stat.error))
+        logger.info('--> moving... %s error=%s', stat, stat.error)
         time.sleep(0.1)
 
     pos.move(-1, wait=True)
-    logger.info('--> synchronous move request, moving=%s' % pos.moving)
+    logger.info('--> synchronous move request, moving=%s', pos.moving)
 
     logger.info('--> PV Positioner, using put completion and no DONE pv')
+
     # PV positioner, put completion, no done pv
-    pos = PVPositioner(mrec.field_pv('VAL'),
-                       readback=mrec.field_pv('RBV'),
-                       put_complete=True,
-                       )
+    class MyPositioner(PVPositioner):
+        '''PV positioner, put completion with a done pv'''
+        setpoint = C(EpicsSignal, '.VAL')
+        readback = C(EpicsSignalRO, '.RBV')
+        put_complete = True
+
+    pos = MyPositioner(config.motor_recs[0], name='mypos_pc_nodone')
 
     stat = pos.move(2, wait=False)
-    logger.info('--> post-move request, moving=%s' % pos.moving)
+    logger.info('--> post-move request, moving=%s', pos.moving)
 
     while not stat.done:
-        logger.info('--> moving... %s' % stat)
+        logger.info('--> moving... %s', stat)
         time.sleep(0.1)
 
     pos.move(0, wait=True)
-    logger.info('--> synchronous move request, moving=%s' % pos.moving)
+    logger.info('--> synchronous move request, moving=%s', pos.moving)
+
+
+def callback(sub_type=None, timestamp=None, value=None, **kwargs):
+    logger.info('[callback] [%s] (type=%s) value=%s', timestamp, sub_type,
+                value)
+
+
+def done_moving(**kwargs):
+    logger.info('Done moving %s', kwargs)
 
 
 def test():
     global logger
 
-    def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-        logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
-
-    def done_moving(**kwargs):
-        logger.info('Done moving %s' % (kwargs, ))
-
-    loggers = ('ophyd.controls.signal',
-               'ophyd.controls.positioner',
+    loggers = ('ophyd.controls',
                )
 
     config.setup_loggers(loggers)
@@ -112,7 +121,7 @@ def test():
         time.sleep(1)
         logger.info('--> move to 0')
         pos.move(0, wait=False, moved_cb=done_moving)
-        logger.info('--> post-move request, moving=%s' % pos.moving)
+        logger.info('--> post-move request, moving=%s', pos.moving)
         time.sleep(2)
         # m2.move(1)
 
