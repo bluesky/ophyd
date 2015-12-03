@@ -16,8 +16,8 @@ import numpy as np
 
 import epics
 
-from .detectors import (ADBase, NDArrayDriver,
-                        ADSignal, ADSignalGroup)
+from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup,
+                   NDArrayDriver)
 from ...utils import enum
 
 
@@ -782,3 +782,6 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
         raise ValueError('Unable to determine plugin type')
 
     return class_(prefix, suffix=suffix, **kwargs)
+
+
+update_docstrings(globals())
