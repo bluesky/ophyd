@@ -1,11 +1,23 @@
 from __future__ import print_function
 import logging
 
+from collections import OrderedDict
+
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import OphydDevice
 from .device import (Component as C, DynamicComponent as DC)
 
 logger = logging.getLogger(__name__)
+
+
+def _scaler_fields(attr_base, field_base, range_, **kwargs):
+    defn = OrderedDict()
+    for i in range_:
+        attr = '{attr}{i}'.format(attr=attr_base, i=i)
+        suffix = '{field}{i}'.format(field=field_base, i=i)
+        defn[attr] = (EpicsSignalRO, suffix, kwargs)
+
+    return defn
 
 
 class EpicsScaler(OphydDevice):
@@ -16,10 +28,9 @@ class EpicsScaler(OphydDevice):
     time = C(EpicsSignal, '.T')
     preset_time = C(EpicsSignal, '.TP')
     auto_count_time = C(EpicsSignal, '.TP1')
-    channels = DC(DC.make_def(EpicsSignalRO, 'chan{index}', '.S{index:d}',
-                              range(1, 33)))
-    # presets = DC('', DC.make_def(EpicsSignalRO, '.PR{index:d}')
-    # gates = DC('', DC.make_def(EpicsSignalRO, '.G{index:d}')
+    channels = DC(_scaler_fields('chan', '.S', range(1, 33)))
+    presets = DC(_scaler_fields('preset', '.PR', range(1, 33)))
+    gates = DC(_scaler_fields('gate', '.G', range(1, 33)))
 
     @property
     def auto_count(self):

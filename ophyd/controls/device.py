@@ -147,16 +147,17 @@ class DynamicComponent:
     def __set__(self, instance, owner):
         raise RuntimeError('Use .put()')
 
-    @staticmethod
-    def make_def(cls, field_name, suffix, range_, format_key='index',
-                 **kwargs):
-        defn = OrderedDict()
-        for i in range_:
-            fmt_dict = {format_key: i}
-            attr = field_name.format(**fmt_dict)
-            defn[attr] = (cls, suffix.format(**fmt_dict), kwargs)
 
-        return defn
+def range_def(cls, field_name, suffix, range_, format_key='index',
+              **kwargs):
+    '''Create a DynamicComponent definition based on a range of indices'''
+    defn = OrderedDict()
+    for i in range_:
+        fmt_dict = {format_key: i}
+        attr = field_name.format(**fmt_dict)
+        defn[attr] = (cls, suffix.format(**fmt_dict), kwargs)
+
+    return defn
 
 
 class ComponentMeta(type):
