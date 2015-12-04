@@ -15,8 +15,8 @@ import time
 
 from ...utils import enum
 from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup)
-
-from . import plugins
+from .base import (ADComponent as ADC, ad_group)
+from ..device import DynamicComponent as DC
 
 logger = logging.getLogger(__name__)
 
@@ -114,121 +114,6 @@ class AreaDetector(ADBase):
     temperature_actual = ADSignal('TemperatureActual')
     time_remaining = ADSignal('TimeRemaining_RBV', rw=False)
     trigger_mode = ADSignal('TriggerMode', has_rbv=True)
-
-    # def _add_plugin_by_suffix(self, suffix, type_=None, **kwargs):
-    #     if type_ is None:
-    #         type_ = plugins.get_areadetector_plugin_class(self._base_prefix,
-    #                                                       suffix=suffix)
-    #
-    #     if issubclass(type_, plugins.OverlayPlugin):
-    #         kwargs = dict(kwargs)
-    #         kwargs['first_overlay'] = suffix[1]
-    #         kwargs['count'] = suffix[2]
-    #         suffix = suffix[0]
-    #
-    #     prop_name = name_from_pv(suffix)
-    #     full_name = '%s.%s' % (self.name, prop_name)
-    #
-    #     prefix = self._base_prefix
-    #     instance = type_(prefix, suffix=suffix, name=full_name, detector=self,
-    #                      **kwargs)
-    #     setattr(self, prop_name, instance)
-    #
-    #     # TODO better way to do this?
-    #     if type_ not in self._plugins:
-    #         self._plugins[type_] = []
-    #
-    #     self._plugins[type_].append(instance)
-    #     return instance
-
-    def _plugins_of_type(self, type_, subclasses=True):
-        if not subclasses:
-            return self._plugins.get(type_, [])
-
-        ret = []
-        for t, pl in self._plugins.items():
-            if issubclass(type_, t):
-                ret.extend(pl)
-
-        return ret
-
-    @property
-    def images(self):
-        return self._plugins_of_type(plugins.ImagePlugin)
-
-    def __init__(self, prefix, cam='cam1:',
-                 images=['image1:', ],
-                 rois=['ROI1:', 'ROI2:', 'ROI3:', 'ROI4:'],
-                 files=['TIFF1:', 'netCDF1:', 'JPEG1:', 'Nexus1:',
-                        'HDF1:', 'Magick1:', ],
-                 procs=['Proc1:', ],
-                 stats=['Stats1:', 'Stats2:', 'Stats3:', 'Stats4:', 'Stats5:', ],
-                 ccs=['CC1:', 'CC2:', ],
-                 trans=['Trans1:', ],
-                 over=[['Over1:', 1, 8], ],
-                 **kwargs):
-
-        self._base_prefix = prefix
-        self._plugins = {}
-
-        if cam and not prefix.endswith(cam):
-            prefix = ''.join([prefix, cam])
-
-        ADBase.__init__(self, prefix, **kwargs)
-
-        groups = [(images, plugins.ImagePlugin),
-                  (files, None),
-                  (procs, plugins.ProcessPlugin),
-                  (stats, plugins.StatsPlugin),
-                  (ccs, plugins.ColorConvPlugin),
-                  (trans, plugins.TransformPlugin),
-                  (over, plugins.OverlayPlugin),
-                  ]
-
-        # for suffixes, type_ in groups:
-        #     for suffix in suffixes:
-        #         self._add_plugin_by_suffix(suffix, type_)
-
-        self.overlays = [plugins.OverlayPlugin(self._base_prefix, suffix=o[0],
-                                               first_overlay=o[1], count=o[2],
-                                               detector=self)
-                         for o in over]
-
-    # TODO all reads should allow a timeout kw?
-    # TODO handling multiple images even possible, or just assume single shot
-    #      always?
-    def read(self, timeout=None):
-        start_mode = self.image_mode.value
-        start_acquire = self.acquire.value
-
-        self.acquire = 0
-
-        time.sleep(0.01)
-
-        if self.image_mode.value == self.ImageMode.CONTINUOUS:
-            self.image_mode = 0  # single mode
-            logger.debug('%s: Setting to single image mode' % self)
-
-        time.sleep(0.01)
-
-        try:
-            self.acquire = 1
-            time.sleep(0.01)
-            logger.debug('%s: Waiting for completion' % self)
-            while self.detector_state.value != 0 and self.acquire.value:
-                time.sleep(0.01)
-
-            images = [im.image for im in self.images]
-
-            logger.debug('%s: Acquired %d image(s)' % (self, len(images)))
-            if len(images) == 1:
-                return images[0]
-            else:
-                return images
-        finally:
-            logger.debug('%s: Putting detector back into original state' % self)
-            self.image_mode = start_mode
-            self.acquire.put(start_acquire, wait=False)
 
 
 class SimDetector(AreaDetector):
