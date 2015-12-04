@@ -215,17 +215,25 @@ class ComponentMeta(type):
         return clsobj
 
 
-class DeviceBase(metaclass=ComponentMeta):
+class OphydDevice(OphydObject, metaclass=ComponentMeta):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be
     a mixture of read-only and writable. All must share the same base_name.
     """
-    def __init__(self, prefix, read_signals=None):
+
+    SUB_ACQ_DONE = 'acq_done'  # requested acquire
+
+    def __init__(self, prefix, read_signals=None, name=None):
         self.prefix = prefix
         if self.signal_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
                              'used')
+
+        if name is None:
+            name = prefix
+
+        OphydObject.__init__(self, name=name)
 
         if read_signals is None:
             read_signals = self.signal_names
@@ -302,28 +310,6 @@ class DeviceBase(metaclass=ComponentMeta):
 
         return desc
 
-    def stop(self):
-        "to be defined by subclass"
-        pass
-
-    def trigger(self):
-        "to be defined by subclass"
-        pass
-
-
-class OphydDevice(DeviceBase, OphydObject):
-    SUB_ACQ_DONE = 'acq_done'  # requested acquire
-
-    def __init__(self, prefix=None, read_signals=None,
-                 name=None):
-        if name is None:
-            name = prefix
-
-        OphydObject.__init__(self, name=name)
-        DeviceBase.__init__(self, prefix, read_signals=read_signals)
-
-        # set should work using signature-stuff
-
     @property
     def trigger_signals(self):
         names = [attr for cpt, attr in self._sig_attrs.items()
@@ -357,3 +343,7 @@ class OphydDevice(DeviceBase, OphydObject):
                        success=True, **kwargs)
 
         self._reset_sub(self.SUB_ACQ_DONE)
+
+    def stop(self):
+        "to be defined by subclass"
+        pass
