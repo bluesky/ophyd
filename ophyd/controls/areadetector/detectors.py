@@ -14,8 +14,8 @@ import logging
 import time
 
 from ...utils import enum
-from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup,
-                   name_from_pv, NDArrayDriver)
+from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup)
+
 from . import plugins
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ __all__ = ['AreaDetector',
            ]
 
 
-class AreaDetector(NDArrayDriver):
+class AreaDetector(ADBase):
     _html_docs = ['areaDetectorDoc.html']
 
     ImageMode = enum(SINGLE=0, MULTIPLE=1, CONTINUOUS=2)
@@ -115,31 +115,31 @@ class AreaDetector(NDArrayDriver):
     time_remaining = ADSignal('TimeRemaining_RBV', rw=False)
     trigger_mode = ADSignal('TriggerMode', has_rbv=True)
 
-    def _add_plugin_by_suffix(self, suffix, type_=None, **kwargs):
-        if type_ is None:
-            type_ = plugins.get_areadetector_plugin_class(self._base_prefix,
-                                                          suffix=suffix)
-
-        if issubclass(type_, plugins.OverlayPlugin):
-            kwargs = dict(kwargs)
-            kwargs['first_overlay'] = suffix[1]
-            kwargs['count'] = suffix[2]
-            suffix = suffix[0]
-
-        prop_name = name_from_pv(suffix)
-        full_name = '%s.%s' % (self.name, prop_name)
-
-        prefix = self._base_prefix
-        instance = type_(prefix, suffix=suffix, name=full_name, detector=self,
-                         **kwargs)
-        setattr(self, prop_name, instance)
-
-        # TODO better way to do this?
-        if type_ not in self._plugins:
-            self._plugins[type_] = []
-
-        self._plugins[type_].append(instance)
-        return instance
+    # def _add_plugin_by_suffix(self, suffix, type_=None, **kwargs):
+    #     if type_ is None:
+    #         type_ = plugins.get_areadetector_plugin_class(self._base_prefix,
+    #                                                       suffix=suffix)
+    #
+    #     if issubclass(type_, plugins.OverlayPlugin):
+    #         kwargs = dict(kwargs)
+    #         kwargs['first_overlay'] = suffix[1]
+    #         kwargs['count'] = suffix[2]
+    #         suffix = suffix[0]
+    #
+    #     prop_name = name_from_pv(suffix)
+    #     full_name = '%s.%s' % (self.name, prop_name)
+    #
+    #     prefix = self._base_prefix
+    #     instance = type_(prefix, suffix=suffix, name=full_name, detector=self,
+    #                      **kwargs)
+    #     setattr(self, prop_name, instance)
+    #
+    #     # TODO better way to do this?
+    #     if type_ not in self._plugins:
+    #         self._plugins[type_] = []
+    #
+    #     self._plugins[type_].append(instance)
+    #     return instance
 
     def _plugins_of_type(self, type_, subclasses=True):
         if not subclasses:
@@ -185,9 +185,9 @@ class AreaDetector(NDArrayDriver):
                   (over, plugins.OverlayPlugin),
                   ]
 
-        for suffixes, type_ in groups:
-            for suffix in suffixes:
-                self._add_plugin_by_suffix(suffix, type_)
+        # for suffixes, type_ in groups:
+        #     for suffix in suffixes:
+        #         self._add_plugin_by_suffix(suffix, type_)
 
         self.overlays = [plugins.OverlayPlugin(self._base_prefix, suffix=o[0],
                                                first_overlay=o[1], count=o[2],

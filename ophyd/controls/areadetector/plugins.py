@@ -16,8 +16,7 @@ import numpy as np
 
 import epics
 
-from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup,
-                   NDArrayDriver)
+from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup)
 from ...utils import enum
 
 
@@ -42,7 +41,7 @@ __all__ = ['ColorConvPlugin',
            ]
 
 
-class PluginBase(NDArrayDriver):
+class PluginBase(ADBase):
     '''AreaDetector plugin base class'''
     _html_docs = ['pluginDoc.html']
 
