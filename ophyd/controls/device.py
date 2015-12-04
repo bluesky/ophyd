@@ -373,7 +373,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         if kw_set != sig_set:
             missing = sig_set - kw_set
             unknown = kw_set - sig_set
-            msg = ['Required set of signals do not match. ']
+            msg = ['Required set of signals does not match. ']
             if missing:
                 msg.append('\tMissing keys: {}'.format(', '.join(missing)))
             if unknown:
