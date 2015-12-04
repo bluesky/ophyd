@@ -127,9 +127,9 @@ class DynamicComponent:
             clsname = ''.join((instance.__class__.__name__,
                                self.attr.capitalize()))
 
-        clsdict = dict(_sep=self.get_separator(instance),
-                       __doc__='{} sub-device'.format(clsname),
-                       )
+        clsdict = OrderedDict(_sep=self.get_separator(instance),
+                              __doc__='{} sub-device'.format(clsname),
+                              )
 
         for attr in self.defn.keys():
             clsdict[attr] = self.create_attr(attr)
