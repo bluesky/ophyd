@@ -69,7 +69,16 @@ class Component:
 
         # Otherwise, we only have suffix to update
         pv_name = self.get_pv_name(instance, 'suffix', self.suffix)
-        return self.cls(pv_name, **kwargs)
+
+        cpt_inst = self.cls(pv_name, **kwargs)
+
+        if self.lazy and hasattr(self.cls, 'wait_for_connection'):
+            cpt_inst.wait_for_connection()
+
+        return cpt_inst
+
+    def make_docstring(self):
+        return '{} component with suffix {}'.format(self.attr, self.suffix)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -94,6 +103,10 @@ class DynamicComponent:
         # TODO: component compatibility
         self.trigger_value = None
         self.attrs = list(defn.keys())
+
+    def make_docstring(self):
+        return '{} dynamiccomponent containing {}'.format(self.attr,
+                                                          self.attrs)
 
     def get_separator(self, instance):
         if hasattr(instance, '_sep'):
@@ -166,22 +179,19 @@ class ComponentMeta(type):
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
 
-        # map component attribute names to Component classes
-        sig_dict = {attr: value for attr, value in clsdict.items()
-                    if isinstance(value, (Component, DynamicComponent))}
-
-        # maps component to attribute names
-        clsobj._sig_attrs = {cpt: name
-                             for name, cpt in sig_dict.items()}
-
-        for cpt, attr in clsobj._sig_attrs.items():
-            cpt.attr = attr
+        # map component classes to their attribute names
+        clsobj._sig_attrs = {value: attr for attr, value in clsdict.items()
+                             if isinstance(value, (Component, DynamicComponent))
+                             }
 
         # since we have a hierarchy of devices/sub-devices, note which
         # components belong to which device
         clsobj._sig_owner = {}
 
-        for cpt_attr, cpt in sig_dict.items():
+        for cpt, cpt_attr in clsobj._sig_attrs.items():
+            # Notify the component of their attribute name
+            cpt.attr = cpt_attr
+
             if isinstance(cpt, DynamicComponent):
                 # owner = None means the object itself
                 clsobj._sig_owner[cpt_attr] = None
@@ -192,8 +202,10 @@ class ComponentMeta(type):
             elif isinstance(cpt, Component):
                 clsobj._sig_owner[cpt_attr] = None
 
+            cpt.__doc__ = cpt.make_docstring()
+
         # List Signal attribute names.
-        clsobj.signal_names = list(sig_dict.keys())
+        clsobj.signal_names = list(clsobj._sig_attrs.values())
 
         # Store EpicsSignal objects (only created once they are accessed)
         clsobj._signals = {}
