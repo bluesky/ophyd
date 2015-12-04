@@ -132,11 +132,19 @@ class DynamicComponent:
         '''Create a component for the instance'''
         clsname = self.clsname
         if clsname is None:
+            # make up a class name based on the instance's class name
             clsname = ''.join((instance.__class__.__name__,
                                self.attr.capitalize()))
 
+            # TODO: and if the attribute has any underscores, convert that to
+            #       camelcase
+
+        docstring = self.doc
+        if docstring is None:
+            docstring = '{} sub-device'.format(clsname)
+
         clsdict = OrderedDict(_sep=self.get_separator(instance),
-                              __doc__='{} sub-device'.format(clsname),
+                              __doc__=docstring,
                               )
 
         for attr in self.defn.keys():
