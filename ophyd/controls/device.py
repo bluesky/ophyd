@@ -30,12 +30,13 @@ class Component:
     '''
 
     def __init__(self, cls, suffix, lazy=False, trigger_value=None,
-                 add_prefix=None, **kwargs):
+                 add_prefix=None, doc=None, **kwargs):
         self.attr = None  # attr is set later by the device when known
         self.cls = cls
         self.kwargs = kwargs
         self.lazy = lazy
         self.suffix = suffix
+        self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
 
         if add_prefix is None:
@@ -78,6 +79,9 @@ class Component:
         return cpt_inst
 
     def make_docstring(self, parent_class):
+        if self.doc is not None:
+            return self.doc
+
         return '{} component with suffix {}'.format(self.attr, self.suffix)
 
     def __get__(self, instance, owner):
@@ -94,17 +98,21 @@ class Component:
 
 
 class DynamicComponent:
-    def __init__(self, defn, clsname=None):
+    def __init__(self, defn, clsname=None, doc=None):
         self.defn = defn
         self.clsname = clsname
         self.attr = None  # attr is set later by the device when known
         self.lazy = False
+        self.doc = doc
 
         # TODO: component compatibility
         self.trigger_value = None
         self.attrs = list(defn.keys())
 
     def make_docstring(self, parent_class):
+        if self.doc is not None:
+            return self.doc
+
         return '{} dynamiccomponent containing {}'.format(self.attr,
                                                           self.attrs)
 
