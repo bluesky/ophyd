@@ -202,7 +202,7 @@ class EpicsSignal(Signal):
     read_pv : str
         The PV to read from
     write_pv : str, optional
-        The PV to write to required)
+        The PV to write to if different from the read PV
     rw : bool, optional
         Read-write signal (or read-only)
     pv_kw : dict, optional
