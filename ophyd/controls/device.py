@@ -77,7 +77,7 @@ class Component:
 
         return cpt_inst
 
-    def make_docstring(self):
+    def make_docstring(self, parent_class):
         return '{} component with suffix {}'.format(self.attr, self.suffix)
 
     def __get__(self, instance, owner):
@@ -104,7 +104,7 @@ class DynamicComponent:
         self.trigger_value = None
         self.attrs = list(defn.keys())
 
-    def make_docstring(self):
+    def make_docstring(self, parent_class):
         return '{} dynamiccomponent containing {}'.format(self.attr,
                                                           self.attrs)
 
@@ -202,13 +202,16 @@ class ComponentMeta(type):
             elif isinstance(cpt, Component):
                 clsobj._sig_owner[cpt_attr] = None
 
-            cpt.__doc__ = cpt.make_docstring()
-
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.values())
 
         # Store EpicsSignal objects (only created once they are accessed)
         clsobj._signals = {}
+
+        # Finally, create all the component docstrings
+        for cpt, cpt_attr in clsobj._sig_attrs.items():
+            cpt.__doc__ = cpt.make_docstring(clsobj)
+
         return clsobj
 
 
