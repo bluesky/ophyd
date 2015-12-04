@@ -1,6 +1,6 @@
 import time
 
-from collections import OrderedDict
+from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
 from ..utils import TimeoutError
@@ -176,17 +176,24 @@ def range_def(cls, field_name, suffix, range_, format_key='index',
 class ComponentMeta(type):
     '''Creates attributes for Components by inspecting class definition'''
 
+    @classmethod
+    def __prepare__(self, name, bases):
+        '''Prepare allows the class attribute dictionary to be ordered as
+        defined by the user'''
+        return OrderedDict()
+
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
 
         # map component classes to their attribute names
-        clsobj._sig_attrs = {value: attr for attr, value in clsdict.items()
-                             if isinstance(value, (Component, DynamicComponent))
-                             }
+        components = [(value, attr) for attr, value in clsdict.items()
+                      if isinstance(value, (Component, DynamicComponent))]
+
+        clsobj._sig_attrs = OrderedDict(components)
 
         # since we have a hierarchy of devices/sub-devices, note which
         # components belong to which device
-        clsobj._sig_owner = {}
+        clsobj._sig_owner = OrderedDict()
 
         for cpt, cpt_attr in clsobj._sig_attrs.items():
             # Notify the component of their attribute name
@@ -204,6 +211,10 @@ class ComponentMeta(type):
 
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.values())
+
+        # The namedtuple associated with the device
+        clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
+                                          rename=True)
 
         # Store EpicsSignal objects (only created once they are accessed)
         clsobj._signals = {}
@@ -295,7 +306,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     def read(self):
         # map names ("data keys") to actual values
-        values = {}
+        values = OrderedDict()
         for name in self.read_signals:
             signal = self._get_devattr(name)
             values.update(signal.read())
@@ -303,7 +314,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         return values
 
     def describe(self):
-        desc = {}
+        desc = OrderedDict()
         for name in self.read_signals:
             signal = self._get_devattr(name)
             desc.update(signal.describe())
@@ -345,5 +356,36 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         self._reset_sub(self.SUB_ACQ_DONE)
 
     def stop(self):
-        "to be defined by subclass"
+        '''to be defined by subclass'''
         pass
+
+    def get(self, **kwargs):
+        values = {}
+        for attr in self.signal_names:
+            signal = getattr(self, attr)
+            values[attr] = signal.get(**kwargs)
+
+        return self._device_tuple(**values)
+
+    def put(self, **kwargs):
+        kw_set = set(kwargs.keys())
+        sig_set = set(self.signal_names)
+        if kw_set != sig_set:
+            missing = sig_set - kw_set
+            unknown = kw_set - sig_set
+            msg = ['Required set of signals do not match. ']
+            if missing:
+                msg.append('\tMissing keys: {}'.format(', '.join(missing)))
+            if unknown:
+                msg.append('\tUnknown keys: {}'.format(', '.join(unknown)))
+            raise ValueError('\n'.join(msg))
+
+        for attr in self.signal_names:
+            value = kwargs[attr]
+            signal = getattr(self, attr)
+            signal.put(value, **kwargs)
+
+    @classmethod
+    def get_device_tuple(cls):
+        '''The device tuple associated with an OphydDevice class'''
+        return cls._device_tuple
