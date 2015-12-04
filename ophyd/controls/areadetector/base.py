@@ -2,6 +2,7 @@ from __future__ import print_function
 import inspect
 import re
 import sys
+from collections import OrderedDict
 
 from ..signal import (EpicsSignal, EpicsSignalRO)
 from . import docs
@@ -60,6 +61,14 @@ class SignalGroup:
 
     def add_signal(self, *args, **kwargs):
         pass
+
+
+def ad_group(cls, attr_suffix, **kwargs):
+    '''Definition creation for groups of signals in areadetectors'''
+    defn = OrderedDict()
+    for attr, suffix in attr_suffix:
+        defn[attr] = (cls, suffix, kwargs)
+    return defn
 
 
 class ADBase(OphydDevice):
