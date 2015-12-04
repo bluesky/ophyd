@@ -11,7 +11,6 @@
 
 from __future__ import print_function
 import logging
-import time
 
 from ...utils import enum
 from .base import (ADBase, ADComponent as ADC, ad_group, ADEpicsSignal)
@@ -21,26 +20,26 @@ from ..device import DynamicComponent as DC
 logger = logging.getLogger(__name__)
 
 
-# __all__ = ['AreaDetector',
-#            'Andor3Detector',
-#            'AndorDetector',
-#            'BrukerDetector',
-#            'FirewireLinDetector',
-#            'FirewireWinDetector',
-#            'LightFieldDetector',
-#            'Mar345Detector',
-#            'MarCCDDetector',
-#            'PerkinElmerDetector',
-#            'PilatusDetector',
-#            'PixiradDetector',
-#            'PointGreyDetector',
-#            'ProsilicaDetector',
-#            'PSLDetector',
-#            'PvcamDetector',
-#            'RoperDetector',
-#            'SimDetector',
-#            'URLDetector',
-#            ]
+__all__ = ['AreaDetector',
+           'Andor3Detector',
+           'AndorDetector',
+           'BrukerDetector',
+           'FirewireLinDetector',
+           'FirewireWinDetector',
+           'LightFieldDetector',
+           'Mar345Detector',
+           'MarCCDDetector',
+           'PerkinElmerDetector',
+           'PilatusDetector',
+           'PixiradDetector',
+           'PointGreyDetector',
+           'ProsilicaDetector',
+           'PSLDetector',
+           'PvcamDetector',
+           'RoperDetector',
+           'SimDetector',
+           'URLDetector',
+           ]
 
 
 class AreaDetector(ADBase):
@@ -155,384 +154,384 @@ class SimDetector(AreaDetector):
     sim_mode = ADC(ADEpicsSignal, 'SimMode')
 
 
-#  class AdscDetector(AreaDetector):
-#      _html_docs = ['adscDoc.html']
-#
-#      adsc_2theta = ADSignal('ADSC2Theta', has_rbv=True)
-#      adsc_adc = ADSignal('ADSCAdc', has_rbv=True)
-#      adsc_axis = ADSignal('ADSCAxis', has_rbv=True)
-#      adsc_beam_x = ADSignal('ADSCBeamX', has_rbv=True)
-#      adsc_beam_y = ADSignal('ADSCBeamY', has_rbv=True)
-#      adsc_dezingr = ADSignal('ADSCDezingr', has_rbv=True)
-#      adsc_distance = ADSignal('ADSCDistnce', has_rbv=True)
-#      adsc_im_width = ADSignal('ADSCImWidth', has_rbv=True)
-#      adsc_im_xform = ADSignal('ADSCImXform', has_rbv=True)
-#      adsc_kappa = ADSignal('ADSCKappa', has_rbv=True)
-#      adsc_last_error = ADSignal('ADSCLastError')
-#      adsc_last_image = ADSignal('ADSCLastImage')
-#      adsc_omega = ADSignal('ADSCOmega', has_rbv=True)
-#      adsc_phi = ADSignal('ADSCPhi', has_rbv=True)
-#      adsc_raw = ADSignal('ADSCRaw', has_rbv=True)
-#      adsc_read_conditn = ADSignal('ADSCReadConditn')
-#      adsc_reus_drk = ADSignal('ADSCReusDrk', has_rbv=True)
-#      adsc_soft_reset = ADSignal('ADSCSoftReset')
-#      adsc_state = ADSignal('ADSCState')
-#      adsc_status = ADSignal('ADSCStatus')
-#      adsc_stp_ex_retry_count = ADSignal('ADSCStpExRtryCt')
-#      adsc_str_drks = ADSignal('ADSCStrDrks', has_rbv=True)
-#      adsc_wavelen = ADSignal('ADSCWavelen', has_rbv=True)
-#      bin_x_changed = ADSignal('BinXChanged')
-#      bin_y_changed = ADSignal('BinYChanged')
-#      ext_trig_ctl = ADSignal('ExSwTrCtl')
-#      ext_trig_ctl_rsp = ADSignal('ExSwTrCtlRsp')
-#      ext_trig_ok_to_exp = ADSignal('ExSwTrOkToExp')
-#
-#
-#  class AndorDetector(AreaDetector):
-#      _html_docs = ['andorDoc.html']
-#
-#      andor_adc_speed = ADSignal('AndorADCSpeed', has_rbv=True)
-#      andor_accumulate_period = ADSignal('AndorAccumulatePeriod', has_rbv=True)
-#      andor_cooler = ADSignal('AndorCooler', has_rbv=True)
-#      andor_message = ADSignal('AndorMessage_RBV', rw=False)
-#      andor_pre_amp_gain = ADSignal('AndorPreAmpGain', has_rbv=True)
-#      andor_shutter_ex_ttl = ADSignal('AndorShutterExTTL')
-#      andor_shutter_mode = ADSignal('AndorShutterMode')
-#      andor_temp_status = ADSignal('AndorTempStatus_RBV', rw=False)
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      pal_file_path = ADSignal('PALFilePath', has_rbv=True)
-#
-#
-#  class Andor3Detector(AreaDetector):
-#      _html_docs = ['andor3Doc.html']
-#
-#      a3_binning = ADSignal('A3Binning', has_rbv=True)
-#      a3_shutter_mode = ADSignal('A3ShutterMode', has_rbv=True)
-#      controller_id = ADSignal('ControllerID')
-#      fan_speed = ADSignal('FanSpeed', has_rbv=True)
-#      firmware_version = ADSignal('FirmwareVersion')
-#      frame_rate = ADSignal('FrameRate', has_rbv=True)
-#      full_aoic_ontrol = ADSignal('FullAOIControl')
-#      noise_filter = ADSignal('NoiseFilter', has_rbv=True)
-#      overlap = ADSignal('Overlap', has_rbv=True)
-#      pixel_encoding = ADSignal('PixelEncoding', has_rbv=True)
-#      pre_amp_gain = ADSignal('PreAmpGain', has_rbv=True)
-#      readout_rate = ADSignal('ReadoutRate', has_rbv=True)
-#      readout_time = ADSignal('ReadoutTime')
-#      sensor_cooling = ADSignal('SensorCooling', has_rbv=True)
-#      serial_number = ADSignal('SerialNumber')
-#      software_trigger = ADSignal('SoftwareTrigger')
-#      software_version = ADSignal('SoftwareVersion')
-#      temp_control = ADSignal('TempControl', has_rbv=True)
-#      temp_status = ADSignal('TempStatus_RBV', rw=False)
-#      transfer_rate = ADSignal('TransferRate')
-#
-#
-#  class BrukerDetector(AreaDetector):
-#      _html_docs = ['BrukerDoc.html']
-#
-#      bis_asyn = ADSignal('BISAsyn')
-#      bis_status = ADSignal('BISStatus')
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      num_darks = ADSignal('NumDarks', has_rbv=True)
-#      read_sfrm_timeout = ADSignal('ReadSFRMTimeout')
-#
-#
-#  class FirewireLinDetector(AreaDetector):
-#      _html_docs = ['FirewireWinDoc.html']
-#
-#      # TODO
-#
-#
-#  class FirewireWinDetector(AreaDetector):
-#      _html_docs = ['FirewireWinDoc.html']
-#
-#      colorcode = ADSignal('COLORCODE', has_rbv=True)
-#      current_colorcode = ADSignal('CURRENT_COLORCODE')
-#      current_format = ADSignal('CURRENT_FORMAT')
-#      current_mode = ADSignal('CURRENT_MODE')
-#      current_rate = ADSignal('CURRENT_RATE')
-#      dropped_frames = ADSignal('DROPPED_FRAMES', has_rbv=True)
-#      format_ = ADSignal('FORMAT', has_rbv=True)
-#      frame_rate = ADSignal('FR', has_rbv=True)
-#      mode = ADSignal('MODE', has_rbv=True)
-#      readout_time = ADSignal('READOUT_TIME', has_rbv=True)
-#
-#
-#  class LightFieldDetector(AreaDetector):
-#      _html_docs = ['LightFieldDoc.html']
-#
-#      # TODO new in AD 2
-#
-#
-#  class Mar345Detector(AreaDetector):
-#      _html_docs = ['Mar345Doc.html']
-#
-#      abort = ADSignal('Abort', has_rbv=True)
-#      change_mode = ADSignal('ChangeMode', has_rbv=True)
-#      erase = ADSignal('Erase', has_rbv=True)
-#      erase_mode = ADSignal('EraseMode', has_rbv=True)
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      num_erase = ADSignal('NumErase', has_rbv=True)
-#      num_erased = ADSignal('NumErased_RBV', rw=False)
-#      scan_resolution = ADSignal('ScanResolution', has_rbv=True)
-#      scan_size = ADSignal('ScanSize', has_rbv=True)
-#      mar_server_asyn = ADSignal('marServerAsyn')
-#
-#
-#  class MarCCDDetector(AreaDetector):
-#      _html_docs = ['MarCCDDoc.html']
-#
-#      beam_x = ADSignal('BeamX')
-#      beam_y = ADSignal('BeamY')
-#      dataset_comments = ADSignal('DatasetComments')
-#      detector_distance = ADSignal('DetectorDistance')
-#      file_comments = ADSignal('FileComments')
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      frame_shift = ADSignal('FrameShift', has_rbv=True)
-#      mar_acquire_status = ADSignal('MarAcquireStatus_RBV', rw=False)
-#      mar_correct_status = ADSignal('MarCorrectStatus_RBV', rw=False)
-#      mar_dezinger_status = ADSignal('MarDezingerStatus_RBV', rw=False)
-#      mar_readout_status = ADSignal('MarReadoutStatus_RBV', rw=False)
-#      mar_state = ADSignal('MarState_RBV', rw=False)
-#      mar_status = ADSignal('MarStatus_RBV', rw=False)
-#      mar_writing_status = ADSignal('MarWritingStatus_RBV', rw=False)
-#      overlap_mode = ADSignal('OverlapMode', has_rbv=True)
-#      read_tiff_timeout = ADSignal('ReadTiffTimeout')
-#      rotation_axis = ADSignal('RotationAxis')
-#      rotation_range = ADSignal('RotationRange')
-#      stability = ADSignal('Stability', has_rbv=True)
-#      start_phi = ADSignal('StartPhi')
-#      two_theta = ADSignal('TwoTheta')
-#      wavelength = ADSignal('Wavelength')
-#      mar_server_asyn = ADSignal('marServerAsyn')
-#
-#
-#  class PerkinElmerDetector(AreaDetector):
-#      _html_docs = ['PerkinElmerDoc.html']
-#
-#      pe_acquire_gain = ADSignal('PEAcquireGain')
-#      pe_acquire_offset = ADSignal('PEAcquireOffset')
-#      pe_corrections_dir = ADSignal('PECorrectionsDir')
-#      pe_current_gain_frame = ADSignal('PECurrentGainFrame')
-#      pe_current_offset_frame = ADSignal('PECurrentOffsetFrame')
-#      pe_dwell_time = ADSignal('PEDwellTime', has_rbv=True)
-#      pe_frame_buff_index = ADSignal('PEFrameBuffIndex')
-#      pe_gain = ADSignal('PEGain', has_rbv=True)
-#      pe_gain_available = ADSignal('PEGainAvailable')
-#      pe_gain_file = ADSignal('PEGainFile')
-#      pe_image_number = ADSignal('PEImageNumber')
-#      pe_initialize = ADSignal('PEInitialize')
-#      pe_load_gain_file = ADSignal('PELoadGainFile')
-#      pe_load_pixel_correction = ADSignal('PELoadPixelCorrection')
-#      pe_num_frame_buffers = ADSignal('PENumFrameBuffers', has_rbv=True)
-#      pe_num_frames_to_skip = ADSignal('PENumFramesToSkip', has_rbv=True)
-#      pe_num_gain_frames = ADSignal('PENumGainFrames')
-#      pe_num_offset_frames = ADSignal('PENumOffsetFrames')
-#      pe_offset_available = ADSignal('PEOffsetAvailable')
-#      pe_pixel_correction_available = ADSignal('PEPixelCorrectionAvailable')
-#      pe_pixel_correction_file = ADSignal('PEPixelCorrectionFile')
-#      pe_save_gain_file = ADSignal('PESaveGainFile')
-#      pe_skip_frames = ADSignal('PESkipFrames', has_rbv=True)
-#      pe_sync_time = ADSignal('PESyncTime', has_rbv=True)
-#      pe_system_id = ADSignal('PESystemID')
-#      pe_trigger = ADSignal('PETrigger')
-#      pe_use_gain = ADSignal('PEUseGain')
-#      pe_use_offset = ADSignal('PEUseOffset')
-#      pe_use_pixel_correction = ADSignal('PEUsePixelCorrection')
-#
-#
-#  class PSLDetector(AreaDetector):
-#      _html_docs = ['PSLDoc.html']
-#
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      tiff_comment = ADSignal('TIFFComment', has_rbv=True)
-#
-#
-#  class PilatusDetector(AreaDetector):
-#      _html_docs = ['pilatusDoc.html']
-#
-#      alpha = ADSignal('Alpha')
-#      angle_incr = ADSignal('AngleIncr')
-#      armed = ADSignal('Armed')
-#      bad_pixel_file = ADSignal('BadPixelFile')
-#      beam_x = ADSignal('BeamX')
-#      beam_y = ADSignal('BeamY')
-#      camserver_asyn = ADSignal('CamserverAsyn')
-#      cbf_template_file = ADSignal('CbfTemplateFile')
-#      chi = ADSignal('Chi')
-#      delay_time = ADSignal('DelayTime', has_rbv=True)
-#      det_2theta = ADSignal('Det2theta')
-#      det_dist = ADSignal('DetDist')
-#      det_v_offset = ADSignal('DetVOffset')
-#      energy_high = ADSignal('EnergyHigh')
-#      energy_low = ADSignal('EnergyLow')
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      filter_transm = ADSignal('FilterTransm')
-#      flat_field_file = ADSignal('FlatFieldFile')
-#      flat_field_valid = ADSignal('FlatFieldValid')
-#      flux = ADSignal('Flux')
-#      gain_menu = ADSignal('GainMenu')
-#      gap_fill = ADSignal('GapFill', has_rbv=True)
-#      header_string = ADSignal('HeaderString')
-#      humid0 = ADSignal('Humid0_RBV', rw=False)
-#      humid1 = ADSignal('Humid1_RBV', rw=False)
-#      humid2 = ADSignal('Humid2_RBV', rw=False)
-#      image_file_tmot = ADSignal('ImageFileTmot')
-#      kappa = ADSignal('Kappa')
-#      min_flat_field = ADSignal('MinFlatField', has_rbv=True)
-#      num_bad_pixels = ADSignal('NumBadPixels')
-#      num_oscill = ADSignal('NumOscill')
-#      oscill_axis = ADSignal('OscillAxis')
-#      phi = ADSignal('Phi')
-#      pixel_cut_off = ADSignal('PixelCutOff_RBV', rw=False)
-#      polarization = ADSignal('Polarization')
-#      start_angle = ADSignal('StartAngle')
-#      tvx_version = ADSignal('TVXVersion_RBV', rw=False)
-#      temp0 = ADSignal('Temp0_RBV', rw=False)
-#      temp1 = ADSignal('Temp1_RBV', rw=False)
-#      temp2 = ADSignal('Temp2_RBV', rw=False)
-#      threshold_apply = ADSignal('ThresholdApply')
-#      threshold_auto_apply = ADSignal('ThresholdAutoApply', has_rbv=True)
-#      threshold_energy = ADSignal('ThresholdEnergy', has_rbv=True)
-#      wavelength = ADSignal('Wavelength')
-#
-#
-#  class PixiradDetector(AreaDetector):
-#      _html_docs = ['PixiradDoc.html']
-#
-#      # TODO new
-#
-#
-#  class PointGreyDetector(AreaDetector):
-#      _html_docs = ['PointGreyDoc.html']
-#
-#      # TODO firewirewin
-#
-#
-#  class ProsilicaDetector(AreaDetector):
-#      _html_docs = ['prosilicaDoc.html']
-#
-#      ps_bad_frame_counter = ADSignal('PSBadFrameCounter_RBV', rw=False)
-#      ps_byte_rate = ADSignal('PSByteRate', has_rbv=True)
-#      ps_driver_type = ADSignal('PSDriverType_RBV', rw=False)
-#      ps_filter_version = ADSignal('PSFilterVersion_RBV', rw=False)
-#      ps_frame_rate = ADSignal('PSFrameRate_RBV', rw=False)
-#      ps_frames_completed = ADSignal('PSFramesCompleted_RBV', rw=False)
-#      ps_frames_dropped = ADSignal('PSFramesDropped_RBV', rw=False)
-#      ps_packet_size = ADSignal('PSPacketSize_RBV', rw=False)
-#      ps_packets_erroneous = ADSignal('PSPacketsErroneous_RBV', rw=False)
-#      ps_packets_missed = ADSignal('PSPacketsMissed_RBV', rw=False)
-#      ps_packets_received = ADSignal('PSPacketsReceived_RBV', rw=False)
-#      ps_packets_requested = ADSignal('PSPacketsRequested_RBV', rw=False)
-#      ps_packets_resent = ADSignal('PSPacketsResent_RBV', rw=False)
-#      ps_read_statistics = ADSignal('PSReadStatistics')
-#      ps_reset_timer = ADSignal('PSResetTimer')
-#      ps_timestamp_type = ADSignal('PSTimestampType', has_rbv=True)
-#      strobe1_ctl_duration = ADSignal('Strobe1CtlDuration', has_rbv=True)
-#      strobe1_delay = ADSignal('Strobe1Delay', has_rbv=True)
-#      strobe1_duration = ADSignal('Strobe1Duration', has_rbv=True)
-#      strobe1_mode = ADSignal('Strobe1Mode', has_rbv=True)
-#      sync_in1_level = ADSignal('SyncIn1Level_RBV', rw=False)
-#      sync_in2_level = ADSignal('SyncIn2Level_RBV', rw=False)
-#      sync_out1_invert = ADSignal('SyncOut1Invert', has_rbv=True)
-#      sync_out1_level = ADSignal('SyncOut1Level', has_rbv=True)
-#      sync_out1_mode = ADSignal('SyncOut1Mode', has_rbv=True)
-#      sync_out2_invert = ADSignal('SyncOut2Invert', has_rbv=True)
-#      sync_out2_level = ADSignal('SyncOut2Level', has_rbv=True)
-#      sync_out2_mode = ADSignal('SyncOut2Mode', has_rbv=True)
-#      sync_out3_invert = ADSignal('SyncOut3Invert', has_rbv=True)
-#      sync_out3_level = ADSignal('SyncOut3Level', has_rbv=True)
-#      sync_out3_mode = ADSignal('SyncOut3Mode', has_rbv=True)
-#      trigger_delay = ADSignal('TriggerDelay', has_rbv=True)
-#      trigger_event = ADSignal('TriggerEvent', has_rbv=True)
-#      trigger_overlap = ADSignal('TriggerOverlap', has_rbv=True)
-#      trigger_software = ADSignal('TriggerSoftware')
-#
-#
-#  class PvcamDetector(AreaDetector):
-#      _html_docs = ['pvcamDoc.html']
-#
-#      bit_depth = ADSignal('BitDepth_RBV', rw=False)
-#      camera_firmware_vers = ADSignal('CameraFirmwareVers_RBV', rw=False)
-#      chip_height = ADSignal('ChipHeight_RBV', rw=False)
-#      chip_name = ADSignal('ChipName_RBV', rw=False)
-#      chip_width = ADSignal('ChipWidth_RBV', rw=False)
-#      close_delay = ADSignal('CloseDelay', has_rbv=True)
-#      detector_mode = ADSignal('DetectorMode', has_rbv=True)
-#      detector_selected = ADSignal('DetectorSelected', has_rbv=True)
-#      dev_drv_vers = ADSignal('DevDrvVers_RBV', rw=False)
-#      frame_transfer_capable = ADSignal('FrameTransferCapable_RBV', rw=False)
-#      full_well_capacity = ADSignal('FullWellCapacity_RBV', rw=False)
-#      gain_index = ADSignal('GainIndex', has_rbv=True)
-#      head_ser_num = ADSignal('HeadSerNum_RBV', rw=False)
-#      initialize = ADSignal('Initialize', has_rbv=True)
-#      max_gain_index = ADSignal('MaxGainIndex_RBV', rw=False)
-#      max_set_temperature = ADSignal('MaxSetTemperature')
-#      max_shutter_close_delay = ADSignal('MaxShutterCloseDelay_RBV', rw=False)
-#      max_shutter_open_delay = ADSignal('MaxShutterOpenDelay_RBV', rw=False)
-#      measured_temperature = ADSignal('MeasuredTemperature_RBV', rw=False)
-#      min_set_temperature = ADSignal('MinSetTemperature')
-#      min_shutter_close_delay = ADSignal('MinShutterCloseDelay_RBV', rw=False)
-#      min_shutter_open_delay = ADSignal('MinShutterOpenDelay_RBV', rw=False)
-#      num_parallel_pixels = ADSignal('NumParallelPixels_RBV', rw=False)
-#      num_ports = ADSignal('NumPorts_RBV', rw=False)
-#      num_serial_pixels = ADSignal('NumSerialPixels_RBV', rw=False)
-#      num_speed_table_entries = ADSignal('NumSpeedTableEntries_RBV', rw=False)
-#      open_delay = ADSignal('OpenDelay', has_rbv=True)
-#      pcifw_vers = ADSignal('PCIFWVers_RBV', rw=False)
-#      pv_cam_vers = ADSignal('PVCamVers_RBV', rw=False)
-#      pixel_parallel_dist = ADSignal('PixelParallelDist_RBV', rw=False)
-#      pixel_parallel_size = ADSignal('PixelParallelSize_RBV', rw=False)
-#      pixel_serial_dist = ADSignal('PixelSerialDist_RBV', rw=False)
-#      pixel_serial_size = ADSignal('PixelSerialSize_RBV', rw=False)
-#      pixel_time = ADSignal('PixelTime_RBV', rw=False)
-#      post_mask = ADSignal('PostMask_RBV', rw=False)
-#      post_scan = ADSignal('PostScan_RBV', rw=False)
-#      pre_mask = ADSignal('PreMask_RBV', rw=False)
-#      pre_scan = ADSignal('PreScan_RBV', rw=False)
-#      serial_num = ADSignal('SerialNum_RBV', rw=False)
-#      set_temperature = ADSignal('SetTemperature', has_rbv=True)
-#      slot1_cam = ADSignal('Slot1Cam_RBV', rw=False)
-#      slot2_cam = ADSignal('Slot2Cam_RBV', rw=False)
-#      slot3_cam = ADSignal('Slot3Cam_RBV', rw=False)
-#      speed_table_index = ADSignal('SpeedTableIndex', has_rbv=True)
-#      trigger_edge = ADSignal('TriggerEdge', has_rbv=True)
-#
-#
-#  class RoperDetector(AreaDetector):
-#      _html_docs = ['RoperDoc.html']
-#
-#      auto_data_type = ADSignal('AutoDataType', has_rbv=True)
-#      comment1 = ADSignal('Comment1', has_rbv=True)
-#      comment2 = ADSignal('Comment2', has_rbv=True)
-#      comment3 = ADSignal('Comment3', has_rbv=True)
-#      comment4 = ADSignal('Comment4', has_rbv=True)
-#      comment5 = ADSignal('Comment5', has_rbv=True)
-#      file_format = ADSignal('FileFormat', has_rbv=True)
-#      num_acquisitions = ADSignal('NumAcquisitions', has_rbv=True)
-#      num_acquisitions_counter = ADSignal('NumAcquisitionsCounter_RBV', rw=False)
-#      roper_shutter_mode = ADSignal('RoperShutterMode', has_rbv=True)
-#
-#
-#  class URLDetector(AreaDetector):
-#      _html_docs = ['URLDoc.html']
-#
-#      url_1 = ADSignal('URL1')
-#      url_2 = ADSignal('URL2')
-#      url_3 = ADSignal('URL3')
-#      url_4 = ADSignal('URL4')
-#      url_5 = ADSignal('URL5')
-#      url_6 = ADSignal('URL6')
-#      url_7 = ADSignal('URL7')
-#      url_8 = ADSignal('URL8')
-#      url_9 = ADSignal('URL9')
-#      url_10 = ADSignal('URL10')
-#
-#      urls = ADSignalGroup(url_1, url_2, url_3, url_4, url_5,
-#                           url_6, url_7, url_8, url_9, url_10,
-#                           doc='URLs')
-#
-#      url_select = ADSignal('URLSelect')
-#      url_seq = ADSignal('URLSeq')
-#      url = ADSignal('URL_RBV', rw=False)
+class AdscDetector(AreaDetector):
+    _html_docs = ['adscDoc.html']
+
+    adsc_2theta = ADC(ADEpicsSignal, 'ADSC2Theta')
+    adsc_adc = ADC(ADEpicsSignal, 'ADSCAdc')
+    adsc_axis = ADC(ADEpicsSignal, 'ADSCAxis')
+    adsc_beam_x = ADC(ADEpicsSignal, 'ADSCBeamX')
+    adsc_beam_y = ADC(ADEpicsSignal, 'ADSCBeamY')
+    adsc_dezingr = ADC(ADEpicsSignal, 'ADSCDezingr')
+    adsc_distance = ADC(ADEpicsSignal, 'ADSCDistnce')
+    adsc_im_width = ADC(ADEpicsSignal, 'ADSCImWidth')
+    adsc_im_xform = ADC(ADEpicsSignal, 'ADSCImXform')
+    adsc_kappa = ADC(ADEpicsSignal, 'ADSCKappa')
+    adsc_last_error = ADC(EpicsSignal, 'ADSCLastError')
+    adsc_last_image = ADC(EpicsSignal, 'ADSCLastImage')
+    adsc_omega = ADC(ADEpicsSignal, 'ADSCOmega')
+    adsc_phi = ADC(ADEpicsSignal, 'ADSCPhi')
+    adsc_raw = ADC(ADEpicsSignal, 'ADSCRaw')
+    adsc_read_conditn = ADC(EpicsSignal, 'ADSCReadConditn')
+    adsc_reus_drk = ADC(ADEpicsSignal, 'ADSCReusDrk')
+    adsc_soft_reset = ADC(EpicsSignal, 'ADSCSoftReset')
+    adsc_state = ADC(EpicsSignal, 'ADSCState')
+    adsc_status = ADC(EpicsSignal, 'ADSCStatus')
+    adsc_stp_ex_retry_count = ADC(EpicsSignal, 'ADSCStpExRtryCt')
+    adsc_str_drks = ADC(ADEpicsSignal, 'ADSCStrDrks')
+    adsc_wavelen = ADC(ADEpicsSignal, 'ADSCWavelen')
+
+    bin_x_changed = ADC(EpicsSignal, 'BinXChanged')
+    bin_y_changed = ADC(EpicsSignal, 'BinYChanged')
+    ext_trig_ctl = ADC(EpicsSignal, 'ExSwTrCtl')
+    ext_trig_ctl_rsp = ADC(EpicsSignal, 'ExSwTrCtlRsp')
+    ext_trig_ok_to_exp = ADC(EpicsSignal, 'ExSwTrOkToExp')
+
+
+class AndorDetector(AreaDetector):
+    _html_docs = ['andorDoc.html']
+
+    andor_adc_speed = ADC(ADEpicsSignal, 'AndorADCSpeed')
+    andor_accumulate_period = ADC(ADEpicsSignal, 'AndorAccumulatePeriod')
+    andor_cooler = ADC(ADEpicsSignal, 'AndorCooler')
+    andor_message = ADC(EpicsSignalRO, 'AndorMessage_RBV')
+    andor_pre_amp_gain = ADC(ADEpicsSignal, 'AndorPreAmpGain')
+    andor_shutter_ex_ttl = ADC(EpicsSignal, 'AndorShutterExTTL')
+    andor_shutter_mode = ADC(EpicsSignal, 'AndorShutterMode')
+    andor_temp_status = ADC(EpicsSignalRO, 'AndorTempStatus_RBV')
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    pal_file_path = ADC(ADEpicsSignal, 'PALFilePath')
+
+
+class Andor3Detector(AreaDetector):
+    _html_docs = ['andor3Doc.html']
+
+    a3_binning = ADC(ADEpicsSignal, 'A3Binning')
+    a3_shutter_mode = ADC(ADEpicsSignal, 'A3ShutterMode')
+    controller_id = ADC(EpicsSignal, 'ControllerID')
+    fan_speed = ADC(ADEpicsSignal, 'FanSpeed')
+    firmware_version = ADC(EpicsSignal, 'FirmwareVersion')
+    frame_rate = ADC(ADEpicsSignal, 'FrameRate')
+    full_aoic_ontrol = ADC(EpicsSignal, 'FullAOIControl')
+    noise_filter = ADC(ADEpicsSignal, 'NoiseFilter')
+    overlap = ADC(ADEpicsSignal, 'Overlap')
+    pixel_encoding = ADC(ADEpicsSignal, 'PixelEncoding')
+    pre_amp_gain = ADC(ADEpicsSignal, 'PreAmpGain')
+    readout_rate = ADC(ADEpicsSignal, 'ReadoutRate')
+    readout_time = ADC(EpicsSignal, 'ReadoutTime')
+    sensor_cooling = ADC(ADEpicsSignal, 'SensorCooling')
+    serial_number = ADC(EpicsSignal, 'SerialNumber')
+    software_trigger = ADC(EpicsSignal, 'SoftwareTrigger')
+    software_version = ADC(EpicsSignal, 'SoftwareVersion')
+    temp_control = ADC(ADEpicsSignal, 'TempControl')
+    temp_status = ADC(EpicsSignalRO, 'TempStatus_RBV')
+    transfer_rate = ADC(EpicsSignal, 'TransferRate')
+
+
+class BrukerDetector(AreaDetector):
+    _html_docs = ['BrukerDoc.html']
+
+    bis_asyn = ADC(EpicsSignal, 'BISAsyn')
+    bis_status = ADC(EpicsSignal, 'BISStatus')
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    num_darks = ADC(ADEpicsSignal, 'NumDarks')
+    read_sfrm_timeout = ADC(EpicsSignal, 'ReadSFRMTimeout')
+
+
+class FirewireLinDetector(AreaDetector):
+    _html_docs = ['FirewireWinDoc.html']
+
+    # TODO
+
+
+class FirewireWinDetector(AreaDetector):
+    _html_docs = ['FirewireWinDoc.html']
+
+    colorcode = ADC(ADEpicsSignal, 'COLORCODE')
+    current_colorcode = ADC(EpicsSignal, 'CURRENT_COLORCODE')
+    current_format = ADC(EpicsSignal, 'CURRENT_FORMAT')
+    current_mode = ADC(EpicsSignal, 'CURRENT_MODE')
+    current_rate = ADC(EpicsSignal, 'CURRENT_RATE')
+    dropped_frames = ADC(ADEpicsSignal, 'DROPPED_FRAMES')
+    format_ = ADC(ADEpicsSignal, 'FORMAT')
+    frame_rate = ADC(ADEpicsSignal, 'FR')
+    mode = ADC(ADEpicsSignal, 'MODE')
+    readout_time = ADC(ADEpicsSignal, 'READOUT_TIME')
+
+
+class LightFieldDetector(AreaDetector):
+    _html_docs = ['LightFieldDoc.html']
+
+    # TODO new in AD 2
+
+
+class Mar345Detector(AreaDetector):
+    _html_docs = ['Mar345Doc.html']
+
+    abort = ADC(ADEpicsSignal, 'Abort')
+    change_mode = ADC(ADEpicsSignal, 'ChangeMode')
+    erase = ADC(ADEpicsSignal, 'Erase')
+    erase_mode = ADC(ADEpicsSignal, 'EraseMode')
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    num_erase = ADC(ADEpicsSignal, 'NumErase')
+    num_erased = ADC(EpicsSignalRO, 'NumErased_RBV')
+    scan_resolution = ADC(ADEpicsSignal, 'ScanResolution')
+    scan_size = ADC(ADEpicsSignal, 'ScanSize')
+    mar_server_asyn = ADC(EpicsSignal, 'marServerAsyn')
+
+
+class MarCCDDetector(AreaDetector):
+    _html_docs = ['MarCCDDoc.html']
+
+    beam_x = ADC(EpicsSignal, 'BeamX')
+    beam_y = ADC(EpicsSignal, 'BeamY')
+    dataset_comments = ADC(EpicsSignal, 'DatasetComments')
+    detector_distance = ADC(EpicsSignal, 'DetectorDistance')
+    file_comments = ADC(EpicsSignal, 'FileComments')
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    frame_shift = ADC(ADEpicsSignal, 'FrameShift')
+    mar_acquire_status = ADC(EpicsSignalRO, 'MarAcquireStatus_RBV')
+    mar_correct_status = ADC(EpicsSignalRO, 'MarCorrectStatus_RBV')
+    mar_dezinger_status = ADC(EpicsSignalRO, 'MarDezingerStatus_RBV')
+    mar_readout_status = ADC(EpicsSignalRO, 'MarReadoutStatus_RBV')
+    mar_state = ADC(EpicsSignalRO, 'MarState_RBV')
+    mar_status = ADC(EpicsSignalRO, 'MarStatus_RBV')
+    mar_writing_status = ADC(EpicsSignalRO, 'MarWritingStatus_RBV')
+    overlap_mode = ADC(ADEpicsSignal, 'OverlapMode')
+    read_tiff_timeout = ADC(EpicsSignal, 'ReadTiffTimeout')
+    rotation_axis = ADC(EpicsSignal, 'RotationAxis')
+    rotation_range = ADC(EpicsSignal, 'RotationRange')
+    stability = ADC(ADEpicsSignal, 'Stability')
+    start_phi = ADC(EpicsSignal, 'StartPhi')
+    two_theta = ADC(EpicsSignal, 'TwoTheta')
+    wavelength = ADC(EpicsSignal, 'Wavelength')
+    mar_server_asyn = ADC(EpicsSignal, 'marServerAsyn')
+
+
+class PerkinElmerDetector(AreaDetector):
+    _html_docs = ['PerkinElmerDoc.html']
+
+    pe_acquire_gain = ADC(EpicsSignal, 'PEAcquireGain')
+    pe_acquire_offset = ADC(EpicsSignal, 'PEAcquireOffset')
+    pe_corrections_dir = ADC(EpicsSignal, 'PECorrectionsDir')
+    pe_current_gain_frame = ADC(EpicsSignal, 'PECurrentGainFrame')
+    pe_current_offset_frame = ADC(EpicsSignal, 'PECurrentOffsetFrame')
+    pe_dwell_time = ADC(ADEpicsSignal, 'PEDwellTime')
+    pe_frame_buff_index = ADC(EpicsSignal, 'PEFrameBuffIndex')
+    pe_gain = ADC(ADEpicsSignal, 'PEGain')
+    pe_gain_available = ADC(EpicsSignal, 'PEGainAvailable')
+    pe_gain_file = ADC(EpicsSignal, 'PEGainFile')
+    pe_image_number = ADC(EpicsSignal, 'PEImageNumber')
+    pe_initialize = ADC(EpicsSignal, 'PEInitialize')
+    pe_load_gain_file = ADC(EpicsSignal, 'PELoadGainFile')
+    pe_load_pixel_correction = ADC(EpicsSignal, 'PELoadPixelCorrection')
+    pe_num_frame_buffers = ADC(ADEpicsSignal, 'PENumFrameBuffers')
+    pe_num_frames_to_skip = ADC(ADEpicsSignal, 'PENumFramesToSkip')
+    pe_num_gain_frames = ADC(EpicsSignal, 'PENumGainFrames')
+    pe_num_offset_frames = ADC(EpicsSignal, 'PENumOffsetFrames')
+    pe_offset_available = ADC(EpicsSignal, 'PEOffsetAvailable')
+    pe_pixel_correction_available = ADC(EpicsSignal,
+                                        'PEPixelCorrectionAvailable')
+    pe_pixel_correction_file = ADC(EpicsSignal, 'PEPixelCorrectionFile')
+    pe_save_gain_file = ADC(EpicsSignal, 'PESaveGainFile')
+    pe_skip_frames = ADC(ADEpicsSignal, 'PESkipFrames')
+    pe_sync_time = ADC(ADEpicsSignal, 'PESyncTime')
+    pe_system_id = ADC(EpicsSignal, 'PESystemID')
+    pe_trigger = ADC(EpicsSignal, 'PETrigger')
+    pe_use_gain = ADC(EpicsSignal, 'PEUseGain')
+    pe_use_offset = ADC(EpicsSignal, 'PEUseOffset')
+    pe_use_pixel_correction = ADC(EpicsSignal, 'PEUsePixelCorrection')
+
+
+class PSLDetector(AreaDetector):
+    _html_docs = ['PSLDoc.html']
+
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    tiff_comment = ADC(ADEpicsSignal, 'TIFFComment')
+
+
+class PilatusDetector(AreaDetector):
+    _html_docs = ['pilatusDoc.html']
+
+    alpha = ADC(EpicsSignal, 'Alpha')
+    angle_incr = ADC(EpicsSignal, 'AngleIncr')
+    armed = ADC(EpicsSignal, 'Armed')
+    bad_pixel_file = ADC(EpicsSignal, 'BadPixelFile')
+    beam_x = ADC(EpicsSignal, 'BeamX')
+    beam_y = ADC(EpicsSignal, 'BeamY')
+    camserver_asyn = ADC(EpicsSignal, 'CamserverAsyn')
+    cbf_template_file = ADC(EpicsSignal, 'CbfTemplateFile')
+    chi = ADC(EpicsSignal, 'Chi')
+    delay_time = ADC(ADEpicsSignal, 'DelayTime')
+    det_2theta = ADC(EpicsSignal, 'Det2theta')
+    det_dist = ADC(EpicsSignal, 'DetDist')
+    det_v_offset = ADC(EpicsSignal, 'DetVOffset')
+    energy_high = ADC(EpicsSignal, 'EnergyHigh')
+    energy_low = ADC(EpicsSignal, 'EnergyLow')
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    filter_transm = ADC(EpicsSignal, 'FilterTransm')
+    flat_field_file = ADC(EpicsSignal, 'FlatFieldFile')
+    flat_field_valid = ADC(EpicsSignal, 'FlatFieldValid')
+    flux = ADC(EpicsSignal, 'Flux')
+    gain_menu = ADC(EpicsSignal, 'GainMenu')
+    gap_fill = ADC(ADEpicsSignal, 'GapFill')
+    header_string = ADC(EpicsSignal, 'HeaderString')
+    humid0 = ADC(EpicsSignalRO, 'Humid0_RBV')
+    humid1 = ADC(EpicsSignalRO, 'Humid1_RBV')
+    humid2 = ADC(EpicsSignalRO, 'Humid2_RBV')
+    image_file_tmot = ADC(EpicsSignal, 'ImageFileTmot')
+    kappa = ADC(EpicsSignal, 'Kappa')
+    min_flat_field = ADC(ADEpicsSignal, 'MinFlatField')
+    num_bad_pixels = ADC(EpicsSignal, 'NumBadPixels')
+    num_oscill = ADC(EpicsSignal, 'NumOscill')
+    oscill_axis = ADC(EpicsSignal, 'OscillAxis')
+    phi = ADC(EpicsSignal, 'Phi')
+    pixel_cut_off = ADC(EpicsSignalRO, 'PixelCutOff_RBV')
+    polarization = ADC(EpicsSignal, 'Polarization')
+    start_angle = ADC(EpicsSignal, 'StartAngle')
+    tvx_version = ADC(EpicsSignalRO, 'TVXVersion_RBV')
+    temp0 = ADC(EpicsSignalRO, 'Temp0_RBV')
+    temp1 = ADC(EpicsSignalRO, 'Temp1_RBV')
+    temp2 = ADC(EpicsSignalRO, 'Temp2_RBV')
+    threshold_apply = ADC(EpicsSignal, 'ThresholdApply')
+    threshold_auto_apply = ADC(ADEpicsSignal, 'ThresholdAutoApply')
+    threshold_energy = ADC(ADEpicsSignal, 'ThresholdEnergy')
+    wavelength = ADC(EpicsSignal, 'Wavelength')
+
+
+class PixiradDetector(AreaDetector):
+    _html_docs = ['PixiradDoc.html']
+
+    # TODO new
+
+
+class PointGreyDetector(AreaDetector):
+    _html_docs = ['PointGreyDoc.html']
+
+    # TODO firewirewin
+
+
+class ProsilicaDetector(AreaDetector):
+    _html_docs = ['prosilicaDoc.html']
+
+    ps_bad_frame_counter = ADC(EpicsSignalRO, 'PSBadFrameCounter_RBV')
+    ps_byte_rate = ADC(ADEpicsSignal, 'PSByteRate')
+    ps_driver_type = ADC(EpicsSignalRO, 'PSDriverType_RBV')
+    ps_filter_version = ADC(EpicsSignalRO, 'PSFilterVersion_RBV')
+    ps_frame_rate = ADC(EpicsSignalRO, 'PSFrameRate_RBV')
+    ps_frames_completed = ADC(EpicsSignalRO, 'PSFramesCompleted_RBV')
+    ps_frames_dropped = ADC(EpicsSignalRO, 'PSFramesDropped_RBV')
+    ps_packet_size = ADC(EpicsSignalRO, 'PSPacketSize_RBV')
+    ps_packets_erroneous = ADC(EpicsSignalRO, 'PSPacketsErroneous_RBV')
+    ps_packets_missed = ADC(EpicsSignalRO, 'PSPacketsMissed_RBV')
+    ps_packets_received = ADC(EpicsSignalRO, 'PSPacketsReceived_RBV')
+    ps_packets_requested = ADC(EpicsSignalRO, 'PSPacketsRequested_RBV')
+    ps_packets_resent = ADC(EpicsSignalRO, 'PSPacketsResent_RBV')
+    ps_read_statistics = ADC(EpicsSignal, 'PSReadStatistics')
+    ps_reset_timer = ADC(EpicsSignal, 'PSResetTimer')
+    ps_timestamp_type = ADC(ADEpicsSignal, 'PSTimestampType')
+    strobe1_ctl_duration = ADC(ADEpicsSignal, 'Strobe1CtlDuration')
+    strobe1_delay = ADC(ADEpicsSignal, 'Strobe1Delay')
+    strobe1_duration = ADC(ADEpicsSignal, 'Strobe1Duration')
+    strobe1_mode = ADC(ADEpicsSignal, 'Strobe1Mode')
+    sync_in1_level = ADC(EpicsSignalRO, 'SyncIn1Level_RBV')
+    sync_in2_level = ADC(EpicsSignalRO, 'SyncIn2Level_RBV')
+    sync_out1_invert = ADC(ADEpicsSignal, 'SyncOut1Invert')
+    sync_out1_level = ADC(ADEpicsSignal, 'SyncOut1Level')
+    sync_out1_mode = ADC(ADEpicsSignal, 'SyncOut1Mode')
+    sync_out2_invert = ADC(ADEpicsSignal, 'SyncOut2Invert')
+    sync_out2_level = ADC(ADEpicsSignal, 'SyncOut2Level')
+    sync_out2_mode = ADC(ADEpicsSignal, 'SyncOut2Mode')
+    sync_out3_invert = ADC(ADEpicsSignal, 'SyncOut3Invert')
+    sync_out3_level = ADC(ADEpicsSignal, 'SyncOut3Level')
+    sync_out3_mode = ADC(ADEpicsSignal, 'SyncOut3Mode')
+    trigger_delay = ADC(ADEpicsSignal, 'TriggerDelay')
+    trigger_event = ADC(ADEpicsSignal, 'TriggerEvent')
+    trigger_overlap = ADC(ADEpicsSignal, 'TriggerOverlap')
+    trigger_software = ADC(EpicsSignal, 'TriggerSoftware')
+
+
+class PvcamDetector(AreaDetector):
+    _html_docs = ['pvcamDoc.html']
+
+    bit_depth = ADC(EpicsSignalRO, 'BitDepth_RBV')
+    camera_firmware_vers = ADC(EpicsSignalRO, 'CameraFirmwareVers_RBV')
+    chip_height = ADC(EpicsSignalRO, 'ChipHeight_RBV')
+    chip_name = ADC(EpicsSignalRO, 'ChipName_RBV')
+    chip_width = ADC(EpicsSignalRO, 'ChipWidth_RBV')
+    close_delay = ADC(ADEpicsSignal, 'CloseDelay')
+    detector_mode = ADC(ADEpicsSignal, 'DetectorMode')
+    detector_selected = ADC(ADEpicsSignal, 'DetectorSelected')
+    dev_drv_vers = ADC(EpicsSignalRO, 'DevDrvVers_RBV')
+    frame_transfer_capable = ADC(EpicsSignalRO, 'FrameTransferCapable_RBV')
+    full_well_capacity = ADC(EpicsSignalRO, 'FullWellCapacity_RBV')
+    gain_index = ADC(ADEpicsSignal, 'GainIndex')
+    head_ser_num = ADC(EpicsSignalRO, 'HeadSerNum_RBV')
+    initialize = ADC(ADEpicsSignal, 'Initialize')
+    max_gain_index = ADC(EpicsSignalRO, 'MaxGainIndex_RBV')
+    max_set_temperature = ADC(EpicsSignal, 'MaxSetTemperature')
+    max_shutter_close_delay = ADC(EpicsSignalRO, 'MaxShutterCloseDelay_RBV')
+    max_shutter_open_delay = ADC(EpicsSignalRO, 'MaxShutterOpenDelay_RBV')
+    measured_temperature = ADC(EpicsSignalRO, 'MeasuredTemperature_RBV')
+    min_set_temperature = ADC(EpicsSignal, 'MinSetTemperature')
+    min_shutter_close_delay = ADC(EpicsSignalRO, 'MinShutterCloseDelay_RBV')
+    min_shutter_open_delay = ADC(EpicsSignalRO, 'MinShutterOpenDelay_RBV')
+    num_parallel_pixels = ADC(EpicsSignalRO, 'NumParallelPixels_RBV')
+    num_ports = ADC(EpicsSignalRO, 'NumPorts_RBV')
+    num_serial_pixels = ADC(EpicsSignalRO, 'NumSerialPixels_RBV')
+    num_speed_table_entries = ADC(EpicsSignalRO, 'NumSpeedTableEntries_RBV')
+    open_delay = ADC(ADEpicsSignal, 'OpenDelay')
+    pcifw_vers = ADC(EpicsSignalRO, 'PCIFWVers_RBV')
+    pv_cam_vers = ADC(EpicsSignalRO, 'PVCamVers_RBV')
+    pixel_parallel_dist = ADC(EpicsSignalRO, 'PixelParallelDist_RBV')
+    pixel_parallel_size = ADC(EpicsSignalRO, 'PixelParallelSize_RBV')
+    pixel_serial_dist = ADC(EpicsSignalRO, 'PixelSerialDist_RBV')
+    pixel_serial_size = ADC(EpicsSignalRO, 'PixelSerialSize_RBV')
+    pixel_time = ADC(EpicsSignalRO, 'PixelTime_RBV')
+    post_mask = ADC(EpicsSignalRO, 'PostMask_RBV')
+    post_scan = ADC(EpicsSignalRO, 'PostScan_RBV')
+    pre_mask = ADC(EpicsSignalRO, 'PreMask_RBV')
+    pre_scan = ADC(EpicsSignalRO, 'PreScan_RBV')
+    serial_num = ADC(EpicsSignalRO, 'SerialNum_RBV')
+    set_temperature = ADC(ADEpicsSignal, 'SetTemperature')
+    slot1_cam = ADC(EpicsSignalRO, 'Slot1Cam_RBV')
+    slot2_cam = ADC(EpicsSignalRO, 'Slot2Cam_RBV')
+    slot3_cam = ADC(EpicsSignalRO, 'Slot3Cam_RBV')
+    speed_table_index = ADC(ADEpicsSignal, 'SpeedTableIndex')
+    trigger_edge = ADC(ADEpicsSignal, 'TriggerEdge')
+
+
+class RoperDetector(AreaDetector):
+    _html_docs = ['RoperDoc.html']
+
+    auto_data_type = ADC(ADEpicsSignal, 'AutoDataType')
+    comment1 = ADC(ADEpicsSignal, 'Comment1')
+    comment2 = ADC(ADEpicsSignal, 'Comment2')
+    comment3 = ADC(ADEpicsSignal, 'Comment3')
+    comment4 = ADC(ADEpicsSignal, 'Comment4')
+    comment5 = ADC(ADEpicsSignal, 'Comment5')
+    file_format = ADC(ADEpicsSignal, 'FileFormat')
+    num_acquisitions = ADC(ADEpicsSignal, 'NumAcquisitions')
+    num_acquisitions_counter = ADC(EpicsSignalRO, 'NumAcquisitionsCounter_RBV')
+    roper_shutter_mode = ADC(ADEpicsSignal, 'RoperShutterMode')
+
+
+class URLDetector(AreaDetector):
+    _html_docs = ['URLDoc.html']
+
+    urls = DC(ad_group(EpicsSignal,
+                       (('url_1', 'URL1'),
+                        ('url_2', 'URL2'),
+                        ('url_3', 'URL3'),
+                        ('url_4', 'URL4'),
+                        ('url_5', 'URL5'),
+                        ('url_6', 'URL6'),
+                        ('url_7', 'URL7'),
+                        ('url_8', 'URL8'),
+                        ('url_9', 'URL9'),
+                        ('url_10', 'URL10'))),
+              doc='URLs')
+
+    url_select = ADC(EpicsSignal, 'URLSelect')
+    url_seq = ADC(EpicsSignal, 'URLSeq')
+    url = ADC(EpicsSignalRO, 'URL_RBV')
