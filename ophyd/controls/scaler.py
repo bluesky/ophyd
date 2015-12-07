@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import OphydDevice
-from .device import (Component as C, DynamicComponent as DC)
+from .device import (Component as C, DynamicDeviceComponent as DDC)
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,9 @@ class EpicsScaler(OphydDevice):
     time = C(EpicsSignal, '.T')
     preset_time = C(EpicsSignal, '.TP')
     auto_count_time = C(EpicsSignal, '.TP1')
-    channels = DC(_scaler_fields('chan', '.S', range(1, 33)))
-    presets = DC(_scaler_fields('preset', '.PR', range(1, 33)))
-    gates = DC(_scaler_fields('gate', '.G', range(1, 33)))
+    channels = DDC(_scaler_fields('chan', '.S', range(1, 33)))
+    presets = DDC(_scaler_fields('preset', '.PR', range(1, 33)))
+    gates = DDC(_scaler_fields('gate', '.G', range(1, 33)))
 
     def configure(self, state=None):
         """Configure Scaler

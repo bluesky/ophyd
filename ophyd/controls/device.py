@@ -97,7 +97,9 @@ class Component:
         raise RuntimeError('Use .put()')
 
 
-class DynamicComponent:
+class DynamicDeviceComponent:
+    '''An OphydDevice component that is a dynamically created sub-device'''
+
     def __init__(self, defn, clsname=None, doc=None):
         self.defn = defn
         self.clsname = clsname
@@ -113,8 +115,8 @@ class DynamicComponent:
         if self.doc is not None:
             return self.doc
 
-        return '{} dynamiccomponent containing {}'.format(self.attr,
-                                                          self.attrs)
+        return '{} dynamicdevice containing {}'.format(self.attr,
+                                                       self.attrs)
 
     def get_separator(self, instance):
         if hasattr(instance, '_sep'):
@@ -179,7 +181,7 @@ class DynamicComponent:
 
 def range_def(cls, field_name, suffix, range_, format_key='index',
               **kwargs):
-    '''Create a DynamicComponent definition based on a range of indices'''
+    '''Create a DynamicDeviceComponent definition based on a range of indices'''
     defn = OrderedDict()
     for i in range_:
         fmt_dict = {format_key: i}
@@ -203,7 +205,7 @@ class ComponentMeta(type):
 
         # map component classes to their attribute names
         components = [(value, attr) for attr, value in clsdict.items()
-                      if isinstance(value, (Component, DynamicComponent))]
+                      if isinstance(value, (Component, DynamicDeviceComponent))]
 
         clsobj._sig_attrs = OrderedDict(components)
 
@@ -215,11 +217,11 @@ class ComponentMeta(type):
             # Notify the component of their attribute name
             cpt.attr = cpt_attr
 
-            if isinstance(cpt, DynamicComponent):
+            if isinstance(cpt, DynamicDeviceComponent):
                 # owner = None means the object itself
                 clsobj._sig_owner[cpt_attr] = None
                 for sub_attr in cpt.attrs:
-                    # the dynamiccomponent attribute owns each of its
+                    # the dynamicdevice attribute owns each of its
                     # sub-attributes
                     clsobj._sig_owner[sub_attr] = cpt_attr
             elif isinstance(cpt, Component):
@@ -405,3 +407,8 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def get_device_tuple(cls):
         '''The device tuple associated with an OphydDevice class'''
         return cls._device_tuple
+
+    @property
+    def report(self):
+        # TODO
+        return {}

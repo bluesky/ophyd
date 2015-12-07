@@ -12,4 +12,4 @@ from .scaler import EpicsScaler
 # from .detector import Detector
 
 from .areadetector.detectors import *
-from .areadetector.plugins import *
+# from .areadetector.plugins import *

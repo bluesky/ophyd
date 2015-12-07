@@ -15,7 +15,7 @@ import logging
 from ...utils import enum
 from .base import (ADBase, ADComponent as ADC, ad_group, ADEpicsSignal)
 from ..signal import (EpicsSignalRO, EpicsSignal)
-from ..device import DynamicComponent as DC
+from ..device import DynamicDeviceComponent as DDC
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +52,11 @@ class AreaDetector(ADBase):
     acquire_time = ADC(ADEpicsSignal, 'AcquireTime')
 
     array_callbacks = ADC(ADEpicsSignal, 'ArrayCallbacks')
-    array_size = DC(ad_group(EpicsSignalRO,
-                             (('array_size_x', 'ArraySizeX_RBV'),
-                              ('array_size_y', 'ArraySizeY_RBV'),
-                              ('array_size_z', 'ArraySizeZ_RBV'))),
-                    doc='Size of the array in the XYZ dimensions')
+    array_size = DDC(ad_group(EpicsSignalRO,
+                              (('array_size_x', 'ArraySizeX_RBV'),
+                               ('array_size_y', 'ArraySizeY_RBV'),
+                               ('array_size_z', 'ArraySizeZ_RBV'))),
+                     doc='Size of the array in the XYZ dimensions')
 
     array_size_bytes = ADC(EpicsSignalRO, 'ArraySize_RBV')
     bin_x = ADC(ADEpicsSignal, 'BinX')
@@ -70,10 +70,10 @@ class AreaDetector(ADBase):
     image_mode = ADC(ADEpicsSignal, 'ImageMode')
     manufacturer = ADC(EpicsSignalRO, 'Manufacturer_RBV')
 
-    max_size = DC(ad_group(EpicsSignalRO,
-                           (('max_size_x', 'MaxSizeX_RBV'),
-                            ('max_size_y', 'MaxSizeY_RBV'))),
-                  doc='Maximum sensor size in the XY directions')
+    max_size = DDC(ad_group(EpicsSignalRO,
+                            (('max_size_x', 'MaxSizeX_RBV'),
+                             ('max_size_y', 'MaxSizeY_RBV'))),
+                   doc='Maximum sensor size in the XY directions')
 
     min_x = ADC(ADEpicsSignal, 'MinX')
     min_y = ADC(ADEpicsSignal, 'MinY')
@@ -85,10 +85,10 @@ class AreaDetector(ADBase):
     num_images_counter = ADC(EpicsSignalRO, 'NumImagesCounter_RBV')
 
     read_status = ADC(EpicsSignal, 'ReadStatus')
-    reverse = DC(ad_group(ADEpicsSignal,
-                          (('reverse_x', 'ReverseX'),
-                           ('reverse_y', 'ReverseY'))
-                          ))
+    reverse = DDC(ad_group(ADEpicsSignal,
+                           (('reverse_x', 'ReverseX'),
+                            ('reverse_y', 'ReverseY'))
+                           ))
 
     shutter_close_delay = ADC(ADEpicsSignal, 'ShutterCloseDelay')
     shutter_close_epics = ADC(EpicsSignal, 'ShutterCloseEPICS')
@@ -101,10 +101,10 @@ class AreaDetector(ADBase):
     shutter_status_epics = ADC(EpicsSignalRO, 'ShutterStatusEPICS_RBV')
     shutter_status = ADC(EpicsSignalRO, 'ShutterStatus_RBV')
 
-    size = DC(ad_group(ADEpicsSignal,
-                       (('size_x', 'SizeX'),
-                        ('size_y', 'SizeY'))
-                       ))
+    size = DDC(ad_group(ADEpicsSignal,
+                        (('size_x', 'SizeX'),
+                         ('size_y', 'SizeY'))
+                        ))
 
     status_message = ADC(EpicsSignalRO, 'StatusMessage_RBV', string=True)
     string_from_server = ADC(EpicsSignalRO, 'StringFromServer_RBV', string=True)
@@ -118,37 +118,37 @@ class AreaDetector(ADBase):
 class SimDetector(AreaDetector):
     _html_docs = ['simDetectorDoc.html']
 
-    gain_rgb = DC(ad_group(ADEpicsSignal,
-                           (('gain_red', 'GainRed'),
-                            ('gain_green', 'GainGreen'),
-                            ('gain_blue', 'GainBlue'))),
-                  doc='Gain rgb components')
-    gain_xy = DC(ad_group(ADEpicsSignal,
-                          (('gain_x', 'GainX'),
-                           ('gain_y', 'GainY'))),
-                 doc='Gain in XY')
+    gain_rgb = DDC(ad_group(ADEpicsSignal,
+                            (('gain_red', 'GainRed'),
+                             ('gain_green', 'GainGreen'),
+                             ('gain_blue', 'GainBlue'))),
+                   doc='Gain rgb components')
+    gain_xy = DDC(ad_group(ADEpicsSignal,
+                           (('gain_x', 'GainX'),
+                            ('gain_y', 'GainY'))),
+                  doc='Gain in XY')
 
     noise = ADC(ADEpicsSignal, 'Noise')
-    peak_num = DC(ad_group(ADEpicsSignal,
-                           (('peak_num_x', 'PeakNumX'),
-                            ('peak_num_y', 'PeakNumY'))),
-                  doc='Peak number in XY')
+    peak_num = DDC(ad_group(ADEpicsSignal,
+                            (('peak_num_x', 'PeakNumX'),
+                             ('peak_num_y', 'PeakNumY'))),
+                   doc='Peak number in XY')
 
-    peak_start = DC(ad_group(ADEpicsSignal,
-                             (('peak_start_x', 'PeakStartX'),
-                              ('peak_start_y', 'PeakStartY'))),
-                    doc='Peak start in XY')
+    peak_start = DDC(ad_group(ADEpicsSignal,
+                              (('peak_start_x', 'PeakStartX'),
+                               ('peak_start_y', 'PeakStartY'))),
+                     doc='Peak start in XY')
 
-    peak_step = DC(ad_group(ADEpicsSignal,
-                            (('peak_step_x', 'PeakStepX'),
-                             ('peak_step_y', 'PeakStepY'))),
-                   doc='Peak step in XY')
+    peak_step = DDC(ad_group(ADEpicsSignal,
+                             (('peak_step_x', 'PeakStepX'),
+                              ('peak_step_y', 'PeakStepY'))),
+                    doc='Peak step in XY')
 
     peak_variation = ADC(ADEpicsSignal, 'PeakVariation')
-    peak_width = DC(ad_group(ADEpicsSignal,
-                             (('peak_width_x', 'PeakWidthX'),
-                              ('peak_width_y', 'PeakWidthY'))),
-                    doc='Peak width in XY')
+    peak_width = DDC(ad_group(ADEpicsSignal,
+                              (('peak_width_x', 'PeakWidthX'),
+                               ('peak_width_y', 'PeakWidthY'))),
+                     doc='Peak width in XY')
 
     reset = ADC(ADEpicsSignal, 'Reset')
     sim_mode = ADC(ADEpicsSignal, 'SimMode')
@@ -519,18 +519,18 @@ class RoperDetector(AreaDetector):
 class URLDetector(AreaDetector):
     _html_docs = ['URLDoc.html']
 
-    urls = DC(ad_group(EpicsSignal,
-                       (('url_1', 'URL1'),
-                        ('url_2', 'URL2'),
-                        ('url_3', 'URL3'),
-                        ('url_4', 'URL4'),
-                        ('url_5', 'URL5'),
-                        ('url_6', 'URL6'),
-                        ('url_7', 'URL7'),
-                        ('url_8', 'URL8'),
-                        ('url_9', 'URL9'),
-                        ('url_10', 'URL10'))),
-              doc='URLs')
+    urls = DDC(ad_group(EpicsSignal,
+                        (('url_1', 'URL1'),
+                         ('url_2', 'URL2'),
+                         ('url_3', 'URL3'),
+                         ('url_4', 'URL4'),
+                         ('url_5', 'URL5'),
+                         ('url_6', 'URL6'),
+                         ('url_7', 'URL7'),
+                         ('url_8', 'URL8'),
+                         ('url_9', 'URL9'),
+                         ('url_10', 'URL10'))),
+               doc='URLs')
 
     url_select = ADC(EpicsSignal, 'URLSelect')
     url_seq = ADC(EpicsSignal, 'URLSeq')
