@@ -9,14 +9,12 @@ import epics
 
 from ophyd.controls import scaler
 from ophyd.utils import enum
-from ophyd.session import get_session_manager
 from .test_signal import FakeEpicsPV
 
 ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 
 server = None
 logger = logging.getLogger(__name__)
-session = get_session_manager()
 
 
 REAL_SCALER = False
@@ -47,34 +45,30 @@ class SignalTests(unittest.TestCase):
         scaler.EpicsScaler(scalers[0])
 
     def test_signal_separate(self):
-        sca = scaler.EpicsScaler(scalers[0], name='scaler')
-        sca.preset_time = 5.2
+        sca = scaler.EpicsScaler(scalers[0], name='scaler',
+                                 read_signals=['channels'])
+        sca.preset_time.put(5.2)
 
-        logger.info('Counting in One-Shot mode for %f s...' % sca.preset_time)
-        sca.start()
+        logger.info('Counting in One-Shot mode for %f s...' % sca.preset_time.get())
+        sca.count.put(1)
         logger.info('Sleeping...')
         time.sleep(3)
         logger.info('Done sleeping. Stopping counter...')
         sca.stop()
 
         logger.info('Set mode to AutoCount')
-        sca.count_mode = ScalerMode.AUTO_COUNT
-        sca.start()
+        sca.count_mode.put(ScalerMode.AUTO_COUNT)
+        sca.count.put(1)
         logger.info('Begin auto-counting (aka "background counting")...')
         time.sleep(2)
         logger.info('Set mode to OneShot')
-        sca.count_mode = ScalerMode.ONE_SHOT
+        sca.count_mode.put(ScalerMode.ONE_SHOT)
         time.sleep(1)
         logger.info('Stopping (aborting) auto-counting.')
         sca.stop()
 
         logger.info('read() all channels in one-shot mode...')
         vals = sca.read()
-        logger.info(vals)
-
-        channels = (1, 3, 5, 6)
-        logger.info('read() selected channels %s in one-shot mode...' % list(channels))
-        vals = sca.read(channels)
         logger.info(vals)
 
         sca.report
