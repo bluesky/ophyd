@@ -57,7 +57,8 @@ class PositionerTests(unittest.TestCase):
         # self.assertEqual(pc.egu, p.egu)
 
     def test_epicsmotor(self):
-        m = EpicsMotor(self.sim_pv)
+        m = EpicsMotor(self.sim_pv, name='epicsmotor')
+        print('epicsmotor', m)
         m.wait_for_connection()
 
         m.limits
@@ -112,7 +113,8 @@ class PVPosTest(unittest.TestCase):
 
     def test_pvpos(self):
         motor_record = self.sim_pv
-        mrec = EpicsMotor(motor_record)
+        mrec = EpicsMotor(motor_record, name='pvpos_mrec')
+        print('mrec', mrec.describe())
         mrec.wait_for_connection()
 
         class MyPositioner(PVPositioner):
@@ -150,7 +152,8 @@ class PVPosTest(unittest.TestCase):
 
     def test_put_complete(self):
         motor_record = self.sim_pv
-        mrec = EpicsMotor(motor_record)
+        mrec = EpicsMotor(motor_record, name='pcomplete_mrec')
+        print('mrec', mrec.describe())
         mrec.wait_for_connection()
 
         logger.info('--> PV Positioner, using put completion and a DONE pv')

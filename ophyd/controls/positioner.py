@@ -90,6 +90,13 @@ class Positioner(OphydDevice):
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
 
+        is_subclass = (self.__class__ is not Positioner)
+        if not is_subclass:
+            # When not subclassed, Positioner acts as a soft positioner,
+            # immediately 'moving' to the target position when requested.
+            self._started_moving = True
+            self._moving = False
+
         status = MoveStatus(self, position)
         if wait:
             t0 = time.time()
@@ -121,6 +128,10 @@ class Positioner(OphydDevice):
 
             self.subscribe(status._finished,
                            event_type=self._SUB_REQ_DONE, run=False)
+
+        if not is_subclass:
+            self._set_position(position)
+            self._done_moving()
 
         return status
 
