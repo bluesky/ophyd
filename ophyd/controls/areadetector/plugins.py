@@ -16,7 +16,10 @@ import numpy as np
 
 import epics
 
-from .base import (ADBase, update_docstrings, ADSignal, ADSignalGroup)
+from .base import (ADBase, ADComponent as C, ad_group,
+                   EpicsSignalWithRBV as SignalWithRBV)
+from ..signal import (EpicsSignalRO, EpicsSignal)
+from ..device import DynamicDeviceComponent as DDC
 from ...utils import enum
 
 
@@ -38,18 +41,33 @@ __all__ = ['ColorConvPlugin',
 
            'get_areadetector_plugin',
            'plugin_from_pvname',
+           'register_plugin',
            ]
+
+
+_plugin_class = {}
+
+
+def register_plugin(cls):
+    '''Register a plugin'''
+    global _plugin_class
+
+    _plugin_class[cls._plugin_type] = cls
 
 
 class PluginBase(ADBase):
     '''AreaDetector plugin base class'''
     _html_docs = ['pluginDoc.html']
+    _plugin_type = None
+    _suffix_re = None
 
     @property
     def array_pixels(self):
-        array_size = self.array_size.value
+        '''The total number of pixels, calculated from array_size'''
 
-        dimensions = self.ndimensions.value
+        array_size = self.array_size.get()
+        dimensions = self.ndimensions.get()
+
         if dimensions == 0:
             return 0
 
@@ -59,70 +77,61 @@ class PluginBase(ADBase):
 
         return pixels
 
-    width = ADSignal('ArraySize0_RBV', rw=False)
-    height = ADSignal('ArraySize1_RBV', rw=False)
-    depth = ADSignal('ArraySize2_RBV', rw=False)
-    array_size = ADSignalGroup(height, width, depth)
+    width = C(EpicsSignalRO, 'ArraySize0_RBV')
+    height = C(EpicsSignalRO, 'ArraySize1_RBV')
+    depth = C(EpicsSignalRO, 'ArraySize2_RBV')
+    array_size = DDC(ad_group(EpicsSignalRO,
+                              (('height', 'ArraySize1_RBV'),
+                               ('width', 'ArraySize0_RBV'),
+                               ('depth', 'ArraySize2_RBV'))),
+                     doc='The array size')
 
-    bayer_pattern = ADSignal('BayerPattern_RBV', rw=False)
-    blocking_callbacks = ADSignal('BlockingCallbacks', has_rbv=True)
-    color_mode = ADSignal('ColorMode_RBV', rw=False)
-    data_type = ADSignal('DataType_RBV', rw=False)
+    bayer_pattern = C(EpicsSignalRO, 'BayerPattern_RBV')
+    blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks')
+    color_mode = C(EpicsSignalRO, 'ColorMode_RBV')
+    data_type = C(EpicsSignalRO, 'DataType_RBV')
 
-    dim0_sa = ADSignal('Dim0SA')
-    dim1_sa = ADSignal('Dim1SA')
-    dim2_sa = ADSignal('Dim2SA')
-    dim_sa = ADSignalGroup(dim0_sa, dim1_sa, dim2_sa)
+    dim0_sa = C(EpicsSignal, 'Dim0SA')
+    dim1_sa = C(EpicsSignal, 'Dim1SA')
+    dim2_sa = C(EpicsSignal, 'Dim2SA')
+    dim_sa = DDC(ad_group(EpicsSignal,
+                          (('dim0', 'Dim0SA'),
+                           ('dim1', 'Dim1SA'),
+                           ('dim2', 'Dim2SA'))),
+                 doc='Dimension sub-arrays')
 
-    dimensions = ADSignal('Dimensions_RBV', rw=False)
-    dropped_arrays = ADSignal('DroppedArrays', has_rbv=True)
-    enable = ADSignal('EnableCallbacks', has_rbv=True)
-    min_callback_time = ADSignal('MinCallbackTime', has_rbv=True)
-    nd_array_address = ADSignal('NDArrayAddress', has_rbv=True)
-    nd_array_port = ADSignal('NDArrayPort', has_rbv=True)
-    ndimensions = ADSignal('NDimensions_RBV', rw=False)
-    plugin_type = ADSignal('PluginType_RBV', rw=False)
+    dimensions = C(EpicsSignalRO, 'Dimensions_RBV')
+    dropped_arrays = C(SignalWithRBV, 'DroppedArrays')
+    enable = C(SignalWithRBV, 'EnableCallbacks')
+    min_callback_time = C(SignalWithRBV, 'MinCallbackTime')
+    nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
+    nd_array_port = C(SignalWithRBV, 'NDArrayPort')
+    ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
+    plugin_type = C(EpicsSignalRO, 'PluginType_RBV')
 
-    queue_free = ADSignal('QueueFree')
-    queue_free_low = ADSignal('QueueFreeLow')
-    queue_size = ADSignal('QueueSize')
-    queue_use = ADSignal('QueueUse')
-    queue_use_high = ADSignal('QueueUseHIGH')
-    queue_use_hihi = ADSignal('QueueUseHIHI')
-    time_stamp = ADSignal('TimeStamp_RBV', rw=False)
-    unique_id = ADSignal('UniqueId_RBV', rw=False)
+    queue_free = C(EpicsSignal, 'QueueFree')
+    queue_free_low = C(EpicsSignal, 'QueueFreeLow')
+    queue_size = C(EpicsSignal, 'QueueSize')
+    queue_use = C(EpicsSignal, 'QueueUse')
+    queue_use_high = C(EpicsSignal, 'QueueUseHIGH')
+    queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
+    time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
+    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
-    def _get_detector(self, detector=None):
-        if detector is not None:
-            return detector
-
-        if self._detector is not None:
-            return self._detector
-
-        raise ValueError('Must specify detector')
-
-    def __init__(self, prefix, suffix=None, detector=None, **kwargs):
-        if suffix is None:
-            suffix = self._default_suffix
-
-        prefix = ''.join([prefix, suffix])
-
-        ADBase.__init__(self, prefix, **kwargs)
-
-        self._detector = detector
-
-    @property
-    def detector(self):
-        '''The default detector associated with the plugin'''
-        return self._detector
+    # TODO: owner necessary for plugins?
+    # @property
+    # def detector(self):
+    #     '''The default detector associated with the plugin'''
+    #     return self._detector
 
 
 class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
     _suffix_re = 'image\d:'
     _html_docs = ['NDPluginStdArrays.html']
+    _plugin_type = 'NDPluginStdArrays'
 
-    array_data = ADSignal('ArrayData')
+    array_data = C(EpicsSignal, 'ArrayData')
 
     @property
     def image(self):
@@ -142,208 +151,221 @@ class StatsPlugin(PluginBase):
     _default_suffix = 'Stats1:'
     _suffix_re = 'Stats\d:'
     _html_docs = ['NDPluginStats.html']
+    _plugin_type = 'NDPluginStats'
 
-    bgd_width = ADSignal('BgdWidth', has_rbv=True)
-    centroid_threshold = ADSignal('CentroidThreshold', has_rbv=True)
+    bgd_width = C(SignalWithRBV, 'BgdWidth')
+    centroid_threshold = C(SignalWithRBV, 'CentroidThreshold')
 
-    _centroid_x = ADSignal('CentroidX_RBV', rw=False)
-    _centroid_y = ADSignal('CentroidY_RBV', rw=False)
-    centroid = ADSignalGroup(_centroid_x, _centroid_y)
+    centroid = DDC(ad_group(EpicsSignalRO,
+                            (('x', 'CentroidX_RBV'),
+                             ('y', 'CentroidY_RBV'))),
+                   doc='The centroid XY')
 
-    compute_centroid = ADSignal('ComputeCentroid', has_rbv=True)
-    compute_histogram = ADSignal('ComputeHistogram', has_rbv=True)
-    compute_profiles = ADSignal('ComputeProfiles', has_rbv=True)
-    compute_statistics = ADSignal('ComputeStatistics', has_rbv=True)
+    compute_centroid = C(SignalWithRBV, 'ComputeCentroid')
+    compute_histogram = C(SignalWithRBV, 'ComputeHistogram')
+    compute_profiles = C(SignalWithRBV, 'ComputeProfiles')
+    compute_statistics = C(SignalWithRBV, 'ComputeStatistics')
 
-    _cursor_x = ADSignal('CursorX', has_rbv=True)
-    _cursor_y = ADSignal('CursorY', has_rbv=True)
+    cursor = DDC(ad_group(SignalWithRBV,
+                          (('x', 'CursorX'),
+                           ('y', 'CursorY'))),
+                 doc='The cursor XY')
 
-    cursor = ADSignalGroup(_cursor_x, _cursor_y)
+    hist_entropy = C(EpicsSignalRO, 'HistEntropy_RBV')
+    hist_max = C(SignalWithRBV, 'HistMax')
+    hist_min = C(SignalWithRBV, 'HistMin')
+    hist_size = C(SignalWithRBV, 'HistSize')
+    histogram = C(EpicsSignalRO, 'Histogram_RBV')
 
-    hist_entropy = ADSignal('HistEntropy_RBV', rw=False)
-    hist_max = ADSignal('HistMax', has_rbv=True)
-    hist_min = ADSignal('HistMin', has_rbv=True)
-    hist_size = ADSignal('HistSize', has_rbv=True)
-    histogram = ADSignal('Histogram_RBV', rw=False)
+    max_size = DDC(ad_group(EpicsSignal,
+                            (('x', 'MaxSizeX'),
+                             ('y', 'MaxSizeY'))),
+                   doc='The maximum size in XY')
 
-    _max_size_x = ADSignal('MaxSizeX')
-    _max_size_y = ADSignal('MaxSizeY')
-    max_size = ADSignalGroup(_max_size_x, _max_size_y)
+    max_value = C(EpicsSignalRO, 'MaxValue_RBV')
+    max_xy = DDC(ad_group(EpicsSignalRO,
+                          (('x', 'MaxX_RBV'),
+                           ('y', 'MaxY_RBV'))),
+                 doc='Maximum in XY')
 
-    max_value = ADSignal('MaxValue_RBV', rw=False)
+    mean_value = C(EpicsSignalRO, 'MeanValue_RBV')
+    min_value = C(EpicsSignalRO, 'MinValue_RBV')
 
-    _max_x = ADSignal('MaxX_RBV', rw=False)
-    _max_y = ADSignal('MaxY_RBV', rw=False)
-    max_ = ADSignalGroup(_max_x, _max_y)
+    min_xy = DDC(ad_group(EpicsSignalRO,
+                          (('x', 'MinX_RBV'),
+                           ('y', 'MinY_RBV'))),
+                 doc='Minimum in XY')
 
-    mean_value = ADSignal('MeanValue_RBV', rw=False)
-    min_value = ADSignal('MinValue_RBV', rw=False)
+    net = C(EpicsSignalRO, 'Net_RBV')
+    profile_average = DDC(ad_group(EpicsSignalRO,
+                                   (('x', 'ProfileAverageX_RBV'),
+                                    ('y', 'ProfileAverageY_RBV'))),
+                          doc='Profile average in XY')
 
-    _min_x = ADSignal('MinX_RBV', rw=False)
-    _min_y = ADSignal('MinY_RBV', rw=False)
-    min_ = ADSignalGroup(_min_x, _min_y)
+    profile_centroid = DDC(ad_group(EpicsSignalRO,
+                                    (('x', 'ProfileCentroidX_RBV'),
+                                     ('y', 'ProfileCentroidY_RBV'))),
+                           doc='Profile centroid in XY')
 
-    net = ADSignal('Net_RBV', rw=False)
+    profile_cursor = DDC(ad_group(EpicsSignalRO,
+                                  (('x', 'ProfileCursorX_RBV'),
+                                   ('y', 'ProfileCursorY_RBV'))),
+                         doc='Profile cursor in XY')
 
-    _profile_average_x = ADSignal('ProfileAverageX_RBV', rw=False)
-    _profile_average_y = ADSignal('ProfileAverageY_RBV', rw=False)
-    profile_average = ADSignalGroup(_profile_average_x, _profile_average_y)
+    profile_size = DDC(ad_group(EpicsSignalRO,
+                                (('x', 'ProfileSizeX_RBV'),
+                                 ('y', 'ProfileSizeY_RBV'))),
+                       doc='Profile size in XY')
 
-    _profile_centroid_x = ADSignal('ProfileCentroidX_RBV', rw=False)
-    _profile_centroid_y = ADSignal('ProfileCentroidY_RBV', rw=False)
-    profile_centroid = ADSignalGroup(_profile_centroid_x, _profile_centroid_y)
+    profile_threshold = DDC(ad_group(EpicsSignalRO,
+                                     (('x', 'ProfileThresholdX_RBV'),
+                                      ('y', 'ProfileThresholdY_RBV'))),
+                            doc='Profile threshold in XY')
 
-    _profile_cursor_x = ADSignal('ProfileCursorX_RBV', rw=False)
-    _profile_cursor_y = ADSignal('ProfileCursorY_RBV', rw=False)
-    profile_cursor = ADSignalGroup(_profile_cursor_x, _profile_cursor_y)
+    set_xhopr = C(EpicsSignal, 'SetXHOPR')
+    set_yhopr = C(EpicsSignal, 'SetYHOPR')
+    sigma_xy = C(EpicsSignalRO, 'SigmaXY_RBV')
+    sigma_x = C(EpicsSignalRO, 'SigmaX_RBV')
+    sigma_y = C(EpicsSignalRO, 'SigmaY_RBV')
+    sigma = C(EpicsSignalRO, 'Sigma_RBV')
+    ts_acquiring = C(EpicsSignal, 'TSAcquiring')
 
-    _profile_size_x = ADSignal('ProfileSizeX_RBV', rw=False)
-    _profile_size_y = ADSignal('ProfileSizeY_RBV', rw=False)
-    profile_size = ADSignalGroup(_profile_size_x, _profile_size_y)
+    ts_centroid = DDC(ad_group(EpicsSignal,
+                               (('x', 'TSCentroidX'),
+                                ('y', 'TSCentroidY'))),
+                      doc='Time series centroid in XY')
 
-    _profile_threshold_x = ADSignal('ProfileThresholdX_RBV', rw=False)
-    _profile_threshold_y = ADSignal('ProfileThresholdY_RBV', rw=False)
-    profile_threshold = ADSignalGroup(_profile_threshold_x, _profile_threshold_y)
+    ts_control = C(EpicsSignal, 'TSControl')
+    ts_current_point = C(EpicsSignal, 'TSCurrentPoint')
+    ts_max_value = C(EpicsSignal, 'TSMaxValue')
 
-    set_xhopr = ADSignal('SetXHOPR')
-    set_yhopr = ADSignal('SetYHOPR')
-    sigma_xy = ADSignal('SigmaXY_RBV', rw=False)
-    sigma_x = ADSignal('SigmaX_RBV', rw=False)
-    sigma_y = ADSignal('SigmaY_RBV', rw=False)
-    sigma = ADSignal('Sigma_RBV', rw=False)
-    ts_acquiring = ADSignal('TSAcquiring')
+    ts_max = DDC(ad_group(EpicsSignal,
+                          (('x', 'TSMaxX'),
+                           ('y', 'TSMaxY'))),
+                 doc='Time series maximum in XY')
 
-    _ts_centroid_x = ADSignal('TSCentroidX')
-    _ts_centroid_y = ADSignal('TSCentroidY')
-    ts_centroid = ADSignalGroup(_ts_centroid_x, _ts_centroid_y)
+    ts_mean_value = C(EpicsSignal, 'TSMeanValue')
+    ts_min_value = C(EpicsSignal, 'TSMinValue')
 
-    ts_control = ADSignal('TSControl')
-    ts_current_point = ADSignal('TSCurrentPoint')
-    ts_max_value = ADSignal('TSMaxValue')
+    ts_min = DDC(ad_group(EpicsSignal,
+                          (('x', 'TSMinX'),
+                           ('y', 'TSMinY'))),
+                 doc='Time series minimum in XY')
 
-    _ts_max_x = ADSignal('TSMaxX')
-    _ts_max_y = ADSignal('TSMaxY')
-    ts_max = ADSignalGroup(_ts_max_x, _ts_max_y)
-
-    ts_mean_value = ADSignal('TSMeanValue')
-    ts_min_value = ADSignal('TSMinValue')
-
-    _ts_min_x = ADSignal('TSMinX')
-    _ts_min_y = ADSignal('TSMinY')
-    ts_min = ADSignalGroup(_ts_min_x, _ts_min_y)
-
-    ts_net = ADSignal('TSNet')
-    ts_num_points = ADSignal('TSNumPoints')
-    ts_read = ADSignal('TSRead')
-    ts_sigma = ADSignal('TSSigma')
-    ts_sigma_x = ADSignal('TSSigmaX')
-    ts_sigma_xy = ADSignal('TSSigmaXY')
-    ts_sigma_y = ADSignal('TSSigmaY')
-    ts_total = ADSignal('TSTotal')
-    total = ADSignal('Total_RBV', rw=False)
+    ts_net = C(EpicsSignal, 'TSNet')
+    ts_num_points = C(EpicsSignal, 'TSNumPoints')
+    ts_read = C(EpicsSignal, 'TSRead')
+    ts_sigma = C(EpicsSignal, 'TSSigma')
+    ts_sigma_x = C(EpicsSignal, 'TSSigmaX')
+    ts_sigma_xy = C(EpicsSignal, 'TSSigmaXY')
+    ts_sigma_y = C(EpicsSignal, 'TSSigmaY')
+    ts_total = C(EpicsSignal, 'TSTotal')
+    total = C(EpicsSignalRO, 'Total_RBV')
 
 
 class ColorConvPlugin(PluginBase):
     _default_suffix = 'CC1:'
     _suffix_re = 'CC\d:'
     _html_docs = ['NDPluginColorConvert.html']
+    _plugin_type = 'NDPluginColorConvert'
 
-    color_mode_out = ADSignal('ColorModeOut', has_rbv=True)
-    false_color = ADSignal('FalseColor', has_rbv=True)
+    color_mode_out = C(SignalWithRBV, 'ColorModeOut')
+    false_color = C(SignalWithRBV, 'FalseColor')
 
 
 class ProcessPlugin(PluginBase):
     _default_suffix = 'Proc1:'
     _suffix_re = 'Proc\d:'
     _html_docs = ['NDPluginProcess.html']
+    _plugin_type = 'NDPluginProcess'
 
-    auto_offset_scale = ADSignal('AutoOffsetScale')
-    auto_reset_filter = ADSignal('AutoResetFilter', has_rbv=True)
-    average_seq = ADSignal('AverageSeq')
-    copy_to_filter_seq = ADSignal('CopyToFilterSeq')
-    data_type_out = ADSignal('DataTypeOut', has_rbv=True)
-    difference_seq = ADSignal('DifferenceSeq')
-    enable_background = ADSignal('EnableBackground', has_rbv=True)
-    enable_filter = ADSignal('EnableFilter', has_rbv=True)
-    enable_flat_field = ADSignal('EnableFlatField', has_rbv=True)
-    enable_high_clip = ADSignal('EnableHighClip', has_rbv=True)
-    enable_low_clip = ADSignal('EnableLowClip', has_rbv=True)
-    enable_offset_scale = ADSignal('EnableOffsetScale', has_rbv=True)
+    auto_offset_scale = C(EpicsSignal, 'AutoOffsetScale')
+    auto_reset_filter = C(SignalWithRBV, 'AutoResetFilter')
+    average_seq = C(EpicsSignal, 'AverageSeq')
+    copy_to_filter_seq = C(EpicsSignal, 'CopyToFilterSeq')
+    data_type_out = C(SignalWithRBV, 'DataTypeOut')
+    difference_seq = C(EpicsSignal, 'DifferenceSeq')
+    enable_background = C(SignalWithRBV, 'EnableBackground')
+    enable_filter = C(SignalWithRBV, 'EnableFilter')
+    enable_flat_field = C(SignalWithRBV, 'EnableFlatField')
+    enable_high_clip = C(SignalWithRBV, 'EnableHighClip')
+    enable_low_clip = C(SignalWithRBV, 'EnableLowClip')
+    enable_offset_scale = C(SignalWithRBV, 'EnableOffsetScale')
 
-    _fc1 = ADSignal('FC1', has_rbv=True)
-    _fc2 = ADSignal('FC2', has_rbv=True)
-    _fc3 = ADSignal('FC3', has_rbv=True)
-    _fc4 = ADSignal('FC4', has_rbv=True)
-    fc = ADSignalGroup(_fc1, _fc2, _fc3, _fc4,
-                       doc='Filter coefficients')
+    fc = DDC(ad_group(SignalWithRBV,
+                      (('fc1', 'FC1'),
+                       ('fc2', 'FC2'),
+                       ('fc3', 'FC3'),
+                       ('fc4', 'FC4'))),
+             doc='Filter coefficients')
 
-    foffset = ADSignal('FOffset', has_rbv=True)
-    fscale = ADSignal('FScale', has_rbv=True)
-    filter_callbacks = ADSignal('FilterCallbacks', has_rbv=True)
-    filter_type = ADSignal('FilterType')
-    filter_type_seq = ADSignal('FilterTypeSeq')
-    high_clip = ADSignal('HighClip', has_rbv=True)
-    low_clip = ADSignal('LowClip', has_rbv=True)
-    num_filter = ADSignal('NumFilter', has_rbv=True)
-    num_filter_recip = ADSignal('NumFilterRecip')
-    num_filtered = ADSignal('NumFiltered_RBV', rw=False)
+    foffset = C(SignalWithRBV, 'FOffset')
+    fscale = C(SignalWithRBV, 'FScale')
+    filter_callbacks = C(SignalWithRBV, 'FilterCallbacks')
+    filter_type = C(EpicsSignal, 'FilterType')
+    filter_type_seq = C(EpicsSignal, 'FilterTypeSeq')
+    high_clip = C(SignalWithRBV, 'HighClip')
+    low_clip = C(SignalWithRBV, 'LowClip')
+    num_filter = C(SignalWithRBV, 'NumFilter')
+    num_filter_recip = C(EpicsSignal, 'NumFilterRecip')
+    num_filtered = C(EpicsSignalRO, 'NumFiltered_RBV')
 
-    _oc1 = ADSignal('OC1', has_rbv=True)
-    _oc2 = ADSignal('OC2', has_rbv=True)
-    _oc3 = ADSignal('OC3', has_rbv=True)
-    _oc4 = ADSignal('OC4', has_rbv=True)
-    oc = ADSignalGroup(_oc1, _oc2, _oc3, _oc4,
-                       doc='Output coefficients')
+    oc = DDC(ad_group(SignalWithRBV,
+                      (('oc1', 'OC1'),
+                       ('oc2', 'OC2'),
+                       ('oc3', 'OC3'),
+                       ('oc4', 'OC4'))),
+             doc='Output coefficients')
 
-    o_offset = ADSignal('OOffset', has_rbv=True)
-    o_scale = ADSignal('OScale', has_rbv=True)
-    offset = ADSignal('Offset', has_rbv=True)
+    o_offset = C(SignalWithRBV, 'OOffset')
+    o_scale = C(SignalWithRBV, 'OScale')
+    offset = C(SignalWithRBV, 'Offset')
 
-    _rc1 = ADSignal('RC1', has_rbv=True)
-    _rc2 = ADSignal('RC2', has_rbv=True)
-    rc = ADSignalGroup(_rc1, _rc2,
-                       doc='Filter coefficients')
+    rc = DDC(ad_group(SignalWithRBV,
+                      (('rc1', 'RC1'),
+                       ('rc2', 'RC2'))),
+             doc='Filter coefficients')
 
-    roffset = ADSignal('ROffset', has_rbv=True)
-    recursive_ave_diff_seq = ADSignal('RecursiveAveDiffSeq')
-    recursive_ave_seq = ADSignal('RecursiveAveSeq')
-    reset_filter = ADSignal('ResetFilter', has_rbv=True)
-    save_background = ADSignal('SaveBackground', has_rbv=True)
-    save_flat_field = ADSignal('SaveFlatField', has_rbv=True)
-    scale = ADSignal('Scale', has_rbv=True)
-    scale_flat_field = ADSignal('ScaleFlatField', has_rbv=True)
-    sum_seq = ADSignal('SumSeq')
-    valid_background = ADSignal('ValidBackground_RBV', rw=False)
-    valid_flat_field = ADSignal('ValidFlatField_RBV', rw=False)
+    roffset = C(SignalWithRBV, 'ROffset')
+    recursive_ave_diff_seq = C(EpicsSignal, 'RecursiveAveDiffSeq')
+    recursive_ave_seq = C(EpicsSignal, 'RecursiveAveSeq')
+    reset_filter = C(SignalWithRBV, 'ResetFilter')
+    save_background = C(SignalWithRBV, 'SaveBackground')
+    save_flat_field = C(SignalWithRBV, 'SaveFlatField')
+    scale = C(SignalWithRBV, 'Scale')
+    scale_flat_field = C(SignalWithRBV, 'ScaleFlatField')
+    sum_seq = C(EpicsSignal, 'SumSeq')
+    valid_background = C(EpicsSignalRO, 'ValidBackground_RBV')
+    valid_flat_field = C(EpicsSignalRO, 'ValidFlatField_RBV')
 
 
 class Overlay(ADBase):
     _html_docs = ['NDPluginOverlay.html']
 
-    blue = ADSignal('Blue', has_rbv=True)
-    draw_mode = ADSignal('DrawMode', has_rbv=True)
-    green = ADSignal('Green', has_rbv=True)
-    max_size_x = ADSignal('MaxSizeX')
-    max_size_y = ADSignal('MaxSizeY')
-    overlay_portname = ADSignal('Name', has_rbv=True)
+    blue = C(SignalWithRBV, 'Blue')
+    draw_mode = C(SignalWithRBV, 'DrawMode')
+    green = C(SignalWithRBV, 'Green')
+    max_size_x = C(EpicsSignal, 'MaxSizeX')
+    max_size_y = C(EpicsSignal, 'MaxSizeY')
+    overlay_portname = C(SignalWithRBV, 'Name')
 
-    position_x = ADSignal('PositionX', has_rbv=True)
-    position_y = ADSignal('PositionY', has_rbv=True)
+    position_x = C(SignalWithRBV, 'PositionX')
+    position_y = C(SignalWithRBV, 'PositionY')
 
-    position_xlink = ADSignal('PositionXLink')
-    position_ylink = ADSignal('PositionYLink')
+    position_xlink = C(EpicsSignal, 'PositionXLink')
+    position_ylink = C(EpicsSignal, 'PositionYLink')
 
-    red = ADSignal('Red', has_rbv=True)
-    set_xhopr = ADSignal('SetXHOPR')
-    set_yhopr = ADSignal('SetYHOPR')
-    shape = ADSignal('Shape', has_rbv=True)
+    red = C(SignalWithRBV, 'Red')
+    set_xhopr = C(EpicsSignal, 'SetXHOPR')
+    set_yhopr = C(EpicsSignal, 'SetYHOPR')
+    shape = C(SignalWithRBV, 'Shape')
 
-    size_x = ADSignal('SizeX', has_rbv=True)
-    size_y = ADSignal('SizeY', has_rbv=True)
+    size_x = C(SignalWithRBV, 'SizeX')
+    size_y = C(SignalWithRBV, 'SizeY')
 
-    size_xlink = ADSignal('SizeXLink')
-    size_ylink = ADSignal('SizeYLink')
-    use = ADSignal('Use', has_rbv=True)
+    size_xlink = C(EpicsSignal, 'SizeXLink')
+    size_ylink = C(EpicsSignal, 'SizeYLink')
+    use = C(SignalWithRBV, 'Use')
 
 
 class OverlayPlugin(PluginBase):
@@ -367,369 +389,287 @@ class OverlayPlugin(PluginBase):
     _default_suffix = 'Over1:'
     _suffix_re = 'Over\d:'
     _html_docs = ['NDPluginOverlay.html']
+    _plugin_type = 'NDPluginOverlay'
 
-    _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
-    _max_size_y = ADSignal('MaxSizeY_RBV', rw=False)
-    max_size = ADSignalGroup(_max_size_x, _max_size_y,
-                             doc='Maximum size')
+    max_size = DDC(ad_group(EpicsSignalRO,
+                            (('x', 'MaxSizeX_RBV'),
+                             ('y', 'MaxSizeY_RBV'))),
+                   doc='The maximum size in XY')
 
-    def __init__(self, prefix, count=8, first_overlay=1,
-                 **kwargs):
-        PluginBase.__init__(self, prefix, **kwargs)
-
-        self.overlays = []
-
-        if count is not None:
-            n_overlays = range(first_overlay, first_overlay + count)
-            self.overlays = [Overlay('%s%d:' % (self._prefix, n))
-                             for n in n_overlays]
+    overlay_1 = C(Overlay, 'Overlay1:')
 
 
 class ROIPlugin(PluginBase):
     _default_suffix = 'ROI1:'
     _suffix_re = 'ROI\d:'
     _html_docs = ['NDPluginROI.html']
+    _plugin_type = 'NDPluginROI'
 
-    _array_size_x = ADSignal('ArraySizeX_RBV', rw=False)
-    _array_size_y = ADSignal('ArraySizeY_RBV', rw=False)
-    _array_size_z = ADSignal('ArraySizeZ_RBV', rw=False)
-    array_size = ADSignalGroup(_array_size_x, _array_size_y, _array_size_z,
-                               doc='Size of the ROI data in the X, Y, Z dimensions')
+    array_size = DDC(ad_group(EpicsSignalRO,
+                              (('x', 'ArraySizeX_RBV'),
+                               ('y', 'ArraySizeY_RBV'),
+                               ('z', 'ArraySizeZ_RBV'))),
+                     doc='Size of the ROI data in XYZ')
 
-    _auto_size_x = ADSignal('AutoSizeX', has_rbv=True)
-    _auto_size_y = ADSignal('AutoSizeY', has_rbv=True)
-    _auto_size_z = ADSignal('AutoSizeZ', has_rbv=True)
-    auto_size = ADSignalGroup(_auto_size_x, _auto_size_y, _auto_size_z,
-                              doc='Automatically set SizeXYZ to the input array size minus MinXYZ')
+    auto_size = DDC(ad_group(SignalWithRBV,
+                             (('x', 'AutoSizeX'),
+                              ('y', 'AutoSizeY'),
+                              ('z', 'AutoSizeZ'))),
+                    doc=('Automatically set SizeXYZ to the input array size '
+                         'minus MinXYZ'))
 
-    _bin_x = ADSignal('BinX', has_rbv=True)
-    _bin_y = ADSignal('BinY', has_rbv=True)
-    _bin_z = ADSignal('BinZ', has_rbv=True)
-    bin_ = ADSignalGroup(_bin_x, _bin_y, _bin_z,
-                         doc='Binning in the X, Y, and Z dimensions')
+    bin_ = DDC(ad_group(SignalWithRBV,
+                        (('x', 'BinX'),
+                         ('y', 'BinY'),
+                         ('z', 'BinZ'))),
+               doc='Binning in XYZ')
 
-    data_type_out = ADSignal('DataTypeOut', has_rbv=True)
-    enable_scale = ADSignal('EnableScale', has_rbv=True)
+    data_type_out = C(SignalWithRBV, 'DataTypeOut')
+    enable_scale = C(SignalWithRBV, 'EnableScale')
 
-    _enable_x = ADSignal('EnableX', has_rbv=True)
-    _enable_y = ADSignal('EnableY', has_rbv=True)
-    _enable_z = ADSignal('EnableZ', has_rbv=True)
-    enable = ADSignalGroup(_enable_x, _enable_y, _enable_z,
-                           doc='''Enable ROI calculations in the X, Y, Z dimensions.
-                           If not enabled then the start, size, binning, and reverse operations
-                           are disabled in the X/Y/Z dimension, and the values from the input array
-                           are used.''')
+    enable = DDC(ad_group(SignalWithRBV,
+                          (('x', 'EnableX'),
+                           ('y', 'EnableY'),
+                           ('z', 'EnableZ'))),
+                 doc=('Enable ROI calculations in the X, Y, Z dimensions. '
+                      'If not enabled then the start, size, binning, and '
+                      'reverse operations are disabled in the X/Y/Z '
+                      'dimension, and the values from the input array '
+                      'are used.'))
 
-    _max_x = ADSignal('MaxX')
-    _max_y = ADSignal('MaxY')
-    max_ = ADSignalGroup(_max_x, _max_y)
+    max_xy = DDC(ad_group(EpicsSignal,
+                          (('x', 'MaxX'),
+                           ('y', 'MaxY'))),
+                 doc='Maximum in XY')
 
-    _max_size_x = ADSignal('MaxSizeX_RBV', rw=False)
-    _max_size_y = ADSignal('MaxSizeY_RBV', rw=False)
-    _max_size_z = ADSignal('MaxSizeZ_RBV', rw=False)
-    max_size = ADSignalGroup(_max_size_x, _max_size_y, _max_size_z,
-                             doc='Maximum size of the ROI in the X, Y, and Z dimensions')
+    max_size = DDC(ad_group(EpicsSignalRO,
+                            (('x', 'MaxSizeX_RBV'),
+                             ('y', 'MaxSizeY_RBV'),
+                             ('z', 'MaxSizeZ_RBV'))),
+                   doc='Maximum size of the ROI in XYZ')
 
-    min_x = ADSignal('MinX', has_rbv=True)
-    min_y = ADSignal('MinY', has_rbv=True)
-    min_z = ADSignal('MinZ', has_rbv=True)
-    min_ = ADSignalGroup(min_x, min_y, min_z,
-                         doc='Minimum size of the ROI in the X, Y, and Z dimensions')
+    min_xyz = DDC(ad_group(SignalWithRBV,
+                           (('min_x', 'MinX'),
+                            ('min_y', 'MinY'),
+                            ('min_z', 'MinZ'))),
+                  doc='Minimum size of the ROI in XYZ')
 
-    name_ = ADSignal('Name', has_rbv=True,
-                     doc='ROI name')
+    name_ = C(SignalWithRBV, 'Name', doc='ROI name')
+    reverse = DDC(ad_group(SignalWithRBV,
+                           (('x', 'ReverseX'),
+                            ('y', 'ReverseY'),
+                            ('z', 'ReverseZ'))),
+                  doc='Reverse ROI in the XYZ dimensions. (0=No, 1=Yes)')
 
-    reverse_x = ADSignal('ReverseX', has_rbv=True)
-    reverse_y = ADSignal('ReverseY', has_rbv=True)
-    reverse_z = ADSignal('ReverseZ', has_rbv=True)
-    reverse = ADSignalGroup(reverse_x, reverse_y, reverse_z,
-                            doc='Reverse ROI in the X, Y, Z dimensions. (0=No, 1=Yes)')
+    scale = C(SignalWithRBV, 'Scale')
+    set_xhopr = C(EpicsSignal, 'SetXHOPR')
+    set_yhopr = C(EpicsSignal, 'SetYHOPR')
 
-    scale = ADSignal('Scale', has_rbv=True)
-    set_xhopr = ADSignal('SetXHOPR')
-    set_yhopr = ADSignal('SetYHOPR')
+    size = DDC(ad_group(SignalWithRBV,
+                        (('x', 'SizeX'),
+                         ('y', 'SizeY'),
+                         ('z', 'SizeZ'))),
+               doc='Size of the ROI in XYZ')
 
-    _size_x = ADSignal('SizeX', has_rbv=True)
-    _size_y = ADSignal('SizeY', has_rbv=True)
-    _size_z = ADSignal('SizeZ', has_rbv=True)
-    size = ADSignalGroup(_size_x, _size_y, _size_z,
-                         doc='Size of the ROI in the X, Y, Z dimensions')
-
-    _size_xlink = ADSignal('SizeXLink')
-    _size_ylink = ADSignal('SizeYLink')
-
-    size_link = ADSignalGroup(_size_xlink, _size_ylink)
+    size_link = DDC(ad_group(EpicsSignal,
+                             (('x', 'SizeXLink'),
+                              ('y', 'SizeYLink'))),
+                    doc='Size link in XY')
 
 
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
     _suffix_re = 'Trans\d:'
     _html_docs = ['NDPluginTransform.html']
+    _plugin_type = 'NDPluginTransform'
 
-    width = ADSignal('ArraySize0', has_rbv=True)
-    height = ADSignal('ArraySize1', has_rbv=True)
-    depth = ADSignal('ArraySize2', has_rbv=True)
-    array_size = ADSignalGroup(height, width, depth)
+    width = C(SignalWithRBV, 'ArraySize0')
+    height = C(SignalWithRBV, 'ArraySize1')
+    depth = C(SignalWithRBV, 'ArraySize2')
+    array_size = DDC(ad_group(SignalWithRBV,
+                              (('height', 'ArraySize1'),
+                               ('width', 'ArraySize0'),
+                               ('depth', 'ArraySize2'))),
+                     doc='Array size')
 
-    name_ = ADSignal('Name')
-    origin_location = ADSignal('OriginLocation', has_rbv=True)
-    _t1_max_size0 = ADSignal('T1MaxSize0')
-    _t1_max_size1 = ADSignal('T1MaxSize1')
-    _t1_max_size2 = ADSignal('T1MaxSize2')
-    t1_max_size = ADSignalGroup(_t1_max_size0, _t1_max_size1, _t1_max_size2)
+    name_ = C(EpicsSignal, 'Name')
+    origin_location = C(SignalWithRBV, 'OriginLocation')
+    t1_max_size = DDC(ad_group(EpicsSignal,
+                               (('size0', 'T1MaxSize0'),
+                                ('size1', 'T1MaxSize1'),
+                                ('size2', 'T1MaxSize2'))),
+                      doc='Transform 1 max size')
 
-    _t2_max_size0 = ADSignal('T2MaxSize0')
-    _t2_max_size1 = ADSignal('T2MaxSize1')
-    _t2_max_size2 = ADSignal('T2MaxSize2')
-    t2_max_size = ADSignalGroup(_t2_max_size0, _t2_max_size1, _t2_max_size2)
+    t2_max_size = DDC(ad_group(EpicsSignal,
+                               (('size0', 'T2MaxSize0'),
+                                ('size1', 'T2MaxSize1'),
+                                ('size2', 'T2MaxSize2'))),
+                      doc='Transform 2 max size')
 
-    _t3_max_size0 = ADSignal('T3MaxSize0')
-    _t3_max_size1 = ADSignal('T3MaxSize1')
-    _t3_max_size2 = ADSignal('T3MaxSize2')
-    t3_max_size = ADSignalGroup(_t3_max_size0, _t3_max_size1, _t3_max_size2)
+    t3_max_size = DDC(ad_group(EpicsSignal,
+                               (('size0', 'T3MaxSize0'),
+                                ('size1', 'T3MaxSize1'),
+                                ('size2', 'T3MaxSize2'))),
+                      doc='Transform 3 max size')
 
-    _t4_max_size0 = ADSignal('T4MaxSize0')
-    _t4_max_size1 = ADSignal('T4MaxSize1')
-    _t4_max_size2 = ADSignal('T4MaxSize2')
-    t4_max_size = ADSignalGroup(_t4_max_size0, _t4_max_size1, _t4_max_size2)
+    t4_max_size = DDC(ad_group(EpicsSignal,
+                               (('size0', 'T4MaxSize0'),
+                                ('size1', 'T4MaxSize1'),
+                                ('size2', 'T4MaxSize2'))),
+                      doc='Transform 4 max size')
 
-    _type1 = ADSignal('Type1')
-    _type2 = ADSignal('Type2')
-    _type3 = ADSignal('Type3')
-    _type4 = ADSignal('Type4')
-    types = ADSignalGroup(_type1, _type2, _type3, _type4)
+    types = DDC(ad_group(EpicsSignal,
+                         (('type1', 'Type1'),
+                          ('type2', 'Type2'),
+                          ('type3', 'Type3'),
+                          ('type4', 'Type4'))),
+                doc='Transform types')
 
 
 class FilePlugin(PluginBase):
     _default_suffix = ''
-    _suffix_re = ''
     _html_docs = ['NDPluginFile.html']
+    _plugin_type = 'NDPluginFile'
 
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
-    auto_increment = ADSignal('AutoIncrement', has_rbv=True)
-    auto_save = ADSignal('AutoSave', has_rbv=True)
-    capture = ADSignal('Capture', has_rbv=True)
-    delete_driver_file = ADSignal('DeleteDriverFile', has_rbv=True)
-    file_format = ADSignal('FileFormat', has_rbv=True)
-    file_name = ADSignal('FileName', has_rbv=True, string=True)
-    file_number = ADSignal('FileNumber', has_rbv=True)
-    file_number_sync = ADSignal('FileNumber_Sync')
-    file_number_write = ADSignal('FileNumber_write')
-    file_path = ADSignal('FilePath', has_rbv=True, string=True)
-    file_path_exists = ADSignal('FilePathExists_RBV', rw=False)
-    file_template = ADSignal('FileTemplate', has_rbv=True, string=True)
-    file_write_mode = ADSignal('FileWriteMode', has_rbv=True)
-    full_file_name = ADSignal('FullFileName_RBV', rw=False, string=True)
-    num_capture = ADSignal('NumCapture', has_rbv=True)
-    num_captured = ADSignal('NumCaptured_RBV', rw=False)
-    read_file = ADSignal('ReadFile', has_rbv=True)
-    write_file = ADSignal('WriteFile', has_rbv=True)
-    write_message = ADSignal('WriteMessage', string=True)
-    write_status = ADSignal('WriteStatus')
-
-    def get_filenames(self, detector=None, check=True,
-                      using_autosave=True, acquired=True):
-        '''Get the filenames saved or to be saved by this file plugin.
-
-        Parameters
-        ----------
-        detector : AreaDetector, optional
-            The detector to use (defaults to the one the plugin was instantiated
-            with)
-        check : bool, optional
-            Check the configured parameters to see if they make sense
-        using_autosave : bool, optional
-            If using `Capture` mode, set this to False.
-        acquired : bool, optional
-            If True, pre-existing image filenames are returned.
-            If False, image filenames that will be written are returned.
-
-        Returns
-        -------
-        filenames : list of str
-        '''
-        detector = self._get_detector(detector)
-
-        if detector.image_mode.value == detector.ImageMode.SINGLE:
-            images = 1
-        elif detector.image_mode.value == detector.ImageMode.MULTIPLE:
-            images = detector.num_images.value
-        # elif detector.image_mode.value == detector.ImageMode.CONTINUOUS:
-        else:
-            raise ValueError('Unhandled image mode: %s' % (detector.image_mode.value, ))
-
-        base_path = self.file_path.value
-        file_name = self.file_name.value
-        template = self.file_template.value
-
-        if check:
-            if not self.file_path_exists.value:
-                raise ValueError('Plugin reports path does not exist')
-
-            try:
-                template % ('a', 'b', 1)
-            except Exception as ex:
-                raise ValueError('Invalid filename template (%s)' % ex)
-
-            if not acquired:
-                if not self.enable.value:
-                    raise ValueError('Plugin not enabled (set enable to 1)')
-
-                if using_autosave:
-                    if images > 1 and not self.auto_increment.value:
-                        raise ValueError('Images will be overwritten')
-                    elif not self.auto_save.value:
-                        raise ValueError('Autosave not enabled (set enable to 1)')
-
-        next_number = self.file_number.value
-        current_number = next_number - 1
-
-        write_mode = self.file_write_mode.value
-        if write_mode == self.FileWriteMode.SINGLE:
-            # One file per image
-            if acquired:
-                # file_number is the next one to save
-                last_number = current_number
-                first_number = current_number - images + 1
-            else:
-                first_number = current_number
-                last_number = first_number + images - 1
-        elif write_mode in (self.FileWriteMode.CAPTURE, self.FileWriteMode.STREAM):
-            # Multiple images saved in one file
-            #
-            # Does not advance to next file if num_capture is hit
-
-            # max_capture = self.num_capture.value
-            # if max_capture > 0:
-            #     remaining = max_capture - self.num_capture.value
-
-            # TODO this may need reworking
-            if acquired:
-                first_number = current_number
-            else:
-                first_number = next_number
-            last_number = first_number
-
-        else:
-            raise RuntimeError('Unhandled capture write mode')
-
-        return [template % (base_path, file_name, file_num)
-                for file_num in range(first_number, last_number + 1)]
+    auto_increment = C(SignalWithRBV, 'AutoIncrement')
+    auto_save = C(SignalWithRBV, 'AutoSave')
+    capture = C(SignalWithRBV, 'Capture')
+    delete_driver_file = C(SignalWithRBV, 'DeleteDriverFile')
+    file_format = C(SignalWithRBV, 'FileFormat')
+    file_name = C(SignalWithRBV, 'FileName', string=True)
+    file_number = C(SignalWithRBV, 'FileNumber')
+    file_number_sync = C(EpicsSignal, 'FileNumber_Sync')
+    file_number_write = C(EpicsSignal, 'FileNumber_write')
+    file_path = C(SignalWithRBV, 'FilePath', string=True)
+    file_path_exists = C(EpicsSignalRO, 'FilePathExists_RBV')
+    file_template = C(SignalWithRBV, 'FileTemplate', string=True)
+    file_write_mode = C(SignalWithRBV, 'FileWriteMode')
+    full_file_name = C(EpicsSignalRO, 'FullFileName_RBV', string=True)
+    num_capture = C(SignalWithRBV, 'NumCapture')
+    num_captured = C(EpicsSignalRO, 'NumCaptured_RBV')
+    read_file = C(SignalWithRBV, 'ReadFile')
+    write_file = C(SignalWithRBV, 'WriteFile')
+    write_message = C(EpicsSignal, 'WriteMessage', string=True)
+    write_status = C(EpicsSignal, 'WriteStatus')
 
 
 class NetCDFPlugin(FilePlugin):
     _default_suffix = 'netCDF1:'
     _suffix_re = 'netCDF\d:'
     _html_docs = ['NDFileNetCDF.html']
+    _plugin_type = 'NDFileNetCDF'
 
 
 class TIFFPlugin(FilePlugin):
     _default_suffix = 'TIFF1:'
     _suffix_re = 'TIFF\d:'
     _html_docs = ['NDFileTIFF.html']
+    _plugin_type = 'NDFileTIFF'
 
 
 class JPEGPlugin(FilePlugin):
     _default_suffix = 'JPEG1:'
     _suffix_re = 'JPEG\d:'
     _html_docs = ['NDFileJPEG.html']
+    _plugin_type = 'NDFileJPEG'
 
-    jpeg_quality = ADSignal('JPEGQuality', has_rbv=True)
+    jpeg_quality = C(SignalWithRBV, 'JPEGQuality')
 
 
 class NexusPlugin(FilePlugin):
     _default_suffix = 'Nexus1:'
     _suffix_re = 'Nexus\d:'
     _html_docs = ['NDFileNexus.html']
+    # _plugin_type = 'NDPluginFile'  # TODO was this ever fixed?
+    _plugin_type = 'NDPluginNexus'
 
-    file_template_valid = ADSignal('FileTemplateValid')
-    template_file_name = ADSignal('TemplateFileName', has_rbv=True, string=True)
-    template_file_path = ADSignal('TemplateFilePath', has_rbv=True, string=True)
+    file_template_valid = C(EpicsSignal, 'FileTemplateValid')
+    template_file_name = C(SignalWithRBV, 'TemplateFileName', string=True)
+    template_file_path = C(SignalWithRBV, 'TemplateFilePath', string=True)
 
 
 class HDF5Plugin(FilePlugin):
     _default_suffix = 'HDF1:'
     _suffix_re = 'HDF\d:'
     _html_docs = ['NDFileHDF5.html']
+    _plugin_type = 'NDFileHDF5'
 
-    boundary_align = ADSignal('BoundaryAlign', has_rbv=True)
-    boundary_threshold = ADSignal('BoundaryThreshold', has_rbv=True)
-    compression = ADSignal('Compression', has_rbv=True)
-    data_bits_offset = ADSignal('DataBitsOffset', has_rbv=True)
+    boundary_align = C(SignalWithRBV, 'BoundaryAlign')
+    boundary_threshold = C(SignalWithRBV, 'BoundaryThreshold')
+    compression = C(SignalWithRBV, 'Compression')
+    data_bits_offset = C(SignalWithRBV, 'DataBitsOffset')
 
-    extra_dim_name_n = ADSignal('ExtraDimNameN_RBV', rw=False)
-    extra_dim_name_x = ADSignal('ExtraDimNameX_RBV', rw=False)
-    extra_dim_name_y = ADSignal('ExtraDimNameY_RBV', rw=False)
+    extra_dim_name = DDC(ad_group(EpicsSignalRO,
+                                  (('name_x', 'ExtraDimNameX_RBV'),
+                                   ('name_y', 'ExtraDimNameY_RBV'),
+                                   ('name_n', 'ExtraDimNameN_RBV'))),
+                         doc='Extra dimension names (XYN)')
+    extra_dim_size = DDC(ad_group(SignalWithRBV,
+                                  (('size_x', 'ExtraDimSizeX'),
+                                   ('size_y', 'ExtraDimSizeY'),
+                                   ('size_n', 'ExtraDimSizeN'))),
+                         doc='Extra dimension sizes (XYN)')
 
-    extra_dim_name = ADSignalGroup(extra_dim_name_x,
-                                   extra_dim_name_y,
-                                   extra_dim_name_n,
-                                   )
-    extra_dim_size_n = ADSignal('ExtraDimSizeN', has_rbv=True)
-    extra_dim_size_x = ADSignal('ExtraDimSizeX', has_rbv=True)
-    extra_dim_size_y = ADSignal('ExtraDimSizeY', has_rbv=True)
-    extra_dim_size = ADSignalGroup(extra_dim_size_x,
-                                   extra_dim_size_y,
-                                   extra_dim_size_n,
-                                   )
-
-    io_speed = ADSignal('IOSpeed')
-    num_col_chunks = ADSignal('NumColChunks', has_rbv=True)
-    num_data_bits = ADSignal('NumDataBits', has_rbv=True)
-    num_extra_dims = ADSignal('NumExtraDims', has_rbv=True)
-    num_frames_chunks = ADSignal('NumFramesChunks', has_rbv=True)
-    num_frames_flush = ADSignal('NumFramesFlush', has_rbv=True)
-    num_row_chunks = ADSignal('NumRowChunks', has_rbv=True)
-    run_time = ADSignal('RunTime')
-    szip_num_pixels = ADSignal('SZipNumPixels', has_rbv=True)
-    store_attr = ADSignal('StoreAttr', has_rbv=True)
-    store_perform = ADSignal('StorePerform', has_rbv=True)
-    zlevel = ADSignal('ZLevel', has_rbv=True)
+    io_speed = C(EpicsSignal, 'IOSpeed')
+    num_col_chunks = C(SignalWithRBV, 'NumColChunks')
+    num_data_bits = C(SignalWithRBV, 'NumDataBits')
+    num_extra_dims = C(SignalWithRBV, 'NumExtraDims')
+    num_frames_chunks = C(SignalWithRBV, 'NumFramesChunks')
+    num_frames_flush = C(SignalWithRBV, 'NumFramesFlush')
+    num_row_chunks = C(SignalWithRBV, 'NumRowChunks')
+    run_time = C(EpicsSignal, 'RunTime')
+    szip_num_pixels = C(SignalWithRBV, 'SZipNumPixels')
+    store_attr = C(SignalWithRBV, 'StoreAttr')
+    store_perform = C(SignalWithRBV, 'StorePerform')
+    zlevel = C(SignalWithRBV, 'ZLevel')
 
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
     _suffix_re = 'Magick\d:'
     _html_docs = ['NDFileMagick']  # sic., no html extension
+    _plugin_type = 'NDFileMagick'
 
-    bit_depth = ADSignal('BitDepth', has_rbv=True)
-    compress_type = ADSignal('CompressType', has_rbv=True)
-    quality = ADSignal('Quality', has_rbv=True)
+    bit_depth = C(SignalWithRBV, 'BitDepth')
+    compress_type = C(SignalWithRBV, 'CompressType')
+    quality = C(SignalWithRBV, 'Quality')
 
 
-type_map = {'NDPluginROI': ROIPlugin,
-            'NDPluginStats': StatsPlugin,
-            'NDPluginColorConvert': ColorConvPlugin,
-            'NDPluginStdArrays': ImagePlugin,
-            'NDPluginTransform': TransformPlugin,
-            'NDFileNetCDF': NetCDFPlugin,
-            'NDFileTIFF': TIFFPlugin,
-            'NDFileJPEG': JPEGPlugin,
-            'NDPluginFile': NexusPlugin,
-            'NDPluginOverlay': OverlayPlugin,
-            'NDFileHDF5': HDF5Plugin,
-            'NDFileMagick': MagickPlugin,
-            'NDPluginProcess': ProcessPlugin,
-            }
+# register_plugin(PluginBase)
+register_plugin(ImagePlugin)
+register_plugin(StatsPlugin)
+register_plugin(ColorConvPlugin)
+register_plugin(ProcessPlugin)
+register_plugin(OverlayPlugin)
+register_plugin(ROIPlugin)
+register_plugin(TransformPlugin)
+# register_plugin(FilePlugin)
+register_plugin(NetCDFPlugin)
+register_plugin(TIFFPlugin)
+register_plugin(JPEGPlugin)
+register_plugin(NexusPlugin)
+register_plugin(HDF5Plugin)
+register_plugin(MagickPlugin)
 
 
 def plugin_from_pvname(pv):
     '''Get the plugin class from a pvname,
     using regular expressions defined in the classes (_suffix_re).
     '''
-    for class_ in type_map.values():
-        expr = class_._suffix_re
-        m = re.search(expr, pv)
+    global _plugin_class
+
+    for type_, cls in _plugin_class.items():
+        m = re.search(cls._suffix_re, pv)
         if m:
-            return class_
+            return cls
 
     return None
 
 
-def get_areadetector_plugin_class(prefix, suffix=''):
-    '''Get an areadetector plugin class by supplying the prefix, suffix, and any
-    kwargs for the constructor.
+def get_areadetector_plugin_class(prefix):
+    '''Get an areadetector plugin class by supplying its PV prefix
 
     Uses `plugin_from_pvname` first, but falls back on using epics channel
     access to determine the plugin type.
@@ -744,23 +684,25 @@ def get_areadetector_plugin_class(prefix, suffix=''):
     ValueError
         If the plugin type can't be determined
     '''
-    base = ''.join([prefix, suffix])
-    class_ = plugin_from_pvname(base)
-    if class_ is None:
-        type_rbv = ''.join([prefix, suffix, 'PluginType_RBV'])
-        type_ = epics.caget(type_rbv)
+    cls = plugin_from_pvname(prefix)
+    if cls is not None:
+        return cls
 
-        # HDF5 includes version number, remove it
-        type_ = type_.split(' ')[0]
+    type_rbv = prefix + 'PluginType_RBV'
+    type_ = epics.caget(type_rbv)
 
-        class_ = type_map[type_].class_
+    # HDF5 includes version number, remove it
+    type_ = type_.split(' ')[0]
+    try:
+        return _plugin_class[type_]
+    except KeyError:
+        raise ValueError('Unable to determine plugin type (PluginType={})'
+                         ''.format(type_))
 
-    return class_
 
-
-def get_areadetector_plugin(prefix, suffix='', **kwargs):
-    '''Get an instance of an areadetector plugin by supplying the prefix,
-    suffix, and any kwargs for the constructor.
+def get_areadetector_plugin(prefix, **kwargs):
+    '''Get an instance of an areadetector plugin by supplying its PV prefix
+    and any kwargs for the constructor.
 
     Uses `plugin_from_pvname` first, but falls back on using
     epics channel access to determine the plugin type.
@@ -776,11 +718,8 @@ def get_areadetector_plugin(prefix, suffix='', **kwargs):
         If the plugin type can't be determined
     '''
 
-    class_ = get_areadetector_plugin_class(prefix, suffix)
-    if class_ is None:
+    cls = get_areadetector_plugin_class(prefix)
+    if cls is None:
         raise ValueError('Unable to determine plugin type')
 
-    return class_(prefix, suffix=suffix, **kwargs)
-
-
-update_docstrings(globals())
+    return cls(prefix, **kwargs)
