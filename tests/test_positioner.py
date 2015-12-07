@@ -3,11 +3,10 @@ from __future__ import print_function
 import time
 import logging
 import unittest
-from copy import copy
+# from copy import copy
 
 import epics
 from ophyd.controls.positioner import (Positioner, PVPositioner, EpicsMotor)
-from ophyd.controls import PVPositioner
 from ophyd.controls.signal import (EpicsSignal, EpicsSignalRO)
 from ophyd.controls.device import (Component as C)
 
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 def setUpModule():
     pass
+
 
 def tearDownModule():
     logger.debug('Cleaning up')
@@ -164,6 +164,7 @@ class PVPosTest(unittest.TestCase):
             put_complete = True
 
         pos = MyPositioner(motor_record, name='pos_no_put_compl')
+        print(pos.describe())
         pos.wait_for_connection()
 
         pos.report
@@ -172,15 +173,15 @@ class PVPosTest(unittest.TestCase):
         try:
             pos.check_value(high_lim + 1)
         except ValueError as ex:
-            logger.info('Check value for single failed, as expected (%s)' % ex)
+            logger.info('Check value for single failed, as expected (%s)', ex)
         else:
             raise ValueError('check_value should have failed')
 
         stat = pos.move(1, wait=False)
-        logger.info('--> post-move request, moving=%s' % pos.moving)
+        logger.info('--> post-move request, moving=%s', pos.moving)
 
         while not stat.done:
-            logger.info('--> moving... %s error=%s' % (stat, stat.error))
+            logger.info('--> moving... %s error=%s', stat, stat.error)
             time.sleep(0.1)
 
         pos.move(-1, wait=True)
@@ -195,17 +196,18 @@ class PVPosTest(unittest.TestCase):
             put_complete = True
 
         pos = MyPositioner(motor_record, name='pos_put_compl')
+        print(pos.describe())
         pos.wait_for_connection()
 
         stat = pos.move(2, wait=False)
-        logger.info('--> post-move request, moving=%s' % pos.moving)
+        logger.info('--> post-move request, moving=%s', pos.moving)
 
         while not stat.done:
-            logger.info('--> moving... %s' % stat)
+            logger.info('--> moving... %s', stat)
             time.sleep(0.1)
 
         pos.move(0, wait=True)
-        logger.info('--> synchronous move request, moving=%s' % pos.moving)
+        logger.info('--> synchronous move request, moving=%s', pos.moving)
 
         self.assertFalse(pos.moving)
 
@@ -214,10 +216,11 @@ class PVPosTest(unittest.TestCase):
 
     def test_pvpositioner(self):
         def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-            logger.info('[callback] [%s] (type=%s) value=%s' % (timestamp, sub_type, value))
+            logger.info('[callback] [%s] (type=%s) value=%s', timestamp,
+                        sub_type, value)
 
         def done_moving(value=0.0, **kwargs):
-            logger.info('Done moving %s' % (kwargs, ))
+            logger.info('Done moving %s', kwargs)
 
         # ensure we start at 0 for this simple test
         fm = self.fake_motor
@@ -263,7 +266,7 @@ class PVPosTest(unittest.TestCase):
         time.sleep(1)
         logger.info('--> move to 0')
         pos.move(0, wait=False, moved_cb=done_moving)
-        logger.info('--> post-move request, moving=%s' % pos.moving)
+        logger.info('--> post-move request, moving=%s', pos.moving)
         time.sleep(2)
 
         pos.report
