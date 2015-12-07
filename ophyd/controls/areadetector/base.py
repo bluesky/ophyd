@@ -53,15 +53,6 @@ class ADComponent(Component):
         return 'No documentation found [suffix={}]'.format(self.suffix)
 
 
-# TODO: removal of signalgroup, need to move to OphydDevices here
-class SignalGroup:
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def add_signal(self, *args, **kwargs):
-        pass
-
-
 def ad_group(cls, attr_suffix, **kwargs):
     '''Definition creation for groups of signals in areadetectors'''
     defn = OrderedDict()
@@ -152,28 +143,3 @@ class ADBase(OphydDevice):
 
             if match:
                 match_fcn(attr=attr, signal=getattr(self, attr), doc=doc)
-
-
-def ADSignalGroup(*props, **kwargs):
-    def check_exists(self):
-        signals = tuple(prop.__get__(self) for prop in props)
-        key = tuple(signal.pvname for signal in signals)
-        try:
-            return self._ad_signals[key]
-        except KeyError:
-            sg = SignalGroup(**kwargs)
-            for signal in signals:
-                sg.add_signal(signal)
-
-            self._ad_signals[key] = sg
-            return self._ad_signals[key]
-
-    def fget(self):
-        return check_exists(self)
-
-    def fset(self, value):
-        sg = check_exists(self)
-        sg.value = value
-
-    doc = kwargs.pop('doc', '')
-    return property(fget, fset, doc=doc)
