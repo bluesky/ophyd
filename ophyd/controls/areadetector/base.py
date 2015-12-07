@@ -9,13 +9,12 @@ from . import docs
 from ..device import (OphydDevice, Component)
 
 
-class ADEpicsSignal(EpicsSignal):
+class EpicsSignalWithRBV(EpicsSignal):
     # An EPICS signal that simply uses the areaDetector convention of
     # 'pvname' being the setpoint and 'pvname_RBV' being the read-back
 
     def __init__(self, prefix, **kwargs):
-        super().__init__(prefix + '_RBV', write_pv=prefix,
-                         rw=True, **kwargs)
+        super().__init__(prefix + '_RBV', write_pv=prefix, rw=True, **kwargs)
 
 
 class ADComponent(Component):
@@ -54,9 +53,6 @@ class ADComponent(Component):
         return 'No documentation found [suffix={}]'.format(self.suffix)
 
 
-ADC = ADComponent
-
-
 # TODO: removal of signalgroup, need to move to OphydDevices here
 class SignalGroup:
     def __init__(self, *args, **kwargs):
@@ -82,18 +78,19 @@ class ADBase(OphydDevice):
 
     _html_docs = ['areaDetectorDoc.html']
 
-    array_counter = ADC(ADEpicsSignal, 'ArrayCounter')
-    array_rate = ADC(EpicsSignalRO, 'ArrayRate_RBV')
-    asyn_io = ADC(EpicsSignal, 'AsynIO')
+    array_counter = ADComponent(EpicsSignalWithRBV, 'ArrayCounter')
+    array_rate = ADComponent(EpicsSignalRO, 'ArrayRate_RBV')
+    asyn_io = ADComponent(EpicsSignal, 'AsynIO')
 
-    nd_attributes_file = ADC(EpicsSignal, 'NDAttributesFile', string=True)
-    pool_alloc_buffers = ADC(EpicsSignalRO, 'PoolAllocBuffers')
-    pool_free_buffers = ADC(EpicsSignalRO, 'PoolFreeBuffers')
-    pool_max_buffers = ADC(EpicsSignalRO, 'PoolMaxBuffers')
-    pool_max_mem = ADC(EpicsSignalRO, 'PoolMaxMem')
-    pool_used_buffers = ADC(EpicsSignalRO, 'PoolUsedBuffers')
-    pool_used_mem = ADC(EpicsSignalRO, 'PoolUsedMem')
-    port_name = ADC(EpicsSignalRO, 'PortName_RBV', string=True)
+    nd_attributes_file = ADComponent(EpicsSignal, 'NDAttributesFile',
+                                     string=True)
+    pool_alloc_buffers = ADComponent(EpicsSignalRO, 'PoolAllocBuffers')
+    pool_free_buffers = ADComponent(EpicsSignalRO, 'PoolFreeBuffers')
+    pool_max_buffers = ADComponent(EpicsSignalRO, 'PoolMaxBuffers')
+    pool_max_mem = ADComponent(EpicsSignalRO, 'PoolMaxMem')
+    pool_used_buffers = ADComponent(EpicsSignalRO, 'PoolUsedBuffers')
+    pool_used_mem = ADComponent(EpicsSignalRO, 'PoolUsedMem')
+    port_name = ADComponent(EpicsSignalRO, 'PortName_RBV', string=True)
 
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):
