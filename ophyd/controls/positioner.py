@@ -388,8 +388,8 @@ class PVPositioner(Positioner):
             raise ValueError('A setpoint or a readback must be specified')
 
         if self.done is None and not self.put_complete:
-            msg = '''Positioner %s is mis-configured. A "done" Signal must be
-                     provided or put_complete must be True.''' % self.name
+            msg = ('Positioner %s is mis-configured. A "done" Signal must be '
+                   'provided or put_complete must be True.'.format(self.name))
             raise ValueError(msg)
 
         if self.done is not None:
@@ -518,6 +518,8 @@ class PVPositioner(Positioner):
         started = False
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
+            logger.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
+                         self, started)
 
         logger.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
                      self, self._moving, value)

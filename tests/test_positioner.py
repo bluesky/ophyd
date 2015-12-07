@@ -65,16 +65,16 @@ class PositionerTests(unittest.TestCase):
         m.check_value(0)
 
         m.stop()
-        m.move(0.0, wait=True)
+        m.move(0.0, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.0)
-        m.move(0.1, wait=True)
+        m.move(0.1, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.1)
-        m.move(0.1, wait=True)
+        m.move(0.1, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.1)
-        m.move(0.0, wait=True)
+        m.move(0.0, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.0)
 
@@ -152,9 +152,9 @@ class PVPosTest(unittest.TestCase):
 
     def test_put_complete(self):
         motor_record = self.sim_pv
-        mrec = EpicsMotor(motor_record, name='pcomplete_mrec')
-        print('mrec', mrec.describe())
-        mrec.wait_for_connection()
+        # mrec = EpicsMotor(motor_record, name='pcomplete_mrec')
+        # print('mrec', mrec.describe())
+        # mrec.wait_for_connection()
 
         logger.info('--> PV Positioner, using put completion and a DONE pv')
 
@@ -227,28 +227,44 @@ class PVPosTest(unittest.TestCase):
 
         # ensure we start at 0 for this simple test
         fm = self.fake_motor
-        epics.caput(fm['setpoint'], 0)
+        epics.caput(fm['setpoint'], 0.05)
+        time.sleep(0.5)
         epics.caput(fm['actuate'], 1)
-        time.sleep(2)
+        time.sleep(0.5)
+        epics.caput(fm['setpoint'], 0)
+        time.sleep(0.5)
+        epics.caput(fm['actuate'], 1)
+        time.sleep(0.5)
 
         class MyPositioner(PVPositioner):
-            '''Setpoint, readback, put completion. No done pv.'''
+            '''Setpoint, readback, no put completion. No done pv.'''
             setpoint = C(EpicsSignal, fm['setpoint'])
             readback = C(EpicsSignalRO, fm['readback'])
             actuate = C(EpicsSignal, fm['actuate'])
-            actuate_value = 1
             stop_signal = C(EpicsSignal, fm['stop'])
-            stop_value = 1
             done = C(EpicsSignal, fm['moving'])
-            done_value = 1
-            put_complete = False
+
+            @property
+            def actuate_value(self):
+                return 1
+
+            @property
+            def stop_value(self):
+                return 1
+
+            @property
+            def done_value(self):
+                return 1
+
+            @property
+            def put_complete(self):
+                return False
 
         pos = MyPositioner('', name='pv_pos_fake_mtr')
         print('fake mtr', pos.describe())
         pos.wait_for_connection()
 
         pos.subscribe(callback, event_type=pos.SUB_DONE)
-
         pos.subscribe(callback, event_type=pos.SUB_READBACK)
 
         logger.info('---- test #1 ----')

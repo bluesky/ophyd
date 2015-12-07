@@ -97,4 +97,4 @@ script:
   - python -c "import epics.ca; print(epics.ca.find_libca())"
 
   # running tests
-  - nosetests --where=tests --tests=tests.test_positioner,tests.test_signal --with-coverage --cover-tests -v
+  - nosetests --where=tests --tests=tests.test_positioner,tests.test_signal --with-coverage --cover-tests --cover-package=ophyd -v
