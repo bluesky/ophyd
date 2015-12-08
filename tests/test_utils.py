@@ -4,16 +4,13 @@ import os
 import logging
 import unittest
 
-from ophyd.session import get_session_manager
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import errors
-from ophyd.utils import decorators
 
 from . import config
 
 server = None
 logger = logging.getLogger(__name__)
-session = get_session_manager()
 
 
 def setUpModule():
@@ -28,8 +25,10 @@ class EpicsUtilTest(unittest.TestCase):
     def test_split(self):
         utils = epics_utils
 
-        self.assertEquals(utils.split_record_field('record.field'), ('record', 'field'))
-        self.assertEquals(utils.split_record_field('record.field.invalid'), ('record.field', 'invalid'))
+        self.assertEquals(utils.split_record_field('record.field'),
+                          ('record', 'field'))
+        self.assertEquals(utils.split_record_field('record.field.invalid'),
+                          ('record.field', 'invalid'))
         self.assertEquals(utils.strip_field('record.field'), 'record')
         self.assertEquals(utils.strip_field('record.field.invalid'), 'record.field')
 
@@ -56,7 +55,12 @@ class EpicsUtilTest(unittest.TestCase):
         self.assertIn(epics_utils.get_pv_form(), ('native', 'time'))
 
     def test_records_from_db(self):
-        db_path = os.path.join(config.epics_base, 'db', 'scaler.db')
+        # db_dir = os.path.join(config.epics_base, 'db')
+
+        # if os.path.exists(db_dir):
+        #     # fall back on the db file included with the tests
+        db_dir = os.path.dirname(__file__)
+        db_path = os.path.join(db_dir, 'scaler.db')
         records = epics_utils.records_from_db(db_path)
         self.assertIn(('bo', '$(P)$(S)_calcEnable'), records)
 
@@ -71,21 +75,6 @@ class ErrorsTest(unittest.TestCase):
         errors.MajorAlarmError('', alarm='NO_ALARM')
         errors.MajorAlarmError('', alarm='TIMEOUT_ALARM')
         errors.MajorAlarmError('', alarm=0)
-
-
-class DecoratorsTest(unittest.TestCase):
-    def test_cached(self):
-        self.call_count = 0
-
-        @decorators.cached_retval
-        def fcn():
-            self.call_count += 1
-            return 1
-
-        for i in range(10):
-            self.assertEquals(fcn(), 1)
-
-        self.assertEquals(self.call_count, 1)
 
 
 from . import main
