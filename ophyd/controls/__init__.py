@@ -5,11 +5,19 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-from .signal import (Signal, EpicsSignal, SkepticalSignal)
-from .positioner import (EpicsMotor, PVPositioner)
-from .pseudopos import PseudoPositioner
-from .scaler import EpicsScaler
-# from .detector import Detector
+# Signals
+from .signal import (Signal, EpicsSignal, EpicsSignalRO, SkepticalSignal)
 
+# Positioners
+from .positioner import Positioner
+from .epics_motor import EpicsMotor
+from .pv_positioner import PVPositioner
+from .pseudopos import PseudoPositioner
+
+# Devices
+from .scaler import EpicsScaler
+from .device import (OphydDevice, Component, DynamicDeviceComponent)
+
+# Areadetector-related
 from .areadetector.detectors import *
-# from .areadetector.plugins import *
+from .areadetector.plugins import *

@@ -15,7 +15,7 @@ from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
 
-from .controls.positioner import EpicsMotor, Positioner, PVPositioner
+from .controls import (EpicsMotor, Positioner, PVPositioner)
 from .utils import DisconnectedError
 from .utils.startup import setup as setup_ophyd
 from prettytable import PrettyTable
