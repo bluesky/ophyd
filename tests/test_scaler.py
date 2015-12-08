@@ -13,7 +13,6 @@ from .test_signal import FakeEpicsPV
 
 ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 
-server = None
 logger = logging.getLogger(__name__)
 
 

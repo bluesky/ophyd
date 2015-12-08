@@ -668,7 +668,7 @@ def plugin_from_pvname(pv):
     return None
 
 
-def get_areadetector_plugin_class(prefix):
+def get_areadetector_plugin_class(prefix, timeout=2.0):
     '''Get an areadetector plugin class by supplying its PV prefix
 
     Uses `plugin_from_pvname` first, but falls back on using epics channel
@@ -689,10 +689,14 @@ def get_areadetector_plugin_class(prefix):
         return cls
 
     type_rbv = prefix + 'PluginType_RBV'
-    type_ = epics.caget(type_rbv)
+    type_ = epics.caget(type_rbv, timeout=timeout)
+
+    if type_ is None:
+        raise ValueError('Unable to determine plugin type (caget timed out)')
 
     # HDF5 includes version number, remove it
     type_ = type_.split(' ')[0]
+
     try:
         return _plugin_class[type_]
     except KeyError:

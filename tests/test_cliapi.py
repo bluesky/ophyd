@@ -9,13 +9,10 @@ import epics
 
 from ophyd.controls import EpicsMotor
 from ophyd.userapi import mov
-from ophyd.session import get_session_manager
 from .config import motor_recs
 
 
-server = None
 logger = logging.getLogger(__name__)
-session = get_session_manager()
 
 
 def setUpModule():
@@ -26,7 +23,7 @@ def tearDownModule():
     pass
 
 
-class CliAPI(unittest.TestCase):
+class Commands(unittest.TestCase):
     def test_mov(self):
         mrec = motor_recs[0]
 

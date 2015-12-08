@@ -110,8 +110,8 @@ class ADBase(OphydDevice):
 
         def default_match(attr, signal, doc):
             print('Property: {}'.format(attr), file=f)
-            print('  Signal: %s' % (signal.pv), file=f)
-            print('     Doc: %s' % doc, file=f)
+            print('  Signal: {!r}'.format(signal), file=f)
+            print('     Doc: {}'.format(doc), file=f)
             print(file=f)
 
         if match_fcn is None:

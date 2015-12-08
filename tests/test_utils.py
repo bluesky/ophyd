@@ -9,7 +9,6 @@ from ophyd.utils import errors
 
 from . import config
 
-server = None
 logger = logging.getLogger(__name__)
 
 
