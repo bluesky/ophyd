@@ -122,10 +122,19 @@ class PVPosTest(unittest.TestCase):
             setpoint = C(EpicsSignal, '.VAL')
             readback = C(EpicsSignalRO, '.RBV')
             done = C(EpicsSignalRO, '.MOVN')
-            done_value = 0
             stop_signal = C(EpicsSignal, '.STOP')
-            stop_value = 0
-            put_complete = False
+
+            @property
+            def stop_value(self):
+                return 1
+
+            @property
+            def done_value(self):
+                return 0
+
+            @property
+            def put_complete(self):
+                return False
 
         m = MyPositioner(motor_record, name='pos_no_put_compl')
         m.wait_for_connection()
@@ -163,8 +172,14 @@ class PVPosTest(unittest.TestCase):
             setpoint = C(EpicsSignal, '.VAL')
             readback = C(EpicsSignalRO, '.RBV')
             done = C(EpicsSignalRO, '.MOVN')
-            done_value = 0
-            put_complete = True
+
+            @property
+            def done_value(self):
+                return 0
+
+            @property
+            def put_complete(self):
+                return True
 
         pos = MyPositioner(motor_record, name='pos_no_put_compl')
         print(pos.describe())
@@ -196,7 +211,10 @@ class PVPosTest(unittest.TestCase):
             '''Setpoint, readback, put completion. No done pv.'''
             setpoint = C(EpicsSignal, '.VAL')
             readback = C(EpicsSignalRO, '.RBV')
-            put_complete = True
+
+            @property
+            def put_complete(self):
+                return True
 
         pos = MyPositioner(motor_record, name='pos_put_compl')
         print(pos.describe())
