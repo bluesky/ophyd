@@ -11,11 +11,11 @@ from __future__ import print_function
 import logging
 import time
 
-from collections import OrderedDict
+from collections import (OrderedDict, namedtuple)
 
 import numpy as np
 
-from ..utils import TimeoutError, DisconnectedError
+from ..utils import (TimeoutError, DisconnectedError)
 from .positioner import Positioner
 from .device import OphydDevice
 
@@ -26,24 +26,30 @@ logger = logging.getLogger(__name__)
 class PseudoSingle(Positioner):
     '''A single axis of a PseudoPositioner'''
 
-    def __init__(self, master, idx, **kwargs):
-        name = '%s.%s' % (master.name, master._pseudo_names[idx])
+    def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
+                 **kwargs):
+        super().__init__(name=name, **kwargs)
 
-        Positioner.__init__(self, name=name, **kwargs)
-
-        self._master = master
-        self._idx = idx
+        self._master = parent
+        self._target = None
+        self._limits = tuple(limits)
+        self._idx = None
 
         self._master.subscribe(self._sub_proxy, event_type=self.SUB_START)
         self._master.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
-        self._master.subscribe(self._sub_proxy_idx, event_type=self.SUB_READBACK)
+        self._master.subscribe(self._sub_proxy_idx,
+                               event_type=self.SUB_READBACK)
+
+    @property
+    def limits(self):
+        return self._limits
 
     def __repr__(self):
         return self._get_repr(['idx={0._idx!r}'.format(self)])
 
     def _sub_proxy(self, obj=None, **kwargs):
-        '''Master callbacks such as start of motion, motion finished,
-        etc. will be simply passed through.
+        '''Master callbacks such as start of motion, motion finished, etc. will
+        be simply passed through.
         '''
         return self._run_subs(obj=self, **kwargs)
 
@@ -52,6 +58,18 @@ class PseudoSingle(Positioner):
             value = value[self._idx]
 
         return self._run_subs(obj=self, value=value, **kwargs)
+
+    @property
+    def target(self):
+        '''Last commanded target position'''
+        if self._target is None:
+            return self.position
+        else:
+            return self._target
+
+    def sync(self):
+        '''Synchronize target position with current readback position'''
+        self._target = None
 
     def check_value(self, pos):
         self._master.check_single(self._idx, pos)
@@ -62,54 +80,56 @@ class PseudoSingle(Positioner):
 
     @property
     def position(self):
-        return self._master.position[self._idx]
+        return self._master.pseudo_position[self.name]
 
     def stop(self):
         return self._master.stop()
 
     @property
-    def sequential(self):
-        return self._master.sequential
+    def master(self):
+        '''The master pseudo positioner instance'''
+        return self._master
 
     @property
-    def concurrent(self):
-        return self._master.concurrent
+    def connected(self):
+        '''For signal compatibility'''
+        return True
 
-    # Don't allow the base class to specify whether it has started moving
-    def _get_started(self):
+    @property
+    def _started_moving(self):
         return self._master._started_moving
 
-    def _set_started(self, value):
+    @_started_moving.setter
+    def _started_moving(self, value):
+        # Don't allow the base class to specify whether it has started moving
         pass
 
-    _started_moving = property(_get_started, _set_started)
-
     def move(self, pos, **kwargs):
-        return self._master.move_single(self._idx, pos, **kwargs)
+        return self._master.move_single(self, pos, **kwargs)
 
 
-class PseudoPositioner(Positioner):
+class PseudoPositioner(OphydDevice, Positioner):
     '''A pseudo positioner which can be comprised of multiple positioners
 
     Parameters
     ----------
-    positioners : sequence
-        A list of real positioners to control. Positioners must be named.
-    forward : callable
-        Pseudo -> real positioner calculation function
-        Optionally, subclass PseudoPositioner and replace _calc_forward.
-    reverse : callable
-        Real -> pseudo positioner calculation function
-        Optionally, subclass PseudoPositioner and replace _calc_reverse.
     concurrent : bool, optional
-        If set, all real motors will be moved concurrently. If not, they will be
-        moved in order of how they were defined initially
-    pseudo : list of strings, optional
-        List of pseudo positioner names
+        If set, all real motors will be moved concurrently. If not, they will
+        be moved in order of how they were defined initially
+    read_signals : sequence of attribute names
+        The signals to be read during data acquisition (i.e., in read() and
+        describe() calls)
+    name : str, optional
+        The name of the device
+    parent : instance or None
+        The instance of the parent device, if applicable
     '''
-    def __init__(self, prefix, forward=None, reverse=None,
-                 concurrent=True, pseudo=None, read_signals=None, name=None,
-                 **kwargs):
+    def __init__(self, prefix, *, concurrent=True, read_signals=None,
+                 name=None, **kwargs):
+
+        self._concurrent = bool(concurrent)
+        self._finish_thread = None
+        self._real_waiting = []
 
         if self.__class__ is PseudoPositioner:
             raise TypeError('PseudoPositioner must be subclassed with the '
@@ -119,69 +139,82 @@ class PseudoPositioner(Positioner):
                              name=name)
         Positioner.__init__(self)
 
-        # TODO none of this has been refactored yet
-        if forward is not None:
-            if not callable(forward):
-                raise ValueError('Forward calculation must be callable')
+        self._real = [getattr(self, attr)
+                      for attr, cpt in self._get_real_positioners()]
+        self._pseudo = [getattr(self, attr)
+                        for attr, cpt in self._get_pseudo_positioners()]
 
-            self._calc_forward = forward
+        if not self._pseudo or not self._real:
+            raise ValueError('Must have at least 1 positioner and '
+                             'pseudo-positioner')
 
-        if reverse is not None:
-            if not callable(reverse):
-                raise ValueError('Reverse calculation must be callable')
+        self.RealPosition = self._real_position_tuple()
+        self.PseudoPosition = self._pseudo_position_tuple()
 
-            self._calc_reverse = reverse
+        logger.debug('Real positioners: %s', self._real)
+        logger.debug('Pseudo positioners: %s', self._pseudo)
 
-        # self._real = list(positioners)  #  TODO
-        self._real = []
-        self._concurrent = bool(concurrent)
-        self._finish_thread = None
-        self._real_waiting = []
-        self._real_cur_pos = {}
+        for idx, pseudo in enumerate(self._pseudo):
+            pseudo._idx = idx
+
+        self._real_cur_pos = OrderedDict((real, None) for real in self._real)
 
         for real in self._real:
-            real.subscribe(self._real_finished,
-                           event_type=real.SUB_DONE,
+            # Subscribe to events from all the real motors
+            # Indicate when they're finished moving
+            real.subscribe(self._real_finished, event_type=real.SUB_DONE,
                            run=False)
+            # And update the internal state of their position
+            real.subscribe(self._real_pos_update, event_type=real.SUB_READBACK,
+                           run=True)
 
-            # If any physical mtrs are disconnected, swallow their exceptions
-            try:
-                self._real_cur_pos[real] = real.position
-            except DisconnectedError:
-                pass
+    @classmethod
+    def _real_position_tuple(cls):
+        '''A namedtuple for a real motor position'''
+        name = cls.__name__ + 'RealPos'
+        return namedtuple(name, [name for name, cpt in
+                                 cls._get_real_positioners()])
 
-            real.subscribe(self._real_pos_update,
-                           event_type=real.SUB_READBACK,
-                           run=False)
+    @classmethod
+    def _pseudo_position_tuple(cls):
+        '''A namedtuple for a pseudo motor position'''
+        name = cls.__name__ + 'PseudoPos'
+        return namedtuple(name, [name for name, cpt in
+                                 cls._get_pseudo_positioners()])
 
-        if pseudo is None:
-            self._pseudo_names = ('pseudo', )
-        elif isinstance(pseudo, str):
-            self._pseudo_names = (pseudo, )
+    @classmethod
+    def _get_pseudo_positioners(cls):
+        '''Inspect the components and find the pseudo positioners'''
+        if hasattr(cls, '_pseudo'):
+            for pseudo in cls._pseudo:
+                yield pseudo, getattr(cls, pseudo)
         else:
-            self._pseudo_names = tuple(pseudo)
+            for cpt, attr in cls._sig_attrs.items():
+                if issubclass(cpt.cls, PseudoSingle):
+                    yield attr, cpt
 
-        self._pseudo_pos = [PseudoSingle(self, i) for i
-                            in range(len(self._pseudo_names))]
-
-        # TODO will calculations ever be too complex to make caching x number of
-        #      fwd/rev calculation results worthwhile?
-        if not self._pseudo_names or not self._real:
-            raise ValueError('Must have at least 1 positioner and pseudo-positioner')
+    @classmethod
+    def _get_real_positioners(cls):
+        '''Inspect the components and find the real positioners'''
+        if hasattr(cls, '_real'):
+            for real in cls._real:
+                yield real, getattr(cls, real)
+        else:
+            for cpt, attr in cls._sig_attrs.items():
+                is_pseudo = issubclass(cpt.cls, PseudoSingle)
+                is_positioner = issubclass(cpt.cls, Positioner)
+                if is_positioner and not is_pseudo:
+                    yield attr, cpt
 
     def __repr__(self):
-        repr = ['positioners={0._real!r}'.format(self),
-                'concurrent={0._concurrent!r}'.format(self),
-                'pseudo={0._pseudo_names!r}'.format(self),
-                'forward={0._calc_forward!r}'.format(self),
-                'reverse={0._calc_reverse!r}'.format(self),
+        repr = ['concurrent={0._concurrent!r}'.format(self),
                 ]
 
         return self._get_repr(repr)
 
     @property
     def connected(self):
-        return all([mtr.connected for mtr in self._real])
+        return all(mtr.connected for mtr in self._real)
 
     def stop(self):
         for pos in self._real:
@@ -189,26 +222,19 @@ class PseudoPositioner(Positioner):
 
         Positioner.stop(self)
 
-    def check_single(self, idx, position):
+    def check_single(self, idx, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''
-        if isinstance(idx, str):
-            idx = self._pseudo_names.index(idx)
+        target = list(self.target)
+        target[idx] = single_pos
+        return self.check_value(self.PseudoPosition(target))
 
-        target = list(self.position)
-        target[idx] = position
-        return self.check_value(target)
-
-    def check_value(self, position):
+    def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid'''
-        if np.size(position) != len(self._pseudo_pos):
-            raise ValueError('Number of positions and pseudo positioners does not match')
+        pseudo_pos = self.PseudoPosition(pseudo_pos)
+        for pseudo, pos in zip(self._pseudo, pseudo_pos):
+            pseudo.check_value(pos)
 
-        position = np.array(position, ndmin=1)
-        pos_kw = dict((pseudo, value) for pseudo, value in
-                      zip(self._pseudo_names, position))
-
-        real_pos = self.calc_forward(**pos_kw)
-
+        real_pos = self.forward(pseudo_pos)
         for real, pos in zip(self._real, real_pos):
             real.check_value(pos)
 
@@ -218,8 +244,8 @@ class PseudoPositioner(Positioner):
 
     @property
     def sequential(self):
-        '''If sequential is set, motors will move in the sequence they were defined in
-        (i.e., in series)
+        '''If sequential is set, motors will move in the sequence they were
+        defined in (i.e., in series)
         '''
         return not self._concurrent
 
@@ -228,17 +254,17 @@ class PseudoPositioner(Positioner):
         '''If concurrent is set, motors will move concurrently (in parallel)'''
         return self._concurrent
 
-    # Don't allow the base class to specify whether it has started moving
-    def _get_started(self):
+    @property
+    def _started_moving(self):
         return any(pos._started_moving for pos in self._real)
 
-    def _set_started(self, value):
+    @_started_moving.setter
+    def _started_moving(self, value):
+        # Don't allow the base class to specify whether it has started moving
         pass
 
-    _started_moving = property(_get_started, _set_started)
-
     @property
-    def pseudos(self):
+    def pseudo_position(self):
         '''Dictionary of pseudo motors by name
 
         Keys are in the order of creation
@@ -247,24 +273,28 @@ class PseudoPositioner(Positioner):
                            zip(self._pseudo_names, self._pseudo_pos))
 
     @property
-    def reals(self):
+    def real_position(self):
         '''Dictionary of real motors by name'''
-        return OrderedDict((real.name, real) for real in self._real)
+        return self.RealPosition(*self._real_cur_pos.values())
 
     def _update_position(self):
-        pos_kw = dict((real.name, pos) for real, pos in self._real_cur_pos.items())
-        new_pos = self.calc_reverse(**pos_kw)
-        self._set_position(new_pos)
-        return new_pos
+        real_cur_pos = self.real_position
+        if None in real_cur_pos:
+            raise DisconnectedError('Not all positioners connected')
+
+        calc_pseudo_pos = self.inverse(real_cur_pos)
+        self._set_position(calc_pseudo_pos)
+        return calc_pseudo_pos
 
     def _real_pos_update(self, obj=None, value=None, **kwargs):
         '''A single real positioner has moved'''
         real = obj
         self._real_cur_pos[real] = value
-        # If not all real motors are connected, don't update position
-        if not self.connected:
-            return
-        self._update_position()
+        # Only update the position if all real motors are connected
+        try:
+            self._update_position()
+        except DisconnectedError:
+            pass
 
     def _real_finished(self, obj=None, **kwargs):
         '''A single real positioner has finished moving.
@@ -280,24 +310,19 @@ class PseudoPositioner(Positioner):
             if not self._real_waiting:
                 self._done_moving()
 
-    def move_single(self, idx, position, **kwargs):
-        if isinstance(idx, str):
-            idx = self._pseudo_names.index(idx)
-
-        target = list(self.position)
+    def move_single(self, pseudo, position, **kwargs):
+        idx = self._pseudo._idx
+        target = list(self.target)
         target[idx] = position
-        return self.move(target, **kwargs)
+        return self.move(self.PseudoPosition(*target), **kwargs)
 
-    def move(self, position, wait=True, timeout=30.0,
-             **kwargs):
-        if np.size(position) != len(self._pseudo_pos):
-            raise ValueError('Number of positions and pseudo positioners does not match')
+    @property
+    def target(self):
+        '''Last commanded target positions'''
+        return self.PseudoPosition(pos.target for pos in self._pseudo)
 
-        position = np.array(position, ndmin=1)
-        pos_kw = dict((pseudo, value) for pseudo, value in
-                      zip(self._pseudo_names, position))
-
-        real_pos = self.calc_forward(**pos_kw)
+    def move(self, position, wait=True, timeout=30.0, **kwargs):
+        real_pos = self.forward(position)
 
         # Remove the 'finished moving' callback, otherwise callbacks will
         # happen when individual motors finish moving
@@ -305,15 +330,16 @@ class PseudoPositioner(Positioner):
 
         if self.sequential:
             for real, value in zip(self._real, real_pos):
+                logger.debug('[sequential] Moving %s to %s (timeout=%s)',
+                             real.name, value, timeout)
                 if timeout <= 0:
-                    raise TimeoutError('Failed to move all positioners within %s s' % timeout)
+                    raise TimeoutError('Failed to move all positioners within '
+                                       '%s s'.format(timeout))
 
                 t0 = time.time()
-
                 try:
-                    real.move(value, wait=True, timeout=timeout,
-                              **kwargs)
-                except:  # Exception as ex:
+                    real.move(value, wait=True, timeout=timeout, **kwargs)
+                except Exception:
                     # TODO tag something onto exception message?
                     raise
 
@@ -325,10 +351,11 @@ class PseudoPositioner(Positioner):
             self._real_waiting.extend(self._real)
 
             for real, value in zip(self._real, real_pos):
+                logger.debug('[concurrent] Moving %s to %s', real.name, value)
+                logger.debug('[concurrent] %s => %s', real.prefix, value)
                 real.move(value, wait=False, **kwargs)
 
-        ret = Positioner.move(self, position, moved_cb=moved_cb,
-                              wait=wait,
+        ret = Positioner.move(self, position, moved_cb=moved_cb, wait=wait,
                               **kwargs)
 
         if self.sequential or (wait and not self.moving):
@@ -336,45 +363,13 @@ class PseudoPositioner(Positioner):
 
         return ret
 
-    def _calc_forward(self, *args, **kwargs):
-        '''Override me'''
-        return [0.0] * len(self._real)
-
-    def calc_forward(self, *args, **kwargs):
+    def forward(self, pseudo_pos):
         ''' '''
-        real_pos = self._calc_forward(**kwargs)
+        return self.RealPosition()
 
-        if np.size(real_pos) != np.size(self._real):
-            raise ValueError('Forward calculation did not return right position count')
+    def __call__(self, pseudo_pos):
+        return self.forward(pseudo_pos)
 
-        return real_pos
-
-    def _calc_reverse(self, *args, **kwargs):
+    def inverse(self, real_pos):
         '''Override me'''
-        return [0.0] * len(self._pseudo_pos)
-
-    def calc_reverse(self, *args, **kwargs):
-        pseudo_pos = self._calc_reverse(**kwargs)
-
-        if np.size(pseudo_pos) != np.size(self._pseudo_pos):
-            raise ValueError('Reverse calculation did not return right position count')
-
-        return pseudo_pos
-
-    def __getitem__(self, key):
-        '''Get either a single pseudo or real positioner by name'''
-        try:
-            return self.pseudos[key]
-        except:
-            return self.reals[key]
-
-    def __setitem__(self, key, value):
-        pos = self[key]
-        pos.move(value)
-
-    def __contains__(self, key):
-        try:
-            self.__getitem__(key)
-            return True
-        except:
-            return False
+        return self.PseudoPosition()

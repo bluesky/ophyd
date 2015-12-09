@@ -176,7 +176,15 @@ class OphydObject(object):
 
     def __init__(self, name=None):
         super().__init__()
-        self._name = name
+
+        # TODO: as a consequence of messed-up multiple inheritance for
+        #       positioners, this initializer can get called twice. assume
+        #       the first one was correct
+        if not hasattr(self, '_name'):
+            self._name = name
+
+        if hasattr(self, '_subs'):
+            return
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))

@@ -12,7 +12,7 @@ from .signal import (Signal, EpicsSignal, EpicsSignalRO, SkepticalSignal)
 from .positioner import Positioner
 from .epics_motor import EpicsMotor
 from .pv_positioner import (PVPositioner, PVPositionerPC)
-from .pseudopos import PseudoPositioner
+from .pseudopos import (PseudoPositioner, PseudoSingle)
 
 # Devices
 from .scaler import EpicsScaler

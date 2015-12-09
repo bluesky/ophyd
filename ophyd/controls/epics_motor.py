@@ -48,6 +48,7 @@ class EpicsMotor(OphydDevice, Positioner):
         Positioner.__init__(self)
 
         self.settle_time = float(settle_time)
+        # TODO: settle_time is unused?
 
         self._done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)

@@ -1,5 +1,5 @@
 import time
-
+import inspect
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
@@ -38,6 +38,7 @@ class Component:
         self.suffix = suffix
         self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
+        self.expects_parent = ('parent' in inspect.signature(cls).parameters)
 
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
@@ -70,6 +71,8 @@ class Component:
 
         # Otherwise, we only have suffix to update
         pv_name = self.get_pv_name(instance, 'suffix', self.suffix)
+        if self.expects_parent:
+            kwargs['parent'] = instance
 
         cpt_inst = self.cls(pv_name, **kwargs)
 
