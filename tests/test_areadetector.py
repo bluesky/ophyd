@@ -10,7 +10,7 @@ except ImportError:
 
 import epics
 
-from ophyd.controls import (AreaDetector, get_areadetector_plugin)
+from ophyd.controls import (SimDetector, get_areadetector_plugin)
 from ophyd.controls.areadetector.util import stub_templates
 
 logger = logging.getLogger(__name__)
@@ -31,27 +31,36 @@ class ADTest(unittest.TestCase):
 
     def test_stubbing(self):
         try:
-            stub_templates(self.ad_path, f=StringIO())
+            for line in stub_templates(self.ad_path):
+                logger.debug('Stub line: %s', line)
         except OSError:
             # self.fail('AreaDetector db path needed to run test')
             pass
 
     def test_detector(self):
-        det = AreaDetector(self.prefix)
+        det = SimDetector(self.prefix)
 
         det.find_signal('a', f=StringIO())
         det.find_signal('a', use_re=True, f=StringIO())
         det.find_signal('a', case_sensitive=True, f=StringIO())
         det.find_signal('a', use_re=True, case_sensitive=True, f=StringIO())
-        det.signals
+        det.signal_names
         det.report
 
         det.image_mode.put('Single')
-        det.image1.enable.put('Enable')
+        # plugins don't live on detectors now:
+        # det.image1.enable.put('Enable')
         det.array_callbacks.put('Enable')
 
         det.get()
         det.read()
+
+        # values = tuple(det.gain_xy.get())
+        det.gain_xy.put(det.gain_xy.get(), wait=True)
+
+        # fail when only specifying x
+        self.assertRaises(ValueError, det.gain_xy.put, (0.0, ), wait=True)
+
         det.describe()
         det.report
 

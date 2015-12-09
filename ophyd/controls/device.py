@@ -399,6 +399,10 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         pass
 
     def get(self, **kwargs):
+        '''Get the value of all components in the device
+
+        Keyword arguments are passed onto each signal.get()
+        '''
         values = {}
         for attr in self.signal_names:
             signal = getattr(self, attr)
@@ -406,27 +410,35 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         return self._device_tuple(**values)
 
-    def put(self, **kwargs):
-        kw_set = set(kwargs.keys())
-        sig_set = set(self.signal_names)
-        if kw_set != sig_set:
-            missing = sig_set - kw_set
-            unknown = kw_set - sig_set
-            msg = ['Required set of signals does not match. ']
-            if missing:
-                msg.append('\tMissing keys: {}'.format(', '.join(missing)))
-            if unknown:
-                msg.append('\tUnknown keys: {}'.format(', '.join(unknown)))
-            raise ValueError('\n'.join(msg))
+    def put(self, dev_t, **kwargs):
+        '''Put a value to all components of the device
+
+        Keyword arguments are passed onto each signal.put()
+
+        Parameters
+        ----------
+        dev_t : DeviceTuple or tuple
+            The device tuple with the value(s) to put (see get_device_tuple)
+        '''
+        if not isinstance(dev_t, self._device_tuple):
+            try:
+                dev_t = self._device_tuple(dev_t)
+            except TypeError as ex:
+                raise ValueError('{}\n\tDevice tuple fields: {}'
+                                 ''.format(ex, self._device_tuple._fields))
 
         for attr in self.signal_names:
-            value = kwargs[attr]
+            value = getattr(dev_t, attr)
             signal = getattr(self, attr)
             signal.put(value, **kwargs)
 
     @classmethod
     def get_device_tuple(cls):
-        '''The device tuple associated with an OphydDevice class'''
+        '''The device tuple type associated with an OphydDevice class
+
+        This is a tuple representing the full state of all components and
+        dynamic device sub-components.
+        '''
         return cls._device_tuple
 
     @property
