@@ -5,7 +5,7 @@ import time
 import epics
 
 import config
-from ophyd.controls import PVPositioner
+from ophyd.controls import (PVPositioner, PVPositionerPC)
 from ophyd.controls.signal import (EpicsSignal, EpicsSignalRO)
 from ophyd.controls.device import (Component as C)
 
@@ -15,13 +15,12 @@ logger = None
 def put_complete_test():
     logger.info('--> PV Positioner, using put completion and a DONE pv')
 
-    class MyPositioner(PVPositioner):
+    class MyPositioner(PVPositionerPC):
         '''PV positioner, put completion with a done pv'''
         setpoint = C(EpicsSignal, '.VAL')
         readback = C(EpicsSignalRO, '.RBV')
         done = C(EpicsSignalRO, '.MOVN')
         done_value = 0
-        put_complete = True
 
     pos = MyPositioner(config.motor_recs[0], name='mypos_pc_done')
     pos.wait_for_connection()
@@ -48,11 +47,10 @@ def put_complete_test():
     logger.info('--> PV Positioner, using put completion and no DONE pv')
 
     # PV positioner, put completion, no done pv
-    class MyPositioner(PVPositioner):
+    class MyPositioner(PVPositionerPC):
         '''PV positioner, put completion with a done pv'''
         setpoint = C(EpicsSignal, '.VAL')
         readback = C(EpicsSignalRO, '.RBV')
-        put_complete = True
 
     pos = MyPositioner(config.motor_recs[0], name='mypos_pc_nodone')
 
