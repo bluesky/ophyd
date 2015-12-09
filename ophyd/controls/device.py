@@ -237,9 +237,6 @@ class ComponentMeta(type):
         clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
                                           rename=True)
 
-        # Store EpicsSignal objects (only created once they are accessed)
-        clsobj._signals = {}
-
         # Finally, create all the component docstrings
         for cpt, cpt_attr in clsobj._sig_attrs.items():
             cpt.__doc__ = cpt.make_docstring(clsobj)
@@ -269,6 +266,9 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
     def __init__(self, prefix, read_signals=None, name=None, parent=None):
+        # Store EpicsSignal objects (only created once they are accessed)
+        self._signals = {}
+
         self.prefix = prefix
         if self.signal_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
