@@ -249,11 +249,23 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     This class provides attribute access to one or more Signals, which can be
     a mixture of read-only and writable. All must share the same base_name.
+
+    Parameters
+    ----------
+    prefix : str
+        The PV prefix for all components of the device
+    read_signals : sequence of attribute names
+        The signals to be read during data acquisition (i.e., in read() and
+        describe() calls)
+    name : str, optional
+        The name of the device
+    parent : instance or None
+        The instance of the parent device, if applicable
     """
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    def __init__(self, prefix, read_signals=None, name=None):
+    def __init__(self, prefix, read_signals=None, name=None, parent=None):
         self.prefix = prefix
         if self.signal_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
@@ -267,11 +279,20 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         if read_signals is None:
             read_signals = self.signal_names
 
-        self.read_signals = read_signals
+        self.read_signals = list(read_signals)
+        self._parent = parent
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for cpt, attr in self._sig_attrs.items()
          if not cpt.lazy]
+
+    @property
+    def parent(self):
+        '''The parent of the OphydDevice
+
+        If at the top of its hierarchy, this will be None
+        '''
+        return self._parent
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):
         '''Wait for signals to connect
