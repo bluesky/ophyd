@@ -46,10 +46,10 @@ class Signal(OphydObject):
 
     def __init__(self, separate_readback=False, value=None, setpoint=None,
                  timestamp=None, setpoint_ts=None,
-                 **kwargs):
+                 name=None, parent=None):
 
         self._default_sub = self.SUB_VALUE
-        super().__init__(**kwargs)
+        super().__init__(name=name, parent=parent)
 
         if not separate_readback and setpoint is None:
             setpoint = value

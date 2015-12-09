@@ -166,6 +166,8 @@ class OphydObject(object):
     ----------
     name : str, optional
         The name of the object.  If None, registration is disabled.
+    parent : parent, optional
+        The object's parent, if it exists in a hierarchy
 
     Attributes
     ----------
@@ -174,21 +176,29 @@ class OphydObject(object):
 
     _default_sub = None
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, parent=None):
         super().__init__()
 
         # TODO: as a consequence of messed-up multiple inheritance for
         #       positioners, this initializer can get called twice. assume
         #       the first one was correct
-        if not hasattr(self, '_name'):
-            self._name = name
-
-        if hasattr(self, '_subs'):
+        if hasattr(self, '_name'):
             return
+
+        self._name = name
+        self._parent = parent
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
         self._sub_cache = defaultdict(lambda: None)
+
+    @property
+    def parent(self):
+        '''The parent of the ophyd object
+
+        If at the top of its hierarchy, `parent` will be None
+        '''
+        return self._parent
 
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback

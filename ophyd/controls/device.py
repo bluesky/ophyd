@@ -38,7 +38,6 @@ class Component:
         self.suffix = suffix
         self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
-        self.expects_parent = ('parent' in inspect.signature(cls).parameters)
 
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
@@ -71,10 +70,8 @@ class Component:
 
         # Otherwise, we only have suffix to update
         pv_name = self.get_pv_name(instance, 'suffix', self.suffix)
-        if self.expects_parent:
-            kwargs['parent'] = instance
 
-        cpt_inst = self.cls(pv_name, **kwargs)
+        cpt_inst = self.cls(pv_name, parent=instance, **kwargs)
 
         if self.lazy and hasattr(self.cls, 'wait_for_connection'):
             cpt_inst.wait_for_connection()
@@ -167,7 +164,8 @@ class DynamicDeviceComponent:
 
         cls = type(clsname, (OphydDevice, ), clsdict)
         return cls(instance.prefix, read_signals=list(read_signals),
-                   name='{}.{}'.format(instance.name, self.attr))
+                   name='{}.{}'.format(instance.name, self.attr),
+                   parent=instance)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -277,25 +275,16 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         if name is None:
             name = prefix
 
-        OphydObject.__init__(self, name=name)
+        OphydObject.__init__(self, name=name, parent=parent)
 
         if read_signals is None:
             read_signals = self.signal_names
 
         self.read_signals = list(read_signals)
-        self._parent = parent
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for cpt, attr in self._sig_attrs.items()
          if not cpt.lazy]
-
-    @property
-    def parent(self):
-        '''The parent of the OphydDevice
-
-        If at the top of its hierarchy, this will be None
-        '''
-        return self._parent
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):
         '''Wait for signals to connect
