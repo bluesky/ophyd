@@ -118,12 +118,6 @@ class PluginBase(ADBase):
     time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
     unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
-    # TODO: owner necessary for plugins?
-    # @property
-    # def detector(self):
-    #     '''The default detector associated with the plugin'''
-    #     return self._detector
-
 
 class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
