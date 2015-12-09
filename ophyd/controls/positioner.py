@@ -12,15 +12,13 @@ import logging
 import time
 
 from ..utils import TimeoutError
-from ..utils.epics_pvs import raise_if_disconnected
-from .ophydobj import MoveStatus
-from .device import OphydDevice
+from .ophydobj import (MoveStatus, OphydObject)
 
 
 logger = logging.getLogger(__name__)
 
 
-class Positioner(OphydDevice):
+class Positioner(OphydObject):
     '''A soft positioner.
 
     Subclass from this to implement your own positioners.
@@ -32,9 +30,8 @@ class Positioner(OphydDevice):
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, prefix='', timeout=None, egu=None, name=None,
-                 read_signals=None):
-        super().__init__(prefix, name=name, read_signals=read_signals)
+    def __init__(self, timeout=None, egu=None, name=None):
+        super().__init__(name=name)
 
         if timeout is None:
             timeout = 0.0
@@ -150,13 +147,12 @@ class Positioner(OphydDevice):
         self._reset_sub(self._SUB_REQ_DONE)
 
     @property
-    @raise_if_disconnected
     def position(self):
         '''The current position of the motor in its engineering units
 
         Returns
         -------
-        position : float
+        position : any
         '''
         return self._position
 
@@ -181,8 +177,7 @@ class Positioner(OphydDevice):
     def set(self, new_position, *, wait=False,
             moved_cb=None, timeout=30.0):
         """
-        New API for controlling movers.
-
+        Bluesky-compatible API for controlling movers.
 
         Parameters
         ----------

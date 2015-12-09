@@ -16,13 +16,13 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from ..utils import DisconnectedError
 from ..utils.epics_pvs import raise_if_disconnected
 from .positioner import Positioner
-from .device import Component as Cpt
+from .device import (OphydDevice, Component as Cpt)
 
 
 logger = logging.getLogger(__name__)
 
 
-class EpicsMotor(Positioner):
+class EpicsMotor(OphydDevice, Positioner):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner
@@ -43,7 +43,9 @@ class EpicsMotor(Positioner):
         if read_signals is None:
             read_signals = ['user_readback', 'user_setpoint', 'motor_egu']
 
-        super().__init__(record, read_signals=read_signals, name=name)
+        OphydDevice.__init__(self, record, read_signals=read_signals,
+                             name=name)
+        Positioner.__init__(self)
 
         self.settle_time = float(settle_time)
 
@@ -93,6 +95,17 @@ class EpicsMotor(Positioner):
         except KeyboardInterrupt:
             self.stop()
             raise
+
+    @property
+    @raise_if_disconnected
+    def position(self):
+        '''The current position of the motor in its engineering units
+
+        Returns
+        -------
+        position : float
+        '''
+        return self._position
 
     def check_value(self, pos):
         '''Check that the position is within the soft limits'''

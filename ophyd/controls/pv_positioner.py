@@ -14,13 +14,14 @@ import time
 from epics.pv import fmt_time
 
 from ..utils import TimeoutError
+from .device import OphydDevice
 from .positioner import Positioner
 
 
 logger = logging.getLogger(__name__)
 
 
-class PVPositioner(Positioner):
+class PVPositioner(OphydDevice, Positioner):
     '''A Positioner which is controlled using multiple user-defined signals
 
     Keyword arguments are passed through to the base class, Positioner
@@ -77,12 +78,14 @@ class PVPositioner(Positioner):
     put_complete = False
 
     def __init__(self, prefix='', *, settle_time=0.05, limits=None, name=None,
-                 timeout=None):
-        super().__init__(prefix, name=name, timeout=timeout)
+                 timeout=None, read_signals=None):
+        OphydDevice.__init__(self, prefix, read_signals=read_signals,
+                             name=name)
+        Positioner.__init__(self, timeout=timeout)
 
         if self.__class__ is PVPositioner:
-            raise ValueError('PVPositioner must be subclassed with the correct '
-                             'signals set in the class definition.')
+            raise TypeError('PVPositioner must be subclassed with the correct '
+                            'signals set in the class definition.')
 
         self.settle_time = float(settle_time)
 
@@ -227,6 +230,13 @@ class PVPositioner(Positioner):
 
 
 class PVPositionerPC(PVPositioner):
+    def __init__(self, *args, **kwargs):
+        if self.__class__ is PVPositionerPC:
+            raise TypeError('PVPositionerPC must be subclassed with the '
+                            'correct signals set in the class definition.')
+
+        super().__init__(*args, **kwargs)
+
     def _move_wait(self, position, **kwargs):
         '''Move and wait until motion has completed'''
         self._started_moving = False

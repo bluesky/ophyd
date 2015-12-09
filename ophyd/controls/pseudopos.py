@@ -17,6 +17,7 @@ import numpy as np
 
 from ..utils import TimeoutError, DisconnectedError
 from .positioner import Positioner
+from .device import OphydDevice
 
 
 logger = logging.getLogger(__name__)
@@ -106,15 +107,19 @@ class PseudoPositioner(Positioner):
     pseudo : list of strings, optional
         List of pseudo positioner names
     '''
-    def __init__(self, name, positioners,
-                 forward=None,
-                 reverse=None,
-                 concurrent=True,
-                 pseudo=None,
+    def __init__(self, prefix, forward=None, reverse=None,
+                 concurrent=True, pseudo=None, read_signals=None, name=None,
                  **kwargs):
 
-        Positioner.__init__(self, name=name, **kwargs)
+        if self.__class__ is PseudoPositioner:
+            raise TypeError('PseudoPositioner must be subclassed with the '
+                            'correct signals set in the class definition.')
 
+        OphydDevice.__init__(self, prefix, read_signals=read_signals,
+                             name=name)
+        Positioner.__init__(self)
+
+        # TODO none of this has been refactored yet
         if forward is not None:
             if not callable(forward):
                 raise ValueError('Forward calculation must be callable')
@@ -127,7 +132,8 @@ class PseudoPositioner(Positioner):
 
             self._calc_reverse = reverse
 
-        self._real = list(positioners)
+        # self._real = list(positioners)  #  TODO
+        self._real = []
         self._concurrent = bool(concurrent)
         self._finish_thread = None
         self._real_waiting = []
