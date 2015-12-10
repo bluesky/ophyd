@@ -40,7 +40,7 @@ class EpicsScaler(OphydDevice):
         """
         if state is None:
             state = {}
-        self._old_count_mode = self._count_mode.get()
+        self._old_count_mode = self.count_mode.get()
         self.count_mode.put(0)
 
     def deconfigure(self):
