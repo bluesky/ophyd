@@ -29,6 +29,7 @@ __all__ = ['mov',
            'set_lm',
            'log_pos',
            'log_pos_diff',
+           'log_pos_mov',
            'get_all_positioners',
            'get_logbook',
            'setup_ophyd',
@@ -231,8 +232,8 @@ def set_lm(positioner, limits):
     low_fields = []
     for p in positioner:
         if isinstance(p, EpicsMotor):
-            high_fields.append(p._record + '.HLM')
-            low_fields.append(p._record + '.LLM')
+            high_fields.append(p.prefix + '.HLM')
+            low_fields.append(p.prefix + '.LLM')
         elif isinstance(p, PVPositioner):
             high_fields.append(p.setpoint_pvname[0] + '.DRVH')
             low_fields.append(p.setpoint_pvname[0] + '.DRVL')
@@ -303,8 +304,8 @@ def set_pos(positioner, position):
 
     # Get the current offset
 
-    offset_pvs = [p._record + ".OFF" for p in positioner]
-    dial_pvs = [p._record + ".DRBV" for p in positioner]
+    offset_pvs = [p.prefix + ".OFF" for p in positioner]
+    dial_pvs = [p.prefix + ".DRBV" for p in positioner]
 
     old_offsets = [caget(p) for p in offset_pvs]
     dial = [caget(p) for p in dial_pvs]
@@ -318,7 +319,7 @@ def set_pos(positioner, position):
 
     msg = ''
     for o, old_o, p in zip(new_offsets, old_offsets, positioner):
-        if caput(p._record + '.OFF', o):
+        if caput(p.prefix + '.OFF', o):
             msg += 'Motor {0} set to position {1} (Offset = {2} was {3})\n'\
                    .format(p.name, p.position, o, old_o)
         else:
@@ -386,26 +387,28 @@ def log_pos(positioners=None):
 
     # Add the text representation of the positioners
 
-    msg += logbook_add_objects(positioners)
-
     # Create the property for storing motor posisions
     pdict = {}
     pdict['values'] = {}
-    for p in positioners:
-        try:
-            pdict['values'][p.name] = p.position
-        except DisconnectedError:
-            pdict['values'][p.name] = DISCONNECTED
 
-    pdict['objects'] = repr(positioners)
-    pdict['values'] = repr(pdict['values'])
+    if positioners is not None:
+        msg += logbook_add_objects(positioners)
+
+        for p in positioners:
+            try:
+                pdict['values'][p.name] = p.position
+            except DisconnectedError:
+                pdict['values'][p.name] = DISCONNECTED
+
+        pdict['objects'] = repr(positioners)
+        pdict['values'] = repr(pdict['values'])
 
     if logbook:
-        id = logbook.log(msg, properties={'OphydPositioners': pdict},
-                         ensure=True)
+        id_ = logbook.log(msg, properties={'OphydPositioners': pdict},
+                          ensure=True)
 
-    print('Logbook positions added as Logbook ID {}'.format(id))
-    return id
+        print('Logbook positions added as Logbook ID {}'.format(id_))
+        return id_
 
 
 def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
