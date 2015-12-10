@@ -115,7 +115,7 @@ class MoveStatus(StatusBase):
 
         try:
             return np.array(finish_pos) - np.array(self.target)
-        except:
+        except Exception:
             return None
 
     def _finished(self, success=True, timestamp=None, **kwargs):
