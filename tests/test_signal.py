@@ -14,7 +14,7 @@ from numpy.testing import assert_array_equal
 
 import epics
 
-from ophyd.controls.signal import (Signal, EpicsSignal)
+from ophyd.controls.signal import (Signal, EpicsSignal, EpicsSignalRO)
 from ophyd.utils import (ReadOnlyError, TimeoutError)
 
 logger = logging.getLogger(__name__)
@@ -458,6 +458,19 @@ class EpicsSignalTests(unittest.TestCase):
 
         sig = EpicsSignal('connects', write_pv='does_not_connect')
         self.assertRaises(TimeoutError, sig.wait_for_connection)
+
+    def test_setpoint(self):
+        epics.PV = FakeEpicsPV
+        # special case in FakeEpicsPV that returns false in wait_for_connection
+        sig = EpicsSignal('connects')
+        sig.wait_for_connection()
+
+        sig.get_setpoint()
+        sig.get_setpoint(as_string=True)
+
+    def test_epicssignalro(self):
+        self.assertRaises(ValueError, EpicsSignalRO, 'test',
+                          write_pv='nope_sorry')
 
 
 from . import main
