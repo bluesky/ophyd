@@ -1,4 +1,6 @@
-grecord(bo,"$(P)$(S)_calcEnable") {
+# a comment line
+
+grecord(bo,$(P)$(S)_calcEnable) {
 	field(DTYP,"Soft Channel")
 	field(ZNAM,"ENABLE")
 	field(ONAM,"DISABLE")
