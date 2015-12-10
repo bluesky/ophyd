@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 # Signals
-from .signal import (Signal, EpicsSignal, EpicsSignalRO, SkepticalSignal)
+from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 
 # Positioners
 from .positioner import Positioner
