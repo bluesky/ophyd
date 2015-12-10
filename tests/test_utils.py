@@ -4,6 +4,8 @@ import os
 import logging
 import unittest
 
+import epics
+
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import errors
 
@@ -52,6 +54,15 @@ class EpicsUtilTest(unittest.TestCase):
 
     def test_pv_form(self):
         self.assertIn(epics_utils.get_pv_form(), ('native', 'time'))
+        version = epics.__version__
+
+        try:
+            versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
+            for version in versions:
+                epics.__version__ = version
+                self.assertIn(epics_utils.get_pv_form(), ('native', 'time'))
+        finally:
+            epics.__version__ = version
 
     def test_records_from_db(self):
         # db_dir = os.path.join(config.epics_base, 'db')

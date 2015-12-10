@@ -25,10 +25,13 @@ class PositionerTests(unittest.TestCase):
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
     def test_positioner(self):
-        p = Positioner(name='test')
+        p = Positioner(name='test', egu='egu')
 
         def cb_pos(value=None, **kwargs):
             pass
+
+        self.assertEquals(p.egu, 'egu')
+        self.assertEquals(p.limits, (0, 0))
 
         p.subscribe(cb_pos)
 
