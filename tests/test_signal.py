@@ -15,7 +15,7 @@ from numpy.testing import assert_array_equal
 import epics
 
 from ophyd.controls.signal import (Signal, EpicsSignal)
-from ophyd.utils import ReadOnlyError
+from ophyd.utils import (ReadOnlyError, TimeoutError)
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +63,11 @@ class FakeEpicsPV(object):
         return self._connected
 
     def wait_for_connection(self, timeout=None):
+        if self._pvname in ('does_not_connect', ):
+            return False
+
         while not self._connected:
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         return True
 
@@ -72,6 +75,9 @@ class FakeEpicsPV(object):
         time.sleep(random.uniform(*self._connect_delay))
         if self._connection_callback is not None:
             self._connection_callback(pvname=self._pvname, conn=True, pv=self)
+
+        if self._pvname in ('does_not_connect', ):
+            return
 
         self._connected = True
         last_value = None
@@ -188,6 +194,16 @@ class FakeEpicsWaveform(FakeEpicsPV):
                    for s in strings]
 
 
+def setUpModule():
+    epics._PV = epics.PV
+    epics.PV = FakeEpicsPV
+
+
+def tearDownModule():
+    logger.debug('Cleaning up')
+    epics.PV = epics._PV
+
+
 class FakePVTests(unittest.TestCase):
     def test_fakepv(self):
         pvname = 'fakepv_nowaythisexists' * 10
@@ -218,16 +234,6 @@ class FakePVTests(unittest.TestCase):
         self.assertEquals(info['value_kw']['value'], pv.value)
 
 
-def setUpModule():
-    epics._PV = epics.PV
-    epics.PV = FakeEpicsPV
-
-
-def tearDownModule():
-    logger.debug('Cleaning up')
-    epics.PV = epics._PV
-
-
 class SignalTests(unittest.TestCase):
     def test_signal_separate(self):
         self.signal_t(True)
@@ -246,6 +252,9 @@ class SignalTests(unittest.TestCase):
                         timestamp=start_t, setpoint_ts=setpoint_t,
                         separate_readback=separate)
 
+        signal.wait_for_connection()
+
+        self.assertTrue(signal.connected)
         self.assertEquals(signal.name, name)
         self.assertEquals(signal.value, value)
         self.assertEquals(signal.get(), value)
@@ -305,6 +314,30 @@ class SignalTests(unittest.TestCase):
         eval(repr(signal))
         signal.report
 
+    def test_signal_copy(self):
+        start_t = time.time()
+        setpoint_t = start_t + 1
+
+        name = 'test'
+        value, setpoint = 10.0, 20.0
+        signal = Signal(name=name,
+                        value=value, setpoint=setpoint,
+                        timestamp=start_t, setpoint_ts=setpoint_t,
+                        separate_readback=True)
+
+        # TODO had copy working in that ancient branch
+        # sig_copy = copy.copy(signal)
+
+        # self.assertEquals(signal.name, sig_copy.name)
+        # self.assertEquals(signal.value, sig_copy.value)
+        # self.assertEquals(signal.get(), sig_copy.get())
+        # self.assertEquals(signal.setpoint, sig_copy.setpoint)
+        # self.assertEquals(signal.get_setpoint(), sig_copy.get_setpoint())
+        # self.assertEquals(signal.timestamp, sig_copy.timestamp)
+        # self.assertEquals(signal.setpoint_ts, sig_copy.setpoint_ts)
+
+
+class EpicsSignalTests(unittest.TestCase):
     def test_epicssignal_readonly(self):
         epics.PV = FakeEpicsPV
 
@@ -417,27 +450,14 @@ class SignalTests(unittest.TestCase):
         signal.subscribe(update_cb)
         self.assertIn(signal.value, FakeEpicsWaveform.strings)
 
-    def test_signal_copy(self):
-        start_t = time.time()
-        setpoint_t = start_t + 1
+    def test_no_connection(self):
+        epics.PV = FakeEpicsPV
+        # special case in FakeEpicsPV that returns false in wait_for_connection
+        sig = EpicsSignal('does_not_connect')
+        self.assertRaises(TimeoutError, sig.wait_for_connection)
 
-        name = 'test'
-        value, setpoint = 10.0, 20.0
-        signal = Signal(name=name,
-                        value=value, setpoint=setpoint,
-                        timestamp=start_t, setpoint_ts=setpoint_t,
-                        separate_readback=True)
-
-        # TODO had copy working in that ancient branch
-        # sig_copy = copy.copy(signal)
-
-        # self.assertEquals(signal.name, sig_copy.name)
-        # self.assertEquals(signal.value, sig_copy.value)
-        # self.assertEquals(signal.get(), sig_copy.get())
-        # self.assertEquals(signal.setpoint, sig_copy.setpoint)
-        # self.assertEquals(signal.get_setpoint(), sig_copy.get_setpoint())
-        # self.assertEquals(signal.timestamp, sig_copy.timestamp)
-        # self.assertEquals(signal.setpoint_ts, sig_copy.setpoint_ts)
+        sig = EpicsSignal('connects', write_pv='does_not_connect')
+        self.assertRaises(TimeoutError, sig.wait_for_connection)
 
 
 from . import main
