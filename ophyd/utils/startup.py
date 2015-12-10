@@ -2,6 +2,7 @@ import logging
 
 import atexit
 import epics
+import time
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -40,6 +41,7 @@ def _cleanup():
     if _dispatcher is None:
         return
 
+    logger.debug('Performing ophyd cleanup')
     if _dispatcher.is_alive():
         logger.debug('Joining the dispatcher thread')
         _dispatcher.stop()
@@ -47,4 +49,9 @@ def _cleanup():
 
     _dispatcher = None
 
+    logger.debug('Clearing the pyepics cache')
+    epics.ca.clear_cache()
+    time.sleep(0.1)
+
+    logger.debug('Finalizing libca')
     epics.ca.finalize_libca()
