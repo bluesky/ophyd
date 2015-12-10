@@ -48,10 +48,12 @@ dependencies:
 
     - conda install numpy pyepics prettytable filestore six ipython pyolog
     - conda install nose coverage
+    - $CONDA_ROOT/bin/pip install codecov
 
   override:
     - $CONDA_ROOT/bin/python setup.py install
 
 test:
   override:
-    - $CONDA_ROOT/bin/nosetests --where=tests --with-coverage --cover-tests -v
+    - $CONDA_ROOT/bin/nosetests --where=tests --with-coverage --cover-tests --cover-package=ophyd -v 
+    - $CONDA_ROOT/bin/codecov --token=$CODECOV_TOKEN

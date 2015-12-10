@@ -86,7 +86,7 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.real1.move(0, wait=True)
         pseudo.real2.move(0, wait=True)
         pseudo.real3.move(0, wait=True)
-        raise
+        # raise
 
 #         logger.info('------- Sequential pseudo positioner')
 #         pos = PseudoPositioner('',
