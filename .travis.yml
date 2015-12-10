@@ -1,21 +1,38 @@
 language: python
 
-sudo: false
+sudo: required
+dist: trusty
+
+services:
+  - docker
 
 matrix:
   include:
     #  - python: 2.7  # ophyd is python 3+ only at the moment
   - python: 3.4
-  - python: 3.5
+  # - python: 3.5
 
 before_install:
+  - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
+  - export EPICS_CA_ADDR_LIST=$( echo $DOCKER0_IP | sed -e 's/^\([0-9]\+\)\.\([0-9]\+\)\..*$/\1.\2.255.255/' ) 
+  - export EPICS_CA_AUTO_ADDR_LIST="no"
+  - export EPICS_CA_MAX_ARRAY_BYTES=10000000
+  - export DOCKERIMAGE="klauer/epics-docker"
+  - export CONDA_ENV="testenv"
+
   - perl --version
   - git fetch --unshallow
+  - docker pull ${DOCKERIMAGE}
+  - docker images
+  - docker ps -a
+  - docker run -d -p $DOCKER0_IP:5064:5064/tcp -p $DOCKER0_IP:5065:5065/udp --name epics_iocs ${DOCKERIMAGE}
+  - docker ps -a
+
   # INSTALL CONDA
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - "./miniconda.sh -b -p /home/travis/mc"
-  - env 
+  - env
 
   - export PATH=/home/travis/mc/bin:$PATH
   - conda config --set always_yes true
@@ -23,67 +40,24 @@ before_install:
   - conda install conda-build anaconda-client jinja2
   - conda config --add channels lightsource2
 
-  # CONFIGURE USEFUL ENVIRONMENTAL VARIABLES
-  - export OWNER_NAME=$(IFS="/"; arr=($TRAVIS_REPO_SLUG); echo ${arr[0]})
-  - export REPO_NAME=$(IFS="/"; arr=($TRAVIS_REPO_SLUG); echo ${arr[1]})
-  - export CONDA_BUILD_COMMAND="conda build conda-recipe --python=$TRAVIS_PYTHON_VERSION"
-  - export GIT_FULL_HASH=`git rev-parse HEAD`
-  # SOME DEBUG OUTPUT
-  - echo "OWNER_NAME=$OWNER_NAME"
-  - echo "REPO_NAME=$REPO_NAME"
-  - echo "TRAVIS_COMMIT=$TRAVIS_COMMIT"
   # MAKE THE CONDA RECIPE
-  - conda create -n testenv python=$TRAVIS_PYTHON_VERSION
-  - source activate testenv
-
-  # INSTALL DEPS REQUIRED FOR MOTOR IOC
-  - conda install -c klauer epics-synapps
-  - conda install -c lightsource2 ncurses
+  - conda create -n $CONDA_ENV python=$TRAVIS_PYTHON_VERSION
+  - source activate $CONDA_ENV
+  
   # need to reactivate after installing epics-base so that the EPICS_BASE env
   # var is set
-  - source activate testenv
+  - source activate $CONDA_ENV
 
 install:
   # INSTALL OPHYD
   - conda install numpy pyepics prettytable filestore six ipython pyolog
-  - conda install nose coverage
+  - conda install nose coverage coveralls
   - python setup.py install
 
   # setup some path environment variables for epics
   - export PATH=$PATH:$EPICS_BASE/bin/$EPICS_HOST_ARCH
   - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$EPICS_BASE/lib/$EPICS_HOST_ARCH"
   - echo "PATH=$PATH"
-
-  # INSTALL THE MOTOR IOC
-  - env
-  - pushd ..
-  - git clone https://github.com/dchabot/motorsim
-  - pushd motorsim
-  - echo "TEMPLATE_TOP=\$(EPICS_BASE)/templates/makeBaseApp/top" > configure/RELEASE
-  - echo "EPICS_BASE=${EPICS_BASE}" >> configure/RELEASE
-  - make
-    
-  # start the channel access repeater
-  - caRepeater &
-
-  # start the motor ioc
-  - cd iocBoot/ioclocalhost
-  - ./st.cmd &
-  - popd
-
-  # areadetector IOC
-  - git clone https://github.com/dchabot/adsim
-
-  - pushd adsim/iocBoot/iocSimDetector
-  - export EPICS_CA_MAX_ARRAY_BYTES=10000000
-  - $EPICS_BASE/bin/linux-x86_64/simDetectorApp ./st.cmd.linux &
-  - popd
-
-  # SOME DEBUG OUTPUT
-  - python -c "import $REPO_NAME; print($REPO_NAME.__version__)"
-
-  # back to the source directory
-  - popd
 
 script:
   - echo "Checking if the motor IOC is running:"
@@ -92,9 +66,11 @@ script:
   - caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter
     
   # check pyepics
-  - export PYEPICS_LIBCA=$EPICS_BASE/lib/$EPICS_HOST_ARCH/libca.so
+  # - export PYEPICS_LIBCA=$EPICS_BASE/lib/$EPICS_HOST_ARCH/libca.so
   - python -c "import epics; print(epics.caget('XF:31IDA-OP{Tbl-Ax:X1}Mtr'))"
   - python -c "import epics.ca; print(epics.ca.find_libca())"
 
   # running tests
-  - nosetests --where=tests --tests=tests.test_positioner,tests.test_signal --with-coverage --cover-tests --cover-package=ophyd -v
+  - nosetests --where=tests --with-coverage --cover-tests --cover-package=ophyd -v
+
+after_success: coveralls
