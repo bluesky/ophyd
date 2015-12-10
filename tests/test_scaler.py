@@ -76,6 +76,9 @@ class SignalTests(unittest.TestCase):
         repr(sca)
         str(sca)
 
+        sca.configure()
+        sca.deconfigure()
+
 
 from . import main
 is_main = (__name__ == '__main__')

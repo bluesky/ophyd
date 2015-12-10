@@ -73,6 +73,12 @@ class ADTest(unittest.TestCase):
         self.assertRaises(ValueError, get_areadetector_plugin,
                           self.prefix + 'foobar:')
 
+        plugin.array_pixels
+        plugin
+
+    def test_hdf5_plugin(self):
+        get_areadetector_plugin(self.prefix + 'HDF1:')
+
 
 from . import main
 is_main = (__name__ == '__main__')
