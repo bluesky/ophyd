@@ -180,18 +180,6 @@ class DynamicDeviceComponent:
         raise RuntimeError('Use .put()')
 
 
-def range_def(cls, field_name, suffix, range_, format_key='index',
-              **kwargs):
-    '''Create a DynamicDeviceComponent definition based on a range of indices'''
-    defn = OrderedDict()
-    for i in range_:
-        fmt_dict = {format_key: i}
-        attr = field_name.format(**fmt_dict)
-        defn[attr] = (cls, suffix.format(**fmt_dict), kwargs)
-
-    return defn
-
-
 class ComponentMeta(type):
     '''Creates attributes for Components by inspecting class definition'''
 
