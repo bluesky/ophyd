@@ -98,7 +98,24 @@ class Component:
 
 
 class DynamicDeviceComponent:
-    '''An OphydDevice component that is a dynamically created sub-device'''
+    '''An OphydDevice component that dynamically creates a OphyDevice
+
+    Parameters
+    ----------
+    defn : OrderedDict
+        The definition of all attributes to be created, in the form of:
+            defn['attribute_name'] = (SignalClass, pv_suffix, keyword_arg_dict)
+        This will create an attribute on the sub-device of type `SignalClass`,
+        with a suffix of pv_suffix, which looks something like this:
+            parent.attribute_name = SignalClass(pv_suffix, **keyword_arg_dict)
+        Keep in mind that this is actually done in the metaclass creation, and
+        not exactly as written above.
+    clsname : str, optional
+        The name of the class to be generated
+        This defaults to {parent_name}{this_attribute_name.capitalize()}
+    doc : str, optional
+        The docstring to put on the dynamically generated class
+    '''
 
     def __init__(self, defn, clsname=None, doc=None):
         self.defn = defn
