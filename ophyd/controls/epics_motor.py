@@ -44,9 +44,9 @@ class EpicsMotor(OphydDevice, Positioner):
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
     motor_egu = Cpt(EpicsSignal, '.EGU')
-    _is_moving = Cpt(EpicsSignalRO, '.MOVN')
-    _done_move = Cpt(EpicsSignalRO, '.DMOV')
-    _stop = Cpt(EpicsSignal, '.STOP')
+    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN')
+    motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
+    motor_stop = Cpt(EpicsSignal, '.STOP')
 
     def __init__(self, record, settle_time=0.05, read_signals=None, name=None,
                  parent=None):
@@ -60,7 +60,7 @@ class EpicsMotor(OphydDevice, Positioner):
         self.settle_time = float(settle_time)
         # TODO: settle_time is unused?
 
-        self._done_move.subscribe(self._move_changed)
+        self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
 
     @property
@@ -89,11 +89,11 @@ class EpicsMotor(OphydDevice, Positioner):
         -------
         moving : bool
         '''
-        return bool(self._is_moving.get(use_monitor=False))
+        return bool(self.motor_is_moving.get(use_monitor=False))
 
     @raise_if_disconnected
     def stop(self):
-        self._stop.put(1, wait=False)
+        self.motor_stop.put(1, wait=False)
         super().stop()
 
     @raise_if_disconnected
