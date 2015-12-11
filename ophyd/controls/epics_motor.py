@@ -31,6 +31,15 @@ class EpicsMotor(OphydDevice, Positioner):
     ----------
     record : str
         The record to use
+    settle_time : float
+        Post-motion settle-time
+    read_signals : sequence of attribute names
+        The signals to be read during data acquisition (i.e., in read() and
+        describe() calls)
+    name : str, optional
+        The name of the device
+    parent : instance or None
+        The instance of the parent device, if applicable
     '''
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
@@ -42,7 +51,7 @@ class EpicsMotor(OphydDevice, Positioner):
     def __init__(self, record, settle_time=0.05, read_signals=None, name=None,
                  parent=None):
         if read_signals is None:
-            read_signals = ['user_readback', 'user_setpoint', 'motor_egu']
+            read_signals = ['user_readback', 'user_setpoint']
 
         OphydDevice.__init__(self, record, read_signals=read_signals,
                              name=name, parent=parent)
