@@ -361,7 +361,10 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         self.subscribe(status._finished,
                        event_type=self.SUB_ACQ_DONE, run=False)
 
-        def done_acquisition(**kwargs):
+        def done_acquisition(**ignored_kwargs):
+            # Keyword arguments are ignored here from the EpicsSignal
+            # subscription, as the important part is that the put completion
+            # has finished
             self._done_acquiring()
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
