@@ -330,17 +330,6 @@ class OphydObject(object):
         '''
         pass
 
-    @property
-    def state(self):
-        return {}
-
-    def configure(self, state=None):
-        # does nothing; subclasses can override if configuration is possible
-        return self.state, self.state
-
-    def deconfigure(self):
-        return self.state
-
     def __repr__(self):
         return self._get_repr()
 

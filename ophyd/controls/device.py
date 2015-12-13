@@ -447,3 +447,14 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def report(self):
         # TODO
         return {}
+
+    @property
+    def state(self):
+        return {}
+
+    def configure(self, state=None):
+        # does nothing; subclasses can override if configuration is possible
+        return self.state, self.state
+
+    def deconfigure(self):
+        return self.state
