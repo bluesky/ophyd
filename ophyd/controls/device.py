@@ -15,19 +15,28 @@ class Component:
     Parameters
     ----------
     cls : class
-        Class of signal to create
+        Class of signal to create.  The required signature of
+        `cls.__init__` is ::
+
+            def __init__(self, pv_name, parent=None, **kwargs):
+
+        The class may have a `wait_for_connection()` which is called
+        during the component instance creation.
+
     suffix : str
-        The PV suffix, which gets appended onto the device prefix
-    add_prefix : sequence, optional
-        Arguments to attach the device prefix to.
-        Defaults to ('suffix', 'write_pv')
+        The PV suffix, which gets appended onto the device prefix to
+        generate the final PV that the instance component will bind to.
     lazy : bool, optional
         Lazily instantiate the signal. If False, the signal will be
         instantiated upon object instantiation
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
-
+    add_prefix : sequence, optional
+        Keys in the kwargs to prefix with the Device PV prefix during
+        creation of the component instance.  Defaults to ('write_pv', )
+    doc : str, optional
+        string to attach to component DvcClass.cmp.__doc__
     '''
 
     def __init__(self, cls, suffix, lazy=False, trigger_value=None,
@@ -41,7 +50,7 @@ class Component:
         self.trigger_value = trigger_value  # TODO discuss
 
         if add_prefix is None:
-            add_prefix = ('suffix', 'write_pv')
+            add_prefix = ('write_pv', )
 
         self.add_prefix = tuple(add_prefix)
 
