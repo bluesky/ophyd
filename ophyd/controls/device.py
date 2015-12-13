@@ -1,5 +1,5 @@
 import time
-import inspect
+
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
@@ -22,11 +22,12 @@ class Component:
         Arguments to attach the device prefix to.
         Defaults to ('suffix', 'write_pv')
     lazy : bool, optional
-        Lazily instantiate the signal. If False, the signal will be instantiated
-        upon object instantiation
+        Lazily instantiate the signal. If False, the signal will be
+        instantiated upon object instantiation
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
+
     '''
 
     def __init__(self, cls, suffix, lazy=False, trigger_value=None,
@@ -211,7 +212,8 @@ class ComponentMeta(type):
 
         # map component classes to their attribute names
         components = [(value, attr) for attr, value in clsdict.items()
-                      if isinstance(value, (Component, DynamicDeviceComponent))]
+                      if isinstance(value, (Component,
+                                            DynamicDeviceComponent))]
 
         clsobj._sig_attrs = OrderedDict(components)
 
