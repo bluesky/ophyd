@@ -30,8 +30,9 @@ class Positioner(OphydObject):
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, timeout=None, egu=None, name=None):
-        super().__init__(name=name)
+    def __init__(self, timeout=None, egu=None, name=None, parent=None,
+                 **kwargs):
+        super().__init__(name=name, parent=parent, **kwargs)
 
         if timeout is None:
             timeout = 0.0

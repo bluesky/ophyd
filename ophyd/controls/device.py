@@ -270,7 +270,8 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    def __init__(self, prefix, read_signals=None, name=None, parent=None):
+    def __init__(self, prefix, read_signals=None, name=None, parent=None,
+                 **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
@@ -282,7 +283,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         if name is None:
             name = prefix
 
-        OphydObject.__init__(self, name=name, parent=parent)
+        super().__init__(name=name, parent=parent, **kwargs)
 
         if read_signals is None:
             read_signals = self.signal_names

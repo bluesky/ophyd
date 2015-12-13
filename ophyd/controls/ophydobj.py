@@ -179,12 +179,6 @@ class OphydObject(object):
     def __init__(self, name=None, parent=None):
         super().__init__()
 
-        # TODO: as a consequence of messed-up multiple inheritance for
-        #       positioners, this initializer can get called twice. assume
-        #       the first one was correct
-        if hasattr(self, '_name'):
-            return
-
         self._name = name
         self._parent = parent
 
