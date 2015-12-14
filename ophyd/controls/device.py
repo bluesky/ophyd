@@ -28,15 +28,16 @@ class Component:
         generate the final PV that the instance component will bind to.
     lazy : bool, optional
         Lazily instantiate the signal. If False, the signal will be
-        instantiated upon object instantiation
+        instantiated upon component instantiation
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
     add_prefix : sequence, optional
         Keys in the kwargs to prefix with the Device PV prefix during
-        creation of the component instance.  Defaults to ('suffix', 'write_pv', )
+        creation of the component instance.
+        Defaults to ('suffix', 'write_pv', )
     doc : str, optional
-        string to attach to component DvcClass.cmp.__doc__
+        string to attach to component DvcClass.component.__doc__
     '''
 
     def __init__(self, cls, suffix, lazy=False, trigger_value=None,
