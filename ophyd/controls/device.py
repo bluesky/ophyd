@@ -1,5 +1,5 @@
 import time
-import inspect
+
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
@@ -15,18 +15,29 @@ class Component:
     Parameters
     ----------
     cls : class
-        Class of signal to create
+        Class of signal to create.  The required signature of
+        `cls.__init__` is ::
+
+            def __init__(self, pv_name, parent=None, **kwargs):
+
+        The class may have a `wait_for_connection()` which is called
+        during the component instance creation.
+
     suffix : str
-        The PV suffix, which gets appended onto the device prefix
-    add_prefix : sequence, optional
-        Arguments to attach the device prefix to.
-        Defaults to ('suffix', 'write_pv')
+        The PV suffix, which gets appended onto the device prefix to
+        generate the final PV that the instance component will bind to.
     lazy : bool, optional
-        Lazily instantiate the signal. If False, the signal will be instantiated
-        upon object instantiation
+        Lazily instantiate the signal. If False, the signal will be
+        instantiated upon component instantiation
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
+    add_prefix : sequence, optional
+        Keys in the kwargs to prefix with the Device PV prefix during
+        creation of the component instance.
+        Defaults to ('suffix', 'write_pv', )
+    doc : str, optional
+        string to attach to component DvcClass.component.__doc__
     '''
 
     def __init__(self, cls, suffix, lazy=False, trigger_value=None,
@@ -211,7 +222,8 @@ class ComponentMeta(type):
 
         # map component classes to their attribute names
         components = [(value, attr) for attr, value in clsdict.items()
-                      if isinstance(value, (Component, DynamicDeviceComponent))]
+                      if isinstance(value, (Component,
+                                            DynamicDeviceComponent))]
 
         clsobj._sig_attrs = OrderedDict(components)
 
@@ -268,7 +280,8 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    def __init__(self, prefix, read_signals=None, name=None, parent=None):
+    def __init__(self, prefix, read_signals=None, name=None, parent=None,
+                 **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
@@ -280,7 +293,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         if name is None:
             name = prefix
 
-        OphydObject.__init__(self, name=name, parent=parent)
+        super().__init__(name=name, parent=parent, **kwargs)
 
         if read_signals is None:
             read_signals = self.signal_names
@@ -445,3 +458,14 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def report(self):
         # TODO
         return {}
+
+    @property
+    def state(self):
+        return {}
+
+    def configure(self, state=None):
+        # does nothing; subclasses can override if configuration is possible
+        return self.state, self.state
+
+    def deconfigure(self):
+        return self.state

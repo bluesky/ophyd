@@ -47,11 +47,6 @@ class OphydObjTests(unittest.TestCase):
         self.assertRaises(KeyError, child.subscribe, None,
                           event_type='unknown_event_type')
 
-        # TODO i think these will move to ophyddevice?
-        child.state
-        child.configure()
-        child.deconfigure()
-
 
 is_main = (__name__ == '__main__')
 main(is_main)

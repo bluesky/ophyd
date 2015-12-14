@@ -135,9 +135,8 @@ class PseudoPositioner(OphydDevice, Positioner):
             raise TypeError('PseudoPositioner must be subclassed with the '
                             'correct signals set in the class definition.')
 
-        OphydDevice.__init__(self, prefix, read_signals=read_signals,
-                             name=name)
-        Positioner.__init__(self)
+        super().__init__(prefix, read_signals=read_signals,
+                         name=name, **kwargs)
 
         self._real = [getattr(self, attr)
                       for attr, cpt in self._get_real_positioners()]
