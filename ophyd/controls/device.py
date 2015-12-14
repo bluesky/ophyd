@@ -34,7 +34,7 @@ class Component:
         at trigger time.
     add_prefix : sequence, optional
         Keys in the kwargs to prefix with the Device PV prefix during
-        creation of the component instance.  Defaults to ('write_pv', )
+        creation of the component instance.  Defaults to ('suffix', 'write_pv', )
     doc : str, optional
         string to attach to component DvcClass.cmp.__doc__
     '''
@@ -50,7 +50,7 @@ class Component:
         self.trigger_value = trigger_value  # TODO discuss
 
         if add_prefix is None:
-            add_prefix = ('write_pv', )
+            add_prefix = ('suffix', 'write_pv')
 
         self.add_prefix = tuple(add_prefix)
 
