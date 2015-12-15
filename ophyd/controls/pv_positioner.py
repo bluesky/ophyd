@@ -78,8 +78,12 @@ class PVPositioner(OphydDevice, Positioner):
     put_complete = False
 
     def __init__(self, prefix='', *, settle_time=0.05, limits=None, name=None,
-                 timeout=None, read_attrs=None, parent=None, **kwargs):
+                 timeout=None, read_attrs=None, configuration_attrs=None,
+                 monitor_attrs=None, parent=None,
+                 **kwargs):
         super().__init__(prefix=prefix, read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, timeout=timeout, **kwargs)
 
         if self.__class__ is PVPositioner:

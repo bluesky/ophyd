@@ -49,11 +49,17 @@ class EpicsMotor(OphydDevice, Positioner):
     motor_stop = Cpt(EpicsSignal, '.STOP')
 
     def __init__(self, record, *, settle_time=0.05, read_attrs=None,
-                 name=None, parent=None, **kwargs):
+                 configuration_attrs=None, monitor_attrs=None, name=None,
+                 parent=None, **kwargs):
         if read_attrs is None:
             read_attrs = ['user_readback', 'user_setpoint']
 
+        if configuration_attrs is None:
+            configuration_attrs = ['motor_egu', ]
+
         super().__init__(record, read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
         self.settle_time = float(settle_time)

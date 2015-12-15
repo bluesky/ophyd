@@ -125,7 +125,8 @@ class PseudoPositioner(OphydDevice, Positioner):
         The instance of the parent device, if applicable
     '''
     def __init__(self, prefix, *, concurrent=True, read_attrs=None,
-                 name=None, **kwargs):
+                 configuration_attrs=None, monitor_attrs=None, name=None,
+                 **kwargs):
 
         self._concurrent = bool(concurrent)
         self._finish_thread = None
@@ -136,6 +137,8 @@ class PseudoPositioner(OphydDevice, Positioner):
                             'correct signals set in the class definition.')
 
         super().__init__(prefix, read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         monitor_attrs=monitor_attrs,
                          name=name, **kwargs)
 
         self._real = [getattr(self, attr)
