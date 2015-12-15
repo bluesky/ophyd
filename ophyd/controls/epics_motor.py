@@ -33,7 +33,7 @@ class EpicsMotor(OphydDevice, Positioner):
         The record to use
     settle_time : float
         Post-motion settle-time
-    read_signals : sequence of attribute names
+    read_attrs : sequence of attribute names
         The signals to be read during data acquisition (i.e., in read() and
         describe() calls)
     name : str, optional
@@ -48,12 +48,12 @@ class EpicsMotor(OphydDevice, Positioner):
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
 
-    def __init__(self, record, *, settle_time=0.05, read_signals=None,
+    def __init__(self, record, *, settle_time=0.05, read_attrs=None,
                  name=None, parent=None, **kwargs):
-        if read_signals is None:
-            read_signals = ['user_readback', 'user_setpoint']
+        if read_attrs is None:
+            read_attrs = ['user_readback', 'user_setpoint']
 
-        super().__init__(record, read_signals=read_signals,
+        super().__init__(record, read_attrs=read_attrs,
                          name=name, parent=parent, **kwargs)
 
         self.settle_time = float(settle_time)

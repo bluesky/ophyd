@@ -45,7 +45,7 @@ class SignalTests(unittest.TestCase):
 
     def test_scaler_functionality(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
-                                 read_signals=['channels'])
+                                 read_attrs=['channels'])
         sca.wait_for_connection()
 
         sca.preset_time.put(5.2)
@@ -85,7 +85,7 @@ class SignalTests(unittest.TestCase):
 
     def test_signal_separate(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
-                                 read_signals=['channels.chan1'])
+                                 read_attrs=['channels.chan1'])
         sca.wait_for_connection()
         data = sca.read()
         self.assertIn('scaler_channels_chan1', data)

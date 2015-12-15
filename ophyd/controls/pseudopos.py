@@ -116,7 +116,7 @@ class PseudoPositioner(OphydDevice, Positioner):
     concurrent : bool, optional
         If set, all real motors will be moved concurrently. If not, they will
         be moved in order of how they were defined initially
-    read_signals : sequence of attribute names
+    read_attrs : sequence of attribute names
         The signals to be read during data acquisition (i.e., in read() and
         describe() calls)
     name : str, optional
@@ -124,7 +124,7 @@ class PseudoPositioner(OphydDevice, Positioner):
     parent : instance or None
         The instance of the parent device, if applicable
     '''
-    def __init__(self, prefix, *, concurrent=True, read_signals=None,
+    def __init__(self, prefix, *, concurrent=True, read_attrs=None,
                  name=None, **kwargs):
 
         self._concurrent = bool(concurrent)
@@ -135,7 +135,7 @@ class PseudoPositioner(OphydDevice, Positioner):
             raise TypeError('PseudoPositioner must be subclassed with the '
                             'correct signals set in the class definition.')
 
-        super().__init__(prefix, read_signals=read_signals,
+        super().__init__(prefix, read_attrs=read_attrs,
                          name=name, **kwargs)
 
         self._real = [getattr(self, attr)

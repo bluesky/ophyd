@@ -168,17 +168,17 @@ class DynamicDeviceComponent:
             clsdict[attr] = self.create_attr(attr)
 
         attrs = set(self.defn.keys())
-        inst_read = set(instance.read_signals)
+        inst_read = set(instance.read_attrs)
         if self.attr in inst_read:
             # if the sub-device is in the read list, then add all attrs
-            read_signals = attrs
+            read_attrs = attrs
         else:
             # otherwise, only add the attributes that exist in the sub-device
-            # to the read_signals list
-            read_signals = inst_read.intersection(attrs)
+            # to the read_attrs list
+            read_attrs = inst_read.intersection(attrs)
 
         cls = type(clsname, (OphydDevice, ), clsdict)
-        return cls(instance.prefix, read_signals=list(read_signals),
+        return cls(instance.prefix, read_attrs=list(read_attrs),
                    name='{}_{}'.format(instance.name, self.attr),
                    parent=instance)
 
@@ -243,7 +243,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     ----------
     prefix : str
         The PV prefix for all components of the device
-    read_signals : sequence of attribute names
+    read_attrs : sequence of attribute names
         The signals to be read during data acquisition (i.e., in read() and
         describe() calls)
     name : str, optional
@@ -254,7 +254,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    def __init__(self, prefix, *, read_signals=None, name=None, parent=None,
+    def __init__(self, prefix, *, read_attrs=None, name=None, parent=None,
                  **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
@@ -269,10 +269,10 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         super().__init__(name=name, parent=parent, **kwargs)
 
-        if read_signals is None:
-            read_signals = self.signal_names
+        if read_attrs is None:
+            read_attrs = self.signal_names
 
-        self.read_signals = list(read_signals)
+        self.read_attrs = list(read_attrs)
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for cpt, attr in self._sig_attrs.items()
@@ -335,7 +335,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def read(self):
         # map names ("data keys") to actual values
         values = OrderedDict()
-        for name in self.read_signals:
+        for name in self.read_attrs:
             signal = getattr(self, name)
             values.update(signal.read())
 
@@ -343,7 +343,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     def describe(self):
         desc = OrderedDict()
-        for name in self.read_signals:
+        for name in self.read_attrs:
             signal = getattr(self, name)
             desc.update(signal.describe())
 
