@@ -88,12 +88,20 @@ class ADTest(unittest.TestCase):
             tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
         det = MyDetector(self.prefix)
+        det.wait_for_connection()
 
         print(det.describe())
         print(det.tiff1.capture.describe())
+
+    def test_getattr(self):
+        class MyDetector(SimDetector):
+            tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+
+        det = MyDetector(self.prefix)
+        self.assertEquals(getattr(det, 'tiff1.name'), det.tiff1.name)
+        self.assertIs(getattr(det, 'tiff1'), det.tiff1)
         # raise
         # TODO subclassing issue
-
 
 from . import main
 is_main = (__name__ == '__main__')

@@ -311,33 +311,36 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def connected(self):
         return all(signal.connected for name, signal in self._signals.items())
 
-    def _get_devattr(self, name):
-        '''Gets a component from a fully-qualified python name'''
-        attrs = name.split('.', 1)
+    def __getattr__(self, name):
+        '''Get a component from a fully-qualified name
 
-        sub_attr = '.'.join(attrs[1:])
-        try:
-            attr = getattr(self, attrs[0])
-        except AttributeError:
-            raise AttributeError('{} {} has no attribute {}'
+        As a reminder, __getattr__ is only called if a real attribute doesn't
+        already exist.
+        '''
+        if '.' not in name:
+            raise AttributeError('{} {!r} has no attribute {!r}'
                                  ''.format(self.__class__.__name__, self.name,
-                                           attrs[0]))
+                                           name))
 
-        if sub_attr:
-            # TODO is it a bad idea to promote this to __getattr__?
-            if hasattr(attr, '_get_devattr'):
-                return attr._get_devattr(sub_attr)
-            else:
-                return getattr(attr, sub_attr)
+        attr_names = name.split('.')
+        try:
+            attr = getattr(self, attr_names[0])
+        except AttributeError:
+            raise AttributeError('{} {!r} has no attribute {!r}'
+                                 ''.format(self.__class__.__name__, self.name,
+                                           attr_names[0]))
+
+        if len(attr_names) > 1:
+            sub_attr_names = '.'.join(attr_names[1:])
+            return getattr(attr, sub_attr_names)
 
         return attr
-
 
     def read(self):
         # map names ("data keys") to actual values
         values = OrderedDict()
         for name in self.read_signals:
-            signal = self._get_devattr(name)
+            signal = getattr(self, name)
             values.update(signal.read())
 
         return values
@@ -345,7 +348,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def describe(self):
         desc = OrderedDict()
         for name in self.read_signals:
-            signal = self._get_devattr(name)
+            signal = getattr(self, name)
             desc.update(signal.describe())
 
         return desc
