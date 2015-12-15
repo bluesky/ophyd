@@ -1,8 +1,7 @@
 from __future__ import print_function
-
 import logging
 
-from ophyd.controls import (OphydDevice)
+from ophyd.controls import OphydDevice
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +17,6 @@ def tearDownModule():
 def test_device_state():
     d = OphydDevice('test')
 
-    d.state
-    d.configure()
-    d.deconfigure()
+    d.stage()
+    old, new = d.configure()
+    d.unstage()

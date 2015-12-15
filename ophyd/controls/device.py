@@ -438,13 +438,28 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # TODO
         return {}
 
-    @property
-    def state(self):
-        return {}
+    def stage(self):
+        '''Stage the device for usage in a run'''
+        pass
 
-    def configure(self, state=None):
-        # does nothing; subclasses can override if configuration is possible
-        return self.state, self.state
+    def unstage(self):
+        '''Unstage the device after a run'''
+        pass
 
-    def deconfigure(self):
-        return self.state
+    def configure(self, d=None):
+        '''Configure the device for something during a run
+
+        The default implementation does nothing; subclasses should override
+        this to make configuration specific to the device.
+
+        Parameters
+        ----------
+        d : dict
+            The configuration dictionary
+
+        Returns
+        -------
+        (old, new) tuple
+        Where old and new are pre- and post-configure configuration states.
+        '''
+        return {}, {}
