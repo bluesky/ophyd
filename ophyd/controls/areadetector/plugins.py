@@ -61,6 +61,19 @@ class PluginBase(ADBase):
     _plugin_type = None
     _suffix_re = None
 
+    array_counter = C(SignalWithRBV, 'ArrayCounter')
+    array_rate = C(EpicsSignalRO, 'ArrayRate_RBV')
+    asyn_io = C(EpicsSignal, 'AsynIO')
+
+    nd_attributes_file = C(EpicsSignal, 'NDAttributesFile', string=True)
+    pool_alloc_buffers = C(EpicsSignalRO, 'PoolAllocBuffers')
+    pool_free_buffers = C(EpicsSignalRO, 'PoolFreeBuffers')
+    pool_max_buffers = C(EpicsSignalRO, 'PoolMaxBuffers')
+    pool_max_mem = C(EpicsSignalRO, 'PoolMaxMem')
+    pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
+    pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
+    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
+
     @property
     def array_pixels(self):
         '''The total number of pixels, calculated from array_size'''

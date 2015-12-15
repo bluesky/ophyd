@@ -40,14 +40,47 @@ __all__ = ['AreaDetector',
            'RoperDetector',
            'SimDetector',
            'URLDetector',
+
+           'CamBase',
+           'Andor3DetectorCam',
+           'AndorDetectorCam',
+           'BrukerDetectorCam',
+           'FirewireLinDetectorCam',
+           'FirewireWinDetectorCam',
+           'LightFieldDetectorCam',
+           'Mar345DetectorCam',
+           'MarCCDDetectorCam',
+           'PerkinElmerDetectorCam',
+           'PilatusDetectorCam',
+           'PixiradDetectorCam',
+           'PointGreyDetectorCam',
+           'ProsilicaDetectorCam',
+           'PSLDetectorCam',
+           'PvcamDetectorCam',
+           'RoperDetectorCam',
+           'SimDetectorCam',
+           'URLDetectorCam',
            ]
 
 
-class AreaDetector(ADBase):
-    _html_docs = ['areaDetectorDoc.html']
-    _sep = 'cam1:'
+class CamBase(ADBase):
     ImageMode = enum(SINGLE=0, MULTIPLE=1, CONTINUOUS=2)
 
+    # Shared among all cams and plugins
+    array_counter = C(SignalWithRBV, 'ArrayCounter')
+    array_rate = C(EpicsSignalRO, 'ArrayRate_RBV')
+    asyn_io = C(EpicsSignal, 'AsynIO')
+
+    nd_attributes_file = C(EpicsSignal, 'NDAttributesFile', string=True)
+    pool_alloc_buffers = C(EpicsSignalRO, 'PoolAllocBuffers')
+    pool_free_buffers = C(EpicsSignalRO, 'PoolFreeBuffers')
+    pool_max_buffers = C(EpicsSignalRO, 'PoolMaxBuffers')
+    pool_max_mem = C(EpicsSignalRO, 'PoolMaxMem')
+    pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
+    pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
+    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
+
+    # Cam-specific
     acquire = C(SignalWithRBV, 'Acquire')
     acquire_period = C(SignalWithRBV, 'AcquirePeriod')
     acquire_time = C(SignalWithRBV, 'AcquireTime')
@@ -116,9 +149,15 @@ class AreaDetector(ADBase):
     trigger_mode = C(SignalWithRBV, 'TriggerMode')
 
 
-class SimDetector(AreaDetector):
-    _html_docs = ['simDetectorDoc.html']
+class AreaDetectorCam(CamBase):
+    pass
 
+
+class AreaDetector(ADBase):
+    cam = C(AreaDetectorCam, 'cam1:')
+
+
+class SimDetectorCam(CamBase):
     gain_rgb = DDC(ad_group(SignalWithRBV,
                             (('gain_red', 'GainRed'),
                              ('gain_green', 'GainGreen'),
@@ -155,9 +194,12 @@ class SimDetector(AreaDetector):
     sim_mode = C(SignalWithRBV, 'SimMode')
 
 
-class AdscDetector(AreaDetector):
-    _html_docs = ['adscDoc.html']
+class SimDetector(ADBase):
+    _html_docs = ['simDetectorDoc.html']
+    cam = C(SimDetectorCam, 'cam1:')
 
+
+class AdscDetectorCam(CamBase):
     adsc_2theta = C(SignalWithRBV, 'ADSC2Theta')
     adsc_adc = C(SignalWithRBV, 'ADSCAdc')
     adsc_axis = C(SignalWithRBV, 'ADSCAxis')
@@ -189,9 +231,12 @@ class AdscDetector(AreaDetector):
     ext_trig_ok_to_exp = C(EpicsSignal, 'ExSwTrOkToExp')
 
 
-class AndorDetector(AreaDetector):
-    _html_docs = ['andorDoc.html']
+class AdscDetector(ADBase):
+    _html_docs = ['adscDoc.html']
+    cam = C(AdscDetectorCam, 'cam1:')
 
+
+class AndorDetectorCam(CamBase):
     andor_adc_speed = C(SignalWithRBV, 'AndorADCSpeed')
     andor_accumulate_period = C(SignalWithRBV, 'AndorAccumulatePeriod')
     andor_cooler = C(SignalWithRBV, 'AndorCooler')
@@ -204,9 +249,12 @@ class AndorDetector(AreaDetector):
     pal_file_path = C(SignalWithRBV, 'PALFilePath')
 
 
-class Andor3Detector(AreaDetector):
-    _html_docs = ['andor3Doc.html']
+class AndorDetector(ADBase):
+    _html_docs = ['andorDoc.html']
+    cam = C(AndorDetectorCam, 'cam1:')
 
+
+class Andor3DetectorCam(CamBase):
     a3_binning = C(SignalWithRBV, 'A3Binning')
     a3_shutter_mode = C(SignalWithRBV, 'A3ShutterMode')
     controller_id = C(EpicsSignal, 'ControllerID')
@@ -229,9 +277,12 @@ class Andor3Detector(AreaDetector):
     transfer_rate = C(EpicsSignal, 'TransferRate')
 
 
-class BrukerDetector(AreaDetector):
-    _html_docs = ['BrukerDoc.html']
+class Andor3Detector(ADBase):
+    _html_docs = ['andor3Doc.html']
+    cam = C(Andor3DetectorCam, 'cam1:')
 
+
+class BrukerDetectorCam(CamBase):
     bis_asyn = C(EpicsSignal, 'BISAsyn')
     bis_status = C(EpicsSignal, 'BISStatus')
     file_format = C(SignalWithRBV, 'FileFormat')
@@ -239,15 +290,22 @@ class BrukerDetector(AreaDetector):
     read_sfrm_timeout = C(EpicsSignal, 'ReadSFRMTimeout')
 
 
-class FirewireLinDetector(AreaDetector):
-    _html_docs = ['FirewireWinDoc.html']
+class BrukerDetector(ADBase):
+    _html_docs = ['BrukerDoc.html']
+    cam = C(Andor3DetectorCam, 'cam1:')
 
+
+class FirewireLinDetectorCam(CamBase):
     # TODO
+    pass
 
 
-class FirewireWinDetector(AreaDetector):
+class FirewireLinDetector(ADBase):
     _html_docs = ['FirewireWinDoc.html']
+    cam = C(FirewireLinDetectorCam, 'cam1:')
 
+
+class FirewireWinDetectorCam(CamBase):
     colorcode = C(SignalWithRBV, 'COLORCODE')
     current_colorcode = C(EpicsSignal, 'CURRENT_COLORCODE')
     current_format = C(EpicsSignal, 'CURRENT_FORMAT')
@@ -260,15 +318,23 @@ class FirewireWinDetector(AreaDetector):
     readout_time = C(SignalWithRBV, 'READOUT_TIME')
 
 
-class LightFieldDetector(AreaDetector):
+class FirewireWinDetector(ADBase):
+    _html_docs = ['FirewireWinDoc.html']
+    cam = C(FirewireWinDetectorCam, 'cam1:')
+
+
+class LightFieldDetectorCam(CamBase):
     _html_docs = ['LightFieldDoc.html']
 
     # TODO new in AD 2
 
 
-class Mar345Detector(AreaDetector):
-    _html_docs = ['Mar345Doc.html']
+class LightFieldDetector(ADBase):
+    _html_docs = ['LightFieldDoc.html']
+    cam = C(LightFieldDetectorCam, 'cam1:')
 
+
+class Mar345DetectorCam(CamBase):
     abort = C(SignalWithRBV, 'Abort')
     change_mode = C(SignalWithRBV, 'ChangeMode')
     erase = C(SignalWithRBV, 'Erase')
@@ -281,9 +347,12 @@ class Mar345Detector(AreaDetector):
     mar_server_asyn = C(EpicsSignal, 'marServerAsyn')
 
 
-class MarCCDDetector(AreaDetector):
-    _html_docs = ['MarCCDDoc.html']
+class Mar345Detector(ADBase):
+    _html_docs = ['Mar345Doc.html']
+    cam = C(Mar345DetectorCam, 'cam1:')
 
+
+class MarCCDDetectorCam(CamBase):
     beam_x = C(EpicsSignal, 'BeamX')
     beam_y = C(EpicsSignal, 'BeamY')
     dataset_comments = C(EpicsSignal, 'DatasetComments')
@@ -309,9 +378,12 @@ class MarCCDDetector(AreaDetector):
     mar_server_asyn = C(EpicsSignal, 'marServerAsyn')
 
 
-class PerkinElmerDetector(AreaDetector):
-    _html_docs = ['PerkinElmerDoc.html']
+class MarCCDDetector(ADBase):
+    _html_docs = ['MarCCDDoc.html']
+    cam = C(MarCCDDetectorCam, 'cam1:')
 
+
+class PerkinElmerDetectorCam(CamBase):
     pe_acquire_gain = C(EpicsSignal, 'PEAcquireGain')
     pe_acquire_offset = C(EpicsSignal, 'PEAcquireOffset')
     pe_corrections_dir = C(EpicsSignal, 'PECorrectionsDir')
@@ -344,16 +416,22 @@ class PerkinElmerDetector(AreaDetector):
     pe_use_pixel_correction = C(EpicsSignal, 'PEUsePixelCorrection')
 
 
-class PSLDetector(AreaDetector):
-    _html_docs = ['PSLDoc.html']
+class PerkinElmerDetector(ADBase):
+    _html_docs = ['PerkinElmerDoc.html']
+    cam = C(LightFieldDetectorCam, 'cam1:')
 
+
+class PSLDetectorCam(CamBase):
     file_format = C(SignalWithRBV, 'FileFormat')
     tiff_comment = C(SignalWithRBV, 'TIFFComment')
 
 
-class PilatusDetector(AreaDetector):
-    _html_docs = ['pilatusDoc.html']
+class PSLDetector(ADBase):
+    _html_docs = ['PSLDoc.html']
+    cam = C(PSLDetectorCam, 'cam1:')
 
+
+class PilatusDetectorCam(CamBase):
     alpha = C(EpicsSignal, 'Alpha')
     angle_incr = C(EpicsSignal, 'AngleIncr')
     armed = C(EpicsSignal, 'Armed')
@@ -400,21 +478,32 @@ class PilatusDetector(AreaDetector):
     wavelength = C(EpicsSignal, 'Wavelength')
 
 
-class PixiradDetector(AreaDetector):
-    _html_docs = ['PixiradDoc.html']
+class PilatusDetector(ADBase):
+    _html_docs = ['pilatusDoc.html']
+    cam = C(PilatusDetectorCam, 'cam1:')
 
+
+class PixiradDetectorCam(CamBase):
     # TODO new
+    pass
 
 
-class PointGreyDetector(AreaDetector):
-    _html_docs = ['PointGreyDoc.html']
+class PixiradDetector(ADBase):
+    _html_docs = ['PixiradDoc.html']
+    cam = C(PixiradDetectorCam, 'cam1:')
 
+
+class PointGreyDetectorCam(CamBase):
     # TODO firewirewin
+    pass
 
 
-class ProsilicaDetector(AreaDetector):
-    _html_docs = ['prosilicaDoc.html']
+class PointGreyDetector(ADBase):
+    _html_docs = ['PointGreyDoc.html']
+    cam = C(PointGreyDetectorCam, 'cam1:')
 
+
+class ProsilicaDetectorCam(CamBase):
     ps_bad_frame_counter = C(EpicsSignalRO, 'PSBadFrameCounter_RBV')
     ps_byte_rate = C(SignalWithRBV, 'PSByteRate')
     ps_driver_type = C(EpicsSignalRO, 'PSDriverType_RBV')
@@ -452,9 +541,12 @@ class ProsilicaDetector(AreaDetector):
     trigger_software = C(EpicsSignal, 'TriggerSoftware')
 
 
-class PvcamDetector(AreaDetector):
-    _html_docs = ['pvcamDoc.html']
+class ProsilicaDetector(ADBase):
+    _html_docs = ['prosilicaDoc.html']
+    cam = C(ProsilicaDetectorCam, 'cam1:')
 
+
+class PvcamDetectorCam(CamBase):
     bit_depth = C(EpicsSignalRO, 'BitDepth_RBV')
     camera_firmware_vers = C(EpicsSignalRO, 'CameraFirmwareVers_RBV')
     chip_height = C(EpicsSignalRO, 'ChipHeight_RBV')
@@ -502,9 +594,12 @@ class PvcamDetector(AreaDetector):
     trigger_edge = C(SignalWithRBV, 'TriggerEdge')
 
 
-class RoperDetector(AreaDetector):
-    _html_docs = ['RoperDoc.html']
+class PvcamDetector(ADBase):
+    _html_docs = ['pvcamDoc.html']
+    cam = C(PvcamDetectorCam, 'cam1:')
 
+
+class RoperDetectorCam(CamBase):
     auto_data_type = C(SignalWithRBV, 'AutoDataType')
     comment1 = C(SignalWithRBV, 'Comment1')
     comment2 = C(SignalWithRBV, 'Comment2')
@@ -517,9 +612,12 @@ class RoperDetector(AreaDetector):
     roper_shutter_mode = C(SignalWithRBV, 'RoperShutterMode')
 
 
-class URLDetector(AreaDetector):
-    _html_docs = ['URLDoc.html']
+class RoperDetector(ADBase):
+    _html_docs = ['RoperDoc.html']
+    cam = C(RoperDetectorCam, 'cam1:')
 
+
+class URLDetectorCam(CamBase):
     urls = DDC(ad_group(EpicsSignal,
                         (('url_1', 'URL1'),
                          ('url_2', 'URL2'),
@@ -536,3 +634,8 @@ class URLDetector(AreaDetector):
     url_select = C(EpicsSignal, 'URLSelect')
     url_seq = C(EpicsSignal, 'URLSeq')
     url = C(EpicsSignalRO, 'URL_RBV')
+
+
+class URLDetector(ADBase):
+    _html_docs = ['URLDoc.html']
+    cam = C(URLDetectorCam, 'cam1:')

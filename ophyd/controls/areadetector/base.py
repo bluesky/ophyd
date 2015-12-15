@@ -69,20 +69,6 @@ class ADBase(OphydDevice):
 
     _html_docs = ['areaDetectorDoc.html']
 
-    array_counter = ADComponent(EpicsSignalWithRBV, 'ArrayCounter')
-    array_rate = ADComponent(EpicsSignalRO, 'ArrayRate_RBV')
-    asyn_io = ADComponent(EpicsSignal, 'AsynIO')
-
-    nd_attributes_file = ADComponent(EpicsSignal, 'NDAttributesFile',
-                                     string=True)
-    pool_alloc_buffers = ADComponent(EpicsSignalRO, 'PoolAllocBuffers')
-    pool_free_buffers = ADComponent(EpicsSignalRO, 'PoolFreeBuffers')
-    pool_max_buffers = ADComponent(EpicsSignalRO, 'PoolMaxBuffers')
-    pool_max_mem = ADComponent(EpicsSignalRO, 'PoolMaxMem')
-    pool_used_buffers = ADComponent(EpicsSignalRO, 'PoolUsedBuffers')
-    pool_used_mem = ADComponent(EpicsSignalRO, 'PoolUsedMem')
-    port_name = ADComponent(EpicsSignalRO, 'PortName_RBV', string=True)
-
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):
         '''Search through the signal docs on this detector for the string text

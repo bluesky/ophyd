@@ -10,8 +10,10 @@ except ImportError:
 
 import epics
 
-from ophyd.controls import (SimDetector, get_areadetector_plugin)
+from ophyd.controls import (SimDetector, get_areadetector_plugin,
+                            TIFFPlugin)
 from ophyd.controls.areadetector.util import stub_templates
+from ophyd.controls.device import (Component as Cpt, )
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,17 @@ class ADTest(unittest.TestCase):
 
     def test_hdf5_plugin(self):
         get_areadetector_plugin(self.prefix + 'HDF1:')
+
+    def test_subclass(self):
+        class MyDetector(SimDetector):
+            tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+
+        det = MyDetector(self.prefix)
+
+        print(det.describe())
+        print(det.tiff1.capture.describe())
+        # raise
+        # TODO subclassing issue
 
 
 from . import main
