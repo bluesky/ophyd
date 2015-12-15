@@ -254,7 +254,8 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    def __init__(self, prefix, *, read_attrs=None, name=None, parent=None,
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 monitor_attrs=None, name=None, parent=None,
                  **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
@@ -272,7 +273,15 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         if read_attrs is None:
             read_attrs = self.signal_names
 
+        if configuration_attrs is None:
+            configuration_attrs = []
+
+        if monitor_attrs is None:
+            monitor_attrs = []
+
         self.read_attrs = list(read_attrs)
+        self.configuration_attrs = list(configuration_attrs)
+        self.monitor_attrs = list(monitor_attrs)
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
@@ -337,22 +346,38 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         return attr
 
-    def read(self):
+    def _read_attr_list(self, attr_list):
+        '''Get a 'read' dictionary containing attributes in attr_list'''
         values = OrderedDict()
-        for name in self.read_attrs:
+        for name in attr_list:
             signal = getattr(self, name)
             values.update(signal.read())
 
         return values
 
-    def describe(self):
+    def read(self):
+        '''map names ("data keys") to actual values'''
+        return self._read_attr_list(self.read_attrs)
+
+    def read_configuration(self):
+        return self._read_attr_list(self.configuration_attrs)
+
+    def _describe_attr_list(self, attr_list):
         '''Get a 'describe' dictionary containing attributes in attr_list'''
         desc = OrderedDict()
-        for name in self.read_attrs:
+        for name in attr_list:
             signal = getattr(self, name)
             desc.update(signal.describe())
 
         return desc
+
+    def describe(self):
+        '''describe the read data keys' data types and other metadata'''
+        return self._describe_attr_list(self.read_attrs)
+
+    def describe_configuration(self):
+        '''describe the configuration data keys' data types/other metadata'''
+        return self._describe_attr_list(self.configuration_attrs)
 
     @property
     def trigger_signals(self):

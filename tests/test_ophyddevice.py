@@ -41,8 +41,18 @@ class DeviceTests(unittest.TestCase):
             cpt3 = Component(FakeSignal, '3')
 
         d = MyDevice('prefix', read_attrs=['cpt1'],
-                     # configuration_attrs=['cpt2'],
-                     # monitor_attrs=['cpt3']
+                     configuration_attrs=['cpt2'],
+                     monitor_attrs=['cpt3']
                      )
 
         d.read()
+        self.assertEqual(d.read_attrs, ['cpt1'])
+        self.assertEqual(d.configuration_attrs, ['cpt2'])
+        self.assertEqual(d.monitor_attrs, ['cpt3'])
+
+        self.assertEqual(list(d.read().keys()), [d.cpt1.name])
+        self.assertEqual(list(d.read_configuration().keys()), [d.cpt2.name])
+
+        self.assertEqual(list(d.describe().keys()), [d.cpt1.name])
+        self.assertEqual(list(d.describe_configuration().keys()),
+                         [d.cpt2.name])
