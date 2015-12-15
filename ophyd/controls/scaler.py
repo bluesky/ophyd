@@ -46,20 +46,19 @@ class EpicsScaler(OphydDevice):
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
-    def configure(self, state=None):
-        """Configure Scaler
-
-        Configure the scaler by setting autocount to off. The state will be
-        restored by deconfigure
-        """
-        if state is None:
-            state = {}
+    def stage(self):
+        '''Stage the scaler for data acquisition'''
         self._old_count_mode = self.count_mode.get()
         self.count_mode.put(0)
 
-    def deconfigure(self):
-        """Deconfigure Scaler
+    def configure(self, d=None):
+        """Configure Scaler
 
-        Reset the autocount status
+        Configure the scaler by setting autocount to off.
         """
+        # TODO
+        return {}, {}
+
+    def unstage(self):
+        """Unstage from acquisition; reset the autocount status"""
         self.count_mode.put(self._old_count_mode)
