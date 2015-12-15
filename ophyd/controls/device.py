@@ -71,7 +71,7 @@ class Component:
     def create_component(self, instance):
         '''Create a component for the instance'''
         kwargs = self.kwargs.copy()
-        kwargs['name'] = '{}.{}'.format(instance.name, self.attr)
+        kwargs['name'] = '{}_{}'.format(instance.name, self.attr)
 
         for kw in self.add_prefix:
             # If any keyword arguments need a prefix, tack it on
@@ -192,7 +192,7 @@ class DynamicDeviceComponent:
 
         cls = type(clsname, (OphydDevice, ), clsdict)
         return cls(instance.prefix, read_signals=list(read_signals),
-                   name='{}.{}'.format(instance.name, self.attr),
+                   name='{}_{}'.format(instance.name, self.attr),
                    parent=instance)
 
     def __get__(self, instance, owner):
@@ -227,23 +227,9 @@ class ComponentMeta(type):
 
         clsobj._sig_attrs = OrderedDict(components)
 
-        # since we have a hierarchy of devices/sub-devices, note which
-        # components belong to which device
-        clsobj._sig_owner = OrderedDict()
-
         for cpt, cpt_attr in clsobj._sig_attrs.items():
             # Notify the component of their attribute name
             cpt.attr = cpt_attr
-
-            if isinstance(cpt, DynamicDeviceComponent):
-                # owner = None means the object itself
-                clsobj._sig_owner[cpt_attr] = None
-                for sub_attr in cpt.attrs:
-                    # the dynamicdevice attribute owns each of its
-                    # sub-attributes
-                    clsobj._sig_owner[sub_attr] = cpt_attr
-            elif isinstance(cpt, Component):
-                clsobj._sig_owner[cpt_attr] = None
 
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.values())
@@ -338,20 +324,26 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         return all(signal.connected for name, signal in self._signals.items())
 
     def _get_devattr(self, name):
-        '''Gets a device attribute which may come from a sub-device'''
-        try:
-            owner_attr = self._sig_owner[name]
-        except KeyError:
-            raise ValueError('Unknown read signal: {}'.format(name))
+        '''Gets a component from a fully-qualified python name'''
+        attrs = name.split('.', 1)
 
-        if owner_attr is None:
-            # None means this instance owns it
-            return getattr(self, name)
-        else:
-            # Otherwise, get the owner first
-            owner = getattr(self, owner_attr)
-            # Then the attribute
-            return getattr(owner, name)
+        sub_attr = '.'.join(attrs[1:])
+        try:
+            attr = getattr(self, attrs[0])
+        except AttributeError:
+            raise AttributeError('{} {} has no attribute {}'
+                                 ''.format(self.__class__.__name__, self.name,
+                                           attrs[0]))
+
+        if sub_attr:
+            # TODO is it a bad idea to promote this to __getattr__?
+            if hasattr(attr, '_get_devattr'):
+                return attr._get_devattr(sub_attr)
+            else:
+                return getattr(attr, sub_attr)
+
+        return attr
+
 
     def read(self):
         # map names ("data keys") to actual values

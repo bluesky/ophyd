@@ -43,12 +43,15 @@ class SignalTests(unittest.TestCase):
         # TODO fix
         scaler.EpicsScaler(scalers[0])
 
-    def test_signal_separate(self):
+    def test_scaler_functionality(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
                                  read_signals=['channels'])
+        sca.wait_for_connection()
+
         sca.preset_time.put(5.2)
 
-        logger.info('Counting in One-Shot mode for %f s...' % sca.preset_time.get())
+        logger.info('Counting in One-Shot mode for %f s...',
+                    sca.preset_time.get())
         sca.count.put(1)
         logger.info('Sleeping...')
         time.sleep(3)
@@ -69,6 +72,7 @@ class SignalTests(unittest.TestCase):
         logger.info('read() all channels in one-shot mode...')
         vals = sca.read()
         logger.info(vals)
+        self.assertIn('scaler_channels_chan1', vals)
 
         sca.report
         sca.read()
@@ -78,6 +82,14 @@ class SignalTests(unittest.TestCase):
 
         sca.configure()
         sca.deconfigure()
+
+    def test_signal_separate(self):
+        sca = scaler.EpicsScaler(scalers[0], name='scaler',
+                                 read_signals=['channels.chan1'])
+        sca.wait_for_connection()
+        data = sca.read()
+        self.assertIn('scaler_channels_chan1', data)
+        self.assertNotIn('scaler_channels_chan2', data)
 
 
 from . import main
