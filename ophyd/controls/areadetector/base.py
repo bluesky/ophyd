@@ -113,7 +113,7 @@ class ADBase(OphydDevice):
         elif not case_sensitive:
             text = text.lower()
 
-        for cpt, attr in self._sig_attrs.items():
+        for attr, cpt in self._sig_attrs.items():
             doc = cpt.make_docstring(self.__class__)
 
             match = False

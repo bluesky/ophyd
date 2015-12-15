@@ -209,25 +209,25 @@ class ComponentMeta(type):
         # *TODO* this has to use bases!
 
         # map component classes to their attribute names
-        components = [(value, attr) for attr, value in clsdict.items()
+        components = [(attr, value) for attr, value in clsdict.items()
                       if isinstance(value, (Component,
                                             DynamicDeviceComponent))]
 
         clsobj._sig_attrs = OrderedDict(components)
 
-        for cpt, cpt_attr in clsobj._sig_attrs.items():
+        for cpt_attr, cpt in clsobj._sig_attrs.items():
             # Notify the component of their attribute name
             cpt.attr = cpt_attr
 
         # List Signal attribute names.
-        clsobj.signal_names = list(clsobj._sig_attrs.values())
+        clsobj.signal_names = list(clsobj._sig_attrs.keys())
 
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
                                           rename=True)
 
         # Finally, create all the component docstrings
-        for cpt, cpt_attr in clsobj._sig_attrs.items():
+        for cpt in clsobj._sig_attrs.values():
             cpt.__doc__ = cpt.make_docstring(clsobj)
 
         return clsobj
@@ -275,7 +275,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         self.read_attrs = list(read_attrs)
 
         # Instantiate non-lazy signals
-        [getattr(self, attr) for cpt, attr in self._sig_attrs.items()
+        [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
          if not cpt.lazy]
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):
@@ -288,7 +288,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         timeout : float or None
             Overall timeout
         '''
-        names = [attr for cpt, attr in self._sig_attrs.items()
+        names = [attr for attr, cpt in self._sig_attrs.items()
                  if not cpt.lazy or all_signals]
 
         # Instantiate first to kickoff connection process
@@ -315,10 +315,15 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         '''Get a component from a fully-qualified name
 
         As a reminder, __getattr__ is only called if a real attribute doesn't
-        already exist.
+        already exist, or a device component has yet to be instantiated.
         '''
         if '.' not in name:
-            raise AttributeError(name)
+            try:
+                # Initial access of signal
+                cpt = self._sig_attrs[name]
+                return cpt.__get__(self, None)
+            except KeyError:
+                raise AttributeError(name)
 
         attr_names = name.split('.')
         try:
@@ -333,7 +338,6 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         return attr
 
     def read(self):
-        # map names ("data keys") to actual values
         values = OrderedDict()
         for name in self.read_attrs:
             signal = getattr(self, name)
@@ -342,6 +346,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         return values
 
     def describe(self):
+        '''Get a 'describe' dictionary containing attributes in attr_list'''
         desc = OrderedDict()
         for name in self.read_attrs:
             signal = getattr(self, name)
@@ -351,7 +356,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     @property
     def trigger_signals(self):
-        names = [attr for cpt, attr in self._sig_attrs.items()
+        names = [attr for attr, cpt in self._sig_attrs.items()
                  if cpt.trigger_value is not None]
 
         return [getattr(self, name) for name in names]

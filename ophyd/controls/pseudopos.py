@@ -188,7 +188,7 @@ class PseudoPositioner(OphydDevice, Positioner):
             for pseudo in cls._pseudo:
                 yield pseudo, getattr(cls, pseudo)
         else:
-            for cpt, attr in cls._sig_attrs.items():
+            for attr, cpt in cls._sig_attrs.items():
                 if issubclass(cpt.cls, PseudoSingle):
                     yield attr, cpt
 
@@ -199,7 +199,7 @@ class PseudoPositioner(OphydDevice, Positioner):
             for real in cls._real:
                 yield real, getattr(cls, real)
         else:
-            for cpt, attr in cls._sig_attrs.items():
+            for attr, cpt in cls._sig_attrs.items():
                 is_pseudo = issubclass(cpt.cls, PseudoSingle)
                 is_positioner = issubclass(cpt.cls, Positioner)
                 if is_positioner and not is_pseudo:
