@@ -58,13 +58,8 @@ class Component:
     def get_pv_name(self, instance, attr, suffix):
         '''Get pv name for a given suffix'''
         if attr in self.add_prefix:
-            # Optionally use a separator from the instance
-            if hasattr(instance, '_sep'):
-                sep = instance._sep
-            else:
-                sep = ''
-
-            return sep.join((instance.prefix, suffix))
+            return '{prefix}{suffix}'.format(prefix=instance.prefix,
+                                             suffix=suffix)
         else:
             return suffix
 
@@ -146,12 +141,6 @@ class DynamicDeviceComponent:
         return '{} dynamicdevice containing {}'.format(self.attr,
                                                        self.attrs)
 
-    def get_separator(self, instance):
-        if hasattr(instance, '_sep'):
-            return instance._sep
-        else:
-            return ''
-
     def create_attr(self, attr_name):
         cls, suffix, kwargs = self.defn[attr_name]
         inst = Component(cls, suffix, **kwargs)
@@ -173,9 +162,7 @@ class DynamicDeviceComponent:
         if docstring is None:
             docstring = '{} sub-device'.format(clsname)
 
-        clsdict = OrderedDict(_sep=self.get_separator(instance),
-                              __doc__=docstring,
-                              )
+        clsdict = OrderedDict(__doc__=docstring)
 
         for attr in self.defn.keys():
             clsdict[attr] = self.create_attr(attr)
@@ -219,6 +206,7 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
+        # *TODO* this has to use bases!
 
         # map component classes to their attribute names
         components = [(value, attr) for attr, value in clsdict.items()

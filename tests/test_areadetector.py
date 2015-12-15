@@ -49,19 +49,21 @@ class ADTest(unittest.TestCase):
         det.signal_names
         det.report
 
-        det.image_mode.put('Single')
+        cam = det.cam
+
+        cam.image_mode.put('Single')
         # plugins don't live on detectors now:
         # det.image1.enable.put('Enable')
-        det.array_callbacks.put('Enable')
+        cam.array_callbacks.put('Enable')
 
         det.get()
         det.read()
 
         # values = tuple(det.gain_xy.get())
-        det.gain_xy.put(det.gain_xy.get(), wait=True)
+        cam.gain_xy.put(cam.gain_xy.get(), wait=True)
 
         # fail when only specifying x
-        self.assertRaises(ValueError, det.gain_xy.put, (0.0, ), wait=True)
+        self.assertRaises(ValueError, cam.gain_xy.put, (0.0, ), wait=True)
 
         det.describe()
         det.report
