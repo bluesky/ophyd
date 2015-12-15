@@ -209,14 +209,14 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
-        # *TODO* this has to use bases!
+        clsobj._sig_attrs = OrderedDict()
 
-        # map component classes to their attribute names
-        components = [(attr, value) for attr, value in clsdict.items()
-                      if isinstance(value, (Component,
-                                            DynamicDeviceComponent))]
-
-        clsobj._sig_attrs = OrderedDict(components)
+        # map component classes to their attribute names from this class
+        for attr, value in clsdict.items():
+            if isinstance(value, (Component, DynamicDeviceComponent)):
+                if attr in clsobj._sig_attrs:
+                    print('overriding', attr)
+                clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
             # Notify the component of their attribute name
@@ -224,7 +224,11 @@ class ComponentMeta(type):
 
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.keys())
-
+        for b in bases:
+            try:
+                clsobj.signal_names.extend(b.signal_names)
+            except AttributeError:
+                pass
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
                                           rename=True)
