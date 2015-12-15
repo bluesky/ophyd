@@ -209,6 +209,7 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
+
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
                           'read_attrs', 'configuration_attrs', 'monitor_attrs',
                           '_sig_attrs', '_sub_devices']
@@ -217,7 +218,17 @@ class ComponentMeta(type):
                 raise TypeError("The attribute name %r is reserved for "
                                 "use by the Device class. Choose a different "
                                 "name." % attr)
+
         clsobj._sig_attrs = OrderedDict()
+        for base in bases:
+            if not hasattr(base, '_sig_attrs'):
+                continue
+
+            for attr, cpt in base._sig_attrs.items():
+                if attr in clsobj._sig_attrs:
+                    raise ValueError('Attribute name exists in more than one '
+                                     'base class: {}'.format(attr))
+                clsobj._sig_attrs[attr] = cpt
 
         # map component classes to their attribute names from this class
         for attr, value in clsdict.items():
