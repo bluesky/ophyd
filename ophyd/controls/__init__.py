@@ -19,5 +19,4 @@ from .scaler import EpicsScaler
 from .device import (OphydDevice, Component, DynamicDeviceComponent)
 
 # Areadetector-related
-from .areadetector.detectors import *
-from .areadetector.plugins import *
+from .areadetector import *
