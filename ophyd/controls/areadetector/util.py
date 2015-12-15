@@ -123,7 +123,7 @@ def create_detector_stub(db_file, macros=None,
                          signal_rbv_class='SignalWithRBV',
                          signal_rw_class='EpicsSignal',
                          signal_ro_class='EpicsSignalRO'):
-    '''Stub out a new AreaDetector directly from a database file
+    '''Stub out a new AreaDetector camera directly from a database file
 
     Yields lines of code from the generated class definition.
 
@@ -159,7 +159,7 @@ def create_detector_stub(db_file, macros=None,
     if det_name is None:
         det_name = os.path.split(db_file)[1]
         det_name = os.path.splitext(det_name)[0]
-        det_name = '%sDetector' % det_name
+        det_name = '%sDetectorCam' % det_name
 
     yield 'class {}({}):'.format(det_name, base_class.__name__)
 
