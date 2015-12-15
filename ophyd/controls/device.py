@@ -318,17 +318,13 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         already exist.
         '''
         if '.' not in name:
-            raise AttributeError('{} {!r} has no attribute {!r}'
-                                 ''.format(self.__class__.__name__, self.name,
-                                           name))
+            raise AttributeError(name)
 
         attr_names = name.split('.')
         try:
             attr = getattr(self, attr_names[0])
         except AttributeError:
-            raise AttributeError('{} {!r} has no attribute {!r}'
-                                 ''.format(self.__class__.__name__, self.name,
-                                           attr_names[0]))
+            raise AttributeError('{} of {}'.format(attr_names[0], name))
 
         if len(attr_names) > 1:
             sub_attr_names = '.'.join(attr_names[1:])
