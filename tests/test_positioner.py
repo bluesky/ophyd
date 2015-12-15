@@ -3,7 +3,7 @@ from __future__ import print_function
 import time
 import logging
 import unittest
-# from copy import copy
+from copy import copy
 
 import epics
 from ophyd.controls import (Positioner, PVPositioner, EpicsMotor)
@@ -52,12 +52,9 @@ class PositionerTests(unittest.TestCase):
 
         p.position
 
-        # TODO: ophydobject copies
-        # pc = copy(p)
-        # self.assertEqual(pc.position, p.position)
-        # self.assertEqual(pc.moving, p.moving)
-        # self.assertEqual(pc._timeout, p._timeout)
-        # self.assertEqual(pc.egu, p.egu)
+        pc = copy(p)
+        self.assertEqual(pc._timeout, p._timeout)
+        self.assertEqual(pc.egu, p.egu)
 
     def test_epicsmotor(self):
         m = EpicsMotor(self.sim_pv, name='epicsmotor')
@@ -84,9 +81,8 @@ class PositionerTests(unittest.TestCase):
         repr(m)
         str(m)
 
-        # TODO: ophydobject copies
-        # mc = copy(m)
-        # self.assertEqual(mc.record, m.record)
+        mc = copy(m)
+        self.assertEqual(mc.prefix, m.prefix)
 
         res = m.move(0.2, wait=False)
 

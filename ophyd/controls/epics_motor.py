@@ -29,7 +29,7 @@ class EpicsMotor(OphydDevice, Positioner):
 
     Parameters
     ----------
-    record : str
+    prefix : str
         The record to use
     settle_time : float
         Post-motion settle-time
@@ -48,7 +48,7 @@ class EpicsMotor(OphydDevice, Positioner):
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
 
-    def __init__(self, record, *, settle_time=0.05, read_attrs=None,
+    def __init__(self, prefix, *, settle_time=0.05, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
                  parent=None, **kwargs):
         if read_attrs is None:
@@ -57,7 +57,7 @@ class EpicsMotor(OphydDevice, Positioner):
         if configuration_attrs is None:
             configuration_attrs = ['motor_egu', ]
 
-        super().__init__(record, read_attrs=read_attrs,
+        super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
@@ -160,3 +160,8 @@ class EpicsMotor(OphydDevice, Positioner):
 
         return {self._name: position,
                 'pv': self.user_readback.pvname}
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+
+        yield ('settle_time', self.settle_time)

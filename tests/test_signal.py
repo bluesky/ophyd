@@ -325,16 +325,15 @@ class SignalTests(unittest.TestCase):
                         timestamp=start_t, setpoint_ts=setpoint_t,
                         separate_readback=True)
 
-        # TODO had copy working in that ancient branch
-        # sig_copy = copy.copy(signal)
+        sig_copy = copy.copy(signal)
 
-        # self.assertEquals(signal.name, sig_copy.name)
-        # self.assertEquals(signal.value, sig_copy.value)
-        # self.assertEquals(signal.get(), sig_copy.get())
-        # self.assertEquals(signal.setpoint, sig_copy.setpoint)
-        # self.assertEquals(signal.get_setpoint(), sig_copy.get_setpoint())
-        # self.assertEquals(signal.timestamp, sig_copy.timestamp)
-        # self.assertEquals(signal.setpoint_ts, sig_copy.setpoint_ts)
+        self.assertEquals(signal.name, sig_copy.name)
+        self.assertEquals(signal.value, sig_copy.value)
+        self.assertEquals(signal.get(), sig_copy.get())
+        self.assertEquals(signal.setpoint, sig_copy.setpoint)
+        self.assertEquals(signal.get_setpoint(), sig_copy.get_setpoint())
+        self.assertEquals(signal.timestamp, sig_copy.timestamp)
+        self.assertEquals(signal.setpoint_ts, sig_copy.setpoint_ts)
 
 
 class EpicsSignalTests(unittest.TestCase):

@@ -493,3 +493,11 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         Where old and new are pre- and post-configure configuration states.
         '''
         return {}, {}
+
+    def _repr_info(self):
+        yield ('prefix', self.prefix)
+        yield from super()._repr_info()
+
+        yield ('read_attrs', self.read_attrs)
+        yield ('configuration_attrs', self.configuration_attrs)
+        yield ('monitor_attrs', self.monitor_attrs)

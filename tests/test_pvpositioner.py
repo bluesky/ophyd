@@ -3,7 +3,7 @@ from __future__ import print_function
 import time
 import logging
 import unittest
-# from copy import copy
+from copy import copy
 
 import epics
 from ophyd.controls import (PVPositioner, PVPositionerPC, EpicsMotor)
@@ -68,9 +68,8 @@ class PVPosTest(unittest.TestCase):
         repr(m)
         str(m)
 
-        # TODO: ophydobject copies
-        # mc = copy(m)
-        # self.assertEqual(mc.report, m.report)
+        mc = copy(m)
+        self.assertEqual(mc.describe(), m.describe())
 
         m.report
         m.read()

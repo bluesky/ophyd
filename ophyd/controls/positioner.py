@@ -189,3 +189,8 @@ class Positioner(OphydObject):
         """
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('egu', self._egu)
+        yield ('timeout', self._timeout)

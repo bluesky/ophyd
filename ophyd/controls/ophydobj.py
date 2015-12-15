@@ -324,19 +324,17 @@ class OphydObject(object):
         pass
 
     def __repr__(self):
-        return self._get_repr()
+        info = self._repr_info()
+        info = ', '.join('{}={!r}'.format(key, value) for key, value in info)
+        return '{}({})'.format(self.__class__.__name__, info)
 
-    def _get_repr(self, info=None):
-        _repr = []
-
+    def _repr_info(self):
         if self._name:
-            _repr.append('name={0._name!r}'.format(self))
+            yield ('name', self._name)
 
-        if info:
-            _repr.extend(info)
+        if self._parent:
+            yield ('parent', self.parent.name)
 
-        return '{}({})'.format(self.__class__.__name__, ', '.join(_repr))
-
-    # def __copy__(self):
-    #     info = dict(self._repr_info())
-    #     return self.__class__(**info)
+    def __copy__(self):
+        info = dict(self._repr_info())
+        return self.__class__(**info)

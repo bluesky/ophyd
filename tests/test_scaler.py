@@ -76,7 +76,12 @@ class SignalTests(unittest.TestCase):
 
         sca.report
         sca.read()
-        copy(sca)
+
+        self.assertEquals(copy(sca).prefix, sca.prefix)
+        self.assertEquals(copy(sca).read_attrs, sca.read_attrs)
+        self.assertEquals(copy(sca).configuration_attrs,
+                          sca.configuration_attrs)
+        self.assertEquals(copy(sca).monitor_attrs, sca.monitor_attrs)
         repr(sca)
         str(sca)
 

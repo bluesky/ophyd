@@ -32,7 +32,7 @@ class EpicsScaler(OphydDevice):
     presets = DDC(_scaler_fields('preset', '.PR', range(1, 33)))
     gates = DDC(_scaler_fields('gate', '.G', range(1, 33)))
 
-    def __init__(self, record, *, read_attrs=None, configuration_attrs=None,
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  monitor_attrs=None, name=None, parent=None, **kwargs):
         if read_attrs is None:
             read_attrs = ['channels', 'preset_time']
@@ -41,7 +41,7 @@ class EpicsScaler(OphydDevice):
             configuration_attrs = ['preset_time', 'auto_count_time', 'presets',
                                    'gates']
 
-        super().__init__(record, read_attrs=read_attrs,
+        super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)

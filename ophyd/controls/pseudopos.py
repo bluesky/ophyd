@@ -27,13 +27,13 @@ class PseudoSingle(Positioner):
     '''A single axis of a PseudoPositioner'''
 
     def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
-                 **kwargs):
+                 idx=None, **kwargs):
         super().__init__(name=name, **kwargs)
 
         self._master = parent
         self._target = None
         self._limits = tuple(limits)
-        self._idx = None
+        self._idx = idx
 
         self._master.subscribe(self._sub_proxy, event_type=self.SUB_START)
         self._master.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
@@ -44,8 +44,10 @@ class PseudoSingle(Positioner):
     def limits(self):
         return self._limits
 
-    def __repr__(self):
-        return self._get_repr(['idx={0._idx!r}'.format(self)])
+    def _repr_info(self):
+        yield from super()._repr_info()
+
+        yield ('idx', self._idx)
 
     def _sub_proxy(self, obj=None, **kwargs):
         '''Master callbacks such as start of motion, motion finished, etc. will
@@ -208,11 +210,9 @@ class PseudoPositioner(OphydDevice, Positioner):
                 if is_positioner and not is_pseudo:
                     yield attr, cpt
 
-    def __repr__(self):
-        repr = ['concurrent={0._concurrent!r}'.format(self),
-                ]
-
-        return self._get_repr(repr)
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('concurrent', self._concurrent)
 
     @property
     def connected(self):

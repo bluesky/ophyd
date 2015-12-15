@@ -225,11 +225,11 @@ class PVPositioner(OphydDevice, Positioner):
         else:
             return self.setpoint.limits
 
-    def __repr__(self):
-        repr = ['settle_time={0.settle_time!r}'.format(self),
-                'limits={0._limits!r}'.format(self)
-                ]
-        return self._get_repr(repr)
+    def _repr_info(self):
+        yield from super()._repr_info()
+
+        yield ('settle_time', self.settle_time)
+        yield ('limits', self._limits)
 
 
 class PVPositionerPC(PVPositioner):

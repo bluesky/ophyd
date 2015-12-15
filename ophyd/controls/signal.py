@@ -87,16 +87,14 @@ class Signal(OphydObject):
         '''Timestamp of the readback value'''
         return self._timestamp
 
-    def __repr__(self):
-        repr = ['value={0.value!r}'.format(self),
-                'timestamp={0.timestamp}'.format(self),
-                ]
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('value', self.value)
+        yield ('timestamp', self.timestamp)
 
         if self._separate_readback:
-            repr.append('setpoint={0.setpoint!r}'.format(self))
-            repr.append('setpoint_ts={0.setpoint_ts!r}'.format(self))
-
-        return self._get_repr(repr)
+            yield ('setpoint', self.setpoint)
+            yield ('setpoint_ts', self.setpoint_ts)
 
     def get_setpoint(self):
         '''Get the value of the setpoint'''
@@ -305,17 +303,17 @@ class EpicsSignal(Signal):
         except AttributeError:
             return None
 
-    def __repr__(self):
-        repr = ['read_pv={0._read_pv.pvname!r}'.format(self)]
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('read_pv', self._read_pv.pvname)
         if self._write_pv is not None:
-            repr.append('write_pv={0._write_pv.pvname!r}'.format(self))
+            yield ('write_pv', self._write_pv.pvname)
 
-        repr.append('rw={0._rw!r}, string={0._string!r}'.format(self))
-        repr.append('limits={0._check_limits!r}'.format(self))
-        repr.append('put_complete={0._put_complete!r}'.format(self))
-        repr.append('pv_kw={0._pv_kw!r}'.format(self))
-        repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
-        return self._get_repr(repr)
+        yield ('rw', self._rw)
+        yield ('limits', self._check_limits)
+        yield ('put_complete', self._put_complete)
+        yield ('pv_kw', self._pv_kw)
+        yield ('auto_monitor', self._auto_monitor)
 
     @property
     def connected(self):
