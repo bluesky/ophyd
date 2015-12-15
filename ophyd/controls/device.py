@@ -360,13 +360,13 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         return [getattr(self, name) for name in names]
 
-    def trigger(self, **kwargs):
+    def trigger(self):
         """Start acquisition"""
-        # TODO mass confusion here
         signals = self.trigger_signals
         if len(signals) > 1:
-            raise NotImplementedError('TODO more than one trigger')
-        elif len(signals) == 0:
+            raise NotImplementedError('More than one trigger signal is not '
+                                      'currently supported')
+        elif not signals:
             raise RuntimeError('Device has no trigger signal(s)')
 
         acq_signal = signals[0]
