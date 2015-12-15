@@ -40,7 +40,7 @@ class Component:
         string to attach to component DvcClass.component.__doc__
     '''
 
-    def __init__(self, cls, suffix, lazy=False, trigger_value=None,
+    def __init__(self, cls, suffix, *, lazy=False, trigger_value=None,
                  add_prefix=None, doc=None, **kwargs):
         self.attr = None  # attr is set later by the device when known
         self.cls = cls
@@ -123,7 +123,7 @@ class DynamicDeviceComponent:
         The docstring to put on the dynamically generated class
     '''
 
-    def __init__(self, defn, clsname=None, doc=None):
+    def __init__(self, defn, *, clsname=None, doc=None):
         self.defn = defn
         self.clsname = clsname
         self.attr = None  # attr is set later by the device when known
@@ -254,7 +254,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    def __init__(self, prefix, read_signals=None, name=None, parent=None,
+    def __init__(self, prefix, *, read_signals=None, name=None, parent=None,
                  **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}

@@ -91,8 +91,7 @@ class MoveStatus(StatusBase):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, done=False,
-                 start_ts=None):
+    def __init__(self, positioner, target, *, done=False, start_ts=None):
         # call the base class
         super().__init__()
 

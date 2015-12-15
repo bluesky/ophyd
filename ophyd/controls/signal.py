@@ -44,7 +44,7 @@ class Signal(OphydObject):
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
-    def __init__(self, separate_readback=False, value=None, setpoint=None,
+    def __init__(self, *, separate_readback=False, value=None, setpoint=None,
                  timestamp=None, setpoint_ts=None,
                  name=None, parent=None):
 
@@ -212,7 +212,7 @@ class EpicsSignal(Signal):
     auto_monitor : bool, optional
         Use automonitor with epics.PV
     '''
-    def __init__(self, read_pv, write_pv=None,
+    def __init__(self, read_pv, write_pv=None, *,
                  rw=True, pv_kw=None,
                  put_complete=False,
                  string=False,

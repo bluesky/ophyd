@@ -48,8 +48,8 @@ class EpicsMotor(OphydDevice, Positioner):
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
 
-    def __init__(self, record, settle_time=0.05, read_signals=None, name=None,
-                 parent=None, **kwargs):
+    def __init__(self, record, *, settle_time=0.05, read_signals=None,
+                 name=None, parent=None, **kwargs):
         if read_signals is None:
             read_signals = ['user_readback', 'user_setpoint']
 
