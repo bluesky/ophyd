@@ -56,3 +56,24 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(list(d.describe().keys()), [d.cpt1.name])
         self.assertEqual(list(d.describe_configuration().keys()),
                          [d.cpt2.name])
+
+    def test_complexdevice(self):
+        class SubDevice(OphydDevice):
+            cpt1 = Component(FakeSignal, '1')
+            cpt2 = Component(FakeSignal, '2')
+            cpt3 = Component(FakeSignal, '3')
+
+        class MyDevice(OphydDevice):
+            sub_cpt1 = Component(SubDevice, '1')
+            sub_cpt2 = Component(SubDevice, '2')
+            cpt3 = Component(FakeSignal, '3')
+
+        device = MyDevice('prefix')
+        self.assertIs(device.sub_cpt1.parent, device)
+        self.assertIs(device.sub_cpt2.parent, device)
+        self.assertIs(device.cpt3.parent, device)
+
+        self.assertEquals(device.sub_cpt1.signal_names,
+                          ['cpt1', 'cpt2', 'cpt3'])
+        self.assertEquals(device.sub_cpt2.signal_names,
+                          ['cpt1', 'cpt2', 'cpt3'])
