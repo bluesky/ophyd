@@ -15,9 +15,9 @@ import time
 import epics
 
 from ..utils import (ReadOnlyError, TimeoutError, LimitError)
-from ..utils.epics_pvs import (get_pv_form,
+from ..utils.epics_pvs import (pv_form,
                                waveform_to_string, raise_if_disconnected)
-from .ophydobj import OphydObject, DetectorStatus
+from .ophydobj import (OphydObject, DeviceStatus)
 
 logger = logging.getLogger(__name__)
 
@@ -34,40 +34,67 @@ class Signal(OphydObject):
         The initial value
     setpoint : any, optional
         The initial setpoint value
-    recordable : bool
-        A flag to indicate if the signal is recordable by DAQ
+    timestamp : float, optional
+        The timestamp associated with the initial value. Defaults to the
+        current local time.
+    setpoint_ts : float, optional
+        The timestamp associated with the initial setpoint value. Defaults to
+        the current local time.
     '''
     SUB_SETPOINT = 'setpoint'
     SUB_VALUE = 'value'
 
-    def __init__(self, separate_readback=False,
-                 value=None, setpoint=None,
-                 recordable=True, **kwargs):
+    def __init__(self, *, separate_readback=False, value=None, setpoint=None,
+                 timestamp=None, setpoint_ts=None,
+                 name=None, parent=None):
 
         self._default_sub = self.SUB_VALUE
-        super().__init__(**kwargs)
+        super().__init__(name=name, parent=parent)
+
+        if not separate_readback and setpoint is None:
+            setpoint = value
 
         self._setpoint = setpoint
         self._readback = value
-        self._recordable = recordable
 
         self._separate_readback = separate_readback
+
+        if setpoint_ts is None:
+            setpoint_ts = time.time()
+
+        if timestamp is None:
+            timestamp = time.time()
+
+        self._timestamp = timestamp
+        self._setpoint_ts = setpoint_ts
 
     @property
     def connected(self):
         '''Subclasses should override this'''
         return True
 
-    @property
-    def recordable(self):
-        """Return if this signal is recordable by the DAQ"""
-        return self._recordable
+    def wait_for_connection(self, timeout=0.0):
+        '''Wait for the underlying signals to initialize or connect'''
+        pass
 
-    def __repr__(self):
-        repr = ['value={0.value!r}'.format(self)]
+    @property
+    def setpoint_ts(self):
+        '''Timestamp of the setpoint value'''
+        return self._setpoint_ts
+
+    @property
+    def timestamp(self):
+        '''Timestamp of the readback value'''
+        return self._timestamp
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('value', self.value)
+        yield ('timestamp', self.timestamp)
+
         if self._separate_readback:
-            repr.append('setpoint={0.setpoint!r}'.format(self))
-        return self._get_repr(repr)
+            yield ('setpoint', self.setpoint)
+            yield ('setpoint_ts', self.setpoint_ts)
 
     def get_setpoint(self):
         '''Get the value of the setpoint'''
@@ -94,15 +121,15 @@ class Signal(OphydObject):
 
         old_value = self._setpoint
         self._setpoint = value
+        self._setpoint_ts = kwargs.pop('timestamp', time.time())
 
         if not self._separate_readback:
             self._set_readback(value)
 
         if allow_cb:
-            timestamp = kwargs.pop('timestamp', time.time())
             self._run_subs(sub_type=Signal.SUB_SETPOINT,
                            old_value=old_value, value=value,
-                           timestamp=timestamp, **kwargs)
+                           timestamp=self._setpoint_ts, **kwargs)
 
     # getters/setters of properties are defined as lambdas so subclasses
     # can override them without redefining the property
@@ -110,9 +137,8 @@ class Signal(OphydObject):
                         lambda self, value: self.put(value),
                         doc='The setpoint value for the signal')
 
-    # - Readback value
     def get(self):
-        '''Get the readback value'''
+        '''The readback value'''
         return self._readback
 
     # - Value reads from readback, and writes to setpoint
@@ -124,12 +150,12 @@ class Signal(OphydObject):
         '''Set the readback value internally'''
         old_value = self._readback
         self._readback = value
+        self._timestamp = kwargs.pop('timestamp', time.time())
 
         if allow_cb:
-            timestamp = kwargs.pop('timestamp', time.time())
             self._run_subs(sub_type=Signal.SUB_VALUE,
                            old_value=old_value, value=value,
-                           timestamp=timestamp, **kwargs)
+                           timestamp=self._timestamp, **kwargs)
 
     def read(self):
         '''Put the status of the signal into a simple dictionary format
@@ -139,15 +165,14 @@ class Signal(OphydObject):
         -------
             dict
         '''
-        if self._separate_readback:
-            return {'alias': self.alias,
-                    'setpoint': self.setpoint,
-                    'readback': self.readback,
-                    }
-        else:
-            return {'alias': self.alias,
-                    'value': self.value,
-                    }
+        return {self.name: {'value': self.get(),
+                            'timestamp': self.timestamp}}
+
+    @property
+    def report(self):
+        return {self.name: self.get(),
+                'pv': None
+                }
 
     def describe(self):
         """Return the description as a dictionary"""
@@ -175,7 +200,7 @@ class EpicsSignal(Signal):
     read_pv : str
         The PV to read from
     write_pv : str, optional
-        The PV to write to required)
+        The PV to write to if different from the read PV
     rw : bool, optional
         Read-write signal (or read-only)
     pv_kw : dict, optional
@@ -185,7 +210,7 @@ class EpicsSignal(Signal):
     auto_monitor : bool, optional
         Use automonitor with epics.PV
     '''
-    def __init__(self, read_pv, write_pv=None,
+    def __init__(self, read_pv, write_pv=None, *,
                  rw=True, pv_kw=None,
                  put_complete=False,
                  string=False,
@@ -215,18 +240,16 @@ class EpicsSignal(Signal):
 
         name = kwargs.pop('name', read_pv)
         super().__init__(separate_readback=separate_readback, name=name,
-                        **kwargs)
+                         **kwargs)
 
-        self._read_pv = epics.PV(read_pv, form=get_pv_form(),
+        self._read_pv = epics.PV(read_pv, form=pv_form,
                                  callback=self._read_changed,
-                                 connection_callback=self._connection_cb,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
 
         if write_pv is not None:
-            self._write_pv = epics.PV(write_pv, form=get_pv_form(),
+            self._write_pv = epics.PV(write_pv, form=pv_form,
                                       callback=self._write_changed,
-                                      connection_callback=self._connection_cb,
                                       auto_monitor=auto_monitor,
                                       **pv_kw)
         elif rw:
@@ -237,6 +260,17 @@ class EpicsSignal(Signal):
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
         return self._read_pv.precision
+
+    def wait_for_connection(self, timeout=1.0):
+        if not self._read_pv.connected:
+            if not self._read_pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._read_pv.pvname)
+
+        if self._write_pv is not None and not self._write_pv.connected:
+            if not self._write_pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._write_pv.pvname)
 
     @property
     @raise_if_disconnected
@@ -269,29 +303,17 @@ class EpicsSignal(Signal):
         except AttributeError:
             return None
 
-    def __repr__(self):
-        repr = ['read_pv={0._read_pv.pvname!r}'.format(self)]
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('read_pv', self._read_pv.pvname)
         if self._write_pv is not None:
-            repr.append('write_pv={0._write_pv.pvname!r}'.format(self))
+            yield ('write_pv', self._write_pv.pvname)
 
-        repr.append('rw={0._rw!r}, string={0._string!r}'.format(self))
-        repr.append('limits={0._check_limits!r}'.format(self))
-        repr.append('put_complete={0._put_complete!r}'.format(self))
-        repr.append('pv_kw={0._pv_kw!r}'.format(self))
-        repr.append('auto_monitor={0._auto_monitor!r}'.format(self))
-        return self._get_repr(repr)
-
-    def _connection_cb(self, pvname=None, conn=None, pv=None, **kwargs):
-        '''Connection callback from PyEpics'''
-        if conn:
-            msg = '%s connected' % pvname
-        else:
-            msg = '%s disconnected' % pvname
-
-        if self._session is not None:
-            self._session.notify_connection(msg)
-        else:
-            self._ses_logger.debug(msg)
+        yield ('rw', self._rw)
+        yield ('limits', self._check_limits)
+        yield ('put_complete', self._put_complete)
+        yield ('pv_kw', self._pv_kw)
+        yield ('auto_monitor', self._auto_monitor)
 
     @property
     def connected(self):
@@ -303,6 +325,9 @@ class EpicsSignal(Signal):
     @property
     @raise_if_disconnected
     def limits(self):
+        if self._write_pv is None:
+            raise ReadOnlyError('Read-only EPICS signal')
+
         pv = self._write_pv
         pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
@@ -322,9 +347,10 @@ class EpicsSignal(Signal):
         ------
         ValueError
         '''
+        if self._write_pv is None:
+            raise ReadOnlyError('Read-only EPICS signal')
         if value is None:
             raise ValueError('Cannot write None to epics PVs')
-
         if not self._check_limits:
             return
 
@@ -362,6 +388,9 @@ class EpicsSignal(Signal):
 
         Keyword arguments are passed on to epics.PV.get()
         '''
+        if self._write_pv is None:
+            raise ReadOnlyError('Read-only EPICS signal')
+
         if kwargs or self._setpoint is None:
             setpoint = self._write_pv.get(**kwargs)
             return self._fix_type(setpoint)
@@ -467,169 +496,16 @@ class EpicsSignal(Signal):
         try:
             return super().trigger()
         except AttributeError:
-            d = DetectorStatus(self)
+            d = DeviceStatus(self)
             d._finished()
             return d
 
 
-class SkepticalSignal(EpicsSignal):
-    def trigger(self):
-        d = DetectorStatus(self)
-        # scary assumption
-        cur = self.read()[self._name]
-        old_time = cur['timestamp']
+class EpicsSignalRO(EpicsSignal):
+    def __init__(self, read_pv, **kwargs):
 
-        def local(old_value, value, timestamp, **kwargs):
-            if old_time == timestamp:
-                # the time stamp has not changed.  Given that
-                # this function is being called by a subscription
-                # on value changed, this should never happen
-                return
-            # tell the status object we are done
-            d._finished()
-            # disconnect this function
-            self.clear_sub(local)
+        if 'write_pv' in kwargs:
+            raise ValueError('Read-only signals do not have a write_pv')
+            # TODO half-assed way to make this read-only
 
-        self.subscribe(local, self.SUB_VALUE)
-
-        return d
-
-    def _set_readback(self, value, **kwargs):
-        if value == 0.0:
-            return
-        return super()._set_readback(value, **kwargs)
-
-
-class SignalGroup(OphydObject):
-    '''Create a group or collection of related signals
-
-    Parameters
-    ----------
-    signals : sequence of Signal, optional
-        Signals to add to the group
-    '''
-
-    def __init__(self, signals=None, **kwargs):
-        super().__init__(**kwargs)
-
-        self._signals = []
-
-        if signals:
-            for signal in signals:
-                self.add_signal(signal)
-
-    def __repr__(self):
-        repr = []
-
-        if self._signals:
-            repr.append('signals={0._signals!r}'.format(self))
-
-        if self._alias:
-            repr.append('alias={0._alias!r}'.format(self))
-
-        return self._get_repr(repr)
-
-    def add_signal(self, signal, prop_name=None):
-        '''Add a signal to the group.
-
-        Parameters
-        ----------
-        signal : Signal
-            The :class:`Signal` to add
-        prop_name : str, optional
-            The property name to use in the collection.
-            e.g., if set to 'sig1', then `group.sig1` would be how to refer to
-            the signal.
-        '''
-
-        if signal not in self._signals:
-            self._signals.append(signal)
-
-            if prop_name is None:
-                prop_name = signal.alias
-
-            if prop_name:
-                setattr(self, prop_name, signal)
-
-    @property
-    def connected(self):
-        return all([sig.connected for sig in self._signals])
-
-    def get(self, **kwargs):
-        return [signal.get(**kwargs) for signal in self._signals]
-
-    @property
-    def signals(self):
-        return self._signals
-
-    def put(self, values, **kwargs):
-        return [signal.put(value, **kwargs)
-                for signal, value in zip(self._signals, values)]
-
-    def get_setpoint(self, **kwargs):
-        return [signal.get_setpoint(**kwargs)
-                for signal in self._signals]
-
-    setpoint = property(get_setpoint, put,
-                        doc='Setpoint list')
-
-    value = property(get, put,
-                     doc='Readback value list')
-
-    @property
-    def setpoint_ts(self):
-        '''Timestamp of setpoint PVs, according to EPICS'''
-        def get_ts(signal):
-            try:
-                return signal.setpoint_ts
-            except ReadOnlyError:
-                return
-
-        return [get_ts(signal) for signal in self._signals]
-
-    @property
-    def timestamp(self):
-        '''Timestamp of readback PV, according to EPICS'''
-        return [signal.timestamp for signal in self._signals]
-
-    @property
-    def pvname(self):
-        return [signal.pvname for signal in self._signals]
-
-    @property
-    def setpoint_pvname(self):
-        return [signal.setpoint_pvname for signal in self._signals]
-
-    @property
-    def report(self):
-        return [signal.report for signal in self._signals]
-
-    def describe(self):
-        """Describe for data acquisition the signals of the group
-
-        This property uses the `recordable` flag in ophyd to filter
-        the returned signals of the signal group"""
-        descs = {}
-        [descs.update(signal.describe()) for signal in self._signals
-         if signal.recordable]
-        return descs
-
-    def read(self):
-        """Read signals for data acquisition
-
-        This method uses the `recordable` flag in ophyd to filter
-        the returned signals of the signal group"""
-        values = {}
-        for signal in self._signals:
-            if signal.recordable:
-                values.update(signal.read())
-
-        return values
-
-    def trigger(self):
-        try:
-            return super().trigger()
-        except AttributeError:
-            d = DetectorStatus(self)
-            d._finished()
-            return d
+        super().__init__(read_pv, rw=False, write_pv=None, **kwargs)

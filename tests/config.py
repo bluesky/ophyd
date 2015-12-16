@@ -1,35 +1,7 @@
-''' '''
+'''PV names for tests'''
+import os
 
-import sys
-import logging
-
-try:
-    import ophyd
-except ImportError:
-    sys.path.insert(0, '..')
-    import ophyd
-
-
-LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
-EXAMPLE_LOGGER = 'ophyd_examples'
-
-
-def setup_loggers(logger_names, fmt=LOG_FORMAT):
-    fmt = logging.Formatter(LOG_FORMAT)
-    for name in logger_names:
-        logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG)
-
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(fmt)
-        logger.addHandler(handler)
-
-
-setup_loggers((EXAMPLE_LOGGER, ))
-logger = logging.getLogger(EXAMPLE_LOGGER)
-
-ophyd.commands.setup_ophyd()
-
+epics_base = os.environ.get('EPICS_BASE', '/usr/lib/epics')
 
 motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',
               'XF:31IDA-OP{Tbl-Ax:X2}Mtr',
@@ -74,9 +46,5 @@ sim_areadetector = [{'prefix': 'XF:31IDA-BI{Cam:Tbl}',
                      }
                     ]
 
-# PV names for the channel access server to create
-server_pvnames = ['_server_pv_',
-                  ]
-
 # this is a real instrument - it is not currently used, but be cautious!
-scalers = ['XF:23ID2-ES{Sclr:1}']
+# scalers = ['XF:23ID2-ES{Sclr:1}']

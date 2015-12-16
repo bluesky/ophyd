@@ -15,7 +15,6 @@ import warnings
 import functools
 
 import epics
-from boltons.cacheutils import cached, LRU
 
 from .errors import MinorAlarmError, get_alarm_class, DisconnectedError
 
@@ -131,7 +130,6 @@ class MonitorDispatcher(epics.ca.CAThread):
         The event queue
     '''
 
-    # TODO this needs to be setup by the session manager.
     def __init__(self, all_contexts=False, timeout=0.1,
                  callback_logger=None):
         epics.ca.CAThread.__init__(self, name='monitor_dispatcher')
@@ -217,10 +215,6 @@ def waveform_to_string(value, type_=str, delim=''):
     return value
 
 
-pv_forms = LRU(128)  # Cache the 128 least recently used (LRU) items.
-
-
-@cached(pv_forms)
 def get_pv_form():
     '''Get the PV form that should be used for pyepics
 
@@ -270,6 +264,9 @@ def get_pv_form():
         return 'native'
     else:
         return 'time'
+
+
+pv_form = get_pv_form()
 
 
 def records_from_db(fn):
@@ -328,6 +325,7 @@ def records_from_db(fn):
         ret.append((rtype, record))
 
     return ret
+
 
 def raise_if_disconnected(fcn):
     '''Decorator to catch attempted access to disconnected EPICS channels.'''

@@ -1,0 +1,6 @@
+* Removed ophyd.controls.cas
+* Removed ophyd.scans
+* Removed ophyd.runengine
+* Removed ophyd.session
+  - Beamline configurations will now require an explicit startup call:
+    ophyd.commands.setup_ophyd()

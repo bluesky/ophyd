@@ -1,0 +1,79 @@
+language: python
+
+sudo: required
+dist: trusty
+
+services:
+  - docker
+
+matrix:
+  include:
+    #  - python: 2.7  # ophyd is python 3+ only at the moment
+  - python: 3.4
+  # - python: 3.5
+
+before_install:
+  - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
+  - export EPICS_CA_ADDR_LIST=$( echo $DOCKER0_IP | sed -e 's/^\([0-9]\+\)\.\([0-9]\+\)\..*$/\1.\2.255.255/' ) 
+  - export EPICS_CA_AUTO_ADDR_LIST="no"
+  - export EPICS_CA_MAX_ARRAY_BYTES=10000000
+  - export DOCKERIMAGE="klauer/epics-docker"
+  - export CONDA_ENV="testenv"
+
+  - perl --version
+  - git fetch --unshallow
+  - docker pull ${DOCKERIMAGE}
+  - docker images
+  - docker ps -a
+  - docker run -d -p $DOCKER0_IP:5064:5064/tcp -p $DOCKER0_IP:5065:5065/udp --name epics_iocs ${DOCKERIMAGE}
+  - docker ps -a
+
+  # INSTALL CONDA
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - "./miniconda.sh -b -p /home/travis/mc"
+  - env
+
+  - export PATH=/home/travis/mc/bin:$PATH
+  - conda config --set always_yes true
+  - conda update conda --yes
+  - conda install conda-build anaconda-client jinja2
+  - conda config --add channels lightsource2
+
+  # MAKE THE CONDA RECIPE
+  - conda create -n $CONDA_ENV python=$TRAVIS_PYTHON_VERSION
+  - source activate $CONDA_ENV
+  
+  # need to reactivate after installing epics-base so that the EPICS_BASE env
+  # var is set
+  - source activate $CONDA_ENV
+
+install:
+  # INSTALL OPHYD
+  - conda install numpy pyepics prettytable filestore six ipython pyolog
+  - conda install nose coverage
+  - pip install coveralls
+  - python setup.py install
+
+  # setup some path environment variables for epics
+  - export PATH=$PATH:$EPICS_BASE/bin/$EPICS_HOST_ARCH
+  - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$EPICS_BASE/lib/$EPICS_HOST_ARCH"
+  - echo "PATH=$PATH"
+
+script:
+  - echo "Checking if the motor IOC is running:"
+  - caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
+  - echo "Checking if the areaDetector IOC is running:"
+  - caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter
+    
+  # check pyepics
+  # - export PYEPICS_LIBCA=$EPICS_BASE/lib/$EPICS_HOST_ARCH/libca.so
+  - python -c "import epics; print(epics.caget('XF:31IDA-OP{Tbl-Ax:X1}Mtr'))"
+  - python -c "import epics.ca; print(epics.ca.find_libca())"
+
+  # running tests
+  - nosetests --where=tests --with-coverage --cover-tests --cover-package=ophyd -v
+
+after_success: 
+    - env
+    - coveralls

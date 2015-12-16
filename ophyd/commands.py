@@ -5,22 +5,22 @@ from __future__ import print_function
 import time
 import functools
 import sys
+import warnings
 from contextlib import contextmanager, closing
 from io import StringIO
 import collections
 
+import IPython
 from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
 
-from .controls.positioner import EpicsMotor, Positioner, PVPositioner
+from .controls import (EpicsMotor, Positioner, PVPositioner)
 from .utils import DisconnectedError
-from .session import get_session_manager
+from .utils.startup import setup as setup_ophyd
 from prettytable import PrettyTable
 import numpy as np
 
-session_manager = None
-logbook = None
 
 __all__ = ['mov',
            'movr',
@@ -28,7 +28,11 @@ __all__ = ['mov',
            'wh_pos',
            'set_lm',
            'log_pos',
-           'log_pos_diff'
+           'log_pos_diff',
+           'log_pos_mov',
+           'get_all_positioners',
+           'get_logbook',
+           'setup_ophyd',
            ]
 
 # Global Defs of certain strings
@@ -38,25 +42,68 @@ FMT_PREC = 6
 DISCONNECTED = 'disconnected'
 
 
+def instances_from_namespace(classes):
+    '''Get all instances of `classes` from the user namespace
+
+    Parameters
+    ----------
+    classes : type, or sequence of types
+        Passed directly to isinstance(), only instances of these classes
+        will be returned.
+    '''
+    ip = IPython.get_ipython()
+    if ip is None:
+        warnings.warn('Unable to inspect Python global namespace; '
+                      'use IPython to enable these features.')
+        return []
+    else:
+        return [val for var, val in sorted(ip.user_ns.items())
+                if isinstance(val, classes) and not var.startswith('_')]
+
+
+def get_all_positioners():
+    '''Get all positioners defined in the IPython namespace'''
+    return instances_from_namespace(Positioner)
+
+
+def var_from_namespace(var):
+    ip = IPython.get_ipython()
+    if ip is not None:
+        return ip.user_ns[var]
+    else:
+        raise RuntimeError('No IPython session')
+
+
+def get_logbook():
+    '''Get the logbook instance from the user namespace'''
+    try:
+        return var_from_namespace('logbook')
+    except (KeyError, RuntimeError):
+        return None
+
+
 def ensure(*ensure_args):
     def wrap(f):
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            # First check if we have an iterable first
-            # on the first arg
-            # if not then make these all lists
+            # First check if we have an iterable first on the first arg.
+            # If not, then make these all lists
             if len(args) > 0:
                 if not hasattr(args[0], "__iter__"):
                     args = tuple([[a] for a in args])
             # Now do type checking ignoring None
             for n, (arg, t) in enumerate(zip(args, ensure_args)):
-                if t is not None:
-                    for x in arg:
-                        if not isinstance(x, t):
-                            raise TypeError("Incorect type in parameter list.\n"
-                                            "Parameter at position {} "
-                                            "is expected to be an instance of "
-                                            "{}".format(n, t))
+                if t is None:
+                    # Ignore when type is specified as None
+                    continue
+
+                invalid = [x for x in arg
+                           if not isinstance(x, t)]
+
+                if invalid:
+                    raise TypeError('Incorrect type in parameter list.\n'
+                                    'Parameter at 0-based position {} must be'
+                                    'an instance of {}'.format(n, t))
 
             f(*args, **kwargs)
         return wrapper
@@ -185,8 +232,8 @@ def set_lm(positioner, limits):
     low_fields = []
     for p in positioner:
         if isinstance(p, EpicsMotor):
-            high_fields.append(p._record + '.HLM')
-            low_fields.append(p._record + '.LLM')
+            high_fields.append(p.prefix + '.HLM')
+            low_fields.append(p.prefix + '.LLM')
         elif isinstance(p, PVPositioner):
             high_fields.append(p.setpoint_pvname[0] + '.DRVH')
             low_fields.append(p.setpoint_pvname[0] + '.DRVL')
@@ -212,12 +259,7 @@ def set_lm(positioner, limits):
                lim2, p.name, prec=FMT_PREC)
 
     print(msg)
-    global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if logbook is None:
-        logbook = session_manager['olog_client']
+    logbook = get_logbook()
     if logbook:
         logbook.log(msg)
 
@@ -262,8 +304,8 @@ def set_pos(positioner, position):
 
     # Get the current offset
 
-    offset_pvs = [p._record + ".OFF" for p in positioner]
-    dial_pvs = [p._record + ".DRBV" for p in positioner]
+    offset_pvs = [p.prefix + ".OFF" for p in positioner]
+    dial_pvs = [p.prefix + ".DRBV" for p in positioner]
 
     old_offsets = [caget(p) for p in offset_pvs]
     dial = [caget(p) for p in dial_pvs]
@@ -277,19 +319,14 @@ def set_pos(positioner, position):
 
     msg = ''
     for o, old_o, p in zip(new_offsets, old_offsets, positioner):
-        if caput(p._record + '.OFF', o):
+        if caput(p.prefix + '.OFF', o):
             msg += 'Motor {0} set to position {1} (Offset = {2} was {3})\n'\
                    .format(p.name, p.position, o, old_o)
         else:
             print('Unable to set position of positioner {0}'.format(p.name))
 
     print(msg)
-    global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if logbook is None:
-        logbook = session_manager['olog_client']
+    logbook = get_logbook()
     if logbook:
         lmsg = logbook_add_objects(positioner, dial_pvs + offset_pvs)
         logbook.log(msg + '\n' + lmsg)
@@ -300,8 +337,6 @@ def wh_pos(positioners=None):
     """Get the current position of Positioners and print to screen.
 
     Print to the screen the position of the positioners in a formated table.
-    If positioners is None then get all registered positioners from the
-    session manager.
 
     Parameters
     ----------
@@ -309,7 +344,6 @@ def wh_pos(positioners=None):
 
     See Also
     --------
-
     log_pos : Log positioner values to logbook
 
     Examples
@@ -322,13 +356,6 @@ def wh_pos(positioners=None):
 
     >>>wh_pos([m1, m2, m3])
     """
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if positioners is None:
-        pos = session_manager.get_positioners()
-        positioners = [pos[k] for k in sorted(pos)]
-
     _print_pos(positioners, file=sys.stdout)
 
 
@@ -336,29 +363,20 @@ def wh_pos(positioners=None):
 def log_pos(positioners=None):
     """Get the current position of Positioners and make a logbook entry.
 
-    Print to the screen the position of the positioners and make a logbook
-    text entry. If positioners is None then get all registered positioners
-    from the session manager. This routine also creates session information
-    in the logbook so positions can be recovered.
+    Print to the screen the position of the positioners and make a logbook text
+    entry. This routine also creates session information in the logbook so
+    positions can be recovered.
 
     Parameters
     ----------
-        positioners : Positioner, list of Positioners or None
+    positioners : Positioner, list of Positioners or None
 
     Returns
     -------
-        int
-            The ID of the logbook entry returned by the logbook.log method.
+    int
+        The ID of the logbook entry returned by the logbook.log method.
     """
-    global session_manager
-    global logbook
-    if session_manager is None:
-        session_manager = get_session_manager()
-    if positioners is None:
-        pos = session_manager.get_positioners()
-        positioners = [pos[k] for k in sorted(pos)]
-    if logbook is None:
-        logbook = session_manager['olog_client']
+    logbook = get_logbook()
     msg = ''
 
     with closing(StringIO()) as sio:
@@ -369,26 +387,28 @@ def log_pos(positioners=None):
 
     # Add the text representation of the positioners
 
-    msg += logbook_add_objects(positioners)
-
     # Create the property for storing motor posisions
     pdict = {}
     pdict['values'] = {}
-    for p in positioners:
-        try:
-            pdict['values'][p.name] = p.position
-        except DisconnectedError:
-            pdict['values'][p.name] = DISCONNECTED
 
-    pdict['objects'] = repr(positioners)
-    pdict['values'] = repr(pdict['values'])
+    if positioners is not None:
+        msg += logbook_add_objects(positioners)
+
+        for p in positioners:
+            try:
+                pdict['values'][p.name] = p.position
+            except DisconnectedError:
+                pdict['values'][p.name] = DISCONNECTED
+
+        pdict['objects'] = repr(positioners)
+        pdict['values'] = repr(pdict['values'])
 
     if logbook:
-        id = logbook.log(msg, properties={'OphydPositioners': pdict},
-                         ensure=True)
+        id_ = logbook.log(msg, properties={'OphydPositioners': pdict},
+                          ensure=True)
 
-    print('Logbook positions added as Logbook ID {}'.format(id))
-    return id
+        print('Logbook positions added as Logbook ID {}'.format(id_))
+        return id_
 
 
 def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
@@ -526,14 +546,10 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
 def logbook_to_objects(id=None, **kwargs):
     """Search the logbook and return positioners"""
 
-    global logbook
-    global session_manager
-    if session_manager is None:
-        session_manager = get_session_manager()
+    logbook = get_logbook()
     if logbook is None:
-        logbook = session_manager['olog_client']
-    if logbook is None:
-        raise NotImplemented("No logbook is avaliable")
+        raise RuntimeError("No logbook is available")
+
     entry = logbook.find(id=id, **kwargs)
     if len(entry) != 1:
         raise ValueError("Search of logbook was not unique, please refine"
@@ -546,8 +562,9 @@ def logbook_to_objects(id=None, **kwargs):
     try:
         obj = eval(prop['objects'])
         val = eval(prop['values'])
-    except:
-        raise RuntimeError('Unable to create objects from log entry')
+    except Exception as ex:
+        raise RuntimeError('Unable to create objects from log entry '
+                           '(%s)' % ex)
 
     objects = {o.name: o for o in obj}
     return val, objects
@@ -639,6 +656,9 @@ def catch_keyboard_interrupt(positioners):
 
 def _print_pos(positioners, file=sys.stdout):
     """Pretty Print the positioners to file"""
+    if positioners is None:
+        positioners = get_all_positioners()
+
     print('', file=file)
     pos = []
     for p in positioners:

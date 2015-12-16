@@ -9,7 +9,6 @@ ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 def test():
     loggers = ('ophyd.controls.signal',
                'ophyd.controls.scaler',
-               'ophyd.session',
                )
 
     config.setup_loggers(loggers)

@@ -36,13 +36,11 @@ requirements:
     - python
     - numpy
     - pyepics
-    - pcaspy
-    - metadatastore
+    - prettytable
     - filestore
     - six
     - ipython
     - pyolog
-    - boltons
 
 test:
   # Python imports
@@ -50,8 +48,6 @@ test:
     - ophyd
     - ophyd.controls
     - ophyd.controls.areadetector
-    - ophyd.controls.cas
-    - ophyd.session
     - ophyd.utils
 
   #commands:

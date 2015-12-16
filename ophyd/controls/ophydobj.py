@@ -10,9 +10,12 @@
 from __future__ import print_function
 from collections import defaultdict
 import time
+import logging
+
 import numpy as np
 
-from ..session import register_object
+
+logger = logging.getLogger(__name__)
 
 
 class StatusBase():
@@ -88,8 +91,7 @@ class MoveStatus(StatusBase):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, done=False,
-                 start_ts=None):
+    def __init__(self, positioner, target, *, done=False, start_ts=None):
         # call the base class
         super().__init__()
 
@@ -112,7 +114,7 @@ class MoveStatus(StatusBase):
 
         try:
             return np.array(finish_pos) - np.array(self.target)
-        except:
+        except Exception:
             return None
 
     def _finished(self, success=True, timestamp=None, **kwargs):
@@ -147,42 +149,49 @@ class DetectorStatus(StatusBase):
         self.detector = detector
 
 
+class DeviceStatus(StatusBase):
+    def __init__(self, device):
+        super().__init__()
+        self.device = device
+
+
 class OphydObject(object):
     '''The base class for all objects in Ophyd
 
     Handles:
     * Subscription/callback mechanism
-    * Registration with session manager
 
     Parameters
     ----------
     name : str, optional
         The name of the object.  If None, registration is disabled.
-    alias : str, optional
-        A [potentially simplified] alias of the object
-    register : bool, optional
-        Attempt to register with the session manager
+    parent : parent, optional
+        The object's parent, if it exists in a hierarchy
 
     Attributes
     ----------
     name
-    alias
     '''
 
     _default_sub = None
 
-    def __init__(self, name=None, alias=None, register=True):
+    def __init__(self, name=None, parent=None):
         super().__init__()
+
         self._name = name
-        self._alias = alias
+        self._parent = parent
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
                           if sub.startswith('SUB_') or sub.startswith('_SUB_'))
         self._sub_cache = defaultdict(lambda: None)
-        self._ses_logger = None
 
-        if register:
-            self._register()
+    @property
+    def parent(self):
+        '''The parent of the ophyd object
+
+        If at the top of its hierarchy, `parent` will be None
+        '''
+        return self._parent
 
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
@@ -197,8 +206,8 @@ class OphydObject(object):
             cb(*args, **kwargs)
         except Exception as ex:
             sub_type = kwargs['sub_type']
-            self._ses_logger.error('Subscription %s callback exception (%s)' %
-                                   (sub_type, self), exc_info=ex)
+            logger.error('Subscription %s callback exception (%s)', sub_type,
+                         self, exc_info=ex)
 
     def _run_cached_sub(self, sub_type, cb):
         '''Run a single subscription callback using the most recent
@@ -223,8 +232,7 @@ class OphydObject(object):
         the type of callback to perform. All other positional arguments
         and kwargs are passed directly to the callback function.
 
-        No exceptions are raised when the callback functions fail;
-        they are merely logged with the session logger.
+        No exceptions are raised when the callback functions fail.
         '''
         sub_type = kwargs['sub_type']
 
@@ -252,16 +260,21 @@ class OphydObject(object):
         Parameters
         ----------
         cb : callable
-            A callable function (that takes kwargs)
-            to be run when the event is generated
+            A callable function (that takes kwargs) to be run when the event is
+            generated
         event_type : str, optional
-            The name of the event to subscribe to (if None,
-            defaults to SignalGroup._default_sub)
+            The name of the event to subscribe to (if None, defaults to
+            the default sub for the instance - obj._default_sub)
         run : bool, optional
             Run the callback now
         '''
         if event_type is None:
             event_type = self._default_sub
+
+        if event_type is None:
+            raise ValueError('Subscription type not set and object {} of class '
+                             '{} has no default subscription set'
+                             ''.format(self.name, self.__class__.__name__))
 
         try:
             self._subs[event_type].append(cb)
@@ -297,18 +310,9 @@ class OphydObject(object):
         else:
             self._subs[event_type].remove(cb)
 
-    def _register(self):
-        '''Register this object with the session'''
-        register_object(self)
-
     @property
     def name(self):
         return self._name
-
-    @property
-    def alias(self):
-        '''An alternative name for the signal'''
-        return self._alias
 
     def check_value(self, value, **kwargs):
         '''Check if the value is valid for this object
@@ -319,30 +323,18 @@ class OphydObject(object):
         '''
         pass
 
-    @property
-    def state(self):
-        return {}
-
-    def configure(self, state=None):
-        # does nothing; subclasses can override if configuration is possible
-        return self.state, self.state
-
-    def deconfigure(self):
-        return self.state
-
     def __repr__(self):
-        return self._get_repr()
+        info = self._repr_info()
+        info = ', '.join('{}={!r}'.format(key, value) for key, value in info)
+        return '{}({})'.format(self.__class__.__name__, info)
 
-    def _get_repr(self, info=None):
-        _repr = []
-
+    def _repr_info(self):
         if self._name:
-            _repr.append('name={0._name!r}'.format(self))
+            yield ('name', self._name)
 
-        if info:
-            _repr.extend(info)
+        if self._parent:
+            yield ('parent', self.parent.name)
 
-        if self._alias:
-            _repr.append('alias={0._alias!r}'.format(self))
-
-        return '{}({})'.format(self.__class__.__name__, ', '.join(_repr))
+    def __copy__(self):
+        info = dict(self._repr_info())
+        return self.__class__(**info)
