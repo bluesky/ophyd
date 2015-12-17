@@ -50,7 +50,7 @@ def set_and_wait(signal, val):
     signal.put(val)
     while signal.get() != val:
         ttime.sleep(0.1)
-        logger.info("Waiting for %s to be set...", signal.attr)
+        logger.info("Waiting for %s to be set...", signal.name)
 
 
 class DetectorBase(ADBase):
@@ -87,11 +87,11 @@ class DetectorBase(ADBase):
             return
 
         # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig.get() for sig in self._staged_sigs}
+        self._original_vals = {sig: sig.get() for sig in self._stage_sigs}
 
         # Apply settings.
         self._staged = True
-        for sig, val in self._staged_sigs.items():
+        for sig, val in self._stage_sigs.items():
             set_and_wait(sig, val)
 
         # Call stage() on child devices (including, notably, plugins).
@@ -157,7 +157,8 @@ class DetectorBase(ADBase):
 
     def _acquire(self, **kwargs):
         "Start the next acquisition or find that all acquisitions are done."
-        if self._num_acquisitions_remaining:
+        logger.debug('_acquire called, %d remaining', self._num_acq_remaining)
+        if self._num_acq_remaining:
             # TODO maybe set shutter open/closed
             self._acquisition_signal.put(1, wait=False)
         else:
@@ -167,7 +168,7 @@ class DetectorBase(ADBase):
         "This is called when the 'acquire' signal changes."
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
-            self._num_acq_remaining =- 1
+            self._num_acq_remaining -= 1
             self._run_subs(sub_type=self._SUB_ACQ_DONE)
 
 
