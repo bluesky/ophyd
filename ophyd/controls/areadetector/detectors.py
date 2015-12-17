@@ -11,9 +11,11 @@
 
 from __future__ import print_function
 import logging
+import time as ttime
 
 from .base import (ADBase, ADComponent as C)
 from . import cam
+from ..ophydobj import DeviceStatus
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +41,131 @@ __all__ = ['AreaDetector',
            'URLDetector',
            ]
 
+def set_and_wait(signal, val):
+    """
+    Set a signal to a value and wait until it reads correctly.
+
+    There are cases where this would not work well, so it should be revisited.
+    """
+    signal.put(val)
+    while signal.get() != val:
+        ttime.sleep(0.1)
+        logger.info("Waiting for %s to be set...", signal.attr)
+
 
 class DetectorBase(ADBase):
-    pass
+    "This base class handles the staging, unstaging, and triggering."
+
+    # OphydObj subscriptions
+    _SUB_ACQ_DONE = 'acq_done'
+    _SUB_TRIGGER_DONE = 'trigger_done'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # TODO Should we make these settings customizable in the init?
+        # If so, what API?
+
+        # settings
+        self._stage_sigs = {self.cam.acquire: 0,  # If acquiring, stop.
+                            self.cam.image_mode: 1  # 'Multiple' mode
+                           }
+
+        self._staged = False
+
+        self._acquisition_signal = self.cam.acquire  # for generality's sake
+        self._acquisition_signal.subscribe(self._acquire_changed)
+
+    def stage(self):
+        """
+        Setup the detector to be triggered.
+
+        This must be called once before any calls to 'trigger'.
+        Multiple calls (before unstaging) have no effect.
+        """ 
+        if self._staged:
+            return
+
+        # Read and stage current values, to be restored by unstage()
+        self._original_vals = {sig.get() for sig in self._staged_sigs}
+
+        # Apply settings.
+        for sig, val in self._staged_sigs.items():
+            set_and_wait(sig, val)
+
+        # Call stage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
+
+        self._trigger_counter = 0  # total acquisitions while staged
+
+    def unstage(self):
+        """
+        Restore the detector to 'standby'.
+
+        Multiple calls (without a new call to 'stage') have no effect.
+        """
+        if not self._staged:
+            return
+
+        # Restore original values.
+        for sig, val in self._original_vals.items():
+            set_and_wait(sig, val)
+
+        # Call unstage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
+
+    def trigger(self):
+        "Trigger one or more acquisitions."
+
+        self._num_acq_remaining = 1  # number of acquisitions to take
+
+        # GET READY...
+
+        # When each acquisition finishes, it will immedately start the next one
+        # until the desired number has been taken.
+        self.subscribe(self._acquire,
+                       event_type=self._SUB_ACQ_DONE, run=False)
+
+        # When *all* the acquisitions are done, increment the trigger counter
+        # and kick the status object.
+        status = DeviceStatus(self)
+
+        def trigger_finished(**kwargs):
+            self._trigger_counter += 1
+            status._finished()
+
+        self.subscribe(trigger_finished,
+                       event_type=self._SUB_TRIGGER_DONE, run=False)
+
+        # Reset subscritpions.
+        self._reset_sub(self._SUB_ACQ_DONE)
+        self._reset_sub(self._SUB_TRIGGER_DONE)
+
+        # GO!
+        self._acquire()
+
+        return status 
+
+    def _acquire(self, **kwargs):
+        "Start the next acquisition or find that all acquisitions are done."
+        if self._num_acquisitions_remaining:
+            # TODO maybe set shutter open/closed
+            self._acquisition_signal.put(1, wait=False)
+        else:
+            self._run_subs(sub_type=self._SUB_TRIGGER_DONE)
+
+    def _acquire_changed(self, value=None, old_value=None, **kwargs):
+        "This is called when the 'acquire' signal changes."
+        if (old_value == 1) and (value == 0):
+            # Negative-going edge means an acquisition just finished.
+            self._num_acq_remaining =- 1
+            self._run_subs(sub_type=self._SUB_ACQ_DONE)
 
 
 class AreaDetector(DetectorBase):
