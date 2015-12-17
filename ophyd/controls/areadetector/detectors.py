@@ -125,6 +125,9 @@ class DetectorBase(ADBase):
 
     def trigger(self):
         "Trigger one or more acquisitions."
+        if not self._staged:
+            raise RuntimeError("This detector is not ready to trigger."
+                               "Call the stage() method before triggering.")
 
         self._num_acq_remaining = 1  # number of acquisitions to take
 
