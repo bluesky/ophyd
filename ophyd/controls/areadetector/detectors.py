@@ -90,6 +90,7 @@ class DetectorBase(ADBase):
         self._original_vals = {sig.get() for sig in self._staged_sigs}
 
         # Apply settings.
+        self._staged = True
         for sig, val in self._staged_sigs.items():
             set_and_wait(sig, val)
 
@@ -119,6 +120,8 @@ class DetectorBase(ADBase):
             signal = getattr(self, signal_name)
             if hasattr(signal, 'stage'):
                 signal.stage()
+
+        self._staged = False
 
     def trigger(self):
         "Trigger one or more acquisitions."
