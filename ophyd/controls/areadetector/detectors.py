@@ -133,6 +133,10 @@ class DetectorBase(ADBase):
 
         # GET READY...
 
+        # Reset subscritpions.
+        self._reset_sub(self._SUB_ACQ_DONE)
+        self._reset_sub(self._SUB_TRIGGER_DONE)
+
         # When each acquisition finishes, it will immedately start the next one
         # until the desired number has been taken.
         self.subscribe(self._acquire,
@@ -148,10 +152,6 @@ class DetectorBase(ADBase):
 
         self.subscribe(trigger_finished,
                        event_type=self._SUB_TRIGGER_DONE, run=False)
-
-        # Reset subscritpions.
-        self._reset_sub(self._SUB_ACQ_DONE)
-        self._reset_sub(self._SUB_TRIGGER_DONE)
 
         # GO!
         self._acquire()
