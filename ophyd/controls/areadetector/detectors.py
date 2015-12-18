@@ -83,45 +83,8 @@ class DetectorBase(ADBase):
         This must be called once before any calls to 'trigger'.
         Multiple calls (before unstaging) have no effect.
         """ 
-        if self._staged:
-            return
-
-        # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig: sig.get() for sig in self._stage_sigs}
-
-        # Apply settings.
-        self._staged = True
-        for sig, val in self._stage_sigs.items():
-            set_and_wait(sig, val)
-
-        # Call stage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
-
+        super().stage()
         self._trigger_counter = 0  # total acquisitions while staged
-
-    def unstage(self):
-        """
-        Restore the detector to 'standby'.
-
-        Multiple calls (without a new call to 'stage') have no effect.
-        """
-        if not self._staged:
-            return
-
-        # Restore original values.
-        for sig, val in self._original_vals.items():
-            set_and_wait(sig, val)
-
-        # Call unstage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
-
-        self._staged = False
 
     def trigger(self):
         "Trigger one or more acquisitions."

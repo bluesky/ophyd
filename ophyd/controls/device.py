@@ -260,6 +260,10 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
+        # Subclasses can populate this with signals mapped to values to be
+        # set by stage() and restored back by unstage().
+        self._staged_sigs = {}
+
         self.prefix = prefix
         if self.signal_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
@@ -469,12 +473,41 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         return {}
 
     def stage(self):
-        '''Stage the device for usage in a run'''
-        pass
+        "Prepare the device to be triggered."
+        # Read and stage current values, to be restored by unstage()
+        self._original_vals = {sig.get() for sig in self._staged_sigs}
+
+        # Apply settings.
+        self._staged = True
+        for sig, val in self._staged_sigs.items():
+            set_and_wait(sig, val)
+
+        # Call stage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
 
     def unstage(self):
-        '''Unstage the device after a run'''
-        pass
+        """
+        Restore the device to 'standby'.
+
+        Multiple calls (without a new call to 'stage') have no effect.
+        """
+        if not self._staged:
+            return
+
+        # Restore original values.
+        for sig, val in self._original_vals.items():
+            set_and_wait(sig, val)
+
+        # Call unstage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
+
+        self._staged = False
 
     def configure(self, d=None):
         '''Configure the device for something during a run
