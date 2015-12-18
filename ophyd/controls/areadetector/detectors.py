@@ -42,9 +42,8 @@ __all__ = ['AreaDetector',
            ]
 
 
-class DetectorBase(ADBase):
-    "This base class handles the staging, unstaging, and triggering."
-
+class TriggerBase:
+    "Base class for trigger mixin class"
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # settings
@@ -53,6 +52,17 @@ class DetectorBase(ADBase):
                            }
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
+
+
+class SingleTrigger(TriggerBase):
+    """
+    This trigger mixin class takes one acquisition per trigger.
+
+    Example
+    -------
+    >>> class SimDetector(SingleTrigger):
+    ...     pass
+    """
 
     def trigger(self):
         "Trigger one acquisition."
@@ -71,8 +81,8 @@ class DetectorBase(ADBase):
             self._status._finished()
 
 
-class MultiAcqDetectorBase(DetectorBase):
-    """In this implementation, one trigger can run multiple acquisitions.
+class MultiTrigger(TriggerBase):
+    """This trigger mixin class can take multiple acquisitions per trigger.
 
     This can be used to give more control to the detector. One call to
     'trigger' can be interpreted by the detector as a call to take several
@@ -81,10 +91,21 @@ class MultiAcqDetectorBase(DetectorBase):
     There is no specific logic implemented here, but it provides a pattern
     that can be easily modified. See in particular the method `_acquire` and
     the attribute `_num_acq_remaining`.
+
+    Example
+    -------
+    >>> class MyDetector(SimDetector, MultiTrigger):
+    ...     pass
+    >>> det = MyDetector(acq_cycle={'image_gain': [1, 2, 8]})
     """
     # OphydObj subscriptions
     _SUB_ACQ_DONE = 'acq_done'
     _SUB_TRIGGER_DONE = 'trigger_done'
+
+    def __init__(self, *args, acq_cycle=None, **kwargs):
+        if acq_cycle is None:
+            acq_cycle = {}
+        self.acq_cycle = acq_cycle
 
     def stage(self):
         """
@@ -102,7 +123,7 @@ class MultiAcqDetectorBase(DetectorBase):
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
 
-        self._num_acq_remaining = 1  # number of acquisitions to take
+        self._num_acq_remaining = len(self._acq_settings)
 
         # GET READY...
 
@@ -135,7 +156,11 @@ class MultiAcqDetectorBase(DetectorBase):
         "Start the next acquisition or find that all acquisitions are done."
         logger.debug('_acquire called, %d remaining', self._num_acq_remaining)
         if self._num_acq_remaining:
-            # TODO maybe set shutter open/closed
+            # Apply settings particular to each acquisition,
+            # such as CCD gain or shutter position.
+            for sig, values in self._acq_settings:
+                val = values[-self._num_acq_remaining]
+                sig.put(val, wait=True)
             self._acquisition_signal.put(1, wait=False)
         else:
             self._run_subs(sub_type=self._SUB_TRIGGER_DONE)
