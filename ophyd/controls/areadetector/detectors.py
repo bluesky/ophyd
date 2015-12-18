@@ -56,25 +56,46 @@ def set_and_wait(signal, val):
 class DetectorBase(ADBase):
     "This base class handles the staging, unstaging, and triggering."
 
-    # OphydObj subscriptions
-    _SUB_ACQ_DONE = 'acq_done'
-    _SUB_TRIGGER_DONE = 'trigger_done'
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # TODO Should we make these settings customizable in the init?
-        # If so, what API?
-
         # settings
         self._stage_sigs = {self.cam.acquire: 0,  # If acquiring, stop.
                             self.cam.image_mode: 1  # 'Multiple' mode
                            }
-
-        self._staged = False
-
-        self._acquisition_signal = self.cam.acquire  # for generality's sake
+        self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
+
+    def trigger(self):
+        "Trigger one or more acquisitions."
+        if not self._staged:
+            raise RuntimeError("This detector is not ready to trigger."
+                               "Call the stage() method before triggering.")
+
+        self._status = DeviceStatus(self)
+        self._acquisition_signal.put(1, wait=False)
+        return self._status
+
+    def _acquire_changed(self, value=None, old_value=None, **kwargs):
+        "This is called when the 'acquire' signal changes."
+        if (old_value == 1) and (value == 0):
+            # Negative-going edge means an acquisition just finished.
+            self._status._finished()
+
+
+class MultiAcqDetectorBase(DetectorBase):
+    """In this implementation, one trigger can run multiple acquisitions.
+
+    This can be used to give more control to the detector. One call to
+    'trigger' can be interpreted by the detector as a call to take several
+    acquisitions with, for example, different gain settings.
+
+    There is no specific logic implemented here, but it provides a pattern
+    that can be easily modified. See in particular the method `_acquire` and
+    the attribute `_num_acq_remaining`.
+    """
+    # OphydObj subscriptions
+    _SUB_ACQ_DONE = 'acq_done'
+    _SUB_TRIGGER_DONE = 'trigger_done'
 
     def stage(self):
         """

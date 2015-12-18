@@ -263,6 +263,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # Subclasses can populate this with signals mapped to values to be
         # set by stage() and restored back by unstage().
         self._staged_sigs = {}
+        self._staged = False
 
         self.prefix = prefix
         if self.signal_names and prefix is None:
