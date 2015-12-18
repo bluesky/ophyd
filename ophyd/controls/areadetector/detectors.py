@@ -41,17 +41,6 @@ __all__ = ['AreaDetector',
            'URLDetector',
            ]
 
-def set_and_wait(signal, val):
-    """
-    Set a signal to a value and wait until it reads correctly.
-
-    There are cases where this would not work well, so it should be revisited.
-    """
-    signal.put(val)
-    while signal.get() != val:
-        ttime.sleep(0.1)
-        logger.info("Waiting for %s to be set...", signal.name)
-
 
 class DetectorBase(ADBase):
     "This base class handles the staging, unstaging, and triggering."
