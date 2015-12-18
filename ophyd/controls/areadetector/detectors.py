@@ -55,7 +55,7 @@ class DetectorBase(ADBase):
         self._acquisition_signal.subscribe(self._acquire_changed)
 
     def trigger(self):
-        "Trigger one or more acquisitions."
+        "Trigger one acquisition."
         if not self._staged:
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
