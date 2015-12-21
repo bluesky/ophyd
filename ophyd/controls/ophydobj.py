@@ -9,6 +9,7 @@
 
 from __future__ import print_function
 from collections import defaultdict
+from threading import RLock
 import time
 import logging
 
@@ -25,6 +26,7 @@ class StatusBase():
     """
     def __init__(self):
         super().__init__()
+        self._lock = RLock()
         self._cb = None
         self.done = False
         self.success = False
@@ -36,11 +38,12 @@ class StatusBase():
         #     print("this should be empty: {}".format(args))
         # if kwargs:
         #     print("this should be empty: {}".format(kwargs))
-        self.done = True
+        with self._lock:
+            self.done = True
 
-        if self._cb is not None:
-            self._cb()
-            self._cb = None
+            if self._cb is not None:
+                self._cb()
+                self._cb = None
 
     @property
     def finished_cb(self):
@@ -53,12 +56,13 @@ class StatusBase():
 
     @finished_cb.setter
     def finished_cb(self, cb):
-        if self._cb is not None:
-            raise RuntimeError("Can not change the call back")
-        if self.done:
-            cb()
-        else:
-            self._cb = cb
+        with self._lock:
+            if self._cb is not None:
+                raise RuntimeError("Can not change the call back")
+            if self.done:
+                cb()
+            else:
+                self._cb = cb
 
 
 class MoveStatus(StatusBase):
@@ -118,15 +122,16 @@ class MoveStatus(StatusBase):
             return None
 
     def _finished(self, success=True, timestamp=None, **kwargs):
-        self.success = success
+        with self._lock:
+            self.success = success
 
-        if timestamp is None:
-            timestamp = time.time()
-        self.finish_ts = timestamp
-        self.finish_pos = self.pos.position
-        # run super last so that all the state is ready before the
-        # callback runs
-        super()._finished()
+            if timestamp is None:
+                timestamp = time.time()
+            self.finish_ts = timestamp
+            self.finish_pos = self.pos.position
+            # run super last so that all the state is ready before the
+            # callback runs
+            super()._finished()
 
     @property
     def elapsed(self):
@@ -155,7 +160,7 @@ class DeviceStatus(StatusBase):
         self.device = device
 
 
-class OphydObject(object):
+class OphydObject:
     '''The base class for all objects in Ophyd
 
     Handles:

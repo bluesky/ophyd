@@ -11,16 +11,22 @@
 
 from __future__ import print_function
 import logging
+import uuid
 import time as ttime
+from datetime import datetime
+from collections import defaultdict
+from itertools import count
 
 from .base import (ADBase, ADComponent as C)
 from . import cam
 from ..ophydobj import DeviceStatus
+from ..device import OphydDevice
 
 logger = logging.getLogger(__name__)
 
 
-__all__ = ['AreaDetector',
+__all__ = ['DetectorBase',
+           'AreaDetector',
            'Andor3Detector',
            'AndorDetector',
            'BrukerDetector',
@@ -42,14 +48,14 @@ __all__ = ['AreaDetector',
            ]
 
 
-class TriggerBase:
-    "Base class for trigger mixin class"
+class TriggerBase(OphydDevice):
+    "Base class for trigger mixin classes"
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # settings
-        self._stage_sigs = {self.cam.acquire: 0,  # If acquiring, stop.
-                            self.cam.image_mode: 1  # 'Multiple' mode
-                           }
+        self.stage_sigs.update({self.cam.acquire: 0,  # If acquiring, stop.
+                                 self.cam.image_mode: 1  # 'Multiple' mode
+                                })
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
 
@@ -81,6 +87,128 @@ class SingleTrigger(TriggerBase):
             self._status._finished()
 
 
+def new_uid():
+    "Use uuid4, but skip the last stanza because of AD length restrictions."
+    return '-'.join(str(uuid.uuid4()).split('-')[:-1])
+
+
+class FileStoreBase(OphydDevice):
+    "Base class for FileStore mixin classes"
+    def __init__(self, *args, write_file_path=None, read_file_path=None, 
+                 **kwargs):
+        # TODO Can we make these args? Depends on plugin details.
+        if write_file_path is None:
+            raise ValueError("write_file_path is required")
+        self.write_file_path = write_file_path
+        if read_file_path is None:
+            self.read_file_path = write_file_path
+        else:
+            self.read_file_path = read_file_path
+        super().__init__(*args, **kwargs)
+        self._locked_key_list = False
+        self._datum_uids = defaultdict(list)
+
+    def stage(self):
+        self._point_counter = count()
+        self._locked_key_list = False
+        self._datum_uids.clear()
+        # Make a filename.
+        self._filename = new_uid()
+        date = datetime.now().date()
+        # AD requires a trailing slash, hence the [''] here
+        path = os.path.join(*(date.isoformat().split('-') + ['']))
+        full_write_path = os.path.join(self.write_file_path, path)
+        full_read_path = os.path.join(self.read_file_path, path)
+        self.stage_sigs.update({'file_template': '%s%s_%6.6d.h5',
+                                'auto_increment': 1,
+                                'file_number': 0,
+                                'auto_save': 1,
+                                'num_capture': 0,
+                                'file_write_mode': 2,
+                                'file_path': full_write_path,
+                                'file_name': self._filename})
+        super().stage()
+
+        # fail early!
+        assert self.file_template.get() == '%s%s_%6.6d.h5'
+        assert self.file_path.get() == full_write_path
+        assert self.file_name.get() == self._filename
+
+        # AD does this same templating in C, but we can't access it
+        # so we do it redundantly here in Python.
+        fn = self.file_template.get() % (full_read_path, self._filename,
+                                         self.file_number.get())
+
+        if not self.filepath_exists.get():
+            raise IOError("Path %s does not exist on IOC.", self.file_path)
+
+        res_kwargs = {'frame_per_point': self.num_images.get()}
+        self._resource = fs.insert_resource('AD_HDF5', fn, res_kwargs)
+
+    def generate_datum(self, key):
+        "Generate a uid and cache it with its key for later insertion."
+        if self._locked_key_list:
+            if key not in self._datum_uids:
+                raise RuntimeError("modifying after lock")
+        nd = new_uid()
+        self._datum_uids[key].append(nd)  # e.g., {'dark': [uid, uid], ...}
+        return nd
+
+    def describe(self):
+        # One object has been 'described' once, no new keys can be added
+        # during this stage/unstage cycle.
+        self._locked_key_list = self._staged
+        res = super().describe()
+        for k in self._datum_uids:
+            res[k] = self.parent.make_data_key()  # this is on DetectorBase
+        return res
+
+    def read(self):
+        # One object has been 'read' once, no new keys can be added
+        # during this stage/unstage cycle.
+        self._locked_key_list = self._staged
+        res = super().read()
+        for k, v in self._datum_uids:
+            res[k] = v[-1]
+        return res
+
+    def unstage(self):
+        self._locked_key_list = False
+        return super().unstage()
+
+
+class FileStoreIterativeWrite(FileStoreBase):
+    "Save records to filestore as they are generated."
+    def generate_datum(self, key):
+        uid = super().generate_datum(key)
+        i = next(self._point_counter)
+        insert_datum(self._resource, uid, {'point_number': i})
+        return uid
+
+
+class FileStoreBulkEntry(FileStoreBase):
+    "Cache records as they are created and save them all at the end."
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._datum_kwargs_map = dict()  # store kwargs for each uid
+
+    def generate_datum(self, key):
+        "Stash kwargs for each datum, to be used below by unstage."
+        uid = super().generate_datum(key)
+        i = next(self._point_counter)
+        self._datum_kwargs_map[uid] = {'point_number': i}
+        # (don't insert, obviously)
+        return uid
+        
+    def unstage(self):
+        "Insert all datums at the end."
+        for uids in self._datum_uids.values():
+            for uid in uids:
+                kwargs = self._datum_kwargs_maps[uid]
+                insert_datum(self._resource, uid, kwargs) 
+        return super().unstage()
+
+
 class MultiTrigger(TriggerBase):
     """This trigger mixin class can take multiple acquisitions per trigger.
 
@@ -106,16 +234,7 @@ class MultiTrigger(TriggerBase):
         if acq_cycle is None:
             acq_cycle = {}
         self.acq_cycle = acq_cycle
-
-    def stage(self):
-        """
-        Setup the detector to be triggered.
-
-        This must be called once before any calls to 'trigger'.
-        Multiple calls (before unstaging) have no effect.
-        """ 
-        super().stage()
-        self._trigger_counter = 0  # total acquisitions while staged
+        super().__init__(*args, **kwargs)
 
     def trigger(self):
         "Trigger one or more acquisitions."
@@ -131,8 +250,8 @@ class MultiTrigger(TriggerBase):
         self._reset_sub(self._SUB_ACQ_DONE)
         self._reset_sub(self._SUB_TRIGGER_DONE)
 
-        # When each acquisition finishes, it will immedately start the next one
-        # until the desired number has been taken.
+        # When each acquisition finishes, it will immedately start the next
+        # one until the desired number has been taken.
         self.subscribe(self._acquire,
                        event_type=self._SUB_ACQ_DONE, run=False)
 
@@ -173,100 +292,131 @@ class MultiTrigger(TriggerBase):
             self._run_subs(sub_type=self._SUB_ACQ_DONE)
 
 
-class AreaDetector(ADBase):
+class DetectorBase(ADBase):
+    """
+    The base class for the hardware-specific classes that follow.
+
+    Note that Plugin also inherits from ADBase.
+    This adds some AD-specific methods that are not shared by the plugins.
+    """
+    def dispatch(self, key):
+        """When a new acquisition is finished, this method is called with a
+        key which is a label like 'light', 'dark', or 'gain8'.
+
+        It in turn calls all of the file plugins and makes them insert a
+        datum into FileStore.
+        """
+        from .plugins import FilePlugin  # terrible but necesary unless we move
+        file_plugins = [a for _, a in self._signals.items() if
+                        isinstance(a, FilePlugin)]
+        for p in file_plugins:
+            p.generate_datum(key)
+
+    def make_data_keys(self):
+        source = 'PV:{}'.format(self.prefix)
+        shape = tuple(self.cam.array_size)  # casting for paranoia's sake
+        return dict(shape=shape, source=source, dtype='array',
+                    external='FILESTORE:')
+
+    def generate_datum(self):
+        # overridden by FileStore mixin classes, if any
+        pass
+
+
+class AreaDetector(DetectorBase):
     cam = C(cam.AreaDetectorCam, 'cam1:')
 
 
-class SimDetector(ADBase):
+class SimDetector(DetectorBase):
     _html_docs = ['simDetectorDoc.html']
     cam = C(cam.SimDetectorCam, 'cam1:')
 
 
-class AdscDetector(ADBase):
+class AdscDetector(DetectorBase):
     _html_docs = ['adscDoc.html']
     cam = C(cam.AdscDetectorCam, 'cam1:')
 
 
-class AndorDetector(ADBase):
+class AndorDetector(DetectorBase):
     _html_docs = ['andorDoc.html']
     cam = C(cam.AndorDetectorCam, 'cam1:')
 
 
-class Andor3Detector(ADBase):
+class Andor3Detector(DetectorBase):
     _html_docs = ['andor3Doc.html']
     cam = C(cam.Andor3DetectorCam, 'cam1:')
 
 
-class BrukerDetector(ADBase):
+class BrukerDetector(DetectorBase):
     _html_docs = ['BrukerDoc.html']
     cam = C(cam.Andor3DetectorCam, 'cam1:')
 
 
-class FirewireLinDetector(ADBase):
+class FirewireLinDetector(DetectorBase):
     _html_docs = ['FirewireWinDoc.html']
     cam = C(cam.FirewireLinDetectorCam, 'cam1:')
 
 
-class FirewireWinDetector(ADBase):
+class FirewireWinDetector(DetectorBase):
     _html_docs = ['FirewireWinDoc.html']
     cam = C(cam.FirewireWinDetectorCam, 'cam1:')
 
 
-class LightFieldDetector(ADBase):
+class LightFieldDetector(DetectorBase):
     _html_docs = ['LightFieldDoc.html']
     cam = C(cam.LightFieldDetectorCam, 'cam1:')
 
 
-class Mar345Detector(ADBase):
+class Mar345Detector(DetectorBase):
     _html_docs = ['Mar345Doc.html']
     cam = C(cam.Mar345DetectorCam, 'cam1:')
 
 
-class MarCCDDetector(ADBase):
+class MarCCDDetector(DetectorBase):
     _html_docs = ['MarCCDDoc.html']
     cam = C(cam.MarCCDDetectorCam, 'cam1:')
 
 
-class PerkinElmerDetector(ADBase):
+class PerkinElmerDetector(DetectorBase):
     _html_docs = ['PerkinElmerDoc.html']
     cam = C(cam.LightFieldDetectorCam, 'cam1:')
 
 
-class PSLDetector(ADBase):
+class PSLDetector(DetectorBase):
     _html_docs = ['PSLDoc.html']
     cam = C(cam.PSLDetectorCam, 'cam1:')
 
 
-class PilatusDetector(ADBase):
+class PilatusDetector(DetectorBase):
     _html_docs = ['pilatusDoc.html']
     cam = C(cam.PilatusDetectorCam, 'cam1:')
 
 
-class PixiradDetector(ADBase):
+class PixiradDetector(DetectorBase):
     _html_docs = ['PixiradDoc.html']
     cam = C(cam.PixiradDetectorCam, 'cam1:')
 
 
-class PointGreyDetector(ADBase):
+class PointGreyDetector(DetectorBase):
     _html_docs = ['PointGreyDoc.html']
     cam = C(cam.PointGreyDetectorCam, 'cam1:')
 
 
-class ProsilicaDetector(ADBase):
+class ProsilicaDetector(DetectorBase):
     _html_docs = ['prosilicaDoc.html']
     cam = C(cam.ProsilicaDetectorCam, 'cam1:')
 
 
-class PvcamDetector(ADBase):
+class PvcamDetector(DetectorBase):
     _html_docs = ['pvcamDoc.html']
     cam = C(cam.PvcamDetectorCam, 'cam1:')
 
 
-class RoperDetector(ADBase):
+class RoperDetector(DetectorBase):
     _html_docs = ['RoperDoc.html']
     cam = C(cam.RoperDetectorCam, 'cam1:')
 
 
-class URLDetector(ADBase):
+class URLDetector(DetectorBase):
     _html_docs = ['URLDoc.html']
     cam = C(cam.URLDetectorCam, 'cam1:')

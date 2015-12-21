@@ -274,7 +274,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         # Subclasses can populate this with signals mapped to values to be
         # set by stage() and restored back by unstage().
-        self._staged_sigs = {}
+        self.stage_sigs = OrderedDict()
         self._staged = False
 
         self.prefix = prefix
@@ -403,6 +403,50 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         return [getattr(self, name) for name in names]
 
+    def _done_acquiring(self, **kwargs):
+        '''Call when acquisition has completed.'''
+        self._run_subs(sub_type=self.SUB_ACQ_DONE,
+                       success=True, **kwargs)
+
+        self._reset_sub(self.SUB_ACQ_DONE)
+
+    def stage(self):
+        "Prepare the device to be triggered."
+        # Read and stage current values, to be restored by unstage()
+        self._original_vals = {sig.get() for sig in self.stage_sigs}
+
+        # Apply settings.
+        self._staged = True
+        for sig, val in self.stage_sigs.items():
+            set_and_wait(sig, val)
+
+        # Call stage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
+
+    def unstage(self):
+        """
+        Restore the device to 'standby'.
+
+        Multiple calls (without a new call to 'stage') have no effect.
+        """
+        if not self._staged:
+            return
+
+        # Restore original values.
+        for sig, val in self._original_vals.items():
+            set_and_wait(sig, val)
+
+        # Call unstage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
+
+        self._staged = False
+
     def trigger(self):
         """Start acquisition"""
         signals = self.trigger_signals
@@ -425,14 +469,6 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
         return status
-
-    def _done_acquiring(self, **kwargs):
-        '''Call when acquisition has completed.'''
-        self._run_subs(sub_type=self.SUB_ACQ_DONE,
-                       success=True, **kwargs)
-
-        self._reset_sub(self.SUB_ACQ_DONE)
-
     def stop(self):
         '''to be defined by subclass'''
         pass
@@ -484,43 +520,6 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def report(self):
         # TODO
         return {}
-
-    def stage(self):
-        "Prepare the device to be triggered."
-        # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig.get() for sig in self._staged_sigs}
-
-        # Apply settings.
-        self._staged = True
-        for sig, val in self._staged_sigs.items():
-            set_and_wait(sig, val)
-
-        # Call stage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
-
-    def unstage(self):
-        """
-        Restore the device to 'standby'.
-
-        Multiple calls (without a new call to 'stage') have no effect.
-        """
-        if not self._staged:
-            return
-
-        # Restore original values.
-        for sig, val in self._original_vals.items():
-            set_and_wait(sig, val)
-
-        # Call unstage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
-
-        self._staged = False
 
     def configure(self, d=None):
         '''Configure the device for something during a run
