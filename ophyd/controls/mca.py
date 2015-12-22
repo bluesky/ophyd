@@ -68,18 +68,14 @@ class EpicsMCA(OphydDevice):
                          name=name, parent=parent, **kwargs)
 
     def stage(self):
-        '''Stage the scaler for data acquisition'''
+        '''Stage the MCA for data acquisition'''
         self._old_mode = self.mode.get()
         self.mode.put(0)
 
     def configure(self, d=None):
-        """Configure Scaler
-
-        Configure the scaler by setting autocount to off.
-        """
         # TODO
         return {}, {}
 
     def unstage(self):
-        """Unstage from acquisition; reset the autocount status"""
+        '''Unstage from acquisition; restore the pre-scan mode'''
         self.count_mode.put(self._old_count_mode)
