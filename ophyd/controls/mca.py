@@ -50,17 +50,17 @@ class EpicsMCA(OphydDevice):
         if read_attrs is None:
             read_attrs = ['spectrum', 'preset_time']
 
-        if read_attrs is not None and rois is not None:
-            roi_attrs = ['roi{n}.cnt'.format(n=roi) for roi in rois]
-            read_attrs += roi_attrs
- 
+            if rois is not None:
+                roi_attrs = ['roi{n}.cnt'.format(n=roi) for roi in rois]
+                read_attrs += roi_attrs
+
         if configuration_attrs is None:
             configuration_attrs = ['preset_time'] 
- 
-        if configuration_attrs is not None and rois is not None:
-            roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
-            roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
-            configuration_attrs += roi_attrs
+
+            if rois is not None:
+                roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
+                roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
+                configuration_attrs += roi_attrs
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
