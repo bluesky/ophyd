@@ -64,6 +64,22 @@ class EpicsMCA(OphydDevice):
         self._stop.put(1)
 
     def add_roi(self, rois):
+        '''Add one or more ROIs to an MCA instance
+
+           Parameters:
+           -----------
+           rois : sequence of ints
+               Must be be in the set [0,31]
+
+           Example:
+           -------
+           >>> vtx = EpicsMCA('my_mca')
+           >>> vtx.add_roi(range(0,5))
+
+           This will add 5 ROIs, vtx.roi0 through vtx.roi4, and their
+           EpicsSignals: roiN.(name,cnt,net_cnt,preset_cnt, is_preset,
+                               bkgnd_chans, hi_chan, lo_chan)
+           '''
         for roi in rois:
             assert 0 <= roi < 32
 
