@@ -29,7 +29,7 @@ class EpicsMCA(OphydDevice):
     start = C(EpicsSignal, 'Start')
     erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
 
-    stop = C(EpicsSignal, '.STOP')
+    _stop = C(EpicsSignal, '.STOP')
     preset_time = C(EpicsSignal, '.ERTM', write_pv='.PRTM')
     spectrum = C(EpicsSignalRO, '.VAL')
     background = C(EpicsSignalRO, '.BG')
@@ -66,6 +66,9 @@ class EpicsMCA(OphydDevice):
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
+
+    def stop(self):
+        self._stop.put(1)
 
     def stage(self):
         '''Stage the MCA for data acquisition'''
