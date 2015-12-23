@@ -10,6 +10,7 @@ import epics
 from ophyd import EpicsMCA
 from ophyd.utils import enum, ReadOnlyError
 from .test_signal import FakeEpicsPV
+from . import main
 
 MCAMode = enum(PHA=0, MCS=1, List=2)
 
@@ -37,9 +38,8 @@ def tearDownModule():
 
 
 class MCATests(unittest.TestCase):
-    vtx = EpicsMCA(devs[0], rois=range(0,5),
+    vtx = EpicsMCA(devs[0], rois=range(0, 5),
                    read_attrs=['spectrum', 'roi1.cnt', 'roi2.cnt'])
-
 
     def test_spectrum(self):
         self.assertRaises(ReadOnlyError, MCATests.vtx.spectrum.put, 3.14)
@@ -48,7 +48,7 @@ class MCATests(unittest.TestCase):
     def test_read_attrs(self):
         r_attrs = MCATests.vtx.read_attrs
         self.assertEquals(r_attrs, ['spectrum', 'roi1.cnt', 'roi2.cnt'])
-        
+
     def test_describe(self):
         MCATests.vtx.spectrum.read_attrs = ['spectrum']
         desc = MCATests.vtx.describe()
@@ -59,7 +59,7 @@ class MCATests(unittest.TestCase):
         if REAL_SCALER:
             # this will fail until EpicsSignal.describe is fixed!
             self.assertEquals(d['dtype'], 'array')
-            self.assertEquals(d['shape'], [4096,])
+            self.assertEquals(d['shape'], [4096, ])
 
     def test_mode(self):
         MCATests.vtx.mode.put(MCAMode.PHA)
@@ -70,13 +70,12 @@ class MCATests(unittest.TestCase):
         # iterables only
         self.assertRaises(TypeError, EpicsMCA, 'foo', rois=1)
         # check range
-        self.assertRaises(AssertionError, EpicsMCA, 'bar', rois=[-1,])
-        self.assertRaises(AssertionError, EpicsMCA, 'baz', rois=[32,])
+        self.assertRaises(AssertionError, EpicsMCA, 'bar', rois=[-1, ])
+        self.assertRaises(AssertionError, EpicsMCA, 'baz', rois=[32, ])
         # read-only?
         self.assertRaises(ReadOnlyError, MCATests.vtx.roi1.cnt.put, 3.14)
         self.assertRaises(ReadOnlyError, MCATests.vtx.roi1.net_cnt.put, 3.14)
 
 
-from . import main
 is_main = (__name__ == '__main__')
 main(is_main)
