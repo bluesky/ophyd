@@ -39,11 +39,14 @@ class EpicsMCA(OphydDevice):
                  configuration_attrs=None, monitor_attrs=None, name=None,
                  parent=None, **kwargs):
 
+        default_read_attrs = ['spectrum', 'preset_time']
+        default_configuration_attrs = ['preset_time']
+
         if read_attrs is None:
-            read_attrs = ['spectrum', 'preset_time']
+            read_attrs = default_read_attrs
 
         if configuration_attrs is None:
-            configuration_attrs = ['preset_time'] 
+            configuration_attrs = default_configuration_attrs
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -53,8 +56,12 @@ class EpicsMCA(OphydDevice):
         if rois is not None:
             self.add_roi(rois)
 
+        # add some 'sensible' defaults for read/config_attrs, if none provided
+        if read_attrs == default_read_attrs:
             # add ROI bits to read_attr and configuration_attr
             self.read_attrs += ['roi{n}.cnt'.format(n=roi) for roi in rois]
+
+        if configuration_attrs == default_configuration_attrs:
             roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
             roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
             self.configuration_attrs += roi_attrs
