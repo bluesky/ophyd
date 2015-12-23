@@ -38,37 +38,38 @@ class EpicsMCA(OphydDevice):
     def __init__(self, prefix, *, rois=None, read_attrs=None, 
                  configuration_attrs=None, monitor_attrs=None, name=None,
                  parent=None, **kwargs):
-                
-        if rois is not None:
-            for roi in rois:
-                # TODO - should this be method on the instance?
-                # Permit ROI updates on a live object?
-                kws = {k: v[0](prefix + v[1].format(n=roi)) 
-                        for k,v in _roi_field_map.items()}
-                setattr(self, 'roi{n}'.format(n=roi), _Roi(**kws))
 
         if read_attrs is None:
             read_attrs = ['spectrum', 'preset_time']
 
-            if rois is not None:
-                roi_attrs = ['roi{n}.cnt'.format(n=roi) for roi in rois]
-                read_attrs += roi_attrs
-
         if configuration_attrs is None:
             configuration_attrs = ['preset_time'] 
-
-            if rois is not None:
-                roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
-                roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
-                configuration_attrs += roi_attrs
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
+        if rois is not None:
+            self.add_roi(rois)
+
+            # add ROI bits to read_attr and configuration_attr
+            self.read_attrs += ['roi{n}.cnt'.format(n=roi) for roi in rois]
+            roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
+            roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
+            self.configuration_attrs += roi_attrs
+
+
     def stop(self):
         self._stop.put(1)
+
+    def add_roi(self, rois):
+        for roi in rois:
+            assert 0 <= roi < 32
+
+            kws = {k: v[0](self.prefix + v[1].format(n=roi))
+                   for k,v in _roi_field_map.items()}
+            setattr(self, 'roi{n}'.format(n=roi), _Roi(**kws))
 
     def stage(self):
         '''Stage the MCA for data acquisition'''
