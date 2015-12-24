@@ -5,7 +5,7 @@ from collections import OrderedDict, namedtuple
 
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import OphydDevice
-from .device import (Component as C, DynamicDeviceComponent as DDC)
+from .device import Component as C
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +97,6 @@ class EpicsMCA(OphydDevice):
         '''Stage the MCA for data acquisition'''
         self._old_mode = self.mode.get()
         self.mode.put(0)
-
-    def configure(self, d=None):
-        # TODO
-        return {}, {}
 
     def unstage(self):
         '''Unstage from acquisition; restore the pre-scan mode'''
