@@ -56,15 +56,15 @@ class EpicsMCA(OphydDevice):
         if rois is not None:
             self.add_roi(rois)
 
-        # add some 'sensible' defaults for read/config_attrs, if none provided
-        if read_attrs == default_read_attrs:
-            # add ROI bits to read_attr and configuration_attr
-            self.read_attrs += ['roi{n}.cnt'.format(n=roi) for roi in rois]
+            # add some 'sensible' defaults for read/config_attrs, if not given
+            if read_attrs == default_read_attrs:
+                # add ROI bits to read_attr and configuration_attr
+                self.read_attrs += ['roi{n}.cnt'.format(n=roi) for roi in rois]
 
-        if configuration_attrs == default_configuration_attrs:
-            roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
-            roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
-            self.configuration_attrs += roi_attrs
+            if configuration_attrs == default_configuration_attrs:
+                roi_attrs = ['roi{n}.lo_chan'.format(n=roi) for roi in rois]
+                roi_attrs += ['roi{n}.hi_chan'.format(n=roi) for roi in rois]
+                self.configuration_attrs += roi_attrs
 
     def stop(self):
         self._stop.put(1)
