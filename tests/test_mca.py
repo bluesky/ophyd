@@ -61,10 +61,17 @@ class MCATests(unittest.TestCase):
             self.assertEquals(d['dtype'], 'array')
             self.assertEquals(d['shape'], [4096, ])
 
-    def test_mode(self):
-        MCATests.vtx.mode.put(MCAMode.PHA)
-        time.sleep(0.5)
-        self.assertEquals(MCATests.vtx.mode.get(), 'PHA')
+    def test_signals(self):
+        mca = EpicsMCA(devs[0], name='mca', rois=[1, 2])
+        mca.wait_for_connection()
+        mca.mode.put(MCAMode.PHA)
+        mca.stage()
+        mca.start.put(1)
+        mca._stop.put(1)
+        mca.preset_time.put(3.14)
+        mca.erase_start.put(1)
+        mca.stop()
+        mca.unstage()
 
     def test_rois(self):
         # iterables only
