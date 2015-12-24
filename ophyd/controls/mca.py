@@ -100,4 +100,4 @@ class EpicsMCA(OphydDevice):
 
     def unstage(self):
         '''Unstage from acquisition; restore the pre-scan mode'''
-        self.count_mode.put(self._old_count_mode)
+        self.mode.put(self._old_mode)
