@@ -1,7 +1,7 @@
 from __future__ import print_function
 import logging
 
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
 
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import OphydDevice
@@ -10,15 +10,15 @@ from .device import (Component as C, DynamicDeviceComponent as DDC)
 logger = logging.getLogger(__name__)
 
 
-_roi_field_map = {'name': (EpicsSignal, '.R{n}NM'),
-                  'cnt': (EpicsSignalRO, '.R{n}'),
-                  'net_cnt': (EpicsSignalRO, '.R{n}N'),
-                  'preset_cnt': (EpicsSignal, '.R{n}P'),
-                  'is_preset': (EpicsSignal, '.R{n}IP'),
-                  'bkgnd_chans': (EpicsSignal, '.R{n}BG'),
-                  'hi_chan': (EpicsSignal, '.R{n}HI'),
-                  'lo_chan': (EpicsSignal, '.R{n}LO')
-                  }
+_roi_field_map = OrderedDict([('name', (EpicsSignal, '.R{}NM')),
+                  ('cnt', (EpicsSignalRO, '.R{}')),
+                  ('net_cnt', (EpicsSignalRO, '.R{}N')),
+                  ('preset_cnt', (EpicsSignal, '.R{}P')),
+                  ('is_preset', (EpicsSignal, '.R{}IP')),
+                  ('bkgnd_chans', (EpicsSignal, '.R{}BG')),
+                  ('hi_chan', (EpicsSignal, '.R{}HI')),
+                  ('lo_chan', (EpicsSignal, '.R{}LO'))
+                  ])
 
 _Roi = namedtuple('_Roi', _roi_field_map.keys())
 
@@ -89,9 +89,9 @@ class EpicsMCA(OphydDevice):
         for roi in rois:
             assert 0 <= roi < 32
 
-            kws = {k: v[0](self.prefix + v[1].format(n=roi))
+            kws = {k: v[0](self.prefix + v[1].format(roi))
                    for k, v in _roi_field_map.items()}
-            setattr(self, 'roi{n}'.format(n=roi), _Roi(**kws))
+            setattr(self, 'roi{}'.format(roi), _Roi(**kws))
 
     def stage(self):
         '''Stage the MCA for data acquisition'''
