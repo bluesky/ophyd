@@ -18,7 +18,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 # Devices
 from .scaler import EpicsScaler
 from .device import (Device, Component, DynamicDeviceComponent)
-from .mca import EpicsMCA
+from .mca import EpicsMCA, DxpMCA
 
 # Areadetector-related
 from .areadetector import *
