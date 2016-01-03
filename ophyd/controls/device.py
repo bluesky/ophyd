@@ -206,14 +206,26 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
-        # *TODO* this has to use bases!
 
-        # map component classes to their attribute names
-        components = [(attr, value) for attr, value in clsdict.items()
-                      if isinstance(value, (Component,
-                                            DynamicDeviceComponent))]
+        clsobj._sig_attrs = OrderedDict()
+        ## - test block
+        for base in bases:
+            if not hasattr(base, '_sig_attrs'):
+                continue
 
-        clsobj._sig_attrs = OrderedDict(components)
+            for attr, cpt in base._sig_attrs.items():
+                if attr in clsobj._sig_attrs:
+                    raise ValueError('Attribute name exists in more than one '
+                                     'base class: {}'.format(attr))
+                clsobj._sig_attrs[attr] = cpt
+        ## - test block
+
+        # map component classes to their attribute names from this class
+        for attr, value in clsdict.items():
+            if isinstance(value, (Component, DynamicDeviceComponent)):
+                if attr in clsobj._sig_attrs:
+                    print('overriding', attr)
+                clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
             # Notify the component of their attribute name
