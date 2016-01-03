@@ -1,0 +1,52 @@
+===============================
+OEP 1 : AD refactor/unification
+===============================
+
+
+.. contents::
+   :local:
+
+Status
+======
+
+**Discussion**
+
+Branches and Pull requests
+==========================
+
+ - https://gist.github.com/danielballan/61fd3448f50027423a54
+
+Abstract
+========
+
+Merge the two AreaDetector implementations.
+
+Detailed description
+====================
+
+Requirements
+------------
+
+ - support full BlueSky API
+ - interact with filestore (may be super-ceded by FS integration at c-level)
+ - provide access to all PVs and plugins on the EPICS layer area
+   detector
+   - set up AD pipelines
+   - frame squashing
+ - be able to change at run-time what is inserted into the result of
+   ``read`` (ex, just return ROI values without saving full data)
+ - deal with dark-frames
+ - 'frequency' attribute to set acquire time
+
+Implementation
+==============
+
+Backward compatibility
+======================
+
+None, break all the things
+
+Alternatives
+============
+
+Status quo
