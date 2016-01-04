@@ -479,8 +479,9 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def configure(self, d=None):
         '''Configure the device for something during a run
 
-        The default implementation does nothing; subclasses should override
-        this to make configuration specific to the device.
+        This default implementation allows the user to change any of the
+        `configuration_attrs`. Subclasses might override this to perform
+        additional input validation, cleanup, etc.
 
         Parameters
         ----------
@@ -489,10 +490,22 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         Returns
         -------
-        (old, new) tuple
+        (old, new) tuple of dictionaries
         Where old and new are pre- and post-configure configuration states.
         '''
-        return {}, {}
+        old = self.read_configuration()
+        for key, val in d.items():
+            if key not in self.configuration_attrs:
+                # a little extra checking for a more specific error msg
+                if key not in self.signal_names:
+                    raise ValueError("there is no signal named %s", key)
+                else:
+                    raise ValueError("%s is not one of the "
+                                     "configuration_fields, so it cannot be "
+                                     "changed using configure", key)
+            getattr(self, key).put(val)
+        new = self.read_configuration()
+        return old, new
 
     def _repr_info(self):
         yield ('prefix', self.prefix)
