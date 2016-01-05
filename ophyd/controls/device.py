@@ -1,9 +1,12 @@
-import time
+import time as ttime
+import logging
 
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
 from ..utils import TimeoutError
+
+logger = logging.getLogger(__name__)
 
 
 class Component:
@@ -320,12 +323,12 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # Instantiate first to kickoff connection process
         signals = [getattr(self, name) for name in names]
 
-        t0 = time.time()
-        while timeout is None or (time.time() - t0) < timeout:
+        t0 = ttime.time()
+        while timeout is None or (ttime.time() - t0) < timeout:
             connected = [sig.connected for sig in signals]
             if all(connected):
                 return
-            time.sleep(min((0.05, timeout / 10.0)))
+            ttime.sleep(min((0.05, timeout / 10.0)))
 
         unconnected = [sig.name for sig in signals
                        if not sig.connected]
@@ -413,7 +416,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def stage(self):
         "Prepare the device to be triggered."
         # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig.get() for sig in self.stage_sigs}
+        self._original_vals = {sig: sig.get() for sig in self.stage_sigs}
 
         # Apply settings.
         self._staged = True
@@ -469,6 +472,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
         return status
+
     def stop(self):
         '''to be defined by subclass'''
         pass

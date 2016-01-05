@@ -12,10 +12,12 @@
 from __future__ import print_function
 import logging
 import uuid
-import time as ttime
+import filestore.api as fs
+
 from datetime import datetime
 from collections import defaultdict
 from itertools import count
+import os
 
 from .base import (ADBase, ADComponent as C)
 from . import cam
@@ -54,7 +56,7 @@ class TriggerBase(OphydDevice):
         super().__init__(*args, **kwargs)
         # settings
         self.stage_sigs.update({self.cam.acquire: 0,  # If acquiring, stop.
-                                 self.cam.image_mode: 1  # 'Multiple' mode
+                                self.cam.image_mode: 1  # 'Multiple' mode
                                 })
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
@@ -78,6 +80,7 @@ class SingleTrigger(TriggerBase):
 
         self._status = DeviceStatus(self)
         self._acquisition_signal.put(1, wait=False)
+        self.dispatch('image')
         return self._status
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
@@ -94,7 +97,7 @@ def new_uid():
 
 class FileStoreBase(OphydDevice):
     "Base class for FileStore mixin classes"
-    def __init__(self, *args, write_file_path=None, read_file_path=None, 
+    def __init__(self, *args, write_file_path=None, read_file_path=None,
                  **kwargs):
         # TODO Can we make these args? Depends on plugin details.
         if write_file_path is None:
@@ -119,14 +122,14 @@ class FileStoreBase(OphydDevice):
         path = os.path.join(*(date.isoformat().split('-') + ['']))
         full_write_path = os.path.join(self.write_file_path, path)
         full_read_path = os.path.join(self.read_file_path, path)
-        self.stage_sigs.update({'file_template': '%s%s_%6.6d.h5',
-                                'auto_increment': 1,
-                                'file_number': 0,
-                                'auto_save': 1,
-                                'num_capture': 0,
-                                'file_write_mode': 2,
-                                'file_path': full_write_path,
-                                'file_name': self._filename})
+        self.stage_sigs.update({self.file_template: '%s%s_%6.6d.h5',
+                                self.auto_increment: 1,
+                                self.file_number: 0,
+                                self.auto_save: 1,
+                                self.num_capture: 0,
+                                self.file_write_mode: 2,
+                                self.file_path: full_write_path,
+                                self.file_name: self._filename})
         super().stage()
 
         # fail early!
@@ -139,10 +142,10 @@ class FileStoreBase(OphydDevice):
         fn = self.file_template.get() % (full_read_path, self._filename,
                                          self.file_number.get())
 
-        if not self.filepath_exists.get():
+        if not self.file_path_exists.get():
             raise IOError("Path %s does not exist on IOC.", self.file_path)
 
-        res_kwargs = {'frame_per_point': self.num_images.get()}
+        res_kwargs = {'frame_per_point': self.num_captured.get()}
         self._resource = fs.insert_resource('AD_HDF5', fn, res_kwargs)
 
     def generate_datum(self, key):
@@ -168,7 +171,7 @@ class FileStoreBase(OphydDevice):
         # during this stage/unstage cycle.
         self._locked_key_list = self._staged
         res = super().read()
-        for k, v in self._datum_uids:
+        for k, v in self._datum_uids.items():
             res[k] = v[-1]
         return res
 
@@ -182,7 +185,7 @@ class FileStoreIterativeWrite(FileStoreBase):
     def generate_datum(self, key):
         uid = super().generate_datum(key)
         i = next(self._point_counter)
-        insert_datum(self._resource, uid, {'point_number': i})
+        fs.insert_datum(self._resource, uid, {'point_number': i})
         return uid
 
 
@@ -199,13 +202,13 @@ class FileStoreBulkEntry(FileStoreBase):
         self._datum_kwargs_map[uid] = {'point_number': i}
         # (don't insert, obviously)
         return uid
-        
+
     def unstage(self):
         "Insert all datums at the end."
         for uids in self._datum_uids.values():
             for uid in uids:
                 kwargs = self._datum_kwargs_maps[uid]
-                insert_datum(self._resource, uid, kwargs) 
+                fs.insert_datum(self._resource, uid, kwargs)
         return super().unstage()
 
 
@@ -269,7 +272,7 @@ class MultiTrigger(TriggerBase):
         # GO!
         self._acquire()
 
-        return status 
+        return status
 
     def _acquire(self, **kwargs):
         "Start the next acquisition or find that all acquisitions are done."
