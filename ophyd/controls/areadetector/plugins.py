@@ -66,13 +66,6 @@ class PluginBase(ADBase):
     asyn_io = C(EpicsSignal, 'AsynIO')
 
     nd_attributes_file = C(EpicsSignal, 'NDAttributesFile', string=True)
-    pool_alloc_buffers = C(EpicsSignalRO, 'PoolAllocBuffers')
-    pool_free_buffers = C(EpicsSignalRO, 'PoolFreeBuffers')
-    pool_max_buffers = C(EpicsSignalRO, 'PoolMaxBuffers')
-    pool_max_mem = C(EpicsSignalRO, 'PoolMaxMem')
-    pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
-    pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
-    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
 
     @property
     def array_pixels(self):
@@ -122,12 +115,6 @@ class PluginBase(ADBase):
     ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
     plugin_type = C(EpicsSignalRO, 'PluginType_RBV')
 
-    queue_free = C(EpicsSignal, 'QueueFree')
-    queue_free_low = C(EpicsSignal, 'QueueFreeLow')
-    queue_size = C(EpicsSignal, 'QueueSize')
-    queue_use = C(EpicsSignal, 'QueueUse')
-    queue_use_high = C(EpicsSignal, 'QueueUseHIGH')
-    queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
     time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
     unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
