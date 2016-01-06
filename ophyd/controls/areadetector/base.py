@@ -4,7 +4,7 @@ import re
 import sys
 from collections import OrderedDict
 
-from ..signal import (EpicsSignal, EpicsSignalRO)
+from ..signal import EpicsSignal
 from . import docs
 from ..device import (OphydDevice, Component)
 

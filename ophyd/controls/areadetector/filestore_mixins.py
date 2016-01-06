@@ -31,7 +31,7 @@ from itertools import count
 import os
 
 from ..ophydobj import DeviceStatus
-from ..device import OphydDevice
+from ..device import GenerateDatumInterface, BlueskyInterface
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def new_short_uid():
     return '-'.join(new_uid().split('-')[:-1])
 
 
-class FileStoreBase(OphydDevice):
+class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     "Base class for FileStore mixin classes"
     def __init__(self, *args, write_file_path=None, read_file_path=None,
                  **kwargs):

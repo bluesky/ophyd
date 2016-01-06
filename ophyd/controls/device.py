@@ -248,7 +248,37 @@ def set_and_wait(signal, val):
         logger.info("Waiting for %s to be set...", signal.name)
 
 
-class OphydDevice(OphydObject, metaclass=ComponentMeta):
+# These stub 'Interface' classes are the apex of the mro heirarchy for
+# their respective methods. They make it safe to use multiple inheritance
+# with the base classes given in any order.
+
+
+class BlueskyInterface:
+    """Classes that inherit from this can safely customize the
+    these methods without breaking mro."""
+    def trigger(self):
+        pass
+
+    def read(self):
+        pass
+
+    def describe(self):
+        pass
+
+    def stage(self):
+        pass
+
+    def unstage(self):
+        pass
+
+
+class GenerateDatumInterface:
+    """Classes that inherit from this can safely customize the
+    `generate_datum` method without breaking mro. If used along with the
+    BlueskyInterface, inherit from this second."""
+
+
+class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be

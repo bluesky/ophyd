@@ -19,7 +19,7 @@ import epics
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal)
-from ..device import DynamicDeviceComponent as DDC
+from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ...utils import enum
 
 
@@ -533,7 +533,7 @@ class TransformPlugin(PluginBase):
                 doc='Transform types')
 
 
-class FilePlugin(PluginBase):
+class FilePlugin(PluginBase, GenerateDatumInterface):
     _default_suffix = ''
     _html_docs = ['NDPluginFile.html']
     _plugin_type = 'NDPluginFile'
@@ -560,10 +560,6 @@ class FilePlugin(PluginBase):
     write_file = C(SignalWithRBV, 'WriteFile')
     write_message = C(EpicsSignal, 'WriteMessage', string=True)
     write_status = C(EpicsSignal, 'WriteStatus')
-
-    def generate_datum(self, key):
-        # overridden by FileStore mixin classes, if any
-        pass
 
 
 class NetCDFPlugin(FilePlugin):

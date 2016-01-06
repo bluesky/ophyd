@@ -13,12 +13,12 @@ from __future__ import print_function
 import logging
 
 from ..ophydobj import DeviceStatus
-from ..device import OphydDevice
+from ..device import BlueskyInterface
 
 logger = logging.getLogger(__name__)
 
 
-class TriggerBase(OphydDevice):
+class TriggerBase(BlueskyInterface):
     "Base class for trigger mixin classes"
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
