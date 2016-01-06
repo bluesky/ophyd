@@ -445,8 +445,8 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # Call unstage() on child devices (including, notably, plugins).
         for signal_name in self.signal_names:
             signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
+            if hasattr(signal, 'unstage'):
+                signal.unstage()
 
         self._staged = False
 
