@@ -52,9 +52,9 @@ class DetectorBase(ADBase):
         It in turn calls all of the file plugins and makes them insert a
         datum into FileStore.
         """
-        from .plugins import FilePlugin  # terrible but necesary unless we move
-        file_plugins = [a for _, a in self._signals.items() if
-                        isinstance(a, FilePlugin)]
+        from .plugins import FilePlugin  # bad but necesary unless we move
+        file_plugins = [s for s in self._signals.values() if
+                        isinstance(s, FilePlugin)]
         for p in file_plugins:
             p.generate_datum(key)
 
