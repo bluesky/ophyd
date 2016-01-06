@@ -185,6 +185,7 @@ class FileStoreBase(OphydDevice):
 
     def unstage(self):
         self._locked_key_list = False
+        self._resource = None
         return super().unstage()
 
 
