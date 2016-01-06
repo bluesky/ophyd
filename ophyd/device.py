@@ -577,6 +577,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         (old, new) tuple of dictionaries
         Where old and new are pre- and post-configure configuration states.
         '''
+        if d is None:
+            d = {}
         old = self.read_configuration()
         for key, val in d.items():
             if key not in self.configuration_attrs:
