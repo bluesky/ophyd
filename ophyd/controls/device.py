@@ -439,7 +439,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
             return
 
         # Restore original values.
-        for sig, val in self._original_vals.items():
+        for sig, val in list(self._original_vals.items())[::-1]:
             set_and_wait(sig, val)
 
         # Call unstage() on child devices (including, notably, plugins).
