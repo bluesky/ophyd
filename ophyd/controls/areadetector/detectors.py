@@ -15,7 +15,7 @@ import uuid
 import filestore.api as fs
 
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from itertools import count
 import os
 
@@ -55,9 +55,9 @@ class TriggerBase(OphydDevice):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # settings
-        self.stage_sigs.update({self.cam.acquire: 0,  # If acquiring, stop.
-                                self.cam.image_mode: 1  # 'Multiple' mode
-                                })
+        self.stage_sigs.update(((self.cam.acquire, 0),  # If acquiring, stop.
+                                (self.cam.image_mode, 1))  # 'Multiple' mode
+                                )
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
 
@@ -122,14 +122,20 @@ class FileStoreBase(OphydDevice):
         path = os.path.join(*(date.isoformat().split('-') + ['']))
         full_write_path = os.path.join(self.write_file_path, path)
         full_read_path = os.path.join(self.read_file_path, path)
-        self.stage_sigs.update({self.file_template: '%s%s_%6.6d.h5',
-                                self.auto_increment: 1,
-                                self.file_number: 0,
-                                self.auto_save: 1,
-                                self.num_capture: 0,
-                                self.file_write_mode: 2,
-                                self.file_path: full_write_path,
-                                self.file_name: self._filename})
+        self.file_template.put('%s%s_%6.6d.h5')
+        ssigs = OrderedDict((
+            (self.enable, 1),
+            (self.auto_increment, 1),
+            (self.array_counter, 0),
+            (self.file_number, 0),
+            (self.auto_save, 1),
+            (self.num_capture, 0),
+            (self.file_write_mode, 2),
+            (self.file_path, full_write_path),
+            (self.file_name, self._filename),
+            (self.capture, 1),
+        ))
+        self.stage_sigs.update(ssigs)
         super().stage()
 
         # fail early!
