@@ -486,7 +486,8 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         Parameters
         ----------
         d : dict
-            The configuration dictionary
+            The configuration dictionary. To specify the order that
+            the changes should be made, use an OrderedDict.
 
         Returns
         -------
@@ -498,11 +499,12 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
             if key not in self.configuration_attrs:
                 # a little extra checking for a more specific error msg
                 if key not in self.signal_names:
-                    raise ValueError("there is no signal named %s", key)
+                    raise ValueError("There is no signal named %s" % key)
                 else:
                     raise ValueError("%s is not one of the "
                                      "configuration_fields, so it cannot be "
-                                     "changed using configure", key)
+                                     "changed using configure" % key)
+            # TODO use `set_and_wait` once it is merged
             getattr(self, key).put(val)
         new = self.read_configuration()
         return old, new
