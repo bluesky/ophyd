@@ -139,13 +139,6 @@ class FileStoreBase(OphydDevice):
         self.stage_sigs.update(ssigs)
         super().stage()
 
-        # fail early!
-        assert self.file_template.get() == '%s%s_%6.6d.h5'
-        assert self.file_path.get() == full_write_path
-        assert self.file_name.get() == self._filename
-        for s, v in ssigs.items():
-            assert s.get() == v
-
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.
         fn = self.file_template.get() % (full_read_path, self._filename,
