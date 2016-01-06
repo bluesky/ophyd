@@ -64,10 +64,6 @@ class DetectorBase(ADBase):
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 
-    def generate_datum(self):
-        # overridden by FileStore mixin classes, if any
-        pass
-
 
 class AreaDetector(DetectorBase):
     cam = C(cam.AreaDetectorCam, 'cam1:')
