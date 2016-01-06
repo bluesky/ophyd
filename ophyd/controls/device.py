@@ -421,6 +421,7 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # Apply settings.
         self._staged = True
         for sig, val in self.stage_sigs.items():
+            ttime.sleep(0.1)
             set_and_wait(sig, val)
 
         # Call stage() on child devices (including, notably, plugins).
