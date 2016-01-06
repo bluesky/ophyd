@@ -561,7 +561,7 @@ class FilePlugin(PluginBase):
     write_message = C(EpicsSignal, 'WriteMessage', string=True)
     write_status = C(EpicsSignal, 'WriteStatus')
 
-    def generate_datum(self):
+    def generate_datum(self, key):
         # overridden by FileStore mixin classes, if any
         pass
 
