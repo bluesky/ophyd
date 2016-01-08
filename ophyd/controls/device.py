@@ -268,7 +268,7 @@ class BlueskyInterface:
     def stage(self):
         "Prepare the device to be triggered."
         # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig: sig.get() for _, sig in self.stage_sigs}
+        self._original_vals = {sig: sig.get() for sig, _ in self.stage_sigs}
 
         # Apply settings.
         self._staged = True
