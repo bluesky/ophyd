@@ -246,7 +246,10 @@ class BlueskyInterface:
     """Classes that inherit from this can safely customize the
     these methods without breaking mro."""
     def __init__(self, *args, **kwargs):
+        # Subclasses can populate this with signals mapped to values to be
+        # set by stage() and restored back by unstage().
         self.stage_sigs = OrderedDict()
+        self._staged = False
         super().__init__(*args, **kwargs)
 
     def trigger(self):
@@ -297,7 +300,6 @@ class BlueskyInterface:
         self._staged = False
 
 
-
 class GenerateDatumInterface:
     """Classes that inherit from this can safely customize the
     `generate_datum` method without breaking mro. If used along with the
@@ -330,10 +332,6 @@ class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                  **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
-
-        # Subclasses can populate this with signals mapped to values to be
-        # set by stage() and restored back by unstage().
-        self._staged = False
 
         self.prefix = prefix
         if self.signal_names and prefix is None:
