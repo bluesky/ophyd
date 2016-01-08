@@ -59,6 +59,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         else:
             self.read_file_path = read_file_path
         super().__init__(*args, **kwargs)
+        self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
 
@@ -87,14 +88,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             (self.capture, 1),
         ))
         self.stage_sigs.update(ssigs)
+        print('staging fsbase')
         super().stage()
-
-        # fail early!
-        assert self.file_template.get() == '%s%s_%6.6d.h5'
-        assert self.file_path.get() == full_write_path
-        assert self.file_name.get() == self._filename
-        for s, v in ssigs.items():
-            assert s.get() == v
 
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.

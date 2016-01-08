@@ -13,6 +13,7 @@ from __future__ import print_function
 import re
 import time as ttime
 import logging
+from collections import OrderedDict
 import numpy as np
 
 import epics
@@ -61,8 +62,8 @@ class PluginBase(ADBase):
     def __init__(self, *args, **kwargs):
         # Turn array callbacks on during staging.
         # Without this, no array data is sent to the plugins.
-        self.staged_sigs.update([(self.cam.array_callbacks, 1)])
         super().__init__(*args, **kwargs)
+        self.stage_sigs.update([(self.parent.cam.array_callbacks, 1)])
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
@@ -653,19 +654,17 @@ class HDF5Plugin(FilePlugin):
                             # just in case tha acquisition time is set very long...
                             (self.parent.cam.acquire_time , 1),
                             (self.parent.cam.acquire_period, 1),
-                            (self.cam.acquire, 1)])
+                            (self.parent.cam.acquire, 1)])
 
         original_vals = {sig: sig.get() for sig in sigs}
 
-        # Apply settings.
-        self._staged = True
-        for sig, val in self.stage_sigs.items():
+        for sig, val in sigs.items():
             ttime.sleep(0.1)  # abundance of caution
             set_and_wait(sig, val)
 
         ttime.sleep(2)  # wait for acquisition
 
-        for sig, val in list(original_vals.items())[::-1]:
+        for sig, val in reversed(list(original_vals.items())):
             ttime.sleep(0.1)
             set_and_wait(sig, val)
 

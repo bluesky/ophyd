@@ -245,20 +245,57 @@ class ComponentMeta(type):
 class BlueskyInterface:
     """Classes that inherit from this can safely customize the
     these methods without breaking mro."""
+    def __init__(self, *args, **kwargs):
+        self.stage_sigs = OrderedDict()
+        super().__init__(*args, **kwargs)
+
     def trigger(self):
         pass
 
     def read(self):
-        pass
+        return {}
 
     def describe(self):
-        pass
+        return {}
 
     def stage(self):
-        pass
+        "Prepare the device to be triggered."
+        # Read and stage current values, to be restored by unstage()
+        self._original_vals = {sig: sig.get() for sig in self.stage_sigs}
+
+        # Apply settings.
+        self._staged = True
+        for sig, val in self.stage_sigs.items():
+            ttime.sleep(0.1)
+            set_and_wait(sig, val)
+
+        # Call stage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
 
     def unstage(self):
-        pass
+        """
+        Restore the device to 'standby'.
+
+        Multiple calls (without a new call to 'stage') have no effect.
+        """
+        if not self._staged:
+            return
+
+        # Restore original values.
+        for sig, val in list(self._original_vals.items())[::-1]:
+            set_and_wait(sig, val)
+
+        # Call unstage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'unstage'):
+                signal.unstage()
+
+        self._staged = False
+
 
 
 class GenerateDatumInterface:
@@ -267,7 +304,7 @@ class GenerateDatumInterface:
     BlueskyInterface, inherit from this second."""
 
 
-class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
+class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be
@@ -296,7 +333,6 @@ class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
 
         # Subclasses can populate this with signals mapped to values to be
         # set by stage() and restored back by unstage().
-        self.stage_sigs = OrderedDict()
         self._staged = False
 
         self.prefix = prefix
@@ -396,7 +432,9 @@ class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
 
     def read(self):
         '''map names ("data keys") to actual values'''
-        return self._read_attr_list(self.read_attrs)
+        res = super().read()
+        res.update(self._read_attr_list(self.read_attrs))
+        return res
 
     def read_configuration(self):
         return self._read_attr_list(self.configuration_attrs)
@@ -412,7 +450,9 @@ class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
 
     def describe(self):
         '''describe the read data keys' data types and other metadata'''
-        return self._describe_attr_list(self.read_attrs)
+        res = super().describe()
+        res.update(self._describe_attr_list(self.read_attrs))
+        return res
 
     def describe_configuration(self):
         '''describe the configuration data keys' data types/other metadata'''
@@ -431,44 +471,6 @@ class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
                        success=True, **kwargs)
 
         self._reset_sub(self.SUB_ACQ_DONE)
-
-    def stage(self):
-        "Prepare the device to be triggered."
-        # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig: sig.get() for sig in self.stage_sigs}
-
-        # Apply settings.
-        self._staged = True
-        for sig, val in self.stage_sigs.items():
-            ttime.sleep(0.1)
-            set_and_wait(sig, val)
-
-        # Call stage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
-
-    def unstage(self):
-        """
-        Restore the device to 'standby'.
-
-        Multiple calls (without a new call to 'stage') have no effect.
-        """
-        if not self._staged:
-            return
-
-        # Restore original values.
-        for sig, val in list(self._original_vals.items())[::-1]:
-            set_and_wait(sig, val)
-
-        # Call unstage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'unstage'):
-                signal.unstage()
-
-        self._staged = False
 
     def trigger(self):
         """Start acquisition"""

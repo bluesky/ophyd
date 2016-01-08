@@ -8,9 +8,11 @@
 '''
 
 from __future__ import print_function
+import time as ttime
 import ctypes
 import threading
 import queue
+import logging
 import warnings
 import functools
 
@@ -26,6 +28,8 @@ __all__ = ['split_record_field',
            'get_pv_form',
            'set_and_wait',
            ]
+
+logger = logging.getLogger(__name__)
 
 
 def split_record_field(pv):

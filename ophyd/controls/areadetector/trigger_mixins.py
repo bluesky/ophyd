@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 class TriggerBase(BlueskyInterface):
     "Base class for trigger mixin classes"
     def __init__(self, *args, **kwargs):
+        print("TriggerBase before super")
         super().__init__(*args, **kwargs)
+        print("TriggerBase after super")
         # settings
         self.stage_sigs.update(((self.cam.acquire, 0),  # If acquiring, stop.
                                 (self.cam.image_mode, 1),  # 'Multiple' mode
