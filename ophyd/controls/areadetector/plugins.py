@@ -11,6 +11,7 @@
 
 from __future__ import print_function
 import re
+import time as ttime
 import logging
 import numpy as np
 
@@ -639,15 +640,34 @@ class HDF5Plugin(FilePlugin):
     zlevel = C(SignalWithRBV, 'ZLevel')
 
     def warmup(self):
-        # TODO save and then restore previous values
-        self.parent.cam.array_callbacks.put(1)  # make plugins work
-        self.enable.put(1)  # enable HDF5 plugin
-        self.parent.cam.image_mode.put(0)  # single image mode
-        self.parent.cam.trigger_mode.put(0)  # 'internal'
-        self.parent.cam.acquire_time.put(1)  # to make sure they are not super long
-        self.parent.cam.acquire_period.put(1)
-        self.parent.cam.acquire.put(1)  # acquiring one image primes array info
+        """
+        A convenience method for 'priming' the plugin.
 
+        The plugin has to 'see' one acquisition before it is ready to capture.
+        This sets the array size, etc.
+        """
+        sigs = OrderedDict([(self.parent.cam.array_callbacks, 1),
+                            (self.enable, 1),  # enable HDF5 plugin
+                            (self.parent.cam.image_mode, 0),  # 'single'
+                            (self.parent.cam.trigger_mode, 0),  # 'internal'
+                            # just in case tha acquisition time is set very long...
+                            (self.parent.cam.acquire_time , 1),
+                            (self.parent.cam.acquire_period, 1),
+                            (self.cam.acquire, 1)])
+
+        original_vals = {sig: sig.get() for sig in sigs}
+
+        # Apply settings.
+        self._staged = True
+        for sig, val in self.stage_sigs.items():
+            ttime.sleep(0.1)  # abundance of caution
+            set_and_wait(sig, val)
+
+        ttime.sleep(2)  # wait for acquisition
+
+        for sig, val in list(original_vals.items())[::-1]:
+            ttime.sleep(0.1)
+            set_and_wait(sig, val)
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
