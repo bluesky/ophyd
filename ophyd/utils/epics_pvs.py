@@ -24,6 +24,7 @@ __all__ = ['split_record_field',
            'check_alarm',
            'MonitorDispatcher',
            'get_pv_form',
+           'set_and_wait',
            ]
 
 
