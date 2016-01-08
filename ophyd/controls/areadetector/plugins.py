@@ -57,6 +57,12 @@ def register_plugin(cls):
 
 class PluginBase(ADBase):
     '''AreaDetector plugin base class'''
+    def __init__(self, *args, **kwargs):
+        # Turn array callbacks on during staging.
+        # Without this, no array data is sent to the plugins.
+        self.staged_sigs.update([(self.cam.array_callbacks, 1)])
+        super().__init__(*args, **kwargs)
+
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
     _suffix_re = None
