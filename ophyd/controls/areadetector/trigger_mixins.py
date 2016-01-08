@@ -19,7 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 class TriggerBase(BlueskyInterface):
-    "Base class for trigger mixin classes"
+    """Base class for trigger mixin classes
+
+    Subclasses must define a method with this signature:
+
+    `acquire_changed(self, value=None, old_value=None, **kwargs)`
+    """
     def __init__(self, *args, **kwargs):
         print("TriggerBase before super")
         super().__init__(*args, **kwargs)

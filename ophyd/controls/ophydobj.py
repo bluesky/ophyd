@@ -10,6 +10,7 @@
 from __future__ import print_function
 from collections import defaultdict
 from threading import RLock
+from functools import wraps
 import time
 import logging
 
@@ -19,7 +20,17 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-class StatusBase():
+# This is used below by StatusBase.
+def _locked(func):
+    "an decorator for running a method with the instance's lock"
+    @wraps
+    def f(self, *args, **kwargs):
+        with self._lock:
+            func(*args, **kwargs)
+    return f
+
+
+class StatusBase:
     """
     This is a base class that provides a single-slot
     call back for finished.
@@ -31,6 +42,7 @@ class StatusBase():
         self.done = False
         self.success = False
 
+    @_locked
     def _finished(self, *args, **kwargs):
         # args/kwargs are not really used, but are passed.
         # uncomment these if you want to go hunting
@@ -38,12 +50,12 @@ class StatusBase():
         #     print("this should be empty: {}".format(args))
         # if kwargs:
         #     print("this should be empty: {}".format(kwargs))
-        with self._lock:
-            self.done = True
+        self.done = True
 
-            if self._cb is not None:
-                self._cb()
-                self._cb = None
+        if self._cb is not None:
+            self._cb()
+            self._cb = None
+
 
     @property
     def finished_cb(self):
@@ -55,14 +67,14 @@ class StatusBase():
         return self._cb
 
     @finished_cb.setter
+    @_locked
     def finished_cb(self, cb):
-        with self._lock:
-            if self._cb is not None:
-                raise RuntimeError("Can not change the call back")
-            if self.done:
-                cb()
-            else:
-                self._cb = cb
+        if self._cb is not None:
+            raise RuntimeError("Can not change the call back")
+        if self.done:
+            cb()
+        else:
+            self._cb = cb
 
 
 class MoveStatus(StatusBase):

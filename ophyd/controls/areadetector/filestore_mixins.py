@@ -88,7 +88,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             (self.capture, 1),
         ]
         self.stage_sigs.extend(ssigs)
-        print('staging fsbase')
         super().stage()
 
         # AD does this same templating in C, but we can't access it

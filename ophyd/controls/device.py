@@ -242,8 +242,9 @@ class ComponentMeta(type):
 
 
 # These stub 'Interface' classes are the apex of the mro heirarchy for
-# their respective methods. They make it safe to use multiple inheritance
-# with the base classes given in any order.
+# their respective methods. They make multiple interitance more
+# forgiving, and let us define classes that customize these methods
+# but are not full Devices.
 
 
 class BlueskyInterface:
@@ -273,7 +274,6 @@ class BlueskyInterface:
         # Apply settings.
         self._staged = True
         for sig, val in self.stage_sigs:
-            ttime.sleep(0.1)
             set_and_wait(sig, val)
 
         # Call stage() on child devices (including, notably, plugins).
@@ -292,7 +292,7 @@ class BlueskyInterface:
             return
 
         # Restore original values.
-        for sig, val in list(self._original_vals.items())[::-1]:
+        for sig, val in reversed(list(self._original_vals.items())):
             set_and_wait(sig, val)
 
         # Call unstage() on child devices (including, notably, plugins).
@@ -308,6 +308,8 @@ class GenerateDatumInterface:
     """Classes that inherit from this can safely customize the
     `generate_datum` method without breaking mro. If used along with the
     BlueskyInterface, inherit from this second."""
+    def generate_datum(self, key):
+        pass
 
 
 class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):

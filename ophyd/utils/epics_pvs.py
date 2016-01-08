@@ -343,14 +343,16 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
-def set_and_wait(signal, val):
+def set_and_wait(signal, val, time=0.1):
     """
     Set a signal to a value and wait until it reads correctly.
 
     There are cases where this would not work well, so it should be revisited.
     """
     signal.put(val)
-    while signal.get() != val:
-        ttime.sleep(0.1)
-        logger.info("Waiting for %s to be set...", signal.name)
-
+    current_value = signal.get()
+    while current_value != val:
+        logger.info("Waiting for %s to be set from %r to %r...",
+                    signal.name, current_value, val)
+        ttime.sleep(time)
+        current_value = signal.get()
