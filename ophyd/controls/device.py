@@ -451,6 +451,7 @@ class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
         # Apply settings.
         self._staged = True
         for sig, val in self.stage_sigs.items():
+            ttime.sleep(0.1)
             set_and_wait(sig, val)
 
         # Call stage() on child devices (including, notably, plugins).
@@ -469,7 +470,7 @@ class OphydDevice(OphydObject, BlueskyInterface, metaclass=ComponentMeta):
             return
 
         # Restore original values.
-        for sig, val in self._original_vals.items():
+        for sig, val in list(self._original_vals.items())[::-1]:
             set_and_wait(sig, val)
 
         # Call unstage() on child devices (including, notably, plugins).

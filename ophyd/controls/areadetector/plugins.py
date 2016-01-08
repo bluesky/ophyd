@@ -632,6 +632,16 @@ class HDF5Plugin(FilePlugin):
     store_perform = C(SignalWithRBV, 'StorePerform')
     zlevel = C(SignalWithRBV, 'ZLevel')
 
+    def warmup(self):
+        # TODO save and then restore previous values
+        self.parent.cam.array_callbacks.put(1)  # make plugins work
+        self.enable.put(1)  # enable HDF5 plugin
+        self.parent.cam.image_mode.put(0)  # single image mode
+        self.parent.cam.trigger_mode.put(0)  # 'internal'
+        self.parent.cam.acquire_time.put(1)  # to make sure they are not super long
+        self.parent.cam.acquire_period.put(1)
+        self.parent.cam.acquire.put(1)  # acquiring one image primes array info
+
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
