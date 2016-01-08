@@ -20,7 +20,7 @@ from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
-from ...utils import enum
+from ...utils import enum, set_and_wait
 
 
 logger = logging.getLogger(__name__)

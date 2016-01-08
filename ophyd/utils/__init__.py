@@ -10,6 +10,7 @@
 import logging
 
 from .errors import *
+from .epics_pvs import *
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
