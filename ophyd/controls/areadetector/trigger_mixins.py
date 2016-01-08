@@ -25,9 +25,9 @@ class TriggerBase(BlueskyInterface):
         super().__init__(*args, **kwargs)
         print("TriggerBase after super")
         # settings
-        self.stage_sigs.update(((self.cam.acquire, 0),  # If acquiring, stop.
+        self.stage_sigs.extend([(self.cam.acquire, 0),  # If acquiring, stop.
                                 (self.cam.image_mode, 1),  # 'Multiple' mode
-                                ))
+                               ])
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
 

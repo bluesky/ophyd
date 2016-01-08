@@ -246,9 +246,9 @@ class BlueskyInterface:
     """Classes that inherit from this can safely customize the
     these methods without breaking mro."""
     def __init__(self, *args, **kwargs):
-        # Subclasses can populate this with signals mapped to values to be
+        # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
-        self.stage_sigs = OrderedDict()
+        self.stage_sigs = list()
         self._staged = False
         super().__init__(*args, **kwargs)
 
@@ -264,11 +264,11 @@ class BlueskyInterface:
     def stage(self):
         "Prepare the device to be triggered."
         # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig: sig.get() for sig in self.stage_sigs}
+        self._original_vals = {sig: sig.get() for _, sig in self.stage_sigs}
 
         # Apply settings.
         self._staged = True
-        for sig, val in self.stage_sigs.items():
+        for sig, val in self.stage_sigs:
             ttime.sleep(0.1)
             set_and_wait(sig, val)
 

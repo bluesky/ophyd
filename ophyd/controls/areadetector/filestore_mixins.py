@@ -75,7 +75,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         full_write_path = os.path.join(self.write_file_path, path)
         full_read_path = os.path.join(self.read_file_path, path)
         self.file_template.put('%s%s_%6.6d.h5')
-        ssigs = OrderedDict((
+        ssigs = [
             (self.enable, 1),
             (self.auto_increment, 1),
             (self.array_counter, 0),
@@ -86,8 +86,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             (self.file_path, full_write_path),
             (self.file_name, self._filename),
             (self.capture, 1),
-        ))
-        self.stage_sigs.update(ssigs)
+        ]
+        self.stage_sigs.extend(ssigs)
         print('staging fsbase')
         super().stage()
 
