@@ -81,7 +81,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             (self.file_number, 0),
             (self.auto_save, 1),
             (self.num_capture, 0),
-            (self.file_write_mode, 2),
+            (self.file_write_mode, 1),  # 'capture' mode -- for AD 1.x
             (self.file_path, full_write_path),
             (self.file_name, self._filename),
             (self.capture, 1),
