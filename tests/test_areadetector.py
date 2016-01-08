@@ -10,8 +10,7 @@ except ImportError:
 
 import epics
 
-from ophyd.controls import (SimDetector, get_areadetector_plugin,
-                            TIFFPlugin)
+from ophyd.controls import (SimDetector, TIFFPlugin, HDF5Plugin)
 from ophyd.controls.areadetector.util import stub_templates
 from ophyd.controls.device import (Component as Cpt, )
 
@@ -70,18 +69,27 @@ class ADTest(unittest.TestCase):
 
     def test_tiff_plugin(self):
         # det = AreaDetector(self.prefix)
-        plugin = get_areadetector_plugin(self.prefix + 'TIFF1:')
+        class TestDet(SimDetector):
+            p = Cpt(TIFFPlugin, 'TIFF1:')
+
+        det = TestDet(self.prefix)
+        plugin = det.p
 
         plugin.file_template.put('%s%s_%3.3d.tif')
-
-        self.assertRaises(ValueError, get_areadetector_plugin,
-                          self.prefix + 'foobar:')
 
         plugin.array_pixels
         plugin
 
     def test_hdf5_plugin(self):
-        get_areadetector_plugin(self.prefix + 'HDF1:')
+
+        class MyDet(SimDetector):
+            p = Cpt(HDF5Plugin, suffix='HDF1:')
+
+        d = MyDet(self.prefix)
+        d.p.file_path.put('/tmp')
+        d.p.file_name.put('--')
+        d.p.warmup()
+        d.stage()
 
     def test_subclass(self):
         class MyDetector(SimDetector):
