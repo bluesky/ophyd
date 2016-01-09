@@ -268,6 +268,9 @@ class BlueskyInterface:
 
     def stage(self):
         "Prepare the device to be triggered."
+        if self._staged:
+            raise RuntimeError("Device is already stage. Unstage it first.")
+
         # Read and stage current values, to be restored by unstage()
         self._original_vals = {sig: sig.get() for sig, _ in self.stage_sigs}
 
@@ -289,6 +292,10 @@ class BlueskyInterface:
         Multiple calls (without a new call to 'stage') have no effect.
         """
         if not self._staged:
+            # Unlike staging, there is no harm in making unstage
+            # 'indepotent'.
+            logger.debug("Cannot unstage %r; it is not staged. Passing.",
+                         self)
             return
 
         # Restore original values.
