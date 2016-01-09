@@ -272,7 +272,8 @@ class BlueskyInterface:
             raise RuntimeError("Device is already stage. Unstage it first.")
 
         # Read and stage current values, to be restored by unstage()
-        self._original_vals = {sig: sig.get() for sig, _ in self.stage_sigs}
+        self._original_vals = [(sig, sig.get())
+                               for sig, _ in self.stage_sigs]
 
         # Apply settings.
         self._staged = True
@@ -299,7 +300,7 @@ class BlueskyInterface:
             return
 
         # Restore original values.
-        for sig, val in reversed(list(self._original_vals.items())):
+        for sig, val in reversed(self._original_vals)):
             set_and_wait(sig, val)
 
         # Call unstage() on child devices (including, notably, plugins).
