@@ -300,7 +300,7 @@ class BlueskyInterface:
             return
 
         # Restore original values.
-        for sig, val in reversed(self._original_vals)):
+        for sig, val in reversed(self._original_vals):
             set_and_wait(sig, val)
 
         # Call unstage() on child devices (including, notably, plugins).
