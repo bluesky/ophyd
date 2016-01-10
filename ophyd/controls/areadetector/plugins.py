@@ -11,7 +11,9 @@
 
 from __future__ import print_function
 import re
+import time as ttime
 import logging
+from collections import OrderedDict
 import numpy as np
 
 import epics
@@ -19,8 +21,8 @@ import epics
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal)
-from ..device import DynamicDeviceComponent as DDC
-from ...utils import enum
+from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
+from ...utils import enum, set_and_wait
 
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,12 @@ def register_plugin(cls):
 
 class PluginBase(ADBase):
     '''AreaDetector plugin base class'''
+    def __init__(self, *args, **kwargs):
+        # Turn array callbacks on during staging.
+        # Without this, no array data is sent to the plugins.
+        super().__init__(*args, **kwargs)
+        self.stage_sigs.extend([(self.parent.cam.array_callbacks, 1)])
+
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
     _suffix_re = None
@@ -533,7 +541,7 @@ class TransformPlugin(PluginBase):
                 doc='Transform types')
 
 
-class FilePlugin(PluginBase):
+class FilePlugin(PluginBase, GenerateDatumInterface):
     _default_suffix = ''
     _html_docs = ['NDPluginFile.html']
     _plugin_type = 'NDPluginFile'
@@ -632,6 +640,33 @@ class HDF5Plugin(FilePlugin):
     store_perform = C(SignalWithRBV, 'StorePerform')
     zlevel = C(SignalWithRBV, 'ZLevel')
 
+    def warmup(self):
+        """
+        A convenience method for 'priming' the plugin.
+
+        The plugin has to 'see' one acquisition before it is ready to capture.
+        This sets the array size, etc.
+        """
+        sigs = OrderedDict([(self.parent.cam.array_callbacks, 1),
+                            (self.enable, 1),  # enable HDF5 plugin
+                            (self.parent.cam.image_mode, 0),  # 'single'
+                            (self.parent.cam.trigger_mode, 0),  # 'internal'
+                            # just in case tha acquisition time is set very long...
+                            (self.parent.cam.acquire_time , 1),
+                            (self.parent.cam.acquire_period, 1),
+                            (self.parent.cam.acquire, 1)])
+
+        original_vals = {sig: sig.get() for sig in sigs}
+
+        for sig, val in sigs.items():
+            ttime.sleep(0.1)  # abundance of caution
+            set_and_wait(sig, val)
+
+        ttime.sleep(2)  # wait for acquisition
+
+        for sig, val in reversed(list(original_vals.items())):
+            ttime.sleep(0.1)
+            set_and_wait(sig, val)
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'

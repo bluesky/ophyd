@@ -9,6 +9,8 @@
 
 from __future__ import print_function
 from collections import defaultdict
+from threading import RLock
+from functools import wraps
 import time
 import logging
 
@@ -18,17 +20,29 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-class StatusBase():
+# This is used below by StatusBase.
+def _locked(func):
+    "an decorator for running a method with the instance's lock"
+    @wraps(func)
+    def f(self, *args, **kwargs):
+        with self._lock:
+            func(self, *args, **kwargs)
+    return f
+
+
+class StatusBase:
     """
     This is a base class that provides a single-slot
     call back for finished.
     """
     def __init__(self):
         super().__init__()
+        self._lock = RLock()
         self._cb = None
         self.done = False
         self.success = False
 
+    @_locked
     def _finished(self, *args, **kwargs):
         # args/kwargs are not really used, but are passed.
         # uncomment these if you want to go hunting
@@ -52,6 +66,7 @@ class StatusBase():
         return self._cb
 
     @finished_cb.setter
+    @_locked
     def finished_cb(self, cb):
         if self._cb is not None:
             raise RuntimeError("Can not change the call back")
@@ -118,15 +133,16 @@ class MoveStatus(StatusBase):
             return None
 
     def _finished(self, success=True, timestamp=None, **kwargs):
-        self.success = success
+        with self._lock:
+            self.success = success
 
-        if timestamp is None:
-            timestamp = time.time()
-        self.finish_ts = timestamp
-        self.finish_pos = self.pos.position
-        # run super last so that all the state is ready before the
-        # callback runs
-        super()._finished()
+            if timestamp is None:
+                timestamp = time.time()
+            self.finish_ts = timestamp
+            self.finish_pos = self.pos.position
+            # run super last so that all the state is ready before the
+            # callback runs
+            super()._finished()
 
     @property
     def elapsed(self):
@@ -155,7 +171,7 @@ class DeviceStatus(StatusBase):
         self.device = device
 
 
-class OphydObject(object):
+class OphydObject:
     '''The base class for all objects in Ophyd
 
     Handles:

@@ -10,15 +10,13 @@
 '''
 
 from __future__ import print_function
-import logging
 
 from .base import (ADBase, ADComponent as C)
 from . import cam
 
-logger = logging.getLogger(__name__)
 
-
-__all__ = ['AreaDetector',
+__all__ = ['DetectorBase',
+           'AreaDetector',
            'Andor3Detector',
            'AndorDetector',
            'BrukerDetector',
@@ -41,7 +39,30 @@ __all__ = ['AreaDetector',
 
 
 class DetectorBase(ADBase):
-    pass
+    """
+    The base class for the hardware-specific classes that follow.
+
+    Note that Plugin also inherits from ADBase.
+    This adds some AD-specific methods that are not shared by the plugins.
+    """
+    def dispatch(self, key):
+        """When a new acquisition is finished, this method is called with a
+        key which is a label like 'light', 'dark', or 'gain8'.
+
+        It in turn calls all of the file plugins and makes them insert a
+        datum into FileStore.
+        """
+        from .plugins import FilePlugin  # bad but necesary unless we move
+        file_plugins = [s for s in self._signals.values() if
+                        isinstance(s, FilePlugin)]
+        for p in file_plugins:
+            p.generate_datum(key)
+
+    def make_data_keys(self):
+        source = 'PV:{}'.format(self.prefix)
+        shape = tuple(self.cam.array_size)  # casting for paranoia's sake
+        return dict(shape=shape, source=source, dtype='array',
+                    external='FILESTORE:')
 
 
 class AreaDetector(DetectorBase):

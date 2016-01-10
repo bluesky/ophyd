@@ -1,9 +1,12 @@
-import time
+import time as ttime
+import logging
 
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
-from ..utils import TimeoutError
+from ..utils import TimeoutError, set_and_wait
+
+logger = logging.getLogger(__name__)
 
 
 class Component:
@@ -206,14 +209,14 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
-        # *TODO* this has to use bases!
+        clsobj._sig_attrs = OrderedDict()
 
-        # map component classes to their attribute names
-        components = [(attr, value) for attr, value in clsdict.items()
-                      if isinstance(value, (Component,
-                                            DynamicDeviceComponent))]
-
-        clsobj._sig_attrs = OrderedDict(components)
+        # map component classes to their attribute names from this class
+        for attr, value in clsdict.items():
+            if isinstance(value, (Component, DynamicDeviceComponent)):
+                if attr in clsobj._sig_attrs:
+                    print('overriding', attr)
+                clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
             # Notify the component of their attribute name
@@ -221,7 +224,11 @@ class ComponentMeta(type):
 
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.keys())
-
+        for b in bases:
+            try:
+                clsobj.signal_names.extend(b.signal_names)
+            except AttributeError:
+                pass
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
                                           rename=True)
@@ -233,7 +240,87 @@ class ComponentMeta(type):
         return clsobj
 
 
-class OphydDevice(OphydObject, metaclass=ComponentMeta):
+
+# These stub 'Interface' classes are the apex of the mro heirarchy for
+# their respective methods. They make multiple interitance more
+# forgiving, and let us define classes that customize these methods
+# but are not full Devices.
+
+
+class BlueskyInterface:
+    """Classes that inherit from this can safely customize the
+    these methods without breaking mro."""
+    def __init__(self, *args, **kwargs):
+        # Subclasses can populate this with (signal, value) pairs, to be
+        # set by stage() and restored back by unstage().
+        self.stage_sigs = list()
+        self._staged = False
+        super().__init__(*args, **kwargs)
+
+    def trigger(self):
+        pass
+
+    def read(self):
+        return {}
+
+    def describe(self):
+        return {}
+
+    def stage(self):
+        "Prepare the device to be triggered."
+        if self._staged:
+            raise RuntimeError("Device is already stage. Unstage it first.")
+
+        # Read and stage current values, to be restored by unstage()
+        self._original_vals = [(sig, sig.get())
+                               for sig, _ in self.stage_sigs]
+
+        # Apply settings.
+        self._staged = True
+        for sig, val in self.stage_sigs:
+            set_and_wait(sig, val)
+
+        # Call stage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'stage'):
+                signal.stage()
+
+    def unstage(self):
+        """
+        Restore the device to 'standby'.
+
+        Multiple calls (without a new call to 'stage') have no effect.
+        """
+        if not self._staged:
+            # Unlike staging, there is no harm in making unstage
+            # 'indepotent'.
+            logger.debug("Cannot unstage %r; it is not staged. Passing.",
+                         self)
+            return
+
+        # Restore original values.
+        for sig, val in reversed(self._original_vals):
+            set_and_wait(sig, val)
+
+        # Call unstage() on child devices (including, notably, plugins).
+        for signal_name in self.signal_names:
+            signal = getattr(self, signal_name)
+            if hasattr(signal, 'unstage'):
+                signal.unstage()
+
+        self._staged = False
+
+
+class GenerateDatumInterface:
+    """Classes that inherit from this can safely customize the
+    `generate_datum` method without breaking mro. If used along with the
+    BlueskyInterface, inherit from this second."""
+    def generate_datum(self, key):
+        pass
+
+
+class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be
@@ -303,12 +390,12 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
         # Instantiate first to kickoff connection process
         signals = [getattr(self, name) for name in names]
 
-        t0 = time.time()
-        while timeout is None or (time.time() - t0) < timeout:
+        t0 = ttime.time()
+        while timeout is None or (ttime.time() - t0) < timeout:
             connected = [sig.connected for sig in signals]
             if all(connected):
                 return
-            time.sleep(min((0.05, timeout / 10.0)))
+            ttime.sleep(min((0.05, timeout / 10.0)))
 
         unconnected = [sig.name for sig in signals
                        if not sig.connected]
@@ -357,7 +444,9 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     def read(self):
         '''map names ("data keys") to actual values'''
-        return self._read_attr_list(self.read_attrs)
+        res = super().read()
+        res.update(self._read_attr_list(self.read_attrs))
+        return res
 
     def read_configuration(self):
         return self._read_attr_list(self.configuration_attrs)
@@ -373,7 +462,9 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
     def describe(self):
         '''describe the read data keys' data types and other metadata'''
-        return self._describe_attr_list(self.read_attrs)
+        res = super().describe()
+        res.update(self._describe_attr_list(self.read_attrs))
+        return res
 
     def describe_configuration(self):
         '''describe the configuration data keys' data types/other metadata'''
@@ -385,6 +476,13 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
                  if cpt.trigger_value is not None]
 
         return [getattr(self, name) for name in names]
+
+    def _done_acquiring(self, **kwargs):
+        '''Call when acquisition has completed.'''
+        self._run_subs(sub_type=self.SUB_ACQ_DONE,
+                       success=True, **kwargs)
+
+        self._reset_sub(self.SUB_ACQ_DONE)
 
     def trigger(self):
         """Start acquisition"""
@@ -408,13 +506,6 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
         return status
-
-    def _done_acquiring(self, **kwargs):
-        '''Call when acquisition has completed.'''
-        self._run_subs(sub_type=self.SUB_ACQ_DONE,
-                       success=True, **kwargs)
-
-        self._reset_sub(self.SUB_ACQ_DONE)
 
     def stop(self):
         '''to be defined by subclass'''
@@ -467,14 +558,6 @@ class OphydDevice(OphydObject, metaclass=ComponentMeta):
     def report(self):
         # TODO
         return {}
-
-    def stage(self):
-        '''Stage the device for usage in a run'''
-        pass
-
-    def unstage(self):
-        '''Unstage the device after a run'''
-        pass
 
     def configure(self, d=None):
         '''Configure the device for something during a run

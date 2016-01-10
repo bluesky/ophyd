@@ -8,9 +8,11 @@
 '''
 
 from __future__ import print_function
+import time as ttime
 import ctypes
 import threading
 import queue
+import logging
 import warnings
 import functools
 
@@ -24,7 +26,10 @@ __all__ = ['split_record_field',
            'check_alarm',
            'MonitorDispatcher',
            'get_pv_form',
+           'set_and_wait',
            ]
+
+logger = logging.getLogger(__name__)
 
 
 def split_record_field(pv):
@@ -336,3 +341,18 @@ def raise_if_disconnected(fcn):
         else:
             raise DisconnectedError('{} is not connected'.format(self.name))
     return wrapper
+
+
+def set_and_wait(signal, val, time=0.1):
+    """
+    Set a signal to a value and wait until it reads correctly.
+
+    There are cases where this would not work well, so it should be revisited.
+    """
+    signal.put(val)
+    current_value = signal.get()
+    while current_value != val:
+        logger.info("Waiting for %s to be set from %r to %r...",
+                    signal.name, current_value, val)
+        ttime.sleep(time)
+        current_value = signal.get()
