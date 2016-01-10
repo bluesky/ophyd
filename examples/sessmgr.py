@@ -1,6 +1,6 @@
 import config
 
-from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner
+from ophyd import EpicsMotor, EpicsScaler, PVPositioner
 from dumb_scan import simple_scan
 
 
@@ -10,7 +10,7 @@ m2 = EpicsMotor(config.motor_recs[1], name='m2')
 sca = EpicsScaler(config.scalers[0], name='sca')
 
 
-from ophyd.controls import SimDetector
+from ophyd import SimDetector
 
 simdet = SimDetector('XF:31IDA-BI{Cam:Tbl}',
                      name='simdet')

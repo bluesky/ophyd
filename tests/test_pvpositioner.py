@@ -6,9 +6,9 @@ import unittest
 from copy import copy
 
 import epics
-from ophyd.controls import (PVPositioner, PVPositionerPC, EpicsMotor)
-from ophyd.controls import (EpicsSignal, EpicsSignalRO)
-from ophyd.controls import (Component as C)
+from ophyd import (PVPositioner, PVPositionerPC, EpicsMotor)
+from ophyd import (EpicsSignal, EpicsSignalRO)
+from ophyd import (Component as C)
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ import time
 import numpy as np
 
 import config
-from ophyd.controls import (PVPositioner, EpicsSignal, EpicsMotor)
+from ophyd import (PVPositioner, EpicsSignal, EpicsMotor)
 
 
 def simple_scan(motors=[],
@@ -94,8 +94,8 @@ def simple_scan(motors=[],
 
 
 def test():
-    loggers = ('ophyd.controls.signal',
-               'ophyd.controls.positioner',
+    loggers = ('ophyd.signal',
+               'ophyd.positioner',
                )
 
     config.setup_loggers(loggers)

@@ -1,4 +1,4 @@
-DEST_PATH:=../../ophyd/controls/areadetector
+DEST_PATH:=../../ophyd/areadetector
 HTML_SOURCE:=html
 FILENAME=docs.py
 

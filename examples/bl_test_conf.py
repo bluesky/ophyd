@@ -1,7 +1,7 @@
 import numpy as np
 
-from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
-from ophyd.controls import SimDetector
+from ophyd import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
+from ophyd import SimDetector
 
 
 # slt1_i = EpicsMotor('XF:23ID1-OP{Slt:1-Ax:I}Mtr', name='slt1_i')

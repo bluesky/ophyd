@@ -4,7 +4,7 @@
 import time
 
 import config
-from ophyd.controls import (EpicsSignal, Signal)
+from ophyd import (EpicsSignal, Signal)
 from ophyd.utils.epics_pvs import record_field
 
 
@@ -17,7 +17,7 @@ def test():
         # callbacks without it)
         logger.info('[callback] caget=%s' % rw_signal.get())
 
-    loggers = ('ophyd.controls.signal',
+    loggers = ('ophyd.signal',
                )
 
     config.setup_loggers(loggers)

@@ -2,13 +2,13 @@
 '''An example of using :class:`AreaDetector`'''
 from __future__ import print_function
 import config
-from ophyd.controls import (AreaDetector, ImagePlugin)
+from ophyd import (AreaDetector, ImagePlugin)
 
 import matplotlib.pyplot as plt
 
 
 def test():
-    loggers = ('ophyd.controls.areadetector',
+    loggers = ('ophyd.areadetector',
                )
 
     config.setup_loggers(loggers)

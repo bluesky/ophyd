@@ -1,14 +1,14 @@
 import time
 
 import config
-from ophyd.controls import scaler
+from ophyd import scaler
 from ophyd.utils import enum
 
 ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 
 def test():
-    loggers = ('ophyd.controls.signal',
-               'ophyd.controls.scaler',
+    loggers = ('ophyd.signal',
+               'ophyd.scaler',
                )
 
     config.setup_loggers(loggers)

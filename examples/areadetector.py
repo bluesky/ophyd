@@ -7,10 +7,10 @@ import time
 
 import config
 
-from ophyd.controls import (get_areadetector_plugin,
+from ophyd import (get_areadetector_plugin,
                             EpicsSignal, SimDetector)
 
-from ophyd.controls import (ImagePlugin, ProcessPlugin,
+from ophyd import (ImagePlugin, ProcessPlugin,
                             OverlayPlugin)
 
 
@@ -34,7 +34,7 @@ def test():
             name = "%s.%s" % (port_name, attr)
             logger.debug('(epics) %s %s=%s' % (name, signal.pvname, signal.value))
 
-    loggers = ('ophyd.controls.areadetector',
+    loggers = ('ophyd.areadetector',
                )
 
     config.setup_loggers(loggers)

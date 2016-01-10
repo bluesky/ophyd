@@ -3,7 +3,7 @@
 import config
 import time
 
-from ophyd.controls.positioner import EpicsMotor
+from ophyd.positioner import EpicsMotor
 from ophyd.commands import (mov, movr, set_pos, wh_pos, set_lm, log_pos,
                             log_pos_diff)
 

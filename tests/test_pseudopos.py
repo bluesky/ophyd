@@ -6,8 +6,8 @@ import unittest
 from copy import copy
 
 import epics
-from ophyd.controls import (PseudoPositioner, PseudoSingle, EpicsMotor)
-from ophyd.controls import (Component as C)
+from ophyd import (PseudoPositioner, PseudoSingle, EpicsMotor)
+from ophyd import (Component as C)
 
 
 logger = logging.getLogger(__name__)

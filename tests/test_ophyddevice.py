@@ -2,8 +2,8 @@ import time
 import logging
 import unittest
 
-from ophyd.controls import (OphydDevice, Component)
-from ophyd.controls.signal import Signal
+from ophyd import (OphydDevice, Component)
+from ophyd.signal import Signal
 
 logger = logging.getLogger(__name__)
 

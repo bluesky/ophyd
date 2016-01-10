@@ -4,7 +4,7 @@
 import time
 
 import config
-from ophyd.controls import EpicsMotor
+from ophyd import EpicsMotor
 from ophyd.utils.errors import LimitError
 
 
@@ -15,8 +15,8 @@ def test():
     def done_moving(**kwargs):
         logger.info('Done moving %s', kwargs)
 
-    loggers = ('ophyd.controls.signal',
-               'ophyd.controls.positioner',
+    loggers = ('ophyd.signal',
+               'ophyd.positioner',
                )
 
     config.setup_loggers(loggers)

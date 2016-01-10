@@ -3,7 +3,7 @@
 :mod:`ophyd.control.areadetector` - areaDetector
 ================================================
 
-.. module:: ophyd.controls.areadetector.detectors
+.. module:: ophyd.areadetector.detectors
  :synopsis:  `areaDetector`_ detector abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html

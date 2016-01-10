@@ -3,10 +3,10 @@ FilePlugins.
 
 To be used like so:
 
-    from ophyd.controls.areadetector.detectors import PerkinElmerDetector
-    from ophyd.controls.areadetector.plugins import HDF5Plugin
-    from ophyd.controls.areadetector.trigger_mixins import SingleTrigger
-    from ophyd.controls.areadetector.filestore_mixins import (
+    from ophyd.areadetector.detectors import PerkinElmerDetector
+    from ophyd.areadetector.plugins import HDF5Plugin
+    from ophyd.areadetector.trigger_mixins import SingleTrigger
+    from ophyd.areadetector.filestore_mixins import (
         FileStoreIterativeWrite)
 
     class MyPlugin(HDF5Plugin, FileStoreIterativeWrite):
