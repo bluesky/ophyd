@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 # This is used below by StatusBase.
 def _locked(func):
     "an decorator for running a method with the instance's lock"
-    @wraps
+    @wraps(func)
     def f(self, *args, **kwargs):
         with self._lock:
-            func(*args, **kwargs)
+            func(self, *args, **kwargs)
     return f
 
 
@@ -55,7 +55,6 @@ class StatusBase:
         if self._cb is not None:
             self._cb()
             self._cb = None
-
 
     @property
     def finished_cb(self):
