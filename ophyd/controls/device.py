@@ -477,13 +477,6 @@ class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return [getattr(self, name) for name in names]
 
-    def _done_acquiring(self, **kwargs):
-        '''Call when acquisition has completed.'''
-        self._run_subs(sub_type=self.SUB_ACQ_DONE,
-                       success=True, **kwargs)
-
-        self._reset_sub(self.SUB_ACQ_DONE)
-
     def trigger(self):
         """Start acquisition"""
         signals = self.trigger_signals
@@ -506,6 +499,13 @@ class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
         return status
+
+    def _done_acquiring(self, **kwargs):
+        '''Call when acquisition has completed.'''
+        self._run_subs(sub_type=self.SUB_ACQ_DONE,
+                       success=True, **kwargs)
+
+        self._reset_sub(self.SUB_ACQ_DONE)
 
     def stop(self):
         '''to be defined by subclass'''
