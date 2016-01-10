@@ -14,8 +14,8 @@ import time
 
 import epics
 
-from ..utils import (ReadOnlyError, TimeoutError, LimitError)
-from ..utils.epics_pvs import (pv_form,
+from .utils import (ReadOnlyError, TimeoutError, LimitError)
+from .utils.epics_pvs import (pv_form,
                                waveform_to_string, raise_if_disconnected)
 from .ophydobj import (OphydObject, DeviceStatus)
 

@@ -4,7 +4,7 @@ import logging
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
-from ..utils import TimeoutError, set_and_wait
+from .utils import TimeoutError, set_and_wait
 
 logger = logging.getLogger(__name__)
 
