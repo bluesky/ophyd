@@ -17,7 +17,7 @@ import numpy as np
 
 from .utils import (TimeoutError, DisconnectedError)
 from .positioner import Positioner
-from .device import OphydDevice
+from .device import Device
 
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ class PseudoSingle(Positioner):
         return self._master.move_single(self, pos, **kwargs)
 
 
-class PseudoPositioner(OphydDevice, Positioner):
+class PseudoPositioner(Device, Positioner):
     '''A pseudo positioner which can be comprised of multiple positioners
 
     Parameters
