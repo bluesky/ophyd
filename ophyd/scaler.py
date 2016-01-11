@@ -46,19 +46,4 @@ class EpicsScaler(Device):
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
-    def stage(self):
-        '''Stage the scaler for data acquisition'''
-        self._old_count_mode = self.count_mode.get()
-        self.count_mode.put(0)
-
-    def configure(self, d=None):
-        """Configure Scaler
-
-        Configure the scaler by setting autocount to off.
-        """
-        # TODO
-        return {}, {}
-
-    def unstage(self):
-        """Unstage from acquisition; reset the autocount status"""
-        self.count_mode.put(self._old_count_mode)
+        self.stage_sigs.extend([(self.count_mode, 0)])
