@@ -107,7 +107,7 @@ class Component:
 
 
 class DynamicDeviceComponent:
-    '''An OphydDevice component that dynamically creates a OphyDevice
+    '''An Device component that dynamically creates a OphyDevice
 
     Parameters
     ----------
@@ -180,7 +180,7 @@ class DynamicDeviceComponent:
             # to the read_attrs list
             read_attrs = inst_read.intersection(attrs)
 
-        cls = type(clsname, (OphydDevice, ), clsdict)
+        cls = type(clsname, (Device, ), clsdict)
         return cls(instance.prefix, read_attrs=list(read_attrs),
                    name='{}_{}'.format(instance.name, self.attr),
                    parent=instance)
@@ -320,7 +320,7 @@ class GenerateDatumInterface:
         pass
 
 
-class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
+class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be
@@ -547,7 +547,7 @@ class OphydDevice(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @classmethod
     def get_device_tuple(cls):
-        '''The device tuple type associated with an OphydDevice class
+        '''The device tuple type associated with an Device class
 
         This is a tuple representing the full state of all components and
         dynamic device sub-components.

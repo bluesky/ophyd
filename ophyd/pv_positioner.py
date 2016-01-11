@@ -14,14 +14,14 @@ import time
 from epics.pv import fmt_time
 
 from .utils import TimeoutError
-from .device import OphydDevice
+from .device import Device
 from .positioner import Positioner
 
 
 logger = logging.getLogger(__name__)
 
 
-class PVPositioner(OphydDevice, Positioner):
+class PVPositioner(Device, Positioner):
     '''A Positioner which is controlled using multiple user-defined signals
 
     Keyword arguments are passed through to the base class, Positioner

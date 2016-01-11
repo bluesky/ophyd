@@ -16,13 +16,13 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import raise_if_disconnected
 from .positioner import Positioner
-from .device import (OphydDevice, Component as Cpt)
+from .device import (Device, Component as Cpt)
 
 
 logger = logging.getLogger(__name__)
 
 
-class EpicsMotor(OphydDevice, Positioner):
+class EpicsMotor(Device, Positioner):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner

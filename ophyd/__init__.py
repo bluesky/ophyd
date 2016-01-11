@@ -17,7 +17,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 
 # Devices
 from .scaler import EpicsScaler
-from .device import (OphydDevice, Component, DynamicDeviceComponent)
+from .device import (Device, Component, DynamicDeviceComponent)
 
 # Areadetector-related
 from .areadetector import *

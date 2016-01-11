@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from ..signal import EpicsSignal
 from . import docs
-from ..device import (OphydDevice, Component)
+from ..device import (Device, Component)
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -61,7 +61,7 @@ def ad_group(cls, attr_suffix, **kwargs):
     return defn
 
 
-class ADBase(OphydDevice):
+class ADBase(Device):
     '''The AreaDetector base class
 
     This serves as the base for all detectors and plugins

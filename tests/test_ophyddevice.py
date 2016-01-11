@@ -2,7 +2,7 @@ import time
 import logging
 import unittest
 
-from ophyd import (OphydDevice, Component)
+from ophyd import (Device, Component)
 from ophyd.signal import Signal
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ def tearDownModule():
 
 
 def test_device_state():
-    d = OphydDevice('test')
+    d = Device('test')
 
     d.stage()
     old, new = d.configure()
@@ -35,7 +35,7 @@ def test_device_state():
 
 class DeviceTests(unittest.TestCase):
     def test_attrs(self):
-        class MyDevice(OphydDevice):
+        class MyDevice(Device):
             cpt1 = Component(FakeSignal, '1')
             cpt2 = Component(FakeSignal, '2')
             cpt3 = Component(FakeSignal, '3')
@@ -58,12 +58,12 @@ class DeviceTests(unittest.TestCase):
                          [d.cpt2.name])
 
     def test_complexdevice(self):
-        class SubDevice(OphydDevice):
+        class SubDevice(Device):
             cpt1 = Component(FakeSignal, '1')
             cpt2 = Component(FakeSignal, '2')
             cpt3 = Component(FakeSignal, '3')
 
-        class MyDevice(OphydDevice):
+        class MyDevice(Device):
             sub_cpt1 = Component(SubDevice, '1')
             sub_cpt2 = Component(SubDevice, '2')
             cpt3 = Component(FakeSignal, '3')

@@ -4,7 +4,7 @@ import logging
 from collections import OrderedDict
 
 from .signal import (EpicsSignal, EpicsSignalRO)
-from .device import OphydDevice
+from .device import Device
 from .device import (Component as C, DynamicDeviceComponent as DDC)
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ def _scaler_fields(attr_base, field_base, range_, **kwargs):
     return defn
 
 
-class EpicsScaler(OphydDevice):
+class EpicsScaler(Device):
     '''SynApps Scaler Record interface'''
 
     count = C(EpicsSignal, '.CNT', trigger_value=1)
