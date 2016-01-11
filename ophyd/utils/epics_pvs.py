@@ -375,5 +375,5 @@ def set_and_wait(signal, val, poll_time=0.1, timeout=10):
         current_value = signal.get()
         if ttime.time() > expiration_time:
             raise TimeoutError("Attempted to set %r to value %r and timed "
-                               "out after %r seconds." %
-                               (signal, val, timeout))
+                               "out after %r seconds. Current value is %r." %
+                               (signal, val, timeout, current_value))
