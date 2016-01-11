@@ -8,7 +8,7 @@ from copy import copy
 import epics
 
 from ophyd import EpicsMCA, DxpMCA
-from ophyd.controls.mca import add_rois
+from ophyd.mca import add_rois
 from ophyd.utils import enum, ReadOnlyError
 from .test_signal import FakeEpicsPV
 from . import main

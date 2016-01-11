@@ -4,7 +4,7 @@ import logging
 from collections import OrderedDict
 
 from .signal import (EpicsSignal, EpicsSignalRO)
-from .device import OphydDevice
+from .device import Device
 from .device import Component as C, DynamicDeviceComponent as DDC
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 
@@ -12,7 +12,7 @@ from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 logger = logging.getLogger(__name__)
 
 
-class ROI(OphydDevice):
+class ROI(Device):
 
     # 'name' is not an allowed attribute
     label = C(EpicsSignal, 'NM', lazy=True)
@@ -59,7 +59,7 @@ def add_rois(range_, **kwargs):
     return defn
 
 
-class EpicsMCA(OphydDevice):
+class EpicsMCA(Device):
     '''SynApps MCA Record interface'''
 
     start = C(EpicsSignal, 'Start')
@@ -105,7 +105,7 @@ class EpicsMCA(OphydDevice):
         self.mode.put(self._old_mode)
 
 
-class DxpMCA(OphydDevice):
+class DxpMCA(Device):
     preset_mode = C(EpicsSignal, 'PresetMode', string=True)
 
     # NOTE: all SignalWithRBV are "lazy=True"
