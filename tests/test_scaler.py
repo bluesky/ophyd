@@ -91,6 +91,14 @@ class SignalTests(unittest.TestCase):
 
         assert old == new
 
+        sca.stage()  # puts count_mode to 0
+        old, new = sca.configure({'count_mode': 1})
+        sca.unstage()
+
+        assert old.pop('count_mode') == 0
+        assert new.pop('count_mode') == 1
+        assert old == new  # everything else should be unchaged
+
     def test_signal_separate(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
                                  read_attrs=['channels.chan1'])
