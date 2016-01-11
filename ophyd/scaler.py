@@ -35,11 +35,10 @@ class EpicsScaler(Device):
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  monitor_attrs=None, name=None, parent=None, **kwargs):
         if read_attrs is None:
-            read_attrs = ['channels', 'preset_time']
+            read_attrs = ['channels', 'time']
 
         if configuration_attrs is None:
-            configuration_attrs = ['preset_time', 'auto_count_time', 'presets',
-                                   'gates']
+            configuration_attrs = ['preset_time', 'presets', 'gates']
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
