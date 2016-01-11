@@ -105,7 +105,7 @@ class EpicsMCA(Device):
         self.mode.put(self._old_mode)
 
 
-class DxpMCA(Device):
+class EpicsDXP(Device):
     preset_mode = C(EpicsSignal, 'PresetMode', string=True)
 
     # NOTE: all SignalWithRBV are "lazy=True"
