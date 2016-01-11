@@ -10,6 +10,8 @@ import epics
 from ophyd import scaler
 from ophyd.utils import enum
 from .test_signal import FakeEpicsPV
+from .test_utils import assert_OD_equal_ignore_ts
+
 
 ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 
@@ -46,6 +48,9 @@ class SignalTests(unittest.TestCase):
     def test_scaler_functionality(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
                                  read_attrs=['channels'])
+        # hack the fake PV to know the enums
+        if not REAL_SCALER:
+            sca.count_mode._read_pv.enum_strs = ['OneShot', 'AutoCount']
         sca.wait_for_connection()
 
         sca.preset_time.put(5.2)
@@ -86,8 +91,20 @@ class SignalTests(unittest.TestCase):
         str(sca)
 
         sca.stage()
-        sca.configure()
+        old, new = sca.configure({})
         sca.unstage()
+
+        assert_OD_equal_ignore_ts(old, new)
+
+        sca.stage()
+        old_preset_time = sca.preset_time.get()
+        old, new = sca.configure({'preset_time': 7})
+        sca.unstage()
+
+        assert old.pop('scaler_preset_time')['value'] == old_preset_time
+        assert new.pop('scaler_preset_time')['value'] == 7
+        assert_OD_equal_ignore_ts(old, new)
+
 
     def test_signal_separate(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',

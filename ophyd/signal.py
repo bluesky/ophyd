@@ -261,6 +261,12 @@ class EpicsSignal(Signal):
         '''The precision of the read PV, as reported by EPICS'''
         return self._read_pv.precision
 
+    @property
+    @raise_if_disconnected
+    def enum_strs(self):
+        """List of strings if PV is an enum type"""
+        return self._read_pv.enum_strs
+
     def wait_for_connection(self, timeout=1.0):
         if not self._read_pv.connected:
             if not self._read_pv.wait_for_connection(timeout=timeout):

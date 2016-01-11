@@ -18,7 +18,8 @@ import functools
 
 import epics
 
-from .errors import MinorAlarmError, get_alarm_class, DisconnectedError
+from .errors import (MinorAlarmError, get_alarm_class, DisconnectedError,
+                     TimeoutError)
 
 __all__ = ['split_record_field',
            'strip_field',
@@ -343,16 +344,51 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
-def set_and_wait(signal, val, time=0.1):
+def set_and_wait(signal, val, poll_time=0.1, timeout=10):
     """
     Set a signal to a value and wait until it reads correctly.
 
     There are cases where this would not work well, so it should be revisited.
+
+    Parameters
+    ----------
+    signal : EpicsSignal (or any object with `get` and `put`)
+    val : object
+        value to set signal to
+    poll_time : float
+        how soon to check whether the value has been successfully set
+    timeout : float
+        maximum time to wait for value to be successfully set
+
+    Raises
+    ------
+    TimeoutError if timeout is exceeded
     """
     signal.put(val)
+    expiration_time = ttime.time() + timeout
     current_value = signal.get()
-    while current_value != val:
+    try:
+        es = signal.enum_strs
+    except AttributeError:
+        es = ()
+
+    while not _compare_maybe_enum(val, current_value, es):
         logger.info("Waiting for %s to be set from %r to %r...",
                     signal.name, current_value, val)
-        ttime.sleep(time)
+        ttime.sleep(poll_time)
+        poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
+        if ttime.time() > expiration_time:
+            raise TimeoutError("Attempted to set %r to value %r and timed "
+                               "out after %r seconds. Current value is %r." %
+                               (signal, val, timeout, current_value))
+
+
+def _compare_maybe_enum(a, b, enums):
+    if not enums:
+        return a == b
+    if not isinstance(a, str):
+        a = enums[a]
+    if not isinstance(b, str):
+        b = enums[b]
+    return a == b

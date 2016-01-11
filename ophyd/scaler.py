@@ -35,30 +35,14 @@ class EpicsScaler(Device):
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  monitor_attrs=None, name=None, parent=None, **kwargs):
         if read_attrs is None:
-            read_attrs = ['channels', 'preset_time']
+            read_attrs = ['channels', 'time']
 
         if configuration_attrs is None:
-            configuration_attrs = ['preset_time', 'auto_count_time', 'presets',
-                                   'gates']
+            configuration_attrs = ['preset_time', 'presets', 'gates']
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
-    def stage(self):
-        '''Stage the scaler for data acquisition'''
-        self._old_count_mode = self.count_mode.get()
-        self.count_mode.put(0)
-
-    def configure(self, d=None):
-        """Configure Scaler
-
-        Configure the scaler by setting autocount to off.
-        """
-        # TODO
-        return {}, {}
-
-    def unstage(self):
-        """Unstage from acquisition; reset the autocount status"""
-        self.count_mode.put(self._old_count_mode)
+        self.stage_sigs.extend([(self.count_mode, 0)])
