@@ -56,7 +56,7 @@ install:
   # INSTALL OPHYD
   - conda install numpy pyepics prettytable filestore six ipython pyolog
   - pip install coveralls pytest pytest-cov
-  - python setup.py install
+  - python setup.py develop
 
   # setup some path environment variables for epics
   - export PATH=$PATH:$EPICS_BASE/bin/$EPICS_HOST_ARCH
