@@ -367,6 +367,10 @@ def set_and_wait(signal, val, poll_time=0.1, timeout=10):
     signal.put(val)
     expiration_time = ttime.time() + timeout
     current_value = signal.get()
+    # If signal is set to be a string, even ints will readback as strings.
+    # Convert val for comparison with readback.
+    if signal._string:
+        val = str(val)
     while current_value != val:
         logger.info("Waiting for %s to be set from %r to %r...",
                     signal.name, current_value, val)
