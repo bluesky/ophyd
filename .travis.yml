@@ -75,7 +75,7 @@ script:
   - python -c "import epics.ca; print(epics.ca.find_libca())"
 
   # running tests
-  - py.test --cov=samplez --cov-report term-missing
+  - py.test --cov=ophyd --cov-report term-missing
 
 after_success:
     - env
