@@ -352,7 +352,7 @@ def set_and_wait(signal, val, poll_time=0.1, timeout=10):
 
     Parameters
     ----------
-    signal : EpicsSignal (or any object with `get` and `put`
+    signal : EpicsSignal (or any object with `get` and `put`)
     val : object
         value to set signal to
     poll_time : float
@@ -367,7 +367,10 @@ def set_and_wait(signal, val, poll_time=0.1, timeout=10):
     signal.put(val)
     expiration_time = ttime.time() + timeout
     current_value = signal.get()
-    es = signal.enum_strs
+    try:
+        es = signal.enum_strs
+    except AttributeError:
+        es = ()
 
     while not _compare_maybe_enum(val, current_value, es):
         logger.info("Waiting for %s to be set from %r to %r...",

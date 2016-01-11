@@ -73,10 +73,6 @@ class Signal(OphydObject):
         '''Subclasses should override this'''
         return True
 
-    @property
-    def enum_strs(self):
-        return self._read_pv.enum_strs
-
     def wait_for_connection(self, timeout=0.0):
         '''Wait for the underlying signals to initialize or connect'''
         pass
@@ -264,6 +260,12 @@ class EpicsSignal(Signal):
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
         return self._read_pv.precision
+
+    @property
+    @raise_if_disconnected
+    def enum_strs(self):
+        """List of strings if PV is an enum type"""
+        return self._read_pv.enum_strs
 
     def wait_for_connection(self, timeout=1.0):
         if not self._read_pv.connected:
