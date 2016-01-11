@@ -73,6 +73,10 @@ class Signal(OphydObject):
         '''Subclasses should override this'''
         return True
 
+    @property
+    def enum_strs(self):
+        return self._read_pv.enum_strs
+
     def wait_for_connection(self, timeout=0.0):
         '''Wait for the underlying signals to initialize or connect'''
         pass

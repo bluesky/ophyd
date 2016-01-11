@@ -367,11 +367,9 @@ def set_and_wait(signal, val, poll_time=0.1, timeout=10):
     signal.put(val)
     expiration_time = ttime.time() + timeout
     current_value = signal.get()
-    # If signal is set to be a string, even ints will readback as strings.
-    # Convert val for comparison with readback.
-    if signal._string:
-        val = str(val)
-    while current_value != val:
+    es = signal.enum_strs
+
+    while not _compare_maybe_enum(val, current_value, es):
         logger.info("Waiting for %s to be set from %r to %r...",
                     signal.name, current_value, val)
         ttime.sleep(poll_time)
@@ -381,3 +379,13 @@ def set_and_wait(signal, val, poll_time=0.1, timeout=10):
             raise TimeoutError("Attempted to set %r to value %r and timed "
                                "out after %r seconds. Current value is %r." %
                                (signal, val, timeout, current_value))
+
+
+def _compare_maybe_enum(a, b, enums):
+    if not enums:
+        return a == b
+    if not isinstance(a, str):
+        a = enums[a]
+    if not isinstance(b, str):
+        b = enums[b]
+    return a == b

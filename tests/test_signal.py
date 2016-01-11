@@ -28,7 +28,7 @@ class FakeEpicsPV(object):
 
     def __init__(self, pvname, form=None,
                  callback=None, connection_callback=None,
-                 auto_monitor=True,
+                 auto_monitor=True, enum_strs=None,
                  **kwargs):
 
         self._pvname = pvname
@@ -38,7 +38,7 @@ class FakeEpicsPV(object):
         self._auto_monitor = auto_monitor
         self._value = self.fake_values[0]
         self._connected = False
-
+        self.enum_strs = enum_strs
         FakeEpicsPV._pv_idx += 1
         self._idx = FakeEpicsPV._pv_idx
 
@@ -171,9 +171,16 @@ class FakeEpicsPV(object):
     def get(self, as_string=False, use_numpy=False,
             use_monitor=False):
         if as_string:
+
             if isinstance(self.value, list):
+                if self.enum_strs:
+                    return [self.enum_strs[_] for _ in self.value]
                 return list(self.value)
+            if isinstance(self.value, str):
+                return self.value
             else:
+                if self.enum_strs:
+                    return self.enum_strs[self.value]
                 return str(self.value)
         elif use_numpy:
             return np.array(self.value)

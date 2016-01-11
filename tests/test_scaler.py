@@ -48,6 +48,9 @@ class SignalTests(unittest.TestCase):
     def test_scaler_functionality(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
                                  read_attrs=['channels'])
+        # hack the fake PV to know the enums
+        if not REAL_SCALER:
+            sca.count_mode._read_pv.enum_strs = ['OneShot', 'AutoCount']
         sca.wait_for_connection()
 
         sca.preset_time.put(5.2)
