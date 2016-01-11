@@ -89,7 +89,7 @@ class ErrorsTest(unittest.TestCase):
 
 def assert_OD_equal_ignore_ts(a, b):
     for (k1, v1), (k2, v2) in zip(a.items(), b.items()):
-        assert k1 == k2 and v1['value'] == v2['value']
+        assert (k1 == k2) and (v1['value'] == v2['value'])
 
 
 from . import main
