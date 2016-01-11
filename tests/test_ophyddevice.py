@@ -29,7 +29,8 @@ def test_device_state():
     d = Device('test')
 
     d.stage()
-    old, new = d.configure()
+    old, new = d.configure({})
+    assert old == new
     d.unstage()
 
 

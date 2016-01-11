@@ -559,7 +559,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         # TODO
         return {}
 
-    def configure(self, d=None):
+    def configure(self, d):
         '''Configure the device for something during a run
 
         This default implementation allows the user to change any of the
@@ -577,8 +577,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         (old, new) tuple of dictionaries
         Where old and new are pre- and post-configure configuration states.
         '''
-        if d is None:
-            d = {}
         old = self.read_configuration()
         for key, val in d.items():
             if key not in self.configuration_attrs:

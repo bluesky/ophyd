@@ -86,8 +86,10 @@ class SignalTests(unittest.TestCase):
         str(sca)
 
         sca.stage()
-        sca.configure()
+        old, new = sca.configure({})
         sca.unstage()
+
+        assert old == new
 
     def test_signal_separate(self):
         sca = scaler.EpicsScaler(scalers[0], name='scaler',
