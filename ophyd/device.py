@@ -587,8 +587,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                     raise ValueError("%s is not one of the "
                                      "configuration_fields, so it cannot be "
                                      "changed using configure" % key)
-            # TODO use `set_and_wait` once it is merged
-            getattr(self, key).put(val)
+            set_and_wait(getattr(self, key), val)
         new = self.read_configuration()
         return old, new
 
