@@ -44,8 +44,8 @@ def add_rois(range_, **kwargs):
 
        By default, an EpicsMCA is initialized with all 32 rois.
        These provide the following Components as EpicsSignals (N=[0,31]):
-       EpicsMCA.rois.roiN.(label,count,net_count,preset_cnt, is_preset, bkgnd_chans,
-       hi_chan, lo_chan)
+       EpicsMCA.rois.roiN.(label,count,net_count,preset_cnt, is_preset,
+       bkgnd_chans, hi_chan, lo_chan)
        '''
     defn = OrderedDict()
 
@@ -72,7 +72,7 @@ class EpicsMCA(Device):
     background = C(EpicsSignalRO, '.BG')
     mode = C(EpicsSignal, '.MODE', string=True)
 
-    rois = DDC(add_rois(range(0,31)))
+    rois = DDC(add_rois(range(0, 31)))
 
     def __init__(self, prefix, *, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
@@ -92,17 +92,11 @@ class EpicsMCA(Device):
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
+        # could arguably be made a configuration_attr instead...
+        self.stage_sigs.extend([(self.mode, 'PHA')])
+
     def stop(self):
         self._stop.put(1)
-
-    def stage(self):
-        '''Stage the MCA for data acquisition'''
-        self._old_mode = self.mode.get()
-        self.mode.put(0)
-
-    def unstage(self):
-        '''Unstage from acquisition; restore the pre-scan mode'''
-        self.mode.put(self._old_mode)
 
 
 class EpicsDXP(Device):

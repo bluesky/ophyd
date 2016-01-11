@@ -13,8 +13,10 @@ from ophyd.utils import enum, ReadOnlyError
 from .test_signal import FakeEpicsPV
 from . import main
 
-MCAMode = enum(PHA=0, MCS=1, List=2)
-DxpPresetMode = enum(No_preset=0, Real_time=1, Live_time=2)
+MCAMode = enum(PHA='PHA', MCS='MCS', List='List')
+DxpPresetMode = enum(No_preset='No preset',
+                     Real_time='Real time',
+                     Live_time='Live time')
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,7 @@ class MCATests(unittest.TestCase):
 
     def test_read_attrs(self):
         r_attrs = MCATests.vtx.read_attrs
-        self.assertEquals(r_attrs, 
+        self.assertEquals(r_attrs,
                           ['spectrum', 'rois.roi1.count', 'rois.roi2.count'])
 
     def test_describe(self):
