@@ -91,12 +91,13 @@ class SignalTests(unittest.TestCase):
 
         assert old == new
 
-        sca.stage()  # puts count_mode to 0
-        old, new = sca.configure({'count_mode': 1})
+        sca.stage()
+        old_preset_time = sca.preset_time.get()
+        old, new = sca.configure({'preset_time': 7})
         sca.unstage()
 
-        assert old.pop('count_mode') == 0
-        assert new.pop('count_mode') == 1
+        assert old.pop('preset_time') == old_preset_time
+        assert new.pop('preset_time') == 7
         assert old == new  # everything else should be unchaged
 
     def test_signal_separate(self):
