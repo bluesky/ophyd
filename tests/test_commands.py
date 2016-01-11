@@ -5,7 +5,7 @@ import unittest
 from contextlib import contextmanager
 
 import ophyd.commands
-from ophyd.controls import EpicsMotor
+from ophyd import EpicsMotor
 from ophyd.commands import (mov, movr, set_pos, wh_pos, set_lm)
 from ophyd.commands import (log_pos, log_pos_diff, log_pos_mov,
                             get_all_positioners, get_logbook, setup_ophyd)

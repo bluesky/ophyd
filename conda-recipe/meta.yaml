@@ -46,8 +46,7 @@ test:
   # Python imports
   imports:
     - ophyd
-    - ophyd.controls
-    - ophyd.controls.areadetector
+    - ophyd.areadetector
     - ophyd.utils
 
   #commands:

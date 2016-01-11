@@ -1,8 +1,8 @@
 import numpy as np
 
-from ophyd.controls import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
-from ophyd.controls import SimDetector
-from ophyd.controls import ProsilicaDetector
+from ophyd import EpicsMotor, EpicsScaler, PVPositioner, EpicsSignal
+from ophyd import SimDetector
+from ophyd import ProsilicaDetector
 from ophyd.userapi import *
 import logging
 

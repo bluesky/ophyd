@@ -11,7 +11,7 @@ from __future__ import print_function
 import logging
 import time
 
-from ..utils import TimeoutError
+from .utils import TimeoutError
 from .ophydobj import (MoveStatus, OphydObject)
 
 

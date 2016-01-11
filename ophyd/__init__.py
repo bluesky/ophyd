@@ -3,11 +3,28 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-from .controls import *
+from . import *
+
+
+# Signals
+from .signal import (Signal, EpicsSignal, EpicsSignalRO)
+
+# Positioners
+from .positioner import Positioner
+from .epics_motor import EpicsMotor
+from .pv_positioner import (PVPositioner, PVPositionerPC)
+from .pseudopos import (PseudoPositioner, PseudoSingle)
+
+# Devices
+from .scaler import EpicsScaler
+from .device import (OphydDevice, Component, DynamicDeviceComponent)
+
+# Areadetector-related
+from .areadetector import *
+from ._version import get_versions
 
 from .commands import (mov, movr, set_pos, wh_pos, set_lm, log_pos,
                        log_pos_diff, log_pos_mov)
 
-from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions

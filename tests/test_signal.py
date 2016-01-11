@@ -14,7 +14,7 @@ from numpy.testing import assert_array_equal
 
 import epics
 
-from ophyd.controls.signal import (Signal, EpicsSignal, EpicsSignalRO)
+from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO)
 from ophyd.utils import (ReadOnlyError, TimeoutError)
 
 logger = logging.getLogger(__name__)

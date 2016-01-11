@@ -5,7 +5,7 @@ from __future__ import print_function
 import time
 
 import config
-from ophyd.controls import (EpicsMotor, PseudoPositioner)
+from ophyd import (EpicsMotor, PseudoPositioner)
 
 
 logger = config.logger

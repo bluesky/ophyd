@@ -7,7 +7,7 @@ from copy import copy
 
 import epics
 
-from ophyd.controls import scaler
+from ophyd import scaler
 from ophyd.utils import enum
 from .test_signal import FakeEpicsPV
 

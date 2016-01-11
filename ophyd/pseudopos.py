@@ -15,7 +15,7 @@ from collections import (OrderedDict, namedtuple)
 
 import numpy as np
 
-from ..utils import (TimeoutError, DisconnectedError)
+from .utils import (TimeoutError, DisconnectedError)
 from .positioner import Positioner
 from .device import OphydDevice
 

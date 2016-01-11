@@ -13,8 +13,8 @@ import logging
 from epics.pv import fmt_time
 
 from .signal import (EpicsSignal, EpicsSignalRO)
-from ..utils import DisconnectedError
-from ..utils.epics_pvs import raise_if_disconnected
+from .utils import DisconnectedError
+from .utils.epics_pvs import raise_if_disconnected
 from .positioner import Positioner
 from .device import (OphydDevice, Component as Cpt)
 

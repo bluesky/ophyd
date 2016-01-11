@@ -1,6 +1,6 @@
 import logging
 
-from ...utils import enum
+from ..utils import enum
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal)

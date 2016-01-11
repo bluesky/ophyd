@@ -4,7 +4,7 @@ import sys
 import re
 from collections import namedtuple
 
-from ...utils.epics_pvs import records_from_db
+from ..utils.epics_pvs import records_from_db
 from .detectors import AreaDetector
 from .base import EpicsSignalWithRBV
 

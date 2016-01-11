@@ -10,9 +10,9 @@ except ImportError:
 
 import epics
 
-from ophyd.controls import (SimDetector, TIFFPlugin, HDF5Plugin)
-from ophyd.controls.areadetector.util import stub_templates
-from ophyd.controls.device import (Component as Cpt, )
+from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin)
+from ophyd.areadetector.util import stub_templates
+from ophyd.device import (Component as Cpt, )
 
 logger = logging.getLogger(__name__)
 

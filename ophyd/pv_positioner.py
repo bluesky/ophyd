@@ -13,7 +13,7 @@ import time
 
 from epics.pv import fmt_time
 
-from ..utils import TimeoutError
+from .utils import TimeoutError
 from .device import OphydDevice
 from .positioner import Positioner
 

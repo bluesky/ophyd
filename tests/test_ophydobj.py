@@ -4,7 +4,7 @@ import unittest
 # import copy
 
 from unittest.mock import Mock
-from ophyd.controls.ophydobj import (OphydObject, StatusBase,
+from ophyd.ophydobj import (OphydObject, StatusBase,
                                      DetectorStatus, DeviceStatus)
 
 from . import main

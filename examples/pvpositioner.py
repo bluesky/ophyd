@@ -5,9 +5,9 @@ import time
 import epics
 
 import config
-from ophyd.controls import (PVPositioner, PVPositionerPC)
-from ophyd.controls.signal import (EpicsSignal, EpicsSignalRO)
-from ophyd.controls.device import (Component as C)
+from ophyd import (PVPositioner, PVPositionerPC)
+from ophyd.signal import (EpicsSignal, EpicsSignalRO)
+from ophyd.device import (Component as C)
 
 logger = None
 
@@ -77,7 +77,7 @@ def done_moving(**kwargs):
 def test():
     global logger
 
-    loggers = ('ophyd.controls',
+    loggers = ('ophyd',
                )
 
     config.setup_loggers(loggers)
