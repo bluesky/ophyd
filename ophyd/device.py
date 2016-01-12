@@ -209,6 +209,8 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
+        if 'name' in clsdict:
+            raise TypeError("'name' is not an allowed attribute")
         clsobj._sig_attrs = OrderedDict()
 
         # map component classes to their attribute names from this class
