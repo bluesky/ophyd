@@ -54,14 +54,23 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         if write_file_path is None:
             raise ValueError("write_file_path is required")
         self.write_file_path = write_file_path
-        if read_file_path is None:
-            self.read_file_path = write_file_path
-        else:
-            self.read_file_path = read_file_path
+        self._read_file_path = read_file_path
         super().__init__(*args, **kwargs)
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
+
+    @property
+    def read_file_path(self):
+        "Returns write_file_path if read_file_path is not set"
+        if self._read_file_path is None:
+            return write_file_path
+        else:
+            return self._read_file_path
+
+    @read_file_path.setter
+    def read_file_path(self, val):
+        self._read_file_path = val
 
     def stage(self):
         self._point_counter = count()
