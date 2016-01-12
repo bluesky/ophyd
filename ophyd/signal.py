@@ -180,6 +180,14 @@ class Signal(OphydObject):
                             'dtype': 'number',
                             'shape': []}}
 
+    def read_configuration(self):
+        "Subclasses may customize this."
+        return {}
+
+    def describe_configuration(self):
+        "Subclasses may customize this."
+        return {}
+
 
 class EpicsSignal(Signal):
     '''An EPICS signal, comprised of either one or two EPICS PVs
