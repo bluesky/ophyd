@@ -83,7 +83,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         path = os.path.join(*(date.isoformat().split('-') + ['']))
         full_write_path = os.path.join(self.write_file_path, path)
         full_read_path = os.path.join(self.read_file_path, path)
-        self.file_template.put('%s%s_%6.6d.h5')
         ssigs = [
             (self.enable, 1),
             (self.auto_increment, 1),
@@ -101,14 +100,12 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.
-        fn = self.file_template.get() % (full_read_path, self._filename,
-                                         self.file_number.get())
+        self._fn = self.file_template.get() % (full_read_path,
+                                               self._filename,
+                                               self.file_number.get())
 
         if not self.file_path_exists.get():
             raise IOError("Path %s does not exist on IOC.", self.file_path)
-
-        res_kwargs = {'frame_per_point': self.num_captured.get()}
-        self._resource = fs.insert_resource('AD_HDF5', fn, res_kwargs)
 
     def generate_datum(self, key):
         "Generate a uid and cache it with its key for later insertion."
@@ -143,6 +140,25 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         return super().unstage()
 
 
+class FileStoreHDF5(FileStoreBase):
+    def stage(self):
+        self.stage_sigs.extend([(self.file_template, '%s%s_%6.6d.h5')])
+        super().stage()
+        res_kwargs = {'frame_per_point': self.num_captured.get()}
+        self._resource = fs.insert_resource('AD_HDF5', self._fn, res_kwargs)
+
+
+class FileStoreTIFF(FileStoreBase):
+    # TODO num_captured above, num_images here -- which is correct?
+    def stage(self):
+        self.stage_sigs.extend([(self.file_template, '%s%s_%6.6d.tiff')])
+        super().stage()
+        res_kwargs = {'template': self.file_template.get(),
+                      'filename': self.file_name.get(),
+                      'frame_per_point': self.num_images.get()}
+        self._resource = fs.insert_resource('AD_TIFF', self._fn, res_kwargs)
+
+
 class FileStoreIterativeWrite(FileStoreBase):
     "Save records to filestore as they are generated."
     def generate_datum(self, key):
@@ -152,7 +168,7 @@ class FileStoreIterativeWrite(FileStoreBase):
         return uid
 
 
-class FileStoreBulkEntry(FileStoreBase):
+class FileStoreBulkWrite(FileStoreBase):
     "Cache records as they are created and save them all at the end."
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -173,3 +189,21 @@ class FileStoreBulkEntry(FileStoreBase):
                 kwargs = self._datum_kwargs_maps[uid]
                 fs.insert_datum(self._resource, uid, kwargs)
         return super().unstage()
+
+
+# ready-to-use combinations
+
+class FileStoreHDF5IterativeWrite(FileStoreHDF5, FileStoreIterativeWrite):
+    pass
+
+
+class FileStoreHDF5BulkWrite(FileStoreHDF5, FileStoreBulkWrite):
+    pass
+
+
+class FileStoreTIFFIterativeWrite(FileStoreTIFF, FileStoreIterativeWrite):
+    pass
+
+
+class FileStoreTIFFBulkWrite(FileStoreTIFF, FileStoreBulkWrite):
+    pass
