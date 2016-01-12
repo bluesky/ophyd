@@ -78,3 +78,9 @@ class DeviceTests(unittest.TestCase):
                           ['cpt1', 'cpt2', 'cpt3'])
         self.assertEquals(device.sub_cpt2.signal_names,
                           ['cpt1', 'cpt2', 'cpt3'])
+
+    def test_name_shadowing(self):
+        illegal_class_defn = "class D(Device):\n    name = Component(FakeSignal, '1')"
+        self.assertRaises(TypeError, exec, illegal_class_defn,
+                          {'Device': Device, 'Component': Component,
+                           'FakeSignal': FakeSignal})
