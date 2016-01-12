@@ -15,7 +15,7 @@ To be used like so:
     dest = '/tmp'  # in production, use a directory on your system -- not /tmp
 
     class MyDetector(PerkinElmerDetector, SingleTrigger):  # for example
-        file_plugin = MyPlugin(suffix='HDF1:', write_file_path=dest)
+        file_plugin = MyPlugin(suffix='HDF1:', write_path_template=dest)
 
     det = MyDetector(...)
 """
@@ -47,30 +47,35 @@ def new_short_uid():
 
 
 class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
-    "Base class for FileStore mixin classes"
-    def __init__(self, *args, write_file_path=None, read_file_path=None,
+    """Base class for FileStore mixin classes
+
+    The `write_path_template` and `read_path_template` are formatted using
+    `datetime.strftime`, which accepts the standard tokens, such as
+    %Y-%m-%d.
+    """
+    def __init__(self, *args, write_path_template=None, read_path_template=None,
                  **kwargs):
         # TODO Can we make these args? Depends on plugin details.
-        if write_file_path is None:
-            raise ValueError("write_file_path is required")
-        self.write_file_path = write_file_path
-        self._read_file_path = read_file_path
+        if write_path_template is None:
+            raise ValueError("write_path_template is required")
+        self.write_path_template = write_path_template
+        self._read_path_template = read_path_template
         super().__init__(*args, **kwargs)
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
 
     @property
-    def read_file_path(self):
-        "Returns write_file_path if read_file_path is not set"
-        if self._read_file_path is None:
-            return write_file_path
+    def read_path_template(self):
+        "Returns write_path_template if read_path_template is not set"
+        if self._read_path_template is None:
+            return write_path_template
         else:
-            return self._read_file_path
+            return self._read_path_template
 
-    @read_file_path.setter
-    def read_file_path(self, val):
-        self._read_file_path = val
+    @read_path_template.setter
+    def read_path_template(self, val):
+        self._read_path_template = val
 
     def stage(self):
         self._point_counter = count()
@@ -78,11 +83,9 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids.clear()
         # Make a filename.
         self._filename = new_short_uid()
-        date = datetime.now().date()
-        # AD requires a trailing slash, hence the [''] here
-        path = os.path.join(*(date.isoformat().split('-') + ['']))
-        full_write_path = os.path.join(self.write_file_path, path)
-        full_read_path = os.path.join(self.read_file_path, path)
+        formatter = datetime.now().strftime
+        write_path = formatter(self.write_path_template)
+        read_path = formatter(self.read_path_template)
         ssigs = [
             (self.enable, 1),
             (self.auto_increment, 1),
@@ -91,7 +94,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             (self.auto_save, 1),
             (self.num_capture, 0),
             (self.file_write_mode, 1),  # 'capture' mode -- for AD 1.x
-            (self.file_path, full_write_path),
+            (self.file_path, write_path),
             (self.file_name, self._filename),
             (self.capture, 1),
         ]
@@ -100,7 +103,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.
-        self._fn = self.file_template.get() % (full_read_path,
+        self._fn = self.file_template.get() % (read_path,
                                                self._filename,
                                                self.file_number.get())
 
