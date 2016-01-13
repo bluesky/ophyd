@@ -209,8 +209,14 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
-        if 'name' in clsdict:
-            raise TypeError("'name' is not an allowed attribute")
+        RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
+                          'read_attrs', 'configuration_attrs', 'monitor_attrs',
+                          '_sig_attrs', '_sub_devices']
+        for attr in RESERVED_ATTRS:
+            if attr in clsdict:
+                raise TypeError("The attribute name %r is reserved for "
+                                "use by the Device class. Choose a different "
+                                "name." % attr)
         clsobj._sig_attrs = OrderedDict()
 
         # map component classes to their attribute names from this class

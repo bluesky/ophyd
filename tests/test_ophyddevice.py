@@ -80,7 +80,11 @@ class DeviceTests(unittest.TestCase):
                           ['cpt1', 'cpt2', 'cpt3'])
 
     def test_name_shadowing(self):
-        illegal_class_defn = "class D(Device):\n    name = Component(FakeSignal, '1')"
-        self.assertRaises(TypeError, exec, illegal_class_defn,
-                          {'Device': Device, 'Component': Component,
-                           'FakeSignal': FakeSignal})
+        RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
+                          'read_attrs', 'configuration_attrs', 'monitor_attrs',
+                          '_sig_attrs', '_sub_devices']
+
+        type('a', (Device,), {'a': None})  # legal class definition
+        # Illegal class definitions:
+        for attr in RESERVED_ATTRS:
+            self.assertRaises(TypeError, type, 'a', (Device,), {attr: None})
