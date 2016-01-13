@@ -225,17 +225,11 @@ class ComponentMeta(type):
                 continue
 
             for attr, cpt in base._sig_attrs.items():
-                if attr in clsobj._sig_attrs:
-                    raise ValueError('Attribute name exists in more than one '
-                                     'base class: {}'.format(attr))
                 clsobj._sig_attrs[attr] = cpt
 
         # map component classes to their attribute names from this class
         for attr, value in clsdict.items():
             if isinstance(value, (Component, DynamicDeviceComponent)):
-                if attr in clsobj._sig_attrs:
-                    raise ValueError('Can not override components: {}'
-                                     .format(attr))
                 clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
