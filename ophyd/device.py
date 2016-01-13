@@ -234,7 +234,8 @@ class ComponentMeta(type):
         for attr, value in clsdict.items():
             if isinstance(value, (Component, DynamicDeviceComponent)):
                 if attr in clsobj._sig_attrs:
-                    print('overriding', attr)
+                    raise ValueError('Can not override components: {}'
+                                     .format(attr))
                 clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
