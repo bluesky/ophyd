@@ -78,3 +78,13 @@ class DeviceTests(unittest.TestCase):
                           ['cpt1', 'cpt2', 'cpt3'])
         self.assertEquals(device.sub_cpt2.signal_names,
                           ['cpt1', 'cpt2', 'cpt3'])
+
+    def test_name_shadowing(self):
+        RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
+                          'read_attrs', 'configuration_attrs', 'monitor_attrs',
+                          '_sig_attrs', '_sub_devices']
+
+        type('a', (Device,), {'a': None})  # legal class definition
+        # Illegal class definitions:
+        for attr in RESERVED_ATTRS:
+            self.assertRaises(TypeError, type, 'a', (Device,), {attr: None})
