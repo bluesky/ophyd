@@ -209,6 +209,7 @@ class ComponentMeta(type):
 
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
+
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
                           'read_attrs', 'configuration_attrs', 'monitor_attrs',
                           '_sig_attrs', '_sub_devices']
@@ -217,13 +218,18 @@ class ComponentMeta(type):
                 raise TypeError("The attribute name %r is reserved for "
                                 "use by the Device class. Choose a different "
                                 "name." % attr)
+
         clsobj._sig_attrs = OrderedDict()
+        for base in reversed(bases):
+            if not hasattr(base, '_sig_attrs'):
+                continue
+
+            for attr, cpt in base._sig_attrs.items():
+                clsobj._sig_attrs[attr] = cpt
 
         # map component classes to their attribute names from this class
         for attr, value in clsdict.items():
             if isinstance(value, (Component, DynamicDeviceComponent)):
-                if attr in clsobj._sig_attrs:
-                    print('overriding', attr)
                 clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
@@ -232,11 +238,7 @@ class ComponentMeta(type):
 
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.keys())
-        for b in bases:
-            try:
-                clsobj.signal_names.extend(b.signal_names)
-            except AttributeError:
-                pass
+
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
                                           rename=True)
@@ -254,7 +256,6 @@ class ComponentMeta(type):
             clsobj._sub_devices.append(attr)
 
         return clsobj
-
 
 
 # These stub 'Interface' classes are the apex of the mro heirarchy for

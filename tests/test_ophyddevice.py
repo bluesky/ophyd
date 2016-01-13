@@ -64,9 +64,12 @@ class DeviceTests(unittest.TestCase):
             cpt2 = Component(FakeSignal, '2')
             cpt3 = Component(FakeSignal, '3')
 
+        class SubSubDevice(SubDevice):
+            pass
+
         class MyDevice(Device):
             sub_cpt1 = Component(SubDevice, '1')
-            sub_cpt2 = Component(SubDevice, '2')
+            sub_cpt2 = Component(SubSubDevice, '2')
             cpt3 = Component(FakeSignal, '3')
 
         device = MyDevice('prefix')
