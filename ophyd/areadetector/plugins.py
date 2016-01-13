@@ -63,7 +63,8 @@ class PluginBase(ADBase):
         # Turn array callbacks on during staging.
         # Without this, no array data is sent to the plugins.
         super().__init__(*args, **kwargs)
-        self.stage_sigs.extend([(self.parent.cam.array_callbacks, 1)])
+        self.stage_sigs.extend([(self.parent.cam.array_callbacks, 1),
+                               ])
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
@@ -81,6 +82,11 @@ class PluginBase(ADBase):
     pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
     pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
+
+    def stage(self):
+        # Ensure the plugin is enabled. We do not disable it on unstage.
+        set_and_wait(self.enable, 'Enable')
+        super().stage()
 
     @property
     def array_pixels(self):
