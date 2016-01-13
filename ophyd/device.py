@@ -263,7 +263,6 @@ class ComponentMeta(type):
         return clsobj
 
 
-
 # These stub 'Interface' classes are the apex of the mro heirarchy for
 # their respective methods. They make multiple interitance more
 # forgiving, and let us define classes that customize these methods
