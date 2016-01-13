@@ -178,13 +178,13 @@ class Engine(object):
         return self._engine.pseudo_axis_names_get()
 
     @property
-    def pseudo_positions(self):
-        return self._engine.pseudo_axis_values_get(self._units)
-
-    @property
     def pseudo_axes(self):
         return OrderedDict(zip(self.pseudo_axis_names,
                                self.pseudo_positions))
+
+    @property
+    def pseudo_positions(self):
+        return self._engine.pseudo_axis_values_get(self._units)
 
     @pseudo_positions.setter
     def pseudo_positions(self, values):

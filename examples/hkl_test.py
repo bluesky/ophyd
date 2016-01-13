@@ -5,22 +5,26 @@ import config
 from ophyd.hkl.diffract import E4CH
 from ophyd.hkl.calc import (CalcRecip, CalcE4CH, CalcK6C)
 from ophyd.hkl.util import diffractometer_types
-from ophyd.controls.positioner import Positioner
+from ophyd import (Positioner, PseudoSingle)
+from ophyd.device import Component as Cpt
 
 
-class DumbPositioner(Positioner):
+class FakeMotor(Positioner):
+    def __init__(self, prefix, **kwargs):
+        self.prefix = prefix
+        super().__init__(**kwargs)
+
     def move(self, position, **kwargs):
         self._set_position(position)
 
         self._started_moving = True
         self._done_moving()
 
-        Positioner.move(self, position, **kwargs)
+        super().move(position, **kwargs)
 
     @property
     def moving(self):
         return False
-
 
 def test():
     loggers = ('ophyd.utils.hkl',
@@ -131,30 +135,41 @@ def test():
     e4ch = CalcE4CH()
     logger.info('e4ch axes: {} {}'.format(e4ch.pseudo_axis_names, e4ch.physical_axis_names))
 
-    positioners = [DumbPositioner(name='%s' % name) for name in
-                   e4ch.physical_axis_names]
-
-    for i, pos in enumerate(positioners):
-        pos._position = 0.1 * (i + 1)
-
     logger.info('')
     logger.info('---- diffractometer ----')
-    diffr = E4CH('my_diffractometer',
-                 real_positioners=positioners, energy=8.0,
-                 )
+
+    class MyE4CH(E4CH):
+        h = Cpt(PseudoSingle, '')
+        k = Cpt(PseudoSingle, '')
+        l = Cpt(PseudoSingle, '')
+
+        omega = Cpt(FakeMotor, '')
+        chi = Cpt(FakeMotor, '')
+        phi = Cpt(FakeMotor, '')
+        tth = Cpt(FakeMotor, '')
+
+
+    diffr = MyE4CH('', name='my_e4ch',
+                   energy=8.0,
+                   )
+
+    # this will run the callbacks to force a readback pseudo position
+    # calculation: (not normally used, since they should be tied to real
+    # motors)
+    for i, pos in enumerate(diffr.real_positioners):
+        pos._set_position(0.1 * (i + 1))
 
     calc = diffr.calc
     sample = calc.sample
     sample.add_reflection(1, 1, 1)
 
-    pos0 = positioners[0]
-    # this will run the callbacks to force a readback pseudo position calculation:
-    # (not normally used, since they should be tied to real motors)
-    pos0._set_position(pos0.position)
 
     def show_pos():
-        _pseudos = [(pos.name, pos.position) for pos in diffr.pseudos.values()]
-        _reals = [(pos.name, pos.position) for pos in diffr.reals.values()]
+        print('pseudo positioners', diffr.pseudo_positioners)
+        _pseudos = [(pos.name, pos.position)
+                    for pos in diffr.pseudo_positioners]
+        _reals = [(pos.name, pos.position)
+                  for pos in diffr.real_positioners]
 
         logger.info('pseudo positioner is at {}'.format(_pseudos))
         logger.info('real positioners: {}'.format(_reals))

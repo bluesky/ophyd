@@ -1,5 +1,6 @@
 import logging
 from collections import (OrderedDict, namedtuple)
+from threading import RLock
 
 import numpy as np
 
@@ -28,6 +29,7 @@ class CalcRecip(object):
         self._unit_name = units
         self._units = util.units[self._unit_name]
         self._lock_engine = bool(lock_engine)
+        self._lock = RLock()
 
         try:
             self._factory = hkl_module.factories()[dtype]
@@ -271,8 +273,9 @@ class CalcRecip(object):
         elif axis in self.pseudo_axis_names:
             self._engine[axis] = value
 
-    def calc(self, position, engine=None,
-             use_first=False):
+    def forward(self, position, engine=None, use_first=False):
+        '''Forward-calculate a position from pseudo to real space'''
+
         # TODO default should probably not be `use_first` (or remove
         # completely?)
         with UsingEngine(self, engine):
@@ -289,6 +292,13 @@ class CalcRecip(object):
                 solutions[0].select()
 
             return solutions
+
+    def inverse(self, real):
+        with self._lock:
+            engine = self.engine
+            self.physical_positions = real
+            # self.update()  # done implicitly in setter
+            return self.pseudo_positions
 
     def calc_linear_path(self, start, end, n, num_params=0, **kwargs):
         # start = [h1, k1, l1]
@@ -341,8 +351,7 @@ class CalcRecip(object):
         with UsingEngine(self, engine):
             for pos in self.get_path(start, end=end, n=n,
                                      path_type=path_type, **kwargs):
-                yield self.calc(pos, engine=None,
-                                **kwargs)
+                yield self.forward(pos, engine=None, **kwargs)
 
     def _repr_info(self):
         repr = ['engine={!r}'.format(self.engine.name),

@@ -1,6 +1,6 @@
 import logging
 from . import calc
-from ..controls import (Signal, PseudoPositioner)
+from .. import (Signal, PseudoPositioner)
 
 
 logger = logging.getLogger(__name__)
@@ -9,11 +9,9 @@ logger = logging.getLogger(__name__)
 class Diffractometer(PseudoPositioner):
     calc_class = None
 
-    def __init__(self, name, real_positioners, calc_kw=None,
-                 decision_fcn=None, energy_signal=None, energy=8.0,
-                 calc_inst=None,
+    def __init__(self, prefix, calc_kw=None, decision_fcn=None,
+                 energy_signal=None, energy=8.0, calc_inst=None,
                  **kwargs):
-
         if calc_inst is not None:
             if not isinstance(calc_inst, self.calc_class):
                 raise ValueError('Calculation instance must be derived from '
@@ -39,10 +37,7 @@ class Diffractometer(PseudoPositioner):
 
         self._decision_fcn = decision_fcn
 
-        super().__init__(name, real_positioners,
-                         forward=self.pseudo_to_real,
-                         reverse=self.real_to_pseudo, pseudo=pseudo_names,
-                         **kwargs)
+        super().__init__(prefix, **kwargs)
 
         if energy_signal is None:
             energy_signal = Signal(name='%s.energy' % self.name)
@@ -92,10 +87,8 @@ class Diffractometer(PseudoPositioner):
     # calculation class, which is probably not a good thing -- it becomes a
     # problem when someone uses these functions outside of move()
 
-    def pseudo_to_real(self, **pseudo):
-        position = [pseudo[name] for name in self._pseudo_names]
-        solutions = self._calc.calc(position)
-
+    def forward(self, pseudo):
+        solutions = self._calc.forward(pseudo)
         logger.debug('pseudo to real: {}'.format(solutions))
 
         if self._decision_fcn is not None:
@@ -104,20 +97,9 @@ class Diffractometer(PseudoPositioner):
             solutions[0].select()
             return solutions[0].positions
 
-    def real_to_pseudo(self, **real):
-        calc = self._calc
-        for name, pos in real.items():
-            calc[name] = pos
-
-        calc.update()
-
-        logger.debug('real to pseudo: {}'.format(calc.pseudo_positions))
-        return calc.pseudo_positions
-
-        # finally:
-        #     # Restore the old state
-        #     for name, pos in old_positions.items():
-        #         calc[name] = pos
+    def inverse(self, real):
+        pseudo = self._calc.inverse(real)
+        return self.PseudoPosition(*pseudo)
 
 
 class E4CH(Diffractometer):
