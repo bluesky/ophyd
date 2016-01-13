@@ -243,11 +243,7 @@ class ComponentMeta(type):
 
         # List Signal attribute names.
         clsobj.signal_names = list(clsobj._sig_attrs.keys())
-        for b in bases:
-            try:
-                clsobj.signal_names.extend(b.signal_names)
-            except AttributeError:
-                pass
+
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
                                           rename=True)
