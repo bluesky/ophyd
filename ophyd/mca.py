@@ -93,7 +93,7 @@ class EpicsMCA(Device):
                          name=name, parent=parent, **kwargs)
 
         # could arguably be made a configuration_attr instead...
-        self.stage_sigs.extend([(self.mode, 'PHA')])
+        self.stage_sigs.update([(self.mode, 'PHA')])
 
     def stop(self):
         self._stop.put(1)

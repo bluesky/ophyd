@@ -45,4 +45,4 @@ class EpicsScaler(Device):
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
-        self.stage_sigs.extend([(self.count_mode, 0)])
+        self.stage_sigs.update([(self.count_mode, 0)])

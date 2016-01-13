@@ -28,9 +28,10 @@ class TriggerBase(BlueskyInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # settings
-        self.stage_sigs.extend([(self.cam.acquire, 0),  # If acquiring, stop.
+        self.stage_sigs.update([(self.cam.acquire, 0),  # If acquiring, stop.
                                 (self.cam.image_mode, 1),  # 'Multiple' mode
                                ])
+        self._status = None
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
 
@@ -58,6 +59,8 @@ class SingleTrigger(TriggerBase):
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         "This is called when the 'acquire' signal changes."
+        if self._status is None:
+            return
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
             self._status._finished()

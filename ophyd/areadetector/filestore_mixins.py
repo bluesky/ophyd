@@ -15,7 +15,7 @@ To be used like so:
     dest = '/tmp'  # in production, use a directory on your system -- not /tmp
 
     class MyDetector(PerkinElmerDetector, SingleTrigger):  # for example
-        file_plugin = MyPlugin(suffix='HDF1:', write_file_path=dest)
+        file_plugin = MyPlugin(suffix='HDF1:', write_path_template=dest)
 
     det = MyDetector(...)
 """
@@ -47,21 +47,42 @@ def new_short_uid():
 
 
 class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
-    "Base class for FileStore mixin classes"
-    def __init__(self, *args, write_file_path=None, read_file_path=None,
+    """Base class for FileStore mixin classes
+
+    The `write_path_template` and `read_path_template` are formatted using
+    `datetime.strftime`, which accepts the standard tokens, such as
+    %Y-%m-%d.
+    """
+    def __init__(self, *args, write_path_template=None, read_path_template=None,
                  **kwargs):
         # TODO Can we make these args? Depends on plugin details.
-        if write_file_path is None:
-            raise ValueError("write_file_path is required")
-        self.write_file_path = write_file_path
-        if read_file_path is None:
-            self.read_file_path = write_file_path
-        else:
-            self.read_file_path = read_file_path
+        if write_path_template is None:
+            raise ValueError("write_path_template is required")
+        self.write_path_template = write_path_template
+        self._read_path_template = read_path_template
         super().__init__(*args, **kwargs)
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
+        self.stage_sigs.update([
+                                (self.auto_increment, 1),
+                                (self.array_counter, 0),
+                                (self.file_number, 0),
+                                (self.auto_save, 'Yes'),
+                                (self.num_capture, 0),
+                               ])
+
+    @property
+    def read_path_template(self):
+        "Returns write_path_template if read_path_template is not set"
+        if self._read_path_template is None:
+            return self.write_path_template
+        else:
+            return self._read_path_template
+
+    @read_path_template.setter
+    def read_path_template(self, val):
+        self._read_path_template = val
 
     def stage(self):
         self._point_counter = count()
@@ -69,37 +90,22 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids.clear()
         # Make a filename.
         self._filename = new_short_uid()
-        date = datetime.now().date()
-        # AD requires a trailing slash, hence the [''] here
-        path = os.path.join(*(date.isoformat().split('-') + ['']))
-        full_write_path = os.path.join(self.write_file_path, path)
-        full_read_path = os.path.join(self.read_file_path, path)
-        self.file_template.put('%s%s_%6.6d.h5')
-        ssigs = [
-            (self.enable, 1),
-            (self.auto_increment, 1),
-            (self.array_counter, 0),
-            (self.file_number, 0),
-            (self.auto_save, 1),
-            (self.num_capture, 0),
-            (self.file_write_mode, 1),  # 'capture' mode -- for AD 1.x
-            (self.file_path, full_write_path),
-            (self.file_name, self._filename),
-            (self.capture, 1),
-        ]
-        self.stage_sigs.extend(ssigs)
+        formatter = datetime.now().strftime
+        write_path = formatter(self.write_path_template)
+        read_path = formatter(self.read_path_template)
+        self.stage_sigs.update([(self.file_path, write_path),
+                                (self.file_name, self._filename),
+                               ])
         super().stage()
 
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.
-        fn = self.file_template.get() % (full_read_path, self._filename,
-                                         self.file_number.get())
+        self._fn = self.file_template.get() % (read_path,
+                                               self._filename,
+                                               self.file_number.get())
 
         if not self.file_path_exists.get():
             raise IOError("Path %s does not exist on IOC.", self.file_path)
-
-        res_kwargs = {'frame_per_point': self.num_captured.get()}
-        self._resource = fs.insert_resource('AD_HDF5', fn, res_kwargs)
 
     def generate_datum(self, key):
         "Generate a uid and cache it with its key for later insertion."
@@ -131,7 +137,35 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def unstage(self):
         self._locked_key_list = False
         self._resource = None
+        del self.stage_sigs[self.file_name]
+        del self.stage_sigs[self.file_path]
         return super().unstage()
+
+
+class FileStoreHDF5(FileStoreBase):
+    def stage(self):
+        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.h5'),
+                                (self.file_write_mode, 'Capture'),
+                                (self.capture, 1),
+                               ])
+        super().stage()
+        res_kwargs = {'frame_per_point': self.num_captured.get()}
+        self._resource = fs.insert_resource('AD_HDF5', self._fn, res_kwargs)
+
+
+class FileStoreTIFF(FileStoreBase):
+    # TODO num_captured above, num_images here -- which is correct?
+    def stage(self):
+        # 'Single' means one image : one file. It does NOT mean that
+        # 'num_images' is ignored.
+        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
+                                (self.file_write_mode, 'Single'),
+                               ])
+        super().stage()
+        res_kwargs = {'template': self.file_template.get(),
+                      'filename': self.file_name.get(),
+                      'frame_per_point': self.parent.cam.num_images.get()}
+        self._resource = fs.insert_resource('AD_TIFF', self._fn, res_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
@@ -143,7 +177,7 @@ class FileStoreIterativeWrite(FileStoreBase):
         return uid
 
 
-class FileStoreBulkEntry(FileStoreBase):
+class FileStoreBulkWrite(FileStoreBase):
     "Cache records as they are created and save them all at the end."
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -164,3 +198,21 @@ class FileStoreBulkEntry(FileStoreBase):
                 kwargs = self._datum_kwargs_maps[uid]
                 fs.insert_datum(self._resource, uid, kwargs)
         return super().unstage()
+
+
+# ready-to-use combinations
+
+class FileStoreHDF5IterativeWrite(FileStoreHDF5, FileStoreIterativeWrite):
+    pass
+
+
+class FileStoreHDF5BulkWrite(FileStoreHDF5, FileStoreBulkWrite):
+    pass
+
+
+class FileStoreTIFFIterativeWrite(FileStoreTIFF, FileStoreIterativeWrite):
+    pass
+
+
+class FileStoreTIFFBulkWrite(FileStoreTIFF, FileStoreBulkWrite):
+    pass
