@@ -63,7 +63,7 @@ class PluginBase(ADBase):
         # Turn array callbacks on during staging.
         # Without this, no array data is sent to the plugins.
         super().__init__(*args, **kwargs)
-        self.stage_sigs.extend([(self.parent.cam.array_callbacks, 1),
+        self.stage_sigs.update([(self.parent.cam.array_callbacks, 1),
                                ])
 
     _html_docs = ['pluginDoc.html']
@@ -653,16 +653,16 @@ class HDF5Plugin(FilePlugin):
         The plugin has to 'see' one acquisition before it is ready to capture.
         This sets the array size, etc.
         """
-        sigs = OrderedDict([(self.parent.cam.array_callbacks, 1),
-                            (self.enable, 1),  # enable HDF5 plugin
-                            (self.parent.cam.image_mode, 0),  # 'single'
-                            (self.parent.cam.trigger_mode, 0),  # 'internal'
+        sigs = OrderedDict([(self.parent.cam.image_mode, 'Single'),
+                            (self.parent.cam.trigger_mode, 'Internal'),
                             # just in case tha acquisition time is set very long...
                             (self.parent.cam.acquire_time , 1),
                             (self.parent.cam.acquire_period, 1),
                             (self.parent.cam.acquire, 1)])
 
         original_vals = {sig: sig.get() for sig in sigs}
+
+        set_and_wait(self.capture, 0)
 
         for sig, val in sigs.items():
             ttime.sleep(0.1)  # abundance of caution
@@ -673,6 +673,8 @@ class HDF5Plugin(FilePlugin):
         for sig, val in reversed(list(original_vals.items())):
             ttime.sleep(0.1)
             set_and_wait(sig, val)
+
+        set_and_wait(self.capture, 1)
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'

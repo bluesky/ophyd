@@ -64,13 +64,12 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
-        self.stage_sigs.extend([
+        self.stage_sigs.update([
                                 (self.auto_increment, 1),
                                 (self.array_counter, 0),
                                 (self.file_number, 0),
                                 (self.auto_save, 'Yes'),
                                 (self.num_capture, 0),
-                                (self.capture, 1),
                                ])
 
     @property
@@ -94,8 +93,9 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         formatter = datetime.now().strftime
         write_path = formatter(self.write_path_template)
         read_path = formatter(self.read_path_template)
-        self.stage_sigs.insert(0, (self.file_path, write_path))
-        self.stage_sigs.insert(0, (self.file_name, self._filename))
+        self.stage_sigs.update([(self.file_path, write_path),
+                                (self.file_name, self._filename),
+                               ])
         super().stage()
 
         # AD does this same templating in C, but we can't access it
@@ -137,16 +137,16 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def unstage(self):
         self._locked_key_list = False
         self._resource = None
-        for i, (k, v) in enumerate(self.stage_sigs):
-            if k in [self.file_name, self.file_path]:
-                self.stage_sigs.remove((k, v))
+        del self.stage_sigs[self.file_name]
+        del self.stage_sigs[self.file_path]
         return super().unstage()
 
 
 class FileStoreHDF5(FileStoreBase):
     def stage(self):
-        self.stage_sigs.extend([(self.file_template, '%s%s_%6.6d.h5'),
+        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.h5'),
                                 (self.file_write_mode, 'Capture'),
+                                (self.capture, 1),
                                ])
         super().stage()
         res_kwargs = {'frame_per_point': self.num_captured.get()}
@@ -156,7 +156,9 @@ class FileStoreHDF5(FileStoreBase):
 class FileStoreTIFF(FileStoreBase):
     # TODO num_captured above, num_images here -- which is correct?
     def stage(self):
-        self.stage_sigs.extend([(self.file_template, '%s%s_%6.6d.tiff'),
+        # 'Single' means one image : one file. It does NOT mean that
+        # 'num_images' is ignored.
+        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
                                 (self.file_write_mode, 'Single'),
                                ])
         super().stage()

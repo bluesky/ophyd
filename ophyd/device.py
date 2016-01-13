@@ -269,7 +269,7 @@ class BlueskyInterface:
     def __init__(self, *args, **kwargs):
         # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
-        self.stage_sigs = list()
+        self.stage_sigs = OrderedDict()
         self._staged = False
         super().__init__(*args, **kwargs)
 
@@ -289,11 +289,11 @@ class BlueskyInterface:
 
         # Read and stage current values, to be restored by unstage()
         self._original_vals = [(sig, sig.get())
-                               for sig, _ in self.stage_sigs]
+                               for sig, _ in self.stage_sigs.items()]
 
         # Apply settings.
         self._staged = True
-        for sig, val in self.stage_sigs:
+        for sig, val in self.stage_sigs.items():
             set_and_wait(sig, val)
 
         # Call stage() on child devices.
