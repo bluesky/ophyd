@@ -237,6 +237,14 @@ class ComponentMeta(type):
         for cpt in clsobj._sig_attrs.values():
             cpt.__doc__ = cpt.make_docstring(clsobj)
 
+        # List the attributes that are Devices (not Signals).
+        # This list is used by stage/unstage. Only Devices need to be staged.
+        clsobj._sub_devices = []
+        for attr, cpt in clsobj._sig_attrs.items():
+            if isinstance(cpt, Component) and not isinstance(cpt.cls, Device):
+                continue
+            clsobj._sub_devices.append(attr)
+
         return clsobj
 
 
@@ -280,11 +288,11 @@ class BlueskyInterface:
         for sig, val in self.stage_sigs:
             set_and_wait(sig, val)
 
-        # Call stage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'stage'):
-                signal.stage()
+        # Call stage() on child devices.
+        for attr in self._sub_devices:
+            device = getattr(self, attr)
+            if hasattr(device, 'stage'):
+                device.stage()
 
     def unstage(self):
         """
@@ -303,11 +311,11 @@ class BlueskyInterface:
         for sig, val in reversed(self._original_vals):
             set_and_wait(sig, val)
 
-        # Call unstage() on child devices (including, notably, plugins).
-        for signal_name in self.signal_names:
-            signal = getattr(self, signal_name)
-            if hasattr(signal, 'unstage'):
-                signal.unstage()
+        # Call unstage() on child devices.
+        for attr in self._sub_devices:
+            device = getattr(self, attr)
+            if hasattr(device, 'unstage'):
+                device.unstage()
 
         self._staged = False
 
