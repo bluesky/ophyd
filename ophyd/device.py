@@ -220,7 +220,7 @@ class ComponentMeta(type):
                                 "name." % attr)
 
         clsobj._sig_attrs = OrderedDict()
-        for base in bases:
+        for base in reversed(bases):
             if not hasattr(base, '_sig_attrs'):
                 continue
 
