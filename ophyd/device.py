@@ -251,7 +251,7 @@ class ComponentMeta(type):
         # This list is used by stage/unstage. Only Devices need to be staged.
         clsobj._sub_devices = []
         for attr, cpt in clsobj._sig_attrs.items():
-            if isinstance(cpt, Component) and not isinstance(cpt.cls, Device):
+            if isinstance(cpt, Component) and not issubclass(cpt.cls, Device):
                 continue
             clsobj._sub_devices.append(attr)
 
