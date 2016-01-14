@@ -162,10 +162,10 @@ class FileStoreTIFF(FileStoreBase):
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
                                 (self.file_write_mode, 'Single'),
                                ])
+        super().stage()
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.parent.cam.num_images.get()}
-        super().stage()
         self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
 
 
