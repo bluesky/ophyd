@@ -100,7 +100,7 @@ class Signal(OphydObject):
         '''Get the value of the setpoint'''
         return self._setpoint
 
-    def put(self, value, allow_cb=True, force=False, **kwargs):
+    def put(self, value, allow_cb=True, force=False, timestamp=None, **kwargs):
         '''Set the setpoint value internally.
 
         .. note:: A timestamp will be generated if none is passed via kwargs.
@@ -115,13 +115,17 @@ class Signal(OphydObject):
             Allow callbacks (subscriptions) to happen
         force : bool, optional
             Skip checking the value first
+        timestamp : float, optional
+            timestamp of setting value
         '''
         if not force:
             self.check_value(value)
 
         old_value = self._setpoint
         self._setpoint = value
-        self._setpoint_ts = kwargs.pop('timestamp', time.time())
+        if timestamp is None:
+            timestamp = time.time()
+        self._setpoint_ts = timestamp
 
         if not self._separate_readback:
             self._set_readback(value)
