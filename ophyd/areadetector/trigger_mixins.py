@@ -45,10 +45,15 @@ class SingleTrigger(TriggerBase):
     -------
     >>> class SimDetector(SingleTrigger):
     ...     pass
+    >>> det = SimDetector('..pv..')
+    # optionally, customize name of image
+    >>> det = SimDetector('..pv..', image_name='fast_detector_image')
     """
-    def __init__(*args, image_name=None, **kwargs):
-        self._image_name = image_name
+    def __init__(self, *args, image_name=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if image_name is None:
+            image_name = '_'.join([self.name, 'image'])
+        self._image_name = image_name
 
     def trigger(self):
         "Trigger one acquisition."
@@ -58,9 +63,7 @@ class SingleTrigger(TriggerBase):
 
         self._status = DeviceStatus(self)
         self._acquisition_signal.put(1, wait=False)
-        if self._image_name is None:
-            key = '_'.join(self.name, 'image')
-        self.dispatch(key, ttime.time())
+        self.dispatch(self._image_name, ttime.time())
         return self._status
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
@@ -110,10 +113,18 @@ class MultiTrigger(TriggerBase):
     _SUB_ACQ_DONE = 'acq_done'
 
     def __init__(self, *args, trigger_cycle=None, **kwargs):
-        if trigger_cycler is None:
-            raise ValueError("must provide a trigger cycle -- see docstring")
-        self.trigger_cycle = itertools.cycle(trigger_cycle)
+        if trigger_cycle is None:
+            raise ValueError("must provide trigger_cycle -- see docstring")
+        self.trigger_cycle = trigger_cycle
         super().__init__(*args, **kwargs)
+
+    @property
+    def trigger_cycle(self):
+        return self._trigger_cycle
+
+    @trigger_cycle.setter
+    def trigger_cycle(self, val):
+        self._trigger_cycle = itertools.cycle(val)
 
     def trigger(self):
         "Trigger one or more acquisitions."
@@ -139,11 +150,11 @@ class MultiTrigger(TriggerBase):
 
         # When *all* the acquisitions are done, increment the trigger counter
         # and kick the status object.
-        status = DeviceStatus(self)
+        self._status = DeviceStatus(self)
 
         # GO!
         self._acquire()
-        return status
+        return self._status
 
     def _acquire(self, **kwargs):
         "Start the next acquisition or find that all acquisitions are done."
@@ -153,7 +164,7 @@ class MultiTrigger(TriggerBase):
             logger.debug("Trigger cycle is complete.")
             self._status._finished()
             return
-        logger.debug('Configuring signals for acquisition labeled %s', key)
+        logger.debug('Configuring signals for acquisition labeled %r', key)
         for sig, val in signals_settings:
             set_and_wait(sig, val)
         self.dispatch(key, ttime.time())
@@ -161,6 +172,7 @@ class MultiTrigger(TriggerBase):
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         "This is called when the 'acquire' signal changes."
+        logger.debug("_acquire_chaged has been called: old_value %r, value %r", old_value, value)
         if self._status is None:
             return
         if (old_value == 1) and (value == 0):
