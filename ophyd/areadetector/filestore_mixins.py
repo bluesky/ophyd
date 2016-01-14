@@ -169,11 +169,12 @@ class FileStoreTIFF(FileStoreBase):
 
 
 class FileStoreTIFFSquashing(FileStoreBase):
-    def __init__(self, *args, images_per_set=1, number_of_sets=1,
+    def __init__(self, *args, images_per_set_name='images_per_set',
+                 number_of_sets_name="number_of_sets",
                  cam_name='cam1', proc_name='proc1', **kwargs):
         super().__init__(*args, **kwargs)
-        self._images_per_set = images_per_set
-        self._num_sets = number_of_sets
+        self._ips_name = images_per_set_name
+        self._num_sets_name = number_of_sets_name
         self._cam_name = cam_name
         self._proc_name = proc_name
 
@@ -182,6 +183,8 @@ class FileStoreTIFFSquashing(FileStoreBase):
         # 'num_images' is ignored.
         cam = getattr(self.parent, self._cam_name)
         proc = getattr(self.parent, self._proc_name)
+        images_per_set = getattr(self.parent, self._ips_name)
+        num_sets = getattr(self.parent, self._num_sets_name)
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
                                 (self.file_write_mode, 'Single'),
                                 (proc.nd_array_port, cam.port_name.get()),
@@ -190,20 +193,16 @@ class FileStoreTIFFSquashing(FileStoreBase):
                                 (proc.filter_type, 'Average'),
                                 (proc.auto_reset_filter, 1),
                                 (proc.filter_callbacks, 1),
-                                (proc.num_filter, self._images_per_set),
+                                (proc.num_filter, images_per_set),
                                 (cam.num_images,
-                                 self._images_per_set * self._num_sets),
+                                 images_per_set * num_sets),
                                 (self.nd_array_port, proc.port_name.get())
                                ])
         super().stage()
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
-                      'frame_per_point': self._num_sets}
+                      'frame_per_point': num_sets}
         self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
-
-    def configure_squashing(self, images_per_set, number_of_sets):
-        self._images_per_set = images_per_set
-        self._num_sets = number_of_sets
 
 
 class FileStoreIterativeWrite(FileStoreBase):
