@@ -45,6 +45,9 @@ class SingleTrigger(TriggerBase):
     >>> class SimDetector(SingleTrigger):
     ...     pass
     """
+    def __init__(*args, image_name=None, **kwargs):
+        self._image_name = image_name
+        super().__init__(*args, **kwargs)
 
     def trigger(self):
         "Trigger one acquisition."
@@ -54,7 +57,9 @@ class SingleTrigger(TriggerBase):
 
         self._status = DeviceStatus(self)
         self._acquisition_signal.put(1, wait=False)
-        self.dispatch('image', ttime.time())
+        if self._image_name is None:
+            key = '_'.join(self.name, 'image')
+        self.dispatch(key, ttime.time())
         return self._status
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
@@ -81,7 +86,8 @@ class MultiTrigger(TriggerBase):
     -------
     >>> class MyDetector(SimDetector, MultiTrigger):
     ...     pass
-    >>> det = MyDetector(acq_cycle={'image_gain': [1, 2, 8]})
+    >>> det = MyDetector(acq_cycle={'name': ['gain1', 'gain2', 'gain8'],
+    ...                             'image_gain': [1, 2, 8]})
     """
     # OphydObj subscriptions
     _SUB_ACQ_DONE = 'acq_done'
