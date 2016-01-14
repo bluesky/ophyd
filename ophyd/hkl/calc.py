@@ -273,25 +273,15 @@ class CalcRecip(object):
         elif axis in self.pseudo_axis_names:
             self._engine[axis] = value
 
-    def forward(self, position, engine=None, use_first=False):
+    def forward(self, position, engine=None):
         '''Forward-calculate a position from pseudo to real space'''
 
-        # TODO default should probably not be `use_first` (or remove
-        # completely?)
         with UsingEngine(self, engine):
             if self.engine is None:
                 raise ValueError('Engine unset')
 
-            engine = self.engine
             self.engine.pseudo_positions = position
-
-            solutions = self.engine.solutions
-
-            if use_first:
-                # just use the first solution
-                solutions[0].select()
-
-            return solutions
+            return self.engine.solutions
 
     def inverse(self, real):
         with self._lock:

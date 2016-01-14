@@ -117,7 +117,6 @@ def test():
     logger.info('* 10 positions between two hkls')
     for solutions in k6c([0, 1, 0], [0, 1, 0.1], n=10):
         logger.info('choosing {} of {} solutions'.format(solutions[0], len(solutions)))
-        solutions[0].select()
 
     logger.info('* 3 specific hkls')
     list(k6c([[0, 1, 0], [0, 1, 0.01], [0, 1, 0.02]]))

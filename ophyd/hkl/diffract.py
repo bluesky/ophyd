@@ -94,8 +94,7 @@ class Diffractometer(PseudoPositioner):
         if self._decision_fcn is not None:
             return self._decision_fcn(position, solutions)
         else:
-            solutions[0].select()
-            return solutions[0].positions
+            return solutions[0]
 
     def inverse(self, real):
         pseudo = self._calc.inverse(real)

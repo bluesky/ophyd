@@ -132,7 +132,6 @@ class Engine(object):
         self._calc = calc
         self._engine = engine
         self._engine_list = engine_list
-        self._solutions = None
 
     @property
     def name(self):
@@ -194,7 +193,12 @@ class Engine(object):
         except GLib.GError as ex:
             raise ValueError('Calculation failed (%s)' % ex)
 
-        self._solutions = [Solution(self, item, class_=self._calc.Position)
+        Position = self._calc.Position
+
+        def get_position(item):
+            return Position(*item.geometry_get().axis_values_get(self._units))
+
+        self._solutions = [get_position(item)
                            for item in geometry_list.items()]
 
     def __getitem__(self, name):
