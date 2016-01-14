@@ -171,7 +171,7 @@ class FileStoreTIFF(FileStoreBase):
 class FileStoreTIFFSquashing(FileStoreBase):
     def __init__(self, *args, images_per_set_name='images_per_set',
                  number_of_sets_name="number_of_sets",
-                 cam_name='cam1', proc_name='proc1', **kwargs):
+                 cam_name='cam', proc_name='proc1', **kwargs):
         super().__init__(*args, **kwargs)
         self._ips_name = images_per_set_name
         self._num_sets_name = number_of_sets_name
