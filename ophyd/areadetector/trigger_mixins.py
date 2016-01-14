@@ -178,7 +178,7 @@ class MultiTrigger(TriggerBase):
             self._status._finished()
             return
         logger.debug('Configuring signals for acquisition labeled %r', key)
-        for sig, val in signals_settings:
+        for sig, val in signals_settings.items():
             set_and_wait(sig, val)
         self.dispatch(key, ttime.time())
         self._acquisition_signal.put(1, wait=False)
