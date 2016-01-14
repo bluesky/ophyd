@@ -11,6 +11,7 @@ To be used like so:
 
 import time as ttime
 import logging
+import itertools
 
 from ..ophydobj import DeviceStatus
 from ..device import BlueskyInterface
@@ -76,27 +77,42 @@ class MultiTrigger(TriggerBase):
 
     This can be used to give more control to the detector. One call to
     'trigger' can be interpreted by the detector as a call to take several
-    acquisitions with, for example, different gain settings.
+    acquisitions with, for example, different gain settings or shutter
+    positions.
 
-    There is no specific logic implemented here, but it provides a pattern
-    that can be easily modified. See in particular the method `_acquire` and
-    the attribute `_num_acq_remaining`.
+    The are two levels of nesting here:
+    - cycling through different actions on successive calls to `trigger`
+    - within each trigger, executing a list of acquisitions with different
+      settings
+
+    See the example below, which takes and 3 and 1 acquisitions in
+    alternation.
 
     Example
     -------
     >>> class MyDetector(SimDetector, MultiTrigger):
     ...     pass
-    >>> det = MyDetector(acq_cycle={'name': ['gain1', 'gain2', 'gain8'],
-    ...                             'image_gain': [1, 2, 8]})
+    # On the first trigger, close the shutter and acquire three images
+    # with different gain settings on the detector. Then open the shutter
+    # and take a light frame.
+    # On the next trigger, just take a light frame.
+    >>> trigger_cycle=[[('gain1', {'shutter': 'close', 'image_gain': 1}),
+    ...                 ('gain2', {'image_gain': 2}),
+    ...                 ('gain8', {'image_gain': 8}),
+    ...                 ('light', {'shutter': 'open'})],
+    ...                [('light', {'shutter': 'open'}]]
+    >>> det = MyDetector(trigger_cycle=trigger_cycle)
+    # Note: for simplicity, the settings are specified as dictionaries. If
+    # you need to control the order that they are processed, use
+    # OrderedDict instead.
     """
     # OphydObj subscriptions
     _SUB_ACQ_DONE = 'acq_done'
-    _SUB_TRIGGER_DONE = 'trigger_done'
 
-    def __init__(self, *args, acq_cycle=None, **kwargs):
-        if acq_cycle is None:
-            acq_cycle = {}
-        self.acq_cycle = acq_cycle
+    def __init__(self, *args, trigger_cycle=None, **kwargs):
+        if trigger_cycler is None:
+            raise ValueError("must provide a trigger cycle -- see docstring")
+        self.trigger_cycle = itertools.cycle(trigger_cycle)
         super().__init__(*args, **kwargs)
 
     def trigger(self):
@@ -105,13 +121,16 @@ class MultiTrigger(TriggerBase):
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
 
-        self._num_acq_remaining = len(self._acq_settings)
+        # For each trigger, we have a list of one of more acquisitions to
+        # take. These are names (e.g., 'light' or 'dark') paired with
+        # an ordered dict of signals and values to set.
+        acq_list = next(self.trigger_cycle)
+        self._acq_iter = iter(acq_list)
 
         # GET READY...
 
         # Reset subscritpions.
         self._reset_sub(self._SUB_ACQ_DONE)
-        self._reset_sub(self._SUB_TRIGGER_DONE)
 
         # When each acquisition finishes, it will immedately start the next
         # one until the desired number has been taken.
@@ -122,34 +141,28 @@ class MultiTrigger(TriggerBase):
         # and kick the status object.
         status = DeviceStatus(self)
 
-        def trigger_finished(**kwargs):
-            self._trigger_counter += 1
-            status._finished()
-
-        self.subscribe(trigger_finished,
-                       event_type=self._SUB_TRIGGER_DONE, run=False)
-
         # GO!
         self._acquire()
-
         return status
 
     def _acquire(self, **kwargs):
         "Start the next acquisition or find that all acquisitions are done."
-        logger.debug('_acquire called, %d remaining', self._num_acq_remaining)
-        if self._num_acq_remaining:
-            # Apply settings particular to each acquisition,
-            # such as CCD gain or shutter position.
-            for sig, values in self._acq_settings:
-                val = values[-self._num_acq_remaining]
-                sig.put(val, wait=True)
-            self._acquisition_signal.put(1, wait=False)
-        else:
-            self._run_subs(sub_type=self._SUB_TRIGGER_DONE)
+        try:
+            key, signals_settings = next(self._acq_iter)
+        except StopIteration:
+            logger.debug("Trigger cycle is complete.")
+            self._status._finished()
+            return
+        logger.debug('Configuring signals for acquisition labeled %s', key)
+        for sig, val in signals_settings:
+            set_and_wait(sig, val)
+        self.dispatch(key, ttime.time())
+        self._acquisition_signal.put(1, wait=False)
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         "This is called when the 'acquire' signal changes."
+        if self._status is None:
+            return
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
-            self._num_acq_remaining -= 1
             self._run_subs(sub_type=self._SUB_ACQ_DONE)
