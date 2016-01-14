@@ -100,7 +100,7 @@ class Signal(OphydObject):
         '''Get the value of the setpoint'''
         return self._setpoint
 
-    def put(self, value, allow_cb=True, force=False, **kwargs):
+    def put(self, value, allow_cb=True, force=False, timestamp=None, **kwargs):
         '''Set the setpoint value internally.
 
         .. note:: A timestamp will be generated if none is passed via kwargs.
@@ -115,19 +115,23 @@ class Signal(OphydObject):
             Allow callbacks (subscriptions) to happen
         force : bool, optional
             Skip checking the value first
+        timestamp : float, optional
+            timestamp of setting value
         '''
         if not force:
             self.check_value(value)
 
         old_value = self._setpoint
         self._setpoint = value
-        self._setpoint_ts = kwargs.pop('timestamp', time.time())
+        if timestamp is None:
+            timestamp = time.time()
+        self._setpoint_ts = timestamp
 
         if not self._separate_readback:
             self._set_readback(value)
 
         if allow_cb:
-            self._run_subs(sub_type=Signal.SUB_SETPOINT,
+            self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._setpoint_ts, **kwargs)
 
@@ -153,7 +157,7 @@ class Signal(OphydObject):
         self._timestamp = kwargs.pop('timestamp', time.time())
 
         if allow_cb:
-            self._run_subs(sub_type=Signal.SUB_VALUE,
+            self._run_subs(sub_type=self.SUB_VALUE,
                            old_value=old_value, value=value,
                            timestamp=self._timestamp, **kwargs)
 
@@ -217,6 +221,8 @@ class EpicsSignal(Signal):
         Check limits prior to writing value
     auto_monitor : bool, optional
         Use automonitor with epics.PV
+    name : str, optional
+        Name of signal.  If not given defaults to read_pv
     '''
     def __init__(self, read_pv, write_pv=None, *,
                  rw=True, pv_kw=None,
@@ -224,6 +230,7 @@ class EpicsSignal(Signal):
                  string=False,
                  limits=False,
                  auto_monitor=None,
+                 name=None,
                  **kwargs):
         if pv_kw is None:
             pv_kw = dict()
@@ -245,8 +252,8 @@ class EpicsSignal(Signal):
                 write_pv = None
             else:
                 separate_readback = True
-
-        name = kwargs.pop('name', read_pv)
+        if name is None:
+            name = read_pv
         super().__init__(separate_readback=separate_readback, name=name,
                          **kwargs)
 
@@ -439,7 +446,7 @@ class EpicsSignal(Signal):
         self._write_pv.put(value, use_complete=use_complete,
                            **kwargs)
 
-        Signal.put(self, value, force=True)
+        super().put(value, force=True)
 
     def _fix_type(self, value):
         if self._string:
@@ -461,7 +468,7 @@ class EpicsSignal(Signal):
             timestamp = time.time()
 
         value = self._fix_type(value)
-        Signal.put(self, value, timestamp=timestamp)
+        super().put(value, timestamp=timestamp)
 
     @property
     @raise_if_disconnected
