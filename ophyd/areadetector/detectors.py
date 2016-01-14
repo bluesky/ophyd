@@ -9,8 +9,6 @@
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
 
-from __future__ import print_function
-
 from .base import (ADBase, ADComponent as C)
 from . import cam
 

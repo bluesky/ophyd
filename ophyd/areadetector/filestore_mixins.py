@@ -20,7 +20,6 @@ To be used like so:
     det = MyDetector(...)
 """
 
-from __future__ import print_function
 import logging
 import uuid
 import filestore.api as fs

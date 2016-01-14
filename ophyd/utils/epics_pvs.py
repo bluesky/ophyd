@@ -7,7 +7,7 @@
    :synopsis:
 '''
 
-from __future__ import print_function
+
 import time as ttime
 import ctypes
 import threading

@@ -9,7 +9,7 @@
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
 
-from __future__ import print_function
+
 import re
 import time as ttime
 import logging
