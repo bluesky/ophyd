@@ -56,9 +56,9 @@ class DetectorBase(ADBase):
         for p in file_plugins:
             p.generate_datum(key, timestamp)
 
-    def make_data_keys(self):
+    def make_data_key(self):
         source = 'PV:{}'.format(self.prefix)
-        shape = tuple(self.cam.array_size)  # casting for paranoia's sake
+        shape = tuple(self.cam.array_size.get())
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 
