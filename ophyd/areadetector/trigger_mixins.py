@@ -95,17 +95,30 @@ class MultiTrigger(TriggerBase):
     -------
     >>> class MyDetector(SimDetector, MultiTrigger):
     ...     pass
-    # On the first trigger, close the shutter and acquire three images
+    # EXAMPLE:
+    # 1. On the first trigger, close the shutter and acquire three images
     # with different gain settings on the detector. Then open the shutter
     # and take a light frame.
-    # On the next trigger, just take a light frame.
-    >>> trigger_cycle=[[('gain1', {'shutter': 'close', 'image_gain': 1}),
-    ...                 ('gain2', {'image_gain': 2}),
-    ...                 ('gain8', {'image_gain': 8}),
-    ...                 ('light', {'shutter': 'open'})],
-    ...                [('light', {'shutter': 'open'}]]
+    # 2. On the next trigger, just take a light frame.
+    # Repeat.
+    #
+    # Each element of this list specifies one acquisition. It gives a
+    # a label for each kind of image that will be taken and a dictionary
+    # mapping signals to values that must be set for that acquisition.
+    >>> dark_and_light = [('gain1', {'shutter': 'close', 'image_gain': 1}),
+    ...                   ('gain2', {'image_gain': 2}),
+    ...                   ('gain8', {'image_gain': 8}),
+    ...                   ('light', {'shutter': 'open'})],
+
+    # This list only has one element; it will only take one acquisition.
+    >>> light_only = [('light', {'shutter': 'open'}]]
+
+    # Finally, put the lists together. The detector will cycle through
+    # this list as it is triggered.
+    >>> trigger_cycle = [dark_and_light, light_only]
     >>> det = MyDetector(trigger_cycle=trigger_cycle)
-    # Note: for simplicity, the settings are specified as dictionaries. If
+
+    # Note: for simplicity, the settings were specified as dictionaries. If
     # you need to control the order that they are processed, use
     # OrderedDict instead.
     """
