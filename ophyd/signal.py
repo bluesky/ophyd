@@ -221,6 +221,8 @@ class EpicsSignal(Signal):
         Check limits prior to writing value
     auto_monitor : bool, optional
         Use automonitor with epics.PV
+    name : str, optional
+        Name of signal.  If not given defaults to read_pv
     '''
     def __init__(self, read_pv, write_pv=None, *,
                  rw=True, pv_kw=None,
@@ -228,6 +230,7 @@ class EpicsSignal(Signal):
                  string=False,
                  limits=False,
                  auto_monitor=None,
+                 name=None,
                  **kwargs):
         if pv_kw is None:
             pv_kw = dict()
@@ -249,8 +252,8 @@ class EpicsSignal(Signal):
                 write_pv = None
             else:
                 separate_readback = True
-
-        name = kwargs.pop('name', read_pv)
+        if name is None:
+            name = read_pv
         super().__init__(separate_readback=separate_readback, name=name,
                          **kwargs)
 
