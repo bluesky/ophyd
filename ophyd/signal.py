@@ -127,7 +127,7 @@ class Signal(OphydObject):
             self._set_readback(value)
 
         if allow_cb:
-            self._run_subs(sub_type=Signal.SUB_SETPOINT,
+            self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._setpoint_ts, **kwargs)
 
@@ -153,7 +153,7 @@ class Signal(OphydObject):
         self._timestamp = kwargs.pop('timestamp', time.time())
 
         if allow_cb:
-            self._run_subs(sub_type=Signal.SUB_VALUE,
+            self._run_subs(sub_type=self.SUB_VALUE,
                            old_value=old_value, value=value,
                            timestamp=self._timestamp, **kwargs)
 
@@ -439,7 +439,7 @@ class EpicsSignal(Signal):
         self._write_pv.put(value, use_complete=use_complete,
                            **kwargs)
 
-        Signal.put(self, value, force=True)
+        super().put(value, force=True)
 
     def _fix_type(self, value):
         if self._string:
@@ -461,7 +461,7 @@ class EpicsSignal(Signal):
             timestamp = time.time()
 
         value = self._fix_type(value)
-        Signal.put(self, value, timestamp=timestamp)
+        super().put(value, timestamp=timestamp)
 
     @property
     @raise_if_disconnected
