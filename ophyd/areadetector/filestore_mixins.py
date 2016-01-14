@@ -183,8 +183,8 @@ class FileStoreTIFFSquashing(FileStoreBase):
         # 'num_images' is ignored.
         cam = getattr(self.parent, self._cam_name)
         proc = getattr(self.parent, self._proc_name)
-        images_per_set = getattr(self.parent, self._ips_name)
-        num_sets = getattr(self.parent, self._num_sets_name)
+        images_per_set = getattr(self.parent, self._ips_name).get()
+        num_sets = getattr(self.parent, self._num_sets_name).get()
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
                                 (self.file_write_mode, 'Single'),
                                 (proc.nd_array_port, cam.port_name.get()),
@@ -194,8 +194,7 @@ class FileStoreTIFFSquashing(FileStoreBase):
                                 (proc.auto_reset_filter, 1),
                                 (proc.filter_callbacks, 1),
                                 (proc.num_filter, images_per_set),
-                                (cam.num_images,
-                                 images_per_set * num_sets),
+                                (cam.num_images, images_per_set * num_sets),
                                 (self.nd_array_port, proc.port_name.get())
                                ])
         super().stage()
