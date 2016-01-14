@@ -19,16 +19,21 @@ class Component:
     ----------
     cls : class
         Class of signal to create.  The required signature of
-        `cls.__init__` is ::
+        `cls.__init__` is (if `suffix` is given)::
+
+            def __init__(self, pv_name, parent=None, **kwargs):
+
+        or (if suffix is None) ::
 
             def __init__(self, pv_name, parent=None, **kwargs):
 
         The class may have a `wait_for_connection()` which is called
         during the component instance creation.
 
-    suffix : str
+    suffix : str, optional
         The PV suffix, which gets appended onto the device prefix to
         generate the final PV that the instance component will bind to.
+
     lazy : bool, optional
         Lazily instantiate the signal. If False, the signal will be
         instantiated upon component instantiation
