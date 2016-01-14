@@ -43,7 +43,7 @@ class Component:
         string to attach to component DvcClass.component.__doc__
     '''
 
-    def __init__(self, cls, suffix, *, lazy=False, trigger_value=None,
+    def __init__(self, cls, suffix=None, *, lazy=False, trigger_value=None,
                  add_prefix=None, doc=None, **kwargs):
         self.attr = None  # attr is set later by the device when known
         self.cls = cls
@@ -58,29 +58,45 @@ class Component:
 
         self.add_prefix = tuple(add_prefix)
 
-    def get_pv_name(self, instance, attr, suffix):
-        '''Get pv name for a given suffix'''
-        if attr in self.add_prefix:
+    def maybe_add_prefix(self, instance, kw, suffix):
+        """Add prefix to a suffix if kw is in self.add_prefix
+
+        Parameters
+        ----------
+        instance : Device
+            The instance to extract the prefix to maybe append to the
+            suffix from.
+
+        kw : str
+            The key of associated with the suffix.  If this key is
+            self.add_prefix than prepend the prefix to the suffix and
+            return, else just return the suffix.
+
+        suffix : str
+            The suffix to maybe have something prepended to.
+
+        Returns
+        -------
+        str
+        """
+        if kw in self.add_prefix:
             return '{prefix}{suffix}'.format(prefix=instance.prefix,
                                              suffix=suffix)
-        else:
-            return suffix
+        return suffix
 
     def create_component(self, instance):
         '''Create a component for the instance'''
         kwargs = self.kwargs.copy()
         kwargs['name'] = '{}_{}'.format(instance.name, self.attr)
 
-        for kw in self.add_prefix:
-            # If any keyword arguments need a prefix, tack it on
-            if kw in kwargs:
-                suffix = self.get_pv_name(instance, kw, kwargs[kw])
-                kwargs[kw] = suffix
+        for kw, val in list(kwargs.items()):
+            kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
-        # Otherwise, we only have suffix to update
-        pv_name = self.get_pv_name(instance, 'suffix', self.suffix)
-
-        cpt_inst = self.cls(pv_name, parent=instance, **kwargs)
+        if self.suffix is not None:
+            pv_name = self.maybe_add_prefix(instance, 'suffix', self.suffix)
+            cpt_inst = self.cls(pv_name, parent=instance, **kwargs)
+        else:
+            cpt_inst = self.cls(parent=instance, **kwargs)
 
         if self.lazy and hasattr(self.cls, 'wait_for_connection'):
             cpt_inst.wait_for_connection()
