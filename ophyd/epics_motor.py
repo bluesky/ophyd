@@ -7,7 +7,7 @@
    :synopsis:
 '''
 
-from __future__ import print_function
+
 import logging
 
 from epics.pv import fmt_time

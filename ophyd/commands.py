@@ -1,7 +1,7 @@
 
 """Command Line Interface to opyd objects"""
 
-from __future__ import print_function
+
 import time
 import functools
 import sys

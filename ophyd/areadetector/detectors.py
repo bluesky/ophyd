@@ -9,8 +9,6 @@
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
 
-from __future__ import print_function
-
 from .base import (ADBase, ADComponent as C)
 from . import cam
 
@@ -45,7 +43,7 @@ class DetectorBase(ADBase):
     Note that Plugin also inherits from ADBase.
     This adds some AD-specific methods that are not shared by the plugins.
     """
-    def dispatch(self, key):
+    def dispatch(self, key, timestamp):
         """When a new acquisition is finished, this method is called with a
         key which is a label like 'light', 'dark', or 'gain8'.
 
@@ -56,11 +54,11 @@ class DetectorBase(ADBase):
         file_plugins = [s for s in self._signals.values() if
                         isinstance(s, FilePlugin)]
         for p in file_plugins:
-            p.generate_datum(key)
+            p.generate_datum(key, timestamp)
 
-    def make_data_keys(self):
+    def make_data_key(self):
         source = 'PV:{}'.format(self.prefix)
-        shape = tuple(self.cam.array_size)  # casting for paranoia's sake
+        shape = tuple(self.cam.array_size.get())
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 

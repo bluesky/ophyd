@@ -251,7 +251,7 @@ class ComponentMeta(type):
         # This list is used by stage/unstage. Only Devices need to be staged.
         clsobj._sub_devices = []
         for attr, cpt in clsobj._sig_attrs.items():
-            if isinstance(cpt, Component) and not isinstance(cpt.cls, Device):
+            if isinstance(cpt, Component) and not issubclass(cpt.cls, Device):
                 continue
             clsobj._sub_devices.append(attr)
 
@@ -333,7 +333,7 @@ class GenerateDatumInterface:
     """Classes that inherit from this can safely customize the
     `generate_datum` method without breaking mro. If used along with the
     BlueskyInterface, inherit from this second."""
-    def generate_datum(self, key):
+    def generate_datum(self, key, timestamp):
         pass
 
 
