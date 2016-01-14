@@ -9,7 +9,7 @@ To be used like so:
         pass
 """
 
-from __future__ import print_function
+import time as ttime
 import logging
 
 from ..ophydobj import DeviceStatus
@@ -54,7 +54,7 @@ class SingleTrigger(TriggerBase):
 
         self._status = DeviceStatus(self)
         self._acquisition_signal.put(1, wait=False)
-        self.dispatch('image')
+        self.dispatch('image', ttime.time())
         return self._status
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):

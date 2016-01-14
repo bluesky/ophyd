@@ -102,17 +102,19 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._fn = self.file_template.get() % (read_path,
                                                self._filename,
                                                self.file_number.get())
-
+        self._fp = read_path
         if not self.file_path_exists.get():
-            raise IOError("Path %s does not exist on IOC.", self.file_path)
+            raise IOError("Path %s does not exist on IOC." % self.file_path.get())
 
-    def generate_datum(self, key):
+    def generate_datum(self, key, timestamp):
         "Generate a uid and cache it with its key for later insertion."
         if self._locked_key_list:
             if key not in self._datum_uids:
                 raise RuntimeError("modifying after lock")
         uid = new_uid()
-        self._datum_uids[key].append(uid)  # e.g., {'dark': [uid, uid], ...}
+        reading = {'value': uid, 'timestamp': timestamp}
+        # datum_uids looks like {'dark': [reading1, reading2], ...}
+        self._datum_uids[key].append(reading)
         return uid
 
     def describe(self):
@@ -163,14 +165,14 @@ class FileStoreTIFF(FileStoreBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.parent.cam.num_images.get()}
-        self._resource = fs.insert_resource('AD_TIFF', self._fn, res_kwargs)
         super().stage()
+        self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
     "Save records to filestore as they are generated."
-    def generate_datum(self, key):
-        uid = super().generate_datum(key)
+    def generate_datum(self, key, timestamp):
+        uid = super().generate_datum(key, timestamp)
         i = next(self._point_counter)
         fs.insert_datum(self._resource, uid, {'point_number': i})
         return uid
@@ -182,9 +184,9 @@ class FileStoreBulkWrite(FileStoreBase):
         super().__init__(*args, **kwargs)
         self._datum_kwargs_map = dict()  # store kwargs for each uid
 
-    def generate_datum(self, key):
+    def generate_datum(self, key, timestamp):
         "Stash kwargs for each datum, to be used below by unstage."
-        uid = super().generate_datum(key)
+        uid = super().generate_datum(key, timestamp)
         i = next(self._point_counter)
         self._datum_kwargs_map[uid] = {'point_number': i}
         # (don't insert, obviously)
