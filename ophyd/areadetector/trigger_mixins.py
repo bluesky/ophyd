@@ -121,3 +121,35 @@ class MultiTrigger(TriggerBase):
         # When *all* the acquisitions are done, increment the trigger counter
         # and kick the status object.
         status = DeviceStatus(self)
+
+        def trigger_finished(**kwargs):
+            self._trigger_counter += 1
+            status._finished()
+
+        self.subscribe(trigger_finished,
+                       event_type=self._SUB_TRIGGER_DONE, run=False)
+
+        # GO!
+        self._acquire()
+
+        return status
+
+    def _acquire(self, **kwargs):
+        "Start the next acquisition or find that all acquisitions are done."
+        logger.debug('_acquire called, %d remaining', self._num_acq_remaining)
+        if self._num_acq_remaining:
+            # Apply settings particular to each acquisition,
+            # such as CCD gain or shutter position.
+            for sig, values in self._acq_settings:
+                val = values[-self._num_acq_remaining]
+                sig.put(val, wait=True)
+            self._acquisition_signal.put(1, wait=False)
+        else:
+            self._run_subs(sub_type=self._SUB_TRIGGER_DONE)
+
+    def _acquire_changed(self, value=None, old_value=None, **kwargs):
+        "This is called when the 'acquire' signal changes."
+        if (old_value == 1) and (value == 0):
+            # Negative-going edge means an acquisition just finished.
+            self._num_acq_remaining -= 1
+            self._run_subs(sub_type=self._SUB_ACQ_DONE)
