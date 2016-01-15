@@ -338,17 +338,7 @@ class BlueskyInterface:
                          "original settings before re-raising the "
                          "exception.", self.name)
             self.unstage()
-            parent = self.parent
-            if parent is None:
-                # This is no parent to unstage; we are done.
-                raise
-
-            # Recursively unstage parents, who will then unstage children.
-            while True:
-                parent.unstage()
-                parent = parent.parent
-                if parent is None:
-                    raise
+            raise
 
     def unstage(self):
         """
@@ -356,7 +346,7 @@ class BlueskyInterface:
 
         Multiple calls (without a new call to 'stage') have no effect.
         """
-        if not self._original_vals:
+        if not self._staged:
             # Unlike staging, there is no harm in making unstage
             # 'indepotent'.
             logger.debug("Cannot unstage %r; it is not staged. Passing.",
