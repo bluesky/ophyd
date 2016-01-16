@@ -5,8 +5,8 @@ import time
 import epics
 
 from .utils import (ReadOnlyError, TimeoutError, LimitError)
-from .utils.epics_pvs import (pv_form,
-                              waveform_to_string, raise_if_disconnected)
+from .utils.epics_pvs import (pv_form, waveform_to_string,
+                              raise_if_disconnected, data_type, data_shape)
 from .ophydobj import (OphydObject, DeviceStatus)
 
 logger = logging.getLogger(__name__)
@@ -536,3 +536,29 @@ class EpicsSignal(EpicsSignalBase):
     @setpoint.setter
     def setpoint(self, value):
         self.put(value)
+
+    def describe(self):
+        """Return the description as a dictionary
+
+        Returns
+        -------
+        dict
+            Dictionary of name and formatted description string
+        """
+        desc = {'source': 'PV:{}'.format(self._read_pv.pvname), }
+
+        val = self._read_pv.value
+        desc['dtype'] = data_type(val)
+        desc['shape'] = data_shape(val)
+
+        desc['precision'] = self.precision
+        desc['units'] = self._read_pv.units
+
+        if self._write_pv and self._rw:
+            desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
+            desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
+
+        if self.enum_strs:
+            desc['enum_strs'] = list(self.enum_strs)
+
+        return {self.name: desc}
