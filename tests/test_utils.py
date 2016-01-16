@@ -3,6 +3,7 @@
 import os
 import logging
 import unittest
+import numpy as np
 
 import epics
 
@@ -73,6 +74,26 @@ class EpicsUtilTest(unittest.TestCase):
         db_path = os.path.join(db_dir, 'scaler.db')
         records = epics_utils.records_from_db(db_path)
         self.assertIn(('bo', '$(P)$(S)_calcEnable'), records)
+
+    def test_data_type(self):
+        utils = epics_utils
+
+        self.assertEquals(utils.data_type(1), 'number')
+        self.assertEquals(utils.data_type(1e-3), 'number')
+        self.assertEquals(utils.data_type('foo'), 'string')
+        self.assertEquals(utils.data_type(np.array([1,2,3])), 'array')
+
+        self.assertRaises(ValueError, utils.data_type, [1,2,3])
+        self.assertRaises(ValueError, utils.data_type, dict())
+
+    def test_data_shape(self):
+        utils = epics_utils
+
+        self.assertEquals(utils.data_shape(1), list()) 
+        self.assertEquals(utils.data_shape('foo'), list())
+        self.assertEquals(utils.data_shape(np.array([1,2,3])), [3, ])
+
+        self.assertRaises(ValueError, utils.data_shape, list())
 
 
 class ErrorsTest(unittest.TestCase):
