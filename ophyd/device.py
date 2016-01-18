@@ -384,8 +384,10 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     prefix : str
         The PV prefix for all components of the device
     read_attrs : sequence of attribute names
-        The signals to be read during data acquisition (i.e., in read() and
-        describe() calls)
+        the components to include in a normal reading (i.e., in ``read()``)
+    configuration_attrs : sequence of attribute names
+        the components to be read less often (i.e., in
+        ``read_configuration()``) and to adjust via ``configure()``
     name : str, optional
         The name of the device
     parent : instance or None
@@ -496,12 +498,21 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         return values
 
     def read(self):
-        '''map names ("data keys") to actual values'''
+        """returns dictionary mapping names to (value, timestamp) pairs
+
+        To control which fields are included, adjust the ``read_attrs`` list.
+        """
         res = super().read()
         res.update(self._read_attr_list(self.read_attrs))
         return res
 
     def read_configuration(self):
+        """
+        returns dictionary mapping names to (value, timestamp) pairs
+
+        To control which fields are included, adjust the
+        ``configuration_attrs`` list.
+        """
         return self._read_attr_list(self.configuration_attrs)
 
     def _describe_attr_list(self, attr_list):
