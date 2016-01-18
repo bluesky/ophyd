@@ -3,8 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ophyd's documentation!
-=================================
+Ophyd
+=====
+
+Ophyd represents hardware in Python, providing a consistent interface for
+reading from values from and sending values to any device.
+
 
 Contents:
 
@@ -12,12 +16,8 @@ Contents:
    :maxdepth: 2
 
    commands
-   scans
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   builtin-devices
+   positioners
+   custom-devices
+   signals
+   area-detector

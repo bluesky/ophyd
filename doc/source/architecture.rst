@@ -1,0 +1,1 @@
+.. inheritance-diagram:: ophyd.Device

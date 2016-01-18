@@ -1,14 +1,4 @@
 # vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.signal` - Ophyd signals
-===========================================
-
-.. module:: ophyd.control.signal
-   :synopsis:
-'''
-
-
-
 import logging
 import time
 
@@ -516,6 +506,7 @@ class EpicsSignal(Signal):
 
 
 class EpicsSignalRO(EpicsSignal):
+    "A read-only EpicsSignal -- that is, one with no `write_pv`"
     def __init__(self, read_pv, **kwargs):
 
         if 'write_pv' in kwargs:
