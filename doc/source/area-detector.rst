@@ -6,8 +6,7 @@ possible configuration.
 
 .. code-block:: python
 
-    from ophyd.areadetector import AreaDetector
-    from ophyd.areadetector.trigger_mixins import SingleTrigger
+    from ophyd import AreaDetector, SingleTrigger
 
     class MyDetector(SingleTrigger, AreaDetector):
         pass

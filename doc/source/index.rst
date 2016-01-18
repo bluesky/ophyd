@@ -21,3 +21,4 @@ Contents:
    custom-devices
    signals
    area-detector
+   architecture
