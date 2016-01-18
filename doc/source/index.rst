@@ -9,6 +9,9 @@ Ophyd
 Ophyd represents hardware in Python, providing a consistent interface for
 reading values from and sending values to any device.
 
+It employs hierarchical structure to represent a complex device as a
+composition of subdevices, all sharing the common interface.
+
 
 Contents:
 
