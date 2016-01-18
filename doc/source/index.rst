@@ -7,14 +7,15 @@ Ophyd
 =====
 
 Ophyd represents hardware in Python, providing a consistent interface for
-reading from values from and sending values to any device.
+reading values from and sending values to any device.
 
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
+   device-overview
    commands
    builtin-devices
    positioners

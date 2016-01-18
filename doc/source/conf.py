@@ -29,7 +29,8 @@ import sphinx_rtd_theme
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx',
               'sphinx.ext.coverage', 'sphinx.ext.mathjax',
               'sphinx.ext.viewcode', 'sphinxcontrib.napoleon',
-              'sphinx.ext.inheritance_diagram']
+              'sphinx.ext.inheritance_diagram', 'sphinx.ext.autosummary',
+              ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -251,3 +252,4 @@ texinfo_documents = [
 intersphinx_mapping = {'http://docs.python.org/': None}
 inheritance_graph_attrs = dict(rankdir="LR")
 inheritance_node_attrs = dict(fontsize=24)
+autosummary_generate = True
