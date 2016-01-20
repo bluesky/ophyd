@@ -18,6 +18,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 # Devices
 from .scaler import EpicsScaler
 from .device import (Device, Component, DynamicDeviceComponent)
+from .ophydobj import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 
 # Areadetector-related
