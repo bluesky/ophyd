@@ -63,8 +63,10 @@ class PluginBase(ADBase):
         # Turn array callbacks on during staging.
         # Without this, no array data is sent to the plugins.
         super().__init__(*args, **kwargs)
-        self.stage_sigs.update([(self.parent.cam.array_callbacks, 1),
-                               ])
+
+        if self.parent is not None and hasattr(self.parent, 'cam'):
+            self.stage_sigs.update([(self.parent.cam.array_callbacks, 1),
+                                   ])
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
