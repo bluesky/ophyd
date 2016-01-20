@@ -554,11 +554,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if len(signals) > 1:
             raise NotImplementedError('More than one trigger signal is not '
                                       'currently supported')
-        elif not signals:
-            raise RuntimeError('Device has no trigger signal(s)')
-
-        acq_signal = signals[0]
         status = DeviceStatus(self)
+        if not signals:
+            status._finished()
+            return status
+
+        acq_signal, = signals
+
         self.subscribe(status._finished,
                        event_type=self.SUB_ACQ_DONE, run=False)
 
