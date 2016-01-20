@@ -547,7 +547,7 @@ class EpicsSignal(EpicsSignalBase):
         """
         desc = {'source': 'PV:{}'.format(self._read_pv.pvname), }
 
-        val = self._read_pv.value
+        val = self.value
         desc['dtype'] = data_type(val)
         desc['shape'] = data_shape(val)
 
