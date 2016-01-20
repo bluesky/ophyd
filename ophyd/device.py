@@ -127,6 +127,40 @@ class Component:
         raise RuntimeError('Use .put()')
 
 
+class FormattedComponent(Component):
+    '''A Component which takes a dynamic format string
+
+    This differs from Component in that the parent prefix is not automatically
+    added onto the Component suffix. Additionally, `str.format()` style strings
+    are accepted, allowing access to Device instance attributes:
+
+    >>> from ophyd import (Component as C, FormattedComponent as FC)
+    >>> class MyDevice(Device):
+    ...     # A normal component, where 'suffix' is added to prefix verbatim
+    ...     cpt = C(EpicsSignal, 'suffix')
+    ...     # A formatted component, where 'self' refers to the Device instance
+    ...     ch = FC(EpicsSignal, '{self.prefix}{self._ch_name}')
+    ...
+    ...     def __init__(self, prefix, ch_name=None, **kwargs):
+    ...         self._ch_name = ch_name
+    ...         super().__init__(prefix, **kwargs)
+
+    >>> dev = MyDevice('prefix:', ch_name='some_channel', name='dev')
+    >>> print(dev.cpt.pvname)
+    prefix:suffix
+    >>> print(dev.ch.pvname)
+    prefix:some_channel
+
+    For additional documentation, refer to Component.
+    '''
+
+    def maybe_add_prefix(self, instance, kw, suffix):
+        if kw not in self.add_prefix:
+            return suffix
+
+        return suffix.format(self=instance)
+
+
 class DynamicDeviceComponent:
     '''An Device component that dynamically creates a OphyDevice
 

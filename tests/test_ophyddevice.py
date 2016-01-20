@@ -2,7 +2,7 @@ import time
 import logging
 import unittest
 
-from ophyd import (Device, Component)
+from ophyd import (Device, Component, FormattedComponent)
 from ophyd.signal import Signal
 
 logger = logging.getLogger(__name__)
@@ -91,3 +91,24 @@ class DeviceTests(unittest.TestCase):
         # Illegal class definitions:
         for attr in RESERVED_ATTRS:
             self.assertRaises(TypeError, type, 'a', (Device,), {attr: None})
+
+    def test_formatted_component(self):
+        FC = FormattedComponent
+
+        class MyDevice(Device):
+            cpt = Component(FakeSignal, 'suffix')
+            ch = FC(FakeSignal, '{self.prefix}{self._ch}')
+
+            def __init__(self, prefix, ch='a', **kwargs):
+                self._ch = ch
+                super().__init__(prefix, **kwargs)
+
+        ch_value = '_test_'
+
+        device = MyDevice('prefix:', ch=ch_value)
+        self.assertIs(device.cpt.parent, device)
+        self.assertIs(device.ch.parent, device)
+        self.assertIs(device._ch, ch_value)
+        self.assertEquals(device.ch.read_pv, device.prefix + ch_value)
+        self.assertEquals(device.cpt.read_pv,
+                          device.prefix + MyDevice.cpt.suffix)
