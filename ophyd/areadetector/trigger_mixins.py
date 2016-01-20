@@ -15,6 +15,7 @@ import itertools
 
 from ..ophydobj import DeviceStatus
 from ..device import BlueskyInterface
+from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class TriggerBase(BlueskyInterface):
         # settings
         self.stage_sigs.update([(self.cam.acquire, 0),  # If acquiring, stop.
                                 (self.cam.image_mode, 1),  # 'Multiple' mode
-                               ])
+                                ])
         self._status = None
         self._acquisition_signal = self.cam.acquire
         self._acquisition_signal.subscribe(self._acquire_changed)
@@ -185,7 +186,8 @@ class MultiTrigger(TriggerBase):
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         "This is called when the 'acquire' signal changes."
-        logger.debug("_acquire_chaged has been called: old_value %r, value %r", old_value, value)
+        logger.debug("_acquire_chaged has been called: old_value %r, value %r",
+                     old_value, value)
         if self._status is None:
             return
         if (old_value == 1) and (value == 0):
