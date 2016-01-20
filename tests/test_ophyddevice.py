@@ -16,6 +16,12 @@ class FakeSignal(Signal):
     def get(self):
         return self.name
 
+    def describe_configuration(self):
+        return {self.name + '_conf': {'source': 'SIM:test'}}
+
+    def read_configuration(self):
+        return {self.name + '_conf': {'value': 0}}
+
 
 def setUpModule():
     pass
@@ -52,11 +58,12 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(d.monitor_attrs, ['cpt3'])
 
         self.assertEqual(list(d.read().keys()), [d.cpt1.name])
-        self.assertEqual(list(d.read_configuration().keys()), [d.cpt2.name])
+        self.assertEqual(list(d.read_configuration().keys()),
+                         [d.cpt2.name + '_conf'])
 
         self.assertEqual(list(d.describe().keys()), [d.cpt1.name])
         self.assertEqual(list(d.describe_configuration().keys()),
-                         [d.cpt2.name])
+                         [d.cpt2.name + '_conf'])
 
     def test_complexdevice(self):
         class SubDevice(Device):
@@ -72,7 +79,12 @@ class DeviceTests(unittest.TestCase):
             sub_cpt2 = Component(SubSubDevice, '2')
             cpt3 = Component(FakeSignal, '3')
 
-        device = MyDevice('prefix')
+        device = MyDevice('prefix', name='dev')
+        device.configuration_attrs = ['sub_cpt1',
+                                      'sub_cpt2.cpt2',
+                                      'cpt3']
+        device.sub_cpt1.configuration_attrs = ['cpt1']
+
         self.assertIs(device.sub_cpt1.parent, device)
         self.assertIs(device.sub_cpt2.parent, device)
         self.assertIs(device.cpt3.parent, device)
@@ -81,6 +93,11 @@ class DeviceTests(unittest.TestCase):
                           ['cpt1', 'cpt2', 'cpt3'])
         self.assertEquals(device.sub_cpt2.signal_names,
                           ['cpt1', 'cpt2', 'cpt3'])
+
+        self.assertEquals(set(device.describe_configuration().keys()),
+                          {'dev_sub_cpt1_cpt1_conf',
+                           'dev_sub_cpt2_cpt2_conf',
+                           'dev_cpt3_conf'})
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
