@@ -176,11 +176,11 @@ class Signal(OphydObject):
 
     def read_configuration(self):
         "Subclasses may customize this."
-        return {}
+        return self.read()
 
     def describe_configuration(self):
         "Subclasses may customize this."
-        return {}
+        return self.describe()
 
 
 class EpicsSignal(Signal):

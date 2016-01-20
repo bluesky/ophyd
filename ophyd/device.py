@@ -522,12 +522,15 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return attr
 
-    def _read_attr_list(self, attr_list):
+    def _read_attr_list(self, attr_list, *, config=False):
         '''Get a 'read' dictionary containing attributes in attr_list'''
         values = OrderedDict()
-        for name in attr_list:
-            signal = getattr(self, name)
-            values.update(signal.read())
+        for attr in attr_list:
+            obj = getattr(self, attr)
+            if config:
+                values.update(obj.read_configuration())
+            else:
+                values.update(obj.read())
 
         return values
 
@@ -547,14 +550,17 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         To control which fields are included, adjust the
         ``configuration_attrs`` list.
         """
-        return self._read_attr_list(self.configuration_attrs)
+        return self._read_attr_list(self.configuration_attrs, config=True)
 
-    def _describe_attr_list(self, attr_list):
+    def _describe_attr_list(self, attr_list, *, config=False):
         '''Get a 'describe' dictionary containing attributes in attr_list'''
         desc = OrderedDict()
-        for name in attr_list:
-            signal = getattr(self, name)
-            desc.update(signal.describe())
+        for attr in attr_list:
+            obj = getattr(self, attr)
+            if config:
+                desc.update(obj.describe_configuration())
+            else:
+                desc.update(obj.describe())
 
         return desc
 
@@ -566,7 +572,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def describe_configuration(self):
         '''describe the configuration data keys' data types/other metadata'''
-        return self._describe_attr_list(self.configuration_attrs)
+        return self._describe_attr_list(self.configuration_attrs, config=True)
 
     @property
     def trigger_signals(self):
