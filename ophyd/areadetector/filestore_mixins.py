@@ -25,11 +25,9 @@ import uuid
 import filestore.api as fs
 
 from datetime import datetime
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from itertools import count
-import os
 
-from ..ophydobj import DeviceStatus
 from ..device import GenerateDatumInterface, BlueskyInterface
 
 logger = logging.getLogger(__name__)
@@ -52,8 +50,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     `datetime.strftime`, which accepts the standard tokens, such as
     %Y-%m-%d.
     """
-    def __init__(self, *args, write_path_template=None, read_path_template=None,
-                 **kwargs):
+    def __init__(self, *args, write_path_template=None,
+                 read_path_template=None, **kwargs):
         # TODO Can we make these args? Depends on plugin details.
         if write_path_template is None:
             raise ValueError("write_path_template is required")
@@ -63,13 +61,12 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
-        self.stage_sigs.update([
-                                (self.auto_increment, 1),
+        self.stage_sigs.update([(self.auto_increment, 1),
                                 (self.array_counter, 0),
                                 (self.file_number, 0),
                                 (self.auto_save, 'Yes'),
                                 (self.num_capture, 0),
-                               ])
+                                ])
 
     @property
     def read_path_template(self):
@@ -94,7 +91,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         read_path = formatter(self.read_path_template)
         self.stage_sigs.update([(self.file_path, write_path),
                                 (self.file_name, self._filename),
-                               ])
+                                ])
         super().stage()
 
         # AD does this same templating in C, but we can't access it
@@ -104,7 +101,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                                                self.file_number.get())
         self._fp = read_path
         if not self.file_path_exists.get():
-            raise IOError("Path %s does not exist on IOC." % self.file_path.get())
+            raise IOError("Path %s does not exist on IOC."
+                          "" % self.file_path.get())
 
     def generate_datum(self, key, timestamp):
         "Generate a uid and cache it with its key for later insertion."
@@ -148,7 +146,7 @@ class FileStoreHDF5(FileStoreBase):
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.h5'),
                                 (self.file_write_mode, 'Stream'),
                                 (self.capture, 1)
-                               ])
+                                ])
         super().stage()
         res_kwargs = {'frame_per_point': self.num_captured.get()}
         self._resource = fs.insert_resource('AD_HDF5', self._fn, res_kwargs)
@@ -160,7 +158,7 @@ class FileStoreTIFF(FileStoreBase):
         # 'num_images' is ignored.
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
                                 (self.file_write_mode, 'Single'),
-                               ])
+                                ])
         super().stage()
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
@@ -196,7 +194,7 @@ class FileStoreTIFFSquashing(FileStoreBase):
                                 (proc.num_filter, images_per_set),
                                 (cam.num_images, images_per_set * num_sets),
                                 (self.nd_array_port, proc.port_name.get())
-                               ])
+                                ])
         super().stage()
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
