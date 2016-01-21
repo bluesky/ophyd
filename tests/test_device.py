@@ -58,12 +58,12 @@ class DeviceTests(unittest.TestCase):
         self.assertEqual(d.monitor_attrs, ['cpt3'])
 
         self.assertEqual(list(d.read().keys()), [d.cpt1.name])
-        self.assertEqual(list(d.read_configuration().keys()),
-                         [d.cpt2.name + '_conf'])
+        self.assertEqual(set(d.read_configuration().keys()),
+                         {d.cpt2.name, d.cpt2.name + '_conf'})
 
         self.assertEqual(list(d.describe().keys()), [d.cpt1.name])
-        self.assertEqual(list(d.describe_configuration().keys()),
-                         [d.cpt2.name + '_conf'])
+        self.assertEqual(set(d.describe_configuration().keys()),
+                         {d.cpt2.name, d.cpt2.name + '_conf'})
 
     def test_complexdevice(self):
         class SubDevice(Device):
@@ -72,32 +72,48 @@ class DeviceTests(unittest.TestCase):
             cpt3 = Component(FakeSignal, '3')
 
         class SubSubDevice(SubDevice):
-            pass
+            cpt4 = Component(FakeSignal, '4')
 
         class MyDevice(Device):
-            sub_cpt1 = Component(SubDevice, '1')
-            sub_cpt2 = Component(SubSubDevice, '2')
+            sub1 = Component(SubDevice, '1')
+            subsub2 = Component(SubSubDevice, '2')
             cpt3 = Component(FakeSignal, '3')
 
         device = MyDevice('prefix', name='dev')
-        device.configuration_attrs = ['sub_cpt1',
-                                      'sub_cpt2.cpt2',
+        device.configuration_attrs = ['sub1',
+                                      'subsub2.cpt2',
+                                      'subsub2.cpt4',
                                       'cpt3']
-        device.sub_cpt1.configuration_attrs = ['cpt1']
+        device.sub1.read_attrs = ['cpt2']
+        device.sub1.configuration_attrs = ['cpt1']
 
-        self.assertIs(device.sub_cpt1.parent, device)
-        self.assertIs(device.sub_cpt2.parent, device)
+        self.assertIs(device.sub1.parent, device)
+        self.assertIs(device.subsub2.parent, device)
         self.assertIs(device.cpt3.parent, device)
 
-        self.assertEquals(device.sub_cpt1.signal_names,
+        self.assertEquals(device.sub1.signal_names,
                           ['cpt1', 'cpt2', 'cpt3'])
-        self.assertEquals(device.sub_cpt2.signal_names,
-                          ['cpt1', 'cpt2', 'cpt3'])
+        self.assertEquals(device.subsub2.signal_names,
+                          ['cpt1', 'cpt2', 'cpt3', 'cpt4'])
+
+        conf_keys = {'dev_sub1_cpt1_conf',    # from sub1.*
+                     # 'dev_sub1_cpt2_conf',  # not in sub1.config_attrs
+                     'dev_subsub2_cpt2_conf', # from subsub2.cpt2
+                     'dev_subsub2_cpt4_conf', # from subsub2.cpt4
+                     'dev_cpt3_conf',         # from cpt3
+
+                     'dev_sub1_cpt1',         # from sub1.*
+                     'dev_sub1_cpt2',         # from sub1.*
+                                              #  (and sub1.read_attrs)
+                     'dev_subsub2_cpt2',      # from subsub2.cpt2
+                     'dev_subsub2_cpt4',      # from subsub2.cpt4
+                     'dev_cpt3'               # from cpt3
+                     }
 
         self.assertEquals(set(device.describe_configuration().keys()),
-                          {'dev_sub_cpt1_cpt1_conf',
-                           'dev_sub_cpt2_cpt2_conf',
-                           'dev_cpt3_conf'})
+                          conf_keys)
+        self.assertEquals(set(device.read_configuration().keys()),
+                          conf_keys)
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
