@@ -162,12 +162,6 @@ class Signal(OphydObject):
         return {self.name: {'value': self.get(),
                             'timestamp': self.timestamp}}
 
-    @property
-    def report(self):
-        return {self.name: self.get(),
-                'pv': None
-                }
-
     def describe(self):
         """Return the description as a dictionary"""
         return {self.name: {'source': 'SIM:{}'.format(self.name),

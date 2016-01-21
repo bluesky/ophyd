@@ -13,56 +13,26 @@ import time
 
 from .utils import TimeoutError
 from .ophydobj import (MoveStatus, OphydObject)
+from .device import Device
 
 
 logger = logging.getLogger(__name__)
 
 
-class Positioner(OphydObject):
-    '''A soft positioner.
-
-    Subclass from this to implement your own positioners.
-    '''
-
+class Positioner(Device):
     SUB_START = 'start_moving'
     SUB_DONE = 'done_moving'
     SUB_READBACK = 'readback'
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, *, timeout=None, egu=None, name=None, parent=None,
-                 **kwargs):
-        super().__init__(name=name, parent=parent, **kwargs)
-
-        if timeout is None:
-            timeout = 0.0
-
-        if egu is None:
-            egu = ''
-
-        self._started_moving = False
-        self._moving = False
-        self._position = None
+    def __init__(self, prefix, *, timeout=30., **kwargs):
         self._timeout = timeout
-        self._egu = egu
+        self._moving = False
+        super().__init__(prefix, **kwargs)
 
-    @property
-    def egu(self):
-        return self._egu
-
-    @property
-    def limits(self):
-        return (0, 0)
-
-    @property
-    def low_limit(self):
-        return self.limits[0]
-
-    @property
-    def high_limit(self):
-        return self.limits[1]
-
-    def move(self, position, wait=True, moved_cb=None, timeout=30.0):
+    # limits? ndimensional?
+    def move(self, position, wait=True, moved_cb=None, timeout=None):
         '''Move to a specified position, optionally waiting for motion to
         complete.
 
@@ -84,13 +54,8 @@ class Positioner(OphydObject):
         '''
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
-
-        is_subclass = (self.__class__ is not Positioner)
-        if not is_subclass:
-            # When not subclassed, Positioner acts as a soft positioner,
-            # immediately 'moving' to the target position when requested.
-            self._started_moving = True
-            self._moving = False
+        if timeout is not None:
+            timeout = self._timeout
 
         status = MoveStatus(self, position)
         if wait:
@@ -175,8 +140,7 @@ class Positioner(OphydObject):
         '''
         return self._moving
 
-    def set(self, new_position, *, wait=False,
-            moved_cb=None, timeout=30.0):
+    def set(self, new_position):
         """
         Bluesky-compatible API for controlling movers.
 
@@ -187,10 +151,55 @@ class Positioner(OphydObject):
             symmetric with read such that `mot.set(mot.read())` works as
             as expected.
         """
-        return self.move(new_position, wait=wait, moved_cb=moved_cb,
-                         timeout=timeout)
+        return self.move(new_position, wait=False)
 
     def _repr_info(self):
         yield from super()._repr_info()
-        yield ('egu', self._egu)
         yield ('timeout', self._timeout)
+
+
+class SoftPositioner(Positioner):
+    '''A soft positioner.
+
+    Subclass from this to implement your own positioners.
+    '''
+
+    SUB_START = 'start_moving'
+    SUB_DONE = 'done_moving'
+    SUB_READBACK = 'readback'
+    _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
+    _default_sub = SUB_READBACK
+
+    def __init__(self, *, timeout=None, egu=None, name=None, parent=None,
+                 **kwargs):
+        super().__init__(name=name, parent=parent, **kwargs)
+
+        if timeout is None:
+            timeout = 0.0
+
+        if egu is None:
+            egu = ''
+
+        self._started_moving = False
+        self._moving = False
+        self._position = None
+        self._timeout = timeout
+        self._egu = egu
+
+    @property
+    def egu(self):
+        return self._egu
+
+    @property
+    def limits(self):
+        return (0, 0)
+
+    @property
+    def low_limit(self):
+        return self.limits[0]
+
+    @property
+    def high_limit(self):
+        return self.limits[1]
+
+

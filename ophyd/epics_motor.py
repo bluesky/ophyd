@@ -16,13 +16,13 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import raise_if_disconnected
 from .positioner import Positioner
-from .device import (Device, Component as Cpt)
+from .device import (Component as Cpt)
 
 
 logger = logging.getLogger(__name__)
 
 
-class EpicsMotor(Device, Positioner):
+class EpicsMotor(Positioner):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner
@@ -150,16 +150,6 @@ class EpicsMotor(Device, Positioner):
 
         if was_moving and not self._moving:
             self._done_moving(timestamp=timestamp, value=value)
-
-    @property
-    def report(self):
-        try:
-            position = self.position
-        except DisconnectedError:
-            position = 'disconnected'
-
-        return {self._name: position,
-                'pv': self.user_readback.pvname}
 
     def _repr_info(self):
         yield from super()._repr_info()

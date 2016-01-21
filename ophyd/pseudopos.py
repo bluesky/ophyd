@@ -131,7 +131,6 @@ class PseudoPositioner(Device, Positioner):
                  **kwargs):
 
         self._concurrent = bool(concurrent)
-        self._finish_thread = None
         self._real_waiting = []
 
         if self.__class__ is PseudoPositioner:
