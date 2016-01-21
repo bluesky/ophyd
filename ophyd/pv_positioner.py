@@ -14,30 +14,35 @@ import time
 from epics.pv import fmt_time
 
 from .utils import TimeoutError
-from .device import Device
 from .positioner import Positioner
 
 
 logger = logging.getLogger(__name__)
 
 
-class PVPositioner(Device, Positioner):
+class Unspecified:
+    pass
+
+
+class PVPositioner(Positioner):
     '''A Positioner which is controlled using multiple user-defined signals
 
     Keyword arguments are passed through to the base class, Positioner
 
     Parameters
     ----------
-    prefix : str, optional
+    prefix : str
         The device prefix used for all sub-positioners. This is optional as it
         may be desirable to specify full PV names for PVPositioners.
+    name : str, optional
+        The device name, required unless instantiated as a Component
     settle_time : float, optional
         Time to wait after a move to ensure a move complete callback is received
     limits : 2-element sequence, optional
         (low_limit, high_limit)
-    name : str
-        The device name
-    timeout : float
+    parent : Device, optional
+        parent device
+    timeout : float, optional
         The motion timeout
 
     Attributes
@@ -56,28 +61,22 @@ class PVPositioner(Device, Positioner):
         The value sent to stop_signal when a stop is requested
     done : Signal
         A readback value indicating whether motion is finished
-    done_val : any, optional
+    done_value : any, optional
         The value that the done pv should be when motion has completed
-    put_complete : bool, optional
-        If set, the specified PV should allow for asynchronous put completion to
-        indicate motion has finished.  If `actuate` is specified, it will be
-        used for put completion.  Otherwise, the `setpoint` will be used.  See
-        the `-c` option from `caput` for more information.
     '''
 
-    setpoint = None  # TODO: should add limits=True
-    readback = None
-    actuate = None
+    setpoint = Unspecified  # TODO: should add limits=True
+    readback = Unspecified
+    actuate = Unspecified
     actuate_value = 1
 
-    stop_signal = None
+    stop_signal = Unspecified
     stop_value = 1
 
-    done = None
+    done = Unspecified
     done_value = 1
-    put_complete = False
 
-    def __init__(self, prefix='', *, settle_time=0.05, limits=None, name=None,
+    def __init__(self, prefix='', *, name=None, settle_time=0.05, limits=None, 
                  timeout=None, read_attrs=None, configuration_attrs=None,
                  monitor_attrs=None, parent=None,
                  **kwargs):
@@ -90,6 +89,11 @@ class PVPositioner(Device, Positioner):
             raise TypeError('PVPositioner must be subclassed with the correct '
                             'signals set in the class definition.')
 
+        if self.done is Unspecified:
+            msg = ('PVPositioner {} is mis-configured. A "done" Signal must be '
+                   'provided'.format(self.name))
+            raise TypeError(msg)
+
         self.settle_time = float(settle_time)
 
         if limits is not None:
@@ -97,21 +101,14 @@ class PVPositioner(Device, Positioner):
         else:
             self._limits = None
 
-        if self.readback is not None:
+        if self.readback is not Unspecified:
             self.readback.subscribe(self._pos_changed)
-        elif self.setpoint is not None:
+        elif self.setpoint is not Unspecified:
             self.setpoint.subscribe(self._pos_changed)
         else:
-            raise ValueError('A setpoint or a readback must be specified')
+            raise TypeError('A setpoint or a readback must be specified')
 
-        if self.done is None and not self.put_complete:
-            msg = ('PVPositioner %s is mis-configured. A "done" Signal must be '
-                   'provided or use PVPositionerPC (which uses put completion '
-                   'to determine when motion has completed).'
-                   ''.format(self.name))
-            raise ValueError(msg)
-
-        if self.done is not None:
+        if self.done is not Unspecified:
             self.done.subscribe(self._move_changed)
 
     @property
@@ -120,13 +117,10 @@ class PVPositioner(Device, Positioner):
 
     def check_value(self, pos):
         '''Check that the position is within the soft limits'''
-        if self.limits is not None:
-            low, high = self.limits
-            if low != high and not (low <= pos <= high):
-                raise ValueError('{} outside of user-specified limits'
-                                 ''.format(pos))
-        else:
-            self.setpoint.check_value(pos)
+        low, high = self.limits
+        if low != high and not (low <= pos <= high):
+            raise ValueError('{} outside of user-specified limits'
+                                ''.format(pos))
 
     @property
     def moving(self):
@@ -139,44 +133,32 @@ class PVPositioner(Device, Positioner):
         -------
         bool
         '''
-        if self.done is not None:
+        if self.done is not Unspecified:
             dval = self.done.get(use_monitor=False)
             return (dval != self.done_value)
         else:
-            return self._moving
+            return super().moving
 
-    def _move_wait(self, position, **kwargs):
-        '''Move and wait until motion has completed'''
-        self._started_moving = False
-
-        self.setpoint.put(position, wait=True)
-        logger.debug('Setpoint set: %s = %s',
-                     self.setpoint.setpoint_pvname, position)
-
-        if self.actuate is not None:
-            self.actuate.put(self.actuate_value, wait=True)
-            logger.debug('Actuating: %s = %s',
-                         self.actuate.setpoint_pvname, self.actuate_value)
-
-    def _move_async(self, position, **kwargs):
-        '''Move and do not wait until motion is complete (asynchronous)'''
-        if self.actuate is not None:
-            self.setpoint.put(position, wait=False)
-            self.actuate.put(self.actuate_value, wait=False)
-        else:
-            self.setpoint.put(position, wait=False)
-
-    def move(self, position, wait=True, **kwargs):
+    def move(self, position, wait=True, moved_cb=None, timeout=None):
         try:
             if wait:
-                self._move_wait(position, **kwargs)
-                return super().move(position, wait=True, **kwargs)
-            else:
-                # Setup the async retval first
-                ret = super().move(position, wait=False, **kwargs)
                 self._started_moving = False
-                self._move_async(position, **kwargs)
-                return ret
+            self.setpoint.put(position, wait=False)
+
+            logger.debug('Setpoint set: %s = %s',
+                        self.setpoint.setpoint_pvname, position)
+
+            if self.actuate is not Unspecifed:
+                self.actuate.put(self.actuate_value, wait=False)
+
+                logger.debug('Actuating: %s = %s',
+                            self.actuate.setpoint_pvname, self.actuate_value)
+
+            ret = super().move(position, wait=wait, moved_cb=moved_cb,
+                            timeout=timeout)
+            if not wait:
+                self._started_moving = False
+            return ret
         except KeyboardInterrupt:
             self.stop()
             raise
@@ -210,20 +192,35 @@ class PVPositioner(Device, Positioner):
         self._set_position(value)
 
     def stop(self):
-        if self.stop_signal is not None:
+        if self.stop_signal is not Unspecified:
             self.stop_signal.put(self.stop_value, wait=False)
         super().stop()
 
-    @property
-    def report(self):
-        return {self._name: self.position, 'pv': self.readback.pvname}
+    # This works for 1D Positioner that has no interactions with others.
+    # Needs a re-think for more general case.
 
     @property
     def limits(self):
         if self._limits is not None:
+            # Python limits, if set
             return tuple(self._limits)
         else:
+            # EPICS limits
             return self.setpoint.limits
+
+    @limits.setter
+    def limits(self, val):
+        # TODO Python limits cannot exceed EPICS limits
+        # might as well raise right away
+        self._limits = val
+
+    @property
+    def low_limit(self):
+        return self.limits[0]
+
+    @property
+    def high_limit(self):
+        return self.limits[1]
 
     def _repr_info(self):
         yield from super()._repr_info()
@@ -233,12 +230,25 @@ class PVPositioner(Device, Positioner):
 
 
 class PVPositionerPC(PVPositioner):
-    def __init__(self, *args, **kwargs):
+    done = None
+
+    def __init__(self, prefix='', *, name=None, settle_time=0.05, limits=None, 
+                 timeout=None, read_attrs=None, configuration_attrs=None,
+                 monitor_attrs=None, parent=None,
+                 **kwargs):
+
         if self.__class__ is PVPositionerPC:
             raise TypeError('PVPositionerPC must be subclassed with the '
                             'correct signals set in the class definition.')
 
-        super().__init__(*args, **kwargs)
+        super().__init__(prefix=prefix, read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         monitor_attrs=monitor_attrs,
+                         name=name, parent=parent, timeout=timeout, **kwargs)
+
+        # Now that check for done has been performed by init, set to Unspeified.
+        if self.done is None:
+            self.done = Unspecified
 
     def _move_wait(self, position, **kwargs):
         '''Move and wait until motion has completed'''
