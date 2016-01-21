@@ -162,12 +162,6 @@ class Signal(OphydObject):
         return {self.name: {'value': self.get(),
                             'timestamp': self.timestamp}}
 
-    @property
-    def report(self):
-        return {self.name: self.get(),
-                'pv': None
-                }
-
     def describe(self):
         """Return the description as a dictionary"""
         return {self.name: {'source': 'SIM:{}'.format(self.name),
@@ -183,17 +177,8 @@ class Signal(OphydObject):
         return self.describe()
 
 
-class EpicsSignal(Signal):
-    '''An EPICS signal, comprised of either one or two EPICS PVs
-
-    =======  =========  =====  ==========================================
-    read_pv  write_pv   rw     Result
-    =======  ========   ====   ==========================================
-    str      None       True   read_pv is used as write_pv
-    str      None       False  Read-only signal
-    str      str        True   Read from read_pv, write to write_pv
-    str      str        False  write_pv ignored.
-    =======  ========   ====   ==========================================
+class EpicsSignalBase(Signal):
+    '''A read-only EpicsSignal -- that is, one with no `write_pv`
 
     Keyword arguments are passed on to the base class (Signal) initializer
 
@@ -201,64 +186,43 @@ class EpicsSignal(Signal):
     ----------
     read_pv : str
         The PV to read from
-    write_pv : str, optional
-        The PV to write to if different from the read PV
-    rw : bool, optional
-        Read-write signal (or read-only)
     pv_kw : dict, optional
         Keyword arguments for epics.PV(**pv_kw)
-    limits : bool, optional
-        Check limits prior to writing value
     auto_monitor : bool, optional
         Use automonitor with epics.PV
     name : str, optional
         Name of signal.  If not given defaults to read_pv
+    separate_readback : bool, optional
+        If the readback value isn't coming from the same source as the setpoint
+        value, set this to True.
     '''
-    def __init__(self, read_pv, write_pv=None, *,
-                 rw=True, pv_kw=None,
-                 put_complete=False,
+    def __init__(self, read_pv, *,
+                 pv_kw=None,
                  string=False,
-                 limits=False,
                  auto_monitor=None,
                  name=None,
+                 separate_readback=False,
                  **kwargs):
         if pv_kw is None:
             pv_kw = dict()
+
         self._read_pv = None
-        self._write_pv = None
-        self._put_complete = put_complete
         self._string = bool(string)
-        self._check_limits = bool(limits)
-        self._rw = rw
         self._pv_kw = pv_kw
         self._auto_monitor = auto_monitor
 
         separate_readback = False
 
-        if not rw:
-            write_pv = None
-        elif write_pv is not None:
-            if write_pv == read_pv:
-                write_pv = None
-            else:
-                separate_readback = True
         if name is None:
             name = read_pv
+
         super().__init__(separate_readback=separate_readback, name=name,
                          **kwargs)
 
         self._read_pv = epics.PV(read_pv, form=pv_form,
-                                 callback=self._read_changed,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
-
-        if write_pv is not None:
-            self._write_pv = epics.PV(write_pv, form=pv_form,
-                                      callback=self._write_changed,
-                                      auto_monitor=auto_monitor,
-                                      **pv_kw)
-        elif rw:
-            self._write_pv = self._read_pv
+        self._read_pv.add_callback(self._read_changed, run_now=True)
 
     @property
     @raise_if_disconnected
@@ -278,20 +242,6 @@ class EpicsSignal(Signal):
                 raise TimeoutError('Failed to connect to %s' %
                                    self._read_pv.pvname)
 
-        if self._write_pv is not None and not self._write_pv.connected:
-            if not self._write_pv.wait_for_connection(timeout=timeout):
-                raise TimeoutError('Failed to connect to %s' %
-                                   self._write_pv.pvname)
-
-    @property
-    @raise_if_disconnected
-    def setpoint_ts(self):
-        '''Timestamp of setpoint PV, according to EPICS'''
-        if self._write_pv is None:
-            raise ReadOnlyError('Read-only EPICS signal')
-
-        return self._write_pv.timestamp
-
     @property
     @raise_if_disconnected
     def timestamp(self):
@@ -301,45 +251,22 @@ class EpicsSignal(Signal):
     @property
     def pvname(self):
         '''The readback PV name'''
-        try:
-            return self._read_pv.pvname
-        except AttributeError:
-            return None
-
-    @property
-    def setpoint_pvname(self):
-        '''The setpoint PV name'''
-        try:
-            return self._write_pv.pvname
-        except AttributeError:
-            return None
+        return self._read_pv.pvname
 
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('read_pv', self._read_pv.pvname)
-        if self._write_pv is not None:
-            yield ('write_pv', self._write_pv.pvname)
-
-        yield ('rw', self._rw)
-        yield ('limits', self._check_limits)
-        yield ('put_complete', self._put_complete)
         yield ('pv_kw', self._pv_kw)
         yield ('auto_monitor', self._auto_monitor)
 
     @property
     def connected(self):
-        if self._write_pv is None:
-            return self._read_pv.connected
-        else:
-            return self._read_pv.connected and self._write_pv.connected
+        return self._read_pv.connected
 
     @property
     @raise_if_disconnected
     def limits(self):
-        if self._write_pv is None:
-            raise ReadOnlyError('Read-only EPICS signal')
-
-        pv = self._write_pv
+        pv = self._read_pv
         pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
@@ -358,24 +285,8 @@ class EpicsSignal(Signal):
         ------
         ValueError
         '''
-        if self._write_pv is None:
-            raise ReadOnlyError('Read-only EPICS signal')
-        if value is None:
-            raise ValueError('Cannot write None to epics PVs')
-        if not self._check_limits:
-            return
+        pass
 
-        low_limit, high_limit = self.limits
-        if low_limit >= high_limit:
-            return
-
-        if not (low_limit <= value <= high_limit):
-            raise LimitError('Value {} outside of range: [{}, {}]'
-                             .format(value, low_limit, high_limit))
-
-    # TODO: monitor updates self._readback - this shouldn't be necessary
-    #       ... but, there should be a mode of operation without using
-    #           monitor updates, e.g., for large arrays
     def get(self, as_string=None, **kwargs):
         if as_string is None:
             as_string = self._string
@@ -392,52 +303,6 @@ class EpicsSignal(Signal):
         else:
             return ret
 
-    @raise_if_disconnected
-    def get_setpoint(self, **kwargs):
-        '''Get the setpoint value (use only if the setpoint PV and the readback
-        PV differ)
-
-        Keyword arguments are passed on to epics.PV.get()
-        '''
-        if self._write_pv is None:
-            raise ReadOnlyError('Read-only EPICS signal')
-
-        if kwargs or self._setpoint is None:
-            setpoint = self._write_pv.get(**kwargs)
-            return self._fix_type(setpoint)
-        else:
-            return self._setpoint
-
-    def put(self, value, force=False, **kwargs):
-        '''Using channel access, set the write PV to `value`.
-
-        Keyword arguments are passed on to callbacks
-
-        Parameters
-        ----------
-        value : any
-            The value to set
-        force : bool, optional
-            Skip checking the value first
-        '''
-        if self._write_pv is None:
-            raise ReadOnlyError('Read-only EPICS signal')
-
-        if not force:
-            self.check_value(value)
-
-        if not self._write_pv.connected:
-            if not self._write_pv.wait_for_connection():
-                raise TimeoutError('Failed to connect to %s' %
-                                   self._write_pv.pvname)
-
-        use_complete = kwargs.get('use_complete', self._put_complete)
-
-        self._write_pv.put(value, use_complete=use_complete,
-                           **kwargs)
-
-        super().put(value, force=True)
-
     def _fix_type(self, value):
         if self._string:
             value = waveform_to_string(value)
@@ -451,32 +316,6 @@ class EpicsSignal(Signal):
 
         value = self._fix_type(value)
         self._set_readback(value, timestamp=timestamp)
-
-    def _write_changed(self, value=None, timestamp=None, **kwargs):
-        '''A callback indicating that the write value has changed'''
-        if timestamp is None:
-            timestamp = time.time()
-
-        value = self._fix_type(value)
-        super().put(value, timestamp=timestamp)
-
-    @property
-    @raise_if_disconnected
-    def report(self):
-        # FIXME:
-        if self._read_pv == self._write_pv:
-            value = self._read_pv.value
-            pv = self.pvname
-        elif self._read_pv is not None:
-            value = self._read_pv.value
-            pv = self.pvname
-        elif self._write_pv is not None:
-            value = self._write_pv.value
-            pv = self.setpoint_pvname
-
-        return {self.name: value,
-                'pv': pv
-                }
 
     def describe(self):
         """Return the description as a dictionary
@@ -503,6 +342,206 @@ class EpicsSignal(Signal):
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
 
+
+class EpicsSignalRO(EpicsSignalBase):
+    '''A read-only EpicsSignal -- that is, one with no `write_pv`
+
+    Keyword arguments are passed on to the base class (Signal) initializer
+
+    Parameters
+    ----------
+    read_pv : str
+        The PV to read from
+    pv_kw : dict, optional
+        Keyword arguments for epics.PV(**pv_kw)
+    limits : bool, optional
+        Check limits prior to writing value
+    auto_monitor : bool, optional
+        Use automonitor with epics.PV
+    name : str, optional
+        Name of signal.  If not given defaults to read_pv
+    '''
+    def __init__(self, read_pv, *, pv_kw=None, string=False, auto_monitor=None,
+                 name=None, **kwargs):
+        super().__init__(read_pv, pv_kw=pv_kw, string=string,
+                         auto_monitor=auto_monitor, name=name,
+                         separate_readback=False, **kwargs)
+
+    # TODO: need to further refactor Signal to SignalBase, Signal, SignalRO, to
+    #       remove these methods
+    def put(self, *args, **kwargs):
+        raise ReadOnlyError('Read-only signals cannot be put to')
+
+    def get_setpoint(self, *args, **kwargs):
+        raise ReadOnlyError('EpicsSignalRO has no setpoint')
+
+    @property
+    def setpoint_ts(self, *args, **kwargs):
+        raise ReadOnlyError('EpicsSignalRO has no setpoint')
+
+
+class EpicsSignal(EpicsSignalBase):
+    '''An EPICS signal, comprised of either one or two EPICS PVs
+
+    Keyword arguments are passed on to the base class (Signal) initializer
+
+    Parameters
+    ----------
+    read_pv : str
+        The PV to read from
+    write_pv : str, optional
+        The PV to write to if different from the read PV
+    pv_kw : dict, optional
+        Keyword arguments for epics.PV(**pv_kw)
+    limits : bool, optional
+        Check limits prior to writing value
+    auto_monitor : bool, optional
+        Use automonitor with epics.PV
+    name : str, optional
+        Name of signal.  If not given defaults to read_pv
+    put_complete : bool, optional
+        Use put completion when writing the value
+    '''
+    def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
+                 put_complete=False, string=False, limits=False,
+                 auto_monitor=None, name=None, **kwargs):
+
+        if 'rw' in kwargs:
+            if kwargs['rw']:
+                new_class = EpicsSignal
+            else:
+                new_class = EpicsSignalRO
+
+            raise RuntimeError('rw is no longer an option for EpicsSignal. '
+                               'Based on your setting of `rw`, you should be '
+                               'using this class: {}'
+                               ''.format(new_class.__name__))
+
+        self._write_pv = None
+        self._use_limits = bool(limits)
+        self._put_complete = put_complete
+        separate_readback = False
+
+        if write_pv == read_pv:
+            write_pv = None
+        elif write_pv is not None:
+            separate_readback = True
+
+        super().__init__(read_pv, separate_readback=separate_readback,
+                         pv_kw=pv_kw, string=string, auto_monitor=auto_monitor,
+                         name=name, **kwargs)
+
+        if write_pv is not None:
+            self._write_pv = epics.PV(write_pv, form=pv_form,
+                                      auto_monitor=self._auto_monitor,
+                                      **self._pv_kw)
+            self._write_pv.add_callback(self._write_changed, run_now=True)
+        else:
+            self._write_pv = self._read_pv
+
+    def wait_for_connection(self, timeout=1.0):
+        super().wait_for_connection(timeout=1.0)
+
+        if self._write_pv is not None and not self._write_pv.connected:
+            if not self._write_pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._write_pv.pvname)
+
+    @property
+    @raise_if_disconnected
+    def setpoint_ts(self):
+        '''Timestamp of setpoint PV, according to EPICS'''
+        return self._write_pv.timestamp
+
+    @property
+    def setpoint_pvname(self):
+        '''The setpoint PV name'''
+        return self._write_pv.pvname
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+        if self._write_pv is not None:
+            yield ('write_pv', self._write_pv.pvname)
+
+        yield ('limits', self._use_limits)
+        yield ('put_complete', self._put_complete)
+
+    @property
+    def connected(self):
+        return self._read_pv.connected and self._write_pv.connected
+
+    @property
+    @raise_if_disconnected
+    def limits(self):
+        pv = self._write_pv
+        pv.get_ctrlvars()
+        return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
+
+    def check_value(self, value):
+        '''Check if the value is within the setpoint PV's control limits
+
+        Raises
+        ------
+        ValueError
+        '''
+        if value is None:
+            raise ValueError('Cannot write None to epics PVs')
+        if not self._use_limits:
+            return
+
+        low_limit, high_limit = self.limits
+        if low_limit >= high_limit:
+            return
+
+        if not (low_limit <= value <= high_limit):
+            raise LimitError('Value {} outside of range: [{}, {}]'
+                             .format(value, low_limit, high_limit))
+
+    @raise_if_disconnected
+    def get_setpoint(self, **kwargs):
+        '''Get the setpoint value (use only if the setpoint PV and the readback
+        PV differ)
+
+        Keyword arguments are passed on to epics.PV.get()
+        '''
+        setpoint = self._write_pv.get(**kwargs)
+        return self._fix_type(setpoint)
+
+    def put(self, value, force=False, **kwargs):
+        '''Using channel access, set the write PV to `value`.
+
+        Keyword arguments are passed on to callbacks
+
+        Parameters
+        ----------
+        value : any
+            The value to set
+        force : bool, optional
+            Skip checking the value in Python first
+        '''
+        if not force:
+            self.check_value(value)
+
+        if not self._write_pv.connected:
+            if not self._write_pv.wait_for_connection():
+                raise TimeoutError('Failed to connect to %s' %
+                                   self._write_pv.pvname)
+
+        use_complete = kwargs.get('use_complete', self._put_complete)
+
+        self._write_pv.put(value, use_complete=use_complete,
+                           **kwargs)
+
+        super().put(value, force=True)
+
+    def _write_changed(self, value=None, timestamp=None, **kwargs):
+        '''A callback indicating that the write value has changed'''
+        if timestamp is None:
+            timestamp = time.time()
+
+        value = self._fix_type(value)
+        super().put(value, timestamp=timestamp)
+
     def trigger(self):
         try:
             return super().trigger()
@@ -510,14 +549,3 @@ class EpicsSignal(Signal):
             d = DeviceStatus(self)
             d._finished()
             return d
-
-
-class EpicsSignalRO(EpicsSignal):
-    "A read-only EpicsSignal -- that is, one with no `write_pv`"
-    def __init__(self, read_pv, **kwargs):
-
-        if 'write_pv' in kwargs:
-            raise ValueError('Read-only signals do not have a write_pv')
-            # TODO half-assed way to make this read-only
-
-        super().__init__(read_pv, rw=False, write_pv=None, **kwargs)

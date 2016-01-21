@@ -318,8 +318,11 @@ class SignalTests(unittest.TestCase):
         self.assertEquals(kw['timestamp'], signal.setpoint_ts)
 
         signal.read()
+        signal.describe()
+        signal.read_configuration()
+        signal.describe_configuration()
+
         eval(repr(signal))
-        signal.report
 
     def test_signal_copy(self):
         start_t = time.time()
@@ -344,44 +347,41 @@ class SignalTests(unittest.TestCase):
 
 
 class EpicsSignalTests(unittest.TestCase):
+    def test_rw_removal(self):
+        # rw kwarg is no longer used
+        with self.assertRaises(RuntimeError):
+            EpicsSignal('readpv', rw=False)
+
+        with self.assertRaises(RuntimeError):
+            EpicsSignal('readpv', rw=True)
+
     def test_epicssignal_readonly(self):
         epics.PV = FakeEpicsPV
 
-        signal = EpicsSignal('readpv', rw=False)
+        signal = EpicsSignalRO('readpv')
         signal.wait_for_connection()
 
         signal.value
 
-        @contextmanager
-        def readonly_block():
-            try:
-                yield
-            except ReadOnlyError:
-                pass
-            else:
-                raise ValueError('Should be readonly')
-
-        with readonly_block():
+        with self.assertRaises(ReadOnlyError):
             signal.value = 10
 
-        with readonly_block():
+        # vestigial, to be removed
+        with self.assertRaises(ReadOnlyError):
             signal.setpoint_ts
 
-        with readonly_block():
+        # vestigial, to be removed
+        with self.assertRaises(ReadOnlyError):
             signal.setpoint
-
-        with readonly_block():
-            signal.check_value(0)
 
         signal.precision
         signal.timestamp
-        signal.report
+        signal.limits
+
         signal.read()
-
-        with readonly_block():
-            signal.limits
-
-        self.assertEquals(signal.setpoint_pvname, None)
+        signal.describe()
+        signal.read_configuration()
+        signal.describe_configuration()
 
         eval(repr(signal))
         time.sleep(0.2)
@@ -438,8 +438,11 @@ class EpicsSignalTests(unittest.TestCase):
         signal.limits
         signal.precision
         signal.timestamp
-        signal.report
+
         signal.read()
+        signal.describe()
+        signal.read_configuration()
+        signal.describe_configuration()
 
         eval(repr(signal))
         time.sleep(0.2)
@@ -462,12 +465,27 @@ class EpicsSignalTests(unittest.TestCase):
         sig = EpicsSignal('does_not_connect')
         self.assertRaises(TimeoutError, sig.wait_for_connection)
 
+        sig = EpicsSignal('does_not_connect')
+        self.assertRaises(TimeoutError, sig.put, 0.0)
+        self.assertRaises(TimeoutError, sig.get)
+
         sig = EpicsSignal('connects', write_pv='does_not_connect')
         self.assertRaises(TimeoutError, sig.wait_for_connection)
 
+    def test_enum_strs(self):
+        epics.PV = FakeEpicsPV
+        sig = EpicsSignal('connects')
+        sig.wait_for_connection()
+
+        enums = ['enum_strs']
+
+        # hack this onto the FakeEpicsPV
+        sig._read_pv.enum_strs = enums
+
+        self.assertEquals(sig.enum_strs, enums)
+
     def test_setpoint(self):
         epics.PV = FakeEpicsPV
-        # special case in FakeEpicsPV that returns false in wait_for_connection
         sig = EpicsSignal('connects')
         sig.wait_for_connection()
 
@@ -475,7 +493,8 @@ class EpicsSignalTests(unittest.TestCase):
         sig.get_setpoint(as_string=True)
 
     def test_epicssignalro(self):
-        self.assertRaises(ValueError, EpicsSignalRO, 'test',
+        # not in initializer parameters anymore
+        self.assertRaises(TypeError, EpicsSignalRO, 'test',
                           write_pv='nope_sorry')
 
 
