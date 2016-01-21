@@ -486,11 +486,46 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 return
             ttime.sleep(min((0.05, timeout / 10.0)))
 
-        unconnected = [sig.name for sig in signals
-                       if not sig.connected]
-
+        unconnected = ', '.join(self._get_unconnected())
         raise TimeoutError('Failed to connect to all signals: {}'
-                           ''.format(', '.join(unconnected)))
+                           ''.format(unconnected))
+
+    def _get_unconnected(self):
+        '''Yields all of the signal pvnames or prefixes that are unconnected
+
+        This recurses throughout the device hierarchy, only checking signals
+        that have already been instantiated.
+        '''
+        for attr, sig in self.get_instantiated_signals():
+            if hasattr(sig, 'pvname'):
+                prefix = sig.pvname
+            else:
+                prefix = sig.prefix
+
+            yield '{} ({})'.format(attr, prefix)
+
+    def get_instantiated_signals(self, *, attr_prefix=None):
+        '''Yields all of the instantiated signals in a device hierarchy
+
+        Parameters
+        ----------
+        attr_prefix : string, optional
+            The attribute prefix. If None, defaults to item.name
+
+        Yields
+        ------
+            (fully_qualified_attribute_name, signal_instance)
+        '''
+        if attr_prefix is None:
+            attr_prefix = self.name
+
+        for attr, sig in self._signals.items():
+            # fully qualified attribute name from top-level device
+            full_attr = '{}.{}'.format(attr_prefix, attr)
+            if isinstance(sig, Device):
+                yield from sig.get_instantiated_signals(attr_prefix=full_attr)
+            else:
+                yield full_attr, sig
 
     @property
     def connected(self):
