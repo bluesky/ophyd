@@ -36,6 +36,14 @@ class Signal(OphydObject):
 
         self._timestamp = timestamp
 
+    def trigger(self):
+        '''Call that is used by bluesky prior to read()'''
+        # NOTE: this is a no-op that exists here for bluesky purposes
+        #       it may need to be moved in the future
+        d = DeviceStatus(self)
+        d._finished()
+        return d
+
     @property
     def connected(self):
         '''Subclasses should override this'''
@@ -488,14 +496,6 @@ class EpicsSignal(EpicsSignalBase):
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._setpoint_ts, **kwargs)
-
-    def trigger(self):
-        try:
-            return super().trigger()
-        except AttributeError:
-            d = DeviceStatus(self)
-            d._finished()
-            return d
 
     def put(self, value, force=False, **kwargs):
         '''Using channel access, set the write PV to `value`.

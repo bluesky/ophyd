@@ -295,6 +295,7 @@ class SignalTests(unittest.TestCase):
         self.assertEquals(kw['old_value'], value)
         self.assertEquals(kw['timestamp'], signal.timestamp)
 
+        signal.trigger()
         signal.read()
         signal.describe()
         signal.read_configuration()
