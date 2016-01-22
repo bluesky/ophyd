@@ -7,14 +7,10 @@ import random
 import time
 import copy
 
-from contextlib import contextmanager
-
 import numpy as np
-from numpy.testing import assert_array_equal
-
 import epics
 
-from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO)
+from ophyd.signal import (SoftSignal, EpicsSignal, EpicsSignalRO)
 from ophyd.utils import (ReadOnlyError, TimeoutError)
 
 logger = logging.getLogger(__name__)
@@ -242,33 +238,19 @@ class FakePVTests(unittest.TestCase):
 
 
 class SignalTests(unittest.TestCase):
-    def test_signal_separate(self):
-        self.signal_t(True)
-
-    def test_signal_unified(self):
-        self.signal_t(False)
-
-    def signal_t(self, separate):
+    def test_signal_base(self):
         start_t = time.time()
-        setpoint_t = start_t + 1
 
         name = 'test'
-        value, setpoint = 10.0, 20.0
-        signal = Signal(name=name,
-                        value=value, setpoint=setpoint,
-                        timestamp=start_t, setpoint_ts=setpoint_t,
-                        separate_readback=separate)
-
+        value = 10.0
+        signal = SoftSignal(name=name, value=value, timestamp=start_t)
         signal.wait_for_connection()
 
         self.assertTrue(signal.connected)
         self.assertEquals(signal.name, name)
         self.assertEquals(signal.value, value)
         self.assertEquals(signal.get(), value)
-        self.assertEquals(signal.setpoint, setpoint)
-        self.assertEquals(signal.get_setpoint(), setpoint)
         self.assertEquals(signal.timestamp, start_t)
-        self.assertEquals(signal.setpoint_ts, setpoint_t)
 
         info = dict(called=False)
 
@@ -277,7 +259,7 @@ class SignalTests(unittest.TestCase):
             info['kw'] = kwargs
 
         signal.subscribe(_sub_test, run=False)
-        self.assertTrue(not info['called'])
+        self.assertFalse(info['called'])
 
         signal.value = value
         signal.clear_sub(_sub_test)
@@ -285,25 +267,21 @@ class SignalTests(unittest.TestCase):
         signal.subscribe(_sub_test, run=False)
         signal.clear_sub(_sub_test, event_type=signal.SUB_VALUE)
 
-        if separate:
-            # separate setpoint will not trigger a readback/value callback
-            self.assertTrue(not info['called'])
-        else:
-            kw = info['kw']
-            self.assertIn('value', kw)
-            self.assertIn('timestamp', kw)
-            self.assertIn('old_value', kw)
+        kw = info['kw']
+        self.assertIn('value', kw)
+        self.assertIn('timestamp', kw)
+        self.assertIn('old_value', kw)
 
-            self.assertEquals(kw['value'], value)
-            self.assertEquals(kw['old_value'], value)
-            self.assertEquals(kw['timestamp'], signal.timestamp)
+        self.assertEquals(kw['value'], value)
+        self.assertEquals(kw['old_value'], value)
+        self.assertEquals(kw['timestamp'], signal.timestamp)
 
-        # setpoint callback
+        # readback callback for soft signal
         info = dict(called=False)
-        signal.subscribe(_sub_test, event_type=Signal.SUB_SETPOINT,
+        signal.subscribe(_sub_test, event_type=SoftSignal.SUB_VALUE,
                          run=False)
-        self.assertTrue(not info['called'])
-        signal.value = value + 1
+        self.assertFalse(info['called'])
+        signal.put(value + 1)
         self.assertTrue(info['called'])
 
         signal.clear_sub(_sub_test)
@@ -315,7 +293,7 @@ class SignalTests(unittest.TestCase):
 
         self.assertEquals(kw['value'], value + 1)
         self.assertEquals(kw['old_value'], value)
-        self.assertEquals(kw['timestamp'], signal.setpoint_ts)
+        self.assertEquals(kw['timestamp'], signal.timestamp)
 
         signal.read()
         signal.describe()
@@ -326,24 +304,16 @@ class SignalTests(unittest.TestCase):
 
     def test_signal_copy(self):
         start_t = time.time()
-        setpoint_t = start_t + 1
 
         name = 'test'
-        value, setpoint = 10.0, 20.0
-        signal = Signal(name=name,
-                        value=value, setpoint=setpoint,
-                        timestamp=start_t, setpoint_ts=setpoint_t,
-                        separate_readback=True)
-
+        value = 10.0
+        signal = SoftSignal(name=name, value=value, timestamp=start_t)
         sig_copy = copy.copy(signal)
 
         self.assertEquals(signal.name, sig_copy.name)
         self.assertEquals(signal.value, sig_copy.value)
         self.assertEquals(signal.get(), sig_copy.get())
-        self.assertEquals(signal.setpoint, sig_copy.setpoint)
-        self.assertEquals(signal.get_setpoint(), sig_copy.get_setpoint())
         self.assertEquals(signal.timestamp, sig_copy.timestamp)
-        self.assertEquals(signal.setpoint_ts, sig_copy.setpoint_ts)
 
 
 class EpicsSignalTests(unittest.TestCase):
@@ -366,12 +336,15 @@ class EpicsSignalTests(unittest.TestCase):
         with self.assertRaises(ReadOnlyError):
             signal.value = 10
 
-        # vestigial, to be removed
         with self.assertRaises(ReadOnlyError):
+            signal.put(10)
+
+        # vestigial, to be removed
+        with self.assertRaises(AttributeError):
             signal.setpoint_ts
 
         # vestigial, to be removed
-        with self.assertRaises(ReadOnlyError):
+        with self.assertRaises(AttributeError):
             signal.setpoint
 
         signal.precision
