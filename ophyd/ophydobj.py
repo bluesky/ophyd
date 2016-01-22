@@ -180,7 +180,7 @@ class OphydObject:
     Parameters
     ----------
     name : str, optional
-        The name of the object.  If None, registration is disabled.
+        The name of the object.
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
 
@@ -191,10 +191,10 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, name=None, parent=None):
+    def __init__(self, *, name=None, parent=None):
         super().__init__()
 
-        self._name = name
+        self.name = name
         self._parent = parent
 
         self._subs = dict((getattr(self, sub), []) for sub in dir(self)
@@ -326,10 +326,6 @@ class OphydObject:
         else:
             self._subs[event_type].remove(cb)
 
-    @property
-    def name(self):
-        return self._name
-
     def check_value(self, value, **kwargs):
         '''Check if the value is valid for this object
 
@@ -345,10 +341,10 @@ class OphydObject:
         return '{}({})'.format(self.__class__.__name__, info)
 
     def _repr_info(self):
-        if self._name:
-            yield ('name', self._name)
+        if self.name is not None:
+            yield ('name', self.name)
 
-        if self._parent:
+        if self._parent is not None:
             yield ('parent', self.parent.name)
 
     def __copy__(self):
