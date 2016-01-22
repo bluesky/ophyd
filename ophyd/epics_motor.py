@@ -158,7 +158,7 @@ class EpicsMotor(Device, Positioner):
         except DisconnectedError:
             position = 'disconnected'
 
-        return {self._name: position,
+        return {self.name: position,
                 'pv': self.user_readback.pvname}
 
     def _repr_info(self):
