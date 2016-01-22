@@ -63,9 +63,14 @@ class SignalBase(OphydObject):
         '''Override to specify put behavior'''
         raise NotImplementedError()
 
-    value = property(lambda self: self.get(),
-                     lambda self, value: self.put(value),
-                     doc='The value associated with the signal')
+    @property
+    def value(self):
+        '''The signal's value'''
+        return self.get()
+
+    @value.setter
+    def value(self, value):
+         self.put(value)
 
     def _set_readback(self, value, **kwargs):
         '''Set the readback value internally'''
@@ -487,11 +492,14 @@ class EpicsSignal(EpicsSignalBase):
                            old_value=old_value, value=value,
                            timestamp=time.time(), **kwargs)
 
-    # getters/setters of properties are defined as lambdas so subclasses
-    # can override them without redefining the property
-    setpoint = property(lambda self: self.get_setpoint(),
-                        lambda self, value: self.put(value),
-                        doc='The setpoint value for the signal')
+    @property
+    def setpoint(self):
+        '''The setpoint PV value'''
+        return self.get_setpoint()
+
+    @setpoint.setter
+    def setpoint(self, value):
+        self.put(value)
 
 
 # Backward compatibility
