@@ -28,16 +28,19 @@ class PseudoSingle(Positioner):
 
     def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
                  idx=None, **kwargs):
-        super().__init__(name=name, **kwargs)
+        super().__init__(name=name, parent=parent, **kwargs)
 
-        self._master = parent
         self._target = None
-        self._limits = tuple(limits)
+
+        self._limits = None
+        if limits is not None:
+            self._limits = tuple(limits)
+
         self._idx = idx
 
-        self._master.subscribe(self._sub_proxy, event_type=self.SUB_START)
-        self._master.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
-        self._master.subscribe(self._sub_proxy_idx,
+        self._parent.subscribe(self._sub_proxy, event_type=self.SUB_START)
+        self._parent.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
+        self._parent.subscribe(self._sub_proxy_idx,
                                event_type=self.SUB_READBACK)
 
     @property
@@ -74,23 +77,18 @@ class PseudoSingle(Positioner):
         self._target = None
 
     def check_value(self, pos):
-        self._master.check_single(self._idx, pos)
+        self._parent.check_single(self._idx, pos)
 
     @property
     def moving(self):
-        return self._master.moving
+        return self._parent.moving
 
     @property
     def position(self):
-        return self._master.pseudo_position[self.name]
+        return self._parent.position[self._idx]
 
     def stop(self):
-        return self._master.stop()
-
-    @property
-    def master(self):
-        '''The master pseudo positioner instance'''
-        return self._master
+        return self._parent.stop()
 
     @property
     def connected(self):
@@ -99,7 +97,7 @@ class PseudoSingle(Positioner):
 
     @property
     def _started_moving(self):
-        return self._master._started_moving
+        return self._parent._started_moving
 
     @_started_moving.setter
     def _started_moving(self, value):
@@ -107,7 +105,7 @@ class PseudoSingle(Positioner):
         pass
 
     def move(self, pos, **kwargs):
-        return self._master.move_single(self, pos, **kwargs)
+        return self._parent.move_single(self, pos, **kwargs)
 
 
 class PseudoPositioner(Device, Positioner):
@@ -171,6 +169,16 @@ class PseudoPositioner(Device, Positioner):
             # And update the internal state of their position
             real.subscribe(self._real_pos_update, event_type=real.SUB_READBACK,
                            run=True)
+
+    @property
+    def pseudo_positioners(self):
+        '''Pseudo positioners'''
+        return self.PseudoPosition(*self._pseudo)
+
+    @property
+    def real_positioners(self):
+        '''Real positioners'''
+        return self.RealPosition(*self._real)
 
     @classmethod
     def _real_position_tuple(cls):
@@ -266,17 +274,13 @@ class PseudoPositioner(Device, Positioner):
         pass
 
     @property
-    def pseudo_position(self):
-        '''Dictionary of pseudo motors by name
-
-        Keys are in the order of creation
-        '''
-        return OrderedDict((name, pseudo) for name, pseudo in
-                           zip(self._pseudo_names, self._pseudo_pos))
+    def position(self):
+        '''Pseudo motor position namedtuple'''
+        return self.inverse(self.real_position)
 
     @property
     def real_position(self):
-        '''Dictionary of real motors by name'''
+        '''Real motor position namedtuple'''
         return self.RealPosition(*self._real_cur_pos.values())
 
     def _update_position(self):

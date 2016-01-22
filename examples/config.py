@@ -2,12 +2,10 @@
 
 import sys
 import logging
+from ophyd.utils.startup import setup as setup_ophyd
+import ophyd
 
-try:
-    import ophyd
-except ImportError:
-    sys.path.insert(0, '..')
-    import ophyd
+setup_ophyd()
 
 
 LOG_FORMAT = "%(asctime)-15s [%(name)5s:%(levelname)s] %(message)s"
@@ -27,8 +25,6 @@ def setup_loggers(logger_names, fmt=LOG_FORMAT):
 
 setup_loggers((EXAMPLE_LOGGER, ))
 logger = logging.getLogger(EXAMPLE_LOGGER)
-
-ophyd.commands.setup_ophyd()
 
 
 motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',

@@ -86,10 +86,6 @@ def test():
         time.sleep(0.1)
 
     logger.debug(m1.get(as_string=True))
-    logger.debug(m1.setpoint_ts)
-    logger.debug(m1.timestamp)
-    logger.debug(m1.pvname)
-    logger.debug(m1.setpoint_pvname)
 
     fmt = '%%.%df' % m1.precision
     logger.debug('precision formatting: %s ', fmt)
