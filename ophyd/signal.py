@@ -157,6 +157,11 @@ class EpicsSignalBase(Signal):
                                    run_now=self._read_pv.connected)
 
     @property
+    def as_string(self):
+        '''Attempt to cast the EPICS PV value to a string by default'''
+        return self._string
+
+    @property
     @raise_if_disconnected
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
@@ -219,7 +224,27 @@ class EpicsSignalBase(Signal):
         '''
         pass
 
-    def get(self, as_string=None, **kwargs):
+    def get(self, *, as_string=None, **kwargs):
+        '''Get the readback value through an explicit call to EPICS
+
+        Parameters
+        ----------
+        count : int, optional
+            Explicitly limit count for array data
+        as_string : bool, optional
+            Get a string representation of the value, defaults to as_string
+            from this signal, optional
+        as_numpy : bool
+            Use numpy array as the return type for array data.
+        timeout : float, optional
+            maximum time to wait for value to be received.
+            (default = 0.5 + log10(count) seconds)
+        use_monitor : bool, optional
+            to use value from latest monitor callback or to make an
+            explicit CA call for the value. (default: True)
+        '''
+        # NOTE: in the future this should be improved to grab self._readback
+        #       instead, when all of the kwargs match up
         if as_string is None:
             as_string = self._string
 
@@ -232,8 +257,8 @@ class EpicsSignalBase(Signal):
 
         if as_string:
             return waveform_to_string(ret)
-        else:
-            return ret
+
+        return ret
 
     def _fix_type(self, value):
         if self._string:
