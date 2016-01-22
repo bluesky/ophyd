@@ -483,7 +483,7 @@ class EpicsSignalTests(unittest.TestCase):
 
         sig.put(1)
         desc = sig.describe()['my_pv']
-        self.assertEquals(desc['dtype'], 'number')
+        self.assertEquals(desc['dtype'], 'integer')
         self.assertEquals(desc['shape'], [])
         self.assertIn('precision', desc)
         self.assertIn('enum_strs', desc)
@@ -493,6 +493,11 @@ class EpicsSignalTests(unittest.TestCase):
         sig.put('foo')
         desc = sig.describe()['my_pv']
         self.assertEquals(desc['dtype'], 'string')
+        self.assertEquals(desc['shape'], [])
+
+        sig.put(3.14)
+        desc = sig.describe()['my_pv']
+        self.assertEquals(desc['dtype'], 'number')
         self.assertEquals(desc['shape'], [])
 
         import numpy as np
