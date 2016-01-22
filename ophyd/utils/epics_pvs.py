@@ -344,7 +344,7 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
-def set_and_wait(signal, val, poll_time=0.1, timeout=10):
+def set_and_wait(signal, val, poll_time=0.01, timeout=10):
     """
     Set a signal to a value and wait until it reads correctly.
 
