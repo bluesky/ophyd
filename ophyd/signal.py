@@ -492,7 +492,7 @@ class EpicsSignal(EpicsSignalBase):
         self._setpoint = value
         self._setpoint_ts = timestamp
 
-        if self._read_pv != self._write_pv:
+        if self._read_pv is not self._write_pv:
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._setpoint_ts, **kwargs)
@@ -525,7 +525,7 @@ class EpicsSignal(EpicsSignalBase):
         old_value = self._setpoint
         self._setpoint = value
 
-        if self._read_pv == self._write_pv:
+        if self._read_pv is self._write_pv:
             # readback and setpoint PV are one in the same, so update the
             # readback as well
             super().put(value, timestamp=time.time(), force=True)
