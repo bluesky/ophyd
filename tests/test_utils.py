@@ -78,8 +78,10 @@ class EpicsUtilTest(unittest.TestCase):
     def test_data_type(self):
         utils = epics_utils
 
-        self.assertEquals(utils.data_type(1), 'number')
+        self.assertEquals(utils.data_type(1), 'integer')
+        self.assertNotEqual(utils.data_type(2), 'number')
         self.assertEquals(utils.data_type(1e-3), 'number')
+        self.assertEquals(utils.data_type(2.718), 'number')
         self.assertEquals(utils.data_type('foo'), 'string')
         self.assertEquals(utils.data_type(np.array([1,2,3])), 'array')
 
