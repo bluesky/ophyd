@@ -394,9 +394,10 @@ def _compare_maybe_enum(a, b, enums):
         b = enums[b]
     return a == b
 
-_type_map = {'number': (float, int),
+_type_map = {'number': (float, ),
              'array': (np.ndarray, ),
              'string': (str, ),
+             'integer': (int, ),
              }
 
 def data_type(val):
