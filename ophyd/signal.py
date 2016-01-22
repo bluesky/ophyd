@@ -12,7 +12,7 @@ from .ophydobj import (OphydObject, DeviceStatus)
 logger = logging.getLogger(__name__)
 
 
-class SignalBase(OphydObject):
+class Signal(OphydObject):
     '''A signal, which can have a read-write or read-only value.
 
     Parameters
@@ -59,9 +59,25 @@ class SignalBase(OphydObject):
         '''The readback value'''
         return self._readback
 
-    def put(self, value):
-        '''Override to specify put behavior'''
-        raise NotImplementedError()
+    def put(self, value, timestamp=None, force=False):
+        '''Put updates the internal readback value
+
+        Parameters
+        ----------
+
+        '''
+        if not force:
+            self.check_value(value)
+
+        old_value = self._readback
+        self._readback = value
+
+        if timestamp is None:
+            timestamp = time.time()
+
+        self._timestamp = timestamp
+        self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
+                       value=value, timestamp=self._timestamp)
 
     @property
     def value(self):
@@ -71,15 +87,6 @@ class SignalBase(OphydObject):
     @value.setter
     def value(self, value):
          self.put(value)
-
-    def _set_readback(self, value, **kwargs):
-        '''Set the readback value internally'''
-        old_value = self._readback
-        self._readback = value
-        self._timestamp = kwargs.pop('timestamp', time.time())
-        self._run_subs(sub_type=self.SUB_VALUE,
-                       old_value=old_value, value=value,
-                       timestamp=self._timestamp, **kwargs)
 
     def read(self):
         '''Put the status of the signal into a simple dictionary format
@@ -107,14 +114,7 @@ class SignalBase(OphydObject):
         return self.describe()
 
 
-class SoftSignal(SignalBase):
-    def put(self, value):
-        '''Put just updates the internal readback value'''
-        self.check_value(value)
-        self._set_readback(value)
-
-
-class EpicsSignalBase(SignalBase):
+class EpicsSignalBase(Signal):
     '''A read-only EpicsSignal -- that is, one with no `write_pv`
 
     Keyword arguments are passed on to the base class (Signal) initializer
@@ -247,7 +247,7 @@ class EpicsSignalBase(SignalBase):
             timestamp = time.time()
 
         value = self._fix_type(value)
-        self._set_readback(value, timestamp=timestamp)
+        super().put(value, timestamp=timestamp, force=True)
 
     def describe(self):
         """Return the description as a dictionary
@@ -487,10 +487,10 @@ class EpicsSignal(EpicsSignalBase):
         if self._read_pv == self._write_pv:
             # readback and setpoint PV are one in the same, so update the
             # readback as well
-            self._set_readback(value)
+            super().put(value, timestamp=time.time(), force=True)
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
-                           timestamp=time.time(), **kwargs)
+                           timestamp=self.timestamp, **kwargs)
 
     @property
     def setpoint(self):
@@ -500,7 +500,3 @@ class EpicsSignal(EpicsSignalBase):
     @setpoint.setter
     def setpoint(self, value):
         self.put(value)
-
-
-# Backward compatibility
-Signal = SoftSignal

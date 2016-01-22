@@ -10,7 +10,7 @@ import copy
 import numpy as np
 import epics
 
-from ophyd.signal import (SoftSignal, EpicsSignal, EpicsSignalRO)
+from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO)
 from ophyd.utils import (ReadOnlyError, TimeoutError)
 
 logger = logging.getLogger(__name__)
@@ -243,7 +243,7 @@ class SignalTests(unittest.TestCase):
 
         name = 'test'
         value = 10.0
-        signal = SoftSignal(name=name, value=value, timestamp=start_t)
+        signal = Signal(name=name, value=value, timestamp=start_t)
         signal.wait_for_connection()
 
         self.assertTrue(signal.connected)
@@ -278,7 +278,7 @@ class SignalTests(unittest.TestCase):
 
         # readback callback for soft signal
         info = dict(called=False)
-        signal.subscribe(_sub_test, event_type=SoftSignal.SUB_VALUE,
+        signal.subscribe(_sub_test, event_type=Signal.SUB_VALUE,
                          run=False)
         self.assertFalse(info['called'])
         signal.put(value + 1)
@@ -307,7 +307,7 @@ class SignalTests(unittest.TestCase):
 
         name = 'test'
         value = 10.0
-        signal = SoftSignal(name=name, value=value, timestamp=start_t)
+        signal = Signal(name=name, value=value, timestamp=start_t)
         sig_copy = copy.copy(signal)
 
         self.assertEquals(signal.name, sig_copy.name)
