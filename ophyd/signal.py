@@ -104,7 +104,7 @@ class Signal(OphydObject):
 
     @value.setter
     def value(self, value):
-         self.put(value)
+        self.put(value)
 
     def read(self):
         '''Put the status of the signal into a simple dictionary format
