@@ -222,7 +222,9 @@ class EpicsSignalBase(Signal):
         self._read_pv = epics.PV(read_pv, form=pv_form,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
-        self._read_pv.add_callback(self._read_changed, run_now=True)
+
+        self._read_pv.add_callback(self._read_changed,
+                                   run_now=self._read_pv.connected)
 
     @property
     @raise_if_disconnected
@@ -435,7 +437,8 @@ class EpicsSignal(EpicsSignalBase):
             self._write_pv = epics.PV(write_pv, form=pv_form,
                                       auto_monitor=self._auto_monitor,
                                       **self._pv_kw)
-            self._write_pv.add_callback(self._write_changed, run_now=True)
+            self._write_pv.add_callback(self._write_changed,
+                                        run_now=self._write_pv.connected)
         else:
             self._write_pv = self._read_pv
 
