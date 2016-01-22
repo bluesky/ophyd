@@ -497,6 +497,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         that have already been instantiated.
         '''
         for attr, sig in self.get_instantiated_signals():
+            if sig.connected:
+                continue
+
             if hasattr(sig, 'pvname'):
                 prefix = sig.pvname
             else:
