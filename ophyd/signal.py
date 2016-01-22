@@ -554,7 +554,7 @@ class EpicsSignal(EpicsSignalBase):
         desc['precision'] = self.precision
         desc['units'] = self._read_pv.units
 
-        if self._write_pv and self._rw:
+        if hasattr(self, '_write_pv'):
             desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
             desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
 
