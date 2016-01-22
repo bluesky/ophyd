@@ -123,6 +123,19 @@ class Signal(OphydObject):
         "Subclasses may customize this."
         return self.describe()
 
+    @property
+    def limits(self):
+        # Always override, never extend this
+        return (0, 0)
+
+    @property
+    def low_limit(self):
+        return self.limits[0]
+
+    @property
+    def high_limit(self):
+        return self.limits[1]
+
 
 class EpicsSignalBase(Signal):
     '''A read-only EpicsSignal -- that is, one with no `write_pv`
@@ -139,6 +152,8 @@ class EpicsSignalBase(Signal):
         Use automonitor with epics.PV
     name : str, optional
         Name of signal.  If not given defaults to read_pv
+    string : bool, optional
+        Attempt to cast the EPICS PV value to a string by default
     '''
     def __init__(self, read_pv, *,
                  pv_kw=None,
@@ -201,10 +216,11 @@ class EpicsSignalBase(Signal):
         return self._read_pv.pvname
 
     def _repr_info(self):
-        yield from super()._repr_info()
         yield ('read_pv', self._read_pv.pvname)
+        yield from super()._repr_info()
         yield ('pv_kw', self._pv_kw)
         yield ('auto_monitor', self._auto_monitor)
+        yield ('string', self._string)
 
     @property
     def connected(self):
@@ -213,26 +229,12 @@ class EpicsSignalBase(Signal):
     @property
     @raise_if_disconnected
     def limits(self):
+        '''The read PV limits'''
+
+        # This overrides the base limits
         pv = self._read_pv
         pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
-
-    @property
-    def low_limit(self):
-        return self.limits[0]
-
-    @property
-    def high_limit(self):
-        return self.limits[1]
-
-    def check_value(self, value):
-        '''Check if the value is within the setpoint PV's control limits
-
-        Raises
-        ------
-        ValueError
-        '''
-        pass
 
     def get(self, *, as_string=None, **kwargs):
         '''Get the readback value through an explicit call to EPICS
@@ -433,6 +435,8 @@ class EpicsSignal(EpicsSignalBase):
     @property
     @raise_if_disconnected
     def limits(self):
+        '''The write PV limits'''
+        # read_pv_limits = super().limits
         pv = self._write_pv
         pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
@@ -444,6 +448,8 @@ class EpicsSignal(EpicsSignalBase):
         ------
         ValueError
         '''
+        super().check_value(value)
+
         if value is None:
             raise ValueError('Cannot write None to epics PVs')
         if not self._use_limits:
