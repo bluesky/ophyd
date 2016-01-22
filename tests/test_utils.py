@@ -92,6 +92,7 @@ class EpicsUtilTest(unittest.TestCase):
         self.assertEquals(utils.data_shape(1), list()) 
         self.assertEquals(utils.data_shape('foo'), list())
         self.assertEquals(utils.data_shape(np.array([1,2,3])), [3, ])
+        self.assertEquals(utils.data_shape(np.array([[1, 2], [3, 4]])), [2, 2])
 
         self.assertRaises(ValueError, utils.data_shape, list())
 
