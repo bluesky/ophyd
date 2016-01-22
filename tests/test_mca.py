@@ -42,28 +42,26 @@ def tearDownModule():
 
 
 class MCATests(unittest.TestCase):
-    vtx = EpicsMCA(devs[0],
-                   read_attrs=['spectrum', 'rois.roi1.count',
-                               'rois.roi2.count']
-                   )
-
     def test_spectrum(self):
-        self.assertRaises(ReadOnlyError, MCATests.vtx.spectrum.put, 3.14)
-        self.assertRaises(ReadOnlyError, MCATests.vtx.background.put, 3.14)
+        mca = EpicsMCA(devs[0])
+        self.assertRaises(ReadOnlyError, mca.spectrum.put, 3.14)
+        self.assertRaises(ReadOnlyError, mca.background.put, 3.14)
 
     def test_read_attrs(self):
-        r_attrs = MCATests.vtx.read_attrs
-        self.assertEquals(r_attrs,
-                          ['spectrum', 'rois.roi1.count', 'rois.roi2.count'])
+        mca = EpicsMCA(devs[0], read_attrs=['spectrum', 'rois.roi1.count',
+                       'rois.roi2.count'])
+        r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
+        self.assertEquals(r_attrs,mca.read_attrs)
 
     def test_describe(self):
-        desc = MCATests.vtx.describe()
-        d = desc[MCATests.vtx.prefix + '_spectrum']
-        self.assertEquals(d['dtype'], 'number')
-        self.assertEquals(d['shape'], [])
+        mca = EpicsMCA(devs[0])
+        desc = mca.describe()
+        d = desc[mca.prefix + '_spectrum']
 
-        if REAL_SCALER:
-            # this will fail until EpicsSignal.describe is fixed!
+        if not REAL_SCALER:
+            self.assertEquals(d['dtype'], 'number')
+            self.assertEquals(d['shape'], [])
+        else:
             self.assertEquals(d['dtype'], 'array')
             self.assertEquals(d['shape'], [4096, ])
 
