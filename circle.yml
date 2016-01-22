@@ -39,6 +39,7 @@ dependencies:
 
     - conda config --set always_yes true
     - conda config --add channels lightsource2
+    - conda config --add channels conda-forge
 
     - conda install python=$PYTHON_VERSION
   

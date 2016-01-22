@@ -14,7 +14,7 @@ class EpicsSignalWithRBV(EpicsSignal):
     # 'pvname' being the setpoint and 'pvname_RBV' being the read-back
 
     def __init__(self, prefix, **kwargs):
-        super().__init__(prefix + '_RBV', write_pv=prefix, rw=True, **kwargs)
+        super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 
 
 class ADComponent(Component):
