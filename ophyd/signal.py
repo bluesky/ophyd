@@ -169,6 +169,18 @@ class EpicsSignalBase(Signal):
                  auto_monitor=None,
                  name=None,
                  **kwargs):
+
+        if 'rw' in kwargs:
+            if kwargs['rw']:
+                new_class = EpicsSignal
+            else:
+                new_class = EpicsSignalRO
+
+            raise RuntimeError('rw is no longer an option for EpicsSignal. '
+                               'Based on your setting of `rw`, you should be '
+                               'using this class: {}'
+                               ''.format(new_class.__name__))
+
         if pv_kw is None:
             pv_kw = dict()
 
@@ -375,17 +387,6 @@ class EpicsSignal(EpicsSignalBase):
     def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
                  put_complete=False, string=False, limits=False,
                  auto_monitor=None, name=None, **kwargs):
-
-        if 'rw' in kwargs:
-            if kwargs['rw']:
-                new_class = EpicsSignal
-            else:
-                new_class = EpicsSignalRO
-
-            raise RuntimeError('rw is no longer an option for EpicsSignal. '
-                               'Based on your setting of `rw`, you should be '
-                               'using this class: {}'
-                               ''.format(new_class.__name__))
 
         self._write_pv = None
         self._use_limits = bool(limits)
