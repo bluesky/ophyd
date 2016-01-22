@@ -4,6 +4,7 @@ import unittest
 
 from ophyd import (Device, Component, FormattedComponent)
 from ophyd.signal import Signal
+from ophyd.utils import ExceptionBundle
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,45 @@ class DeviceTests(unittest.TestCase):
                           conf_keys)
         self.assertEquals(set(device.read_configuration().keys()),
                           conf_keys)
+
+    def test_complexdevice_stop(self):
+        class SubSubDevice(Device):
+            cpt4 = Component(FakeSignal, '4')
+
+            def stop(self):
+                self.stop_called = True
+
+                if self.prefix.endswith('_raises_'):
+                    raise Exception('stop failed for some reason')
+
+        class SubDevice(Device):
+            cpt1 = Component(FakeSignal, '1')
+            cpt2 = Component(FakeSignal, '2')
+            cpt3 = Component(FakeSignal, '3')
+            subsub = Component(SubSubDevice, '')
+
+            def stop(self):
+                self.stop_called = True
+                super().stop()
+
+        class MyDevice(Device):
+            sub1 = Component(SubDevice, '1')
+            sub2 = Component(SubDevice, '_raises_')
+            sub3 = Component(SubDevice, '_raises_')
+            cpt3 = Component(FakeSignal, '3')
+
+        dev = MyDevice('', name='mydev')
+        with self.assertRaises(ExceptionBundle) as cm:
+            dev.stop()
+
+        ex = cm.exception
+        self.assertEquals(len(ex.exceptions), 2)
+        self.assertTrue(dev.sub1.stop_called)
+        self.assertTrue(dev.sub2.stop_called)
+        self.assertTrue(dev.sub3.stop_called)
+        self.assertTrue(dev.sub1.subsub.stop_called)
+        self.assertTrue(dev.sub2.subsub.stop_called)
+        self.assertTrue(dev.sub3.subsub.stop_called)
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
