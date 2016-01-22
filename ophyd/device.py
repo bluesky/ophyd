@@ -4,7 +4,7 @@ import logging
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
-from .utils import TimeoutError, set_and_wait
+from .utils import (TimeoutError, ExceptionBundle, set_and_wait)
 
 logger = logging.getLogger(__name__)
 
@@ -513,7 +513,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         Parameters
         ----------
         attr_prefix : string, optional
-            The attribute prefix. If None, defaults to item.name
+            The attribute prefix. If None, defaults to self.name
 
         Yields
         ------
@@ -652,8 +652,33 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         return status
 
     def stop(self):
-        '''to be defined by subclass'''
-        pass
+        '''Stop the Device and all (instantiated) subdevices'''
+        exc_list = []
+
+        for attr in self._sub_devices:
+            dev = getattr(self, attr)
+
+            if not dev.connected:
+                logger.debug('stop: device %s (%s) is not connected; '
+                             'skipping', attr, dev)
+                continue
+
+            try:
+                dev.stop()
+            except ExceptionBundle as ex:
+                exc_list.extend([('{}.{}'.format(attr, sub_attr), ex)
+                                 for sub_attr, ex in ex.exceptions.items()])
+            except Exception as ex:
+                exc_list.append((attr, ex))
+                logger.error('Device %s (%s) stop failed', attr, dev,
+                             exc_info=ex)
+
+        if exc_list:
+            exc_info = '\n'.join('{} raised {!r}'.format(attr, ex)
+                                 for attr, ex in exc_list)
+            raise ExceptionBundle('{} exception(s) were raised during stop: \n'
+                                  '{}'.format(len(exc_list), exc_info),
+                                  exceptions=dict(exc_list))
 
     def get(self, **kwargs):
         '''Get the value of all components in the device
