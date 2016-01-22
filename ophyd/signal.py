@@ -306,6 +306,7 @@ class EpicsSignalBase(Signal):
         value = self._fix_type(value)
         super().put(value, timestamp=timestamp, force=True)
 
+
     def describe(self):
         """Return the description as a dictionary
 
@@ -314,9 +315,23 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        return {self.name: {'source': 'PV:{}'.format(self._read_pv.pvname),
-                            'dtype': 'number',
-                            'shape': []}}
+        desc = {'source': 'PV:{}'.format(self._read_pv.pvname), }
+
+        val = self.value
+        desc['dtype'] = data_type(val)
+        desc['shape'] = data_shape(val)
+
+        desc['precision'] = self.precision
+        desc['units'] = self._read_pv.units
+
+        if hasattr(self, '_write_pv'):
+            desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
+            desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
+
+        if self.enum_strs:
+            desc['enum_strs'] = list(self.enum_strs)
+
+        return {self.name: desc}
 
     @raise_if_disconnected
     def read(self):
@@ -536,29 +551,3 @@ class EpicsSignal(EpicsSignalBase):
     @setpoint.setter
     def setpoint(self, value):
         self.put(value)
-
-    def describe(self):
-        """Return the description as a dictionary
-
-        Returns
-        -------
-        dict
-            Dictionary of name and formatted description string
-        """
-        desc = {'source': 'PV:{}'.format(self._read_pv.pvname), }
-
-        val = self.value
-        desc['dtype'] = data_type(val)
-        desc['shape'] = data_shape(val)
-
-        desc['precision'] = self.precision
-        desc['units'] = self._read_pv.units
-
-        if hasattr(self, '_write_pv'):
-            desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
-            desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
-
-        if self.enum_strs:
-            desc['enum_strs'] = list(self.enum_strs)
-
-        return {self.name: desc}
