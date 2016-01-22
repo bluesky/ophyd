@@ -59,13 +59,23 @@ class Signal(OphydObject):
         '''The readback value'''
         return self._readback
 
-    def put(self, value, timestamp=None, force=False):
+    def put(self, value, *, timestamp=None, force=False):
         '''Put updates the internal readback value
+
+        The value is optionally checked first, depending on the value of force.
+        In addition, VALUE subscriptions are run.
 
         Parameters
         ----------
-
+        value : any
+            Value to set
+        timestamp : float, optional
+            The timestamp associated with the value, defaults to time.time()
+        force : bool, optional
+            Check the value prior to setting it, defaults to False
         '''
+
+        # TODO: consider adding set_and_wait here as a kwarg
         if not force:
             self.check_value(value)
 
