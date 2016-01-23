@@ -10,7 +10,7 @@ except ImportError:
 
 import epics
 
-from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin)
+from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger)
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 
@@ -18,7 +18,17 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    pass
+
+    prefix = 'XF:31IDA-BI{Cam:Tbl}'
+
+    class MyDetector(SingleTrigger, SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+
+    det = MyDetector(prefix)
+    det.wait_for_connection()
+    det.stage()
+    det.trigger()
+    det.unstage()
 
 
 def tearDownModule():
