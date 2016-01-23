@@ -15,6 +15,7 @@ import queue
 import logging
 import warnings
 import functools
+import numpy as np
 
 import epics
 
@@ -392,3 +393,39 @@ def _compare_maybe_enum(a, b, enums):
     if not isinstance(b, str):
         b = enums[b]
     return a == b
+
+_type_map = {'number': (float, ),
+             'array': (np.ndarray, ),
+             'string': (str, ),
+             'integer': (int, ),
+             }
+
+def data_type(val):
+    '''Determine data-type of val.
+
+    Returns:
+    -----------
+    str
+        One of ('number', 'array', 'string'), else raises ValueError
+    '''
+    for json_type, py_types in _type_map.items():
+        if type(val) in py_types:
+            return json_type
+    # no legit type found...
+    raise ValueError('{} not a valid type (int, float, ndarray, str)'.format(val))
+
+def data_shape(val):
+    '''Determine data-shape (dimensions)
+
+    Returns:
+    --------
+    list
+        Empty list if val is number or string, otherwise list(np.ndarray.shape)
+    '''
+    for json_type, py_types in _type_map.items():
+        if type(val) in py_types:
+            if json_type is 'array':
+                return list(val.shape)
+            else:
+                return list()
+    raise ValueError('Cannot determine shape of {}'.format(val))

@@ -150,6 +150,10 @@ class FakeEpicsPV(object):
         return 0
 
     @property
+    def units(self):
+        return str(None)
+
+    @property
     def timestamp(self):
         return time.time()
 
@@ -470,6 +474,37 @@ class EpicsSignalTests(unittest.TestCase):
         # not in initializer parameters anymore
         self.assertRaises(TypeError, EpicsSignalRO, 'test',
                           write_pv='nope_sorry')
+
+    def test_describe(self):
+        epics.PV = FakeEpicsPV
+        sig = EpicsSignal('my_pv')
+        sig._write_pv.enum_strs = ('enum1', 'enum2')
+        sig.wait_for_connection()
+
+        sig.put(1)
+        desc = sig.describe()['my_pv']
+        self.assertEquals(desc['dtype'], 'integer')
+        self.assertEquals(desc['shape'], [])
+        self.assertIn('precision', desc)
+        self.assertIn('enum_strs', desc)
+        self.assertIn('upper_ctrl_limit', desc)
+        self.assertIn('lower_ctrl_limit', desc)
+
+        sig.put('foo')
+        desc = sig.describe()['my_pv']
+        self.assertEquals(desc['dtype'], 'string')
+        self.assertEquals(desc['shape'], [])
+
+        sig.put(3.14)
+        desc = sig.describe()['my_pv']
+        self.assertEquals(desc['dtype'], 'number')
+        self.assertEquals(desc['shape'], [])
+
+        import numpy as np
+        sig.put(np.array([1,]))
+        desc = sig.describe()['my_pv']
+        self.assertEquals(desc['dtype'], 'array')
+        self.assertEquals(desc['shape'], [1,])
 
 
 from . import main
