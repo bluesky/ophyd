@@ -61,6 +61,26 @@ def instances_from_namespace(classes):
                 if isinstance(val, classes) and not var.startswith('_')]
 
 
+def ducks_from_namespace(attr):
+    '''Get all instances that have a given attribute.
+
+    "Ducks" is a reference to "duck-typing." If it looks like a duck....
+
+    Parameters
+    ----------
+    attr : str
+        name of attribute
+    '''
+    ip = IPython.get_ipython()
+    if ip is None:
+        warnings.warn('Unable to inspect Python global namespace; '
+                      'use IPython to enable these features.')
+        return []
+    else:
+        return [val for var, val in sorted(ip.user_ns.items())
+                if hasattr(val, attr) and not var.startswith('_')]
+
+
 def get_all_positioners():
     '''Get all positioners defined in the IPython namespace'''
     return instances_from_namespace(Positioner)
