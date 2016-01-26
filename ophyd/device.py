@@ -25,7 +25,7 @@ class Component:
 
         or (if suffix is None) ::
 
-            def __init__(self, pv_name, parent=None, **kwargs):
+            def __init__(self, parent=None, **kwargs):
 
         The class may have a `wait_for_connection()` which is called
         during the component instance creation.
