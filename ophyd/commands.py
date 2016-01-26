@@ -42,6 +42,22 @@ FMT_PREC = 6
 DISCONNECTED = 'disconnected'
 
 
+def scrape_namespace():
+    """
+    Get all public objects from the user namespace, sorted by name.
+
+    If we are not in an IPython session, warn and return an empty list.
+    """
+    ip = IPython.get_ipython()
+    if ip is None:
+        warnings.warn('Unable to inspect Python global namespace; '
+                      'use IPython to enable these features.')
+        return []
+    else:
+        return [val for var, val in sorted(ip.user_ns.items())
+                if not var.startswith('_')]
+
+
 def instances_from_namespace(classes):
     '''Get all instances of `classes` from the user namespace
 
@@ -51,14 +67,7 @@ def instances_from_namespace(classes):
         Passed directly to isinstance(), only instances of these classes
         will be returned.
     '''
-    ip = IPython.get_ipython()
-    if ip is None:
-        warnings.warn('Unable to inspect Python global namespace; '
-                      'use IPython to enable these features.')
-        return []
-    else:
-        return [val for var, val in sorted(ip.user_ns.items())
-                if isinstance(val, classes) and not var.startswith('_')]
+    return [val for val in scrape_namespace() if isinstance(val, classes)]
 
 
 def ducks_from_namespace(attr):
@@ -71,14 +80,7 @@ def ducks_from_namespace(attr):
     attr : str
         name of attribute
     '''
-    ip = IPython.get_ipython()
-    if ip is None:
-        warnings.warn('Unable to inspect Python global namespace; '
-                      'use IPython to enable these features.')
-        return []
-    else:
-        return [val for var, val in sorted(ip.user_ns.items())
-                if hasattr(val, attr) and not var.startswith('_')]
+    return [val for val in scrape_namespace() if hasattr(val, attr)]
 
 
 def get_all_positioners():
@@ -376,6 +378,9 @@ def wh_pos(positioners=None):
 
     >>>wh_pos([m1, m2, m3])
     """
+    if positioners is None:
+        devices = instances_from_namespace(Device)
+    
     _print_pos(positioners, file=sys.stdout)
 
 
