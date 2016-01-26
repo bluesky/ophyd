@@ -15,7 +15,7 @@ from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
 
-from . import (EpicsMotor, Positioner, PVPositioner)
+from . import (EpicsMotor, Positioner, PVPositioner, Device)
 from .utils import DisconnectedError
 from .utils.startup import setup as setup_ophyd
 from prettytable import PrettyTable
@@ -42,6 +42,22 @@ FMT_PREC = 6
 DISCONNECTED = 'disconnected'
 
 
+def scrape_namespace():
+    """
+    Get all public objects from the user namespace, sorted by name.
+
+    If we are not in an IPython session, warn and return an empty list.
+    """
+    ip = IPython.get_ipython()
+    if ip is None:
+        warnings.warn('Unable to inspect Python global namespace; '
+                      'use IPython to enable these features.')
+        return []
+    else:
+        return [val for var, val in sorted(ip.user_ns.items())
+                if not var.startswith('_')]
+
+
 def instances_from_namespace(classes):
     '''Get all instances of `classes` from the user namespace
 
@@ -51,19 +67,58 @@ def instances_from_namespace(classes):
         Passed directly to isinstance(), only instances of these classes
         will be returned.
     '''
-    ip = IPython.get_ipython()
-    if ip is None:
-        warnings.warn('Unable to inspect Python global namespace; '
-                      'use IPython to enable these features.')
-        return []
-    else:
-        return [val for var, val in sorted(ip.user_ns.items())
-                if isinstance(val, classes) and not var.startswith('_')]
+    return [val for val in scrape_namespace() if isinstance(val, classes)]
+
+
+def ducks_from_namespace(attr):
+    '''Get all instances that have a given attribute.
+
+    "Ducks" is a reference to "duck-typing." If it looks like a duck....
+
+    Parameters
+    ----------
+    attr : str
+        name of attribute
+    '''
+    return [val for val in scrape_namespace() if hasattr(val, attr)]
 
 
 def get_all_positioners():
     '''Get all positioners defined in the IPython namespace'''
-    return instances_from_namespace(Positioner)
+    devices = instances_from_namespace((Device, Positioner))
+    positioners = []
+    for device in devices:
+        positioners.extend(_recursive_positioner_search(device))
+    return positioners
+
+
+def _recursive_positioner_search(device):
+    "Return a flat list the device and any subdevices that can be 'set'."
+    res = []
+    if hasattr(device, 'set'):
+        res.append(device)
+    for d in device._signals.values():
+        if isinstance(d, (Device, Positioner)):
+            res.extend(_recursive_positioner_search(d))
+    return res
+
+
+def _normalize_positioners(positioners):
+    "input normalization used by wh_pos, log_pos, log_pos_mov"
+    if positioners is None:
+        # Grab IPython namespace, recursively find Positioners.
+        res = get_all_positioners()
+    elif isinstance(positioners, (Device, Positioner)):
+        # Explore children in case this is a composite Device.
+        res = _recursive_positioner_search(positioners)
+    else:
+        # Assume this is a list of Devices.
+        res = []
+        for device in positioners:
+            if not isinstance(device, (Device, Positioner)):
+                raise TypeError("Input is not a Device: %r" % device)
+            res.extend(_recursive_positioner_search(device))
+    return res
 
 
 def var_from_namespace(var):
@@ -332,7 +387,6 @@ def set_pos(positioner, position):
         logbook.log(msg + '\n' + lmsg)
 
 
-@ensure(Positioner)
 def wh_pos(positioners=None):
     """Get the current position of Positioners and print to screen.
 
@@ -356,10 +410,10 @@ def wh_pos(positioners=None):
 
     >>>wh_pos([m1, m2, m3])
     """
+    positioners = _normalize_positioners(positioners)
     _print_pos(positioners, file=sys.stdout)
 
 
-@ensure(Positioner, None)
 def log_pos(positioners=None, extra_msg=None):
     """Get the current position of Positioners and make a logbook entry.
 
@@ -376,6 +430,7 @@ def log_pos(positioners=None, extra_msg=None):
     int
         The ID of the logbook entry returned by the logbook.log method.
     """
+    positioners = _normalize_positioners(positioners)
     logbook = get_logbook()
     if extra_msg:
         msg = extra_msg + '\n'
@@ -392,17 +447,16 @@ def log_pos(positioners=None, extra_msg=None):
     pdict = {}
     pdict['values'] = {}
 
-    if positioners is not None:
-        msg += logbook_add_objects(positioners)
+    msg += logbook_add_objects(positioners)
 
-        for p in positioners:
-            try:
-                pdict['values'][p.name] = p.position
-            except DisconnectedError:
-                pdict['values'][p.name] = DISCONNECTED
+    for p in positioners:
+        try:
+            pdict['values'][p.name] = p.position
+        except DisconnectedError:
+            pdict['values'][p.name] = DISCONNECTED
 
-        pdict['objects'] = repr(positioners)
-        pdict['values'] = repr(pdict['values'])
+    pdict['objects'] = repr(positioners)
+    pdict['values'] = repr(pdict['values'])
 
     if logbook:
         id_ = logbook.log(msg, properties={'OphydPositioners': pdict},
@@ -428,12 +482,12 @@ def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
         List of string names of positioners to compare and move. Other
         positioners in the log entry will be ignored.
     """
+    positioners = _normalize_positioners(positioners)
     logpos, objects = logbook_to_objects(id, **kwargs)
     objects = collections.OrderedDict(sorted(objects.items()))
 
-    if positioners is not None:
-        keys = set(positioners).intersection(set(objects.keys()))
-        objects = {x: objects[x] for x in keys}
+    keys = set(positioners).intersection(set(objects.keys()))
+    objects = {x: objects[x] for x in keys}
 
     print('')
     stat = []
@@ -489,6 +543,7 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
         in the log entry will be ignored.
     """
 
+    positioners = _normalize_positioners(positioners)
     logpos, objects = logbook_to_objects(id, **kwargs)
     objects = collections.OrderedDict(sorted(objects.items()))
 
@@ -499,9 +554,8 @@ def log_pos_diff(id=None, positioners=None, **kwargs):
     pos = []
     values = []
 
-    if positioners is not None:
-        keys = set(positioners).intersection(set(objects.keys()))
-        objects = {x: objects[x] for x in keys}
+    keys = set(positioners).intersection(set(objects.keys()))
+    objects = {x: objects[x] for x in keys}
 
     print('')
     for key, value in objects.items():
@@ -657,8 +711,6 @@ def catch_keyboard_interrupt(positioners):
 
 def _print_pos(positioners, file=sys.stdout):
     """Pretty Print the positioners to file"""
-    if positioners is None:
-        positioners = get_all_positioners()
 
     print('', file=file)
     pos = []
