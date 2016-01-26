@@ -116,7 +116,7 @@ def _normalize_positioners(positioners):
         res = []
         for device in positioners:
             if not isinstance(device, (Device, Positioner)):
-                raise TypeError("input is not a device")
+                raise TypeError("Input is not a Device: %r" % device)
             res.extend(_recursive_positioner_search(device))
     return res
 
