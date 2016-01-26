@@ -95,11 +95,11 @@ def get_all_positioners():
 def _recursive_positioner_search(device):
     "Return a flat list the device and any subdevices that can be 'set'."
     res = []
-    for device in device._signals.values():
-        if isinstance(device, (Device, Positioner)):
-            if hasattr(device, 'set'):
-                res.append(device)
-            res.extend(_recursive_positioner_search(device))
+    for d in device._signals.values():
+        if isinstance(d, (Device, Positioner)):
+            if hasattr(d, 'set'):
+                res.append(d)
+            res.extend(_recursive_positioner_search(d))
     return res
 
 
@@ -115,6 +115,8 @@ def _normalize_positioners(positioners):
         # Assume this is a list of Devices.
         res = []
         for device in positioners:
+            if not isinstance(device, (Device, Positioner)):
+                raise TypeError("input is not a device")
             res.extend(_recursive_positioner_search(device))
     return res
 
