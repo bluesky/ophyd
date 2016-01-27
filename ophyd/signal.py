@@ -166,7 +166,7 @@ class EpicsSignalBase(Signal):
     def __init__(self, read_pv, *,
                  pv_kw=None,
                  string=False,
-                 auto_monitor=None,
+                 auto_monitor=False,
                  name=None,
                  **kwargs):
 
@@ -395,7 +395,7 @@ class EpicsSignal(EpicsSignalBase):
 
     def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
                  put_complete=False, string=False, limits=False,
-                 auto_monitor=None, name=None, **kwargs):
+                 auto_monitor=False, name=None, **kwargs):
 
         self._write_pv = None
         self._use_limits = bool(limits)
