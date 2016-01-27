@@ -326,7 +326,7 @@ class BlueskyInterface:
         # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
         self.stage_sigs = OrderedDict()
-        self._original_vals = {}
+        self._original_vals = OrderedDict()
         super().__init__(*args, **kwargs)
 
     @property
@@ -387,16 +387,16 @@ class BlueskyInterface:
                          self)
             return
 
+        # Call unstage() on child devices.
+        for attr in self._sub_devices[::-1]:
+            device = getattr(self, attr)
+            if hasattr(device, 'unstage'):
+                device.unstage()
+
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
-
-        # Call unstage() on child devices.
-        for attr in self._sub_devices:
-            device = getattr(self, attr)
-            if hasattr(device, 'unstage'):
-                device.unstage()
 
 
 class GenerateDatumInterface:
