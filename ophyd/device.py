@@ -25,7 +25,7 @@ class Component:
 
         or (if suffix is None) ::
 
-            def __init__(self, pv_name, parent=None, **kwargs):
+            def __init__(self, parent=None, **kwargs):
 
         The class may have a `wait_for_connection()` which is called
         during the component instance creation.
@@ -325,13 +325,10 @@ class BlueskyInterface:
     def __init__(self, *args, **kwargs):
         # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
+        self._staged = False
         self.stage_sigs = OrderedDict()
-        self._original_vals = {}
+        self._original_vals = OrderedDict()
         super().__init__(*args, **kwargs)
-
-    @property
-    def _staged(self):
-        return bool(self._original_vals)
 
     def trigger(self):
         pass
@@ -346,6 +343,7 @@ class BlueskyInterface:
         "Prepare the device to be triggered."
         if self._staged:
             raise RuntimeError("Device is already stage. Unstage it first.")
+        self._staged = True
 
         # Read current values, to be restored by unstage()
         original_vals = {sig: sig.get() for sig, _ in self.stage_sigs.items()}
@@ -380,23 +378,18 @@ class BlueskyInterface:
 
         Multiple calls (without a new call to 'stage') have no effect.
         """
-        if not self._staged:
-            # Unlike staging, there is no harm in making unstage
-            # 'indepotent'.
-            logger.debug("Cannot unstage %r; it is not staged. Passing.",
-                         self)
-            return
+        self._staged = False
+
+        # Call unstage() on child devices.
+        for attr in self._sub_devices[::-1]:
+            device = getattr(self, attr)
+            if hasattr(device, 'unstage'):
+                device.unstage()
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
-
-        # Call unstage() on child devices.
-        for attr in self._sub_devices:
-            device = getattr(self, attr)
-            if hasattr(device, 'unstage'):
-                device.unstage()
 
 
 class GenerateDatumInterface:
