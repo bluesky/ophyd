@@ -29,6 +29,7 @@ from collections import defaultdict
 from itertools import count
 
 from ..device import GenerateDatumInterface, BlueskyInterface
+from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self.stage_sigs.update([(self.file_path, write_path),
                                 (self.file_name, self._filename),
                                 ])
+        set_and_wait(self.capture, 0)
         super().stage()
 
         # AD does this same templating in C, but we can't access it
