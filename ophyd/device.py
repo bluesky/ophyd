@@ -325,13 +325,10 @@ class BlueskyInterface:
     def __init__(self, *args, **kwargs):
         # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
+        self._staged = False
         self.stage_sigs = OrderedDict()
         self._original_vals = OrderedDict()
         super().__init__(*args, **kwargs)
-
-    @property
-    def _staged(self):
-        return bool(self._original_vals)
 
     def trigger(self):
         pass
@@ -346,6 +343,7 @@ class BlueskyInterface:
         "Prepare the device to be triggered."
         if self._staged:
             raise RuntimeError("Device is already stage. Unstage it first.")
+        self._staged = True
 
         # Read current values, to be restored by unstage()
         original_vals = {sig: sig.get() for sig, _ in self.stage_sigs.items()}
@@ -380,6 +378,8 @@ class BlueskyInterface:
 
         Multiple calls (without a new call to 'stage') have no effect.
         """
+        self._staged = False
+
         # Call unstage() on child devices.
         for attr in self._sub_devices[::-1]:
             device = getattr(self, attr)
