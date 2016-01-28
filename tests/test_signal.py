@@ -199,6 +199,8 @@ class FakeEpicsWaveform(FakeEpicsPV):
     strings = ['abcd', 'efgh', 'ijkl']
     fake_values = [[ord(c) for c in s] + [0]
                    for s in strings]
+    auto_monitor = False
+    form = 'time'
 
 
 def setUpModule():

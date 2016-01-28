@@ -166,7 +166,7 @@ class EpicsSignalBase(Signal):
     def __init__(self, read_pv, *,
                  pv_kw=None,
                  string=False,
-                 auto_monitor=None,
+                 auto_monitor=False,
                  name=None,
                  **kwargs):
 
@@ -217,6 +217,51 @@ class EpicsSignalBase(Signal):
     def enum_strs(self):
         """List of strings if PV is an enum type"""
         return self._read_pv.enum_strs
+
+    def _reinitialize_pv(self, old_instance, **pv_kw):
+        '''Reinitialize a PV instance
+
+        Takes care of clearing callbacks, setting PV form, and ensuring
+        connectivity status remains the same
+
+        Parameters
+        ----------
+        old_instance : epics.PV
+            The old PV instance
+        pv_kw : kwargs
+            The parameters to pass to the initializer
+        '''
+
+        old_instance.clear_callbacks()
+        was_connected = old_instance.connected
+
+        new_instance = epics.PV(old_instance.pvname, form=old_instance.form,
+                                **pv_kw)
+        if was_connected:
+            new_instance.wait_for_connection()
+
+        return new_instance
+
+    def subscribe(self, callback, event_type=None, run=True):
+        if event_type is None:
+            event_type = self._default_sub
+
+        # check if this is a setpoint subscription, and we are not explicitly
+        # auto monitoring
+        obj_mon = (event_type == self.SUB_VALUE and
+                   self._auto_monitor is not True)
+
+        # but if the epics.PV has already connected and determined that it
+        # should automonitor (based on the maximum automonitor length), then we
+        # don't need to reinitialize it
+        if obj_mon and not self._read_pv.auto_monitor:
+            self._read_pv = self._reinitialize_pv(self._read_pv,
+                                                  auto_monitor=True,
+                                                  **self._pv_kw)
+            self._read_pv.add_callback(self._read_changed,
+                                       run_now=self._read_pv.connected)
+
+        return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
         if not self._read_pv.connected:
@@ -306,7 +351,6 @@ class EpicsSignalBase(Signal):
         value = self._fix_type(value)
         super().put(value, timestamp=timestamp, force=True)
 
-
     def describe(self):
         """Return the description as a dictionary
 
@@ -395,7 +439,7 @@ class EpicsSignal(EpicsSignalBase):
 
     def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
                  put_complete=False, string=False, limits=False,
-                 auto_monitor=None, name=None, **kwargs):
+                 auto_monitor=False, name=None, **kwargs):
 
         self._write_pv = None
         self._use_limits = bool(limits)
@@ -418,6 +462,27 @@ class EpicsSignal(EpicsSignalBase):
                                         run_now=self._write_pv.connected)
         else:
             self._write_pv = self._read_pv
+
+    def subscribe(self, callback, event_type=None, run=True):
+        if event_type is None:
+            event_type = self._default_sub
+
+        # check if this is a setpoint subscription, and we are not explicitly
+        # auto monitoring
+        obj_mon = (event_type == self.SUB_SETPOINT and
+                   self._auto_monitor is not True)
+
+        # but if the epics.PV has already connected and determined that it
+        # should automonitor (based on the maximum automonitor length), then we
+        # don't need to reinitialize it
+        if obj_mon and not self._write_pv.auto_monitor:
+            self._write_pv = self._reinitialize_pv(self._write_pv,
+                                                   auto_monitor=True,
+                                                   **self._pv_kw)
+            self._write_pv.add_callback(self._write_changed,
+                                        run_now=self._write_pv.connected)
+
+        return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
         super().wait_for_connection(timeout=1.0)
