@@ -136,8 +136,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def unstage(self):
         self._locked_key_list = False
         self._resource = None
-        del self.stage_sigs[self.file_name]
-        del self.stage_sigs[self.file_path]
         return super().unstage()
 
 
