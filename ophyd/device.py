@@ -380,13 +380,6 @@ class BlueskyInterface:
 
         Multiple calls (without a new call to 'stage') have no effect.
         """
-        if not self._staged:
-            # Unlike staging, there is no harm in making unstage
-            # 'indepotent'.
-            logger.debug("Cannot unstage %r; it is not staged. Passing.",
-                         self)
-            return
-
         # Call unstage() on child devices.
         for attr in self._sub_devices[::-1]:
             device = getattr(self, attr)
