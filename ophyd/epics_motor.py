@@ -106,11 +106,17 @@ class EpicsMotor(Device, Positioner):
         self._started_moving = False
 
         try:
-            self.user_setpoint.put(position, wait=wait)
-            return super().move(position, wait=wait, **kwargs)
+            if not wait:
+                status = super().move(position, wait=False, **kwargs)
+                self.user_setpoint.put(position, wait=False)
+            else:
+                self.user_setpoint.put(position, wait=True)
+                status = super().move(position, wait=True, **kwargs)
         except KeyboardInterrupt:
             self.stop()
             raise
+
+        return status
 
     @property
     @raise_if_disconnected
