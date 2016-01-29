@@ -344,6 +344,7 @@ class BlueskyInterface:
         if self._staged:
             raise RuntimeError("Device is already stage. Unstage it first.")
         self._staged = True
+        logger.debug("Staging %s", self.name)
 
         # Read current values, to be restored by unstage()
         original_vals = {sig: sig.get() for sig, _ in self.stage_sigs.items()}
@@ -379,6 +380,7 @@ class BlueskyInterface:
         Multiple calls (without a new call to 'stage') have no effect.
         """
         self._staged = False
+        logger.debug("Unstaging %s", self.name)
 
         # Call unstage() on child devices.
         for attr in self._sub_devices[::-1]:
