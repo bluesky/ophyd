@@ -64,7 +64,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids = defaultdict(list)
         self.stage_sigs.update([(self.auto_increment, 'Yes'),
                                 (self.array_counter, 0),
-                                (self.file_number, 0),
                                 (self.auto_save, 'Yes'),
                                 (self.num_capture, 0),
                                 ])
@@ -90,10 +89,14 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         formatter = datetime.now().strftime
         write_path = formatter(self.write_path_template)
         read_path = formatter(self.read_path_template)
-        self.stage_sigs.update([(self.file_path, write_path),
-                                (self.file_name, self._filename),
-                                ])
+        # Ensure we do not have an old file open.
         set_and_wait(self.capture, 0)
+        # These must be set before parent is staged (specifically
+        # before capture mode is turned on. They will not be reset
+        # on 'unstage' anyway.
+        set_and_wait(self.file_path, write_path)
+        set_and_wait(self.file_name, self._filename)
+        set_and_wait(self.file_number, 0)
         super().stage()
 
         # AD does this same templating in C, but we can't access it
