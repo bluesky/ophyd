@@ -152,9 +152,14 @@ class FileStoreHDF5(FileStoreBase):
                                 (self.file_write_mode, 'Stream'),
                                 (self.capture, 1)
                                 ])
+
+    def get_frames_per_point(self):
+        return self.num_capture.get()
+
     def stage(self):
         super().stage()
-        res_kwargs = {'frame_per_point': self.num_captured.get()}
+        res_kwargs = {'frame_per_point': self.get_frames_per_point()}
+        logger.debug("Inserting resource with filename %s", self._fn)
         self._resource = fs.insert_resource('AD_HDF5', self._fn, res_kwargs)
 
 
@@ -167,11 +172,14 @@ class FileStoreTIFF(FileStoreBase):
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.
 
+    def get_frames_per_point(self):
+        return self.parent.cam.num_images.get()
+
     def stage(self):
         super().stage()
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
-                      'frame_per_point': self.parent.cam.num_images.get()}
+                      'frame_per_point': self.get_frames_per_point()}
         self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
 
 
@@ -199,6 +207,9 @@ class FileStoreTIFFSquashing(FileStoreBase):
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.
 
+    def get_frames_per_point(self):
+        return getattr(self.parent, self._num_sets_name).get()
+
     def stage(self):
         cam = getattr(self.parent, self._cam_name)
         proc = getattr(self.parent, self._proc_name)
@@ -211,7 +222,7 @@ class FileStoreTIFFSquashing(FileStoreBase):
 
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
-                      'frame_per_point': num_sets}
+                      'frame_per_point': self.get_frames_per_point()}
         self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
 
 
