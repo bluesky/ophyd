@@ -62,7 +62,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
-        self.stage_sigs.update([(self.auto_increment, 1),
+        self.stage_sigs.update([(self.auto_increment, 'Yes'),
                                 (self.array_counter, 0),
                                 (self.file_number, 0),
                                 (self.auto_save, 'Yes'),
