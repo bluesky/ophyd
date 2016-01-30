@@ -1,12 +1,19 @@
 import time as ttime
 import logging
-
+from enum import Enum
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import (OphydObject, DeviceStatus)
 from .utils import (TimeoutError, ExceptionBundle, set_and_wait)
 
 logger = logging.getLogger(__name__)
+
+
+class Staged(Enum):
+    """Three-state switch"""
+    yes = 'yes'
+    no = 'no'
+    partially = 'partially'
 
 
 class Component:
@@ -325,8 +332,9 @@ class BlueskyInterface:
     def __init__(self, *args, **kwargs):
         # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
-        self._staged = False
         self.stage_sigs = OrderedDict()
+
+        self._staged = Staged.no
         self._original_vals = OrderedDict()
         super().__init__(*args, **kwargs)
 
@@ -341,10 +349,16 @@ class BlueskyInterface:
 
     def stage(self):
         "Prepare the device to be triggered."
-        if self._staged:
-            raise RuntimeError("Device is already stage. Unstage it first.")
-        self._staged = True
+        if self._staged == Staged.no:
+            pass  # to short-circuit checking individual cases
+        elif self._staged == Staged.yes:
+            raise RuntimeError("Device is already staged. Unstage it first.")
+        elif self._staged == Staged.partially:
+            raise RuntimeError("Device has been partially staged. Maybe the "
+                               "most recent unstaging encountered an error "
+                               "before finishing. Try unstaging again.")
         logger.debug("Staging %s", self.name)
+        self._staged = Staged.partially
 
         # Read current values, to be restored by unstage()
         original_vals = {sig: sig.get() for sig, _ in self.stage_sigs.items()}
@@ -357,7 +371,7 @@ class BlueskyInterface:
         try:
             for sig, val in self.stage_sigs.items():
                 logger.debug("Setting %s to %r (original value: %r)", self.name,
-                             val, self._original_vals[sig])
+                             val, original_vals[sig])
                 set_and_wait(sig, val)
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
@@ -374,6 +388,8 @@ class BlueskyInterface:
                          "exception.", self.name)
             self.unstage()
             raise
+        else:
+            self._staged = Staged.yes
 
     def unstage(self):
         """
@@ -381,8 +397,8 @@ class BlueskyInterface:
 
         Multiple calls (without a new call to 'stage') have no effect.
         """
-        self._staged = False
         logger.debug("Unstaging %s", self.name)
+        self._staged = Staged.partially
 
         # Call unstage() on child devices.
         for attr in self._sub_devices[::-1]:
@@ -392,10 +408,12 @@ class BlueskyInterface:
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
-            logger.debug("Setting %s to %r (original value: %r)", self.name,
-                            val, self._original_vals[sig])
+            logger.debug("Setting %s back to its original value: %r)", self.name,
+                         val)
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
+
+        self._staged = Staged.no
 
 
 class GenerateDatumInterface:

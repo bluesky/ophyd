@@ -14,7 +14,7 @@ import logging
 import itertools
 
 from ..ophydobj import DeviceStatus
-from ..device import BlueskyInterface
+from ..device import BlueskyInterface, Staged
 from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class SingleTrigger(TriggerBase):
 
     def trigger(self):
         "Trigger one acquisition."
-        if not self._staged:
+        if self._staged != Staged.yes:
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
 
@@ -142,7 +142,7 @@ class MultiTrigger(TriggerBase):
 
     def trigger(self):
         "Trigger one or more acquisitions."
-        if not self._staged:
+        if self._staged != Staged.yes:
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
 
