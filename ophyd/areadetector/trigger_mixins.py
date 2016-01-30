@@ -35,7 +35,6 @@ class TriggerBase(BlueskyInterface):
                                 ])
         self._status = None
         self._acquisition_signal = self.cam.acquire
-        self._acquisition_signal.subscribe(self._acquire_changed)
 
 
 class SingleTrigger(TriggerBase):
@@ -55,6 +54,14 @@ class SingleTrigger(TriggerBase):
         if image_name is None:
             image_name = '_'.join([self.name, 'image'])
         self._image_name = image_name
+
+    def stage(self):
+        self._acquisition_signal.subscribe(self._acquire_changed)
+        super().stage()
+
+    def unstage(self):
+        super().unstage()
+        self._acquisition_signal.clear_sub(self._acquire_changed)
 
     def trigger(self):
         "Trigger one acquisition."
@@ -131,6 +138,14 @@ class MultiTrigger(TriggerBase):
             raise ValueError("must provide trigger_cycle -- see docstring")
         self.trigger_cycle = trigger_cycle
         super().__init__(*args, **kwargs)
+
+    def stage(self):
+        self._acquisition_signal.subscribe(self._acquire_changed)
+        super().stage()
+
+    def unstage(self):
+        super().unstage()
+        self._acquisition_signal.clear_sub(self._acquire_changed)
 
     @property
     def trigger_cycle(self):
