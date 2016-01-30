@@ -356,6 +356,8 @@ class BlueskyInterface:
         # Apply settings.
         try:
             for sig, val in self.stage_sigs.items():
+                logger.debug("Setting %s to %r (original value: %r)", self.name,
+                             val, self._original_vals[sig])
                 set_and_wait(sig, val)
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
@@ -390,6 +392,8 @@ class BlueskyInterface:
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
+            logger.debug("Setting %s to %r (original value: %r)", self.name,
+                            val, self._original_vals[sig])
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
 
