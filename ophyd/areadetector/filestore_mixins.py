@@ -260,9 +260,10 @@ class FileStoreBulkWrite(FileStoreBase):
 
     def unstage(self):
         "Insert all datums at the end."
-        for uids in self._datum_uids.values():
-            for uid in uids:
-                kwargs = self._datum_kwargs_maps[uid]
+        for readings in self._datum_uids.values():
+            for reading in readings:
+                uid = reading['value']
+                kwargs = self._datum_kwargs_map[uid]
                 fs.insert_datum(self._resource, uid, kwargs)
         return super().unstage()
 
