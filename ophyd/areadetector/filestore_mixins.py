@@ -62,11 +62,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
-        self.stage_sigs.update([(self.auto_increment, 'Yes'),
-                                (self.array_counter, 0),
-                                (self.auto_save, 'Yes'),
-                                (self.num_capture, 0),
-                                ])
 
     @property
     def read_path_template(self):
@@ -89,26 +84,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         formatter = datetime.now().strftime
         write_path = formatter(self.write_path_template)
         read_path = formatter(self.read_path_template)
-        # Ensure we do not have an old file open.
-        set_and_wait(self.capture, 0)
-        # These must be set before parent is staged (specifically
-        # before capture mode is turned on. They will not be reset
-        # on 'unstage' anyway.
-        set_and_wait(self.file_path, write_path)
-        set_and_wait(self.file_name, self._filename)
-        set_and_wait(self.file_number, 0)
         super().stage()
 
-        # AD does this same templating in C, but we can't access it
-        # so we do it redundantly here in Python.
-        self._fn = self.file_template.get() % (read_path,
-                                               self._filename,
-                                               self.file_number.get() - 1)
-                                               # file_number is *next* iteration
-        self._fp = read_path
-        if not self.file_path_exists.get():
-            raise IOError("Path %s does not exist on IOC."
-                          "" % self.file_path.get())
 
     def generate_datum(self, key, timestamp):
         "Generate a uid and cache it with its key for later insertion."
@@ -145,7 +122,39 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         return super().unstage()
 
 
-class FileStoreHDF5(FileStoreBase):
+class FileStorePluginBase(FileStoreBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stage_sigs.update([(self.auto_increment, 'Yes'),
+                                (self.array_counter, 0),
+                                (self.auto_save, 'Yes'),
+                                (self.num_capture, 0),
+                                ])
+
+    def stage(self):
+        # Ensure we do not have an old file open.
+        set_and_wait(self.capture, 0)
+        # These must be set before parent is staged (specifically
+        # before capture mode is turned on. They will not be reset
+        # on 'unstage' anyway.
+        set_and_wait(self.file_path, write_path)
+        set_and_wait(self.file_name, self._filename)
+        set_and_wait(self.file_number, 0)
+        super().stage()
+
+        # AD does this same templating in C, but we can't access it
+        # so we do it redundantly here in Python.
+        self._fn = self.file_template.get() % (read_path,
+                                               self._filename,
+                                               self.file_number.get() - 1)
+                                               # file_number is *next* iteration
+        self._fp = read_path
+        if not self.file_path_exists.get():
+            raise IOError("Path %s does not exist on IOC."
+                          "" % self.file_path.get())
+
+
+class FileStoreHDF5(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.h5'),
@@ -163,7 +172,7 @@ class FileStoreHDF5(FileStoreBase):
         self._resource = fs.insert_resource('AD_HDF5', self._fn, res_kwargs)
 
 
-class FileStoreTIFF(FileStoreBase):
+class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
