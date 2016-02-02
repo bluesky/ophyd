@@ -79,11 +79,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._point_counter = count()
         self._locked_key_list = False
         self._datum_uids.clear()
-        # Make a filename.
-        self._filename = new_short_uid()
-        formatter = datetime.now().strftime
-        write_path = formatter(self.write_path_template)
-        read_path = formatter(self.read_path_template)
         super().stage()
 
 
@@ -132,20 +127,25 @@ class FileStorePluginBase(FileStoreBase):
                                 ])
 
     def stage(self):
+        # Make a filename.
+        filename = new_short_uid()
+        formatter = datetime.now().strftime
+        write_path = formatter(self.write_path_template)
+        read_path = formatter(self.read_path_template)
         # Ensure we do not have an old file open.
         set_and_wait(self.capture, 0)
         # These must be set before parent is staged (specifically
         # before capture mode is turned on. They will not be reset
         # on 'unstage' anyway.
         set_and_wait(self.file_path, write_path)
-        set_and_wait(self.file_name, self._filename)
+        set_and_wait(self.file_name, filename)
         set_and_wait(self.file_number, 0)
         super().stage()
 
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.
         self._fn = self.file_template.get() % (read_path,
-                                               self._filename,
+                                               filename,
                                                self.file_number.get() - 1)
                                                # file_number is *next* iteration
         self._fp = read_path
