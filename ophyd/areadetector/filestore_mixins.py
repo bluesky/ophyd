@@ -28,7 +28,7 @@ from datetime import datetime
 from collections import defaultdict
 from itertools import count
 
-from ..device import GenerateDatumInterface, BlueskyInterface
+from ..device import GenerateDatumInterface, BlueskyInterface, Staged
 from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def describe(self):
         # One object has been 'described' once, no new keys can be added
         # during this stage/unstage cycle.
-        self._locked_key_list = self._staged
+        self._locked_key_list = (self._staged == Staged.yes)
         res = super().describe()
         for k in self._datum_uids:
             res[k] = self.parent.make_data_key()  # this is on DetectorBase
@@ -105,7 +105,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def read(self):
         # One object has been 'read' once, no new keys can be added
         # during this stage/unstage cycle.
-        self._locked_key_list = self._staged
+        self._locked_key_list = (self._staged == Staged.yes)
         res = super().read()
         for k, v in self._datum_uids.items():
             res[k] = v[-1]
