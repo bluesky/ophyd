@@ -96,8 +96,13 @@ def _recursive_positioner_search(device):
     "Return a flat list the device and any subdevices that can be 'set'."
     # TODO Refactor this as a method on Device.
     res = []
-    if hasattr(device, 'position'):  # duck-typed as a Positioner
+
+    try:
+        if hasattr(device, 'position'):  # duck-typed as a Positioner
+            res.append(device)
+    except DisconnectedError:
         res.append(device)
+
     if isinstance(device, Device):  # only Devices have `_signals`
         for d in device._signals.values():
             if isinstance(d, (Device, Positioner)):
