@@ -47,6 +47,7 @@ test:
   imports:
     - ophyd
     - ophyd.areadetector
+    - ophyd.hkl
     - ophyd.utils
 
   #commands:
