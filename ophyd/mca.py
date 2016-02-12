@@ -65,7 +65,7 @@ class EpicsMCA(Device):
     start = C(EpicsSignal, 'Start')
     erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
 
-    _stop = C(EpicsSignal, '.STOP')
+    stop_signal = C(EpicsSignal, '.STOP')
     preset_real_time = C(EpicsSignal, '.ERTM', write_pv='.PRTM')
     preset_live_time = C(EpicsSignal, '.ELTM', write_pv='.PLTM')
     spectrum = C(EpicsSignalRO, '.VAL')
@@ -96,7 +96,7 @@ class EpicsMCA(Device):
         self.stage_sigs.update([(self.mode, 'PHA')])
 
     def stop(self):
-        self._stop.put(1)
+        self.stop_signal.put(1)
 
 
 class EpicsDXP(Device):
