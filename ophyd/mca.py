@@ -68,7 +68,7 @@ class EpicsMCARecord(Device):
     background = C(EpicsSignalRO, '.BG')
     mode = C(EpicsSignal, '.MODE', string=True)
 
-    rois = DDC(add_rois(range(0, 31)))
+    rois = DDC(add_rois(range(0, 32)))
 
     def __init__(self, prefix, *, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
