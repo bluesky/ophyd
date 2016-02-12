@@ -342,10 +342,10 @@ class BlueskyInterface:
         pass
 
     def read(self):
-        return {}
+        return OrderedDict()
 
     def describe(self):
-        return {}
+        return OrderedDict()
 
     def stage(self):
         "Prepare the device to be triggered."
