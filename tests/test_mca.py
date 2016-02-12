@@ -71,7 +71,7 @@ class MCATests(unittest.TestCase):
         mca.mode.put(MCAMode.PHA)
         mca.stage()
         mca.start.put(1)
-        mca._stop.put(1)
+        mca.stop_signal.put(1)
         mca.preset_real_time.put(3.14)
         mca.preset_live_time.put(3.14)
         mca.erase_start.put(1)
