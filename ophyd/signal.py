@@ -146,6 +146,26 @@ class Signal(OphydObject):
         return self.limits[1]
 
 
+class DerivedSignal(Signal):
+    '''A signal which is derived from another one'''
+    def __init__(self, derived_from, **kwargs):
+        self._derived_from = derived_from
+        super().__init__(**kwargs)
+
+    def describe(self):
+        '''Description based on the original signal description'''
+        desc = self._derived_from.describe()[self._derived_from.name]
+        return {self.name: desc}
+
+    def get(self, **kwargs):
+        '''Get the value from the original signal'''
+        return self._derived_from.get(**kwargs)
+
+    def put(self, value, **kwargs):
+        '''Put the value to the original signal'''
+        return self._derived_from.put(value, **kwargs)
+
+
 class EpicsSignalBase(Signal):
     '''A read-only EpicsSignal -- that is, one with no `write_pv`
 
