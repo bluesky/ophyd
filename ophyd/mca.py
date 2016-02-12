@@ -59,12 +59,8 @@ def add_rois(range_, **kwargs):
     return defn
 
 
-class EpicsMCA(Device):
+class EpicsMCARecord(Device):
     '''SynApps MCA Record interface'''
-
-    start = C(EpicsSignal, 'Start')
-    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
-
     stop_signal = C(EpicsSignal, '.STOP')
     preset_real_time = C(EpicsSignal, '.ERTM', write_pv='.PRTM')
     preset_live_time = C(EpicsSignal, '.ELTM', write_pv='.PLTM')
@@ -97,6 +93,11 @@ class EpicsMCA(Device):
 
     def stop(self):
         self.stop_signal.put(1)
+
+
+class EpicsMCA(EpicsMCARecord):
+    start = C(EpicsSignal, 'Start')
+    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
 
 
 class EpicsDXP(Device):
