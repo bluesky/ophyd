@@ -32,10 +32,10 @@ class PseudoSingle(Positioner):
 
         self._target = None
 
-        self._limits = None
-        if limits is not None:
-            self._limits = tuple(limits)
+        if limits is None:
+            limits = (0, 0)
 
+        self._limits = tuple(limits)
         self._idx = idx
 
         self._parent.subscribe(self._sub_proxy, event_type=self.SUB_START)
