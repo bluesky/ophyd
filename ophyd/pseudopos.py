@@ -32,10 +32,10 @@ class PseudoSingle(Positioner):
 
         self._target = None
 
-        self._limits = None
-        if limits is not None:
-            self._limits = tuple(limits)
+        if limits is None:
+            limits = (0, 0)
 
+        self._limits = tuple(limits)
         self._idx = idx
 
         self._parent.subscribe(self._sub_proxy, event_type=self.SUB_START)
@@ -317,7 +317,7 @@ class PseudoPositioner(Device, Positioner):
                 self._done_moving()
 
     def move_single(self, pseudo, position, **kwargs):
-        idx = self._pseudo._idx
+        idx = pseudo._idx
         target = list(self.target)
         target[idx] = position
         return self.move(self.PseudoPosition(*target), **kwargs)
@@ -325,7 +325,7 @@ class PseudoPositioner(Device, Positioner):
     @property
     def target(self):
         '''Last commanded target positions'''
-        return self.PseudoPosition(pos.target for pos in self._pseudo)
+        return self.PseudoPosition(*(pos.target for pos in self._pseudo))
 
     def move(self, position, wait=True, timeout=30.0, **kwargs):
         real_pos = self.forward(position)
