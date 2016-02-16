@@ -105,6 +105,7 @@ class PseudoSingle(Positioner):
         pass
 
     def move(self, pos, **kwargs):
+        self._target = pos
         return self._parent.move_single(self, pos, **kwargs)
 
     def read(self):
@@ -248,7 +249,7 @@ class PseudoPositioner(Device, Positioner):
         for pos in self._real:
             pos.stop()
 
-        Positioner.stop(self)
+        super().stop(self)
 
     def check_single(self, pseudo_single, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''

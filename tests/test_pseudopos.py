@@ -36,7 +36,7 @@ motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',
 class Pseudo3x3(PseudoPositioner):
     pseudo1 = C(PseudoSingle, '', limits=(-10, 10))
     pseudo2 = C(PseudoSingle, '', limits=(-10, 10))
-    pseudo3 = C(PseudoSingle, '', limits=(-10, 10))
+    pseudo3 = C(PseudoSingle, '', limits=None)
     real1 = C(EpicsMotor, motor_recs[0])
     real2 = C(EpicsMotor, motor_recs[1])
     real3 = C(EpicsMotor, motor_recs[2])
@@ -115,7 +115,16 @@ class PseudoPosTests(unittest.TestCase):
             logger.debug('** Finished moving (%s)', kwargs)
 
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=True)
+        self.assertIs(pseudo.sequential, False)
+        self.assertIs(pseudo.concurrent, True)
         pseudo.wait_for_connection()
+
+        self.assertTrue(pseudo.connected)
+        self.assertEqual(tuple(pseudo.pseudo_positioners),
+                         (pseudo.pseudo1, pseudo.pseudo2, pseudo.pseudo3))
+        self.assertEqual(tuple(pseudo.real_positioners),
+                         (pseudo.real1, pseudo.real2, pseudo.real3))
+
         logger.info('Move to (.2, .2, .2), which is (-.2, -.2, -.2) for real '
                     'motors')
         pseudo.move(pseudo.PseudoPosition(.2, .2, .2), wait=True)
@@ -146,6 +155,13 @@ class PseudoPosTests(unittest.TestCase):
 
         pseudo1.move(0, wait=True)
 
+        self.assertEquals(pseudo1.target, 0)
+        pseudo1.sync()
+        self.assertEquals(pseudo1.target, pseudo1.position)
+
+        # coverage
+        pseudo1._started_moving
+
         try:
             pseudo1.check_value(real1.high_limit + 1)
         except ValueError as ex:
@@ -174,6 +190,7 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.describe()
         pseudo.read_configuration()
         pseudo.describe_configuration()
+
         repr(pseudo)
         str(pseudo)
 
