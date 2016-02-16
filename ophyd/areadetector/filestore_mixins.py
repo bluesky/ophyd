@@ -126,12 +126,31 @@ class FileStorePluginBase(FileStoreBase):
                                 (self.num_capture, 0),
                                 ])
 
-    def stage(self):
-        # Make a filename.
+    def make_filename(self):
+        '''Make a filename.
+
+        This is a hook so that the read and write paths can either be modified
+        or created on disk prior to configuring the areaDetector plugin.
+
+        Returns
+        -------
+        filename : str
+            The start of the filename
+        read_path : str
+            Path that ophyd can read from
+        write_path : str
+            Path that the IOC can write to
+        '''
         filename = new_short_uid()
         formatter = datetime.now().strftime
         write_path = formatter(self.write_path_template)
         read_path = formatter(self.read_path_template)
+        return filename, read_path, write_path
+
+    def stage(self):
+        # Make a filename.
+        filename, read_path, write_path = self.make_filename()
+
         # Ensure we do not have an old file open.
         set_and_wait(self.capture, 0)
         # These must be set before parent is staged (specifically
