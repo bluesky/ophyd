@@ -285,6 +285,15 @@ class CalcRecip(object):
 
     def __getitem__(self, axis):
         if axis in self.physical_axis_names:
+            if self._axis_name_map:
+                for k, v in self._axis_name_map.items():
+                    if axis == v:
+                        param = self._get_parameter(self._geometry.axis_get(k))
+                        # cannot set Parameter.name, so these are as
+                        # provided from below
+                        #param.name = axis
+                        return param
+
             return self._get_parameter(self._geometry.axis_get(axis))
         elif axis in self.pseudo_axis_names:
             return self._engine[axis]
