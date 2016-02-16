@@ -47,6 +47,10 @@ class EpicsMotor(Device, Positioner):
     motor_is_moving = Cpt(EpicsSignalRO, '.MOVN')
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
+    motor_home_forward = Cpt(EpicsSignal, '.HOMF')
+    motor_home_reverse = Cpt(EpicsSignal, '.HOMR')
+    motor_jog_forward = Cpt(EpicsSignal, '.JOGF')
+    motor_jog_reverse = Cpt(EpicsSignal, '.JOGR')
 
     def __init__(self, prefix, *, settle_time=0.05, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
@@ -100,6 +104,22 @@ class EpicsMotor(Device, Positioner):
     def stop(self):
         self.motor_stop.put(1, wait=False)
         super().stop()
+
+    @raise_if_disconnected
+    def home_forward(self):
+        self.motor_home_forward.put(1, wait=False)
+
+    @raise_if_disconnected
+    def home_reverse(self):
+        self.motor_home_reverse.put(1, wait=False)
+
+    @raise_if_disconnected
+    def jog_forward(self):
+        self.motor_jog_forward.put(1, wait=False)
+
+    @raise_if_disconnected
+    def jog_reverse(self):
+        self.motor_jog_reverse.put(1, wait=False)
 
     @raise_if_disconnected
     def move(self, position, wait=True, **kwargs):
