@@ -30,6 +30,7 @@ class CalcRecip(object):
         self._units = util.units[self._unit_name]
         self._lock_engine = bool(lock_engine)
         self._lock = RLock()
+        self._axis_name_map = None
 
         try:
             self._factory = hkl_module.factories()[dtype]
@@ -215,7 +216,25 @@ class CalcRecip(object):
 
     @property
     def physical_axis_names(self):
-        return self._geometry.axis_names_get()
+        if self._axis_name_map:
+            return list(self._axis_name_map.values())
+        else:
+            return self._geometry.axis_names_get()
+
+    @physical_axis_names.setter
+    def physical_axis_names(self, axis_name_map):
+        '''Set a persistent re-map of physical axis names
+
+           Parameter
+           ---------
+           axis_name_map : dict {orig_axis_1: new_name_1, ...}
+        '''
+        # make sure re-map names are 1-to-1 with the engine's expectations
+        assert set(axis_name_map.keys()) == set(self.physical_axis_names)
+
+        self._axis_name_map = self.physical_axes
+        for k, v in axis_name_map.items():
+            self._axis_name_map[k] = v
 
     @property
     def physical_positions(self):
@@ -229,7 +248,11 @@ class CalcRecip(object):
 
     @property
     def physical_axes(self):
-        keys = self.physical_axis_names
+        if self._axis_name_map:
+            keys = list(self._axis_name_map.values())
+        else:
+            keys = self.physical_axis_names
+
         positions = self.physical_positions
         return OrderedDict(zip(keys, positions))
 
