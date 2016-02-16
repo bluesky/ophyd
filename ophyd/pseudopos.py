@@ -10,10 +10,10 @@
 
 import logging
 import time
+import threading
+import collections
 
 from collections import (OrderedDict, namedtuple)
-
-import numpy as np
 
 from .utils import (TimeoutError, DisconnectedError)
 from .positioner import Positioner
@@ -77,7 +77,7 @@ class PseudoSingle(Positioner):
         self._target = None
 
     def check_value(self, pos):
-        self._parent.check_single(self._idx, pos)
+        self._parent.check_single(self, pos)
 
     @property
     def moving(self):
@@ -107,6 +107,26 @@ class PseudoSingle(Positioner):
     def move(self, pos, **kwargs):
         return self._parent.move_single(self, pos, **kwargs)
 
+    def read(self):
+        d = OrderedDict()
+        d[self.name] = {'value': self.position,
+                        'timestamp': time.time()}
+        return d
+
+    def describe(self):
+        desc = OrderedDict()
+        desc[self.name] = {'dtype': 'number',
+                           'shape': [],
+                           'source': 'computed',
+                           }
+        return desc
+
+    def read_configuration(self):
+        return OrderedDict()
+
+    def describe_configuration(self):
+        return OrderedDict()
+
 
 class PseudoPositioner(Device, Positioner):
     '''A pseudo positioner which can be comprised of multiple positioners
@@ -128,6 +148,7 @@ class PseudoPositioner(Device, Positioner):
                  configuration_attrs=None, monitor_attrs=None, name=None,
                  **kwargs):
 
+        self._finished_lock = threading.RLock()
         self._concurrent = bool(concurrent)
         self._finish_thread = None
         self._real_waiting = []
@@ -162,11 +183,8 @@ class PseudoPositioner(Device, Positioner):
         self._real_cur_pos = OrderedDict((real, None) for real in self._real)
 
         for real in self._real:
-            # Subscribe to events from all the real motors
-            # Indicate when they're finished moving
-            real.subscribe(self._real_finished, event_type=real.SUB_DONE,
-                           run=False)
-            # And update the internal state of their position
+            # Subscribe to events from all the real motors and update the
+            # internal state of their position
             real.subscribe(self._real_pos_update, event_type=real.SUB_READBACK,
                            run=True)
 
@@ -232,17 +250,27 @@ class PseudoPositioner(Device, Positioner):
 
         Positioner.stop(self)
 
-    def check_single(self, idx, single_pos):
+    def check_single(self, pseudo_single, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''
+        idx = pseudo_single._idx
         target = list(self.target)
         target[idx] = single_pos
-        return self.check_value(self.PseudoPosition(target))
+        return self.check_value(self.PseudoPosition(*target))
 
     def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid'''
-        pseudo_pos = self.PseudoPosition(pseudo_pos)
+        try:
+            pseudo_pos = self.PseudoPosition(*pseudo_pos)
+        except TypeError as ex:
+            raise ValueError('Not all required values for a PseudoPosition: %s'
+                             '(%s)'.format(self.PseudoPosition._fields, ex))
+
         for pseudo, pos in zip(self._pseudo, pseudo_pos):
-            pseudo.check_value(pos)
+            low, high = pseudo.limits
+            if (high > low) and not (low <= pos <= high):
+                raise ValueError('Position is outside of pseudo single limits: '
+                                 '%s, %s < %s < %s'.format(pseudo.name, low, pos,
+                                                           high))
 
         real_pos = self.forward(pseudo_pos)
         for real, pos in zip(self._real, real_pos):
@@ -302,19 +330,24 @@ class PseudoPositioner(Device, Positioner):
         except DisconnectedError:
             pass
 
+    def _done_moving(self):
+        del self._real_waiting[:]
+        super()._done_moving()
+
     def _real_finished(self, obj=None, **kwargs):
         '''A single real positioner has finished moving.
 
-        Used for asynchronous motion, if all have finished
-        moving then fire a callback (via `Positioner._done_moving`)
+        Used for asynchronous motion, if all have finished moving then fire a
+        callback (via `Positioner._done_moving`)
         '''
-        real = obj
+        with self._finished_lock:
+            real = obj
 
-        if real in self._real_waiting:
-            self._real_waiting.remove(real)
+            if real in self._real_waiting:
+                self._real_waiting.remove(real)
 
-            if not self._real_waiting:
-                self._done_moving()
+                if not self._real_waiting:
+                    self._done_moving()
 
     def move_single(self, pseudo, position, **kwargs):
         idx = pseudo._idx
@@ -327,45 +360,54 @@ class PseudoPositioner(Device, Positioner):
         '''Last commanded target positions'''
         return self.PseudoPosition(*(pos.target for pos in self._pseudo))
 
+    def _sequential_move(self, real_pos, timeout=None, **kwargs):
+        '''Move all real positioners to a certain position, in series'''
+        for real, value in zip(self._real, real_pos):
+            logger.debug('[sequential] Moving %s to %s (timeout=%s)',
+                         real.name, value, timeout)
+            if timeout <= 0:
+                raise TimeoutError('Failed to move all positioners within '
+                                   '%s s'.format(timeout))
+
+            t0 = time.time()
+            try:
+                real.move(value, wait=True, timeout=timeout, **kwargs)
+            except Exception:
+                # TODO tag something onto exception message?
+                raise
+
+            elapsed = time.time() - t0
+            timeout -= elapsed
+
+    def _concurrent_move(self, real_pos, **kwargs):
+        '''Move all real positioners to a certain position, in parallel'''
+        self._real_waiting.extend(self._real)
+
+        for real, value in zip(self._real, real_pos):
+            logger.debug('[concurrent] Moving %s to %s', real.name, value)
+            real.move(value, wait=False, moved_cb=self._real_finished, **kwargs)
+
     def move(self, position, wait=True, timeout=30.0, **kwargs):
         real_pos = self.forward(position)
+
+        # Clear all old statuses for not yet completed real motions
+        del self._real_waiting[:]
 
         # Remove the 'finished moving' callback, otherwise callbacks will
         # happen when individual motors finish moving
         moved_cb = kwargs.pop('moved_cb', None)
 
-        if self.sequential:
-            for real, value in zip(self._real, real_pos):
-                logger.debug('[sequential] Moving %s to %s (timeout=%s)',
-                             real.name, value, timeout)
-                if timeout <= 0:
-                    raise TimeoutError('Failed to move all positioners within '
-                                       '%s s'.format(timeout))
+        with self._finished_lock:
+            if self.sequential:
+                self._sequential_move(real_pos, timeout=timeout)
+            else:
+                self._concurrent_move(real_pos, timeout=timeout)
 
-                t0 = time.time()
-                try:
-                    real.move(value, wait=True, timeout=timeout, **kwargs)
-                except Exception:
-                    # TODO tag something onto exception message?
-                    raise
+            ret = super().move(position, moved_cb=moved_cb, wait=wait,
+                               **kwargs)
 
-                elapsed = time.time() - t0
-                timeout -= elapsed
-
-        else:
-            del self._real_waiting[:]
-            self._real_waiting.extend(self._real)
-
-            for real, value in zip(self._real, real_pos):
-                logger.debug('[concurrent] Moving %s to %s', real.name, value)
-                logger.debug('[concurrent] %s => %s', real.prefix, value)
-                real.move(value, wait=False, **kwargs)
-
-        ret = Positioner.move(self, position, moved_cb=moved_cb, wait=wait,
-                              **kwargs)
-
-        if self.sequential or (wait and not self.moving):
-            self._done_moving()
+            if self.sequential or wait:
+                self._done_moving()
 
         return ret
 
