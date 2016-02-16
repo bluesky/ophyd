@@ -62,8 +62,11 @@ def add_rois(range_, **kwargs):
 class EpicsMCARecord(Device):
     '''SynApps MCA Record interface'''
     stop_signal = C(EpicsSignal, '.STOP')
-    preset_real_time = C(EpicsSignal, '.ERTM', write_pv='.PRTM')
-    preset_live_time = C(EpicsSignal, '.ELTM', write_pv='.PLTM')
+    preset_real_time = C(EpicsSignal, '.PRTM')
+    preset_live_time = C(EpicsSignal, '.PLTM')
+    elapsed_real_time = C(EpicsSignalRO, '.ERTM')
+    elapsed_live_time = C(EpicsSignalRO, '.ELTM')
+
     spectrum = C(EpicsSignalRO, '.VAL')
     background = C(EpicsSignalRO, '.BG')
     mode = C(EpicsSignal, '.MODE', string=True)
@@ -74,7 +77,8 @@ class EpicsMCARecord(Device):
                  configuration_attrs=None, monitor_attrs=None, name=None,
                  parent=None, **kwargs):
 
-        default_read_attrs = ['spectrum', 'preset_real_time']
+        default_read_attrs = ['spectrum', 'preset_real_time',
+                              'elapsed_real_time']
         default_configuration_attrs = ['preset_real_time']
 
         if read_attrs is None:
