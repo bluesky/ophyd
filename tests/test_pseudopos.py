@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    pass
+    logging.getLogger('ophyd.pseudopos').setLevel(logging.DEBUG)
 
 
 def tearDownModule():
@@ -22,6 +22,7 @@ def tearDownModule():
         epics.ca.destroy_context()
 
     logger.debug('Cleaning up')
+    logging.getLogger('ophyd.pseudopos').setLevel(logging.INFO)
 
 
 motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',

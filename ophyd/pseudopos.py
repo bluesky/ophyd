@@ -337,7 +337,7 @@ class PseudoPositioner(Device, PositionerBase):
         del self._real_waiting[:]
         super()._done_moving(success=success)
 
-    def _real_finished(self, obj=None, **kwargs):
+    def _real_finished(self, obj=None):
         '''A single real positioner has finished moving.
 
         Used for asynchronous motion, if all have finished moving then fire a
@@ -377,12 +377,23 @@ class PseudoPositioner(Device, PositionerBase):
 
         def move_next(obj=None):
             # last motion complete message came from 'obj'
+            logger.debug('[%s:sequential] move_next called', self.name)
             with self._finished_lock:
+                if pending_status:
+                    last_status = pending_status[-1]
+                    if not last_status.success:
+                        logger.error('Failing due to last motion')
+                        self._done_moving(success=False)
+                        return
+
                 try:
                     real, position = self._move_queue.pop(0)
                 except IndexError:
                     self._done_moving(success=True)
                     return
+
+                logger.debug('[%s:sequential] Moving next motor: %s',
+                             self.name, real.name)
 
                 elapsed = time.time() - t0
                 if timeout is None:
@@ -390,8 +401,8 @@ class PseudoPositioner(Device, PositionerBase):
                 else:
                     sub_timeout = timeout - elapsed
 
-                logger.debug('[sequential] Moving %s to %s (timeout=%s)',
-                             real.name, position, sub_timeout)
+                logger.debug('[%s:sequential] Moving %s to %s (timeout=%s)',
+                             self.name, real.name, position, sub_timeout)
 
                 if sub_timeout is not None and sub_timeout < 0:
                     logger.error('Motion timeout')
@@ -402,7 +413,10 @@ class PseudoPositioner(Device, PositionerBase):
                                        moved_cb=move_next,
                                        **kwargs)
                     pending_status.append(status)
+                    logger.debug('[%s:sequential] waiting on %s',
+                                 self.name, real.name)
 
+        logger.debug('[%s:sequential] started', self.name)
         move_next()
 
     def _concurrent_move(self, real_pos, **kwargs):
@@ -414,7 +428,7 @@ class PseudoPositioner(Device, PositionerBase):
             real.move(value, wait=False, moved_cb=self._real_finished,
                       **kwargs)
 
-    def move(self, position, wait=True, timeout=30.0, **kwargs):
+    def move(self, position, wait=True, timeout=10.0, **kwargs):
         real_pos = self.forward(position)
 
         # Clear all old statuses for not yet completed real motions
