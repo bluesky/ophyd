@@ -8,11 +8,11 @@ from ophyd.utils.startup import setup as setup_ophyd
 
 
 logger = logging.getLogger('ophyd_session_test')
+setup_ophyd()
 
 
 def setup_package():
-    setup_ophyd()
-
+    pass
 
 def teardown_package():
     pass
