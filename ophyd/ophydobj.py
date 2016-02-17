@@ -48,9 +48,12 @@ class StatusBase:
         self._cb = None
         self.done = False
         self.success = False
-        self.timeout = float(timeout)
+        self.timeout = None
 
         if timeout is not None:
+            self.timeout = float(timeout)
+
+        if self.timeout is not None:
             thread = threading.Thread(target=self._timeout_thread, daemon=True)
             self._timeout_thread = thread
             self._timeout_thread.start()
@@ -124,7 +127,7 @@ class StatusBase:
 
         if self.done:
             if self.success is not None and not self.success:
-                raise RuntimeError('Operation completed unsuccessfully')
+                raise RuntimeError('Operation completed but reported an error')
         elif time_exceeded():
             elapsed = time.time() - t0
             raise TimeoutError('Operation failed to complete within {} seconds'
