@@ -164,6 +164,7 @@ class PVPosTest(unittest.TestCase):
             stop_value = 1
             done_value = 1
 
+
         pos = MyPositioner('', name='pv_pos_fake_mtr')
         print('fake mtr', pos.describe())
         pos.wait_for_connection()

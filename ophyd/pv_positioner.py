@@ -7,7 +7,7 @@
    :synopsis:
 '''
 
-
+import time
 import logging
 
 from epics.pv import fmt_time
@@ -148,8 +148,7 @@ class PVPositioner(Device, PositionerBase):
     def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
         logger.debug('%s.setpoint = %s', self.name, position)
-        self.setpoint.put(position, wait=False)
-
+        self.setpoint.put(position, wait=True)
         if self.actuate is not None:
             logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
