@@ -362,6 +362,10 @@ class PseudoPositioner(Device, Positioner):
 
     def _sequential_move(self, real_pos, timeout=None, **kwargs):
         '''Move all real positioners to a certain position, in series'''
+        # without proper timeout support for status callbacks, we can't safely
+        # chain motions on other callbacks for sequential motion.  so,
+        # 'sequential_move' above always blocks
+        # this is a big TODO
         for real, value in zip(self._real, real_pos):
             logger.debug('[sequential] Moving %s to %s (timeout=%s)',
                          real.name, value, timeout)
@@ -404,13 +408,18 @@ class PseudoPositioner(Device, Positioner):
             else:
                 self._concurrent_move(real_pos, timeout=timeout)
 
-            ret = super().move(position, moved_cb=moved_cb, wait=wait,
-                               **kwargs)
+            st = super().move(position, moved_cb=moved_cb, wait=False,
+                              **kwargs)
 
-            if self.sequential or wait:
-                self._done_moving()
+        if self.sequential:
+            # 'sequential_move' above always blocks - and motion should
+            # be considered complete after that. (see self._sequential_move)
+            self._done_moving()
 
-        return ret
+        if wait:
+            st.wait(timeout=timeout)
+
+        return st
 
     def forward(self, pseudo_pos):
         ''' '''
