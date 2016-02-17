@@ -10,6 +10,7 @@
 
 import logging
 import time
+from functools import partial
 
 from .ophydobj import (MoveStatus, OphydObject)
 
@@ -83,7 +84,7 @@ class PositionerBase(OphydObject):
         status = MoveStatus(self, position, timeout=timeout)
 
         if moved_cb is not None:
-            status.finished_cb = moved_cb
+            status.finished_cb = partial(moved_cb, obj=self)
             # the status object will run this callback when finished
 
         self.subscribe(status._finished, event_type=self._SUB_REQ_DONE,

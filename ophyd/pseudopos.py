@@ -152,6 +152,7 @@ class PseudoPositioner(Device, PositionerBase):
         self._concurrent = bool(concurrent)
         self._finish_thread = None
         self._real_waiting = []
+        self._move_queue = []
 
         if self.__class__ is PseudoPositioner:
             raise TypeError('PseudoPositioner must be subclassed with the '
@@ -245,10 +246,12 @@ class PseudoPositioner(Device, PositionerBase):
         return all(mtr.connected for mtr in self._real)
 
     def stop(self):
-        for pos in self._real:
-            pos.stop()
-
-        super().stop(self)
+        try:
+            del self._move_queue[:]
+            for pos in self._real:
+                pos.stop()
+        finally:
+            super().stop(self)
 
     def check_single(self, pseudo_single, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''
@@ -342,6 +345,7 @@ class PseudoPositioner(Device, PositionerBase):
         '''
         with self._finished_lock:
             real = obj
+            logger.debug('Real motor %s finished moving', real.name)
 
             if real in self._real_waiting:
                 self._real_waiting.remove(real)
@@ -367,14 +371,15 @@ class PseudoPositioner(Device, PositionerBase):
         # 'sequential_move' above always blocks
         # this is a big TODO
 
-        move_queue = list(zip(self._real, real_pos))
+        self._move_queue[:] = zip(self._real, real_pos)
         pending_status = []
         t0 = time.time()
 
-        def move_next():
+        def move_next(obj=None):
+            # last motion complete message came from 'obj'
             with self._finished_lock:
                 try:
-                    real, position = move_queue.pop(0)
+                    real, position = self._move_queue.pop(0)
                 except IndexError:
                     self._done_moving(success=True)
                     return
@@ -410,9 +415,6 @@ class PseudoPositioner(Device, PositionerBase):
                       **kwargs)
 
     def move(self, position, wait=True, timeout=30.0, **kwargs):
-        self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
-        self._reset_sub(self._SUB_REQ_DONE)
-
         real_pos = self.forward(position)
 
         # Clear all old statuses for not yet completed real motions
@@ -422,21 +424,18 @@ class PseudoPositioner(Device, PositionerBase):
         # happen when individual motors finish moving
         moved_cb = kwargs.pop('moved_cb', None)
 
+        st = super().move(position, moved_cb=moved_cb, timeout=timeout)
+
         with self._finished_lock:
+            # ensure we don't get any motion complete messages before motion
+            # setup is finished
             if self.sequential:
                 self._sequential_move(real_pos, timeout=timeout)
             else:
                 self._concurrent_move(real_pos, timeout=timeout)
 
-            st = super().move(position, moved_cb=moved_cb, **kwargs)
-
-        if self.sequential:
-            # 'sequential_move' above always blocks - and motion should
-            # be considered complete after that. (see self._sequential_move)
-            self._done_moving()
-
         if wait:
-            st.wait(timeout=timeout)
+            st.wait()
 
         return st
 

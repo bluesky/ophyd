@@ -124,7 +124,7 @@ class StatusBase:
 
         if self.done:
             if self.success is not None and not self.success:
-                raise RuntimeError('Operation did not successfully complete')
+                raise RuntimeError('Operation completed unsuccessfully')
         elif time_exceeded():
             elapsed = time.time() - t0
             raise TimeoutError('Operation failed to complete within {} seconds'
