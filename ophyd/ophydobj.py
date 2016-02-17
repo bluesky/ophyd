@@ -7,12 +7,12 @@
    :synopsis:
 '''
 
-
 from collections import defaultdict
 from threading import RLock
 from functools import wraps
 import time
 import logging
+import threading
 
 import numpy as np
 
@@ -34,13 +34,35 @@ class StatusBase:
     """
     This is a base class that provides a single-slot
     call back for finished.
+
+    Parameters
+    ----------
+    timeout : float, optional
+        The default timeout to use for a blocking wait, and the amount of time
+        to wait to mark the operation as failed
     """
-    def __init__(self):
+    def __init__(self, *, timeout=None):
         super().__init__()
         self._lock = RLock()
         self._cb = None
         self.done = False
         self.success = False
+        self.timeout = float(timeout)
+
+        if timeout is not None:
+            thread = threading.Thread(target=self._timeout_thread, daemon=True)
+            self._timeout_thread = thread
+            self._timeout_thread.start()
+
+    def _timeout_thread(self):
+        '''Handle timeout'''
+        try:
+            self.wait(timeout=self.timeout,
+                      poll_rate=max(1.0, self.timeout / 10.0))
+        except TimeoutError:
+            self._finished(success=False)
+        finally:
+            self._timeout_thread = None
 
     @_locked
     def _finished(self, *args, **kwargs):
@@ -122,6 +144,9 @@ class MoveStatus(StatusBase):
         Whether or not the motion has already completed
     start_ts : float, optional
         The motion start timestamp
+    timeout : float, optional
+        The default timeout to use for a blocking wait, and the amount of time
+        to wait to mark the motion as failed
 
     Attributes
     ----------
@@ -140,9 +165,10 @@ class MoveStatus(StatusBase):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, *, done=False, start_ts=None):
+    def __init__(self, positioner, target, *, done=False, start_ts=None,
+                 timeout=30.0):
         # call the base class
-        super().__init__()
+        super().__init__(timeout=timeout)
 
         self.done = done
         if start_ts is None:
@@ -184,6 +210,28 @@ class MoveStatus(StatusBase):
             return time.time() - self.start_ts
         else:
             return self.finish_ts - self.start_ts
+
+    def wait(self, timeout=None, *, poll_rate=0.05):
+        '''(Blocking) wait for the status to complete
+
+        Parameters
+        ----------
+        timeout : float, optional
+            Amount of time in seconds to wait. If None, defaults to the timeout
+            for the MoveStatus object
+        poll_rate : float, optional
+            Polling rate used to check the status
+
+        Raises
+        ------
+        TimeoutError
+            If time waited exceeds specified timeout
+        RuntimeError
+            If the status failed to complete successfully
+        '''
+        if timeout is None:
+            timeout = self.timeout
+        super().wait(timeout=timeout, poll_rate=poll_rate)
 
     def __str__(self):
         return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
