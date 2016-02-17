@@ -6,7 +6,7 @@ import unittest
 from copy import copy
 
 import epics
-from ophyd import (Positioner, PVPositioner, EpicsMotor)
+from ophyd import (SoftPositioner, PVPositioner, EpicsMotor)
 from ophyd import (EpicsSignal, EpicsSignalRO)
 from ophyd import (Component as C)
 
@@ -25,13 +25,13 @@ class PositionerTests(unittest.TestCase):
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
     def test_positioner(self):
-        p = Positioner(name='test', egu='egu')
+        p = SoftPositioner(name='test', egu='egu')
 
         def cb_pos(value=None, **kwargs):
             pass
 
-        self.assertEquals(p.egu, 'egu')
-        self.assertEquals(p.limits, (0, 0))
+        self.assertEqual(p.egu, 'egu')
+        self.assertEqual(p.limits, (0, 0))
 
         p.subscribe(cb_pos)
 
@@ -65,15 +65,22 @@ class PositionerTests(unittest.TestCase):
         m.check_value(0)
 
         m.stop()
+        logger.debug('Move to 0.0')
         m.move(0.0, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.0)
+
+        logger.debug('Move to 0.1')
         m.move(0.1, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.1)
+
+        logger.debug('Move to 0.1, again')
         m.move(0.1, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.1)
+
+        logger.debug('Move to 0.0')
         m.move(0.0, timeout=5, wait=True)
         time.sleep(0.1)
         self.assertEqual(m.position, 0.0)

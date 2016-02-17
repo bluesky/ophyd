@@ -15,14 +15,14 @@ from epics.pv import fmt_time
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import raise_if_disconnected
-from .positioner import Positioner
+from .positioner import PositionerBase
 from .device import (Device, Component as Cpt)
 
 
 logger = logging.getLogger(__name__)
 
 
-class EpicsMotor(Device, Positioner):
+class EpicsMotor(Device, PositionerBase):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner
@@ -109,13 +109,12 @@ class EpicsMotor(Device, Positioner):
     def move(self, position, wait=True, **kwargs):
         self._started_moving = False
 
+        status = super().move(position, **kwargs)
+        self.user_setpoint.put(position, wait=False)
+
         try:
-            if not wait:
-                status = super().move(position, wait=False, **kwargs)
-                self.user_setpoint.put(position, wait=False)
-            else:
-                self.user_setpoint.put(position, wait=True)
-                status = super().move(position, wait=True, **kwargs)
+            if wait:
+                status.wait()
         except KeyboardInterrupt:
             self.stop()
             raise

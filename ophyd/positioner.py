@@ -11,15 +11,14 @@
 import logging
 import time
 
-from .utils import TimeoutError
 from .ophydobj import (MoveStatus, OphydObject)
 
 
 logger = logging.getLogger(__name__)
 
 
-class Positioner(OphydObject):
-    '''A soft positioner.
+class PositionerBase(OphydObject):
+    '''The positioner base class
 
     Subclass from this to implement your own positioners.
     '''
@@ -62,7 +61,7 @@ class Positioner(OphydObject):
     def high_limit(self):
         return self.limits[1]
 
-    def move(self, position, wait=True, moved_cb=None, timeout=30.0):
+    def move(self, position, moved_cb=None, timeout=30.0):
         '''Move to a specified position, optionally waiting for motion to
         complete.
 
@@ -70,13 +69,9 @@ class Positioner(OphydObject):
         ----------
         position
             Position to move to
-        wait : bool
-            Wait for move completion
         moved_cb : callable
             Call this callback when movement has finished (not applicable if
             `wait` is set)
-        timeout : float
-            Timeout in seconds
 
         Raises
         ------
@@ -85,67 +80,30 @@ class Positioner(OphydObject):
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
 
-        is_subclass = (self.__class__ is not Positioner)
-        if not is_subclass:
-            # When not subclassed, Positioner acts as a soft positioner,
-            # immediately 'moving' to the target position when requested.
-            self._started_moving = True
-            self._moving = False
+        status = MoveStatus(self, position, timeout=timeout)
 
-        status = MoveStatus(self, position)
-        if wait:
-            t0 = time.time()
+        if moved_cb is not None:
+            status.finished_cb = moved_cb
+            # the status object will run this callback when finished
 
-            def check_timeout():
-                return timeout is not None and (time.time() - t0) > timeout
-
-            while not self._started_moving:
-                time.sleep(0.05)
-
-                if check_timeout():
-                    raise TimeoutError('Failed to move %s to %s '
-                                       'in %s s (no motion)' %
-                                       (self.name, position, timeout))
-
-            while self.moving:
-                time.sleep(0.05)
-
-                if check_timeout():
-                    raise TimeoutError('Failed to move %s to %s in %s s' %
-                                       (self.name, position, timeout))
-
-            status._finished()
-
-        else:
-            if moved_cb is not None:
-                self.subscribe(moved_cb, event_type=self._SUB_REQ_DONE,
-                               run=False)
-
-            self.subscribe(status._finished,
-                           event_type=self._SUB_REQ_DONE, run=False)
-
-        if not is_subclass:
-            self._set_position(position)
-            self._done_moving()
+        self.subscribe(status._finished, event_type=self._SUB_REQ_DONE,
+                       run=False)
 
         return status
 
-    def _done_moving(self, timestamp=None, value=None, **kwargs):
+    def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
         '''Call when motion has completed.  Runs SUB_DONE subscription.'''
+        if success:
+            self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
+                           value=value)
 
-        self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
-                       value=value, **kwargs)
-
-        self._run_subs(sub_type=self._SUB_REQ_DONE, timestamp=timestamp,
-                       value=value, success=True,
-                       **kwargs)
+        self._run_subs(sub_type=self._SUB_REQ_DONE, success=success,
+                       timestamp=timestamp)
         self._reset_sub(self._SUB_REQ_DONE)
 
     def stop(self):
         '''Stops motion'''
-
-        self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
-        self._reset_sub(self._SUB_REQ_DONE)
+        self._done_moving(success=False)
 
     @property
     def position(self):
@@ -194,3 +152,43 @@ class Positioner(OphydObject):
         yield from super()._repr_info()
         yield ('egu', self._egu)
         yield ('timeout', self._timeout)
+
+
+class SoftPositioner(PositionerBase):
+    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+        '''Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+        moved_cb : callable
+            Call this callback when movement has finished (not applicable if
+            `wait` is set)
+        wait : bool, optional
+            Wait until motion has completed
+        timeout : float, optional
+            Maximum time to wait for a motion
+
+        Raises
+        ------
+        TimeoutError, ValueError (on invalid positions)
+        '''
+        # A soft positioner immediately 'moves' to the target position when
+        # requested.
+        self._started_moving = True
+        self._moving = False
+
+        status = super().move(position, moved_cb=moved_cb, timeout=timeout)
+
+        self._set_position(position)
+        self._done_moving()
+
+        if wait:
+            try:
+                status.wait()
+            except RuntimeError:
+                raise RuntimeError('Motion did not complete successfully')
+
+        return status

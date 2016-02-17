@@ -27,6 +27,7 @@ def _locked(func):
     def f(self, *args, **kwargs):
         with self._lock:
             func(self, *args, **kwargs)
+
     return f
 
 
@@ -65,13 +66,11 @@ class StatusBase:
             self._timeout_thread = None
 
     @_locked
-    def _finished(self, *args, **kwargs):
-        # args/kwargs are not really used, but are passed.
-        # uncomment these if you want to go hunting
-        # if args:
-        #     print("this should be empty: {}".format(args))
-        # if kwargs:
-        #     print("this should be empty: {}".format(kwargs))
+    def _finished(self, success=True, **kwargs):
+        # args/kwargs are not really used, but are passed - because pyepics
+        # gives in a bunch of kwargs that we don't care about
+
+        self.success = success
         self.done = True
 
         if self._cb is not None:
@@ -192,17 +191,15 @@ class MoveStatus(StatusBase):
         except Exception:
             return None
 
+    @_locked
     def _finished(self, success=True, timestamp=None, **kwargs):
-        with self._lock:
-            self.success = success
-
-            if timestamp is None:
-                timestamp = time.time()
-            self.finish_ts = timestamp
-            self.finish_pos = self.pos.position
-            # run super last so that all the state is ready before the
-            # callback runs
-            super()._finished()
+        if timestamp is None:
+            timestamp = time.time()
+        self.finish_ts = timestamp
+        self.finish_pos = self.pos.position
+        # run super last so that all the state is ready before the
+        # callback runs
+        super()._finished(success=success)
 
     @property
     def elapsed(self):

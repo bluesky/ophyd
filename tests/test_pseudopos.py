@@ -43,14 +43,14 @@ class Pseudo3x3(PseudoPositioner):
 
     def forward(self, pseudo_pos):
         pseudo_pos = self.PseudoPosition(*pseudo_pos)
-        logger.debug('forward %s', pseudo_pos)
+        # logger.debug('forward %s', pseudo_pos)
         return self.RealPosition(real1=-pseudo_pos.pseudo1,
                                  real2=-pseudo_pos.pseudo2,
                                  real3=-pseudo_pos.pseudo3)
 
     def inverse(self, real_pos):
         real_pos = self.RealPosition(*real_pos)
-        logger.debug('inverse %s', real_pos)
+        # logger.debug('inverse %s', real_pos)
         return self.PseudoPosition(pseudo1=real_pos.real1,
                                    pseudo2=real_pos.real2,
                                    pseudo3=real_pos.real3)
@@ -64,14 +64,14 @@ class Pseudo1x3(PseudoPositioner):
 
     def forward(self, pseudo_pos):
         pseudo_pos = self.PseudoPosition(*pseudo_pos)
-        logger.debug('forward %s', pseudo_pos)
+        # logger.debug('forward %s', pseudo_pos)
         return self.RealPosition(real1=-pseudo_pos.pseudo1,
                                  real2=-pseudo_pos.pseudo1,
                                  real3=-pseudo_pos.pseudo1)
 
     def inverse(self, real_pos):
         real_pos = self.RealPosition(*real_pos)
-        logger.debug('inverse %s', real_pos)
+        # logger.debug('inverse %s', real_pos)
         return self.PseudoPosition(pseudo1=-real_pos.real1)
 
 

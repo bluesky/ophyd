@@ -14,15 +14,15 @@ import threading
 
 from collections import (OrderedDict, namedtuple)
 
-from .utils import (TimeoutError, DisconnectedError)
-from .positioner import Positioner
+from .utils import DisconnectedError
+from .positioner import PositionerBase
 from .device import Device
 
 
 logger = logging.getLogger(__name__)
 
 
-class PseudoSingle(Positioner):
+class PseudoSingle(PositionerBase):
     '''A single axis of a PseudoPositioner'''
 
     def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
@@ -128,7 +128,7 @@ class PseudoSingle(Positioner):
         return OrderedDict()
 
 
-class PseudoPositioner(Device, Positioner):
+class PseudoPositioner(Device, PositionerBase):
     '''A pseudo positioner which can be comprised of multiple positioners
 
     Parameters
@@ -232,7 +232,7 @@ class PseudoPositioner(Device, Positioner):
         else:
             for attr, cpt in cls._sig_attrs.items():
                 is_pseudo = issubclass(cpt.cls, PseudoSingle)
-                is_positioner = issubclass(cpt.cls, Positioner)
+                is_positioner = issubclass(cpt.cls, PositionerBase)
                 if is_positioner and not is_pseudo:
                     yield attr, cpt
 
@@ -330,9 +330,9 @@ class PseudoPositioner(Device, Positioner):
         except DisconnectedError:
             pass
 
-    def _done_moving(self):
+    def _done_moving(self, success=True):
         del self._real_waiting[:]
-        super()._done_moving()
+        super()._done_moving(success=success)
 
     def _real_finished(self, obj=None, **kwargs):
         '''A single real positioner has finished moving.
@@ -366,22 +366,39 @@ class PseudoPositioner(Device, Positioner):
         # chain motions on other callbacks for sequential motion.  so,
         # 'sequential_move' above always blocks
         # this is a big TODO
-        for real, value in zip(self._real, real_pos):
-            logger.debug('[sequential] Moving %s to %s (timeout=%s)',
-                         real.name, value, timeout)
-            if timeout <= 0:
-                raise TimeoutError('Failed to move all positioners within '
-                                   '{} s'.format(timeout))
 
-            t0 = time.time()
-            try:
-                real.move(value, wait=True, timeout=timeout, **kwargs)
-            except Exception:
-                # TODO tag something onto exception message?
-                raise
+        move_queue = list(zip(self._real, real_pos))
+        pending_status = []
+        t0 = time.time()
 
-            elapsed = time.time() - t0
-            timeout -= elapsed
+        def move_next():
+            with self._finished_lock:
+                try:
+                    real, position = move_queue.pop(0)
+                except IndexError:
+                    self._done_moving(success=True)
+                    return
+
+                elapsed = time.time() - t0
+                if timeout is None:
+                    sub_timeout = None
+                else:
+                    sub_timeout = timeout - elapsed
+
+                logger.debug('[sequential] Moving %s to %s (timeout=%s)',
+                             real.name, position, sub_timeout)
+
+                if sub_timeout is not None and sub_timeout < 0:
+                    logger.error('Motion timeout')
+                    self._done_moving(success=False)
+                else:
+                    status = real.move(position, wait=False,
+                                       timeout=sub_timeout,
+                                       moved_cb=move_next,
+                                       **kwargs)
+                    pending_status.append(status)
+
+        move_next()
 
     def _concurrent_move(self, real_pos, **kwargs):
         '''Move all real positioners to a certain position, in parallel'''
@@ -389,15 +406,13 @@ class PseudoPositioner(Device, Positioner):
 
         for real, value in zip(self._real, real_pos):
             logger.debug('[concurrent] Moving %s to %s', real.name, value)
-            try:
-                real.clear_sub(self._real_finished)
-            except ValueError:
-                pass
-
             real.move(value, wait=False, moved_cb=self._real_finished,
                       **kwargs)
 
     def move(self, position, wait=True, timeout=30.0, **kwargs):
+        self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
+        self._reset_sub(self._SUB_REQ_DONE)
+
         real_pos = self.forward(position)
 
         # Clear all old statuses for not yet completed real motions
@@ -413,8 +428,7 @@ class PseudoPositioner(Device, Positioner):
             else:
                 self._concurrent_move(real_pos, timeout=timeout)
 
-            st = super().move(position, moved_cb=moved_cb, wait=False,
-                              **kwargs)
+            st = super().move(position, moved_cb=moved_cb, **kwargs)
 
         if self.sequential:
             # 'sequential_move' above always blocks - and motion should
