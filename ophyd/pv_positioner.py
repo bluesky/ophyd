@@ -9,11 +9,9 @@
 
 
 import logging
-import time
 
 from epics.pv import fmt_time
 
-from .utils import TimeoutError
 from .device import Device
 from .positioner import PositionerBase
 
@@ -32,7 +30,8 @@ class PVPositioner(Device, PositionerBase):
         The device prefix used for all sub-positioners. This is optional as it
         may be desirable to specify full PV names for PVPositioners.
     settle_time : float, optional
-        Time to wait after a move to ensure a move complete callback is received
+        Time to wait after a move to ensure a move complete callback is
+        received
     limits : 2-element sequence, optional
         (low_limit, high_limit)
     name : str
@@ -49,7 +48,8 @@ class PVPositioner(Device, PositionerBase):
     actuate : Signal or None
         The actuation PV to set when movement is requested
     actuate_value : any, optional
-        The actuation value, sent to the actuate signal when motion is requested
+        The actuation value, sent to the actuate signal when motion is
+        requested
     stop_signal : Signal or None
         The stop PV to set when motion should be stopped
     stop_value : any, optional
@@ -59,8 +59,8 @@ class PVPositioner(Device, PositionerBase):
     done_val : any, optional
         The value that the done pv should be when motion has completed
     put_complete : bool, optional
-        If set, the specified PV should allow for asynchronous put completion to
-        indicate motion has finished.  If `actuate` is specified, it will be
+        If set, the specified PV should allow for asynchronous put completion
+        to indicate motion has finished.  If `actuate` is specified, it will be
         used for put completion.  Otherwise, the `setpoint` will be used.  See
         the `-c` option from `caput` for more information.
     '''
@@ -105,9 +105,9 @@ class PVPositioner(Device, PositionerBase):
             raise ValueError('A setpoint or a readback must be specified')
 
         if self.done is None and not self.put_complete:
-            msg = ('PVPositioner %s is mis-configured. A "done" Signal must be '
-                   'provided or use PVPositionerPC (which uses put completion '
-                   'to determine when motion has completed).'
+            msg = ('PVPositioner %s is mis-configured. A "done" Signal must be'
+                   ' provided or use PVPositionerPC (which uses put completion'
+                   ' to determine when motion has completed).'
                    ''.format(self.name))
             raise ValueError(msg)
 
