@@ -154,8 +154,14 @@ class PVPositioner(Device, PositionerBase):
             self.setpoint.put(position, wait=False)
 
     def move(self, position, wait=True, timeout=30.0, moved_cb=None):
-        status = super().move(position, timeout=timeout, moved_cb=moved_cb)
         self._started_moving = False
+        status = super().move(position, timeout=timeout, moved_cb=moved_cb)
+
+        has_done = self.done is not None
+        if not has_done:
+            self._started_moving = True
+            self._moving = True
+
         try:
             self._setup_move(position)
             if wait:
@@ -187,10 +193,10 @@ class PVPositioner(Device, PositionerBase):
         if not self.put_complete:
             # In the case of put completion, motion complete
             if was_moving and not self._moving:
-                self._done_moving(timestamp=timestamp, value=value)
+                self._done_moving(success=True, timestamp=timestamp,
+                                  value=value)
 
-    def _pos_changed(self, timestamp=None, value=None,
-                     **kwargs):
+    def _pos_changed(self, timestamp=None, value=None, **kwargs):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
@@ -216,6 +222,13 @@ class PVPositioner(Device, PositionerBase):
         yield ('settle_time', self.settle_time)
         yield ('limits', self._limits)
 
+    def _done_moving(self, **kwargs):
+        has_done = self.done is not None
+        if not has_done:
+            self._moving = False
+
+        super()._done_moving(**kwargs)
+
 
 class PVPositionerPC(PVPositioner):
     def __init__(self, *args, **kwargs):
@@ -229,7 +242,7 @@ class PVPositionerPC(PVPositioner):
         '''Move and do not wait until motion is complete (asynchronous)'''
         def done_moving(**kwargs):
             logger.debug('%s async motion done', self.name)
-            self._done_moving()
+            self._done_moving(success=True)
 
         if self.done is None:
             # No done signal, so we rely on put completion

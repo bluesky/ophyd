@@ -44,18 +44,12 @@ class PVPosTest(unittest.TestCase):
             done = C(EpicsSignalRO, '.MOVN')
             stop_signal = C(EpicsSignal, '.STOP')
 
-            @property
-            def stop_value(self):
-                return 1
-
-            @property
-            def done_value(self):
-                return 0
+            stop_value = 1
+            done_value = 0
 
         m = MyPositioner(motor_record, name='pos_no_put_compl')
         m.wait_for_connection()
 
-        m.report
         m.read()
 
         mrec.move(0.1, wait=True)
@@ -71,7 +65,6 @@ class PVPosTest(unittest.TestCase):
         mc = copy(m)
         self.assertEqual(mc.describe(), m.describe())
 
-        m.report
         m.read()
 
     def test_put_complete(self):
@@ -87,16 +80,12 @@ class PVPosTest(unittest.TestCase):
             setpoint = C(EpicsSignal, '.VAL')
             readback = C(EpicsSignalRO, '.RBV')
             done = C(EpicsSignalRO, '.MOVN')
-
-            @property
-            def done_value(self):
-                return 0
+            done_value = 0
 
         pos = MyPositioner(motor_record, name='pos_no_put_compl')
         print(pos.describe())
         pos.wait_for_connection()
 
-        pos.report
         pos.read()
         high_lim = pos.setpoint.high_limit
         try:
@@ -137,10 +126,9 @@ class PVPosTest(unittest.TestCase):
         pos.move(0, wait=True)
         logger.info('--> synchronous move request, moving=%s', pos.moving)
 
+        time.sleep(0.1)
+        print('read', pos.read())
         self.assertFalse(pos.moving)
-
-        pos.report
-        pos.read()
 
     def test_pvpositioner(self):
         def callback(sub_type=None, timestamp=None, value=None, **kwargs):
@@ -169,17 +157,9 @@ class PVPosTest(unittest.TestCase):
             stop_signal = C(EpicsSignal, fm['stop'])
             done = C(EpicsSignal, fm['moving'])
 
-            @property
-            def actuate_value(self):
-                return 1
-
-            @property
-            def stop_value(self):
-                return 1
-
-            @property
-            def done_value(self):
-                return 1
+            actuate_value = 1
+            stop_value = 1
+            done_value = 1
 
         pos = MyPositioner('', name='pv_pos_fake_mtr')
         print('fake mtr', pos.describe())
@@ -209,7 +189,6 @@ class PVPosTest(unittest.TestCase):
         logger.info('--> post-move request, moving=%s', pos.moving)
         time.sleep(2)
 
-        pos.report
         pos.read()
         repr(pos)
         str(pos)
