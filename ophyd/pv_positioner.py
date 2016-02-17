@@ -147,20 +147,21 @@ class PVPositioner(Device, PositionerBase):
 
     def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
+        logger.debug('%s.setpoint = %s', self.name, position)
+        self.setpoint.put(position, wait=False)
+
         if self.actuate is not None:
-            self.setpoint.put(position, wait=False)
+            logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
-        else:
-            self.setpoint.put(position, wait=False)
 
     def move(self, position, wait=True, timeout=30.0, moved_cb=None):
-        self._started_moving = False
         status = super().move(position, timeout=timeout, moved_cb=moved_cb)
 
         has_done = self.done is not None
         if not has_done:
-            self._started_moving = True
-            self._moving = True
+            moving_val = 1 - self.done_value
+            self._move_changed(value=self.done_value)
+            self._move_changed(value=moving_val)
 
         try:
             self._setup_move(position)
@@ -181,10 +182,10 @@ class PVPositioner(Device, PositionerBase):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
             logger.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
-                         self, started)
+                         self.name, started)
 
         logger.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                     self, self._moving, value)
+                     self.name, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
@@ -225,7 +226,7 @@ class PVPositioner(Device, PositionerBase):
     def _done_moving(self, **kwargs):
         has_done = self.done is not None
         if not has_done:
-            self._moving = False
+            self._move_changed(value=self.done_value)
 
         super()._done_moving(**kwargs)
 
@@ -249,8 +250,12 @@ class PVPositionerPC(PVPositioner):
             moving_val = 1 - self.done_value
             self._move_changed(value=moving_val)
 
+        logger.debug('%s.setpoint = %s', self.name, position)
+
         if self.actuate is not None:
             self.setpoint.put(position, wait=False)
+
+            logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False,
                              callback=done_moving)
         else:

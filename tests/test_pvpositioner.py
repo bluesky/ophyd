@@ -14,11 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    pass
+    logging.getLogger('ophyd.pv_positioner').setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)
 
 
 def tearDownModule():
     logger.debug('Cleaning up')
+    logging.getLogger('ophyd.pv_positioner').setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)
 
 
 class PVPosTest(unittest.TestCase):
