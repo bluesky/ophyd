@@ -262,14 +262,14 @@ class PseudoPositioner(Device, Positioner):
         try:
             pseudo_pos = self.PseudoPosition(*pseudo_pos)
         except TypeError as ex:
-            raise ValueError('Not all required values for a PseudoPosition: %s'
-                             '(%s)'.format(self.PseudoPosition._fields, ex))
+            raise ValueError('Not all required values for a PseudoPosition: {}'
+                             '({})'.format(self.PseudoPosition._fields, ex))
 
         for pseudo, pos in zip(self._pseudo, pseudo_pos):
             low, high = pseudo.limits
             if (high > low) and not (low <= pos <= high):
                 raise ValueError('Position is outside of pseudo single limits:'
-                                 ' %s, %s < %s < %s'.format(pseudo.name, low,
+                                 ' {}, {} < {} < {}'.format(pseudo.name, low,
                                                             pos, high))
 
         real_pos = self.forward(pseudo_pos)
@@ -371,7 +371,7 @@ class PseudoPositioner(Device, Positioner):
                          real.name, value, timeout)
             if timeout <= 0:
                 raise TimeoutError('Failed to move all positioners within '
-                                   '%s s'.format(timeout))
+                                   '{} s'.format(timeout))
 
             t0 = time.time()
             try:
@@ -389,6 +389,11 @@ class PseudoPositioner(Device, Positioner):
 
         for real, value in zip(self._real, real_pos):
             logger.debug('[concurrent] Moving %s to %s', real.name, value)
+            try:
+                real.clear_sub(self._real_finished)
+            except ValueError:
+                pass
+
             real.move(value, wait=False, moved_cb=self._real_finished,
                       **kwargs)
 
