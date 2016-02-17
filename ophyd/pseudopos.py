@@ -11,7 +11,6 @@
 import logging
 import time
 import threading
-import collections
 
 from collections import (OrderedDict, namedtuple)
 
@@ -269,9 +268,9 @@ class PseudoPositioner(Device, Positioner):
         for pseudo, pos in zip(self._pseudo, pseudo_pos):
             low, high = pseudo.limits
             if (high > low) and not (low <= pos <= high):
-                raise ValueError('Position is outside of pseudo single limits: '
-                                 '%s, %s < %s < %s'.format(pseudo.name, low, pos,
-                                                           high))
+                raise ValueError('Position is outside of pseudo single limits:'
+                                 ' %s, %s < %s < %s'.format(pseudo.name, low,
+                                                            pos, high))
 
         real_pos = self.forward(pseudo_pos)
         for real, pos in zip(self._real, real_pos):
@@ -386,7 +385,8 @@ class PseudoPositioner(Device, Positioner):
 
         for real, value in zip(self._real, real_pos):
             logger.debug('[concurrent] Moving %s to %s', real.name, value)
-            real.move(value, wait=False, moved_cb=self._real_finished, **kwargs)
+            real.move(value, wait=False, moved_cb=self._real_finished,
+                      **kwargs)
 
     def move(self, position, wait=True, timeout=30.0, **kwargs):
         real_pos = self.forward(position)
