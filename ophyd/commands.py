@@ -85,7 +85,7 @@ def ducks_from_namespace(attr):
 
 def get_all_positioners():
     '''Get all positioners defined in the IPython namespace'''
-    devices = instances_from_namespace((Device, Positioner))
+    devices = instances_from_namespace((Device, PositionerBase))
     positioners = []
     for device in devices:
         positioners.extend(_recursive_positioner_search(device))

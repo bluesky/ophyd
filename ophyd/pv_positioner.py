@@ -145,7 +145,7 @@ class PVPositioner(Device, PositionerBase):
         else:
             return self._moving
 
-    def _move(self, position, **kwargs):
+    def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
         if self.actuate is not None:
             self.setpoint.put(position, wait=False)
@@ -157,7 +157,7 @@ class PVPositioner(Device, PositionerBase):
         status = super().move(position, timeout=timeout, moved_cb=moved_cb)
         self._started_moving = False
         try:
-            self._move(position, **kwargs)
+            self._setup_move(position)
             if wait:
                 status.wait()
         except KeyboardInterrupt:
@@ -225,7 +225,7 @@ class PVPositionerPC(PVPositioner):
 
         super().__init__(*args, **kwargs)
 
-    def _move(self, position, **kwargs):
+    def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
         def done_moving(**kwargs):
             logger.debug('%s async motion done', self.name)
