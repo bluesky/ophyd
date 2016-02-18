@@ -71,8 +71,13 @@ class PositionerBase(OphydObject):
         position
             Position to move to
         moved_cb : callable
-            Call this callback when movement has finished (not applicable if
-            `wait` is set)
+            Call this callback when movement has finished
+        timeout : float, optional
+            Maximum time to wait for the motion
+
+        Returns
+        -------
+        status : MoveStatus
 
         Raises
         ------
@@ -165,12 +170,15 @@ class SoftPositioner(PositionerBase):
         position
             Position to move to
         moved_cb : callable
-            Call this callback when movement has finished (not applicable if
-            `wait` is set)
+            Call this callback when movement has finished
         wait : bool, optional
             Wait until motion has completed
         timeout : float, optional
             Maximum time to wait for a motion
+
+        Returns
+        -------
+        status : MoveStatus
 
         Raises
         ------

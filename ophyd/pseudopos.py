@@ -133,12 +133,16 @@ class PseudoPositioner(Device, PositionerBase):
 
     Parameters
     ----------
+    prefix : str
+        The PV prefix for all components of the device
     concurrent : bool, optional
         If set, all real motors will be moved concurrently. If not, they will
         be moved in order of how they were defined initially
     read_attrs : sequence of attribute names
-        The signals to be read during data acquisition (i.e., in read() and
-        describe() calls)
+        the components to include in a normal reading (i.e., in ``read()``)
+    configuration_attrs : sequence of attribute names
+        the components to be read less often (i.e., in
+        ``read_configuration()``) and to adjust via ``configure()``
     name : str, optional
         The name of the device
     parent : instance or None
@@ -191,31 +195,61 @@ class PseudoPositioner(Device, PositionerBase):
 
     @property
     def pseudo_positioners(self):
-        '''Pseudo positioners'''
+        '''Pseudo positioners instances in a namedtuple
+
+        Returns
+        -------
+        positioner_instances : PseudoPosition
+        '''
         return self.PseudoPosition(*self._pseudo)
 
     @property
     def real_positioners(self):
-        '''Real positioners'''
+        '''Real positioners instances in a namedtuple
+
+        Returns
+        -------
+        positioner_instances : RealPosition
+        '''
         return self.RealPosition(*self._real)
 
     @classmethod
     def _real_position_tuple(cls):
-        '''A namedtuple for a real motor position'''
+        '''A namedtuple for a real motor position
+
+        This is automatically generated at the class-level for all
+        non-PseudoSingle-based positioners.
+        '''
         name = cls.__name__ + 'RealPos'
         return namedtuple(name, [name for name, cpt in
                                  cls._get_real_positioners()])
 
     @classmethod
     def _pseudo_position_tuple(cls):
-        '''A namedtuple for a pseudo motor position'''
+        '''A namedtuple for a pseudo motor position
+
+        This is automatically generated at the class-level for all
+        PseudoSingle-based positioners.
+        '''
         name = cls.__name__ + 'PseudoPos'
         return namedtuple(name, [name for name, cpt in
                                  cls._get_pseudo_positioners()])
 
     @classmethod
     def _get_pseudo_positioners(cls):
-        '''Inspect the components and find the pseudo positioners'''
+        '''Inspect the components and find the pseudo positioners
+
+        All `PseudoSingle` (and subclassed) components will be returned, by
+        default.
+
+        The built-in mechanism to override the list of pseudo positioners on a
+        PseudoPositioner is to define '_pseudo' on the class-level.  It should
+        be a list of attribute names.
+
+        Yields
+        ------
+        (attr, component)
+        '''
         if hasattr(cls, '_pseudo'):
             for pseudo in cls._pseudo:
                 yield pseudo, getattr(cls, pseudo)
@@ -226,7 +260,21 @@ class PseudoPositioner(Device, PositionerBase):
 
     @classmethod
     def _get_real_positioners(cls):
-        '''Inspect the components and find the real positioners'''
+        '''Inspect the components and find the real positioners
+
+        All `Positioner` components which are not `PseudoSingle`s will be
+        returned, by default.
+
+        The built-in mechanism to override the list of real positioners on a
+        PseudoPositioner is to define '_real' on the class-level.  It should be
+        a list of attribute names. This allows you to group real motors
+        logically on the device but not have them included in motions or
+        calculations.
+
+        Yields
+        ------
+        (attr, component)
+        '''
         if hasattr(cls, '_real'):
             for real in cls._real:
                 yield real, getattr(cls, real)
@@ -315,6 +363,7 @@ class PseudoPositioner(Device, PositionerBase):
         return self.RealPosition(*self._real_cur_pos.values())
 
     def _update_position(self):
+        '''Update the internal position based on all of the real positioners'''
         real_cur_pos = self.real_position
         if None in real_cur_pos:
             raise DisconnectedError('Not all positioners connected')
@@ -324,7 +373,7 @@ class PseudoPositioner(Device, PositionerBase):
         return calc_pseudo_pos
 
     def _real_pos_update(self, obj=None, value=None, **kwargs):
-        '''A single real positioner has moved'''
+        '''Callback: A single real positioner has moved'''
         real = obj
         self._real_cur_pos[real] = value
         # Only update the position if all real motors are connected
@@ -334,11 +383,12 @@ class PseudoPositioner(Device, PositionerBase):
             pass
 
     def _done_moving(self, success=True):
+        '''Call this when motion has completed.  Runs SUB_DONE subscription.'''
         del self._real_waiting[:]
         super()._done_moving(success=success)
 
     def _real_finished(self, obj=None):
-        '''A single real positioner has finished moving.
+        '''Callback: A single real positioner has finished moving.
 
         Used for asynchronous motion, if all have finished moving then fire a
         callback (via `Positioner._done_moving`)
@@ -354,6 +404,21 @@ class PseudoPositioner(Device, PositionerBase):
                     self._done_moving()
 
     def move_single(self, pseudo, position, **kwargs):
+        '''Move one PseudoSingle axis to a position
+
+        All other positioners will use their current setpoint/target value, if
+        available. Failing that, their current readback value will be used (see
+        `PseudoSingle.sync` and `PseudoSingle.target`).
+
+        Parameters
+        ----------
+        pseudo : PseudoSingle
+            PseudoSingle positioner to move
+        position : float
+            Position only for the PseudoSingle
+        kwargs : dict
+            Passed onto move
+        '''
         idx = pseudo._idx
         target = list(self.target)
         target[idx] = position
@@ -366,11 +431,6 @@ class PseudoPositioner(Device, PositionerBase):
 
     def _sequential_move(self, real_pos, timeout=None, **kwargs):
         '''Move all real positioners to a certain position, in series'''
-        # without proper timeout support for status callbacks, we can't safely
-        # chain motions on other callbacks for sequential motion.  so,
-        # 'sequential_move' above always blocks
-        # this is a big TODO
-
         self._move_queue[:] = zip(self._real, real_pos)
         pending_status = []
         t0 = time.time()
@@ -429,6 +489,30 @@ class PseudoPositioner(Device, PositionerBase):
                       **kwargs)
 
     def move(self, position, wait=True, timeout=10.0, **kwargs):
+        '''Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+        moved_cb : callable
+            Call this callback when movement has finished
+        wait : bool, optional
+            Wait until motion has completed
+        timeout : float, optional
+            Maximum time to wait for a motion
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError : when motion takes longer than `timeout`
+        ValueError : on invalid positions
+        RuntimeError : if motion fails other than timing out
+        '''
         real_pos = self.forward(position)
 
         # Clear all old statuses for not yet completed real motions
