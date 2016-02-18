@@ -23,10 +23,25 @@ logger = logging.getLogger(__name__)
 
 
 class PseudoSingle(PositionerBase):
-    '''A single axis of a PseudoPositioner'''
+    '''A single axis of a PseudoPositioner
+
+    This should not be instantiated on its own, but rather used as a Component
+    in a PseudoPositioner subclass.
+
+    Parameters
+    ----------
+    limits : (low_limit, high_limit)
+        User-defined limits for this pseudo axis.
+    prefix : str, optinoal
+        The PV prefix, for compatibility with the Device hierarchy
+    name : str, optional
+        The name of the positioner
+    parent : PseudoPositioner instance
+        The instance of the parent PseudoPositioner
+    '''
 
     def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
-                 idx=None, **kwargs):
+                 **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
         self._target = None
@@ -35,7 +50,10 @@ class PseudoSingle(PositionerBase):
             limits = (0, 0)
 
         self._limits = tuple(limits)
-        self._idx = idx
+
+        # The index of this PseudoSingle in the parent PseudoPositioner tuple
+        # will be set post-instantiation
+        self._idx = None
 
         self._parent.subscribe(self._sub_proxy, event_type=self.SUB_START)
         self._parent.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
@@ -52,12 +70,16 @@ class PseudoSingle(PositionerBase):
         yield ('idx', self._idx)
 
     def _sub_proxy(self, obj=None, **kwargs):
-        '''Master callbacks such as start of motion, motion finished, etc. will
+        '''Parent callbacks such as start of motion, motion finished, etc. will
         be simply passed through.
         '''
         return self._run_subs(obj=self, **kwargs)
 
     def _sub_proxy_idx(self, obj=None, value=None, **kwargs):
+        '''Parent callbacks including a position value will be filtered through
+        this function and re-broadcast using only the relevant position to this
+        pseudo axis.
+        '''
         if hasattr(value, '__getitem__'):
             value = value[self._idx]
 
@@ -84,18 +106,31 @@ class PseudoSingle(PositionerBase):
 
     @property
     def position(self):
+        '''The current position of the motor in its engineering units
+
+        Returns
+        -------
+        position
+        '''
         return self._parent.position[self._idx]
 
     def stop(self):
+        '''Stop motion on the PseudoPositioner'''
         return self._parent.stop()
 
     @property
     def connected(self):
-        '''For signal compatibility'''
+        '''For Signal compatibility'''
         return True
 
     @property
     def _started_moving(self):
+        '''Has motion started since the motion request?
+
+        This is a property on PseudoSingle, which overrides the default
+        behavior of Positioner. It reflects the motion status of the
+        PseudoPositioner as a whole.
+        '''
         return self._parent._started_moving
 
     @_started_moving.setter
@@ -104,6 +139,17 @@ class PseudoSingle(PositionerBase):
         pass
 
     def move(self, pos, **kwargs):
+        '''Move this pseudo axis to a specific position.
+
+        See `PseudoPositioner.move_single` for more information.
+
+        Parameters
+        ----------
+        pos : float
+            Position to move to
+        kwargs : dict
+            Passed onto parent.move_single()
+        '''
         self._target = pos
         return self._parent.move_single(self, pos, **kwargs)
 
