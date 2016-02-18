@@ -463,3 +463,18 @@ class PseudoPositioner(Device, PositionerBase):
     def inverse(self, real_pos):
         '''Override me'''
         return self.PseudoPosition()
+
+    def set(self, *positions):
+        '''Move to a new position asynchronously
+
+        Parameters
+        ----------
+        *positions : float
+            Position for the corresponding pseudo axes
+
+        Returns
+        -------
+        status : MoveStatus
+        '''
+        pseudo_pos = self.PseudoPosition(*positions)
+        return super().set(pseudo_pos)
