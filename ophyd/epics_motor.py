@@ -62,6 +62,10 @@ class EpicsMotor(Device, Positioner):
                          monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
+        # Make the default alias for the user_readback the name of the
+        # motor itself.
+        self.user_readback.name = self.name
+
         self.settle_time = float(settle_time)
         # TODO: settle_time is unused?
 
