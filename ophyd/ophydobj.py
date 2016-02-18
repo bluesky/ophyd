@@ -75,6 +75,40 @@ class StatusBase:
         else:
             self._cb = cb
 
+    def wait(self, timeout=30.0, *, poll_rate=0.05):
+        '''(Blocking) wait for the status to complete
+
+        Parameters
+        ----------
+        timeout : float, optional
+            Amount of time in seconds to wait. If None, will wait until
+            completed or otherwise interrupted.
+        poll_rate : float, optional
+            Polling rate used to check the status
+
+        Raises
+        ------
+        TimeoutError
+            If time waited exceeds specified timeout
+        RuntimeError
+            If the status failed to complete successfully
+        '''
+        t0 = time.time()
+
+        def time_exceeded():
+            return timeout is not None and (time.time() - t0) > timeout
+
+        while not self.done and not time_exceeded():
+            time.sleep(poll_rate)
+
+        if self.done:
+            if self.success is not None and not self.success:
+                raise RuntimeError('Operation did not successfully complete')
+        elif time_exceeded():
+            elapsed = time.time() - t0
+            raise TimeoutError('Operation failed to complete within {} seconds'
+                               '(elapsed {} sec)'.format(timeout, elapsed))
+
 
 class MoveStatus(StatusBase):
     '''Asynchronous movement status
