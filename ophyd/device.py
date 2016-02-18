@@ -348,7 +348,14 @@ class BlueskyInterface:
         return OrderedDict()
 
     def stage(self):
-        "Prepare the device to be triggered."
+        """
+        Prepare the device to be triggered.
+
+        Returns
+        -------
+        devices : list
+            list including self and all child devices staged
+        """
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
@@ -368,6 +375,7 @@ class BlueskyInterface:
         # we can undo our partial work in the event of an error.
 
         # Apply settings.
+        devices_staged = []
         try:
             for sig, val in self.stage_sigs.items():
                 logger.debug("Setting %s to %r (original value: %r)", self.name,
@@ -375,12 +383,14 @@ class BlueskyInterface:
                 set_and_wait(sig, val)
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
+            devices_staged.append(self)
 
             # Call stage() on child devices.
             for attr in self._sub_devices:
                 device = getattr(self, attr)
                 if hasattr(device, 'stage'):
                     device.stage()
+                    devices_staged.append(device)
         except Exception:
             logger.debug("An exception was raised while staging %s or "
                          "one of its children. Attempting to restore "
@@ -390,21 +400,29 @@ class BlueskyInterface:
             raise
         else:
             self._staged = Staged.yes
+        return devices_staged
 
     def unstage(self):
         """
         Restore the device to 'standby'.
 
         Multiple calls (without a new call to 'stage') have no effect.
+
+        Returns
+        -------
+        devices : list
+            list including self and all child devices unstaged
         """
         logger.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
+        devices_unstaged = []
 
         # Call unstage() on child devices.
         for attr in self._sub_devices[::-1]:
             device = getattr(self, attr)
             if hasattr(device, 'unstage'):
                 device.unstage()
+                devices_unstaged.append(device)
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
@@ -412,8 +430,10 @@ class BlueskyInterface:
                          val)
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
+        devices_unstaged.append(self)
 
         self._staged = Staged.no
+        return devices_unstaged
 
 
 class GenerateDatumInterface:
