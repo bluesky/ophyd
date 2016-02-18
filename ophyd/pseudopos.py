@@ -454,15 +454,44 @@ class PseudoPositioner(Device, PositionerBase):
         return st
 
     def forward(self, pseudo_pos):
-        ''' '''
-        return self.RealPosition()
+        '''Calculate a RealPosition from a given PseudoPosition
+
+        Must be defined on the subclass.
+
+        Parameters
+        ----------
+        pseudo_pos : PseudoPosition
+            The pseudo position input
+
+        Returns
+        -------
+        real_position : RealPosition
+            The real position output
+        '''
+        # return self.RealPosition()
+        raise NotImplementedError()
 
     def __call__(self, pseudo_pos):
+        '''Shortcut for a forward calculation (see `forward`)'''
         return self.forward(pseudo_pos)
 
     def inverse(self, real_pos):
-        '''Override me'''
-        return self.PseudoPosition()
+        '''Calculate a PseudoPosition from a given RealPosition
+
+        Must be defined on the subclass.
+
+        Parameters
+        ----------
+        real_position : RealPosition
+            The real position input
+
+        Returns
+        -------
+        pseudo_pos : PseudoPosition
+            The pseudo position output
+        '''
+        # return self.PseudoPosition()
+        raise NotImplementedError()
 
     def set(self, *positions):
         '''Move to a new position asynchronously
