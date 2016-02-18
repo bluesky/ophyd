@@ -348,7 +348,14 @@ class BlueskyInterface:
         return OrderedDict()
 
     def stage(self):
-        "Prepare the device to be triggered."
+        """
+        Prepare the device to be triggered.
+
+        Returns
+        -------
+        devices : list
+            list including self and all child devices staged
+        """
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
@@ -400,6 +407,11 @@ class BlueskyInterface:
         Restore the device to 'standby'.
 
         Multiple calls (without a new call to 'stage') have no effect.
+
+        Returns
+        -------
+        devices : list
+            list including self and all child devices unstaged
         """
         logger.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
