@@ -12,6 +12,7 @@ import logging
 import time
 
 from .utils import TimeoutError
+from .utils.epics_pvs import (data_type, data_shape)
 from .ophydobj import (MoveStatus, OphydObject)
 
 
@@ -189,6 +190,39 @@ class Positioner(OphydObject):
         """
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
+
+    def describe(self):
+        """Return the description as a dictionary
+
+        Returns
+        -------
+        dict
+            Dictionary of name and formatted description string
+        """
+        desc = {'source': 'SIM:{}'.format(self.name), }
+
+        val = self.position
+        desc['dtype'] = data_type(val)
+        desc['shape'] = data_shape(val)
+
+        desc['units'] = self.egu if len(self.egu) > 0 else str(None)
+
+        desc['lower_ctrl_limit'] = self.low_limit
+        desc['upper_ctrl_limit'] = self.high_limit
+
+        return {self.name: desc}
+
+    def read(self):
+        """Read the signal and format for data collection
+
+        Returns
+        -------
+        dict
+            Dictionary of value timestamp pairs
+        """
+
+        return {self.name: {'value': self.position,
+                            'timestamp': time.time()}}
 
     def _repr_info(self):
         yield from super()._repr_info()

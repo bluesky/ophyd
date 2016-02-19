@@ -88,6 +88,17 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.real3.move(0, wait=True)
         # raise
 
+        desc_dict = pseudo.describe()
+        desc_keys = ['source', 'upper_ctrl_limit', 'lower_ctrl_limit',
+                     'shape', 'dtype', 'units']
+        for key in desc_keys:
+            self.assertIn(key, desc_dict['mypseudo_pseudo3'])
+
+        read_dict = pseudo.read()
+        read_keys = ['value', 'timestamp']
+        for key in read_keys:
+            self.assertIn(key, read_dict['mypseudo_pseudo3'])
+
 #         logger.info('------- Sequential pseudo positioner')
 #         pos = PseudoPositioner('',
 #                                real=[real0, real1, real2],
