@@ -161,6 +161,12 @@ class PositionerBase(OphydObject):
 
 
 class SoftPositioner(PositionerBase):
+    '''A positioner which does not communicate with any hardware
+
+    SoftPositioner 'moves' immediately to the target position when commanded to
+    do so.
+    '''
+
     def move(self, position, wait=True, timeout=30.0, moved_cb=None):
         '''Move to a specified position, optionally waiting for motion to
         complete.
