@@ -39,8 +39,7 @@ cd $script_path/..
 #COVERAGE_HTML=$script_path/doc/coverage
 #rm -rf $COVERAGE_HTML
 #mkdir $COVERAGE_HTML
-nosetests --with-coverage --cover-tests --cover-package=ophyd -v --tests=tests.test_pseudopos
+# nosetests --with-coverage --cover-tests --cover-package=ophyd -v --tests=tests.test_pseudopos
+py.test -v --cov=ophyd --cov-report term-missing --cov-report html
 
-#view setup.py -c ":Coveragepy report"
-# view ophyd/signal.py -c ":Coveragepy report"
-cview ophyd/pseudopos.py
+view ophyd/positioner.py -c ":Coveragepy report"
