@@ -197,7 +197,7 @@ def position_argument_wrapper(type_):
             else:
                 pos, new_kwargs = self.to_real_tuple(*args, **kwargs)
 
-            return method(pos, **new_kwargs)
+            return method(self, pos, **new_kwargs)
 
         return wrapped
 
@@ -659,6 +659,7 @@ class PseudoPositioner(Device, PositionerBase):
             real.move(value, wait=False, moved_cb=self._real_finished,
                       **kwargs)
 
+    @pseudo_position_argument
     def move(self, position, wait=True, timeout=10.0, **kwargs):
         '''Move to a specified position, optionally waiting for motion to
         complete.
