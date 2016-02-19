@@ -33,7 +33,7 @@ class PositionerTests(unittest.TestCase):
         finished_motion_callback = Mock()
 
         self.assertEqual(p.egu, 'egu')
-        self.assertEqual(p.limits, (0, 0))
+        self.assertEqual(p.limits, (-10, 10))
 
         p.subscribe(position_callback, event_type=p.SUB_READBACK)
         p.subscribe(started_motion_callback, event_type=p.SUB_START)
