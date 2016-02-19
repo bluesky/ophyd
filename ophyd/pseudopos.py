@@ -340,12 +340,16 @@ class PseudoPositioner(Device, PositionerBase):
         return all(mtr.connected for mtr in self._real)
 
     def stop(self):
-        try:
-            del self._move_queue[:]
-            for pos in self._real:
+        del self._move_queue[:]
+
+        for pos in self._real:
+            try:
                 pos.stop()
-        finally:
-            super().stop(self)
+            except Exception as ex:
+                logger.error('%s failed to stop positioner: %s', self.name,
+                             pos.name, exc_info=ex)
+
+        super().stop(self)
 
     def check_single(self, pseudo_single, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''
