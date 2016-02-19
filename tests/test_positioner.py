@@ -4,6 +4,7 @@ import time
 import logging
 import unittest
 from copy import copy
+from unittest.mock import Mock
 
 import epics
 from ophyd import (SoftPositioner, PVPositioner, EpicsMotor)
@@ -27,21 +28,53 @@ class PositionerTests(unittest.TestCase):
     def test_positioner(self):
         p = SoftPositioner(name='test', egu='egu')
 
-        def cb_pos(value=None, **kwargs):
-            pass
+        position_callback = Mock()
+        started_motion_callback = Mock()
+        finished_motion_callback = Mock()
 
         self.assertEqual(p.egu, 'egu')
         self.assertEqual(p.limits, (0, 0))
 
-        p.subscribe(cb_pos)
+        p.subscribe(position_callback, event_type=p.SUB_READBACK)
+        p.subscribe(started_motion_callback, event_type=p.SUB_START)
+        p.subscribe(finished_motion_callback, event_type=p.SUB_DONE)
 
-        p.move(0, timeout=2, wait=True)
+        target_pos = 0
+        p.move(target_pos, timeout=2, wait=True)
         self.assertFalse(p.moving)
-        res = p.move(1, wait=False)
+        self.assertEqual(p.position, target_pos)
+
+        position_callback.assert_called_once_with(obj=p, value=target_pos,
+                                                  sub_type=p.SUB_READBACK,
+                                                  timestamp=unittest.mock.ANY)
+        started_motion_callback.assert_called_once_with(obj=p,
+                                                        sub_type=p.SUB_START,
+                                                        timestamp=unittest.mock.ANY)
+        finished_motion_callback.assert_called_once_with(obj=p,
+                                                         sub_type=p.SUB_DONE,
+                                                         value=None,
+                                                         timestamp=unittest.mock.ANY)
+        position_callback.reset_mock()
+        started_motion_callback.reset_mock()
+        finished_motion_callback.reset_mock()
+
+        target_pos = 1
+        res = p.move(target_pos, wait=False)
 
         self.assertTrue(res.done)
         self.assertEqual(res.error, 0)
         self.assertGreater(res.elapsed, 0)
+        self.assertEqual(p.position, target_pos)
+        position_callback.assert_called_once_with(obj=p, value=target_pos,
+                                                  sub_type=p.SUB_READBACK,
+                                                  timestamp=unittest.mock.ANY)
+        started_motion_callback.assert_called_once_with(obj=p,
+                                                        sub_type=p.SUB_START,
+                                                        timestamp=unittest.mock.ANY)
+        finished_motion_callback.assert_called_once_with(obj=p,
+                                                         sub_type=p.SUB_DONE,
+                                                         value=None,
+                                                         timestamp=unittest.mock.ANY)
 
         repr(res)
         str(res)

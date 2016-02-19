@@ -194,7 +194,7 @@ class SoftPositioner(PositionerBase):
         # requested.
         self._started_moving = True
         self._moving = False
-        self._run_subs(sub_type=self.SUB_START)
+        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
 
         status = super().move(position, moved_cb=moved_cb, timeout=timeout)
 
