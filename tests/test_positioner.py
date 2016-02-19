@@ -26,7 +26,7 @@ class PositionerTests(unittest.TestCase):
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
     def test_positioner(self):
-        p = SoftPositioner(name='test', egu='egu')
+        p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
 
         position_callback = Mock()
         started_motion_callback = Mock()
@@ -86,8 +86,8 @@ class PositionerTests(unittest.TestCase):
         p.position
 
         pc = copy(p)
-        self.assertEqual(pc._timeout, p._timeout)
         self.assertEqual(pc.egu, p.egu)
+        self.assertEqual(pc.limits, p.limits)
 
     def test_epicsmotor(self):
         m = EpicsMotor(self.sim_pv, name='epicsmotor')

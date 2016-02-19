@@ -32,7 +32,9 @@ class PseudoSingle(PositionerBase):
     ----------
     limits : (low_limit, high_limit)
         User-defined limits for this pseudo axis.
-    prefix : str, optinoal
+    egu : str, optional
+        The engineering units (EGU) for the position
+    prefix : str, optional
         The PV prefix, for compatibility with the Device hierarchy
     name : str, optional
         The name of the positioner
@@ -41,24 +43,29 @@ class PseudoSingle(PositionerBase):
     '''
 
     def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
-                 **kwargs):
+                 egu='', **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
-
-        self._target = None
 
         if limits is None:
             limits = (0, 0)
 
         self._limits = tuple(limits)
+        self._target = None
+        self._egu = egu
 
         # The index of this PseudoSingle in the parent PseudoPositioner tuple
-        # will be set post-instantiation
+        # will be set post-instantiation:
         self._idx = None
 
         self._parent.subscribe(self._sub_proxy, event_type=self.SUB_START)
         self._parent.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
         self._parent.subscribe(self._sub_proxy_idx,
                                event_type=self.SUB_READBACK)
+
+    @property
+    def egu(self):
+        '''The engineering units (EGU) for this pseudo position'''
+        return self._egu
 
     @property
     def limits(self):
@@ -68,6 +75,8 @@ class PseudoSingle(PositionerBase):
         yield from super()._repr_info()
 
         yield ('idx', self._idx)
+        yield ('limits', self._limits)
+        yield ('egu', self._egu)
 
     def _sub_proxy(self, obj=None, **kwargs):
         '''Parent callbacks such as start of motion, motion finished, etc. will
@@ -196,13 +205,14 @@ class PseudoPositioner(Device, PositionerBase):
     '''
     def __init__(self, prefix, *, concurrent=True, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
-                 **kwargs):
+                 egu='', **kwargs):
 
         self._finished_lock = threading.RLock()
         self._concurrent = bool(concurrent)
         self._finish_thread = None
         self._real_waiting = []
         self._move_queue = []
+        self._egu = egu
 
         if self.__class__ is PseudoPositioner:
             raise TypeError('PseudoPositioner must be subclassed with the '
@@ -238,6 +248,11 @@ class PseudoPositioner(Device, PositionerBase):
             # internal state of their position
             real.subscribe(self._real_pos_update, event_type=real.SUB_READBACK,
                            run=True)
+
+    @property
+    def egu(self):
+        '''The engineering units (EGU) for a pseudo position'''
+        return self._egu
 
     @property
     def pseudo_positioners(self):
@@ -333,7 +348,9 @@ class PseudoPositioner(Device, PositionerBase):
 
     def _repr_info(self):
         yield from super()._repr_info()
+
         yield ('concurrent', self._concurrent)
+        yield ('egu', self._egu)
 
     @property
     def connected(self):

@@ -31,8 +31,6 @@ class EpicsMotor(Device, PositionerBase):
     ----------
     prefix : str
         The record to use
-    settle_time : float
-        Post-motion settle-time
     read_attrs : sequence of attribute names
         The signals to be read during data acquisition (i.e., in read() and
         describe() calls)
@@ -48,9 +46,8 @@ class EpicsMotor(Device, PositionerBase):
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
 
-    def __init__(self, prefix, *, settle_time=0.05, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, name=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 monitor_attrs=None, name=None, parent=None, **kwargs):
         if read_attrs is None:
             read_attrs = ['user_readback', 'user_setpoint']
 
@@ -66,9 +63,6 @@ class EpicsMotor(Device, PositionerBase):
         # motor itself.
         self.user_readback.name = self.name
 
-        self.settle_time = float(settle_time)
-        # TODO: settle_time is unused?
-
         self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
 
@@ -81,7 +75,7 @@ class EpicsMotor(Device, PositionerBase):
     @property
     @raise_if_disconnected
     def egu(self):
-        '''Engineering units'''
+        '''The engineering units (EGU) for a position'''
         return self.motor_egu.get()
 
     @property
@@ -172,5 +166,3 @@ class EpicsMotor(Device, PositionerBase):
 
     def _repr_info(self):
         yield from super()._repr_info()
-
-        yield ('settle_time', self.settle_time)

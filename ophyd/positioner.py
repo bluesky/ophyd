@@ -30,25 +30,17 @@ class PositionerBase(OphydObject):
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, *, timeout=None, egu=None, name=None, parent=None,
-                 **kwargs):
+    def __init__(self, *, name=None, parent=None, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
-
-        if timeout is None:
-            timeout = 0.0
-
-        if egu is None:
-            egu = ''
 
         self._started_moving = False
         self._moving = False
         self._position = None
-        self._timeout = timeout
-        self._egu = egu
 
     @property
     def egu(self):
-        return self._egu
+        '''The engineering units (EGU) for positions'''
+        raise NotImplementedError('Subclass must implement egu')
 
     @property
     def limits(self):
@@ -154,18 +146,38 @@ class PositionerBase(OphydObject):
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
 
-    def _repr_info(self):
-        yield from super()._repr_info()
-        yield ('egu', self._egu)
-        yield ('timeout', self._timeout)
-
 
 class SoftPositioner(PositionerBase):
     '''A positioner which does not communicate with any hardware
 
     SoftPositioner 'moves' immediately to the target position when commanded to
     do so.
+
+    Parameters
+    ----------
+    limits : (low_limit, high_limit)
+        Soft limits to use
+    egu : str, optional
+        Engineering units (EGU) for a position
     '''
+
+    def __init__(self, *, egu='', limits=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self._egu = egu
+        if limits is None:
+            limits = (0, 0)
+
+        self._limits = tuple(limits)
+
+    @property
+    def limits(self):
+        return self._limits
+
+    @property
+    def egu(self):
+        '''The engineering units (EGU) for positions'''
+        return self._egu
 
     def move(self, position, wait=True, timeout=30.0, moved_cb=None):
         '''Move to a specified position, optionally waiting for motion to
@@ -208,3 +220,8 @@ class SoftPositioner(PositionerBase):
                 raise RuntimeError('Motion did not complete successfully')
 
         return status
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('egu', self._egu)
+        yield ('limits', self._limits)

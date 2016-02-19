@@ -29,15 +29,12 @@ class PVPositioner(Device, PositionerBase):
     prefix : str, optional
         The device prefix used for all sub-positioners. This is optional as it
         may be desirable to specify full PV names for PVPositioners.
-    settle_time : float, optional
-        Time to wait after a move to ensure a move complete callback is
-        received
     limits : 2-element sequence, optional
         (low_limit, high_limit)
     name : str
         The device name
-    timeout : float
-        The motion timeout
+    egu : str, optional
+        The engineering units (EGU) for the position
 
     Attributes
     ----------
@@ -54,6 +51,8 @@ class PVPositioner(Device, PositionerBase):
         The stop PV to set when motion should be stopped
     stop_value : any, optional
         The value sent to stop_signal when a stop is requested
+    egu : str, optional
+        The engineering units (EGU) for a position
     done : Signal
         A readback value indicating whether motion is finished
     done_val : any, optional
@@ -77,20 +76,19 @@ class PVPositioner(Device, PositionerBase):
     done_value = 1
     put_complete = False
 
-    def __init__(self, prefix='', *, settle_time=0.05, limits=None, name=None,
-                 timeout=None, read_attrs=None, configuration_attrs=None,
-                 monitor_attrs=None, parent=None,
-                 **kwargs):
+    def __init__(self, prefix='', *, limits=None, name=None, read_attrs=None,
+                 configuration_attrs=None, monitor_attrs=None, parent=None,
+                 egu='', **kwargs):
         super().__init__(prefix=prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
-                         name=name, parent=parent, timeout=timeout, **kwargs)
+                         name=name, parent=parent, **kwargs)
 
         if self.__class__ is PVPositioner:
             raise TypeError('PVPositioner must be subclassed with the correct '
                             'signals set in the class definition.')
 
-        self.settle_time = float(settle_time)
+        self._egu = egu
 
         if limits is not None:
             self._limits = tuple(limits)
@@ -113,6 +111,11 @@ class PVPositioner(Device, PositionerBase):
 
         if self.done is not None:
             self.done.subscribe(self._move_changed)
+
+    @property
+    def egu(self):
+        '''The engineering units (EGU) for a position'''
+        return self._egu
 
     @property
     def put_complete(self):
@@ -219,8 +222,8 @@ class PVPositioner(Device, PositionerBase):
     def _repr_info(self):
         yield from super()._repr_info()
 
-        yield ('settle_time', self.settle_time)
         yield ('limits', self._limits)
+        yield ('egu', self._egu)
 
     def _done_moving(self, **kwargs):
         has_done = self.done is not None
