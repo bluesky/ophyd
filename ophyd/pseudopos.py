@@ -359,7 +359,16 @@ class PseudoPositioner(Device, PositionerBase):
         return self.check_value(self.PseudoPosition(*target))
 
     def check_value(self, pseudo_pos):
-        '''Check if a new position for all pseudo positioners is valid'''
+        '''Check if a new position for all pseudo positioners is valid
+
+        First checks limits against those set for individual pseudo axes.
+        Second, calculates forward(pseudo_pos) => real_pos and checks it
+        against the real positioners.
+
+        NOTE: If you have limits that are coupled together or are somehow more
+        complicated than the above procedure, you should redefine this method
+        in your subclass.
+        '''
         try:
             pseudo_pos = self.PseudoPosition(*pseudo_pos)
         except TypeError as ex:
