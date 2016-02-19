@@ -7,7 +7,6 @@
    :synopsis:
 '''
 
-import time
 import logging
 
 from epics.pv import fmt_time

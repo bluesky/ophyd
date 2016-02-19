@@ -58,7 +58,7 @@ class Pseudo3x3(PseudoPositioner):
 
 
 class Pseudo1x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, '', limits=(-10, 10))
+    pseudo1 = C(PseudoSingle, limits=(-10, 10))
     real1 = C(EpicsMotor, motor_recs[0])
     real2 = C(EpicsMotor, motor_recs[1])
     real3 = C(EpicsMotor, motor_recs[2])
@@ -80,6 +80,37 @@ class PseudoPosTests(unittest.TestCase):
     def test_onlypseudo(self):
         # can't instantiate it on its own
         self.assertRaises(TypeError, PseudoPositioner, 'prefix')
+
+    def test_position_wrapper(self):
+        pseudo = Pseudo3x3('', name='mypseudo', concurrent=False)
+
+        test_pos = pseudo.PseudoPosition(pseudo1=1, pseudo2=2, pseudo3=3)
+        extra_kw = dict(a=3, b=4, c=6)
+
+        # positional arguments
+        self.assertEqual(pseudo.to_pseudo_tuple(1, 2, 3, **extra_kw),
+                         (test_pos, extra_kw))
+        # sequence
+        self.assertEqual(pseudo.to_pseudo_tuple((1, 2, 3), **extra_kw),
+                         (test_pos, extra_kw))
+        # correct type
+        self.assertEqual(pseudo.to_pseudo_tuple(test_pos, **extra_kw),
+                         (test_pos, extra_kw))
+        # kwargs
+        self.assertEqual(pseudo.to_pseudo_tuple(pseudo1=1, pseudo2=2,
+                                                pseudo3=3, **extra_kw),
+                         (test_pos, extra_kw))
+
+        # too many positional arguments
+        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, 2, 3, 4)
+        # too few positional arguments
+        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, 2)
+        # too few kwargs
+        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, pseudo1=1,
+                          pseudo2=2)
+        # valid kwargs, but passing in args too
+        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, pseudo1=1,
+                          pseudo2=2, pseudo3=3)
 
     def test_multi_sequential(self):
         def done(**kwargs):

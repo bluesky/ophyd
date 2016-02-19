@@ -11,8 +11,9 @@
 import logging
 import time
 import threading
+import functools
 
-from collections import (OrderedDict, namedtuple)
+from collections import (OrderedDict, namedtuple, Sequence)
 
 from .utils import DisconnectedError
 from .positioner import PositionerBase
@@ -181,6 +182,30 @@ class PseudoSingle(PositionerBase):
 
     def describe_configuration(self):
         return OrderedDict()
+
+
+def position_argument_wrapper(type_):
+    '''Wrapper to convert positional arguments to a PositionTuple'''
+    if type_ not in ('pseudo', 'real'):
+        raise ValueError("position_type should be either 'pseudo' or 'real'")
+
+    def wrapper(method):
+        @functools.wraps(method)
+        def wrapped(self, *args, **kwargs):
+            if type_ == 'pseudo':
+                pos, new_kwargs = self.to_pseudo_tuple(*args, **kwargs)
+            else:
+                pos, new_kwargs = self.to_real_tuple(*args, **kwargs)
+
+            return method(pos, **new_kwargs)
+
+        return wrapped
+
+    return wrapper
+
+
+real_position_argument = position_argument_wrapper('real')
+pseudo_position_argument = position_argument_wrapper('pseudo')
 
 
 class PseudoPositioner(Device, PositionerBase):
@@ -374,6 +399,76 @@ class PseudoPositioner(Device, PositionerBase):
         target = list(self.target)
         target[idx] = single_pos
         return self.check_value(self.PseudoPosition(*target))
+
+    def to_pseudo_tuple(self, *args, **kwargs):
+        return self._to_position_tuple(self.PseudoPosition, *args, **kwargs)
+
+    def to_real_tuple(self, *args, **kwargs):
+        return self._to_position_tuple(self.RealPosition, *args, **kwargs)
+
+    def _to_position_tuple(self, cls, *args, **kwargs):
+        '''Positions can be passed in a number of ways:
+
+        As positional arguments:
+            pseudo.method(px, py, pz, **kwargs)
+        As a sequence or PseudoPosition/RealPosition:
+            pseudo.method((px, py, pz), **kwargs)
+        As kwargs:
+            pseudo.method(px=1, py=2, pz=3, **kwargs)
+
+        '''
+        fields = cls._fields
+        if not fields:
+            raise TypeError('Invalid position tuple')
+
+        usage_info = self._to_position_tuple.__doc__
+
+        if args and isinstance(args[0], (cls, Sequence)):
+            # Position is in the first positional argument
+            if len(args) > 1:
+                raise ValueError(usage_info +
+                                 'Cannot specify more than one positional '
+                                 'argument if the first one is a {} '
+                                 ''.format(cls.__name__))
+
+            position = args[0]
+            if not isinstance(position, cls):
+                # Ensure a position tuple is passed back
+                position = cls(*position)
+
+            return position, kwargs
+
+        elif len(args) == len(fields):
+            # Position is in positional arguments
+            return cls(*args), kwargs
+
+        elif len(args) > 0:
+            # Position is in positional arguments
+            raise ValueError(usage_info +
+                             'Wrong number of arguments for {}. '
+                             'Got {}, expected {}'
+                             ''.format(cls.__name__, len(args), len(fields)))
+
+        if not kwargs:
+            # no positional arguments or kwargs, just show usage information
+            raise ValueError(usage_info)
+
+        # No positional arguments, position described in terms of kwargs
+        missing_fields = [field for field in fields
+                          if field not in kwargs]
+
+        if missing_fields:
+            raise ValueError(usage_info +
+                             'Missing keyword arguments for field names of {}:'
+                             ' {}'.format(cls.__name__,
+                                          ', '.join(missing_fields)))
+
+        # separate position tuple kwargs from other kwargs
+        position_kw = {field: kwargs[field] for field in fields}
+        other_kw = {key: value for key, value in kwargs.items()
+                    if key not in fields}
+        position = cls(**position_kw)
+        return position, other_kw
 
     def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid
@@ -613,6 +708,7 @@ class PseudoPositioner(Device, PositionerBase):
 
         return st
 
+    @pseudo_position_argument
     def forward(self, pseudo_pos):
         '''Calculate a RealPosition from a given PseudoPosition
 
@@ -631,10 +727,12 @@ class PseudoPositioner(Device, PositionerBase):
         # return self.RealPosition()
         raise NotImplementedError()
 
-    def __call__(self, pseudo_pos):
+    @pseudo_position_argument
+    def __call__(self, position):
         '''Shortcut for a forward calculation (see `forward`)'''
-        return self.forward(pseudo_pos)
+        return self.forward(position)
 
+    @real_position_argument
     def inverse(self, real_pos):
         '''Calculate a PseudoPosition from a given RealPosition
 
@@ -653,17 +751,17 @@ class PseudoPositioner(Device, PositionerBase):
         # return self.PseudoPosition()
         raise NotImplementedError()
 
-    def set(self, *positions):
+    @pseudo_position_argument
+    def set(self, position):
         '''Move to a new position asynchronously
 
         Parameters
         ----------
-        *positions : float
-            Position for the corresponding pseudo axes
+        position : PseudoPosition
+            Position for the all of the pseudo axes
 
         Returns
         -------
         status : MoveStatus
         '''
-        pseudo_pos = self.PseudoPosition(*positions)
-        return super().set(pseudo_pos)
+        return super().set(position)
