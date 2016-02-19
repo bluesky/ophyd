@@ -252,7 +252,7 @@ class PVPositionerPC(PVPositioner):
         logger.debug('%s.setpoint = %s', self.name, position)
 
         if self.actuate is not None:
-            self.setpoint.put(position, wait=False)
+            self.setpoint.put(position, wait=True)
 
             logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False,
