@@ -42,4 +42,4 @@ cd $script_path/..
 # nosetests --with-coverage --cover-tests --cover-package=ophyd -v --tests=tests.test_pseudopos
 py.test -v --cov=ophyd --cov-report term-missing --cov-report html
 
-view ophyd/positioner.py -c ":Coveragepy report"
+$EDITOR ophyd/positioner.py -c ":Coveragepy report"
