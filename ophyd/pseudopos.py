@@ -706,10 +706,23 @@ class PseudoPositioner(Device, SoftPositioner):
 
     move.__doc__ = SoftPositioner.move.__doc__
 
-    def _setup_motion(self, real_pos, ):
+    def _setup_move(self, position, status):
+        '''Move requested to position
+
+        This is a customization of SoftPositioner's _setup_move method which
+        is what gets called when a motion request happens.
+
+        Parameters
+        ----------
+        position : PseudoPosition
+            Position to move to (already verified by `check_value`)
+        status : MoveStatus
+            Status object created by PositionerBase.move()
+        '''
         # Clear all old statuses for not yet completed real motions
         del self._real_waiting[:]
 
+        timeout = status.timeout
         real_pos = self.forward(position)
 
         with self._finished_lock:
