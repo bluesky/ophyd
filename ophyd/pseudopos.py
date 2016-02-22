@@ -522,21 +522,21 @@ class PseudoPositioner(Device, SoftPositioner):
     def limits(self):
         '''All PseudoSingle limits as a namedtuple'''
         # NOTE: overrides SoftPositioner implementation
-        return self.PseudoPosition(pseudo.limits for pseudo in self._pseudo)
+        return self.PseudoPosition(*(pseudo.limits for pseudo in self._pseudo))
 
     @property
     def low_limit(self):
         '''All PseudoSingle low limits as a namedtuple'''
         # NOTE: overrides SoftPositioner implementation
-        return self.PseudoPosition(pseudo.low_limit
-                                   for pseudo in self._pseudo)
+        return self.PseudoPosition(*(pseudo.low_limit
+                                     for pseudo in self._pseudo))
 
     @property
     def high_limit(self):
         '''All PseudoSingle high limits as a namedtuple'''
         # NOTE: overrides SoftPositioner implementation
-        return self.PseudoPosition(pseudo.high_limit
-                                   for pseudo in self._pseudo)
+        return self.PseudoPosition(*(pseudo.high_limit
+                                     for pseudo in self._pseudo))
 
     @property
     def moving(self):
