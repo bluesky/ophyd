@@ -136,6 +136,12 @@ class PseudoSingle(SoftPositioner):
         # Don't allow the base class to specify whether it has started moving
         pass
 
+    def _setup_move(self, position, status):
+        '''PseudoSingle.move overrides SoftPositioner move implementation, so
+        this method is not called.
+        '''
+        pass
+
     def move(self, pos, **kwargs):
         '''Move this pseudo axis to a specific position.
 
@@ -281,7 +287,7 @@ def to_position_tuple(cls, *args, **kwargs):
     return position, other_kw
 
 
-class PseudoPositioner(Device, PositionerBase):
+class PseudoPositioner(Device, SoftPositioner):
     '''A pseudo positioner which can be comprised of multiple positioners
 
     Parameters
@@ -310,7 +316,6 @@ class PseudoPositioner(Device, PositionerBase):
         self._finish_thread = None
         self._real_waiting = []
         self._move_queue = []
-        self._egu = egu
 
         if self.__class__ is PseudoPositioner:
             raise TypeError('PseudoPositioner must be subclassed with the '
@@ -319,7 +324,7 @@ class PseudoPositioner(Device, PositionerBase):
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
-                         name=name, **kwargs)
+                         name=name, egu=egu, **kwargs)
 
         self._real = [getattr(self, attr)
                       for attr, cpt in self._get_real_positioners()]
@@ -357,11 +362,6 @@ class PseudoPositioner(Device, PositionerBase):
         '''The composite engineering units (EGU) from all PseudoSingles'''
         return ', '.join(pseudo.egu for pseudo in self._pseudo
                          if pseudo.egu)
-
-    @property
-    def egu(self):
-        '''The engineering units (EGU) for a pseudo position'''
-        return self._egu
 
     @property
     def pseudo_positioners(self):
@@ -457,9 +457,7 @@ class PseudoPositioner(Device, PositionerBase):
 
     def _repr_info(self):
         yield from super()._repr_info()
-
         yield ('concurrent', self._concurrent)
-        yield ('egu', self._egu)
 
     @property
     def connected(self):
@@ -519,6 +517,26 @@ class PseudoPositioner(Device, PositionerBase):
         real_pos = self.forward(pseudo_pos)
         for real, pos in zip(self._real, real_pos):
             real.check_value(pos)
+
+    @property
+    def limits(self):
+        '''All PseudoSingle limits as a namedtuple'''
+        # NOTE: overrides SoftPositioner implementation
+        return self.PseudoPosition(pseudo.limits for pseudo in self._pseudo)
+
+    @property
+    def low_limit(self):
+        '''All PseudoSingle low limits as a namedtuple'''
+        # NOTE: overrides SoftPositioner implementation
+        return self.PseudoPosition(pseudo.low_limit
+                                   for pseudo in self._pseudo)
+
+    @property
+    def high_limit(self):
+        '''All PseudoSingle high limits as a namedtuple'''
+        # NOTE: overrides SoftPositioner implementation
+        return self.PseudoPosition(pseudo.high_limit
+                                   for pseudo in self._pseudo)
 
     @property
     def moving(self):
@@ -682,41 +700,17 @@ class PseudoPositioner(Device, PositionerBase):
                       **kwargs)
 
     @pseudo_position_argument
-    def move(self, position, wait=True, timeout=10.0, **kwargs):
-        '''Move to a specified position, optionally waiting for motion to
-        complete.
+    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+        return super().move(position, wait=wait, timeout=timeout,
+                            moved_cb=moved_cb)
 
-        Parameters
-        ----------
-        position
-            Position to move to
-        moved_cb : callable
-            Call this callback when movement has finished
-        wait : bool, optional
-            Wait until motion has completed
-        timeout : float, optional
-            Maximum time to wait for a motion
+    move.__doc__ = SoftPositioner.move.__doc__
 
-        Returns
-        -------
-        status : MoveStatus
-
-        Raises
-        ------
-        TimeoutError : when motion takes longer than `timeout`
-        ValueError : on invalid positions
-        RuntimeError : if motion fails other than timing out
-        '''
-        real_pos = self.forward(position)
-
+    def _setup_motion(self, real_pos, ):
         # Clear all old statuses for not yet completed real motions
         del self._real_waiting[:]
 
-        # Remove the 'finished moving' callback, otherwise callbacks will
-        # happen when individual motors finish moving
-        moved_cb = kwargs.pop('moved_cb', None)
-
-        st = super().move(position, moved_cb=moved_cb, timeout=timeout)
+        real_pos = self.forward(position)
 
         with self._finished_lock:
             # ensure we don't get any motion complete messages before motion
@@ -725,11 +719,6 @@ class PseudoPositioner(Device, PositionerBase):
                 self._sequential_move(real_pos, timeout=timeout)
             else:
                 self._concurrent_move(real_pos, timeout=timeout)
-
-        if wait:
-            status_wait(st)
-
-        return st
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):

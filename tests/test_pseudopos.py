@@ -160,6 +160,8 @@ class PseudoPosTests(unittest.TestCase):
         for key in read_keys:
             self.assertIn(key, read_dict['mypseudo_pseudo3'])
 
+        self.assertEqual(pseudo.read().keys(), pseudo.describe().keys())
+
     def test_multi_concurrent(self):
         def done(**kwargs):
             logger.debug('** Finished moving (%s)', kwargs)

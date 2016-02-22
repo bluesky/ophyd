@@ -81,7 +81,12 @@ class PositionerBase(OphydObject):
 
         Raises
         ------
-        TimeoutError, ValueError (on invalid positions)
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
         '''
         self.check_value(position)
 
@@ -193,6 +198,30 @@ class SoftPositioner(PositionerBase):
         '''The engineering units (EGU) for positions'''
         return self._egu
 
+    def _setup_move(self, position, status):
+        '''Move requested to position
+
+        This is a SoftPositioner method which allows customization of what
+        happens when a motion request happens without re-implementing
+        all of `move`.
+
+        Parameters
+        ----------
+        position : any
+            Position to move to (already verified by `check_value`)
+        status : MoveStatus
+            Status object created by PositionerBase.move()
+        '''
+        # A soft positioner immediately 'moves' to the target position when
+        # requested.
+        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
+
+        self._started_moving = True
+        self._moving = False
+
+        self._set_position(position)
+        self._done_moving()
+
     def move(self, position, wait=True, timeout=30.0, moved_cb=None):
         '''Move to a specified position, optionally waiting for motion to
         complete.
@@ -202,7 +231,9 @@ class SoftPositioner(PositionerBase):
         position
             Position to move to
         moved_cb : callable
-            Call this callback when movement has finished
+            Call this callback when movement has finished. This callback
+            must accept one keyword argument: 'obj' which will be set to
+            this positioner instance.
         wait : bool, optional
             Wait until motion has completed
         timeout : float, optional
@@ -214,18 +245,16 @@ class SoftPositioner(PositionerBase):
 
         Raises
         ------
-        TimeoutError, ValueError (on invalid positions)
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
         '''
-        # A soft positioner immediately 'moves' to the target position when
-        # requested.
-        self._started_moving = True
-        self._moving = False
-        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
-
         status = super().move(position, moved_cb=moved_cb, timeout=timeout)
 
-        self._set_position(position)
-        self._done_moving()
+        self._setup_move(position, status)
 
         if wait:
             try:
