@@ -17,6 +17,7 @@ from .utils import DisconnectedError
 from .utils.epics_pvs import raise_if_disconnected
 from .positioner import PositionerBase
 from .device import (Device, Component as Cpt)
+from .status import wait as status_wait
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ class EpicsMotor(Device, PositionerBase):
 
         try:
             if wait:
-                status.wait()
+                status_wait(status)
         except KeyboardInterrupt:
             self.stop()
             raise

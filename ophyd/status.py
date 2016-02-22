@@ -47,8 +47,8 @@ class StatusBase:
     def _timeout_thread(self):
         '''Handle timeout'''
         try:
-            self.wait(timeout=self.timeout,
-                      poll_rate=max(1.0, self.timeout / 10.0))
+            wait(self, timeout=self.timeout,
+                 poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
             self._finished(success=False)
         finally:
@@ -178,14 +178,15 @@ class DeviceStatus(StatusBase):
         self.device = device
 
 
-def wait(status, timeout=30.0, *, poll_rate=0.05):
+def wait(status, timeout=None, *, poll_rate=0.05):
     '''(Blocking) wait for the status object to complete
 
     Parameters
     ----------
     timeout : float, optional
-        Amount of time in seconds to wait. If None, will wait until
-        completed or otherwise interrupted.
+        Amount of time in seconds to wait. None disables, such that wait() will
+        only return when either the status completes or if interrupted by the
+        user.
     poll_rate : float, optional
         Polling rate used to check the status
 

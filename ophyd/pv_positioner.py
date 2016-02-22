@@ -13,7 +13,7 @@ from epics.pv import fmt_time
 
 from .device import Device
 from .positioner import PositionerBase
-
+from .status import wait as status_wait
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class PVPositioner(Device, PositionerBase):
         try:
             self._setup_move(position)
             if wait:
-                status.wait()
+                status_wait(status)
         except KeyboardInterrupt:
             self.stop()
             raise

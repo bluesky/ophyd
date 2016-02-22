@@ -18,7 +18,7 @@ from collections import (OrderedDict, namedtuple, Sequence)
 from .utils import DisconnectedError
 from .positioner import PositionerBase
 from .device import Device
-
+from .status import (wait as status_wait)
 
 logger = logging.getLogger(__name__)
 
@@ -747,7 +747,7 @@ class PseudoPositioner(Device, PositionerBase):
                 self._concurrent_move(real_pos, timeout=timeout)
 
         if wait:
-            st.wait()
+            status_wait(st)
 
         return st
 

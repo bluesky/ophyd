@@ -12,8 +12,8 @@ import logging
 import time
 from functools import partial
 
-from .ophydobj import (MoveStatus, OphydObject)
-
+from .ophydobj import OphydObject
+from .status import (MoveStatus, wait as status_wait)
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +217,7 @@ class SoftPositioner(PositionerBase):
 
         if wait:
             try:
-                status.wait()
+                status_wait(status)
             except RuntimeError:
                 raise RuntimeError('Motion did not complete successfully')
 
