@@ -473,7 +473,7 @@ class PseudoPositioner(Device, SoftPositioner):
                 logger.error('%s failed to stop positioner: %s', self.name,
                              pos.name, exc_info=ex)
 
-        super().stop(self)
+        super().stop()
 
     def check_single(self, pseudo_single, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''

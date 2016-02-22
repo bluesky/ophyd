@@ -144,6 +144,10 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.real2.move(0, wait=True)
         pseudo.real3.move(0, wait=True)
 
+        pseudo.pseudo1.stop()
+
+        pseudo.real3.move(0, wait=True)
+
     def test_limits(self):
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=True)
         self.assertEquals(pseudo.limits, ((-10, 10), (-10, 10), (0, 0)))
