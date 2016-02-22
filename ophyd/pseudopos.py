@@ -208,6 +208,110 @@ real_position_argument = position_argument_wrapper('real')
 pseudo_position_argument = position_argument_wrapper('pseudo')
 
 
+def to_position_tuple(cls, *args, **kwargs):
+    '''Convert user-specified arguments to a Position namedtuple and kwargs
+
+    Example:
+        Tuple = namedtuple('Tuple', 'px py pz')
+
+    All of the following will return the same thing:
+        t, kwargs = to_position_tuple(Tuple, px, py, pz, a=4)
+        t, kwargs = to_position_tuple(Tuple, (px, py, pz), a=4)
+        t, kwargs = to_position_tuple(Tuple, Tuple(px, py, pz), a=4)
+        t, kwargs = to_position_tuple(Tuple, px=1, py=2, pz=3, a=4)
+
+    t will be Tuple(px, py, pz), and kwargs will be {'a': 4}.
+
+    Parameters
+    ----------
+    cls : namedtuple
+        The position class to use. This is likely a RealPosition or a
+        PseudoPosition from a PseudoPositioner.
+    args :
+        User-specified positional arguments
+    kwargs : dict
+        User-specified keyword arguments
+
+    Returns
+    -------
+    position_tuple : cls
+        The position tuple
+    kwargs : dict
+        Keyword arguments not related to the position tuple
+
+    Raises
+    ------
+    TypeError
+        On an empty or invalid namedtuple
+    ValueError
+        On a mismatch of parameters
+    '''
+    usage_info = '''Positions can be passed in a number of ways:
+
+    As positional arguments:
+        pseudo.method(px, py, pz, **kwargs)
+    As a sequence or PseudoPosition/RealPosition:
+        pseudo.method((px, py, pz), **kwargs)
+    As kwargs:
+        pseudo.method(px=1, py=2, pz=3, **kwargs)
+
+    '''
+    try:
+        fields = cls._fields
+    except AttributeError:
+        raise TypeError('Invalid position tuple')
+
+    if not fields:
+        raise TypeError('Invalid position tuple')
+
+    if args and isinstance(args[0], (cls, Sequence)):
+        # Position is in the first positional argument
+        if len(args) > 1:
+            raise ValueError(usage_info +
+                             'Cannot specify more than one positional '
+                             'argument if the first one is a {} '
+                             ''.format(cls.__name__))
+
+        position = args[0]
+        if not isinstance(position, cls):
+            # Ensure a position tuple is passed back
+            position = cls(*position)
+
+        return position, kwargs
+
+    elif len(args) == len(fields):
+        # Position is in positional arguments
+        return cls(*args), kwargs
+
+    elif len(args) > 0:
+        # Position is in positional arguments
+        raise ValueError(usage_info +
+                         'Wrong number of arguments for {}. '
+                         'Got {}, expected {}'
+                         ''.format(cls.__name__, len(args), len(fields)))
+
+    if not kwargs:
+        # no positional arguments or kwargs, just show usage information
+        raise ValueError(usage_info)
+
+    # No positional arguments, position described in terms of kwargs
+    missing_fields = [field for field in fields
+                      if field not in kwargs]
+
+    if missing_fields:
+        raise ValueError(usage_info +
+                         'Missing keyword arguments for field names of {}:'
+                         ' {}'.format(cls.__name__,
+                                      ', '.join(missing_fields)))
+
+    # separate position tuple kwargs from other kwargs
+    position_kw = {field: kwargs[field] for field in fields}
+    other_kw = {key: value for key, value in kwargs.items()
+                if key not in fields}
+    position = cls(**position_kw)
+    return position, other_kw
+
+
 class PseudoPositioner(Device, PositionerBase):
     '''A pseudo positioner which can be comprised of multiple positioners
 
@@ -401,74 +505,12 @@ class PseudoPositioner(Device, PositionerBase):
         return self.check_value(self.PseudoPosition(*target))
 
     def to_pseudo_tuple(self, *args, **kwargs):
-        return self._to_position_tuple(self.PseudoPosition, *args, **kwargs)
+        '''Convert arguments to a PseudoPosition namedtuple and kwargs'''
+        return to_position_tuple(self.PseudoPosition, *args, **kwargs)
 
     def to_real_tuple(self, *args, **kwargs):
-        return self._to_position_tuple(self.RealPosition, *args, **kwargs)
-
-    def _to_position_tuple(self, cls, *args, **kwargs):
-        '''Positions can be passed in a number of ways:
-
-        As positional arguments:
-            pseudo.method(px, py, pz, **kwargs)
-        As a sequence or PseudoPosition/RealPosition:
-            pseudo.method((px, py, pz), **kwargs)
-        As kwargs:
-            pseudo.method(px=1, py=2, pz=3, **kwargs)
-
-        '''
-        fields = cls._fields
-        if not fields:
-            raise TypeError('Invalid position tuple')
-
-        usage_info = self._to_position_tuple.__doc__
-
-        if args and isinstance(args[0], (cls, Sequence)):
-            # Position is in the first positional argument
-            if len(args) > 1:
-                raise ValueError(usage_info +
-                                 'Cannot specify more than one positional '
-                                 'argument if the first one is a {} '
-                                 ''.format(cls.__name__))
-
-            position = args[0]
-            if not isinstance(position, cls):
-                # Ensure a position tuple is passed back
-                position = cls(*position)
-
-            return position, kwargs
-
-        elif len(args) == len(fields):
-            # Position is in positional arguments
-            return cls(*args), kwargs
-
-        elif len(args) > 0:
-            # Position is in positional arguments
-            raise ValueError(usage_info +
-                             'Wrong number of arguments for {}. '
-                             'Got {}, expected {}'
-                             ''.format(cls.__name__, len(args), len(fields)))
-
-        if not kwargs:
-            # no positional arguments or kwargs, just show usage information
-            raise ValueError(usage_info)
-
-        # No positional arguments, position described in terms of kwargs
-        missing_fields = [field for field in fields
-                          if field not in kwargs]
-
-        if missing_fields:
-            raise ValueError(usage_info +
-                             'Missing keyword arguments for field names of {}:'
-                             ' {}'.format(cls.__name__,
-                                          ', '.join(missing_fields)))
-
-        # separate position tuple kwargs from other kwargs
-        position_kw = {field: kwargs[field] for field in fields}
-        other_kw = {key: value for key, value in kwargs.items()
-                    if key not in fields}
-        position = cls(**position_kw)
-        return position, other_kw
+        '''Convert arguments to a RealPosition namedtuple and kwargs'''
+        return to_position_tuple(self.RealPosition, *args, **kwargs)
 
     def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid
