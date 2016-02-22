@@ -5,7 +5,6 @@ import unittest
 from ophyd import (Device, Component, FormattedComponent)
 from ophyd.signal import Signal
 from ophyd import EpicsSignal
-from ophyd.utils import TimeoutError
 
 logger = logging.getLogger(__name__)
 

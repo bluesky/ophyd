@@ -5,7 +5,7 @@ from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject
 from .status import DeviceStatus
-from .utils import (TimeoutError, ExceptionBundle, set_and_wait)
+from .utils import (ExceptionBundle, set_and_wait)
 
 logger = logging.getLogger(__name__)
 

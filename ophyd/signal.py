@@ -4,7 +4,7 @@ import time
 
 import epics
 
-from .utils import (ReadOnlyError, TimeoutError, LimitError)
+from .utils import (ReadOnlyError, LimitError)
 from .utils.epics_pvs import (pv_form, waveform_to_string,
                               raise_if_disconnected, data_type, data_shape)
 from .ophydobj import OphydObject
