@@ -144,6 +144,22 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.real2.move(0, wait=True)
         pseudo.real3.move(0, wait=True)
 
+    def test_read_describe(self):
+        pseudo = Pseudo3x3('', name='mypseudo', concurrent=True)
+        desc_dict = pseudo.describe()
+        print(desc_dict)
+        desc_keys = ['source', 'upper_ctrl_limit', 'lower_ctrl_limit', 'shape',
+                     'dtype', 'units']
+
+        for key in desc_keys:
+            self.assertIn(key, desc_dict['mypseudo_pseudo3'])
+
+        read_dict = pseudo.read()
+        print(read_dict)
+        read_keys = ['value', 'timestamp']
+        for key in read_keys:
+            self.assertIn(key, read_dict['mypseudo_pseudo3'])
+
     def test_multi_concurrent(self):
         def done(**kwargs):
             logger.debug('** Finished moving (%s)', kwargs)
