@@ -175,6 +175,17 @@ def position_argument_wrapper(type_):
 real_position_argument = position_argument_wrapper('real')
 pseudo_position_argument = position_argument_wrapper('pseudo')
 
+_to_position_tuple_usage_info = '''Positions can be passed in a number of ways.
+
+As positional arguments:
+    pseudo.method(px, py, pz, **kwargs)
+As a sequence or PseudoPosition/RealPosition:
+    pseudo.method((px, py, pz), **kwargs)
+As kwargs:
+    pseudo.method(px=1, py=2, pz=3, **kwargs)
+
+'''
+
 
 def to_position_tuple(cls, *args, **kwargs):
     '''Convert user-specified arguments to a Position namedtuple and kwargs
@@ -214,16 +225,6 @@ def to_position_tuple(cls, *args, **kwargs):
     ValueError
         On a mismatch of parameters
     '''
-    usage_info = '''Positions can be passed in a number of ways:
-
-    As positional arguments:
-        pseudo.method(px, py, pz, **kwargs)
-    As a sequence or PseudoPosition/RealPosition:
-        pseudo.method((px, py, pz), **kwargs)
-    As kwargs:
-        pseudo.method(px=1, py=2, pz=3, **kwargs)
-
-    '''
     try:
         fields = cls._fields
     except AttributeError:
@@ -235,7 +236,7 @@ def to_position_tuple(cls, *args, **kwargs):
     if args and isinstance(args[0], (cls, Sequence)):
         # Position is in the first positional argument
         if len(args) > 1:
-            raise ValueError(usage_info +
+            raise ValueError(_to_position_tuple_usage_info +
                              'Cannot specify more than one positional '
                              'argument if the first one is a {} '
                              ''.format(cls.__name__))
@@ -253,21 +254,21 @@ def to_position_tuple(cls, *args, **kwargs):
 
     elif len(args) > 0:
         # Position is in positional arguments
-        raise ValueError(usage_info +
+        raise ValueError(_to_position_tuple_usage_info +
                          'Wrong number of arguments for {}. '
                          'Got {}, expected {}'
                          ''.format(cls.__name__, len(args), len(fields)))
 
     if not kwargs:
         # no positional arguments or kwargs, just show usage information
-        raise ValueError(usage_info)
+        raise ValueError(_to_position_tuple_usage_info)
 
     # No positional arguments, position described in terms of kwargs
     missing_fields = [field for field in fields
                       if field not in kwargs]
 
     if missing_fields:
-        raise ValueError(usage_info +
+        raise ValueError(_to_position_tuple_usage_info +
                          'Missing keyword arguments for field names of {}:'
                          ' {}'.format(cls.__name__,
                                       ', '.join(missing_fields)))
