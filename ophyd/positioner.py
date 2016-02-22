@@ -24,6 +24,10 @@ class PositionerBase(OphydObject):
     '''The positioner base class
 
     Subclass from this to implement your own positioners.
+
+    Note: Subclasses should add an additional 'wait' keyword argument on the
+    move method. The MoveStatus object returned from PositionerBase can then be
+    waited on after the subclass finishes the motion configuration.
     '''
 
     SUB_START = 'start_moving'
@@ -65,7 +69,9 @@ class PositionerBase(OphydObject):
         position
             Position to move to
         moved_cb : callable
-            Call this callback when movement has finished
+            Call this callback when movement has finished. This callback
+            must accept one keyword argument: 'obj' which will be set to
+            this positioner instance.
         timeout : float, optional
             Maximum time to wait for the motion
 
