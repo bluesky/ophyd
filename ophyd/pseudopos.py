@@ -330,6 +330,11 @@ class PseudoPositioner(Device, PositionerBase):
             raise ValueError('Must have at least 1 positioner and '
                              'pseudo-positioner')
 
+        if not self._egu:
+            # Make the PseudoPositioner units based on the PseudoSingle
+            # units
+            self._egu = self.composite_egu
+
         self.RealPosition = self._real_position_tuple()
         self.PseudoPosition = self._pseudo_position_tuple()
 
@@ -346,6 +351,12 @@ class PseudoPositioner(Device, PositionerBase):
             # internal state of their position
             real.subscribe(self._real_pos_update, event_type=real.SUB_READBACK,
                            run=True)
+
+    @property
+    def composite_egu(self):
+        '''The composite engineering units (EGU) from all PseudoSingles'''
+        return ', '.join(pseudo.egu for pseudo in self._pseudo
+                         if pseudo.egu)
 
     @property
     def egu(self):

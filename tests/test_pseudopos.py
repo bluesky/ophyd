@@ -35,9 +35,9 @@ motor_recs = ['XF:31IDA-OP{Tbl-Ax:X1}Mtr',
 
 
 class Pseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, '', limits=(-10, 10))
-    pseudo2 = C(PseudoSingle, '', limits=(-10, 10))
-    pseudo3 = C(PseudoSingle, '', limits=None)
+    pseudo1 = C(PseudoSingle, '', limits=(-10, 10), egu='a')
+    pseudo2 = C(PseudoSingle, '', limits=(-10, 10), egu='b')
+    pseudo3 = C(PseudoSingle, '', limits=None, egu='c')
     real1 = C(EpicsMotor, motor_recs[0])
     real2 = C(EpicsMotor, motor_recs[1])
     real3 = C(EpicsMotor, motor_recs[2])
@@ -118,6 +118,8 @@ class PseudoPosTests(unittest.TestCase):
 
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=False)
         pseudo.wait_for_connection()
+
+        self.assertEqual(pseudo.egu, 'a, b, c')
 
         print('real1', pseudo.real1.prefix)
         print('real2', pseudo.real2.prefix)
