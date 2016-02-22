@@ -75,6 +75,8 @@ class PositionerBase(OphydObject):
         ------
         TimeoutError, ValueError (on invalid positions)
         '''
+        self.check_value(position)
+
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
 
