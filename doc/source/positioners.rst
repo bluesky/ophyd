@@ -82,11 +82,11 @@ of (px=1, py=2, pz=3), the corresponding real position would be (rx=-1, ry=-2,
 rz=-3). The inverse calculation is similar, in going from a real position to a
 pseudo position.
 
-The two decorators @real_position_argument and @pseudo_position_argument are
-used here for convenience so that one can call these functions in a variety of
-ways, all of which generate a correct PseudoPosition tuple as the first
-argument to your calculation method. Positions can be specified in the following
-ways:
+The two decorators ``@real_position_argument`` and
+``@pseudo_position_argument`` are used here for convenience so that one can
+call these functions in a variety of ways, all of which generate a correct
+PseudoPosition tuple as the first argument to your calculation method.
+Positions can be specified in the following ways:
 
 * As positional arguments:
 
