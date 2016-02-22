@@ -4,8 +4,8 @@ import unittest
 # import copy
 
 from unittest.mock import Mock
-from ophyd.ophydobj import (OphydObject, StatusBase,
-                                     DetectorStatus, DeviceStatus)
+from ophyd.ophydobj import OphydObject
+from ophyd.status import (StatusBase, DeviceStatus)
 
 from . import main
 
@@ -29,8 +29,6 @@ class StatusTests(unittest.TestCase):
         cb.assert_called_once_with()
 
     def test_others(self):
-        # TODO detectorstatus should probably be removed
-        DetectorStatus(None)
         DeviceStatus(None)
 
 
