@@ -738,11 +738,6 @@ class PseudoPositioner(Device, PositionerBase):
         # return self.RealPosition()
         raise NotImplementedError()
 
-    @pseudo_position_argument
-    def __call__(self, position):
-        '''Shortcut for a forward calculation (see `forward`)'''
-        return self.forward(position)
-
     @real_position_argument
     def inverse(self, real_pos):
         '''Calculate a PseudoPosition from a given RealPosition
