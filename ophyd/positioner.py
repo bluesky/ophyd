@@ -11,9 +11,11 @@
 import logging
 import time
 from functools import partial
+from collections import OrderedDict
 
 from .ophydobj import OphydObject
 from .status import (MoveStatus, wait as status_wait)
+from .utils.epics_pvs import (data_type, data_shape)
 
 logger = logging.getLogger(__name__)
 
@@ -161,9 +163,12 @@ class SoftPositioner(PositionerBase):
         Soft limits to use
     egu : str, optional
         Engineering units (EGU) for a position
+    source : str, optional
+        Metadata indicating the source of this positioner's position. Defaults
+        to 'computed'
     '''
 
-    def __init__(self, *, egu='', limits=None, **kwargs):
+    def __init__(self, *, egu='', limits=None, source='computed', **kwargs):
         super().__init__(**kwargs)
 
         self._egu = egu
@@ -171,6 +176,7 @@ class SoftPositioner(PositionerBase):
             limits = (0, 0)
 
         self._limits = tuple(limits)
+        self.source = source
 
     @property
     def limits(self):
@@ -227,3 +233,34 @@ class SoftPositioner(PositionerBase):
         yield from super()._repr_info()
         yield ('egu', self._egu)
         yield ('limits', self._limits)
+        yield ('source', self.source)
+
+    def read(self):
+        d = OrderedDict()
+        d[self.name] = {'value': self.position,
+                        'timestamp': time.time()}
+        return d
+
+    def describe(self):
+        """Return the description as a dictionary
+
+        Returns
+        -------
+        dict
+            Dictionary of name and formatted description string
+        """
+        desc = OrderedDict()
+        desc[self.name] = {'source': str(self.source),
+                           'dtype': data_type(self.position),
+                           'shape': data_shape(self.position),
+                           'units': self.egu,
+                           'lower_ctrl_limit': self.low_limit,
+                           'upper_ctrl_limit': self.high_limit,
+                           }
+        return desc
+
+    def read_configuration(self):
+        return OrderedDict()
+
+    def describe_configuration(self):
+        return OrderedDict()

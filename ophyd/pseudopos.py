@@ -16,14 +16,14 @@ import functools
 from collections import (OrderedDict, namedtuple, Sequence)
 
 from .utils import DisconnectedError
-from .positioner import PositionerBase
+from .positioner import (PositionerBase, SoftPositioner)
 from .device import Device
 from .status import (wait as status_wait)
 
 logger = logging.getLogger(__name__)
 
 
-class PseudoSingle(PositionerBase):
+class PseudoSingle(SoftPositioner):
     '''A single axis of a PseudoPositioner
 
     This should not be instantiated on its own, but rather used as a Component
@@ -31,28 +31,27 @@ class PseudoSingle(PositionerBase):
 
     Parameters
     ----------
+    prefix : str, optional
+        The PV prefix, for compatibility with the Device hierarchy
     limits : (low_limit, high_limit)
         User-defined limits for this pseudo axis.
     egu : str, optional
         The engineering units (EGU) for the position
-    prefix : str, optional
-        The PV prefix, for compatibility with the Device hierarchy
-    name : str, optional
-        The name of the positioner
     parent : PseudoPositioner instance
         The instance of the parent PseudoPositioner
+    name : str, optional
+        The name of the positioner
+    source : str, optional
+        Metadata indicating the source of this positioner's position. Defaults
+        to 'computed'
     '''
 
-    def __init__(self, prefix=None, *, limits=None, parent=None, name=None,
-                 egu='', **kwargs):
-        super().__init__(name=name, parent=parent, **kwargs)
+    def __init__(self, prefix=None, *, limits=None, egu='', parent=None,
+                 name=None, source='computed', **kwargs):
+        super().__init__(name=name, parent=parent, limits=limits,
+                         egu=egu, source=source, **kwargs)
 
-        if limits is None:
-            limits = (0, 0)
-
-        self._limits = tuple(limits)
         self._target = None
-        self._egu = egu
 
         # The index of this PseudoSingle in the parent PseudoPositioner tuple
         # will be set post-instantiation:
@@ -63,21 +62,10 @@ class PseudoSingle(PositionerBase):
         self._parent.subscribe(self._sub_proxy_idx,
                                event_type=self.SUB_READBACK)
 
-    @property
-    def egu(self):
-        '''The engineering units (EGU) for this pseudo position'''
-        return self._egu
-
-    @property
-    def limits(self):
-        return self._limits
-
     def _repr_info(self):
         yield from super()._repr_info()
 
         yield ('idx', self._idx)
-        yield ('limits', self._limits)
-        yield ('egu', self._egu)
 
     def _sub_proxy(self, obj=None, **kwargs):
         '''Parent callbacks such as start of motion, motion finished, etc. will
@@ -162,26 +150,6 @@ class PseudoSingle(PositionerBase):
         '''
         self._target = pos
         return self._parent.move_single(self, pos, **kwargs)
-
-    def read(self):
-        d = OrderedDict()
-        d[self.name] = {'value': self.position,
-                        'timestamp': time.time()}
-        return d
-
-    def describe(self):
-        desc = OrderedDict()
-        desc[self.name] = {'dtype': 'number',
-                           'shape': [],
-                           'source': 'computed',
-                           }
-        return desc
-
-    def read_configuration(self):
-        return OrderedDict()
-
-    def describe_configuration(self):
-        return OrderedDict()
 
 
 def position_argument_wrapper(type_):
