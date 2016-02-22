@@ -5,7 +5,7 @@ import unittest
 
 from unittest.mock import Mock
 from ophyd.ophydobj import OphydObject
-from ophyd.status import (StatusBase, DeviceStatus)
+from ophyd.status import (StatusBase, DeviceStatus, wait)
 
 from . import main
 
@@ -30,6 +30,19 @@ class StatusTests(unittest.TestCase):
 
     def test_others(self):
         DeviceStatus(None)
+
+    def test_wait(self):
+        st = StatusBase()
+        st._finished()
+        wait(st)
+
+    def test_wait_status_failed(self):
+        st = StatusBase(timeout=0.05)
+        self.assertRaises(RuntimeError, wait, st)
+
+    def test_wait_timeout(self):
+        st = StatusBase()
+        self.assertRaises(TimeoutError, wait, st, timeout=0.05)
 
 
 class OphydObjTests(unittest.TestCase):
