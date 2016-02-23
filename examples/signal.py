@@ -14,7 +14,7 @@ def callback(sub_type=None, timestamp=None, value=None, **kwargs):
 
     # Test that the monitor dispatcher works (you cannot use channel access in
     # callbacks without it)
-    logger.info('[callback] caget=%s' % rw_signal.get())
+    logger.info('[callback] caget=%s', rw_signal.get())
 
 logger = config.logger
 
@@ -33,4 +33,4 @@ time.sleep(1.)
 
 # You can also create a Python Signal:
 sig = Signal(name='testing', value=10)
-logger.info('Python signal: %s' % sig)
+logger.info('Python signal: %s', sig)
