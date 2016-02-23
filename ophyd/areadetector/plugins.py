@@ -158,7 +158,7 @@ class ImagePlugin(PluginBase):
 
     @property
     def image(self):
-        array_size = self.array_size.value
+        array_size = self.array_size.get()
         if array_size == [0, 0, 0]:
             raise RuntimeError('Invalid image; ensure array_callbacks are on')
 
