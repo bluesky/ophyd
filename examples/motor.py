@@ -1,18 +1,18 @@
 #!/usr/bin/env python2.7
 '''A simple test for :class:`EpicsMotor`'''
 
-import time
-
 import config
 from ophyd import EpicsMotor
-from ophyd.utils.errors import LimitError
 
 
 def callback(sub_type=None, timestamp=None, value=None, **kwargs):
-    logger.info('[callback] [%s] (type=%s) value=%s', timestamp, sub_type, value)
+    logger.info('[callback] [%s] (type=%s) value=%s', timestamp, sub_type,
+                value)
+
 
 def done_moving(**kwargs):
     logger.info('Done moving %s', kwargs)
+
 
 logger = config.logger
 

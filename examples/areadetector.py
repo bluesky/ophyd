@@ -1,16 +1,16 @@
 '''An example of using :class:`AreaDetector`'''
 
-import sys
 import time
 
 import config
 
-from ophyd import (get_areadetector_plugin, EpicsSignal, SimDetector)
+from ophyd import SimDetector
 from ophyd import (ImagePlugin, TIFFPlugin, ProcessPlugin, OverlayPlugin,
                    Component as Cpt)
 
 
 logger = config.logger
+
 
 class MyDetector(SimDetector):
     image1 = Cpt(ImagePlugin, 'image1:')
