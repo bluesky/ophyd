@@ -21,6 +21,7 @@ class FakeEpicsPV(object):
     _update_rate = 0.1
     fake_values = (0.1, 0.2, 0.3)
     _pv_idx = 0
+    auto_monitor = True
 
     def __init__(self, pvname, form=None,
                  callback=None, connection_callback=None,
@@ -50,6 +51,9 @@ class FakeEpicsPV(object):
 
         if callback:
             self.add_callback(callback)
+
+    def get_timevars(self):
+        pass
 
     def get_ctrlvars(self):
         pass
