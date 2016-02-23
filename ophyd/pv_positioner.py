@@ -102,7 +102,7 @@ class PVPositioner(Device, PositionerBase):
             raise ValueError('A setpoint or a readback must be specified')
 
         if self.done is None and not self.put_complete:
-            msg = ('PVPositioner %s is mis-configured. A "done" Signal must be'
+            msg = ('PVPositioner {} is mis-configured. A "done" Signal must be'
                    ' provided or use PVPositionerPC (which uses put completion'
                    ' to determine when motion has completed).'
                    ''.format(self.name))
