@@ -400,14 +400,6 @@ class OverlayPlugin(PluginBase):
     ----------
     prefix : str
         The areaDetector plugin prefix
-    count : int, optional
-        number of overlays (commonPlugin default is 8)
-    first_overlay : int, optional
-        number of first overlay [default: 1]
-
-    Attributes
-    ----------
-    overlays : list of Overlay
     '''
     _default_suffix = 'Over1:'
     _suffix_re = 'Over\d:'
