@@ -273,6 +273,9 @@ class EpicsSignalBase(Signal):
     @raise_if_disconnected
     def timestamp(self):
         '''Timestamp of readback PV, according to EPICS'''
+        if not self._read_pv.auto_monitor:
+            # force updating the timestamp when not using auto monitoring
+            self._read_pv.get_timevars()
         return self._read_pv.timestamp
 
     @property
@@ -496,6 +499,9 @@ class EpicsSignal(EpicsSignalBase):
     @raise_if_disconnected
     def setpoint_ts(self):
         '''Timestamp of setpoint PV, according to EPICS'''
+        if not self._write_pv.auto_monitor:
+            # force updating the timestamp when not using auto monitoring
+            self._write_pv.get_timevars()
         return self._write_pv.timestamp
 
     @property
