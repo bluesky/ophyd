@@ -59,26 +59,26 @@ def add_rois(range_, **kwargs):
     return defn
 
 
-class EpicsMCA(Device):
+class EpicsMCARecord(Device):
     '''SynApps MCA Record interface'''
+    stop_signal = C(EpicsSignal, '.STOP')
+    preset_real_time = C(EpicsSignal, '.PRTM')
+    preset_live_time = C(EpicsSignal, '.PLTM')
+    elapsed_real_time = C(EpicsSignalRO, '.ERTM')
+    elapsed_live_time = C(EpicsSignalRO, '.ELTM')
 
-    start = C(EpicsSignal, 'Start')
-    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
-
-    _stop = C(EpicsSignal, '.STOP')
-    preset_real_time = C(EpicsSignal, '.ERTM', write_pv='.PRTM')
-    preset_live_time = C(EpicsSignal, '.ELTM', write_pv='.PLTM')
     spectrum = C(EpicsSignalRO, '.VAL')
     background = C(EpicsSignalRO, '.BG')
     mode = C(EpicsSignal, '.MODE', string=True)
 
-    rois = DDC(add_rois(range(0, 31)))
+    rois = DDC(add_rois(range(0, 32)))
 
     def __init__(self, prefix, *, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
                  parent=None, **kwargs):
 
-        default_read_attrs = ['spectrum', 'preset_real_time']
+        default_read_attrs = ['spectrum', 'preset_real_time',
+                              'elapsed_real_time']
         default_configuration_attrs = ['preset_real_time']
 
         if read_attrs is None:
@@ -96,7 +96,12 @@ class EpicsMCA(Device):
         self.stage_sigs.update([(self.mode, 'PHA')])
 
     def stop(self):
-        self._stop.put(1)
+        self.stop_signal.put(1)
+
+
+class EpicsMCA(EpicsMCARecord):
+    start = C(EpicsSignal, 'Start')
+    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
 
 
 class EpicsDXP(Device):
