@@ -411,7 +411,14 @@ class OverlayPlugin(PluginBase):
                              ('y', 'MaxSizeY_RBV'))),
                    doc='The maximum size in XY')
 
-    overlay_1 = C(Overlay, 'Overlay1:')
+    overlay_1 = C(Overlay, '1:')
+    overlay_2 = C(Overlay, '2:')
+    overlay_3 = C(Overlay, '3:')
+    overlay_4 = C(Overlay, '4:')
+    overlay_5 = C(Overlay, '5:')
+    overlay_6 = C(Overlay, '6:')
+    overlay_7 = C(Overlay, '7:')
+    overlay_8 = C(Overlay, '8:')
 
 
 class ROIPlugin(PluginBase):
