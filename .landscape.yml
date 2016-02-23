@@ -1,5 +1,10 @@
 test-warnings: no
 strictness: medium
-max-line-length: 80
 python-targets:
     - 3
+ignore-paths:
+    - ophyd/areadetector/docs.py
+    - ophyd/__init__.py
+pylint:
+  disable:
+    - protected-access
