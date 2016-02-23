@@ -11,7 +11,7 @@ import numpy as np
 import epics
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO)
-from ophyd.utils import (ReadOnlyError, TimeoutError)
+from ophyd.utils import ReadOnlyError
 
 logger = logging.getLogger(__name__)
 

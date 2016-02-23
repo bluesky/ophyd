@@ -1,6 +1,6 @@
 import logging
 
-from .utils import (DisconnectedError, TimeoutError)
+from .utils import DisconnectedError
 
 logger = logging.getLogger(__name__)
 

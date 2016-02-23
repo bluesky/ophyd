@@ -15,14 +15,15 @@ from epics.pv import fmt_time
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import raise_if_disconnected
-from .positioner import Positioner
+from .positioner import PositionerBase
 from .device import (Device, Component as Cpt)
+from .status import wait as status_wait
 
 
 logger = logging.getLogger(__name__)
 
 
-class EpicsMotor(Device, Positioner):
+class EpicsMotor(Device, PositionerBase):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner
@@ -31,8 +32,6 @@ class EpicsMotor(Device, Positioner):
     ----------
     prefix : str
         The record to use
-    settle_time : float
-        Post-motion settle-time
     read_attrs : sequence of attribute names
         The signals to be read during data acquisition (i.e., in read() and
         describe() calls)
@@ -48,9 +47,8 @@ class EpicsMotor(Device, Positioner):
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
 
-    def __init__(self, prefix, *, settle_time=0.05, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, name=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 monitor_attrs=None, name=None, parent=None, **kwargs):
         if read_attrs is None:
             read_attrs = ['user_readback', 'user_setpoint']
 
@@ -66,9 +64,6 @@ class EpicsMotor(Device, Positioner):
         # motor itself.
         self.user_readback.name = self.name
 
-        self.settle_time = float(settle_time)
-        # TODO: settle_time is unused?
-
         self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
 
@@ -81,7 +76,7 @@ class EpicsMotor(Device, Positioner):
     @property
     @raise_if_disconnected
     def egu(self):
-        '''Engineering units'''
+        '''The engineering units (EGU) for a position'''
         return self.motor_egu.get()
 
     @property
@@ -109,13 +104,12 @@ class EpicsMotor(Device, Positioner):
     def move(self, position, wait=True, **kwargs):
         self._started_moving = False
 
+        status = super().move(position, **kwargs)
+        self.user_setpoint.put(position, wait=False)
+
         try:
-            if not wait:
-                status = super().move(position, wait=False, **kwargs)
-                self.user_setpoint.put(position, wait=False)
-            else:
-                self.user_setpoint.put(position, wait=True)
-                status = super().move(position, wait=True, **kwargs)
+            if wait:
+                status_wait(status)
         except KeyboardInterrupt:
             self.stop()
             raise
@@ -173,5 +167,3 @@ class EpicsMotor(Device, Positioner):
 
     def _repr_info(self):
         yield from super()._repr_info()
-
-        yield ('settle_time', self.settle_time)

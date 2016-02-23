@@ -19,8 +19,7 @@ import numpy as np
 
 import epics
 
-from .errors import (MinorAlarmError, get_alarm_class, DisconnectedError,
-                     TimeoutError)
+from .errors import (MinorAlarmError, get_alarm_class, DisconnectedError)
 
 __all__ = ['split_record_field',
            'strip_field',

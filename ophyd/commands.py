@@ -15,7 +15,7 @@ from IPython.utils.coloransi import TermColors as tc
 
 from epics import caget, caput
 
-from . import (EpicsMotor, Positioner, PVPositioner, Device)
+from . import (EpicsMotor, PositionerBase, PVPositioner, Device)
 from .utils import DisconnectedError
 from .utils.startup import setup as setup_ophyd
 from prettytable import PrettyTable
@@ -85,7 +85,7 @@ def ducks_from_namespace(attr):
 
 def get_all_positioners():
     '''Get all positioners defined in the IPython namespace'''
-    devices = instances_from_namespace((Device, Positioner))
+    devices = instances_from_namespace((Device, PositionerBase))
     positioners = []
     for device in devices:
         positioners.extend(_recursive_positioner_search(device))
@@ -105,7 +105,7 @@ def _recursive_positioner_search(device):
 
     if isinstance(device, Device):  # only Devices have `_signals`
         for d in device._signals.values():
-            if isinstance(d, (Device, Positioner)):
+            if isinstance(d, (Device, PositionerBase)):
                 res.extend(_recursive_positioner_search(d))
     return res
 
@@ -115,14 +115,14 @@ def _normalize_positioners(positioners):
     if positioners is None:
         # Grab IPython namespace, recursively find Positioners.
         res = get_all_positioners()
-    elif isinstance(positioners, (Device, Positioner)):
+    elif isinstance(positioners, (Device, PositionerBase)):
         # Explore children in case this is a composite Device.
         res = _recursive_positioner_search(positioners)
     else:
         # Assume this is a list of Devices.
         res = []
         for device in positioners:
-            if not isinstance(device, (Device, Positioner)):
+            if not isinstance(device, (Device, PositionerBase)):
                 raise TypeError("Input is not a Device: %r" % device)
             res.extend(_recursive_positioner_search(device))
     return res
@@ -172,7 +172,7 @@ def ensure(*ensure_args):
     return wrap
 
 
-@ensure(Positioner, None)
+@ensure(PositionerBase, None)
 def mov(positioner, position):
     """Move positioners to given positions
 
@@ -238,7 +238,7 @@ def mov(positioner, position):
     print(tc.Normal + '\n')
 
 
-@ensure(Positioner, None)
+@ensure(PositionerBase, None)
 def movr(positioner, position):
     """Move positioners relative to their current positon.
 
@@ -256,7 +256,7 @@ def movr(positioner, position):
     mov(positioner, _new_val)
 
 
-@ensure(Positioner, None)
+@ensure(PositionerBase, None)
 def set_lm(positioner, limits):
     """Set the limits of the positioner
 
@@ -326,7 +326,7 @@ def set_lm(positioner, limits):
         logbook.log(msg)
 
 
-@ensure(Positioner, (float, int))
+@ensure(PositionerBase, (float, int))
 def set_pos(positioner, position):
     """Set the position of a positioner
 

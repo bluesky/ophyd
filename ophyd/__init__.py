@@ -10,7 +10,7 @@ from . import *
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 
 # Positioners
-from .positioner import Positioner
+from .positioner import (PositionerBase, SoftPositioner)
 from .epics_motor import EpicsMotor
 from .pv_positioner import (PVPositioner, PVPositionerPC)
 from .pseudopos import (PseudoPositioner, PseudoSingle)
@@ -19,7 +19,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
                      DynamicDeviceComponent)
-from .ophydobj import StatusBase
+from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 
 # Areadetector-related

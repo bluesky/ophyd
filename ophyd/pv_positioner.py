@@ -7,21 +7,18 @@
    :synopsis:
 '''
 
-
 import logging
-import time
 
 from epics.pv import fmt_time
 
-from .utils import TimeoutError
 from .device import Device
-from .positioner import Positioner
-
+from .positioner import PositionerBase
+from .status import wait as status_wait
 
 logger = logging.getLogger(__name__)
 
 
-class PVPositioner(Device, Positioner):
+class PVPositioner(Device, PositionerBase):
     '''A Positioner which is controlled using multiple user-defined signals
 
     Keyword arguments are passed through to the base class, Positioner
@@ -31,14 +28,12 @@ class PVPositioner(Device, Positioner):
     prefix : str, optional
         The device prefix used for all sub-positioners. This is optional as it
         may be desirable to specify full PV names for PVPositioners.
-    settle_time : float, optional
-        Time to wait after a move to ensure a move complete callback is received
     limits : 2-element sequence, optional
         (low_limit, high_limit)
     name : str
         The device name
-    timeout : float
-        The motion timeout
+    egu : str, optional
+        The engineering units (EGU) for the position
 
     Attributes
     ----------
@@ -49,18 +44,21 @@ class PVPositioner(Device, Positioner):
     actuate : Signal or None
         The actuation PV to set when movement is requested
     actuate_value : any, optional
-        The actuation value, sent to the actuate signal when motion is requested
+        The actuation value, sent to the actuate signal when motion is
+        requested
     stop_signal : Signal or None
         The stop PV to set when motion should be stopped
     stop_value : any, optional
         The value sent to stop_signal when a stop is requested
+    egu : str, optional
+        The engineering units (EGU) for a position
     done : Signal
         A readback value indicating whether motion is finished
     done_val : any, optional
         The value that the done pv should be when motion has completed
     put_complete : bool, optional
-        If set, the specified PV should allow for asynchronous put completion to
-        indicate motion has finished.  If `actuate` is specified, it will be
+        If set, the specified PV should allow for asynchronous put completion
+        to indicate motion has finished.  If `actuate` is specified, it will be
         used for put completion.  Otherwise, the `setpoint` will be used.  See
         the `-c` option from `caput` for more information.
     '''
@@ -77,20 +75,19 @@ class PVPositioner(Device, Positioner):
     done_value = 1
     put_complete = False
 
-    def __init__(self, prefix='', *, settle_time=0.05, limits=None, name=None,
-                 timeout=None, read_attrs=None, configuration_attrs=None,
-                 monitor_attrs=None, parent=None,
-                 **kwargs):
+    def __init__(self, prefix='', *, limits=None, name=None, read_attrs=None,
+                 configuration_attrs=None, monitor_attrs=None, parent=None,
+                 egu='', **kwargs):
         super().__init__(prefix=prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          monitor_attrs=monitor_attrs,
-                         name=name, parent=parent, timeout=timeout, **kwargs)
+                         name=name, parent=parent, **kwargs)
 
         if self.__class__ is PVPositioner:
             raise TypeError('PVPositioner must be subclassed with the correct '
                             'signals set in the class definition.')
 
-        self.settle_time = float(settle_time)
+        self._egu = egu
 
         if limits is not None:
             self._limits = tuple(limits)
@@ -105,14 +102,19 @@ class PVPositioner(Device, Positioner):
             raise ValueError('A setpoint or a readback must be specified')
 
         if self.done is None and not self.put_complete:
-            msg = ('PVPositioner %s is mis-configured. A "done" Signal must be '
-                   'provided or use PVPositionerPC (which uses put completion '
-                   'to determine when motion has completed).'
+            msg = ('PVPositioner {} is mis-configured. A "done" Signal must be'
+                   ' provided or use PVPositionerPC (which uses put completion'
+                   ' to determine when motion has completed).'
                    ''.format(self.name))
             raise ValueError(msg)
 
         if self.done is not None:
             self.done.subscribe(self._move_changed)
+
+    @property
+    def egu(self):
+        '''The engineering units (EGU) for a position'''
+        return self._egu
 
     @property
     def put_complete(self):
@@ -145,41 +147,32 @@ class PVPositioner(Device, Positioner):
         else:
             return self._moving
 
-    def _move_wait(self, position, **kwargs):
-        '''Move and wait until motion has completed'''
-        self._started_moving = False
-
-        self.setpoint.put(position, wait=True)
-        logger.debug('Setpoint set: %s = %s',
-                     self.setpoint.setpoint_pvname, position)
-
-        if self.actuate is not None:
-            self.actuate.put(self.actuate_value, wait=True)
-            logger.debug('Actuating: %s = %s',
-                         self.actuate.setpoint_pvname, self.actuate_value)
-
-    def _move_async(self, position, **kwargs):
+    def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
+        logger.debug('%s.setpoint = %s', self.name, position)
+        self.setpoint.put(position, wait=True)
         if self.actuate is not None:
-            self.setpoint.put(position, wait=False)
+            logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
-        else:
-            self.setpoint.put(position, wait=False)
 
-    def move(self, position, wait=True, **kwargs):
+    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+        status = super().move(position, timeout=timeout, moved_cb=moved_cb)
+
+        has_done = self.done is not None
+        if not has_done:
+            moving_val = 1 - self.done_value
+            self._move_changed(value=self.done_value)
+            self._move_changed(value=moving_val)
+
         try:
+            self._setup_move(position)
             if wait:
-                self._move_wait(position, **kwargs)
-                return super().move(position, wait=True, **kwargs)
-            else:
-                # Setup the async retval first
-                ret = super().move(position, wait=False, **kwargs)
-                self._started_moving = False
-                self._move_async(position, **kwargs)
-                return ret
+                status_wait(status)
         except KeyboardInterrupt:
             self.stop()
             raise
+
+        return status
 
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
@@ -190,10 +183,10 @@ class PVPositioner(Device, Positioner):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
             logger.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
-                         self, started)
+                         self.name, started)
 
         logger.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                     self, self._moving, value)
+                     self.name, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
@@ -202,10 +195,10 @@ class PVPositioner(Device, Positioner):
         if not self.put_complete:
             # In the case of put completion, motion complete
             if was_moving and not self._moving:
-                self._done_moving(timestamp=timestamp, value=value)
+                self._done_moving(success=True, timestamp=timestamp,
+                                  value=value)
 
-    def _pos_changed(self, timestamp=None, value=None,
-                     **kwargs):
+    def _pos_changed(self, timestamp=None, value=None, **kwargs):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
@@ -228,8 +221,15 @@ class PVPositioner(Device, Positioner):
     def _repr_info(self):
         yield from super()._repr_info()
 
-        yield ('settle_time', self.settle_time)
         yield ('limits', self._limits)
+        yield ('egu', self._egu)
+
+    def _done_moving(self, **kwargs):
+        has_done = self.done is not None
+        if not has_done:
+            self._move_changed(value=self.done_value)
+
+        super()._done_moving(**kwargs)
 
 
 class PVPositionerPC(PVPositioner):
@@ -240,56 +240,23 @@ class PVPositionerPC(PVPositioner):
 
         super().__init__(*args, **kwargs)
 
-    def _move_wait(self, position, **kwargs):
-        '''Move and wait until motion has completed'''
-        self._started_moving = False
-        has_done = self.done is not None
-        if not has_done:
-            moving_val = 1 - self.done_value
-            self._move_changed(value=self.done_value)
-            self._move_changed(value=moving_val)
-
-        timeout = kwargs.pop('timeout', self._timeout)
-        if timeout <= 0.0:
-            # TODO pyepics timeout of 0 and None don't mean infinite wait?
-            timeout = 1e6
-
-        if self.actuate is None:
-            self.setpoint.put(position, wait=True, timeout=timeout)
-        else:
-            self.setpoint.put(position, wait=False)
-            self.actuate.put(self.actuate_value, wait=True, timeout=timeout)
-
-        if has_done:
-            time.sleep(self.settle_time)
-        else:
-            self._move_changed(value=self.done_value)
-
-        if self._started_moving and not self._moving:
-            self._done_moving(timestamp=self.setpoint.timestamp)
-        elif self._started_moving and self._moving:
-            # TODO better exceptions
-            raise TimeoutError('Failed to move %s to %s '
-                               '(put complete done, still moving)' %
-                               (self.name, position))
-        else:
-            raise TimeoutError('Failed to move %s to %s '
-                               '(no motion, put complete)' %
-                               (self.name, position))
-
-    def _move_async(self, position, **kwargs):
+    def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
         def done_moving(**kwargs):
             logger.debug('%s async motion done', self.name)
-            self._done_moving()
+            self._done_moving(success=True)
 
         if self.done is None:
             # No done signal, so we rely on put completion
             moving_val = 1 - self.done_value
             self._move_changed(value=moving_val)
 
+        logger.debug('%s.setpoint = %s', self.name, position)
+
         if self.actuate is not None:
-            self.setpoint.put(position, wait=False)
+            self.setpoint.put(position, wait=True)
+
+            logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False,
                              callback=done_moving)
         else:

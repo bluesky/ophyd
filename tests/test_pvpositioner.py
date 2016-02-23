@@ -14,11 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    pass
+    logging.getLogger('ophyd.pv_positioner').setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)
 
 
 def tearDownModule():
     logger.debug('Cleaning up')
+    logging.getLogger('ophyd.pv_positioner').setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)
 
 
 class PVPosTest(unittest.TestCase):
@@ -30,6 +33,23 @@ class PVPosTest(unittest.TestCase):
                   'actuate': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}Cmd:Go-Cmd.PROC',
                   'stop': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}Cmd:Stop-Cmd.PROC',
                   }
+
+    def test_not_subclassed(self):
+        # can't instantiate it on its own
+        self.assertRaises(TypeError, PVPositioner, 'prefix')
+        self.assertRaises(TypeError, PVPositionerPC, 'prefix')
+
+    def test_no_setpoint_or_readback(self):
+        class MyPositioner(PVPositioner):
+            pass
+
+        self.assertRaises(ValueError, MyPositioner)
+
+    def test_setpoint_but_no_done(self):
+        class MyPositioner(PVPositioner):
+            setpoint = C(EpicsSignal, '.VAL')
+
+        self.assertRaises(ValueError, MyPositioner)
 
     def test_pvpos(self):
         motor_record = self.sim_pv
@@ -44,18 +64,12 @@ class PVPosTest(unittest.TestCase):
             done = C(EpicsSignalRO, '.MOVN')
             stop_signal = C(EpicsSignal, '.STOP')
 
-            @property
-            def stop_value(self):
-                return 1
-
-            @property
-            def done_value(self):
-                return 0
+            stop_value = 1
+            done_value = 0
 
         m = MyPositioner(motor_record, name='pos_no_put_compl')
         m.wait_for_connection()
 
-        m.report
         m.read()
 
         mrec.move(0.1, wait=True)
@@ -71,10 +85,9 @@ class PVPosTest(unittest.TestCase):
         mc = copy(m)
         self.assertEqual(mc.describe(), m.describe())
 
-        m.report
         m.read()
 
-    def test_put_complete(self):
+    def test_put_complete_setpoint_only(self):
         motor_record = self.sim_pv
         # mrec = EpicsMotor(motor_record, name='pcomplete_mrec')
         # print('mrec', mrec.describe())
@@ -83,20 +96,13 @@ class PVPosTest(unittest.TestCase):
         logger.info('--> PV Positioner, using put completion and a DONE pv')
 
         class MyPositioner(PVPositionerPC):
-            '''Setpoint, readback, done, stop. Put completion'''
+            '''Setpoint only'''
             setpoint = C(EpicsSignal, '.VAL')
-            readback = C(EpicsSignalRO, '.RBV')
-            done = C(EpicsSignalRO, '.MOVN')
 
-            @property
-            def done_value(self):
-                return 0
-
-        pos = MyPositioner(motor_record, name='pos_no_put_compl')
+        pos = MyPositioner(motor_record, name='pc_setpoint_done')
         print(pos.describe())
         pos.wait_for_connection()
 
-        pos.report
         pos.read()
         high_lim = pos.setpoint.high_limit
         try:
@@ -116,13 +122,45 @@ class PVPosTest(unittest.TestCase):
         pos.move(-1, wait=True)
         self.assertFalse(pos.moving)
 
-        logger.info('--> PV Positioner, using put completion and no DONE pv')
+    def test_put_complete_setpoint_readback_done(self):
+        class MyPositioner(PVPositionerPC):
+            '''Setpoint, readback, done, stop. Put completion'''
+            setpoint = C(EpicsSignal, '.VAL')
+            readback = C(EpicsSignalRO, '.RBV')
+            done = C(EpicsSignalRO, '.MOVN')
+            done_value = 0
 
+        motor_record = self.sim_pv
+        pos = MyPositioner(motor_record, name='pos_no_put_compl')
+        print(pos.describe())
+        pos.wait_for_connection()
+
+        pos.read()
+        high_lim = pos.setpoint.high_limit
+        try:
+            pos.check_value(high_lim + 1)
+        except ValueError as ex:
+            logger.info('Check value for single failed, as expected (%s)', ex)
+        else:
+            raise ValueError('check_value should have failed')
+
+        stat = pos.move(1, wait=False)
+        logger.info('--> post-move request, moving=%s', pos.moving)
+
+        while not stat.done:
+            logger.info('--> moving... %s error=%s', stat, stat.error)
+            time.sleep(0.1)
+
+        pos.move(-1, wait=True)
+        self.assertFalse(pos.moving)
+
+    def test_put_complete_setpoint_readback(self):
         class MyPositioner(PVPositionerPC):
             '''Setpoint, readback, put completion. No done pv.'''
             setpoint = C(EpicsSignal, '.VAL')
             readback = C(EpicsSignalRO, '.RBV')
 
+        motor_record = self.sim_pv
         pos = MyPositioner(motor_record, name='pos_put_compl')
         print(pos.describe())
         pos.wait_for_connection()
@@ -137,12 +175,11 @@ class PVPosTest(unittest.TestCase):
         pos.move(0, wait=True)
         logger.info('--> synchronous move request, moving=%s', pos.moving)
 
+        time.sleep(0.1)
+        print('read', pos.read())
         self.assertFalse(pos.moving)
 
-        pos.report
-        pos.read()
-
-    def test_pvpositioner(self):
+    def test_pvpositioner_with_fake_motor(self):
         def callback(sub_type=None, timestamp=None, value=None, **kwargs):
             logger.info('[callback] [%s] (type=%s) value=%s', timestamp,
                         sub_type, value)
@@ -169,17 +206,9 @@ class PVPosTest(unittest.TestCase):
             stop_signal = C(EpicsSignal, fm['stop'])
             done = C(EpicsSignal, fm['moving'])
 
-            @property
-            def actuate_value(self):
-                return 1
-
-            @property
-            def stop_value(self):
-                return 1
-
-            @property
-            def done_value(self):
-                return 1
+            actuate_value = 1
+            stop_value = 1
+            done_value = 1
 
         pos = MyPositioner('', name='pv_pos_fake_mtr')
         print('fake mtr', pos.describe())
@@ -209,10 +238,13 @@ class PVPosTest(unittest.TestCase):
         logger.info('--> post-move request, moving=%s', pos.moving)
         time.sleep(2)
 
-        pos.report
         pos.read()
         repr(pos)
         str(pos)
+
+    def test_pvpositioner_pc_with_actuate(self):
+        # TODO
+        self.skipTest('TODO')
 
 
 from . import main

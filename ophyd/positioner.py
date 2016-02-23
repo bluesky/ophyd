@@ -10,18 +10,24 @@
 
 import logging
 import time
+from functools import partial
+from collections import OrderedDict
 
-from .utils import TimeoutError
-from .ophydobj import (MoveStatus, OphydObject)
-
+from .ophydobj import OphydObject
+from .status import (MoveStatus, wait as status_wait)
+from .utils.epics_pvs import (data_type, data_shape)
 
 logger = logging.getLogger(__name__)
 
 
-class Positioner(OphydObject):
-    '''A soft positioner.
+class PositionerBase(OphydObject):
+    '''The positioner base class
 
     Subclass from this to implement your own positioners.
+
+    Note: Subclasses should add an additional 'wait' keyword argument on the
+    move method. The MoveStatus object returned from PositionerBase can then be
+    waited on after the subclass finishes the motion configuration.
     '''
 
     SUB_START = 'start_moving'
@@ -30,25 +36,17 @@ class Positioner(OphydObject):
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, *, timeout=None, egu=None, name=None, parent=None,
-                 **kwargs):
+    def __init__(self, *, name=None, parent=None, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
-
-        if timeout is None:
-            timeout = 0.0
-
-        if egu is None:
-            egu = ''
 
         self._started_moving = False
         self._moving = False
         self._position = None
-        self._timeout = timeout
-        self._egu = egu
 
     @property
     def egu(self):
-        return self._egu
+        '''The engineering units (EGU) for positions'''
+        raise NotImplementedError('Subclass must implement egu')
 
     @property
     def limits(self):
@@ -62,7 +60,7 @@ class Positioner(OphydObject):
     def high_limit(self):
         return self.limits[1]
 
-    def move(self, position, wait=True, moved_cb=None, timeout=30.0):
+    def move(self, position, moved_cb=None, timeout=30.0):
         '''Move to a specified position, optionally waiting for motion to
         complete.
 
@@ -70,82 +68,55 @@ class Positioner(OphydObject):
         ----------
         position
             Position to move to
-        wait : bool
-            Wait for move completion
         moved_cb : callable
-            Call this callback when movement has finished (not applicable if
-            `wait` is set)
-        timeout : float
-            Timeout in seconds
+            Call this callback when movement has finished. This callback
+            must accept one keyword argument: 'obj' which will be set to
+            this positioner instance.
+        timeout : float, optional
+            Maximum time to wait for the motion
+
+        Returns
+        -------
+        status : MoveStatus
 
         Raises
         ------
-        TimeoutError, ValueError (on invalid positions)
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
         '''
+        self.check_value(position)
+
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
         self._reset_sub(self._SUB_REQ_DONE)
 
-        is_subclass = (self.__class__ is not Positioner)
-        if not is_subclass:
-            # When not subclassed, Positioner acts as a soft positioner,
-            # immediately 'moving' to the target position when requested.
-            self._started_moving = True
-            self._moving = False
+        status = MoveStatus(self, position, timeout=timeout)
 
-        status = MoveStatus(self, position)
-        if wait:
-            t0 = time.time()
+        if moved_cb is not None:
+            status.finished_cb = partial(moved_cb, obj=self)
+            # the status object will run this callback when finished
 
-            def check_timeout():
-                return timeout is not None and (time.time() - t0) > timeout
-
-            while not self._started_moving:
-                time.sleep(0.05)
-
-                if check_timeout():
-                    raise TimeoutError('Failed to move %s to %s '
-                                       'in %s s (no motion)' %
-                                       (self.name, position, timeout))
-
-            while self.moving:
-                time.sleep(0.05)
-
-                if check_timeout():
-                    raise TimeoutError('Failed to move %s to %s in %s s' %
-                                       (self.name, position, timeout))
-
-            status._finished()
-
-        else:
-            if moved_cb is not None:
-                self.subscribe(moved_cb, event_type=self._SUB_REQ_DONE,
-                               run=False)
-
-            self.subscribe(status._finished,
-                           event_type=self._SUB_REQ_DONE, run=False)
-
-        if not is_subclass:
-            self._set_position(position)
-            self._done_moving()
+        self.subscribe(status._finished, event_type=self._SUB_REQ_DONE,
+                       run=False)
 
         return status
 
-    def _done_moving(self, timestamp=None, value=None, **kwargs):
+    def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
         '''Call when motion has completed.  Runs SUB_DONE subscription.'''
+        if success:
+            self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
+                           value=value)
 
-        self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
-                       value=value, **kwargs)
-
-        self._run_subs(sub_type=self._SUB_REQ_DONE, timestamp=timestamp,
-                       value=value, success=True,
-                       **kwargs)
+        self._run_subs(sub_type=self._SUB_REQ_DONE, success=success,
+                       timestamp=timestamp)
         self._reset_sub(self._SUB_REQ_DONE)
 
     def stop(self):
         '''Stops motion'''
-
-        self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
-        self._reset_sub(self._SUB_REQ_DONE)
+        self._done_moving(success=False)
 
     @property
     def position(self):
@@ -190,7 +161,141 @@ class Positioner(OphydObject):
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
 
+
+class SoftPositioner(PositionerBase):
+    '''A positioner which does not communicate with any hardware
+
+    SoftPositioner 'moves' immediately to the target position when commanded to
+    do so.
+
+    Parameters
+    ----------
+    limits : (low_limit, high_limit)
+        Soft limits to use
+    egu : str, optional
+        Engineering units (EGU) for a position
+    source : str, optional
+        Metadata indicating the source of this positioner's position. Defaults
+        to 'computed'
+    '''
+
+    def __init__(self, *, egu='', limits=None, source='computed', **kwargs):
+        super().__init__(**kwargs)
+
+        self._egu = egu
+        if limits is None:
+            limits = (0, 0)
+
+        self._limits = tuple(limits)
+        self.source = source
+
+    @property
+    def limits(self):
+        return self._limits
+
+    @property
+    def egu(self):
+        '''The engineering units (EGU) for positions'''
+        return self._egu
+
+    def _setup_move(self, position, status):
+        '''Move requested to position
+
+        This is a SoftPositioner method which allows customization of what
+        happens when a motion request happens without re-implementing
+        all of `move`.
+
+        Parameters
+        ----------
+        position : any
+            Position to move to (already verified by `check_value`)
+        status : MoveStatus
+            Status object created by PositionerBase.move()
+        '''
+        # A soft positioner immediately 'moves' to the target position when
+        # requested.
+        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
+
+        self._started_moving = True
+        self._moving = False
+
+        self._set_position(position)
+        self._done_moving()
+
+    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+        '''Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+        moved_cb : callable
+            Call this callback when movement has finished. This callback
+            must accept one keyword argument: 'obj' which will be set to
+            this positioner instance.
+        wait : bool, optional
+            Wait until motion has completed
+        timeout : float, optional
+            Maximum time to wait for a motion
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        '''
+        status = super().move(position, moved_cb=moved_cb, timeout=timeout)
+
+        self._setup_move(position, status)
+
+        if wait:
+            try:
+                status_wait(status)
+            except RuntimeError:
+                raise RuntimeError('Motion did not complete successfully')
+
+        return status
+
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('egu', self._egu)
-        yield ('timeout', self._timeout)
+        yield ('limits', self._limits)
+        yield ('source', self.source)
+
+    def read(self):
+        d = OrderedDict()
+        d[self.name] = {'value': self.position,
+                        'timestamp': time.time()}
+        return d
+
+    def describe(self):
+        """Return the description as a dictionary
+
+        Returns
+        -------
+        dict
+            Dictionary of name and formatted description string
+        """
+        desc = OrderedDict()
+        desc[self.name] = {'source': str(self.source),
+                           'dtype': data_type(self.position),
+                           'shape': data_shape(self.position),
+                           'units': self.egu,
+                           'lower_ctrl_limit': self.low_limit,
+                           'upper_ctrl_limit': self.high_limit,
+                           }
+        return desc
+
+    def read_configuration(self):
+        return OrderedDict()
+
+    def describe_configuration(self):
+        return OrderedDict()

@@ -1,174 +1,10 @@
-# vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.ophydobj` - Base object type
-================================================
-
-.. module:: ophyd.control.ophydobj
-   :synopsis:
-'''
-
-
 from collections import defaultdict
-from threading import RLock
-from functools import wraps
 import time
 import logging
 
-import numpy as np
-
+from .status import (StatusBase, MoveStatus, DeviceStatus)
 
 logger = logging.getLogger(__name__)
-
-
-# This is used below by StatusBase.
-def _locked(func):
-    "an decorator for running a method with the instance's lock"
-    @wraps(func)
-    def f(self, *args, **kwargs):
-        with self._lock:
-            func(self, *args, **kwargs)
-    return f
-
-
-class StatusBase:
-    """
-    This is a base class that provides a single-slot
-    call back for finished.
-    """
-    def __init__(self):
-        super().__init__()
-        self._lock = RLock()
-        self._cb = None
-        self.done = False
-        self.success = False
-
-    @_locked
-    def _finished(self, *args, **kwargs):
-        # args/kwargs are not really used, but are passed.
-        # uncomment these if you want to go hunting
-        # if args:
-        #     print("this should be empty: {}".format(args))
-        # if kwargs:
-        #     print("this should be empty: {}".format(kwargs))
-        self.done = True
-
-        if self._cb is not None:
-            self._cb()
-            self._cb = None
-
-    @property
-    def finished_cb(self):
-        """
-        Callback to be run when the status is marked as finished
-
-        The call back has no arguments
-        """
-        return self._cb
-
-    @finished_cb.setter
-    @_locked
-    def finished_cb(self, cb):
-        if self._cb is not None:
-            raise RuntimeError("Can not change the call back")
-        if self.done:
-            cb()
-        else:
-            self._cb = cb
-
-
-class MoveStatus(StatusBase):
-    '''Asynchronous movement status
-
-    Parameters
-    ----------
-    positioner : Positioner
-    target : float or array-like
-        Target position
-    done : bool, optional
-        Whether or not the motion has already completed
-    start_ts : float, optional
-        The motion start timestamp
-
-    Attributes
-    ----------
-    pos : Positioner
-    target : float or array-like
-        Target position
-    done : bool
-        Whether or not the motion has already completed
-    start_ts : float
-        The motion start timestamp
-    finish_ts : float
-        The motion completd timestamp
-    finish_pos : float or ndarray
-        The final position
-    success : bool
-        Motion successfully completed
-    '''
-
-    def __init__(self, positioner, target, *, done=False, start_ts=None):
-        # call the base class
-        super().__init__()
-
-        self.done = done
-        if start_ts is None:
-            start_ts = time.time()
-
-        self.pos = positioner
-        self.target = target
-        self.start_ts = start_ts
-        self.finish_ts = None
-        self.finish_pos = None
-
-    @property
-    def error(self):
-        if self.finish_pos is not None:
-            finish_pos = self.finish_pos
-        else:
-            finish_pos = self.pos.position
-
-        try:
-            return np.array(finish_pos) - np.array(self.target)
-        except Exception:
-            return None
-
-    def _finished(self, success=True, timestamp=None, **kwargs):
-        with self._lock:
-            self.success = success
-
-            if timestamp is None:
-                timestamp = time.time()
-            self.finish_ts = timestamp
-            self.finish_pos = self.pos.position
-            # run super last so that all the state is ready before the
-            # callback runs
-            super()._finished()
-
-    @property
-    def elapsed(self):
-        if self.finish_ts is None:
-            return time.time() - self.start_ts
-        else:
-            return self.finish_ts - self.start_ts
-
-    def __str__(self):
-        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
-               'success={1.success})'.format(self.__class__.__name__,
-                                             self)
-
-    __repr__ = __str__
-
-
-class DetectorStatus(StatusBase):
-    def __init__(self, detector):
-        super().__init__()
-        self.detector = detector
-
-
-class DeviceStatus(StatusBase):
-    def __init__(self, device):
-        super().__init__()
-        self.device = device
 
 
 class OphydObject:
@@ -288,8 +124,8 @@ class OphydObject:
             event_type = self._default_sub
 
         if event_type is None:
-            raise ValueError('Subscription type not set and object {} of class '
-                             '{} has no default subscription set'
+            raise ValueError('Subscription type not set and object {} of class'
+                             ' {} has no default subscription set'
                              ''.format(self.name, self.__class__.__name__))
 
         try:

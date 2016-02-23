@@ -1,4 +1,4 @@
-from ophyd.ophydobj import StatusBase
+from ophyd.status import StatusBase
 
 
 def _setup_st():
