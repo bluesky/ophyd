@@ -3,9 +3,8 @@
 import config
 import time
 
-from ophyd.positioner import EpicsMotor
-from ophyd.commands import (mov, movr, set_pos, wh_pos, set_lm, log_pos,
-                            log_pos_diff)
+from ophyd import EpicsMotor
+from ophyd import (mov, movr, set_pos, wh_pos, set_lm, log_pos, log_pos_diff)
 
 
 rec1, rec2, rec3 = config.motor_recs[:3]
