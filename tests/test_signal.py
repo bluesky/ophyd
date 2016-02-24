@@ -531,6 +531,7 @@ class DerivedSignalTests(unittest.TestCase):
         self.assertEqual(original.get(), new_value)
         self.assertEqual(derived.get(), new_value)
         self.assertEqual(derived.timestamp, original.timestamp)
+        self.assertEqual(derived.limits, original.limits)
 
         copied = copy.copy(derived)
         self.assertEqual(copied.derived_from.value, original.value)

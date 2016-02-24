@@ -198,6 +198,11 @@ class DerivedSignal(Signal):
         '''Mirrors the connection state of the original signal'''
         return self._derived_from.connected
 
+    @property
+    def limits(self):
+        '''Limits from the original signal'''
+        return self._derived_from.limits
+
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('derived_from', self._derived_from)
