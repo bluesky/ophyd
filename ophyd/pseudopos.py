@@ -772,7 +772,7 @@ class PseudoPositioner(Device, SoftPositioner):
         raise NotImplementedError()
 
     @pseudo_position_argument
-    def set(self, position):
+    def set(self, position, **kwargs):
         '''Move to a new position asynchronously
 
         Parameters
@@ -784,4 +784,4 @@ class PseudoPositioner(Device, SoftPositioner):
         -------
         status : MoveStatus
         '''
-        return super().set(position)
+        return super().set(position, **kwargs)
