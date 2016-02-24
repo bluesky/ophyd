@@ -7,7 +7,7 @@ from . import *
 
 
 # Signals
-from .signal import (Signal, EpicsSignal, EpicsSignalRO)
+from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 
 # Positioners
 from .positioner import (PositionerBase, SoftPositioner)

@@ -147,23 +147,60 @@ class Signal(OphydObject):
 
 
 class DerivedSignal(Signal):
-    '''A signal which is derived from another one'''
-    def __init__(self, derived_from, **kwargs):
+    def __init__(self, derived_from, *, name=None, parent=None, **kwargs):
+        '''A signal which is derived from another one
+
+        Parameters
+        ----------
+        derived_from : Signal
+            The signal from which this one is derived
+        name : str, optional
+            The signal name
+        parent : Device, optional
+            The parent device
+        '''
+        super().__init__(name=name, parent=parent, **kwargs)
+
         self._derived_from = derived_from
-        super().__init__(**kwargs)
+        if self._derived_from.connected:
+            # set up the initial timestamp reporting, if connected
+            self._timestamp = self._derived_from.timestamp
+
+    @property
+    def derived_from(self):
+        '''Signal that this one is derived from'''
+        return self._derived_from
 
     def describe(self):
         '''Description based on the original signal description'''
         desc = self._derived_from.describe()[self._derived_from.name]
+        desc['derived_from'] = self._derived_from.name
         return {self.name: desc}
 
     def get(self, **kwargs):
         '''Get the value from the original signal'''
-        return self._derived_from.get(**kwargs)
+        value = self._derived_from.get(**kwargs)
+        self._timestamp = self._derived_from.timestamp
+        return value
 
     def put(self, value, **kwargs):
         '''Put the value to the original signal'''
-        return self._derived_from.put(value, **kwargs)
+        res = self._derived_from.put(value, **kwargs)
+        self._timestamp = self._derived_from.timestamp
+        return res
+
+    def wait_for_connection(self, timeout=0.0):
+        '''Wait for the original signal to connect'''
+        return self._derived_from.wait_for_connection(timeout=timeout)
+
+    @property
+    def connected(self):
+        '''Mirrors the connection state of the original signal'''
+        return self._derived_from.connected
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('derived_from', self._derived_from)
 
 
 class EpicsSignalBase(Signal):
