@@ -10,7 +10,7 @@ import copy
 import numpy as np
 import epics
 
-from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO)
+from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
 
 logger = logging.getLogger(__name__)
@@ -511,6 +511,44 @@ class EpicsSignalTests(unittest.TestCase):
         desc = sig.describe()['my_pv']
         self.assertEquals(desc['dtype'], 'array')
         self.assertEquals(desc['shape'], [1,])
+
+
+class DerivedSignalTests(unittest.TestCase):
+    def test_soft_derived(self):
+        timestamp = 1.0
+        value = 'q'
+        original = Signal(name='original', timestamp=timestamp, value=value)
+
+        derived = DerivedSignal(derived_from=original, name='derived')
+        self.assertEqual(derived.timestamp, timestamp)
+        self.assertEqual(derived.get(), value)
+        self.assertEqual(derived.timestamp, timestamp)
+        self.assertEqual(derived.describe()[derived.name]['derived_from'],
+                         original.name)
+
+        new_value = 'r'
+        derived.put(new_value)
+        self.assertEqual(original.get(), new_value)
+        self.assertEqual(derived.get(), new_value)
+        self.assertEqual(derived.timestamp, original.timestamp)
+
+        copied = copy.copy(derived)
+        self.assertEqual(copied.derived_from.value, original.value)
+        self.assertEqual(copied.derived_from.timestamp, original.timestamp)
+        self.assertEqual(copied.derived_from.name, original.name)
+
+    def test_epics_signal_derived(self):
+        epics.PV = FakeEpicsPV
+        signal = EpicsSignalRO('fakepv', name='original')
+
+        derived = DerivedSignal(derived_from=signal, name='derived')
+        derived.wait_for_connection()
+
+        derived.connected
+
+        # race condition with the FakeEpicsPV update loop, can't really test
+        # self.assertEqual(derived.timestamp, signal.timestamp)
+        # self.assertEqual(derived.get(), signal.value)
 
 
 from . import main
