@@ -61,15 +61,19 @@ class StatusBase:
         finally:
             self._timeout_thread = None
 
-    @_locked
     def _finished(self, *, success=True, timestamp=None, **kwargs):
         # args/kwargs are not really used, but are passed - because pyepics
         # gives in a bunch of kwargs that we don't care about
-        self.success = success
-        self.done = True
-        if timestamp is None:
-            timestamp = time.time()
-        self.finish_ts = timestamp
+        with self._lock:
+            if self.done:
+                return
+
+            self.success = success
+            self.done = True
+            if timestamp is None:
+                timestamp = time.time()
+            self.finish_ts = timestamp
+
         for cb in list(self._callbacks):
             cb()
             self._callbacks.remove(cb)
@@ -92,7 +96,7 @@ class StatusBase:
 
     def __and__(self, other):
         """
-        Returns a new 'composite' status object, OrStatus,
+        Returns a new 'composite' status object, AndStatus,
         with the same base API.
 
         It will finish when both `self` or `other` finish.
@@ -120,21 +124,23 @@ class AndStatus(StatusBase):
 
         def inner():
             with self._lock:
-                l_success = self.left.success  # alias for readability below
-                r_success = self.right.success
+                with self.left._lock:
+                    with self.right._lock:
+                        l_success = self.left.success
+                        r_success = self.right.success
 
-                # At least one is done.
-                # If it failed, do not wait for the second one.
-                if (not l_success) and (l_success is not None):
-                    self._finished(success=False)
-                elif (not r_success) and (r_success is not None):
-                    self._finished(success=False)
+                        # At least one is done.
+                        # If it failed, do not wait for the second one.
+                        if (not l_success) and (l_success is not None):
+                            self._finished(success=False)
+                        elif (not r_success) and (r_success is not None):
+                            self._finished(success=False)
 
-                elif l_success and r_success:
-                    # both are done, successfully
-                    success = l_success and r_success
-                    self._finished(success=success)
-                # else one is done, successfully, and we wait for #2
+                        elif l_success and r_success:
+                            # both are done, successfully
+                            success = l_success and r_success
+                            self._finished(success=success)
+                        # else one is done, successfully, and we wait for #2
 
         self.left.add_callback(inner)
         self.right.add_callback(inner)
