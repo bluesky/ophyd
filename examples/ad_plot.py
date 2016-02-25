@@ -1,39 +1,36 @@
-#!/usr/bin/env python2.7
 '''An example of using :class:`AreaDetector`'''
 
 import config
-from ophyd import (AreaDetector, ImagePlugin)
-
+from ophyd import (AreaDetector, ImagePlugin,
+                   Component as Cpt)
 import matplotlib.pyplot as plt
 
+logger = config.logger
 
-def test():
-    loggers = ('ophyd.areadetector',
-               )
+det1 = config.sim_areadetector[0]
+det1_prefix = det1['prefix']
+det1_cam = det1['cam']
 
-    config.setup_loggers(loggers)
-    logger = config.logger
+# Instantiate a plugin directly
+img1 = ImagePlugin(det1_prefix + 'image1:')
+img = img1.image
 
-    det1 = config.sim_areadetector[0]
-    det1_prefix = det1['prefix']
-    det1_cam = det1['cam']
+plt.figure()
+plt.imshow(img, cmap=plt.cm.gray)
+plt.title('Plugin instantiated directly - img1.image')
 
-    # Instantiate a plugin directly
-    img1 = ImagePlugin(det1_prefix, suffix='image1:')
-    img = img1.image
-    plt.imshow(img, cmap=plt.cm.gray)
+logger.debug('Image shape=%s dtype=%s', img.shape, img.dtype)
+logger.debug('Image pixels=%s dtype=%s', img1.array_pixels, img1.data_type.value)
 
-    logger.debug('Image shape=%s dtype=%s' % (img.shape, img.dtype))
-    logger.debug('Image pixels=%s dtype=%s' % (img1.array_pixels, img1.data_type.value))
-    plt.show()
-
-    # Or reference that plugin from the detector instance
-    ad = AreaDetector(det1_prefix, cam=det1_cam,
-                      images=['image1:', ])
-    img = ad.image1.image
-    plt.imshow(img, cmap=plt.cm.gray)
-    plt.show()
+# Or reference that plugin from the detector instance
+class MyDetector(AreaDetector):
+    image1 = Cpt(ImagePlugin, 'image1:')
 
 
-if __name__ == '__main__':
-    test()
+ad = MyDetector(det1_prefix)
+
+img = ad.image1.image
+plt.figure()
+plt.title('Plugin from AreaDetector - ad.image1.image')
+plt.imshow(img, cmap=plt.cm.gray)
+plt.show()

@@ -158,7 +158,7 @@ class ImagePlugin(PluginBase):
 
     @property
     def image(self):
-        array_size = self.array_size.value
+        array_size = self.array_size.get()
         if array_size == [0, 0, 0]:
             raise RuntimeError('Invalid image; ensure array_callbacks are on')
 
@@ -400,14 +400,6 @@ class OverlayPlugin(PluginBase):
     ----------
     prefix : str
         The areaDetector plugin prefix
-    count : int, optional
-        number of overlays (commonPlugin default is 8)
-    first_overlay : int, optional
-        number of first overlay [default: 1]
-
-    Attributes
-    ----------
-    overlays : list of Overlay
     '''
     _default_suffix = 'Over1:'
     _suffix_re = 'Over\d:'
@@ -419,7 +411,14 @@ class OverlayPlugin(PluginBase):
                              ('y', 'MaxSizeY_RBV'))),
                    doc='The maximum size in XY')
 
-    overlay_1 = C(Overlay, 'Overlay1:')
+    overlay_1 = C(Overlay, '1:')
+    overlay_2 = C(Overlay, '2:')
+    overlay_3 = C(Overlay, '3:')
+    overlay_4 = C(Overlay, '4:')
+    overlay_5 = C(Overlay, '5:')
+    overlay_6 = C(Overlay, '6:')
+    overlay_7 = C(Overlay, '7:')
+    overlay_8 = C(Overlay, '8:')
 
 
 class ROIPlugin(PluginBase):

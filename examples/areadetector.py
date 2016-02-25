@@ -1,131 +1,64 @@
-#!/usr/bin/env python2.7
 '''An example of using :class:`AreaDetector`'''
 
-
-import sys
 import time
 
 import config
 
-from ophyd import (get_areadetector_plugin,
-                            EpicsSignal, SimDetector)
-
-from ophyd import (ImagePlugin, ProcessPlugin,
-                            OverlayPlugin)
+from ophyd import SimDetector
+from ophyd import (ImagePlugin, TIFFPlugin, ProcessPlugin, OverlayPlugin,
+                   Component as Cpt)
 
 
-def dump_pvnames(obj, f=sys.stderr):
-    for attr, signal in sorted(obj.signals.items()):
-        if not isinstance(signal, EpicsSignal):
-            continue
-
-        if signal.pvname:
-            print(signal.pvname, file=f)
-
-        if signal.setpoint_pvname != signal.pvname and signal.setpoint_pvname:
-            print(signal.setpoint_pvname, file=f)
+logger = config.logger
 
 
-def test():
-    def log_values(obj):
-        port_name = obj.port_name.value
-
-        for attr, signal in sorted(obj.signals.items()):
-            name = "%s.%s" % (port_name, attr)
-            logger.debug('(epics) %s %s=%s' % (name, signal.pvname, signal.value))
-
-    loggers = ('ophyd.areadetector',
-               )
-
-    config.setup_loggers(loggers)
-    logger = config.logger
-
-    det1 = config.sim_areadetector[0]
-    det1_prefix = det1['prefix']
-    det1_cam = det1['cam']
-    for type_, suffix_list in config.ad_plugins.items():
-        if type_ == 'overlay':
-            continue
-
-        for suffix in suffix_list:
-            plugin = get_areadetector_plugin(det1_prefix, suffix)
-            # Note: the below will print out every EpicsSignal attribute for
-            # every plugin, image, etc. and will take a while:
-            if 0:
-                log_values(plugin)
-
-            if 0:
-                dump_pvnames(plugin)
-
-            if type_ != 'file':
-                break
-
-    det = SimDetector(det1_prefix, cam=det1_cam)
-
-    det.image_mode = 'Single'
-    det.image1.enable = 'Enable'
-
-    det.array_callbacks = 'Enable'
-
-    img = det.read()
-    print('Image: %s' % img)
-
-    det.tiff1.file_template = '%s%s_%3.3d.tif'
-    logger.debug('template value=%s' % det.tiff1.file_template.value)
-    logger.debug('full filename=%s' % det.tiff1.full_file_name.value)
-
-    log_values(det)
-    # det.acquire = 1
-    # logger.info('Acquired filename(s): {}'.format(det.tiff1.get_filenames()))
-
-    logger.debug('acquire = %d' % det.acquire.value)
-
-    image1_suffix = config.ad_plugins['image'][0]
-    img1 = ImagePlugin(det1_prefix, suffix=image1_suffix)
-    # or: img1 = det.image1
-    # log_all(img1)
-
-    logger.debug('nd_array_port = %s' % img1.nd_array_port.value)
-
-    # ensure EPICS_CA_MAX_ARRAY_BYTES set properly...
-    if 1:
-        img1.array_data.value
-
-    proc1_suffix = config.ad_plugins['proc'][0]
-    proc1 = ProcessPlugin(det1_prefix, suffix=proc1_suffix)
-    # or: proc1 = det.proc1
-
-    # Signal group allows setting value as a list:
-    logger.debug('fc=%s' % proc1.fc.value)
-    proc1.fc = [1, 2, 3, 4]
-    time.sleep(0.1)
-
-    logger.debug('fc=%s from %s' % (proc1.fc.value, proc1.fc.pvname))
-
-    # But they can be accessed individually as well
-    logger.debug('(fc1=%s, fc2=%s, fc3=%s, fc4=%s)' % (proc1._fc1.value,
-                                                       proc1._fc2.value,
-                                                       proc1._fc3.value,
-                                                       proc1._fc4.value))
-
-    # Reset them to the default values
-    proc1.fc = [1, -1, 0, 1]
-    time.sleep(0.1)
-    logger.debug('reset to fc=%s' % proc1.fc.value)
-
-    # if using IPython, try the following:
-    # In [0]: run areadetector.py
-    #
-    # In [1]: help(proc1)
-
-    overlay_suffix, over_start, over_count = config.ad_plugins['overlay'][0]
-    over1 = OverlayPlugin(det1_prefix, suffix=overlay_suffix,
-                          count=over_count, first_overlay=over_start)
-
-    logger.debug('Overlay1:1 blue=%s' % over1.overlays[0].blue)
-
-    return proc1, over1
+class MyDetector(SimDetector):
+    image1 = Cpt(ImagePlugin, 'image1:')
+    tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+    proc1 = Cpt(ProcessPlugin, 'Proc1:')
+    over1 = Cpt(OverlayPlugin, 'Over1:')
 
 
-if __name__ == '__main__':
-    proc1, over1 = test()
+det1_prefix = 'XF:31IDA-BI{Cam:Tbl}'
+det = MyDetector(det1_prefix)
+det.cam.image_mode.put('Single', wait=True)
+det.image1.enable.put('Enable', wait=True)
+det.cam.array_callbacks.put('Enable', wait=True)
+
+# ensure EPICS_CA_MAX_ARRAY_BYTES set properly...
+img = det.image1.image
+print('Image: {}'.format(img))
+
+det.tiff1.file_template.put('%s%s_%3.3d.tif', wait=True)
+logger.debug('template value=%s', det.tiff1.file_template.get())
+logger.debug('full filename=%s', det.tiff1.full_file_name.get())
+logger.debug('acquire = %d', det.cam.acquire.get())
+
+img1 = det.image1
+logger.debug('nd_array_port = %s', img1.nd_array_port.get())
+
+# Signal group allows setting value as a list:
+proc1 = det.proc1
+logger.debug('fc=%s', proc1.fc.get())
+FcTuple = proc1.fc.get_device_tuple()
+proc1.fc.put(FcTuple(fc1=1, fc2=2, fc3=3, fc4=4),
+             wait=True)
+time.sleep(0.1)
+
+logger.debug('fc=%s', proc1.fc.get())
+
+# But they can be accessed individually as well
+logger.debug('(fc1=%s, fc2=%s, fc3=%s, fc4=%s)', proc1.fc.fc1.get(),
+             proc1.fc.fc2.get(), proc1.fc.fc3.get(), proc1.fc.fc4.get())
+
+# Reset them to the default values
+proc1.fc.put(FcTuple(1, -1, 0, 1), wait=True)
+time.sleep(0.1)
+logger.debug('reset to fc=%s', proc1.fc.get())
+
+# if using IPython, try the following:
+# In [0]: run areadetector.py
+#
+# In [1]: help(proc1)
+
+logger.debug('Overlay1:1 blue=%s', det.over1.overlay_1.blue.get())
