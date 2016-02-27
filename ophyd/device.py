@@ -336,6 +336,8 @@ class BlueskyInterface:
         self.stage_sigs = OrderedDict()
 
         self._staged = Staged.no
+        self._defer_stage_to_parent = True
+        self._defer_unstage_to_parent = True
         self._original_vals = OrderedDict()
         super().__init__(*args, **kwargs)
 
@@ -360,11 +362,15 @@ class BlueskyInterface:
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
-            raise RuntimeError("Device is already staged. Unstage it first.")
+            raise RedundantStaging("Device is already staged. Unstage it first.")
         elif self._staged == Staged.partially:
-            raise RuntimeError("Device has been partially staged. Maybe the "
+            raise RedundantStaging("Device has been partially staged. Maybe the "
                                "most recent unstaging encountered an error "
                                "before finishing. Try unstaging again.")
+        if self.parent is not None and self._defer_stage_to_parent:
+            # Stage parent, which will then stage self.
+            return self.parent.stage()
+        self._defer_stage_to_parent = True  # reset for next time
         logger.debug("Staging %s", self.name)
         self._staged = Staged.partially
 
@@ -390,7 +396,12 @@ class BlueskyInterface:
             for attr in self._sub_devices:
                 device = getattr(self, attr)
                 if hasattr(device, 'stage'):
-                    device.stage()
+                    try:
+                        device._defer_stage_to_parent = False
+                        device.stage()
+                    except Exception:
+                        device._defer_stage_to_parent = True
+                        raise
                     devices_staged.append(device)
         except Exception:
             logger.debug("An exception was raised while staging %s or "
@@ -414,6 +425,10 @@ class BlueskyInterface:
         devices : list
             list including self and all child devices unstaged
         """
+        if self.parent is not None and self._defer_unstage_to_parent:
+            # Stage parent, which will then stage self.
+            return self.parent.unstage()
+        self._defer_unstage_to_parent = True  # reset for next time
         logger.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
         devices_unstaged = []
@@ -422,7 +437,12 @@ class BlueskyInterface:
         for attr in self._sub_devices[::-1]:
             device = getattr(self, attr)
             if hasattr(device, 'unstage'):
-                device.unstage()
+                try:
+                    device._defer_unstage_to_parent = False
+                    device.unstage()
+                except Exception:
+                    device._defer_unstage_to_parent = True
+                    raise
                 devices_unstaged.append(device)
 
         # Restore original values.
@@ -805,3 +825,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         yield ('read_attrs', self.read_attrs)
         yield ('configuration_attrs', self.configuration_attrs)
         yield ('monitor_attrs', self.monitor_attrs)
+
+
+class RedundantStaging(Exception):
+    pass

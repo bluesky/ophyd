@@ -18,7 +18,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 # Devices
 from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
-                     DynamicDeviceComponent)
+                     DynamicDeviceComponent, RedundantStaging)
 from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 
