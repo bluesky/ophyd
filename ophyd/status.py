@@ -51,6 +51,8 @@ class StatusBase:
                  poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
             self._finished(success=False)
+        except RuntimeError:
+            pass
         finally:
             self._timeout_thread = None
 
