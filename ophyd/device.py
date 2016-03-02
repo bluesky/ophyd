@@ -5,7 +5,7 @@ from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject
 from .status import DeviceStatus
-from .utils import (ExceptionBundle, set_and_wait)
+from .utils import (ExceptionBundle, set_and_wait, RedundantStaging)
 
 logger = logging.getLogger(__name__)
 
@@ -807,7 +807,3 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         yield ('read_attrs', self.read_attrs)
         yield ('configuration_attrs', self.configuration_attrs)
         yield ('monitor_attrs', self.monitor_attrs)
-
-
-class RedundantStaging(Exception):
-    pass
