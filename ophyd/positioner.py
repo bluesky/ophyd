@@ -1,13 +1,3 @@
-# vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.positioner` - Ophyd positioners
-===================================================
-
-.. module:: ophyd.control.positioner
-   :synopsis:
-'''
-
-
 import logging
 import time
 from functools import partial
@@ -46,12 +36,11 @@ class PositionerBase(OphydObject):
 
     @property
     def settle_time(self):
-        '''The amount of time to wait after moves to report status completion'''
+        '''Amount of time to wait after moves to report status completion'''
         return self._settle_time
 
     @settle_time.setter
     def settle_time(self, settle_time):
-        '''The amount of time to wait after moves to report status completion'''
         self._settle_time = float(settle_time)
 
     @property
