@@ -39,6 +39,8 @@ class EpicsMotor(Device, PositionerBase):
         The name of the device
     parent : instance or None
         The instance of the parent device, if applicable
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
     '''
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
@@ -164,6 +166,3 @@ class EpicsMotor(Device, PositionerBase):
 
         return {self.name: position,
                 'pv': self.user_readback.pvname}
-
-    def _repr_info(self):
-        yield from super()._repr_info()

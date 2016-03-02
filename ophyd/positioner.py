@@ -36,12 +36,23 @@ class PositionerBase(OphydObject):
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, *, name=None, parent=None, **kwargs):
+    def __init__(self, *, name=None, parent=None, settle_time=0.0, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
         self._started_moving = False
         self._moving = False
         self._position = None
+        self._settle_time = settle_time
+
+    @property
+    def settle_time(self):
+        '''The amount of time to wait after moves to report status completion'''
+        return self._settle_time
+
+    @settle_time.setter
+    def settle_time(self, settle_time):
+        '''The amount of time to wait after moves to report status completion'''
+        self._settle_time = float(settle_time)
 
     @property
     def egu(self):
@@ -160,6 +171,10 @@ class PositionerBase(OphydObject):
         """
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
+
+    def _repr_info(self):
+        yield from super()._repr_info()
+        yield ('settle_time', self._settle_time)
 
 
 class SoftPositioner(PositionerBase):

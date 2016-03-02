@@ -90,7 +90,8 @@ class PositionerTests(unittest.TestCase):
         self.assertEqual(pc.limits, p.limits)
 
     def test_epicsmotor(self):
-        m = EpicsMotor(self.sim_pv, name='epicsmotor')
+        m = EpicsMotor(self.sim_pv, name='epicsmotor',
+                       settle_time=0.1)
         print('epicsmotor', m)
         m.wait_for_connection()
 
@@ -125,6 +126,7 @@ class PositionerTests(unittest.TestCase):
         self.assertEqual(mc.prefix, m.prefix)
 
         res = m.move(0.2, wait=False)
+        assert res.settle_time == 0.1
 
         while not res.done:
             time.sleep(0.1)
@@ -138,6 +140,9 @@ class PositionerTests(unittest.TestCase):
 
         m.read()
         m.report
+
+        m.settle_time = 0.2
+        assert m.settle_time == 0.2
 
 
 from . import main
