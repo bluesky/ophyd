@@ -362,11 +362,13 @@ class BlueskyInterface:
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
-            raise RedundantStaging("Device is already staged. Unstage it first.")
+            raise RedundantStaging("Device {!r} is already staged. "
+                                   "Unstage it first.".format(self))
         elif self._staged == Staged.partially:
-            raise RedundantStaging("Device has been partially staged. Maybe the "
-                               "most recent unstaging encountered an error "
-                               "before finishing. Try unstaging again.")
+            raise RedundantStaging("Device {!r} has been partially staged. "
+                                   "Maybe the most recent unstaging "
+                                   "encountered an error before finishing. "
+                                   "Try unstaging again.".format(self))
         if self.parent is not None and self._defer_stage_to_parent:
             # Stage parent, which will then stage self.
             return self.parent.stage()
