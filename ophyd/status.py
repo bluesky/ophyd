@@ -1,6 +1,6 @@
 import time
 from threading import RLock
-from functools import wraps
+from functools import (wraps, partial)
 
 import threading
 import numpy as np
@@ -28,13 +28,18 @@ class StatusBase:
         The default timeout to use for a blocking wait, and the amount of time
         to wait to mark the operation as failed
     """
-    def __init__(self, *, timeout=None):
+    def __init__(self, *, timeout=None, settle_time=None):
         super().__init__()
         self._lock = RLock()
         self._cb = None
         self.done = False
         self.success = False
         self.timeout = None
+
+        if settle_time is None:
+            settle_time = 0.0
+
+        self.settle_time = float(settle_time)
 
         if timeout is not None:
             self.timeout = float(timeout)
@@ -47,7 +52,7 @@ class StatusBase:
     def _timeout_thread(self):
         '''Handle timeout'''
         try:
-            wait(self, timeout=self.timeout,
+            wait(self, timeout=self.timeout + self.settle_time,
                  poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
             self._finished(success=False)
@@ -56,17 +61,31 @@ class StatusBase:
         finally:
             self._timeout_thread = None
 
-    @_locked
+    def _settle_then_run_callbacks(self, success=True):
+        # wait until the settling time is done to mark completion
+        if self.settle_time > 0.0:
+            time.sleep(self.settle_time)
+
+        with self._lock:
+            self.success = success
+            self.done = True
+
+            if self._cb is not None:
+                self._cb()
+                self._cb = None
+
     def _finished(self, success=True, **kwargs):
         # args/kwargs are not really used, but are passed - because pyepics
         # gives in a bunch of kwargs that we don't care about
-
-        self.success = success
-        self.done = True
-
-        if self._cb is not None:
-            self._cb()
-            self._cb = None
+        if success and self.settle_time > 0:
+            # delay gratification until the settle time is up
+            self._settle_thread = threading.Thread(
+                    target=self._settle_then_run_callbacks, daemon=True,
+                    kwargs=dict(success=success),
+                    )
+            self._settle_thread.start()
+        else:
+            self._settle_then_run_callbacks(success=success)
 
     @property
     def finished_cb(self):
