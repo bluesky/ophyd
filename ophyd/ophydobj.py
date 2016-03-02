@@ -45,6 +45,15 @@ class OphydObject:
         '''
         return self._parent
 
+    @property
+    def root(self):
+        "Walk parents to find ultimate ancestor (parent's parent...)."
+        root = self
+        while True:
+            if root.parent is None:
+                return root
+            root = root.parent
+
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
 

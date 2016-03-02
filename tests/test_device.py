@@ -185,3 +185,12 @@ class DeviceTests(unittest.TestCase):
         self.assertEquals(device.ch.read_pv, device.prefix + ch_value)
         self.assertEquals(device.cpt.read_pv,
                           device.prefix + MyDevice.cpt.suffix)
+
+
+    def test_root(self):
+        class MyDevice(Device):
+            cpt = Component(FakeSignal, 'suffix')
+
+        d = MyDevice('')
+        assert d.cpt.root == d
+        assert d.root == d

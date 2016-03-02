@@ -35,6 +35,10 @@ class ExceptionBundle(RuntimeError, OpException):
         self.exceptions = exceptions
 
 
+class RedundantStaging(OpException):
+    pass
+
+
 # - Alarms
 
 # Severities

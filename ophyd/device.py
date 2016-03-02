@@ -5,7 +5,7 @@ from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject
 from .status import DeviceStatus
-from .utils import (ExceptionBundle, set_and_wait)
+from .utils import (ExceptionBundle, set_and_wait, RedundantStaging)
 
 logger = logging.getLogger(__name__)
 
@@ -360,11 +360,13 @@ class BlueskyInterface:
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
-            raise RuntimeError("Device is already staged. Unstage it first.")
+            raise RedundantStaging("Device {!r} is already staged. "
+                                   "Unstage it first.".format(self))
         elif self._staged == Staged.partially:
-            raise RuntimeError("Device has been partially staged. Maybe the "
-                               "most recent unstaging encountered an error "
-                               "before finishing. Try unstaging again.")
+            raise RedundantStaging("Device {!r} has been partially staged. "
+                                   "Maybe the most recent unstaging "
+                                   "encountered an error before finishing. "
+                                   "Try unstaging again.".format(self))
         logger.debug("Staging %s", self.name)
         self._staged = Staged.partially
 
