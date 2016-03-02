@@ -28,13 +28,18 @@ class StatusBase:
         The default timeout to use for a blocking wait, and the amount of time
         to wait to mark the operation as failed
     """
-    def __init__(self, *, timeout=None):
+    def __init__(self, *, timeout=None, timestamp=None):
         super().__init__()
         self._lock = RLock()
-        self._cb = None
+        self._callbacks = set()
         self.done = False
-        self.success = False
+        self.success = None
         self.timeout = None
+        self.finish_ts = None
+
+        if timestamp is None:
+            timestamp = time.time()
+        self.start_ts = timestamp
 
         if timeout is not None:
             self.timeout = float(timeout)
@@ -56,36 +61,92 @@ class StatusBase:
         finally:
             self._timeout_thread = None
 
-    @_locked
-    def _finished(self, success=True, **kwargs):
+    def _finished(self, *, success=True, timestamp=None, **kwargs):
         # args/kwargs are not really used, but are passed - because pyepics
         # gives in a bunch of kwargs that we don't care about
+        with self._lock:
+            if self.done:
+                return
 
-        self.success = success
-        self.done = True
+            self.success = success
+            self.done = True
+            if timestamp is None:
+                timestamp = time.time()
+            self.finish_ts = timestamp
 
-        if self._cb is not None:
-            self._cb()
-            self._cb = None
+        for cb in list(self._callbacks):
+            cb()
+            self._callbacks.remove(cb)
 
     @property
-    def finished_cb(self):
+    def callbacks(self):
         """
-        Callback to be run when the status is marked as finished
+        Callbacks to be run when the status is marked as finished
 
         The call back has no arguments
         """
-        return self._cb
+        return self._callbacks
 
-    @finished_cb.setter
     @_locked
-    def finished_cb(self, cb):
-        if self._cb is not None:
-            raise RuntimeError("Can not change the call back")
+    def add_callback(self, cb):
         if self.done:
             cb()
         else:
-            self._cb = cb
+            self._callbacks.add(cb)
+
+    def __and__(self, other):
+        """
+        Returns a new 'composite' status object, AndStatus,
+        with the same base API.
+
+        It will finish when both `self` or `other` finish.
+        """
+        return AndStatus(self, other)
+
+    @property
+    def elapsed(self):
+        if self.finish_ts is None:
+            return time.time() - self.start_ts
+        else:
+            return self.finish_ts - self.start_ts
+
+    def __repr__(self):
+        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
+               'success={1.success})'.format(self.__class__.__name__, self)
+
+
+class AndStatus(StatusBase):
+    "a Status that has composes two other Status objects using logical and"
+    def __init__(self, left, right, *, timestamp=None, timeout=None):
+        super().__init__(timestamp=timestamp, timeout=timeout)
+        self.left = left
+        self.right = right
+
+        def inner():
+            with self._lock:
+                with self.left._lock:
+                    with self.right._lock:
+                        l_success = self.left.success
+                        r_success = self.right.success
+
+                        # At least one is done.
+                        # If it failed, do not wait for the second one.
+                        if (not l_success) and (l_success is not None):
+                            self._finished(success=False)
+                        elif (not r_success) and (r_success is not None):
+                            self._finished(success=False)
+
+                        elif l_success and r_success:
+                            # both are done, successfully
+                            success = l_success and r_success
+                            self._finished(success=success)
+                        # else one is done, successfully, and we wait for #2
+
+        self.left.add_callback(inner)
+        self.right.add_callback(inner)
+
+    def __repr__(self):
+        return "({self.left!r} & {self.right!r})".format(self=self)
 
 
 class MoveStatus(StatusBase):
@@ -121,19 +182,13 @@ class MoveStatus(StatusBase):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, *, done=False, start_ts=None,
-                 timeout=30.0):
-        # call the base class
-        super().__init__(timeout=timeout)
+    def __init__(self, positioner, target, *, done=False, timestamp=None,
+                 timeout=None):
+        super().__init__(timestamp=timestamp, timeout=timeout)
 
         self.done = done
-        if start_ts is None:
-            start_ts = time.time()
-
         self.pos = positioner
         self.target = target
-        self.start_ts = start_ts
-        self.finish_ts = None
         self.finish_pos = None
 
     @property
@@ -149,34 +204,17 @@ class MoveStatus(StatusBase):
             return None
 
     @_locked
-    def _finished(self, success=True, timestamp=None, **kwargs):
-        if timestamp is None:
-            timestamp = time.time()
-        self.finish_ts = timestamp
+    def _finished(self, *, success=True, timestamp=None, **kwargs):
         self.finish_pos = self.pos.position
         # run super last so that all the state is ready before the
         # callback runs
-        super()._finished(success=success)
-
-    @property
-    def elapsed(self):
-        if self.finish_ts is None:
-            return time.time() - self.start_ts
-        else:
-            return self.finish_ts - self.start_ts
-
-    def __str__(self):
-        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
-               'success={1.success})'.format(self.__class__.__name__,
-                                             self)
-
-    __repr__ = __str__
+        super()._finished(success=success, timestamp=timestsamp)
 
 
 class DeviceStatus(StatusBase):
-    '''Device status'''
-    def __init__(self, device, *, timeout=None):
-        super().__init__(timeout=timeout)
+    "A status object that stashes a reference to a device"
+    def __init__(self, device, *, timeout=None, timestamp=None):
+        super().__init__(timeout=timeout, timestamp=timestamp)
         self.device = device
 
 

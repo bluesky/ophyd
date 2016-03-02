@@ -20,10 +20,13 @@ class StatusTests(unittest.TestCase):
     def test_callback(self):
         st = StatusBase()
         cb = Mock()
+        cb2 = Mock()
 
-        st.finished_cb = cb
-        self.assertIs(st.finished_cb, cb)
-        self.assertRaises(RuntimeError, setattr, st, 'finished_cb', None)
+        st.add_callback(cb)
+        _cb, = st.callbacks
+        self.assertIs(_cb, cb)
+        st.add_callback(cb2)
+        self.assertIn(cb2, st.callbacks)
 
         st._finished()
         cb.assert_called_once_with()
