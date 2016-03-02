@@ -372,7 +372,6 @@ class BlueskyInterface:
         if self.parent is not None and self._defer_stage_to_parent:
             # Stage parent, which will then stage self.
             return self.parent.stage()
-        self._defer_stage_to_parent = True  # reset for next time
         logger.debug("Staging %s", self.name)
         self._staged = Staged.partially
 
@@ -401,9 +400,8 @@ class BlueskyInterface:
                     try:
                         device._defer_stage_to_parent = False
                         device.stage()
-                    except Exception:
+                    finally:
                         device._defer_stage_to_parent = True
-                        raise
                     devices_staged.append(device)
         except Exception:
             logger.debug("An exception was raised while staging %s or "
@@ -430,7 +428,6 @@ class BlueskyInterface:
         if self.parent is not None and self._defer_unstage_to_parent:
             # Stage parent, which will then stage self.
             return self.parent.unstage()
-        self._defer_unstage_to_parent = True  # reset for next time
         logger.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
         devices_unstaged = []
@@ -442,9 +439,8 @@ class BlueskyInterface:
                 try:
                     device._defer_unstage_to_parent = False
                     device.unstage()
-                except Exception:
+                finally:
                     device._defer_unstage_to_parent = True
-                    raise
                 devices_unstaged.append(device)
 
         # Restore original values.
