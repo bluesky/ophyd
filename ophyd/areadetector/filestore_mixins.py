@@ -211,7 +211,7 @@ class FileStoreTIFF(FileStorePluginBase):
         self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
 
 
-class FileStoreTIFFSquashing(FileStoreBase):
+class FileStoreTIFFSquashing(FileStorePluginBase):
     def __init__(self, *args, images_per_set_name='images_per_set',
                  number_of_sets_name="number_of_sets",
                  cam_name='cam', proc_name='proc1', **kwargs):
