@@ -369,7 +369,10 @@ class EpicsSignalBase(Signal):
         desc['dtype'] = data_type(val)
         desc['shape'] = data_shape(val)
 
-        desc['precision'] = self.precision
+        try:
+            desc['precision'] = int(self.precision)
+        except (ValueError, TypeError):
+            pass
         desc['units'] = self._read_pv.units
 
         if hasattr(self, '_write_pv'):
