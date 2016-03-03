@@ -1,6 +1,6 @@
 import time
 from threading import RLock
-from functools import wraps
+from functools import (wraps, partial)
 
 import threading
 import numpy as np
@@ -27,14 +27,22 @@ class StatusBase:
     timeout : float, optional
         The default timeout to use for a blocking wait, and the amount of time
         to wait to mark the operation as failed
+    settle_time : float, optional
+        The amount of time to wait between the caller specifying that the
+        status has completed to running callbacks
     """
-    def __init__(self, *, timeout=None):
+    def __init__(self, *, timeout=None, settle_time=None):
         super().__init__()
         self._lock = RLock()
         self._cb = None
         self.done = False
         self.success = False
         self.timeout = None
+
+        if settle_time is None:
+            settle_time = 0.0
+
+        self.settle_time = float(settle_time)
 
         if timeout is not None:
             self.timeout = float(timeout)
@@ -47,7 +55,7 @@ class StatusBase:
     def _timeout_thread(self):
         '''Handle timeout'''
         try:
-            wait(self, timeout=self.timeout,
+            wait(self, timeout=self.timeout + self.settle_time,
                  poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
             self._finished(success=False)
@@ -56,17 +64,36 @@ class StatusBase:
         finally:
             self._timeout_thread = None
 
-    @_locked
+    def _settled(self):
+        '''Hook for when status has completed and settled'''
+        pass
+
+    def _settle_then_run_callbacks(self, success=True):
+        # wait until the settling time is done to mark completion
+        if self.settle_time > 0.0:
+            time.sleep(self.settle_time)
+
+        with self._lock:
+            self.success = success
+            self.done = True
+            self._settled()
+
+            if self._cb is not None:
+                self._cb()
+                self._cb = None
+
     def _finished(self, success=True, **kwargs):
         # args/kwargs are not really used, but are passed - because pyepics
         # gives in a bunch of kwargs that we don't care about
-
-        self.success = success
-        self.done = True
-
-        if self._cb is not None:
-            self._cb()
-            self._cb = None
+        if success and self.settle_time > 0:
+            # delay gratification until the settle time is up
+            self._settle_thread = threading.Thread(
+                    target=self._settle_then_run_callbacks, daemon=True,
+                    kwargs=dict(success=success),
+                    )
+            self._settle_thread.start()
+        else:
+            self._settle_then_run_callbacks(success=success)
 
     @property
     def finished_cb(self):
@@ -103,6 +130,9 @@ class MoveStatus(StatusBase):
     timeout : float, optional
         The default timeout to use for a blocking wait, and the amount of time
         to wait to mark the motion as failed
+    settle_time : float, optional
+        The amount of time to wait between motion completion and running
+        callbacks
 
     Attributes
     ----------
@@ -122,9 +152,9 @@ class MoveStatus(StatusBase):
     '''
 
     def __init__(self, positioner, target, *, done=False, start_ts=None,
-                 timeout=30.0):
+                 timeout=30.0, settle_time=None):
         # call the base class
-        super().__init__(timeout=timeout)
+        super().__init__(timeout=timeout, settle_time=settle_time)
 
         self.done = done
         if start_ts is None:
@@ -138,6 +168,10 @@ class MoveStatus(StatusBase):
 
     @property
     def error(self):
+        '''Error between target position and current* position
+
+        * If motion is already complete, the final position is used
+        '''
         if self.finish_pos is not None:
             finish_pos = self.finish_pos
         else:
@@ -148,27 +182,25 @@ class MoveStatus(StatusBase):
         except Exception:
             return None
 
-    @_locked
-    def _finished(self, success=True, timestamp=None, **kwargs):
-        if timestamp is None:
-            timestamp = time.time()
-        self.finish_ts = timestamp
+    def _settled(self):
+        '''Hook for when motion has completed and settled'''
+        super()._settled()
+        self.finish_ts = time.time()
         self.finish_pos = self.pos.position
-        # run super last so that all the state is ready before the
-        # callback runs
-        super()._finished(success=success)
 
     @property
     def elapsed(self):
+        '''Elapsed time'''
         if self.finish_ts is None:
             return time.time() - self.start_ts
         else:
             return self.finish_ts - self.start_ts
 
     def __str__(self):
-        return '{0}(done={1.done}, elapsed={1.elapsed:.1f}, ' \
-               'success={1.success})'.format(self.__class__.__name__,
-                                             self)
+        return ('{0}(done={1.done}, elapsed={1.elapsed:.1f}, '
+                'success={1.success}, settle_time={1.settle_time})'
+                ''.format(self.__class__.__name__, self)
+                )
 
     __repr__ = __str__
 

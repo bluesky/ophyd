@@ -44,6 +44,8 @@ class PseudoSingle(SoftPositioner):
     source : str, optional
         Metadata indicating the source of this positioner's position. Defaults
         to 'computed'
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
     '''
 
     def __init__(self, prefix=None, *, limits=None, egu='', parent=None,

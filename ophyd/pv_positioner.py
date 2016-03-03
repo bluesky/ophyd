@@ -34,6 +34,8 @@ class PVPositioner(Device, PositionerBase):
         The device name
     egu : str, optional
         The engineering units (EGU) for the position
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
 
     Attributes
     ----------

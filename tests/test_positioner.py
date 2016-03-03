@@ -6,10 +6,7 @@ import unittest
 from copy import copy
 from unittest.mock import Mock
 
-import epics
-from ophyd import (SoftPositioner, PVPositioner, EpicsMotor)
-from ophyd import (EpicsSignal, EpicsSignalRO)
-from ophyd import (Component as C)
+from ophyd import (SoftPositioner, EpicsMotor)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +21,13 @@ def tearDownModule():
 
 class PositionerTests(unittest.TestCase):
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
+
+    def test_positioner_settle(self):
+        p = SoftPositioner(name='test', egu='egu', limits=(-10, 10),
+                           settle_time=0.1)
+        self.assertEqual(p.settle_time, 0.1)
+        st = p.move(0.0, wait=False)
+        self.assertEqual(st.settle_time, 0.1)
 
     def test_positioner(self):
         p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
@@ -90,7 +94,7 @@ class PositionerTests(unittest.TestCase):
         self.assertEqual(pc.limits, p.limits)
 
     def test_epicsmotor(self):
-        m = EpicsMotor(self.sim_pv, name='epicsmotor')
+        m = EpicsMotor(self.sim_pv, name='epicsmotor', settle_time=0.1)
         print('epicsmotor', m)
         m.wait_for_connection()
 
@@ -125,6 +129,7 @@ class PositionerTests(unittest.TestCase):
         self.assertEqual(mc.prefix, m.prefix)
 
         res = m.move(0.2, wait=False)
+        self.assertEqual(res.settle_time, 0.1)
 
         while not res.done:
             time.sleep(0.1)
@@ -138,6 +143,9 @@ class PositionerTests(unittest.TestCase):
 
         m.read()
         m.report
+
+        m.settle_time = 0.2
+        self.assertEqual(m.settle_time, 0.2)
 
 
 from . import main
