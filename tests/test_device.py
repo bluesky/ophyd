@@ -194,3 +194,19 @@ class DeviceTests(unittest.TestCase):
         d = MyDevice('')
         assert d.cpt.root == d
         assert d.root == d
+
+    def test_contains(self):
+        class MyDevice(Device):
+            cpt = Component(FakeSignal, 'suffix')
+
+        class AnotherDevice(Device):
+            cpt = Component(MyDevice, '')
+
+        d = MyDevice('')
+        assert d.cpt in d
+        assert not d in d.cpt
+        ad = AnotherDevice('')
+        assert ad.cpt in ad
+        assert ad.cpt.cpt in ad
+        assert not ad in ad.cpt.cpt
+        assert not ad in ad.cpt

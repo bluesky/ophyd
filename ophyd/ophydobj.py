@@ -54,6 +54,19 @@ class OphydObject:
                 return root
             root = root.parent
 
+    def __contains__(self, other):
+        "Check whether other is a sub-device or sub-signal."
+        # Walk other's ancestry, looking for self.
+        ancestor = other.parent
+        if ancestor is None:
+            return False
+        while True:
+            if ancestor is self:
+                return True
+            if ancestor is other.root:
+                return False
+            ancestor = ancestor.parent
+
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
 
