@@ -67,6 +67,32 @@ class OphydObject:
                 return False
             ancestor = ancestor.parent
 
+    def common_ancestor(self, other):
+        """Find first common ancestor Device.
+
+        Parameters
+        ----------
+        other : OphydObj
+        
+        Returns
+        -------
+        ancestor : OphydObj
+        """
+        other_ancestry = []
+        ancestor = other
+        while True:
+            other_ancestry.append(ancestor)
+            ancestor = ancestor.parent
+            if ancestor is None:
+                break
+        ancestor = self
+        while True:
+            if ancestor is None:
+                return None
+            if ancestor in other_ancestry:
+                return ancestor
+            ancestor = ancestor.parent
+
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
 
