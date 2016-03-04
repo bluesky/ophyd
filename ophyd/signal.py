@@ -37,6 +37,12 @@ class Signal(OphydObject):
 
         self._timestamp = timestamp
 
+    def __contains__(self, other):
+        """
+        Signals are the leaves of the Device tree. This is always False.
+        """
+        return False
+
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
         # NOTE: this is a no-op that exists here for bluesky purposes
