@@ -449,15 +449,15 @@ class ROIPlugin(PluginBase):
     data_type_out = C(SignalWithRBV, 'DataTypeOut')
     enable_scale = C(SignalWithRBV, 'EnableScale')
 
-    enable = DDC(ad_group(SignalWithRBV,
-                          (('x', 'EnableX'),
-                           ('y', 'EnableY'),
-                           ('z', 'EnableZ'))),
-                 doc=('Enable ROI calculations in the X, Y, Z dimensions. '
-                      'If not enabled then the start, size, binning, and '
-                      'reverse operations are disabled in the X/Y/Z '
-                      'dimension, and the values from the input array '
-                      'are used.'))
+    roi_enable = DDC(ad_group(SignalWithRBV,
+                              (('x', 'EnableX'),
+                               ('y', 'EnableY'),
+                               ('z', 'EnableZ'))),
+                     doc=('Enable ROI calculations in the X, Y, Z dimensions. '
+                          'If not enabled then the start, size, binning, and '
+                          'reverse operations are disabled in the X/Y/Z '
+                          'dimension, and the values from the input array '
+                          'are used.'))
 
     max_xy = DDC(ad_group(EpicsSignal,
                           (('x', 'MaxX'),
