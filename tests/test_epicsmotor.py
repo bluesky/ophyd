@@ -1,15 +1,13 @@
-
-
-
 import time
 import logging
 import pytest
 from copy import copy
+from numpy.testing import assert_approx_equal
 
-import epics
 from ophyd import (EpicsMotor, Signal, EpicsSignalRO, Component as C)
 
 logger = logging.getLogger(__name__)
+
 
 @pytest.fixture(scope='function')
 def motor():
@@ -22,26 +20,26 @@ def motor():
 
 
 class TestEpicsMotor(EpicsMotor):
-    motor_at_high_limit_switch = C(Signal, value=0)
-    motor_at_low_limit_switch = C(Signal, value=0)
-    motor_direction_of_travel = C(Signal, value=0)
-    motor_high_limit_value = C(EpicsSignalRO, '.HLM')
-    motor_low_limit_value = C(EpicsSignalRO, '.LLM')
+    high_limit_switch = C(Signal, value=0)
+    low_limit_switch = C(Signal, value=0)
+    direction_of_travel = C(Signal, value=0)
+    high_limit_value = C(EpicsSignalRO, '.HLM')
+    low_limit_value = C(EpicsSignalRO, '.LLM')
 
-def almostEqual(x, y, places=7):
-    assert round(x-y, places) == 0
 
 def test_connected(motor):
-    assert(motor.connected)
+    assert motor.connected
 
 
 def test_limits(motor):
     device_limits = (motor.motor_low_limit_value.get(), motor.motor_high_limit_value.get())
-    assert(motor.limits == device_limits)
+    assert motor.limits == device_limits
+
 
 def test_checkvalue(motor):
     motor.check_value(0)
-    
+
+
 def test_move(motor):
     m = motor
  
@@ -49,24 +47,25 @@ def test_move(motor):
     logger.debug('Move to 0.0')
     m.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
-    almostEqual(m.position, 0.0)
+    assert_approx_equal(m.position, 0.0)
 
     assert m.settle_time == 0.1    
 
     logger.debug('Move to 0.1')
     m.move(0.1, timeout=5, wait=True)
     time.sleep(0.1)
-    almostEqual(m.position, 0.1)
+    assert_approx_equal(m.position, 0.1)
 
     logger.debug('Move to 0.1, again')
     m.move(0.1, timeout=5, wait=True)
     time.sleep(0.1)
-    almostEqual(m.position, 0.1)
+    assert_approx_equal(m.position, 0.1)
 
     logger.debug('Move to 0.0')
     m.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
-    almostEqual(m.position, 0.0)
+    assert_approx_equal(m.position, 0.0)
+
 
 def test_copy(motor):
     m = motor
@@ -84,14 +83,15 @@ def test_copy(motor):
 
     time.sleep(0.1)
     assert(res.settle_time == 0.1)
-    almostEqual(m.position, 0.2)
+    assert_approx_equal(m.position, 0.2)
     
     m.settle_time = 0.2
     assert(m.settle_time == 0.2)
 
     assert(res.done)
-    almostEqual(res.error, 0)
+    assert_approx_equal(res.error, 0)
     assert(res.elapsed > 0)
+
 
 def test_read(motor):
     m = motor
@@ -101,6 +101,7 @@ def test_read(motor):
 def test_report(motor):
     m = motor
     m.report
+
 
 def test_calibration(motor):
     m = motor
@@ -115,35 +116,37 @@ def test_calibration(motor):
     assert(m.offset == expected_offset)
     m.set_current_position(old_position)
 
+
 def test_high_limit_switch(motor):
     m = motor
 
     # limit switch status
-    m.motor_direction_of_travel.put(1)
+    m.direction_of_travel.put(1)
     res = m.move(1, wait=False)
-    m.motor_at_high_limit_switch.put(1)
+    m.high_limit_switch.put(1)
 
     while not res.done:
         time.sleep(0.1)
 
-    assert(not res.success)
-    assert(m.at_high_limit_switch)
+    assert not res.success
+    assert m.high_limit_switch.get() == 1
 
-    m.motor_at_high_limit_switch.put(0)
+    m.high_limit_switch.put(0)
 
 
 def test_low_limit_switch(motor):
     m = motor
-    m.motor_direction_of_travel.put(0)
+    m.direction_of_travel.put(0)
     res = m.move(0, wait=False)
-    m.motor_at_low_limit_switch.put(1)
+    m.low_limit_switch.put(1)
 
     while not res.done:
         time.sleep(0.1)
 
-    assert(not res.success)
-    assert(m.at_low_limit_switch)
-    m.motor_at_low_limit_switch.put(0)
+    assert not res.success
+    assert m.low_limit_switch.get() == 1
+    m.low_limit_switch.put(0)
+
 
 def test_low_limit_switch_while_moving_out(motor):
     m = motor
@@ -151,16 +154,17 @@ def test_low_limit_switch_while_moving_out(motor):
     # If the Motor is at the Low Limit Switch
     # all the movements in the opposite
     # direction must be success=True
-    m.motor_direction_of_travel.put(1)
-    m.motor_at_low_limit_switch.put(1)
+    m.direction_of_travel.put(1)
+    m.low_limit_switch.put(1)
     res = m.move(1, wait=False)
 
     while not res.done:
         time.sleep(0.1)
 
-    assert(m.at_low_limit_switch)
-    assert(res.success)
-    m.motor_at_low_limit_switch.put(0)
+    assert m.low_limit_switch.get() == 1
+    assert res.success
+    m.at_low_limit_switch.put(0)
+
 
 def test_high_limit_switch_while_moving_out(motor):
     m = motor
@@ -168,16 +172,17 @@ def test_high_limit_switch_while_moving_out(motor):
     # If the Motor is at the High Limit Switch
     # all the movements in the opposite
     # direction must be success=True
-    m.motor_direction_of_travel.put(0)
-    m.motor_at_high_limit_switch.put(1)
+    m.direction_of_travel.put(0)
+    m.high_limit_switch.put(1)
     res = m.move(0, wait=False)
 
     while not res.done:
         time.sleep(0.1)
 
-    assert(m.at_high_limit_switch)
-    assert(res.success)
-    m.motor_at_high_limit_switch.put(0)
+    assert m.high_limit_switch.get() == 1
+    assert res.success
+    m.high_limit_switch.put(0)
+
 
 def test_homing_forward(motor):
     m = motor
@@ -190,7 +195,7 @@ def test_homing_forward(motor):
         time.sleep(0.1)
 
     # MotorSim is unable to execute homing
-    assert(not res.success)
+    assert not res.success
     m.stop()
 
 
@@ -203,8 +208,9 @@ def test_homing_reverse(motor):
     while not res.done:
         time.sleep(0.1)
 
-    assert(not res.success)
+    assert not res.success
     m.stop()
+
 
 def test_homing_invalid(motor):
     with pytest.raises(ValueError):
@@ -216,6 +222,6 @@ def test_homing_invalid(motor):
         while not res.done:
             time.sleep(0.1)
 
-        assert(not res.success)
+        assert not res.success
         m.stop()
 

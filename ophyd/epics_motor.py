@@ -55,15 +55,15 @@ class EpicsMotor(Device, PositionerBase):
     motor_is_moving = Cpt(EpicsSignalRO, '.MOVN')
     motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     motor_stop = Cpt(EpicsSignal, '.STOP')
-    motor_offset_freeze_switch = Cpt(EpicsSignal, '.FOFF')
-    motor_velocity = Cpt(EpicsSignal, '.VELO')
-    motor_acceleration = Cpt(EpicsSignal, '.ACCL')
-    motor_set_use_switch = Cpt(EpicsSignal, '.SET')
-    motor_at_high_limit_switch = Cpt(EpicsSignal, '.HLS')
-    motor_at_low_limit_switch = Cpt(EpicsSignal, '.LLS')
-    motor_home_forward = Cpt(EpicsSignal, '.HOMF')
-    motor_home_reverse = Cpt(EpicsSignal, '.HOMR')
-    motor_direction_of_travel = Cpt(EpicsSignal, '.TDIR')
+    offset_freeze_switch = Cpt(EpicsSignal, '.FOFF')
+    velocity = Cpt(EpicsSignal, '.VELO')
+    acceleration = Cpt(EpicsSignal, '.ACCL')
+    set_use_switch = Cpt(EpicsSignal, '.SET')
+    high_limit_switch = Cpt(EpicsSignal, '.HLS')
+    low_limit_switch = Cpt(EpicsSignal, '.LLS')
+    home_forward = Cpt(EpicsSignal, '.HOMF')
+    home_reverse = Cpt(EpicsSignal, '.HOMR')
+    direction_of_travel = Cpt(EpicsSignal, '.TDIR')
 
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
@@ -146,50 +146,6 @@ class EpicsMotor(Device, PositionerBase):
         '''
         return self._position
 
-    @property
-    @raise_if_disconnected
-    def offset(self):
-        '''The current user offset value of the motor in its engineering units
-
-        Returns
-        -------
-        offset : float
-        '''
-        return self.user_offset.get()
-
-    @property
-    @raise_if_disconnected
-    def offset_frozen(self):
-        '''Whether or not the motor offset is frozen
-
-        Returns
-        -------
-        frozen : bool
-        '''
-        return bool(self.motor_offset_freeze_switch.get())
-
-    @property
-    @raise_if_disconnected
-    def at_high_limit_switch(self):
-        '''Whether or not the hardware high limit switch is active
-
-        Returns
-        -------
-        active : bool
-        '''
-        return bool(self.motor_at_high_limit_switch.get())
-
-    @property
-    @raise_if_disconnected
-    def at_low_limit_switch(self):
-        '''Whether or not the hardware low limit switch is active
-
-        Returns
-        -------
-        active : bool
-        '''
-        return bool(self.motor_at_low_limit_switch.get())
-
     @raise_if_disconnected
     def set_current_position(self, pos):
         '''Configure the motor user position to the given value
@@ -262,11 +218,11 @@ class EpicsMotor(Device, PositionerBase):
             success = True
             # Check if we are moving towards the low limit switch
             if self.motor_direction_of_travel.get() == 0:
-                if self.at_low_limit_switch:
+                if self.low_limit_switch.get() == 1:
                     success = False
             # No, we are going to the high limit switch
             else:
-                if self.at_high_limit_switch:
+                if self.high_limit_switch.get() == 1:
                     success = False
 
             self._done_moving(success=success, timestamp=timestamp, value=value)

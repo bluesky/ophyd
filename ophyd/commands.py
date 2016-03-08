@@ -236,7 +236,7 @@ def mov(positioner, position):
                 flag += 1
 
     print(tc.Normal + '\n')
-    for err in [s for s in stat if s.success == False]:
+    for err in [s for s in stat if not s.success]:
         device = err.pos
         reason = "Unknown"
         if isinstance(device, EpicsMotor):           
