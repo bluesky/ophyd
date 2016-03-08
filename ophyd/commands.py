@@ -236,6 +236,16 @@ def mov(positioner, position):
                 flag += 1
 
     print(tc.Normal + '\n')
+    for err in [s for s in stat if not s.success]:
+        device = err.pos
+        reason = "Unknown"
+        if isinstance(device, EpicsMotor):           
+            if device.at_high_limit_switch:
+                reason = "Motor reached the high limit switch."
+            elif device.at_low_limit_switch:
+                reason = "Motor reached the low limit switch."
+
+        print('Warning: {} failed to reach the target position. Reason: {}'.format(device.name, reason))
 
 
 @ensure(PositionerBase, None)
