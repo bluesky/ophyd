@@ -32,7 +32,7 @@ def test_connected(motor):
 
 
 def test_limits(motor):
-    device_limits = (motor.motor_low_limit_value.get(), motor.motor_high_limit_value.get())
+    device_limits = (motor.low_limit_value.get(), motor.high_limit_value.get())
     assert motor.limits == device_limits
 
 
@@ -74,7 +74,7 @@ def test_copy(motor):
     str(m)
 
     mc = copy(m)
-    assert(mc.prefix == m.prefix)
+    assert mc.prefix == m.prefix
 
     res = m.move(0.2, wait=False)
 
@@ -82,15 +82,15 @@ def test_copy(motor):
         time.sleep(0.1)
 
     time.sleep(0.1)
-    assert(res.settle_time == 0.1)
+    assert res.settle_time == 0.1
     assert_approx_equal(m.position, 0.2)
     
     m.settle_time = 0.2
-    assert(m.settle_time == 0.2)
+    assert m.settle_time == 0.2
 
-    assert(res.done)
+    assert res.done
     assert_approx_equal(res.error, 0)
-    assert(res.elapsed > 0)
+    assert res.elapsed > 0
 
 
 def test_read(motor):
@@ -111,9 +111,9 @@ def test_calibration(motor):
     old_position = m.position
     expected_offset = 10-m.position
     m.set_current_position(10)
-    assert(not m.offset_frozen)
-    assert(m.position == 10)
-    assert(m.offset == expected_offset)
+    assert m.offset_freeze_switch.get() == 0
+    assert m.position == 10
+    assert m.user_offset.get() == expected_offset
     m.set_current_position(old_position)
 
 

@@ -156,9 +156,9 @@ class EpicsMotor(Device, PositionerBase):
            Position to set.
 
         '''
-        self.motor_set_use_switch.put(1, wait=True)
+        self.set_use_switch.put(1, wait=True)
         self.user_setpoint.put(pos, wait=True)
-        self.motor_set_use_switch.put(0, wait=True)
+        self.set_use_switch.put(0, wait=True)
 
     @raise_if_disconnected
     def home(self, direction, wait=True, **kwargs):
@@ -217,7 +217,7 @@ class EpicsMotor(Device, PositionerBase):
         if was_moving and not self._moving:
             success = True
             # Check if we are moving towards the low limit switch
-            if self.motor_direction_of_travel.get() == 0:
+            if self.direction_of_travel.get() == 0:
                 if self.low_limit_switch.get() == 1:
                     success = False
             # No, we are going to the high limit switch
