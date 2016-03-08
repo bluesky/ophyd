@@ -64,7 +64,7 @@ class Signal(OphydObject):
         yield ('value', self.value)
         yield ('timestamp', self.timestamp)
 
-    def get(self):
+    def get(self, **kwargs):
         '''The readback value'''
         return self._readback
 
