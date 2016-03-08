@@ -176,9 +176,9 @@ class EpicsMotor(Device, PositionerBase):
         status = super().move(position, **kwargs)
 
         if direction == HomeEnum.forward:
-            self.motor_home_forward.put(1, wait=False)
+            self.home_forward.put(1, wait=False)
         else:
-            self.motor_home_reverse.put(1, wait=False)
+            self.home_reverse.put(1, wait=False)
 
         try:
             if wait:

@@ -163,7 +163,7 @@ def test_low_limit_switch_while_moving_out(motor):
 
     assert m.low_limit_switch.get() == 1
     assert res.success
-    m.at_low_limit_switch.put(0)
+    m.low_limit_switch.put(0)
 
 
 def test_high_limit_switch_while_moving_out(motor):
