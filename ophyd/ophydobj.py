@@ -54,6 +54,45 @@ class OphydObject:
                 return root
             root = root.parent
 
+    def __contains__(self, other):
+        "Check whether other is a sub-device or sub-signal."
+        # Walk other's ancestry, looking for self.
+        ancestor = other.parent
+        if ancestor is None:
+            return False
+        while True:
+            if ancestor is self:
+                return True
+            if ancestor is other.root:
+                return False
+            ancestor = ancestor.parent
+
+    def common_ancestor(self, other):
+        """Find first common ancestor Device.
+
+        Parameters
+        ----------
+        other : OphydObj
+        
+        Returns
+        -------
+        ancestor : OphydObj
+        """
+        other_ancestry = []
+        ancestor = other
+        while True:
+            other_ancestry.append(ancestor)
+            ancestor = ancestor.parent
+            if ancestor is None:
+                break
+        ancestor = self
+        while True:
+            if ancestor is None:
+                return None
+            if ancestor in other_ancestry:
+                return ancestor
+            ancestor = ancestor.parent
+
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
 
