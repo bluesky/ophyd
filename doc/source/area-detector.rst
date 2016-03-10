@@ -43,7 +43,6 @@ Below is a list of all model-specific classes supported by ophyd.
 * AdscDetector
 * Andor3Detector
 * AndorDetector
-* AreaDetector
 * BrukerDetector
 * FirewireLinDetector
 * FirewireWinDetector

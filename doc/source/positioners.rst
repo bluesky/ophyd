@@ -4,6 +4,9 @@ Positioners
 Positioners other than ``EpicsMotor`` and ``SoftPositioner`` are not
 "ready-to-use". They require some customization.
 
+PVPositioner
+------------
+
 For example, this code defines a CS700 temperature controller. A temperature
 controller is a kind of positioner, from ophyd's point of view, where the
 "position" is the temperature.
@@ -30,6 +33,11 @@ controller is a kind of positioner, from ophyd's point of view, where the
     # flips to 0.
     cs700.done_value = 0
 
+
+.. autoclass:: ophyd.pv_positioner.PVPositioner
+
+PseudoPositioner
+----------------
 
 An ophyd ``PseudoPositioner`` relates one or more pseudo (virtual) axes to one
 or more real (physical) axes via forward and inverse calculations. To define
@@ -113,8 +121,27 @@ Positions can be specified in the following ways:
 ``move`` is decorated like this on PseudoPositioner, meaning you can also call
 it with this syntax.
 
-.. autoclass:: ophyd.positioner.PositionerBase
-.. autoclass:: ophyd.positioner.SoftPositioner
-.. autoclass:: ophyd.pv_positioner.PVPositioner
 .. autoclass:: ophyd.pseudopos.PseudoSingle
 .. autoclass:: ophyd.pseudopos.PseudoPositioner
+
+
+SoftPositioner
+--------------
+
+A ``SoftPositioner`` is a positioner which has no corresponding physical motor.
+On its own, it is most useful for debugging scanning logic when moving physical
+motors is either undesirable or not possible.
+
+Used as-is, a ``SoftPositioner`` will "move" to the requested position
+immediately.
+
+``PseudoSingle`` and ``PseudoPositioner``, for example, are implemented as
+heavily customized ``SoftPositioner`` subclasses.
+
+.. autoclass:: ophyd.positioner.PositionerBase
+.. autoclass:: ophyd.positioner.SoftPositioner
+
+.. code-block:: python
+
+    from ophyd import SoftPositioner
+    my_positioner = SoftPositioner(name='my_positioner')
