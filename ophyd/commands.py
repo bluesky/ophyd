@@ -662,7 +662,7 @@ def logbook_add_objects(objects, extra_pvs=None):
 
     # Make a list of all PVs and positioners
     reports = [o.report for o in objects]
-    pvs = [report['pv'] for report in reports]
+    pvs = [report.get('pv', str(None)) for report in reports]
     names = [o.name for o in objects]
     values = [str(v) for report in reports
               for k, v in report.items() if k != 'pv']
