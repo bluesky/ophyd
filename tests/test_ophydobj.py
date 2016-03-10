@@ -58,6 +58,8 @@ class OphydObjTests(unittest.TestCase):
         self.assertRaises(KeyError, child.subscribe, None,
                           event_type='unknown_event_type')
 
+        self.assertIs(parent.connected, True)
+
 
 is_main = (__name__ == '__main__')
 main(is_main)

@@ -45,11 +45,6 @@ class Signal(OphydObject):
         d._finished()
         return d
 
-    @property
-    def connected(self):
-        '''Subclasses should override this'''
-        return True
-
     def wait_for_connection(self, timeout=0.0):
         '''Wait for the underlying signals to initialize or connect'''
         pass

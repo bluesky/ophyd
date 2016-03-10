@@ -29,6 +29,8 @@ def test_positioner_settle():
 def test_positioner():
     p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
 
+    assert p.connected == True
+
     position_callback = Mock()
     started_motion_callback = Mock()
     finished_motion_callback = Mock()

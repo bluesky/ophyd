@@ -119,11 +119,6 @@ class PseudoSingle(SoftPositioner):
         return self._parent.stop()
 
     @property
-    def connected(self):
-        '''For Signal compatibility'''
-        return True
-
-    @property
     def _started_moving(self):
         '''Has motion started since the motion request?
 
