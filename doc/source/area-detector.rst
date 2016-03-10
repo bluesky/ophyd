@@ -39,6 +39,11 @@ To use these model-specific classes, swap out ``AreaDetector`` like so:
         pass
 
 
+.. autoclass:: ophyd.areadetector.AreaDetector
+    :members:
+.. autoclass:: ophyd.areadetector.CamBase
+    :members:
+
 ADSC
 ^^^^
 

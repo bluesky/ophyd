@@ -18,6 +18,7 @@ Create an ``EpicsMotor`` to communicate with a single `EPICS motor record
     tth = EpicsMotor('XF:28IDC-ES:1{Dif:1-Ax:2ThI}Mtr', name='tth')
 
 .. autoclass:: ophyd.epics_motor.EpicsMotor
+    :members:
 
 
 EpicsScaler
@@ -32,6 +33,7 @@ Create an ``EpicsScaler`` to control an EPICS `scaler record
     scaler = EpicsScaler('XF:28IDC-ES:1{Sclr:1}', name='tth')
 
 .. autoclass:: ophyd.scaler.EpicsScaler
+    :members:
 
 
 EpicsMCA and EpicsDXP
@@ -42,4 +44,6 @@ DXP-based devices are also supported, through the ``EpicsMCA`` and ``EpicsDXP``
 devices.
 
 .. autoclass:: ophyd.mca.EpicsMCARecord
+    :members:
 .. autoclass:: ophyd.mca.EpicsDXP
+    :members:

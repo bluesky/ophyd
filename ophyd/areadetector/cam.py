@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = ['CamBase',
+           'AdscDetectorCam',
            'Andor3DetectorCam',
            'AndorDetectorCam',
            'BrukerDetectorCam',

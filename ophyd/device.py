@@ -120,7 +120,17 @@ class Component:
         if self.doc is not None:
             return self.doc
 
-        return '{} component with suffix {}'.format(self.attr, self.suffix)
+        kw_str = ', '.join('{}={!r}'.format(k, v)
+                           for k, v in self.kwargs.items())
+        if self.suffix is not None:
+            suffix_str = '{!r}'.format(self.suffix)
+            if self.kwargs:
+                suffix_str += ', '
+        else:
+            suffix_str = ''
+
+        return '{} = {}({}{})'.format(self.attr, self.cls.__name__, suffix_str,
+                                      kw_str)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -204,8 +214,23 @@ class DynamicDeviceComponent:
         if self.doc is not None:
             return self.doc
 
-        return '{} dynamicdevice containing {}'.format(self.attr,
-                                                       self.attrs)
+        doc = ['Dynamic device component',
+               '|  ',
+               ]
+        for attr, (cls, suffix, kwargs) in self.defn.items():
+            kw_str = ', '.join('{}={!r}'.format(k, v)
+                               for k, v in kwargs.items())
+            if suffix is not None:
+                suffix_str = '{!r}'.format(suffix)
+                if kwargs:
+                    suffix_str += ', '
+            else:
+                suffix_str = ''
+
+            doc.append('| {} = {}({}{})'.format(attr, cls.__name__,
+                                                suffix_str, kw_str))
+
+        return '\n'.join(doc)
 
     def create_attr(self, attr_name):
         cls, suffix, kwargs = self.defn[attr_name]
