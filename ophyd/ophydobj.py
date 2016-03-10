@@ -54,6 +54,10 @@ class OphydObject:
                 return root
             root = root.parent
 
+    @property
+    def report(self):
+        return {}
+
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
 

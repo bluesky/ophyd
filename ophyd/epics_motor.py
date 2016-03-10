@@ -230,9 +230,9 @@ class EpicsMotor(Device, PositionerBase):
     @property
     def report(self):
         try:
-            position = self.position
+            rep = super().report
         except DisconnectedError:
-            position = 'disconnected'
-
-        return {self.name: position,
-                'pv': self.user_readback.pvname}
+            # TODO there might be more in this that gets lost
+            rep = {'position': 'disconnected'}
+        rep['pv'] = self.user_readback.pvname
+        return rep

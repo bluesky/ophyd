@@ -211,7 +211,9 @@ class PVPositioner(Device, PositionerBase):
 
     @property
     def report(self):
-        return {self.name: self.position, 'pv': self.readback.pvname}
+        rep = super().report
+        rep['pv'] = self.readback.pvname
+        return rep
 
     @property
     def limits(self):
