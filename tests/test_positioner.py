@@ -5,9 +5,11 @@ import logging
 import unittest
 import pytest
 from copy import copy
+from unittest import mock
 from unittest.mock import Mock
 
 import epics
+import ophyd
 from ophyd import (SoftPositioner, PVPositioner)
 from ophyd import (Component as C)
 
@@ -15,16 +17,24 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    pass
+    ophyd.commands.setup_ophyd()
+
 
 def tearDownModule():
     logger.debug('Cleaning up')
 
+
 def test_positioner_settle():
-    p = SoftPositioner(name='test', egu='egu', limits=(-10, 10), settle_time=0.1)
+    p = SoftPositioner(name='test', egu='egu', limits=(-10, 10),
+                       settle_time=0.1, timeout=10.0)
     assert p.settle_time == 0.1
     st = p.move(0.0, wait=False)
     assert st.settle_time == 0.1
+
+    assert p.timeout == 10.0
+    p.timeout = 20.0
+    assert p.timeout == 20.0
+
 
 def test_positioner():
     p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
@@ -47,14 +57,14 @@ def test_positioner():
 
     position_callback.assert_called_once_with(obj=p, value=target_pos,
                                               sub_type=p.SUB_READBACK,
-                                              timestamp=unittest.mock.ANY)
+                                              timestamp=mock.ANY)
     started_motion_callback.assert_called_once_with(obj=p,
                                                     sub_type=p.SUB_START,
-                                                    timestamp=unittest.mock.ANY)
+                                                    timestamp=mock.ANY)
     finished_motion_callback.assert_called_once_with(obj=p,
                                                      sub_type=p.SUB_DONE,
                                                      value=None,
-                                                     timestamp=unittest.mock.ANY)
+                                                     timestamp=mock.ANY)
     position_callback.reset_mock()
     started_motion_callback.reset_mock()
     finished_motion_callback.reset_mock()
@@ -90,7 +100,7 @@ def test_positioner():
     assert pc.egu == p.egu
     assert pc.limits == p.limits
 
+
 from . import main
 is_main = (__name__ == '__main__')
 main(is_main)
-
