@@ -38,6 +38,11 @@ class OphydObject:
         self._sub_cache = defaultdict(lambda: None)
 
     @property
+    def connected(self):
+        '''Subclasses should override this'''
+        return True
+
+    @property
     def parent(self):
         '''The parent of the ophyd object
 
