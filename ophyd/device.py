@@ -763,11 +763,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         '''
         return cls._device_tuple
 
-    @property
-    def report(self):
-        # TODO
-        return {}
-
     def configure(self, d):
         '''Configure the device for something during a run
 

@@ -35,6 +35,12 @@ class PositionerBase(OphydObject):
         self._settle_time = settle_time
 
     @property
+    def report(self):
+        rep = super().report
+        rep['position'] = self.position
+        return rep
+
+    @property
     def settle_time(self):
         '''Amount of time to wait after moves to report status completion'''
         return self._settle_time
