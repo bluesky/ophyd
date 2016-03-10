@@ -41,5 +41,5 @@ EpicsMCA and EpicsDXP
 DXP-based devices are also supported, through the ``EpicsMCA`` and ``EpicsDXP``
 devices.
 
-.. autoclass:: ophyd.mca.EpicsMCA
+.. autoclass:: ophyd.mca.EpicsMCARecord
 .. autoclass:: ophyd.mca.EpicsDXP
