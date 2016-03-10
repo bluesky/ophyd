@@ -1,6 +1,6 @@
 import time
 from threading import RLock
-from functools import (wraps, partial)
+from functools import wraps
 
 import threading
 import numpy as np

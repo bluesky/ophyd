@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 def motor():
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
-    m = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1)
+    m = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
+                       timeout=10.0)
     print('epicsmotor', m)
     m.wait_for_connection()
     return m
@@ -25,6 +26,12 @@ class TestEpicsMotor(EpicsMotor):
     direction_of_travel = C(Signal, value=0)
     high_limit_value = C(EpicsSignalRO, '.HLM')
     low_limit_value = C(EpicsSignalRO, '.LLM')
+
+
+def test_timeout(motor):
+    assert motor.timeout == 10.0
+    motor.timeout = 20.0
+    assert motor.timeout == 20.0
 
 
 def test_connected(motor):
@@ -42,14 +49,14 @@ def test_checkvalue(motor):
 
 def test_move(motor):
     m = motor
- 
+
     m.stop()
     logger.debug('Move to 0.0')
     m.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
     assert_approx_equal(m.position, 0.0)
 
-    assert m.settle_time == 0.1    
+    assert m.settle_time == 0.1
 
     logger.debug('Move to 0.1')
     m.move(0.1, timeout=5, wait=True)
@@ -84,7 +91,7 @@ def test_copy(motor):
     time.sleep(0.1)
     assert res.settle_time == 0.1
     assert_approx_equal(m.position, 0.2)
-    
+
     m.settle_time = 0.2
     assert m.settle_time == 0.2
 
@@ -109,7 +116,7 @@ def test_calibration(motor):
 
     # Calibration
     old_position = m.position
-    expected_offset = 10-m.position
+    expected_offset = 10 - m.position
     m.set_current_position(10)
     assert m.offset_freeze_switch.get() == 0
     assert m.position == 10
@@ -123,6 +130,7 @@ def test_high_limit_switch(motor):
     # limit switch status
     m.direction_of_travel.put(1)
     res = m.move(1, wait=False)
+    assert res.timeout == 10.0
     m.high_limit_switch.put(1)
 
     while not res.done:
@@ -224,4 +232,3 @@ def test_homing_invalid(motor):
 
         assert not res.success
         m.stop()
-

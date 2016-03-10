@@ -30,6 +30,7 @@ def test_positioner_settle():
     assert p.settle_time == 0.1
     st = p.move(0.0, wait=False)
     assert st.settle_time == 0.1
+    assert st.timeout == 10.0
 
     assert p.timeout == 10.0
     p.timeout = 20.0

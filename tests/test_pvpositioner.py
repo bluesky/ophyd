@@ -132,11 +132,12 @@ class PVPosTest(unittest.TestCase):
 
         motor_record = self.sim_pv
         pos = MyPositioner(motor_record, name='pos_no_put_compl',
-                           settle_time=0.1)
+                           settle_time=0.1, timeout=25.0)
         print(pos.describe())
         pos.wait_for_connection()
 
         self.assertEqual(pos.settle_time, 0.1)
+        self.assertEqual(pos.timeout, 25.0)
         pos.read()
         high_lim = pos.setpoint.high_limit
         try:
@@ -147,6 +148,7 @@ class PVPosTest(unittest.TestCase):
             raise ValueError('check_value should have failed')
 
         stat = pos.move(1, wait=False)
+        self.assertEqual(stat.timeout, pos.timeout)
         logger.info('--> post-move request, moving=%s', pos.moving)
 
         while not stat.done:
