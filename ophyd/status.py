@@ -47,7 +47,7 @@ class StatusBase:
         if timeout is not None:
             self.timeout = float(timeout)
 
-        if self.timeout is not None:
+        if self.timeout is not None and self.timeout > 0.0:
             thread = threading.Thread(target=self._timeout_thread, daemon=True)
             self._timeout_thread = thread
             self._timeout_thread.start()

@@ -26,13 +26,15 @@ class PositionerBase(OphydObject):
     _SUB_REQ_DONE = '_req_done'  # requested move finished subscription
     _default_sub = SUB_READBACK
 
-    def __init__(self, *, name=None, parent=None, settle_time=0.0, **kwargs):
+    def __init__(self, *, name=None, parent=None, settle_time=0.0,
+                 timeout=30.0, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
         self._started_moving = False
         self._moving = False
         self._position = None
         self._settle_time = settle_time
+        self._timeout = timeout
 
     @property
     def report(self):
@@ -47,7 +49,16 @@ class PositionerBase(OphydObject):
 
     @settle_time.setter
     def settle_time(self, settle_time):
-        self._settle_time = float(settle_time)
+        self._settle_time = settle_time
+
+    @property
+    def timeout(self):
+        '''Amount of time to wait before to considering a motion as failed'''
+        return self._timeout
+
+    @timeout.setter
+    def timeout(self, timeout):
+        self._timeout = float(timeout)
 
     @property
     def egu(self):
@@ -66,7 +77,7 @@ class PositionerBase(OphydObject):
     def high_limit(self):
         return self.limits[1]
 
-    def move(self, position, moved_cb=None, timeout=30.0):
+    def move(self, position, moved_cb=None, timeout=None):
         '''Move to a specified position, optionally waiting for motion to
         complete.
 
@@ -79,7 +90,8 @@ class PositionerBase(OphydObject):
             must accept one keyword argument: 'obj' which will be set to
             this positioner instance.
         timeout : float, optional
-            Maximum time to wait for the motion
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
 
         Returns
         -------
@@ -94,6 +106,9 @@ class PositionerBase(OphydObject):
         RuntimeError
             If motion fails other than timing out
         '''
+        if timeout is None:
+            timeout = self._timeout
+
         self.check_value(position)
 
         self._run_subs(sub_type=self._SUB_REQ_DONE, success=False)
@@ -153,8 +168,7 @@ class PositionerBase(OphydObject):
         '''
         return self._moving
 
-    def set(self, new_position, *, wait=False,
-            moved_cb=None, timeout=30.0):
+    def set(self, new_position, *, wait=False, moved_cb=None, timeout=None):
         """
         Bluesky-compatible API for controlling movers.
 
@@ -171,6 +185,7 @@ class PositionerBase(OphydObject):
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('settle_time', self._settle_time)
+        yield ('timeout', self._timeout)
 
 
 class SoftPositioner(PositionerBase):
@@ -233,7 +248,7 @@ class SoftPositioner(PositionerBase):
         self._set_position(position)
         self._done_moving()
 
-    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+    def move(self, position, wait=True, timeout=None, moved_cb=None):
         '''Move to a specified position, optionally waiting for motion to
         complete.
 

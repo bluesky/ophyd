@@ -1,13 +1,3 @@
-# vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.epicsmotor` - Ophyd epics motors
-====================================================
-
-.. module:: ophyd.control.epicsmotor
-   :synopsis:
-'''
-
-
 import logging
 
 from epics.pv import fmt_time
@@ -47,6 +37,8 @@ class EpicsMotor(Device, PositionerBase):
         The instance of the parent device, if applicable
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
     '''
     user_offset = Cpt(EpicsSignal, '.OFF')
     user_readback = Cpt(EpicsSignalRO, '.RBV')

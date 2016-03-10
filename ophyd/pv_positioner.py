@@ -36,6 +36,8 @@ class PVPositioner(Device, PositionerBase):
         The engineering units (EGU) for the position
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
 
     Attributes
     ----------
@@ -157,7 +159,7 @@ class PVPositioner(Device, PositionerBase):
             logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
 
-    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+    def move(self, position, wait=True, timeout=None, moved_cb=None):
         status = super().move(position, timeout=timeout, moved_cb=moved_cb)
 
         has_done = self.done is not None
