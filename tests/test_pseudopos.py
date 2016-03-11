@@ -177,10 +177,11 @@ class PseudoPosTests(unittest.TestCase):
             logger.debug('** Finished moving (%s)', kwargs)
 
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=True,
-                           settle_time=0.1)
+                           settle_time=0.1, timeout=25.0)
         self.assertIs(pseudo.sequential, False)
         self.assertIs(pseudo.concurrent, True)
         self.assertEqual(pseudo.settle_time, 0.1)
+        self.assertEqual(pseudo.timeout, 25.0)
         pseudo.wait_for_connection()
 
         self.assertTrue(pseudo.connected)
@@ -242,6 +243,7 @@ class PseudoPosTests(unittest.TestCase):
         pseudo1.subscribe(single_sub, pseudo1.SUB_READBACK)
 
         ret = pseudo1.move(1, wait=False)
+        self.assertEqual(pseudo.timeout, ret.timeout)
         while not ret.done:
             logger.info('pseudo1.pos=%s Pos=%s %s (err=%s)', pseudo1.position,
                         pseudo.position, ret, ret.error)

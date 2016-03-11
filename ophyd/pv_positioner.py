@@ -36,6 +36,8 @@ class PVPositioner(Device, PositionerBase):
         The engineering units (EGU) for the position
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
 
     Attributes
     ----------
@@ -157,7 +159,35 @@ class PVPositioner(Device, PositionerBase):
             logger.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
 
-    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+    def move(self, position, wait=True, timeout=None, moved_cb=None):
+        '''Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+        moved_cb : callable
+            Call this callback when movement has finished. This callback must
+            accept one keyword argument: 'obj' which will be set to this
+            positioner instance.
+        timeout : float, optional
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        '''
         status = super().move(position, timeout=timeout, moved_cb=moved_cb)
 
         has_done = self.done is not None

@@ -1,6 +1,6 @@
 import time
 from threading import RLock
-from functools import (wraps, partial)
+from functools import wraps
 
 import threading
 import numpy as np
@@ -47,7 +47,7 @@ class StatusBase:
         if timeout is not None:
             self.timeout = float(timeout)
 
-        if self.timeout is not None:
+        if self.timeout is not None and self.timeout > 0.0:
             thread = threading.Thread(target=self._timeout_thread, daemon=True)
             self._timeout_thread = thread
             self._timeout_thread.start()
@@ -152,7 +152,7 @@ class MoveStatus(StatusBase):
     '''
 
     def __init__(self, positioner, target, *, done=False, start_ts=None,
-                 timeout=30.0, settle_time=None):
+                 timeout=None, settle_time=None):
         # call the base class
         super().__init__(timeout=timeout, settle_time=settle_time)
 

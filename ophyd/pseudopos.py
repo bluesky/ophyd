@@ -46,6 +46,8 @@ class PseudoSingle(SoftPositioner):
         to 'computed'
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
     '''
 
     def __init__(self, prefix=None, *, limits=None, egu='', parent=None,
@@ -303,6 +305,10 @@ class PseudoPositioner(Device, SoftPositioner):
         The name of the device
     parent : instance or None
         The instance of the parent device, if applicable
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
     '''
     def __init__(self, prefix, *, concurrent=True, read_attrs=None,
                  configuration_attrs=None, monitor_attrs=None, name=None,
@@ -697,7 +703,35 @@ class PseudoPositioner(Device, SoftPositioner):
                       **kwargs)
 
     @pseudo_position_argument
-    def move(self, position, wait=True, timeout=30.0, moved_cb=None):
+    def move(self, position, wait=True, timeout=None, moved_cb=None):
+        '''Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Pseudo position to move to
+        moved_cb : callable
+            Call this callback when movement has finished. This callback must
+            accept one keyword argument: 'obj' which will be set to this
+            positioner instance.
+        timeout : float, optional
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        '''
         return super().move(position, wait=wait, timeout=timeout,
                             moved_cb=moved_cb)
 

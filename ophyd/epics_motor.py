@@ -1,13 +1,3 @@
-# vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.epicsmotor` - Ophyd epics motors
-====================================================
-
-.. module:: ophyd.control.epicsmotor
-   :synopsis:
-'''
-
-
 import logging
 
 from epics.pv import fmt_time
@@ -47,6 +37,8 @@ class EpicsMotor(Device, PositionerBase):
         The instance of the parent device, if applicable
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
     '''
     user_offset = Cpt(EpicsSignal, '.OFF')
     user_readback = Cpt(EpicsSignalRO, '.RBV')
@@ -121,6 +113,34 @@ class EpicsMotor(Device, PositionerBase):
 
     @raise_if_disconnected
     def move(self, position, wait=True, **kwargs):
+        '''Move to a specified position, optionally waiting for motion to
+        complete.
+
+        Parameters
+        ----------
+        position
+            Position to move to
+        moved_cb : callable
+            Call this callback when movement has finished. This callback must
+            accept one keyword argument: 'obj' which will be set to this
+            positioner instance.
+        timeout : float, optional
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        '''
         self._started_moving = False
 
         status = super().move(position, **kwargs)
