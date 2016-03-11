@@ -1,5 +1,6 @@
 import time as ttime
 import logging
+import textwrap
 from enum import Enum
 from collections import (OrderedDict, namedtuple)
 
@@ -120,7 +121,33 @@ class Component:
         if self.doc is not None:
             return self.doc
 
-        return '{} component with suffix {}'.format(self.attr, self.suffix)
+        doc = ['Component attribute',
+               '::',
+               '',
+               ]
+
+        doc.append(textwrap.indent(repr(self), prefix=' ' * 4))
+        doc.append('')
+        return '\n'.join(doc)
+
+    def __repr__(self):
+        kw_str = ', '.join('{}={!r}'.format(k, v)
+                           for k, v in self.kwargs.items())
+        if self.suffix is not None:
+            suffix_str = '{!r}'.format(self.suffix)
+            if self.kwargs:
+                suffix_str += ', '
+        else:
+            suffix_str = ''
+
+        if suffix_str or kw_str:
+            arg_str = ', {}{}'.format(suffix_str, kw_str)
+        else:
+            arg_str = ''
+
+        return ('{self.attr} = {self.__class__.__name__}'
+                '({self.cls.__name__}{arg_str})'
+                ''.format(self=self, arg_str=arg_str))
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -204,8 +231,36 @@ class DynamicDeviceComponent:
         if self.doc is not None:
             return self.doc
 
-        return '{} dynamicdevice containing {}'.format(self.attr,
-                                                       self.attrs)
+        doc = ['{} comprised of'.format(self.__class__.__name__),
+               '::',
+               '',
+               ]
+
+        doc.append(textwrap.indent(repr(self), prefix=' ' * 4))
+        doc.append('')
+        return '\n'.join(doc)
+
+    def __repr__(self):
+        doc = []
+        for attr, (cls, suffix, kwargs) in self.defn.items():
+            kw_str = ', '.join('{}={!r}'.format(k, v)
+                               for k, v in kwargs.items())
+            if suffix is not None:
+                suffix_str = '{!r}'.format(suffix)
+                if kwargs:
+                    suffix_str += ', '
+            else:
+                suffix_str = ''
+
+            if suffix_str or kw_str:
+                arg_str = ', {}{}'.format(suffix_str, kw_str)
+            else:
+                arg_str = ''
+
+            doc.append('{attr} = Component({cls.__name__}{arg_str})'
+                       ''.format(attr=attr, cls=cls, arg_str=arg_str))
+
+        return '\n'.join(doc)
 
     def create_attr(self, attr_name):
         cls, suffix, kwargs = self.defn[attr_name]

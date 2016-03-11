@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = ['CamBase',
+           'AdscDetectorCam',
            'Andor3DetectorCam',
            'AndorDetectorCam',
            'BrukerDetectorCam',
@@ -122,6 +123,7 @@ class AreaDetectorCam(CamBase):
 
 
 class SimDetectorCam(CamBase):
+    _html_docs = ['simDetectorDoc.html']
     gain_rgb = DDC(ad_group(SignalWithRBV,
                             (('gain_red', 'GainRed'),
                              ('gain_green', 'GainGreen'),
@@ -159,6 +161,7 @@ class SimDetectorCam(CamBase):
 
 
 class AdscDetectorCam(CamBase):
+    _html_docs = ['adscDoc.html']
     adsc_2theta = C(SignalWithRBV, 'ADSC2Theta')
     adsc_adc = C(SignalWithRBV, 'ADSCAdc')
     adsc_axis = C(SignalWithRBV, 'ADSCAxis')
@@ -191,6 +194,7 @@ class AdscDetectorCam(CamBase):
 
 
 class AndorDetectorCam(CamBase):
+    _html_docs = ['andorDoc.html']
     andor_adc_speed = C(SignalWithRBV, 'AndorADCSpeed')
     andor_accumulate_period = C(SignalWithRBV, 'AndorAccumulatePeriod')
     andor_cooler = C(SignalWithRBV, 'AndorCooler')
@@ -204,6 +208,7 @@ class AndorDetectorCam(CamBase):
 
 
 class Andor3DetectorCam(CamBase):
+    _html_docs = ['andor3Doc.html']
     a3_binning = C(SignalWithRBV, 'A3Binning')
     a3_shutter_mode = C(SignalWithRBV, 'A3ShutterMode')
     controller_id = C(EpicsSignal, 'ControllerID')
@@ -227,6 +232,7 @@ class Andor3DetectorCam(CamBase):
 
 
 class BrukerDetectorCam(CamBase):
+    _html_docs = ['BrukerDoc.html']
     bis_asyn = C(EpicsSignal, 'BISAsyn')
     bis_status = C(EpicsSignal, 'BISStatus')
     file_format = C(SignalWithRBV, 'FileFormat')
@@ -235,11 +241,13 @@ class BrukerDetectorCam(CamBase):
 
 
 class FirewireLinDetectorCam(CamBase):
+    _html_docs = ['FirewireWinDoc.html']
     # TODO
     pass
 
 
 class FirewireWinDetectorCam(CamBase):
+    _html_docs = ['FirewireWinDoc.html']
     colorcode = C(SignalWithRBV, 'COLORCODE')
     current_colorcode = C(EpicsSignal, 'CURRENT_COLORCODE')
     current_format = C(EpicsSignal, 'CURRENT_FORMAT')
@@ -259,6 +267,7 @@ class LightFieldDetectorCam(CamBase):
 
 
 class Mar345DetectorCam(CamBase):
+    _html_docs = ['Mar345Doc.html']
     abort = C(SignalWithRBV, 'Abort')
     change_mode = C(SignalWithRBV, 'ChangeMode')
     erase = C(SignalWithRBV, 'Erase')
@@ -272,6 +281,7 @@ class Mar345DetectorCam(CamBase):
 
 
 class MarCCDDetectorCam(CamBase):
+    _html_docs = ['MarCCDDoc.html']
     beam_x = C(EpicsSignal, 'BeamX')
     beam_y = C(EpicsSignal, 'BeamY')
     dataset_comments = C(EpicsSignal, 'DatasetComments')
@@ -298,6 +308,7 @@ class MarCCDDetectorCam(CamBase):
 
 
 class PerkinElmerDetectorCam(CamBase):
+    _html_docs = ['PerkinElmerDoc.html']
     pe_acquire_gain = C(EpicsSignal, 'PEAcquireGain')
     pe_acquire_offset = C(EpicsSignal, 'PEAcquireOffset')
     pe_corrections_dir = C(EpicsSignal, 'PECorrectionsDir')
@@ -331,11 +342,13 @@ class PerkinElmerDetectorCam(CamBase):
 
 
 class PSLDetectorCam(CamBase):
+    _html_docs = ['PSLDoc.html']
     file_format = C(SignalWithRBV, 'FileFormat')
     tiff_comment = C(SignalWithRBV, 'TIFFComment')
 
 
 class PilatusDetectorCam(CamBase):
+    _html_docs = ['pilatusDoc.html']
     alpha = C(EpicsSignal, 'Alpha')
     angle_incr = C(EpicsSignal, 'AngleIncr')
     armed = C(EpicsSignal, 'Armed')
@@ -383,16 +396,19 @@ class PilatusDetectorCam(CamBase):
 
 
 class PixiradDetectorCam(CamBase):
+    _html_docs = ['PixiradDoc.html']
     # TODO new
     pass
 
 
 class PointGreyDetectorCam(CamBase):
+    _html_docs = ['PointGreyDoc.html']
     # TODO firewirewin
     pass
 
 
 class ProsilicaDetectorCam(CamBase):
+    _html_docs = ['prosilicaDoc.html']
     ps_bad_frame_counter = C(EpicsSignalRO, 'PSBadFrameCounter_RBV')
     ps_byte_rate = C(SignalWithRBV, 'PSByteRate')
     ps_driver_type = C(EpicsSignalRO, 'PSDriverType_RBV')
@@ -431,6 +447,7 @@ class ProsilicaDetectorCam(CamBase):
 
 
 class PvcamDetectorCam(CamBase):
+    _html_docs = ['pvcamDoc.html']
     bit_depth = C(EpicsSignalRO, 'BitDepth_RBV')
     camera_firmware_vers = C(EpicsSignalRO, 'CameraFirmwareVers_RBV')
     chip_height = C(EpicsSignalRO, 'ChipHeight_RBV')
@@ -479,6 +496,7 @@ class PvcamDetectorCam(CamBase):
 
 
 class RoperDetectorCam(CamBase):
+    _html_docs = ['RoperDoc.html']
     auto_data_type = C(SignalWithRBV, 'AutoDataType')
     comment1 = C(SignalWithRBV, 'Comment1')
     comment2 = C(SignalWithRBV, 'Comment2')
@@ -492,6 +510,7 @@ class RoperDetectorCam(CamBase):
 
 
 class URLDetectorCam(CamBase):
+    _html_docs = ['URLDoc.html']
     urls = DDC(ad_group(EpicsSignal,
                         (('url_1', 'URL1'),
                          ('url_2', 'URL2'),

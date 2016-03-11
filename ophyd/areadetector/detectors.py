@@ -15,6 +15,7 @@ from . import cam
 
 __all__ = ['DetectorBase',
            'AreaDetector',
+           'AdscDetector',
            'Andor3Detector',
            'AndorDetector',
            'BrukerDetector',
