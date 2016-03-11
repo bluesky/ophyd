@@ -1,4 +1,4 @@
-
+import textwrap
 import inspect
 import re
 import sys
@@ -38,6 +38,25 @@ class ADComponent(Component):
 
     def make_docstring(self, parent_class):
         '''Create a docstring for the component, given the parent class'''
+        def make_codeblock(s):
+            '''Make a codeblock that will render nicely in sphinx'''
+            block = ['AreaDetector Component',
+                     '::',
+                     '',
+                     ]
+
+            lines = s.split('\n', 1)
+            header, lines = lines[0], lines[1:]
+
+            block.append(textwrap.indent(textwrap.dedent(header),
+                                         prefix=' ' * 4))
+
+            lines = '\n'.join(lines)
+            block.append(textwrap.indent(textwrap.dedent(lines),
+                                         prefix=' ' * 4))
+            block.append('')
+            return '\n'.join(block)
+
         suffixes = [self.suffix]
 
         if self.suffix.endswith('_RBV'):
@@ -46,11 +65,11 @@ class ADComponent(Component):
         for doc in self.find_docs(parent_class):
             for suffix in suffixes:
                 try:
-                    return doc[suffix]
+                    return make_codeblock(doc[suffix])
                 except KeyError:
                     pass
 
-        return 'No documentation found [suffix={}]'.format(self.suffix)
+        return super().make_docstring(parent_class)
 
 
 def ad_group(cls, attr_suffix, **kwargs):
