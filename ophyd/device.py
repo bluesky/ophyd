@@ -121,7 +121,7 @@ class Component:
         if self.doc is not None:
             return self.doc
 
-        doc = ['Component attribute',
+        doc = ['{} attribute'.format(self.__class__.__name__),
                '::',
                '',
                ]
@@ -145,8 +145,7 @@ class Component:
         else:
             arg_str = ''
 
-        return ('{self.attr} = {self.__class__.__name__}'
-                '({self.cls.__name__}{arg_str})'
+        return ('{self.__class__.__name__}({self.cls.__name__}{arg_str})'
                 ''.format(self=self, arg_str=arg_str))
 
     def __get__(self, instance, owner):
