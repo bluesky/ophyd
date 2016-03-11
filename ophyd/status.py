@@ -152,7 +152,7 @@ class MoveStatus(StatusBase):
     '''
 
     def __init__(self, positioner, target, *, done=False, start_ts=None,
-                 timeout=30.0, settle_time=None):
+                 timeout=None, settle_time=None):
         # call the base class
         super().__init__(timeout=timeout, settle_time=settle_time)
 

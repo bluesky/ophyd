@@ -27,7 +27,7 @@ class PositionerBase(OphydObject):
     _default_sub = SUB_READBACK
 
     def __init__(self, *, name=None, parent=None, settle_time=0.0,
-                 timeout=30.0, **kwargs):
+                 timeout=None, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
         self._started_moving = False
@@ -58,7 +58,10 @@ class PositionerBase(OphydObject):
 
     @timeout.setter
     def timeout(self, timeout):
-        self._timeout = float(timeout)
+        if timeout is None:
+            self._timeout = None
+        else:
+            self._timeout = float(timeout)
 
     @property
     def egu(self):
