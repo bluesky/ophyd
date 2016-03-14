@@ -2,9 +2,11 @@ import time
 from threading import RLock
 from functools import wraps
 
+import logging
 import threading
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 # This is used below by StatusBase.
 def _locked(func):
@@ -58,8 +60,11 @@ class StatusBase:
             wait(self, timeout=self.timeout + self.settle_time,
                  poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
-            self._handle_failure()
-            self._finished(success=False)
+            logger.debug('Status object %s timed out', str(self))
+            try:
+                self._handle_failure()
+            finally:
+                self._finished(success=False)
         except RuntimeError:
             pass
         finally:
@@ -135,6 +140,7 @@ class DeviceStatus(StatusBase):
 
     def _handle_failure(self):
         super()._handle_failure()
+        logger.debug('Trying to stop %s', str(self.device))
         self.device.stop()
 
     def __str__(self):
