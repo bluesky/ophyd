@@ -118,6 +118,15 @@ class StatusBase:
         else:
             self._cb = cb
 
+    def __str__(self):
+        return ('{0}(done={1.done}, '
+                'elapsed={1.elapsed:.1f}, '
+                'success={1.success})'
+                ''.format(self.__class__.__name__, self)
+                )
+
+    __repr__ = __str__
+
 
 class DeviceStatus(StatusBase):
     '''Device status'''
@@ -128,6 +137,16 @@ class DeviceStatus(StatusBase):
     def _handle_failure(self):
         super()._handle_failure()
         self.device.stop()
+
+    def __str__(self):
+        return ('{0}(device={1.device.name}, done={1.done}, '
+                'elapsed={1.elapsed:.1f}, '
+                'success={1.success})'
+                ''.format(self.__class__.__name__, self)
+                )
+
+    __repr__ = __str__
+
 
 class MoveStatus(DeviceStatus):
     '''Asynchronous movement status
@@ -212,7 +231,8 @@ class MoveStatus(DeviceStatus):
             return self.finish_ts - self.start_ts
 
     def __str__(self):
-        return ('{0}(done={1.done}, elapsed={1.elapsed:.1f}, '
+        return ('{0}(done={1.done}, pos={1.pos.name}, '
+                'elapsed={1.elapsed:.1f}, '
                 'success={1.success}, settle_time={1.settle_time})'
                 ''.format(self.__class__.__name__, self)
                 )
