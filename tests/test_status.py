@@ -7,8 +7,9 @@ def _setup_st():
 
     def cb():
         state['done'] = True
-
+    repr(st)
     return st, state, cb
+
 
 
 def test_status_post():

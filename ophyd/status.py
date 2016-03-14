@@ -120,7 +120,6 @@ class StatusBase:
 
     def __str__(self):
         return ('{0}(done={1.done}, '
-                'elapsed={1.elapsed:.1f}, '
                 'success={1.success})'
                 ''.format(self.__class__.__name__, self)
                 )
@@ -140,7 +139,6 @@ class DeviceStatus(StatusBase):
 
     def __str__(self):
         return ('{0}(device={1.device.name}, done={1.done}, '
-                'elapsed={1.elapsed:.1f}, '
                 'success={1.success})'
                 ''.format(self.__class__.__name__, self)
                 )

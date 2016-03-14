@@ -66,6 +66,8 @@ class ADTest(unittest.TestCase):
         cam.array_callbacks.put('Enable')
 
         det.get()
+        st = det.trigger()
+        repr(st)
         det.read()
 
         # values = tuple(det.gain_xy.get())
