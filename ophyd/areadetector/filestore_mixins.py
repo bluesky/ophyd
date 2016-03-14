@@ -81,7 +81,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids.clear()
         super().stage()
 
-
     def generate_datum(self, key, timestamp):
         "Generate a uid and cache it with its key for later insertion."
         if self._locked_key_list:
@@ -125,6 +124,7 @@ class FileStorePluginBase(FileStoreBase):
                                 (self.auto_save, 'Yes'),
                                 (self.num_capture, 0),
                                 ])
+        self._fn = None
 
     def make_filename(self):
         '''Make a filename.
