@@ -130,6 +130,7 @@ def test_high_limit_switch(motor):
     # limit switch status
     m.direction_of_travel.put(1)
     res = m.move(1, wait=False)
+    repr(res)
     assert res.timeout == 10.0
     m.high_limit_switch.put(1)
 

@@ -2,9 +2,11 @@ import time
 from threading import RLock
 from functools import wraps
 
+import logging
 import threading
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 # This is used below by StatusBase.
 def _locked(func):
@@ -58,11 +60,18 @@ class StatusBase:
             wait(self, timeout=self.timeout + self.settle_time,
                  poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
-            self._finished(success=False)
+            logger.debug('Status object %s timed out', str(self))
+            try:
+                self._handle_failure()
+            finally:
+                self._finished(success=False)
         except RuntimeError:
             pass
         finally:
             self._timeout_thread = None
+
+    def _handle_failure(self):
+        pass
 
     def _settled(self):
         '''Hook for when status has completed and settled'''
@@ -114,8 +123,36 @@ class StatusBase:
         else:
             self._cb = cb
 
+    def __str__(self):
+        return ('{0}(done={1.done}, '
+                'success={1.success})'
+                ''.format(self.__class__.__name__, self)
+                )
 
-class MoveStatus(StatusBase):
+    __repr__ = __str__
+
+
+class DeviceStatus(StatusBase):
+    '''Device status'''
+    def __init__(self, device, **kwargs):
+        super().__init__(**kwargs)
+        self.device = device
+
+    def _handle_failure(self):
+        super()._handle_failure()
+        logger.debug('Trying to stop %s', str(self.device))
+        self.device.stop()
+
+    def __str__(self):
+        return ('{0}(device={1.device.name}, done={1.done}, '
+                'success={1.success})'
+                ''.format(self.__class__.__name__, self)
+                )
+
+    __repr__ = __str__
+
+
+class MoveStatus(DeviceStatus):
     '''Asynchronous movement status
 
     Parameters
@@ -152,15 +189,15 @@ class MoveStatus(StatusBase):
     '''
 
     def __init__(self, positioner, target, *, done=False, start_ts=None,
-                 timeout=None, settle_time=None):
+                 **kwargs):
         # call the base class
-        super().__init__(timeout=timeout, settle_time=settle_time)
+        super().__init__(positioner, **kwargs)
 
         self.done = done
         if start_ts is None:
             start_ts = time.time()
 
-        self.pos = positioner
+        self.pos = self.device
         self.target = target
         self.start_ts = start_ts
         self.finish_ts = None
@@ -197,19 +234,14 @@ class MoveStatus(StatusBase):
             return self.finish_ts - self.start_ts
 
     def __str__(self):
-        return ('{0}(done={1.done}, elapsed={1.elapsed:.1f}, '
+        return ('{0}(done={1.done}, pos={1.pos.name}, '
+                'elapsed={1.elapsed:.1f}, '
                 'success={1.success}, settle_time={1.settle_time})'
                 ''.format(self.__class__.__name__, self)
                 )
 
     __repr__ = __str__
 
-
-class DeviceStatus(StatusBase):
-    '''Device status'''
-    def __init__(self, device, *, timeout=None):
-        super().__init__(timeout=timeout)
-        self.device = device
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):
