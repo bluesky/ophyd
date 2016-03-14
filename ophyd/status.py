@@ -130,8 +130,8 @@ class StatusBase:
 
 class DeviceStatus(StatusBase):
     '''Device status'''
-    def __init__(self, device, *, timeout=None):
-        super().__init__(timeout=timeout)
+    def __init__(self, device, **kwargs):
+        super().__init__(**kwargs)
         self.device = device
 
     def _handle_failure(self):
@@ -185,10 +185,9 @@ class MoveStatus(DeviceStatus):
     '''
 
     def __init__(self, positioner, target, *, done=False, start_ts=None,
-                 timeout=None, settle_time=None):
+                 **kwargs):
         # call the base class
-        super().__init__(positioner, timeout=timeout,
-                         settle_time=settle_time)
+        super().__init__(positioner, **kwargs)
 
         self.done = done
         if start_ts is None:
