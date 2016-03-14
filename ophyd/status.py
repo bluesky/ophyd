@@ -58,11 +58,15 @@ class StatusBase:
             wait(self, timeout=self.timeout + self.settle_time,
                  poll_rate=max(1.0, self.timeout / 10.0))
         except TimeoutError:
+            self._handle_failure()
             self._finished(success=False)
         except RuntimeError:
             pass
         finally:
             self._timeout_thread = None
+
+    def _handle_failure(self):
+        pass
 
     def _settled(self):
         '''Hook for when status has completed and settled'''
@@ -115,7 +119,17 @@ class StatusBase:
             self._cb = cb
 
 
-class MoveStatus(StatusBase):
+class DeviceStatus(StatusBase):
+    '''Device status'''
+    def __init__(self, device, *, timeout=None):
+        super().__init__(timeout=timeout)
+        self.device = device
+
+    def _handle_failure(self):
+        super()._handle_failure()
+        self.device.stop()
+
+class MoveStatus(DeviceStatus):
     '''Asynchronous movement status
 
     Parameters
@@ -154,13 +168,14 @@ class MoveStatus(StatusBase):
     def __init__(self, positioner, target, *, done=False, start_ts=None,
                  timeout=None, settle_time=None):
         # call the base class
-        super().__init__(timeout=timeout, settle_time=settle_time)
+        super().__init__(positioner, timeout=timeout,
+                         settle_time=settle_time)
 
         self.done = done
         if start_ts is None:
             start_ts = time.time()
 
-        self.pos = positioner
+        self.pos = self.device
         self.target = target
         self.start_ts = start_ts
         self.finish_ts = None
@@ -204,12 +219,6 @@ class MoveStatus(StatusBase):
 
     __repr__ = __str__
 
-
-class DeviceStatus(StatusBase):
-    '''Device status'''
-    def __init__(self, device, *, timeout=None):
-        super().__init__(timeout=timeout)
-        self.device = device
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):
