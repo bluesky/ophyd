@@ -241,9 +241,13 @@ class BrukerDetectorCam(CamBase):
 
 
 class FirewireLinDetectorCam(CamBase):
-    _html_docs = ['FirewireWinDoc.html']
-    # TODO
-    pass
+    _html_docs = []
+
+    bandwidth = C(EpicsSignal, 'BANDWIDTH')
+    fanout_disable = C(EpicsSignal, 'FanoutDis')
+    framerate_max = C(SignalWithRBV, 'FR')
+    is_fixed_mode = C(EpicsSignal, 'IsFixedMode')
+    video_mode = C(EpicsSignal, 'VIDEOMODE')
 
 
 class FirewireWinDetectorCam(CamBase):
@@ -263,7 +267,37 @@ class FirewireWinDetectorCam(CamBase):
 class LightFieldDetectorCam(CamBase):
     _html_docs = ['LightFieldDoc.html']
 
-    # TODO new in AD 2
+    aux_delay = C(SignalWithRBV, 'LFAuxDelay')
+    aux_width = C(SignalWithRBV, 'LFAuxWidth')
+    background_enable = C(SignalWithRBV, 'LFBackgroundEnable')
+    background_file = C(SignalWithRBV, 'LFBackgroundFile')
+    background_full_file = C(EpicsSignalRO, 'LFBackgroundFullFile_RBV')
+    background_path = C(SignalWithRBV, 'LFBackgroundPath')
+    entrance_width = C(SignalWithRBV, 'LFEntranceWidth')
+    exit_port = C(SignalWithRBV, 'LFExitPort')
+    experiment_name = C(SignalWithRBV, 'LFExperimentName')
+    file_name = C(EpicsSignalRO, 'LFFileName_RBV')
+    file_path = C(EpicsSignalRO, 'LFFilePath_RBV')
+    lf_gain = C(SignalWithRBV, 'LFGain')
+    gating_mode = C(SignalWithRBV, 'LFGatingMode')
+    grating = C(SignalWithRBV, 'LFGrating')
+    grating_wavelength = C(SignalWithRBV, 'LFGratingWavelength')
+    image_mode = C(SignalWithRBV, 'ImageMode')
+    intensifier_enable = C(SignalWithRBV, 'LFIntensifierEnable')
+    intensifier_gain = C(SignalWithRBV, 'LFIntensifierGain')
+    num_accumulations = C(SignalWithRBV, 'NumAccumulations')
+    ready_to_run = C(EpicsSignal, 'LFReadyToRun')
+    rep_gate_delay = C(SignalWithRBV, 'LFRepGateDelay')
+    rep_gate_width = C(SignalWithRBV, 'LFRepGateWidth')
+    seq_end_gate_delay = C(SignalWithRBV, 'LFSeqEndGateDelay')
+    seq_end_gate_width = C(SignalWithRBV, 'LFSeqEndGateWidth')
+    seq_start_gate_delay = C(SignalWithRBV, 'LFSeqStartGateDelay')
+    seq_start_gate_width = C(SignalWithRBV, 'LFSeqStartGateWidth')
+    lf_shutter_mode = C(SignalWithRBV, 'LFShutterMode')
+    sync_master2_delay = C(SignalWithRBV, 'LFSyncMaster2Delay')
+    sync_master_enable = C(SignalWithRBV, 'LFSyncMasterEnable')
+    trigger_frequency = C(SignalWithRBV, 'LFTriggerFrequency')
+    update_experiments = C(EpicsSignal, 'LFUpdateExperiments')
 
 
 class Mar345DetectorCam(CamBase):
@@ -397,14 +431,93 @@ class PilatusDetectorCam(CamBase):
 
 class PixiradDetectorCam(CamBase):
     _html_docs = ['PixiradDoc.html']
-    # TODO new
-    pass
+
+    auto_calibrate = C(EpicsSignal, 'AutoCalibrate')
+    humidity_box = C(EpicsSignalRO, 'BoxHumidity_RBV')
+    colors_collected = C(EpicsSignalRO, 'ColorsCollected_RBV')
+    cooling_state = C(SignalWithRBV, 'CoolingState')
+    cooling_status = C(EpicsSignalRO, 'CoolingStatus_RBV')
+    dew_point = C(EpicsSignalRO, 'DewPoint_RBV')
+    frame_type = C(SignalWithRBV, 'FrameType')
+    hv_actual = C(EpicsSignalRO, 'HVActual_RBV')
+    hv_current = C(EpicsSignalRO, 'HVCurrent_RBV')
+    hv_mode = C(SignalWithRBV, 'HVMode')
+    hv_state = C(SignalWithRBV, 'HVState')
+    hv_value = C(SignalWithRBV, 'HVValue')
+    peltier_power = C(EpicsSignalRO, 'PeltierPower_RBV')
+    sync_in_polarity = C(SignalWithRBV, 'SyncInPolarity')
+    sync_out_function = C(SignalWithRBV, 'SyncOutFunction')
+    sync_out_polarity = C(SignalWithRBV, 'SyncOutPolarity')
+    system_reset = C(EpicsSignal, 'SystemReset')
+
+    temperature = C(SignalWithRBV, 'Temperature')
+    temperature_actual = C(EpicsSignal, 'TemperatureActual')
+    temperature_box = C(EpicsSignalRO, 'BoxTemperature_RBV')
+    temperature_hot = C(EpicsSignalRO, 'HotTemperature_RBV')
+
+    threshold_1_actual = C(EpicsSignalRO, 'ThresholdActual1_RBV')
+    threshold_2_actual = C(EpicsSignalRO, 'ThresholdActual2_RBV')
+    threshold_3_actual = C(EpicsSignalRO, 'ThresholdActual3_RBV')
+    threshold_4_actual = C(EpicsSignalRO, 'ThresholdActual4_RBV')
+    thresholds_actual = DDC(ad_group(EpicsSignalRO,
+                                     (('threshold_1', 'ThresholdActual1_RBV'),
+                                      ('threshold_2', 'ThresholdActual2_RBV'),
+                                      ('threshold_3', 'ThresholdActual3_RBV'),
+                                      ('threshold_4', 'ThresholdActual4_RBV'),
+                                      )),
+                            doc='Actual thresholds')
+
+    threshold_1 = C(SignalWithRBV, 'Threshold1')
+    threshold_2 = C(SignalWithRBV, 'Threshold2')
+    threshold_3 = C(SignalWithRBV, 'Threshold3')
+    threshold_4 = C(SignalWithRBV, 'Threshold4')
+    thresholds = DDC(ad_group(SignalWithRBV,
+                              (('threshold_1', 'Threshold1'),
+                               ('threshold_2', 'Threshold2'),
+                               ('threshold_3', 'Threshold3'),
+                               ('threshold_4', 'Threshold4'),
+                               )),
+                     doc='Thresholds')
+
+    udp_buffers_free = C(EpicsSignalRO, 'UDPBuffersFree_RBV')
+    udp_buffers_max = C(EpicsSignalRO, 'UDPBuffersMax_RBV')
+    udp_buffers_read = C(EpicsSignalRO, 'UDPBuffersRead_RBV')
+    udp_speed = C(EpicsSignalRO, 'UDPSpeed_RBV')
 
 
 class PointGreyDetectorCam(CamBase):
     _html_docs = ['PointGreyDoc.html']
-    # TODO firewirewin
-    pass
+
+    bandwidth = C(EpicsSignal, 'Bandwidth')
+    binning_mode = C(SignalWithRBV, 'BinningMode')
+    convert_pixel_format = C(SignalWithRBV, 'ConvertPixelFormat')
+    corrupt_frames = C(EpicsSignalRO, 'CorruptFrames_RBV')
+    driver_dropped = C(EpicsSignalRO, 'DriverDropped_RBV')
+    dropped_frames = C(EpicsSignalRO, 'DroppedFrames_RBV')
+    firmware_version = C(EpicsSignal, 'FirmwareVersion')
+    format7_mode = C(SignalWithRBV, 'Format7Mode')
+    frame_rate = C(SignalWithRBV, 'FrameRate')
+    max_packet_size = C(EpicsSignal, 'MaxPacketSize')
+    packet_delay_actual = C(EpicsSignal, 'PacketDelayActual')
+    packet_delay = C(SignalWithRBV, 'PacketDelay')
+    packet_size_actual = C(EpicsSignal, 'PacketSizeActual')
+    packet_size = C(SignalWithRBV, 'PacketSize')
+    pixel_format = C(SignalWithRBV, 'PixelFormat')
+    read_status = C(EpicsSignal, 'ReadStatus')
+    serial_number = C(EpicsSignal, 'SerialNumber')
+    skip_frames = C(SignalWithRBV, 'SkipFrames')
+    software_trigger = C(EpicsSignal, 'SoftwareTrigger')
+    software_version = C(EpicsSignal, 'SoftwareVersion')
+    strobe_delay = C(SignalWithRBV, 'StrobeDelay')
+    strobe_duration = C(SignalWithRBV, 'StrobeDuration')
+    strobe_enable = C(SignalWithRBV, 'StrobeEnable')
+    strobe_polarity = C(SignalWithRBV, 'StrobePolarity')
+    strobe_source = C(SignalWithRBV, 'StrobeSource')
+    time_stamp_mode = C(SignalWithRBV, 'TimeStampMode')
+    transmit_failed = C(EpicsSignalRO, 'TransmitFailed_RBV')
+    trigger_polarity = C(SignalWithRBV, 'TriggerPolarity')
+    trigger_source = C(SignalWithRBV, 'TriggerSource')
+    video_mode = C(SignalWithRBV, 'VideoMode')
 
 
 class ProsilicaDetectorCam(CamBase):
