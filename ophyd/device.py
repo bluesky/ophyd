@@ -1,4 +1,5 @@
 import time as ttime
+import functools
 import logging
 import textwrap
 from enum import Enum
@@ -435,8 +436,8 @@ class BlueskyInterface:
         devices_staged = []
         try:
             for sig, val in self.stage_sigs.items():
-                logger.debug("Setting %s to %r (original value: %r)", self.name,
-                             val, original_vals[sig])
+                logger.debug("Setting %s to %r (original value: %r)",
+                             self.name, val, original_vals[sig])
                 set_and_wait(sig, val)
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
@@ -483,8 +484,8 @@ class BlueskyInterface:
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
-            logger.debug("Setting %s back to its original value: %r)", self.name,
-                         val)
+            logger.debug("Setting %s back to its original value: %r)",
+                         self.name, val)
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
         devices_unstaged.append(self)
@@ -856,3 +857,74 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         yield ('read_attrs', self.read_attrs)
         yield ('configuration_attrs', self.configuration_attrs)
         yield ('monitor_attrs', self.monitor_attrs)
+
+
+class FlyerDevice(Device):
+    '''A bluesky flyer device, using monitor_attrs
+    '''
+
+    def kickoff(self):
+        self._status = DeviceStatus(self)
+        self._collected_data = OrderedDict()
+        self._start_time = ttime.time()
+        for attr in self.monitor_attrs:
+            obj = getattr(self, attr)
+            if isinstance(obj, Device):
+                raise ValueError('Cannot monitor sub-devices')
+            self._collected_data[attr] = {'values': [],
+                                          'timestamps': []
+                                          }
+            obj.subscribe(functools.partial(self._monitor_callback,
+                                            attribute=attr))
+
+        return self._status
+
+    def _monitor_callback(self, attribute=None, obj=None, value=None,
+                          timestamp=None, **kwargs):
+        if value is None or timestamp is None:
+            data = obj.read()[obj.name]
+            value = data['value']
+            timestamp = data['timestamp']
+
+        collected = self._collected_data[attribute]
+        collected['values'].append(value)
+        collected['timestamps'].append(timestamp)
+
+    def describe(self):
+        # TODO: this is not good
+        return [self._describe_attr_list([attr])
+                for attr in self.monitor_attrs]
+
+    def _clear_monitors(self):
+        for attr in self._collected_data.keys():
+            obj = getattr(self, attr)
+            try:
+                obj.clear_sub(self._monitor_callback)
+            except Exception as ex:
+                logger.debug('Failed to clear subscription',
+                             exc_info=ex)
+
+    def stop(self):
+        self._clear_monitors()
+        try:
+            super().stop()
+        finally:
+            if not self._status.done:
+                self._status._finished(success=True)
+
+    def collect(self):
+        self.stop()
+
+        names = [getattr(self, attr).name
+                 for attr in self._collected_data]
+
+        collected = [dict(time=self._start_time,
+                          timestamps={name: data['timestamps']},
+                          data={name: data['values']},
+                          )
+                     for name, data in zip(names,
+                                           self._collected_data.values())
+                     ]
+
+        self._collected_data = None
+        return collected
