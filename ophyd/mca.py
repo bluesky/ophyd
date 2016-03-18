@@ -24,13 +24,11 @@ class ROI(Device):
     hi_chan = C(EpicsSignal, 'HI', lazy=True)
     lo_chan = C(EpicsSignal, 'LO', lazy=True)
 
-    def __init__(self, prefix, *, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, name=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 name=None, parent=None, **kwargs):
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
 
@@ -73,9 +71,8 @@ class EpicsMCARecord(Device):
 
     rois = DDC(add_rois(range(0, 32)))
 
-    def __init__(self, prefix, *, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, name=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 name=None, parent=None, **kwargs):
 
         default_read_attrs = ['spectrum', 'preset_real_time',
                               'elapsed_real_time']
@@ -89,7 +86,6 @@ class EpicsMCARecord(Device):
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
         # could arguably be made a configuration_attr instead...
@@ -142,11 +138,9 @@ class EpicsDXP(Device):
     input_count_rate = C(EpicsSignalRO, 'InputCountRate', lazy=True)
     output_count_rate = C(EpicsSignalRO, 'OutputCountRate', lazy=True)
 
-    def __init__(self, prefix, *, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, name=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 name=None, parent=None, **kwargs):
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)

@@ -328,8 +328,8 @@ class ComponentMeta(type):
         clsobj = super().__new__(cls, name, bases, clsdict)
 
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
-                          'read_attrs', 'configuration_attrs', 'monitor_attrs',
-                          '_sig_attrs', '_sub_devices']
+                          'read_attrs', 'configuration_attrs', '_sig_attrs',
+                          '_sub_devices']
         for attr in RESERVED_ATTRS:
             if attr in clsdict:
                 raise TypeError("The attribute name %r is reserved for "
@@ -525,8 +525,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 monitor_attrs=None, name=None, parent=None,
-                 **kwargs):
+                 name=None, parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
@@ -546,12 +545,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if configuration_attrs is None:
             configuration_attrs = []
 
-        if monitor_attrs is None:
-            monitor_attrs = []
-
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)
-        self.monitor_attrs = list(monitor_attrs)
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
@@ -855,4 +850,3 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         yield ('read_attrs', self.read_attrs)
         yield ('configuration_attrs', self.configuration_attrs)
-        yield ('monitor_attrs', self.monitor_attrs)

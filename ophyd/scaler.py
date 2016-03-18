@@ -33,7 +33,7 @@ class EpicsScaler(Device):
     gates = DDC(_scaler_fields('gate', '.G', range(1, 33)))
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 monitor_attrs=None, name=None, parent=None, **kwargs):
+                 name=None, parent=None, **kwargs):
         if read_attrs is None:
             read_attrs = ['channels', 'time']
 
@@ -42,7 +42,6 @@ class EpicsScaler(Device):
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
         self.stage_sigs.update([(self.count_mode, 0)])

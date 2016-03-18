@@ -50,13 +50,11 @@ class DeviceTests(unittest.TestCase):
 
         d = MyDevice('prefix', read_attrs=['cpt1'],
                      configuration_attrs=['cpt2'],
-                     monitor_attrs=['cpt3']
                      )
 
         d.read()
         self.assertEqual(d.read_attrs, ['cpt1'])
         self.assertEqual(d.configuration_attrs, ['cpt2'])
-        self.assertEqual(d.monitor_attrs, ['cpt3'])
 
         self.assertEqual(list(d.read().keys()), [d.cpt1.name])
         self.assertEqual(set(d.read_configuration().keys()),
@@ -157,8 +155,8 @@ class DeviceTests(unittest.TestCase):
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
-                          'read_attrs', 'configuration_attrs', 'monitor_attrs',
-                          '_sig_attrs', '_sub_devices']
+                          'read_attrs', 'configuration_attrs', '_sig_attrs',
+                          '_sub_devices']
 
         type('a', (Device,), {'a': None})  # legal class definition
         # Illegal class definitions:

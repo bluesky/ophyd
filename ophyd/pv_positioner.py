@@ -80,11 +80,9 @@ class PVPositioner(Device, PositionerBase):
     put_complete = False
 
     def __init__(self, prefix='', *, limits=None, name=None, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, parent=None,
-                 egu='', **kwargs):
+                 configuration_attrs=None, parent=None, egu='', **kwargs):
         super().__init__(prefix=prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
         if self.__class__ is PVPositioner:
