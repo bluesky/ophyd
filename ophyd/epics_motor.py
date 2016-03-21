@@ -57,9 +57,8 @@ class EpicsMotor(Device, PositionerBase):
     home_reverse = Cpt(EpicsSignal, '.HOMR')
     direction_of_travel = Cpt(EpicsSignal, '.TDIR')
 
-
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 monitor_attrs=None, name=None, parent=None, **kwargs):
+                 name=None, parent=None, **kwargs):
         if read_attrs is None:
             read_attrs = ['user_readback', 'user_setpoint']
 
@@ -68,7 +67,6 @@ class EpicsMotor(Device, PositionerBase):
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, parent=parent, **kwargs)
 
         # Make the default alias for the user_readback the name of the

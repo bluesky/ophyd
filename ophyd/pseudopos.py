@@ -311,8 +311,7 @@ class PseudoPositioner(Device, SoftPositioner):
         The default timeout to use for motion requests, in seconds.
     '''
     def __init__(self, prefix, *, concurrent=True, read_attrs=None,
-                 configuration_attrs=None, monitor_attrs=None, name=None,
-                 egu='', **kwargs):
+                 configuration_attrs=None, name=None, egu='', **kwargs):
 
         self._finished_lock = threading.RLock()
         self._concurrent = bool(concurrent)
@@ -326,7 +325,6 @@ class PseudoPositioner(Device, SoftPositioner):
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
-                         monitor_attrs=monitor_attrs,
                          name=name, egu=egu, **kwargs)
 
         self._real = [getattr(self, attr)
