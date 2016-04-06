@@ -396,9 +396,45 @@ class PilatusDetectorCam(CamBase):
 
 
 class PixiradDetectorCam(CamBase):
+    # gjw Mar 4 2016 : proceed with caution
     _html_docs = ['PixiradDoc.html']
-    # TODO new
-    pass
+    frame_type = C(EpicsSignal, 'FrameType')
+    trigger_mode = C(EpicsSignal, 'TriggerMode')
+    temperature_set = C(SignalWithRBV, 'Temperature')
+    temperature_actual = C(EpicsSignalRO, 'TemperatureActual')
+    num_images = C(SignalWithRBV, 'NumImages')
+    acq_period = C(SignalWithRBV, 'AcquirePeriod')
+    cooling_state = C(Signal, 'CoolingState')
+    cooling_state_rbv = C(SignalRO, 'Cooling_RBV')
+    temperature_hot = C(SignalRO, 'HotTemperature_RBV')
+    temperature_box = C(SignalRO, 'BoxTemperature_RBV')
+    humidity_box = C(SignalRO, 'BoxHumidity_RBV')
+    dew_point = C(SignalRO, 'DewPoint_RBV')
+    peltier_power = C(SignalRO, 'PeltierPower_RBV')
+    cooling_status = C(SignalRO, 'CoolingStatus_RBV')
+    hv_mode = C(SignalWithRBV, 'HVMode')
+    hv_state = C(SignalWithRBV, 'HVState')
+    hv_value = C(SignalWithRBV, 'HVValue')
+    hv_actual = C(SignalRO, 'HVActual_RBV')
+    hv_current = C(SignalRO, 'HVCurrent_RBV')
+    threshold_1 = C(SignalWithRBV, 'Threshold1')
+    threshold_2 = C(SignalWithRBV, 'Threshold2')
+    threshold_3 = C(SignalWithRBV, 'Threshold3')
+    threshold_4 = C(SignalWithRBV, 'Threshold4')
+    threshold_1_actual = C(SignalRO, 'ThresholdActual1_RBV')
+    threshold_2_actual = C(SignalRO, 'ThresholdActual2_RBV')
+    threshold_3_actual = C(SignalRO, 'ThresholdActual3_RBV')
+    threshold_4_actual = C(SignalRO, 'ThresholdActual4_RBV')
+    sync_in_polarity = C(SignalWithRBV, 'SyncInPolarity')
+    sync_out_polarity = C(SignalWithRBV, 'SyncOutPolarity')
+    sync_out_function = C(SignalWithRBV, 'SyncOutFunction')
+    colors_collected  = C(SignalRO, 'ColorsCollected_RBV')
+    udp_buffers_read = C(SignalRO, 'UDPBuffersRead_RBV')
+    udp_buffers_max = C(SignalRO, 'UDPBuffersMax_RBV')
+    udp_buffers_free = C(SignalRO, 'UDPBuffersFree_RBV')
+    udp_speed = C(SignalRO, 'UDPSpeed_RBV')
+    autocalibrate = C(SignalWithRBV, 'AutoCalibrate')
+    system_reset = C(SignalWithRBV, 'SystemReset')
 
 
 class PointGreyDetectorCam(CamBase):
