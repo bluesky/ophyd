@@ -1,10 +1,7 @@
-from ophyd import (EpicsSignalRO, DetectorBase, SingleTrigger,
-                   Component as Cpt, EpicsSignal,
-                   ADComponent as ADCpt
-                  )
-from ophyd.areadetector import (EpicsSignalWithRBV, ImagePlugin, StatsPlugin,
-                                SingleTrigger
-                               )
+from . import (EpicsSignalRO, EpicsSignal, Component as Cpt)
+from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
+                            ImagePlugin, StatsPlugin, DetectorBase,
+                            SingleTrigger)
 
 
 class QuadEM(SingleTrigger, DetectorBase):
