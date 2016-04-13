@@ -1,8 +1,20 @@
-from . import (EpicsSignalRO, EpicsSignal, Component as Cpt)
+from collections import OrderedDict
+
+from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
+               DynamicDeviceComponent as DDCpt)
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
                             ImagePlugin, StatsPlugin, DetectorBase,
                             SingleTrigger)
 
+
+def _current_fields(attr_base, field_base, range_, **kwargs):
+    defn = OrderedDict()
+    for i in range_:
+        attr = '{attr}{i}'.format(attr=attr_base, i=i)
+        suffix = '{field}{i}'.format(field=field_base, i=i)
+        defn[attr] = (EpicsSignal, suffix, kwargs)
+
+    return defn
 
 class QuadEM(SingleTrigger, DetectorBase):
     model = Cpt(EpicsSignalRO, 'Model')
@@ -39,25 +51,12 @@ class QuadEM(SingleTrigger, DetectorBase):
     trigger_mode = Cpt(EpicsSignal, 'TriggerMode')
     reset = Cpt(EpicsSignal, 'Reset')
 
-    current_name1 = Cpt(EpicsSignal, 'CurrentName1')
-    current_name2 = Cpt(EpicsSignal, 'CurrentName2')
-    current_name3 = Cpt(EpicsSignal, 'CurrentName3')
-    current_name4 = Cpt(EpicsSignal, 'CurrentName4')
-
-    current_offset1 = Cpt(EpicsSignal, 'CurrentOffset1')
-    current_offset2 = Cpt(EpicsSignal, 'CurrentOffset2')
-    current_offset3 = Cpt(EpicsSignal, 'CurrentOffset3')
-    current_offset4 = Cpt(EpicsSignal, 'CurrentOffset4')
-
-    current_offset_calc1 = Cpt(EpicsSignal, 'ComputeCurrentOffset1')
-    current_offset_calc2 = Cpt(EpicsSignal, 'ComputeCurrentOffset2')
-    current_offset_calc3 = Cpt(EpicsSignal, 'ComputeCurrentOffset3')
-    current_offset_calc4 = Cpt(EpicsSignal, 'ComputeCurrentOffset4')
-
-    current_scale1 = Cpt(EpicsSignal, 'CurrentScale1')
-    current_scale2 = Cpt(EpicsSignal, 'CurrentScale2')
-    current_scale3 = Cpt(EpicsSignal, 'CurrentScale3')
-    current_scale4 = Cpt(EpicsSignal, 'CurrentScale4')
+    current_names = DDCpt(_current_fields('ch', 'CurrentName', range(1,5),
+                                          string=True))
+    current_offsets = DDCpt(_current_fields('ch', 'CurrentOffset', range(1,5)))
+    current_offset_calcs = DDCpt(_current_fields('ch', 'ComputeCurrentOffset',
+                                                 range(1,5)))
+    current_scales = DDCpt(_current_fields('ch', 'CurrentScale', range(1,5)))
 
     position_offset_x = Cpt(EpicsSignal, 'PositionOffsetX')
     position_offset_y = Cpt(EpicsSignal, 'PositionOffsetY')
