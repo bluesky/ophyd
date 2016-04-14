@@ -65,7 +65,7 @@ class QuadEM(SingleTrigger, DetectorBase):
     position_offset_calc_y = Cpt(EpicsSignal, 'ComputePosOffsetY')
 
     position_scale_x = Cpt(EpicsSignal, 'PositionScaleX')
-    position_scale_Y = Cpt(EpicsSignal, 'PositionScaleY')
+    position_scale_y = Cpt(EpicsSignal, 'PositionScaleY')
 
     image = ADCpt(ImagePlugin, 'image1:')
     current1 = ADCpt(StatsPlugin, 'Current1:')
