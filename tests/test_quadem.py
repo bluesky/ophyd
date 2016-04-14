@@ -3,6 +3,7 @@ import pytest
 
 import epics
 from ophyd import QuadEM
+from ophyd.utils import ReadOnlyError
 from .test_signal import FakeEpicsPV
 
 
@@ -93,3 +94,34 @@ def test_reading(quadem):
     assert set(('value', 'timestamp')) == \
            set(vals['quadem_current1_mean_value'].keys())
 
+def test_readonly(quadem):
+    ro_attrs = ['model', 'firmware', 'hvs_readback', 'hvv_readback',
+                'hvi_readback', 'sample_time', 'num_average', 'num_averaged',
+                'num_acquired', 'read_data', 'ring_overflows']
+
+    for attr in ro_attrs:
+        pytest.raises(ReadOnlyError, getattr(quadem, attr).put, 3,14)
+
+# non-EpicsSignalRO class attributes
+def test_attrs(quadem):
+    cpt_attrs = ['acquire_mode', 'acquire', 'read_format', 'em_range',
+                 'ping_pong', 'integration_time', 'num_channels', 'geometry',
+                 'resolution', 'bias_state', 'bias_interlock', 'bias_voltage',
+                 'values_per_read', 'averaging_time', 'num_acquire',
+                 'trigger_mode', 'reset', 'position_offset_x', 'position_offset_y',
+                 'position_offset_calc_x', 'position_offset_calc_y',
+                 'position_scale_x', 'position_scale_y']
+
+    for attr in cpt_attrs:
+        cpt = getattr(quadem, attr)
+        cpt.put(3.14)
+        cpt.get()
+
+    ddcpt_attrs = ['current_names', 'current_offsets', 'current_offset_calcs',
+                   'current_scales']
+
+    for attr in ddcpt_attrs:
+        for i in range(1,5):
+            cpt = getattr(quadem, attr + '.ch{}'.format(i))
+            cpt.put(3.14)
+            cpt.get()
