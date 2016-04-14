@@ -21,6 +21,7 @@ from .device import (Device, Component, FormattedComponent,
                      DynamicDeviceComponent)
 from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
+from .quadem import QuadEM
 
 # Areadetector-related
 from .areadetector import *
