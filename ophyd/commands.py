@@ -7,6 +7,7 @@ import functools
 import sys
 import warnings
 from contextlib import contextmanager, closing
+from operator import attrgetter
 from io import StringIO
 import collections
 
@@ -125,7 +126,7 @@ def _normalize_positioners(positioners):
             if not isinstance(device, (Device, PositionerBase)):
                 raise TypeError("Input is not a Device: %r" % device)
             res.extend(_recursive_positioner_search(device))
-    return res
+    return list(sorted(set(res), key=attrgetter('name')))
 
 
 def var_from_namespace(var):
@@ -239,7 +240,7 @@ def mov(positioner, position):
     for err in [s for s in stat if not s.success]:
         device = err.pos
         reason = "Unknown"
-        if isinstance(device, EpicsMotor):           
+        if isinstance(device, EpicsMotor):
             if device.at_high_limit_switch:
                 reason = "Motor reached the high limit switch."
             elif device.at_low_limit_switch:
