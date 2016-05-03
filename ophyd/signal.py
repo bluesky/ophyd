@@ -97,6 +97,8 @@ class Signal(OphydObject):
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, timestamp=self._timestamp)
 
+    set = put
+
     @property
     def value(self):
         '''The signal's value'''
