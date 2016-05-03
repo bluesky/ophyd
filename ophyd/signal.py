@@ -63,11 +63,14 @@ class Signal(OphydObject):
         '''The readback value'''
         return self._readback
 
-    def put(self, value, *, timestamp=None, force=False):
+    def put(self, value, *, timestamp=None, force=False, **kwargs):
         '''Put updates the internal readback value
 
         The value is optionally checked first, depending on the value of force.
         In addition, VALUE subscriptions are run.
+
+        Extra kwargs are ignored (for API compatibility with EpicsSignal kwargs
+        pass through).
 
         Parameters
         ----------
@@ -77,6 +80,7 @@ class Signal(OphydObject):
             The timestamp associated with the value, defaults to time.time()
         force : bool, optional
             Check the value prior to setting it, defaults to False
+
         '''
 
         # TODO: consider adding set_and_wait here as a kwarg
