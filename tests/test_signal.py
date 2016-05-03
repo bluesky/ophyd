@@ -512,6 +512,12 @@ class EpicsSignalTests(unittest.TestCase):
         self.assertEquals(desc['dtype'], 'array')
         self.assertEquals(desc['shape'], [1,])
 
+    def test_set_method(self):
+        sig = Signal()
+
+        sig.set(28)
+        self.assertEquals(sig.get(), 28)
+
 
 class DerivedSignalTests(unittest.TestCase):
     def test_soft_derived(self):
