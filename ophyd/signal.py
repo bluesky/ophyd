@@ -526,6 +526,9 @@ class EpicsSignalRO(EpicsSignalBase):
     def put(self, *args, **kwargs):
         raise ReadOnlyError('Read-only signals cannot be put to')
 
+    def set(self, *args, **kwargs):
+        raise ReadOnlyError('Read-only signals cannot be set')
+
 
 class EpicsSignal(EpicsSignalBase):
     '''An EPICS signal, comprised of either one or two EPICS PVs

@@ -351,6 +351,9 @@ class EpicsSignalTests(unittest.TestCase):
         with self.assertRaises(ReadOnlyError):
             signal.put(10)
 
+        with self.assertRaises(ReadOnlyError):
+            signal.set(10)
+
         # vestigial, to be removed
         with self.assertRaises(AttributeError):
             signal.setpoint_ts
