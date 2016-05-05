@@ -8,7 +8,9 @@ from .utils import (ReadOnlyError, LimitError)
 from .utils.epics_pvs import (pv_form, waveform_to_string,
                               raise_if_disconnected, data_type, data_shape)
 from .ophydobj import OphydObject
-from .status import DeviceStatus
+from .status import Status
+from .utils import set_and_wait
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +38,13 @@ class Signal(OphydObject):
             timestamp = time.time()
 
         self._timestamp = timestamp
+        self._set_thread = None
 
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
         # NOTE: this is a no-op that exists here for bluesky purposes
         #       it may need to be moved in the future
-        d = DeviceStatus(self)
+        d = Status(self)
         d._finished()
         return d
 
@@ -97,7 +100,48 @@ class Signal(OphydObject):
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, timestamp=self._timestamp)
 
-    set = put
+    def set(self, value, *, timeout=None, settle_time=None):
+        '''Set is like `put`, but is here for bluesky compatibility
+
+        Returns
+        -------
+        st : Status
+            This status object will be finished upon return in the
+            case of basic soft Signals
+        '''
+        def set_thread():
+            nonlocal timeout
+
+            if timeout is None:
+                timeout = 10
+                # TODO set_and_wait does not support a timeout of None
+                #      and 10 is its default timeout
+
+            try:
+                set_and_wait(self, value, timeout=timeout)
+            except TimeoutError:
+                logger.debug('set_and_wait(%r, %s) timed out', self.name,
+                             value)
+                success = False
+            except Exception as ex:
+                logger.debug('set_and_wait(%r, %s) failed', self.name, value,
+                             exc_info=ex)
+                success = False
+            else:
+                success = True
+                if settle_time is not None:
+                    time.sleep(settle_time)
+            finally:
+                self._set_thread = None
+                st._finished(success=success)
+
+        if self._set_thread is not None:
+            raise RuntimeError('Another set() call is still in progress')
+
+        st = Status(self)
+        self._set_thread = epics.ca.CAThread(target=set_thread)
+        self._set_thread.start()
+        return st
 
     @property
     def value(self):
@@ -665,7 +709,7 @@ class EpicsSignal(EpicsSignalBase):
                 raise TimeoutError('Failed to connect to %s' %
                                    self._write_pv.pvname)
 
-        use_complete = kwargs.get('use_complete', self._put_complete)
+        use_complete = kwargs.pop('use_complete', self._put_complete)
 
         self._write_pv.put(value, use_complete=use_complete,
                            **kwargs)
@@ -680,6 +724,45 @@ class EpicsSignal(EpicsSignalBase):
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self.timestamp, **kwargs)
+
+    def set(self, value, *, timeout=None, settle_time=None):
+        '''Set is like `EpicsSignal.put`, but is here for bluesky compatibility
+
+        If put completion is used for this EpicsSignal, the status object will
+        complete once EPICS reports the put has completed.
+
+        Otherwise, set_and_wait will be used (as in `Signal.set`)
+
+        Parameters
+        ----------
+        value : any
+        timeout : float, optional
+            Maximum time to wait. Note that set_and_wait does not support
+            an infinite timeout.
+        settle_time: float, optional
+            Delay after the set() has completed to indicate completion
+            to the caller
+
+        Returns
+        -------
+        st : Status
+
+        See Also
+        --------
+        `Signal.set`
+        '''
+        if not self._put_complete:
+            return super().set(value, timeout=timeout, settle_time=settle_time)
+
+        # using put completion:
+        # timeout and settle time is handled by the status object.
+        st = Status(self, timeout=timeout, settle_time=settle_time)
+
+        def put_callback(**kwargs):
+            st._finished(success=True)
+
+        self.put(value, use_complete=True, callback=put_callback)
+        return st
 
     @property
     def setpoint(self):

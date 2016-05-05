@@ -21,8 +21,8 @@ def _locked(func):
 
 class StatusBase:
     """
-    This is a base class that provides a single-slot
-    call back for finished.
+    This is a base class that provides a single-slot callback for when the
+    specific operation has finished.
 
     Parameters
     ----------
@@ -125,6 +125,30 @@ class StatusBase:
 
     def __str__(self):
         return ('{0}(done={1.done}, '
+                'success={1.success})'
+                ''.format(self.__class__.__name__, self)
+                )
+
+    __repr__ = __str__
+
+
+class Status(StatusBase):
+    '''A basic status object
+
+    Has an optional associated object instance
+
+    Attributes
+    ----------
+    obj : any or None
+        The object
+    '''
+    def __init__(self, obj=None, **kwargs):
+        self.obj = obj
+        super().__init__(**kwargs)
+
+    def __str__(self):
+        return ('{0}(obj={1.obj}, '
+                'done={1.done}, '
                 'success={1.success})'
                 ''.format(self.__class__.__name__, self)
                 )
