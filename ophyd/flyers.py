@@ -300,4 +300,4 @@ class MonitorFlyerMixin:
                      ]
 
         self._collected_data = None
-        return collected
+        yield from collected
