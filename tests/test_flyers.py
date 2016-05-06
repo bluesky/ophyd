@@ -58,6 +58,7 @@ def test_ad_time_series(ts_sim_detector, tscollector):
     cam.stage_sigs[cam.trigger_mode] = 'Internal'
 
     print('tscollector desc', tscollector.describe())
+    print('tscollector flyer desc', tscollector.describe_collect())
     print('tscollector repr', repr(tscollector))
     print('simdet stage sigs', sim_detector.stage_sigs)
     print('tscoll stage sigs', tscollector.stage_sigs)
@@ -90,8 +91,8 @@ def wf_sim_detector(prefix):
     class Detector(SimDetector):
         wfcol = Cpt(WaveformCollector, suffix)
 
-    det = Detector(prefix)
     try:
+        det = Detector(prefix)
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')
@@ -105,3 +106,4 @@ def wfcol(wf_sim_detector):
 
 def test_waveform(wf_sim_detector, wfcol):
     print('waveform collector', wfcol)
+    print('wfcol flyer desc', wfcol.describe_collect())

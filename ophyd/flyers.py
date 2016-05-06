@@ -51,6 +51,10 @@ class AreaDetectorTimeseriesCollector(Device):
     def stop(self):
         self.control.put(2, wait=True)  # Stop Collection
 
+    def describe_collect(self):
+        '''Describe details for the flyer collect() method'''
+        return [self._describe_attr_list(['waveform', 'waveform_ts'])]
+
 
 class WaveformCollector(Device):
     select = C(EpicsSignal, "Sw-Sel")
@@ -112,3 +116,7 @@ class WaveformCollector(Device):
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('data_is_time', self.data_is_time.get())
+
+    def describe_collect(self):
+        '''Describe details for the flyer collect() method'''
+        return [self._describe_attr_list(['waveform'])]
