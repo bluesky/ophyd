@@ -20,12 +20,14 @@ class AreaDetectorTimeseriesCollector(Device):
 
     def __init__(self, prefix, *, read_attrs=None,
                  configuration_attrs=None, name=None,
-                 parent=None, **kwargs):
+                 parent=None, stream_name=None, **kwargs):
         if read_attrs is None:
             read_attrs = []
 
         if configuration_attrs is None:
             configuration_attrs = ['num_points']
+
+        self.stream_name = stream_name
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -80,7 +82,8 @@ class AreaDetectorTimeseriesCollector(Device):
 
     def describe_collect(self):
         '''Describe details for the flyer collect() method'''
-        return [self._describe_attr_list(['waveform', 'waveform_ts'])]
+        desc = self._describe_attr_list(['waveform', 'waveform_ts'])
+        return {self.stream_name: desc}
 
 
 class WaveformCollector(Device):
@@ -100,14 +103,16 @@ class WaveformCollector(Device):
     waveform_nord = C(EpicsSignalRO, "Val:Time-Wfrm.NORD")
     data_is_time = C(Signal)
 
-    def __init__(self, prefix, *, read_attrs=None,
-                 configuration_attrs=None, name=None,
-                 parent=None, data_is_time=True, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 name=None, parent=None, data_is_time=True, stream_name=None,
+                 **kwargs):
         if read_attrs is None:
             read_attrs = []
 
         if configuration_attrs is None:
             configuration_attrs = ['data_is_time']
+
+        self.stream_name = stream_name
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -165,7 +170,8 @@ class WaveformCollector(Device):
 
     def describe_collect(self):
         '''Describe details for the flyer collect() method'''
-        return [self._describe_attr_list(['waveform'])]
+        desc = self._describe_attr_list(['waveform'])
+        return {self.stream_name: desc}
 
 
 class MonitorFlyerMixin:
@@ -184,6 +190,7 @@ class MonitorFlyerMixin:
     '''
     def __init__(self, *args, **kwargs):
         self.monitor_attrs = kwargs.pop('monitor_attrs', [])
+        self.stream_name = kwargs.pop('stream_name', None)
         self._acquiring = False
         self._paused = False
 
@@ -233,8 +240,11 @@ class MonitorFlyerMixin:
 
     def describe_collect(self):
         '''Description of monitored attributes retrieved by collect'''
-        return [self._describe_attr_list([attr])
-                for attr in self.monitor_attrs]
+        # single stream?
+        desc = OrderedDict()
+        for attr in self.monitor_attrs:
+            desc.update(self._describe_attr_list([attr]))
+        return {self.stream_name: desc}
 
     def _clear_monitors(self):
         '''Clear all subscriptions'''
