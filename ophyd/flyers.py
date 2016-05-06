@@ -190,9 +190,11 @@ class MonitorFlyerMixin:
     monitor_attrs : list, optional
         List of signal attribute names to monitor
     '''
-    def __init__(self, *args, **kwargs):
-        self.monitor_attrs = kwargs.pop('monitor_attrs', [])
-        self.stream_name = kwargs.pop('stream_name', None)
+    def __init__(self, *args, monitor_attrs=None, stream_name=None, **kwargs):
+        if monitor_attrs is None:
+            monitor_attrs = []
+        self.monitor_attrs = monitor_attrs
+        self.stream_name = stream_name
         self._acquiring = False
         self._paused = False
 
