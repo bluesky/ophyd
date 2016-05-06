@@ -67,7 +67,9 @@ def test_ad_time_series(ts_sim_detector, tscollector):
     print('cam stage sigs', cam.stage_sigs)
     print('stats stage sigs', sim_detector.stats.stage_sigs)
 
-    tscollector.stop()
+    st = tscollector.complete()
+    wait(st)
+
     tscollector.stage_sigs[tscollector.num_points] = num_points
 
     sim_detector.stage()
@@ -123,10 +125,13 @@ def test_monitor_flyer():
         pass
 
     fdev = FlyerDevice('', name='fdev')
+    fdev.wait_for_connection()
+
     fdev.monitor_attrs = ['mtr1.user_readback', 'mtr2.user_readback']
     fdev.describe()
 
     st = fdev.kickoff()
+    wait(st)
 
     mtr1, mtr2 = fdev.mtr1, fdev.mtr2
     rbv1, rbv2 = mtr1.position, mtr2.position
@@ -139,7 +144,8 @@ def test_monitor_flyer():
     fdev.mtr2.move(rbv2 - 0.2, wait=True)
 
     fdev.resume()
-    fdev.stop()
+    st = fdev.complete()
+    wait(st)
 
     assert fdev.describe_collect() == [fdev.mtr1.user_readback.describe(),
                                        fdev.mtr2.user_readback.describe()]

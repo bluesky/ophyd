@@ -49,18 +49,29 @@ class AreaDetectorTimeseriesCollector(Device):
         return status
 
     def pause(self):
-        self.stop()
+        # Stop without clearing buffers
+        self.control.put('Stop', wait=True)
 
     def resume(self):
         # Resume without erasing
         self.control.put('Start', wait=True)
 
-    def stop(self):
-        # Stop without clearing buffers
-        self.control.put('Stop', wait=True)
+    def complete(self):
+        if self.control.get(as_string=True) == 'Stop':
+            raise RuntimeError('Not acquiring')
+
+        self.pause()
+
+        # Data is ready immediately
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
 
     def collect(self):
-        self.stop()
+        if self.control.get(as_string=True) != 'Stop':
+            raise RuntimeError('Acquisition still in progress. Call complete()'
+                               ' first.')
+
         payload_val, payload_time = self._get_waveforms()
         for v, t in zip(payload_val, payload_time):
             yield {'data': {self.name: v},
@@ -73,6 +84,15 @@ class AreaDetectorTimeseriesCollector(Device):
 
 
 class WaveformCollector(Device):
+    '''Waveform collector
+
+    See: https://github.com/NSLS-II-CSX/timestamp
+
+    Parameters
+    ----------
+    data_is_time : bool, optional
+        Use time as the data being acquired
+    '''
     select = C(EpicsSignal, "Sw-Sel")
     reset = C(EpicsSignal, "Rst-Sel")
     waveform_count = C(EpicsSignalRO, "Val:TimeN-I")
@@ -102,15 +122,18 @@ class WaveformCollector(Device):
             return []
 
     def pause(self):
-        self.stop()
+        # Stop without clearing buffers
+        self.select.put(0, wait=True)
 
     def resume(self):
         # Resume without erasing
         self.select.put(1, wait=True)
 
-    def stop(self):
-        # Stop without clearing buffers
-        self.select.put(0, wait=True)
+    def complete(self):
+        self.pause()
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
 
     def kickoff(self):
         # Put us in reset mode
@@ -126,7 +149,6 @@ class WaveformCollector(Device):
         return status
 
     def collect(self):
-        self.stop()
         payload = self._get_waveform()
         if payload:
             data_is_time = self.data_is_time.get()
@@ -146,23 +168,39 @@ class WaveformCollector(Device):
         return [self._describe_attr_list(['waveform'])]
 
 
-class MonitorFlyerMixin(Device):
-    '''A bluesky flyer device, using monitor_attrs
+class MonitorFlyerMixin:
+    '''A bluesky-compatible flyer mixin, using monitor_attrs
+
+    At kickoff(), all monitor_attrs will be subscribed to and monitored for the
+    until complete() is called. `complete` returns a DeviceStatus instance,
+    which indicates when the data is ready to be collected.  The acquired
+    values are then be retrievable as bluesky bulk-readable documents in
+    collect().
+
+    Parameters
+    ----------
+    monitor_attrs : list, optional
+        List of signal attribute names to monitor
     '''
-    def __init__(self, prefix, monitor_attrs=None, **kwargs):
-        if monitor_attrs is None:
-            monitor_attrs = []
-
-        self.monitor_attrs = monitor_attrs
-
-        super().__init__(prefix, **kwargs)
+    def __init__(self, *args, **kwargs):
+        self.monitor_attrs = kwargs.pop('monitor_attrs', [])
         self._acquiring = False
+        self._paused = False
+
+        super().__init__(*args, **kwargs)
 
     def kickoff(self):
-        self._status = DeviceStatus(self)
+        '''Start collection
+
+        Returns
+        -------
+        DeviceStatus
+            This will be set to done when acquisition has begun
+        '''
         self._collected_data = OrderedDict()
         self._start_time = ttime.time()
         self._acquiring = True
+        self._paused = False
 
         for attr in self.monitor_attrs:
             obj = getattr(self, attr)
@@ -174,11 +212,14 @@ class MonitorFlyerMixin(Device):
             obj.subscribe(functools.partial(self._monitor_callback,
                                             attribute=attr))
 
-        return self._status
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
 
     def _monitor_callback(self, attribute=None, obj=None, value=None,
                           timestamp=None, **kwargs):
-        if not self._acquiring:
+        '''A monitor_attr signal has changed'''
+        if not self._acquiring or self._paused:
             return
 
         if value is None or timestamp is None:
@@ -191,10 +232,12 @@ class MonitorFlyerMixin(Device):
         collected['timestamps'].append(timestamp)
 
     def describe_collect(self):
+        '''Description of monitored attributes retrieved by collect'''
         return [self._describe_attr_list([attr])
                 for attr in self.monitor_attrs]
 
     def _clear_monitors(self):
+        '''Clear all subscriptions'''
         for attr in self._collected_data.keys():
             obj = getattr(self, attr)
             try:
@@ -204,21 +247,32 @@ class MonitorFlyerMixin(Device):
                              exc_info=ex)
 
     def pause(self):
-        self._acquiring = False
+        '''Pause acquisition'''
+        self._paused = True
 
     def resume(self):
-        self._acquiring = True
+        '''Resume acquisition'''
+        self._paused = False
 
-    def stop(self):
+    def complete(self):
+        '''Acquisition completed'''
+        if not self._acquiring:
+            raise RuntimeError('Not acquiring')
+
+        self._acquiring = False
+        self._paused = False
         self._clear_monitors()
-        try:
-            super().stop()
-        finally:
-            if not self._status.done:
-                self._status._finished(success=True)
+
+        # Data is ready immediately
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
 
     def collect(self):
-        self.stop()
+        '''Retrieve all collected data'''
+        if self._acquiring:
+            raise RuntimeError('Acquisition still in progress. Call complete()'
+                               ' first.')
 
         names = [getattr(self, attr).name
                  for attr in self._collected_data]
