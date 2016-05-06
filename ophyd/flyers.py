@@ -163,6 +163,8 @@ class WaveformCollector(Device):
                       'timestamps': {self.name: v},
                       'time': v}
                 yield ev
+        else:
+            yield from []
 
     def _repr_info(self):
         yield from super()._repr_info()
