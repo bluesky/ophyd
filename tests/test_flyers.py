@@ -2,10 +2,12 @@ import time
 import pytest
 
 from ophyd import (Component as Cpt,
-                   SimDetector, SimDetectorCam, StatsPlugin, EpicsSignal)
+                   SimDetector, SimDetectorCam, StatsPlugin, EpicsSignal,
+                   EpicsSignalRO, EpicsMotor, Device)
 from ophyd.areadetector.base import EpicsSignalWithRBV
 from ophyd.flyers import (AreaDetectorTimeseriesCollector,
-                          WaveformCollector)
+                          WaveformCollector,
+                          MonitorFlyerMixin)
 from ophyd.status import wait
 
 
@@ -110,3 +112,46 @@ def wfcol(wf_sim_detector):
 def test_waveform(wf_sim_detector, wfcol):
     print('waveform collector', wfcol)
     print('wfcol flyer desc', wfcol.describe_collect())
+
+
+def test_monitor_flyer():
+    class BasicDevice(Device):
+        mtr1 = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X2}Mtr')
+        mtr2 = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X3}Mtr')
+
+    class FlyerDevice(MonitorFlyerMixin, BasicDevice):
+        pass
+
+    fdev = FlyerDevice('', name='fdev')
+    fdev.monitor_attrs = ['mtr1.user_readback', 'mtr2.user_readback']
+    fdev.describe()
+
+    st = fdev.kickoff()
+
+    mtr1, mtr2 = fdev.mtr1, fdev.mtr2
+    rbv1, rbv2 = mtr1.position, mtr2.position
+    fdev.mtr1.move(rbv1 + 0.2, wait=True)
+    fdev.mtr2.move(rbv2 + 0.2, wait=True)
+
+    fdev.pause()
+
+    fdev.mtr1.move(rbv1 - 0.2, wait=True)
+    fdev.mtr2.move(rbv2 - 0.2, wait=True)
+
+    fdev.resume()
+    fdev.stop()
+
+    assert fdev.describe_collect() == [fdev.mtr1.user_readback.describe(),
+                                       fdev.mtr2.user_readback.describe()]
+    data = fdev.collect()
+    # data from both motors
+    assert len(data) == 2
+    d1 = data[0]['data']['fdev_mtr1']
+    d2 = data[1]['data']['fdev_mtr2']
+
+    # and at least more than one data point...
+    assert len(d1) > 1
+    assert len(d2) > 1
+    print('data1', d1)
+    print('data2', d2)
+    # raise ValueError()
