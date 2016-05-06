@@ -33,12 +33,23 @@ class AreaDetectorTimeseriesCollector(Device):
 
     def kickoff(self):
         # Erase buffer and start collection
-        self.control.put(0, wait=True)
+        self.control.put('Erase/Start', wait=True)
         # make status object
         status = DeviceStatus(self)
         # it always done, the scan should never even try to wait for this
         status._finished()
         return status
+
+    def pause(self):
+        self.stop()
+
+    def resume(self):
+        # Resume without erasing
+        self.control.put('Start', wait=True)
+
+    def stop(self):
+        # Stop without clearing buffers
+        self.control.put('Stop', wait=True)
 
     def collect(self):
         self.stop()
@@ -47,9 +58,6 @@ class AreaDetectorTimeseriesCollector(Device):
             yield {'data': {self.name: v},
                    'timestamps': {self.name: t},
                    'time': t}
-
-    def stop(self):
-        self.control.put(2, wait=True)  # Stop Collection
 
     def describe_collect(self):
         '''Describe details for the flyer collect() method'''
@@ -85,6 +93,17 @@ class WaveformCollector(Device):
         else:
             return []
 
+    def pause(self):
+        self.stop()
+
+    def resume(self):
+        # Resume without erasing
+        self.select.put(1, wait=True)
+
+    def stop(self):
+        # Stop without clearing buffers
+        self.select.put(0, wait=True)
+
     def kickoff(self):
         # Put us in reset mode
         self.select.put(2, wait=True)
@@ -109,9 +128,6 @@ class WaveformCollector(Device):
                       'timestamps': {self.name: v},
                       'time': v}
                 yield ev
-
-    def stop(self):
-        self.select.put(0, wait=True)  # Stop Collection
 
     def _repr_info(self):
         yield from super()._repr_info()

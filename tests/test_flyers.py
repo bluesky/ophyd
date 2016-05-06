@@ -77,6 +77,9 @@ def test_ad_time_series(ts_sim_detector, tscollector):
         print(st)
         time.sleep(0.1)
 
+    tscollector.pause()
+    tscollector.resume()
+
     collected = list(tscollector.collect())
     print('collected', collected)
     sim_detector.unstage()
