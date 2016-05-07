@@ -235,6 +235,7 @@ class MonitorFlyerMixin:
         self.stream_name = stream_name
         self._acquiring = False
         self._paused = False
+        self._collected_data = None
 
         super().__init__(*args, **kwargs)
 
@@ -251,20 +252,18 @@ class MonitorFlyerMixin:
         self._start_time = ttime.time()
         self._acquiring = True
         self._paused = False
-
-        for attr in self.monitor_attrs:
-            obj = getattr(self, attr)
-            if isinstance(obj, Device):
-                raise ValueError('Cannot monitor sub-devices')
-            self._collected_data[attr] = {'values': [],
-                                          'timestamps': []
-                                          }
-            obj.subscribe(functools.partial(self._monitor_callback,
-                                            attribute=attr))
-
+        self._add_monitors()
         st = DeviceStatus(self)
         st._finished(success=True)
         return st
+
+    def _add_monitors(self):
+        for attr in self.monitor_attrs:
+            obj = getattr(self, attr)
+            if isinstance(obj, Device):
+                raise ValueError('Cannot monitor Devices, only Signals.')
+            obj.subscribe(functools.partial(self._monitor_callback,
+                                            attribute=attr))
 
     def _monitor_callback(self, attribute=None, obj=None, value=None,
                           timestamp=None, **kwargs):
@@ -301,11 +300,21 @@ class MonitorFlyerMixin:
 
     def pause(self):
         '''Pause acquisition'''
+        if not self._acquiring:
+            # nothing to do
+            return
         self._paused = True
+        self._clear_monitors()
+        super().pause()
 
     def resume(self):
         '''Resume acquisition'''
+        if not self._acquiring:
+            # nothing to do
+            return
         self._paused = False
+        self._add_monitors()
+        super.resume()
 
     def complete(self):
         '''Acquisition completed'''
