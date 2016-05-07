@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .status import DeviceStatus
-from .device import (Device, Component as C)
+from .device import (Device, Component as C, BlueskyInterface)
 
 
 logger = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ class WaveformCollector(Device):
         return {self.stream_name: desc}
 
 
-class MonitorFlyerMixin:
+class MonitorFlyerMixin(BlueskyInterface):
     '''A bluesky-compatible flyer mixin, using monitor_attrs
 
     At kickoff(), all monitor_attrs will be subscribed to and monitored for the
