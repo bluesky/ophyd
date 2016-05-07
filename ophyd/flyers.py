@@ -12,40 +12,51 @@ logger = logging.getLogger(__name__)
 
 
 class OrderedDefaultDict(OrderedDict):
-    "a pure Python implementation of defaultdict, inheriting from OrderedDict"
+    """
+    a combination of defaultdict and OrderedDict
+
+    source: http://stackoverflow.com/a/6190500/1221924
+    """
     def __init__(self, default_factory=None, *a, **kw):
-        if (default_factory is not None and
-            not hasattr(default_factory, '__call__')):
+        if (default_factory is not None and not callable(default_factory)):
             raise TypeError('first argument must be callable')
-        dict.__init__(self, *a, **kw)
+        OrderedDict.__init__(self, *a, **kw)
         self.default_factory = default_factory
+
     def __getitem__(self, key):
         try:
-            return dict.__getitem__(self, key)
+            return OrderedDict.__getitem__(self, key)
         except KeyError:
             return self.__missing__(key)
+
     def __missing__(self, key):
         if self.default_factory is None:
             raise KeyError(key)
         self[key] = value = self.default_factory()
         return value
+
     def __reduce__(self):
         if self.default_factory is None:
             args = tuple()
         else:
             args = self.default_factory,
         return type(self), args, None, None, self.items()
+
     def copy(self):
         return self.__copy__()
+
     def __copy__(self):
         return type(self)(self.default_factory, self)
+
     def __deepcopy__(self, memo):
         import copy
         return type(self)(self.default_factory,
-                            copy.deepcopy(self.items()))
+                          copy.deepcopy(self.items()))
+
     def __repr__(self):
-        return 'defaultdict(%s, %s)' % (self.default_factory,
-                                        dict.__repr__(self))
+        return 'OrderedDefaultDict(%s, %s)' % (self.default_factory,
+                                               OrderedDict.__repr__(self))
+
 
 class AreaDetectorTimeseriesCollector(Device):
     control = C(EpicsSignal, "TSControl")
