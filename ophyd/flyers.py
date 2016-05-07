@@ -89,10 +89,12 @@ class AreaDetectorTimeseriesCollector(Device):
     def pause(self):
         # Stop without clearing buffers
         self.control.put('Stop', wait=True)
+        super().pause()
 
     def resume(self):
         # Resume without erasing
         self.control.put('Start', wait=True)
+        super().resume()
 
     def complete(self):
         if self.control.get(as_string=True) == 'Stop':
