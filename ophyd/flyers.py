@@ -201,6 +201,7 @@ class MonitorFlyerMixin(BlueskyInterface):
         self._acquiring = False
         self._paused = False
         self._collected_data = None
+        self._monitors = {}
 
         super().__init__(*args, **kwargs)
 
@@ -227,8 +228,10 @@ class MonitorFlyerMixin(BlueskyInterface):
             obj = getattr(self, attr)
             if isinstance(obj, Device):
                 raise ValueError('Cannot monitor Devices, only Signals.')
-            obj.subscribe(functools.partial(self._monitor_callback,
-                                            attribute=attr))
+
+            cb = functools.partial(self._monitor_callback, attribute=attr)
+            self._monitors[obj] = cb
+            obj.subscribe(cb)
 
     def _monitor_callback(self, attribute=None, obj=None, value=None,
                           timestamp=None, **kwargs):
@@ -255,13 +258,14 @@ class MonitorFlyerMixin(BlueskyInterface):
 
     def _clear_monitors(self):
         '''Clear all subscriptions'''
-        for attr in self._collected_data.keys():
-            obj = getattr(self, attr)
+        for obj, monitor in self._monitors.items():
             try:
-                obj.clear_sub(self._monitor_callback)
+                obj.clear_sub(monitor, event_type=obj._default_sub)
             except Exception as ex:
                 logger.debug('Failed to clear subscription',
                              exc_info=ex)
+
+        self._monitors.clear()
 
     def pause(self):
         '''Pause acquisition'''
