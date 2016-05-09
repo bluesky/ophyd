@@ -9,6 +9,7 @@ from ophyd.flyers import (AreaDetectorTimeseriesCollector,
                           WaveformCollector,
                           MonitorFlyerMixin)
 from ophyd.status import wait
+from ophyd.utils import OrderedDefaultDict
 
 
 @pytest.fixture
@@ -124,7 +125,7 @@ def test_monitor_flyer():
     class FlyerDevice(MonitorFlyerMixin, BasicDevice):
         pass
 
-    fdev = FlyerDevice('', name='fdev')
+    fdev = FlyerDevice('', name='fdev', stream_name='oranges')
     fdev.wait_for_connection()
 
     fdev.monitor_attrs = ['mtr1.user_readback', 'mtr2.user_readback']
@@ -147,9 +148,12 @@ def test_monitor_flyer():
     st = fdev.complete()
     wait(st)
 
-    assert fdev.describe_collect() == [fdev.mtr1.user_readback.describe(),
-                                       fdev.mtr2.user_readback.describe()]
-    data = fdev.collect()
+    desc = OrderedDefaultDict()
+    desc.update(fdev.mtr1.user_readback.describe())
+    desc.update(fdev.mtr2.user_readback.describe())
+
+    assert fdev.describe_collect() == {'oranges': desc}
+    data = list(fdev.collect())
     # data from both motors
     assert len(data) == 2
     d1 = data[0]['data']['fdev_mtr1']
