@@ -33,8 +33,8 @@ def ts_sim_detector(prefix, stats_suffix):
         ts_col = Cpt(AreaDetectorTimeseriesCollector, stats_suffix)
         stats = Cpt(StatsPlugin, stats_suffix)
 
-    det = Detector(prefix, name='sim')
     try:
+        det = Detector(prefix, name='sim')
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')

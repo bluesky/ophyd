@@ -1,4 +1,3 @@
-
 import sys
 import logging
 import unittest
@@ -6,12 +5,14 @@ import threading
 import random
 import time
 import copy
+import pytest
 
 import numpy as np
 import epics
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
+from ophyd.status import wait
 
 logger = logging.getLogger(__name__)
 
@@ -350,6 +351,9 @@ class EpicsSignalTests(unittest.TestCase):
         with self.assertRaises(ReadOnlyError):
             signal.put(10)
 
+        with self.assertRaises(ReadOnlyError):
+            signal.set(10)
+
         # vestigial, to be removed
         with self.assertRaises(AttributeError):
             signal.setpoint_ts
@@ -515,7 +519,10 @@ class EpicsSignalTests(unittest.TestCase):
     def test_set_method(self):
         sig = Signal()
 
-        sig.set(28)
+        st = sig.set(28)
+        wait(st)
+        assert st.done
+        assert st.success
         self.assertEquals(sig.get(), 28)
 
 
@@ -556,6 +563,33 @@ class DerivedSignalTests(unittest.TestCase):
         # race condition with the FakeEpicsPV update loop, can't really test
         # self.assertEqual(derived.timestamp, signal.timestamp)
         # self.assertEqual(derived.get(), signal.value)
+
+
+@pytest.mark.parametrize('put_complete', [True, False])
+def test_epicssignal_set(put_complete):
+    epics.PV = epics._PV
+    sim_pv = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
+                         read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV',
+                         put_complete=put_complete)
+
+    # move to +0.2 and check the status object
+    target = sim_pv.get() + 0.2
+    st = sim_pv.set(target, timeout=1, settle_time=0.001)
+    wait(st)
+    assert st.done
+    assert st.success
+    assert abs(target - sim_pv.get()) < 0.05
+
+    # move back to -0.2, forcing a timeout with a low value
+    target = sim_pv.get() - 0.2
+    st = sim_pv.set(target, timeout=1e-6)
+    time.sleep(0.1)
+    assert st.done
+    assert not st.success
+
+    # keep the axis in position
+    st = sim_pv.set(target)
+    wait(st)
 
 
 from . import main
