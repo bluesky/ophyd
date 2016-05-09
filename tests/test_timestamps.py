@@ -63,8 +63,8 @@ class EpicsSignalTests(unittest.TestCase):
 
         rbv_value0 = rbv.get()
         ts0 = rbv.timestamp
-        sp.put(sp.value + 0.1, wait=True)
-        time.sleep(0.1)
+        sp.put(rbv_value0 + 0.1, wait=True)
+        time.sleep(0.2)
 
         rbv_value1 = rbv.get()
         ts1 = rbv.timestamp
