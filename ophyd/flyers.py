@@ -279,7 +279,7 @@ class MonitorFlyerMixin(BlueskyInterface):
             return
         self._paused = False
         self._add_monitors()
-        super.resume()
+        super().resume()
 
     def complete(self):
         '''Acquisition completed'''
