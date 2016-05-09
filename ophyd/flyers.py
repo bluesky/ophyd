@@ -192,12 +192,19 @@ class MonitorFlyerMixin(BlueskyInterface):
     ----------
     monitor_attrs : list, optional
         List of signal attribute names to monitor
+    stream_names : dict, optional
+        A mapping of attribute -> stream name
+        If an attribute is not in this dictionary, the stream name will default
+        to the object's name.
     '''
-    def __init__(self, *args, monitor_attrs=None, stream_name=None, **kwargs):
+    def __init__(self, *args, monitor_attrs=None, stream_names=None, **kwargs):
         if monitor_attrs is None:
             monitor_attrs = []
+        if stream_names is None:
+            stream_names = {}
+
         self.monitor_attrs = monitor_attrs
-        self.stream_name = stream_name
+        self.stream_names = stream_names
         self._acquiring = False
         self._paused = False
         self._collected_data = None
@@ -248,13 +255,15 @@ class MonitorFlyerMixin(BlueskyInterface):
         collected['values'].append(value)
         collected['timestamps'].append(timestamp)
 
+    def _get_stream_name(self, attr):
+        obj = getattr(self, attr)
+        return self.stream_names.get(attr, obj.name)
+
     def describe_collect(self):
         '''Description of monitored attributes retrieved by collect'''
-        # single stream?
-        desc = OrderedDict()
-        for attr in self.monitor_attrs:
-            desc.update(self._describe_attr_list([attr]))
-        return {self.stream_name: desc}
+        return {self._get_stream_name(attr): self._describe_attr_list([attr])
+                for attr in self.monitor_attrs
+                }
 
     def _clear_monitors(self):
         '''Clear all subscriptions'''
@@ -305,16 +314,12 @@ class MonitorFlyerMixin(BlueskyInterface):
             raise RuntimeError('Acquisition still in progress. Call complete()'
                                ' first.')
 
-        names = [getattr(self, attr).name
-                 for attr in self._collected_data]
-
-        collected = [dict(time=self._start_time,
-                          timestamps={name: data['timestamps']},
-                          data={name: data['values']},
-                          )
-                     for name, data in zip(names,
-                                           self._collected_data.values())
-                     ]
-
+        collected = self._collected_data
         self._collected_data = None
-        yield from collected
+
+        for attr, data in collected.items():
+            name = getattr(self, attr).name
+            yield dict(time=self._start_time,
+                       timestamps={name: data['timestamps']},
+                       data={name: data['values']},
+                       )

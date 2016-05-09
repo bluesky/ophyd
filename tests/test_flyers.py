@@ -2,8 +2,8 @@ import time
 import pytest
 
 from ophyd import (Component as Cpt,
-                   SimDetector, SimDetectorCam, StatsPlugin, EpicsSignal,
-                   EpicsSignalRO, EpicsMotor, Device)
+                   SimDetector, SimDetectorCam, StatsPlugin, EpicsMotor,
+                   Device)
 from ophyd.areadetector.base import EpicsSignalWithRBV
 from ophyd.flyers import (AreaDetectorTimeseriesCollector,
                           WaveformCollector,
@@ -125,7 +125,7 @@ def test_monitor_flyer():
     class FlyerDevice(MonitorFlyerMixin, BasicDevice):
         pass
 
-    fdev = FlyerDevice('', name='fdev', stream_name='oranges')
+    fdev = FlyerDevice('', name='fdev', stream_names={'mtr1.user_readback': 'oranges'})
     fdev.wait_for_connection()
 
     fdev.monitor_attrs = ['mtr1.user_readback', 'mtr2.user_readback']
@@ -148,11 +148,12 @@ def test_monitor_flyer():
     st = fdev.complete()
     wait(st)
 
-    desc = OrderedDefaultDict()
-    desc.update(fdev.mtr1.user_readback.describe())
-    desc.update(fdev.mtr2.user_readback.describe())
-
-    assert fdev.describe_collect() == {'oranges': desc}
+    print(fdev.describe_collect())
+    assert (fdev.describe_collect() ==
+            {'oranges': fdev.mtr1.user_readback.describe(),
+             'fdev_mtr2': fdev.mtr2.user_readback.describe(),
+             }
+            )
     data = list(fdev.collect())
     # data from both motors
     assert len(data) == 2
