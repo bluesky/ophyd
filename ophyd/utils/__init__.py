@@ -31,12 +31,12 @@ class OrderedDefaultDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):
         if (default_factory is not None and not callable(default_factory)):
             raise TypeError('first argument must be callable')
-        OrderedDict.__init__(self, *a, **kw)
+        super().__init__(*a, **kw)
         self.default_factory = default_factory
 
     def __getitem__(self, key):
         try:
-            return OrderedDict.__getitem__(self, key)
+            return super().__getitem__(key)
         except KeyError:
             return self.__missing__(key)
 
@@ -65,5 +65,5 @@ class OrderedDefaultDict(OrderedDict):
                           copy.deepcopy(self.items()))
 
     def __repr__(self):
-        return 'OrderedDefaultDict(%s, %s)' % (self.default_factory,
-                                               OrderedDict.__repr__(self))
+        return '%s(%s, %s)' % (self.__class__.__name__, self.default_factory,
+                               super().__repr__())
