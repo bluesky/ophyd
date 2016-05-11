@@ -49,9 +49,5 @@ def _cleanup():
 
     _dispatcher = None
 
-    logger.debug('Clearing the pyepics cache')
-    epics.ca.clear_cache()
-    time.sleep(0.1)
-
     logger.debug('Finalizing libca')
     epics.ca.finalize_libca()
