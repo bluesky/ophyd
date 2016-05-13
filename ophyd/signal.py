@@ -2,6 +2,7 @@
 import logging
 import time
 
+import numpy as np
 import epics
 
 from .utils import (ReadOnlyError, LimitError)
@@ -775,3 +776,63 @@ class EpicsSignal(EpicsSignalBase):
     @setpoint.setter
     def setpoint(self, value):
         self.put(value)
+
+
+class AttributeSignal(Signal):
+    '''Signal derived from a Python object instance's attribute
+
+    Parameters
+    ----------
+    attr : str
+        The dotted attribute name, relative to this signal's parent.
+    name : str, optional
+        The signal name
+    parent : Device, optional
+        The parent device instance
+    '''
+    def __init__(self, attr, *, name=None, parent=None):
+        super().__init__(name=name, parent=parent)
+
+        if '.' in attr:
+            self.attr_base, self.attr = attr.rsplit('.', 1)
+        else:
+            self.attr_base, self.attr = None, attr
+
+    @property
+    def base(self):
+        '''The parent instance which has the final attribute'''
+        if self.attr_base is None:
+            return self.parent
+
+        obj = self.parent
+        for i, part in enumerate(self.attr_base.split('.')):
+            try:
+                obj = getattr(obj, part)
+            except AttributeError as ex:
+                attr = '.'.join(self.parent_attr[:i + 1])
+                raise AttributeError('{} ({})'.format(attr, ex))
+
+        return obj
+
+    def get(self, **kwargs):
+        return getattr(self.base, self.attr)
+
+    def put(self, value, **kwargs):
+        return setattr(self.base, self.attr, value)
+
+    def describe(self):
+        value = self.value
+        return {'source': 'PY:{}.{}'.format(self.parent.name, self.attr),
+                'dtype': data_type(value),
+                'shape': data_shape(value),
+                }
+
+
+class ArrayAttributeSignal(AttributeSignal):
+    '''An AttributeSignal which is cast to an ndarray on get
+
+    This is used where data_type and data_shape may otherwise fail to determine
+    how to store the data into metadatastore.
+    '''
+    def get(self, **kwargs):
+        return np.asarray(super().get(**kwargs))
