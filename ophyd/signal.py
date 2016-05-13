@@ -799,6 +799,14 @@ class AttributeSignal(Signal):
             self.attr_base, self.attr = None, attr
 
     @property
+    def full_attr(self):
+        '''The full attribute name'''
+        if not self.attr_base:
+            return self.attr
+        else:
+            return '.'.join((self.attr_base, self.attr))
+
+    @property
     def base(self):
         '''The parent instance which has the final attribute'''
         if self.attr_base is None:
@@ -822,10 +830,11 @@ class AttributeSignal(Signal):
 
     def describe(self):
         value = self.value
-        return {'source': 'PY:{}.{}'.format(self.parent.name, self.attr),
+        desc = {'source': 'PY:{}.{}'.format(self.parent.name, self.full_attr),
                 'dtype': data_type(value),
                 'shape': data_shape(value),
                 }
+        return {self.name: desc}
 
 
 class ArrayAttributeSignal(AttributeSignal):

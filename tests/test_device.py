@@ -225,6 +225,8 @@ def test_attribute_signal():
             self._value = value
 
     dev = MyDevice('', name='mydev')
+    assert (dev.describe()['mydev_attrsig']['source'] == 'PY:mydev.prop')
+    assert (dev.describe()['mydev_sub_attrsig']['source'] == 'PY:mydev.sub1.prop')
     assert dev.attrsig.get() == init_value
     dev.attrsig.put(55)
     assert dev.attrsig.get() == 55
@@ -245,4 +247,5 @@ def test_array_attribute_signal():
 
     dev = MyDevice('', name='mydev')
     np.testing.assert_array_equal(dev.attrsig.get(), init_value)
+    assert isinstance(dev.attrsig.get(), np.ndarray)
     assert isinstance(dev.attrsig.get(), np.ndarray)
