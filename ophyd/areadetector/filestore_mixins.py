@@ -176,6 +176,7 @@ class FileStorePluginBase(FileStoreBase):
 class FileStoreHDF5(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.filestore_spec = 'AD_HDF5'  # spec name stored in resource doc
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.h5'),
                                 (self.file_write_mode, 'Stream'),
                                 (self.capture, 1)
@@ -188,12 +189,14 @@ class FileStoreHDF5(FileStorePluginBase):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
-        self._resource = fs.insert_resource('AD_HDF5', self._fn, res_kwargs)
+        self._resource = fs.insert_resource(self.filestore_spec,
+                                            self._fn, res_kwargs)
 
 
 class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.filestore_spec = 'AD_TIFF'  # spec name stored in resource doc
         self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
                                 (self.file_write_mode, 'Single'),
                                 ])
@@ -208,7 +211,8 @@ class FileStoreTIFF(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
+        self._resource = fs.insert_resource(self.filestore_spec,
+                                            self._fp, res_kwargs)
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -216,6 +220,7 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
                  number_of_sets_name="number_of_sets",
                  cam_name='cam', proc_name='proc1', **kwargs):
         super().__init__(*args, **kwargs)
+        self.filestore_spec = 'AD_TIFF'  # spec name stored in resource doc
         self._ips_name = images_per_set_name
         self._num_sets_name = number_of_sets_name
         self._cam_name = cam_name
@@ -251,7 +256,8 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        self._resource = fs.insert_resource('AD_TIFF', self._fp, res_kwargs)
+        self._resource = fs.insert_resource(self.filestore_spec,
+                                            self._fp, res_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
