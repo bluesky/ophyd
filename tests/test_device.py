@@ -1,9 +1,10 @@
-import time
 import logging
 import unittest
 
+import numpy as np
+
 from ophyd import (Device, Component, FormattedComponent)
-from ophyd.signal import Signal
+from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal)
 from ophyd.utils import ExceptionBundle
 
 logger = logging.getLogger(__name__)
@@ -192,3 +193,59 @@ class DeviceTests(unittest.TestCase):
         d = MyDevice('')
         assert d.cpt.root == d
         assert d.root == d
+
+
+def test_attribute_signal():
+    init_value = 33
+
+    class SubDevice(Device):
+        @property
+        def prop(self):
+            return init_value
+
+        @prop.setter
+        def prop(self, value):
+            pass
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, '1')
+        attrsig = Component(AttributeSignal, 'prop')
+        sub_attrsig = Component(AttributeSignal, 'sub1.prop')
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._value = init_value
+
+        @property
+        def prop(self):
+            return self._value
+
+        @prop.setter
+        def prop(self, value):
+            self._value = value
+
+    dev = MyDevice('', name='mydev')
+    assert (dev.describe()['mydev_attrsig']['source'] == 'PY:mydev.prop')
+    assert (dev.describe()['mydev_sub_attrsig']['source'] == 'PY:mydev.sub1.prop')
+    assert dev.attrsig.get() == init_value
+    dev.attrsig.put(55)
+    assert dev.attrsig.get() == 55
+
+    assert dev.sub_attrsig.get() == init_value
+    dev.sub_attrsig.put(0)
+
+
+def test_array_attribute_signal():
+    init_value = range(10)
+
+    class MyDevice(Device):
+        attrsig = Component(ArrayAttributeSignal, 'prop')
+
+        @property
+        def prop(self):
+            return init_value
+
+    dev = MyDevice('', name='mydev')
+    np.testing.assert_array_equal(dev.attrsig.get(), init_value)
+    assert isinstance(dev.attrsig.get(), np.ndarray)
+    assert isinstance(dev.attrsig.get(), np.ndarray)
