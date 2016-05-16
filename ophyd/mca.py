@@ -1,13 +1,13 @@
 
 import logging
 
-from collections import (OrderedDict, namedtuple)
+from collections import OrderedDict
 
-from .signal import (EpicsSignal, EpicsSignalRO)
-from .device import Device
-from .device import Component as C, DynamicDeviceComponent as DDC
+from .status import DeviceStatus
+from .signal import (Signal, EpicsSignal, EpicsSignalRO)
+from .device import (Device, Component as C, DynamicDeviceComponent as DDC,
+                     Staged, BlueskyInterface)
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
-from .device import Staged
 
 
 logger = logging.getLogger(__name__)
@@ -274,3 +274,71 @@ class Mercury1(EpicsDXPSystem):
     dxp = C(MercuryDXP, 'dxp1:')
     mca = C(EpicsMCARecord, 'mca1')
 
+
+class SoftDXPTrigger(BlueskyInterface):
+    '''Simple soft trigger for DXP devices
+
+    Parameters
+    ----------
+    acquisiton_signal : str, optional
+        Signal to start acquisition (default: 'mca.erase_start')
+    count_signal : str, optional
+        Signal to set acquisition time (default: 'mca.preset_real_time')
+    preset_mode : str, optional
+        Default preset mode for the stage signals (default: 'Real time')
+    mca_attr : str, optional
+        MCA attribute name (default: 'mca')
+        Used for setting initial stage signals
+    dxp_attr : str, optional
+        DXP attribute name (default: 'dxp')
+        Used for setting initial stage signals
+    '''
+
+    count_time = C(Signal, value=None, doc='bluesky count time')
+
+    def __init__(self, *args, acquisition_signal='mca.erase_start',
+                 count_signal='mca.preset_real_time',
+                 preset_mode='Real time', mca_attr='mca',
+                 dxp_attr='dxp', **kwargs):
+        super().__init__(*args, **kwargs)
+        self._status = None
+
+        self._acquisition_signal = getattr(self, acquisition_signal)
+        self._count_signal = getattr(self, count_signal)
+
+        # mca stage signals
+        mca = getattr(self, mca_attr)
+        self.stage_sigs[mca.stop_signal] = 1
+
+        # dxp stage signals
+        dxp = getattr(self, dxp_attr)
+        self.stage_sigs[dxp.preset_mode] = preset_mode
+
+    def stage(self):
+        if self.count_time.get() is not None:
+            self.stage_sigs[self._count_signal] = self.count_time.get()
+
+        super().stage()
+
+    def unstage(self):
+        try:
+            super().unstage()
+        finally:
+            if self._count_signal in self.stage_sigs:
+                del self.stage_sigs[self._count_signal]
+
+    def trigger(self):
+        "Trigger one acquisition."
+        if self._staged != Staged.yes:
+            raise RuntimeError("This detector is not ready to trigger."
+                               "Call the stage() method before triggering.")
+
+        self._status = DeviceStatus(self)
+        self._acquisition_signal.put(1, callback=self._acquisition_done)
+        return self._status
+
+    def _acquisition_done(self, **kwargs):
+        '''pyepics callback for when put completion finishes'''
+        if self._status is not None:
+            self._status._finished()
+            self._status = None
