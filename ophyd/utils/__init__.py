@@ -12,6 +12,8 @@ from collections import OrderedDict
 
 from .errors import *
 from .epics_pvs import *
+from .paths import makedirs, make_dir_tree
+
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
