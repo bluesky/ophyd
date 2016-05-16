@@ -1,14 +1,14 @@
-
-
 import os
 import logging
 import unittest
 import numpy as np
+import tempfile
 
 import epics
 
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import errors
+from ophyd.utils import (make_dir_tree, makedirs)
 
 from . import config
 
@@ -91,7 +91,7 @@ class EpicsUtilTest(unittest.TestCase):
     def test_data_shape(self):
         utils = epics_utils
 
-        self.assertEquals(utils.data_shape(1), list()) 
+        self.assertEquals(utils.data_shape(1), list())
         self.assertEquals(utils.data_shape('foo'), list())
         self.assertEquals(utils.data_shape(np.array([1,2,3])), [3, ])
         self.assertEquals(utils.data_shape(np.array([[1, 2], [3, 4]])), [2, 2])
@@ -114,6 +114,29 @@ class ErrorsTest(unittest.TestCase):
 def assert_OD_equal_ignore_ts(a, b):
     for (k1, v1), (k2, v2) in zip(a.items(), b.items()):
         assert (k1 == k2) and (v1['value'] == v2['value'])
+
+
+def assert_file_mode(path, expected):
+    assert (os.stat(path).st_mode & 0o777) == expected
+
+
+def test_makedirs():
+    with tempfile.TemporaryDirectory() as tempdir:
+        create_dir = os.path.join(tempdir, 'a')
+        makedirs(create_dir, mode=0o767, mode_base=tempdir)
+        assert_file_mode(create_dir, 0o767)
+
+
+def test_make_dir_tree():
+    with tempfile.TemporaryDirectory() as tempdir:
+        paths = make_dir_tree(2016, base_path=tempdir, mode=0o777)
+        assert len(paths) == 366
+
+        for path in paths:
+            assert_file_mode(path, 0o777)
+
+        assert os.path.join(tempdir, '2016', '03', '04') in paths
+        assert os.path.join(tempdir, '2016', '02', '29') in paths
 
 
 from . import main
