@@ -238,7 +238,25 @@ class EpicsDXPLowLevel(Device):
         return param
 
 
-class EpicsDXPSystem(Device):
+class EpicsDXPMapping(Device):
+    apply = C(EpicsSignal, 'Apply')
+    auto_apply = C(SignalWithRBV, 'AutoApply')
+    auto_pixels_per_buffer = C(SignalWithRBV, 'AutoPixelsPerBuffer')
+    buffer_size = C(EpicsSignalRO, 'BufferSize_RBV')
+    collect_mode = C(SignalWithRBV, 'CollectMode')
+    ignore_gate = C(SignalWithRBV, 'IgnoreGate')
+    input_logic_polarity = C(SignalWithRBV, 'InputLogicPolarity')
+    list_mode = C(SignalWithRBV, 'ListMode')
+    mbytes_read = C(EpicsSignalRO, 'MBytesRead_RBV')
+    next_pixel = C(EpicsSignal, 'NextPixel')
+    pixel_advance_mode = C(SignalWithRBV, 'PixelAdvanceMode')
+    pixels_per_buffer = C(SignalWithRBV, 'PixelsPerBuffer')
+    pixels_per_run = C(SignalWithRBV, 'PixelsPerRun')
+    read_rate = C(EpicsSignalRO, 'ReadRate_RBV')
+    sync_count = C(SignalWithRBV, 'SyncCount')
+
+
+class EpicsDXPBaseSystem(Device):
     channel_advance = C(EpicsSignal, 'ChannelAdvance')
     client_wait = C(EpicsSignal, 'ClientWait')
     dwell = C(EpicsSignal, 'Dwell')
@@ -251,6 +269,79 @@ class EpicsDXPSystem(Device):
     set_client_wait = C(EpicsSignal, 'SetClientWait')
 
 
+class EpicsDXPMultiElementSystem(EpicsDXPBaseSystem):
+    # Preset info
+    preset_events = C(EpicsSignal, 'PresetEvents')
+    preset_live_time = C(EpicsSignal, 'PresetLive')
+    preset_real_time = C(EpicsSignal, 'PresetReal')
+    preset_mode = C(EpicsSignal, 'PresetMode', string=True)
+    preset_triggers = C(EpicsSignal, 'PresetTriggers')
+
+    # Acquisition
+    erase_all = C(EpicsSignal, 'EraseAll')
+    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
+    start_all = C(EpicsSignal, 'StartAll')
+    stop_all = C(EpicsSignal, 'StopAll')
+
+    # Status
+    set_acquire_busy = C(EpicsSignal, 'SetAcquireBusy')
+    acquire_busy = C(EpicsSignal, 'AcquireBusy')
+    status_all = C(EpicsSignal, 'StatusAll')
+    status_all_once = C(EpicsSignal, 'StatusAllOnce')
+    acquiring = C(EpicsSignal, 'Acquiring')
+
+    # Reading
+    read_baseline_histograms = C(EpicsSignal, 'ReadBaselineHistograms')
+    read_all = C(EpicsSignal, 'ReadAll')
+    read_all_once = C(EpicsSignal, 'ReadAllOnce')
+
+    # As a debugging note, if snl_connected is not '1', your IOC is
+    # misconfigured:
+    snl_connected = C(EpicsSignal, 'SNL_Connected')
+
+    # Copying to individual elements
+    copy_adcp_ercent_rule = C(EpicsSignal, 'CopyADCPercentRule')
+    copy_baseline_cut_enable = C(EpicsSignal, 'CopyBaselineCutEnable')
+    copy_baseline_cut_percent = C(EpicsSignal, 'CopyBaselineCutPercent')
+    copy_baseline_filter_length = C(EpicsSignal, 'CopyBaselineFilterLength')
+    copy_baseline_threshold = C(EpicsSignal, 'CopyBaselineThreshold')
+    copy_decay_time = C(EpicsSignal, 'CopyDecayTime')
+    copy_detector_polarity = C(EpicsSignal, 'CopyDetectorPolarity')
+    copy_energy_threshold = C(EpicsSignal, 'CopyEnergyThreshold')
+    copy_gap_time = C(EpicsSignal, 'CopyGapTime')
+    copy_max_energy = C(EpicsSignal, 'CopyMaxEnergy')
+    copy_max_width = C(EpicsSignal, 'CopyMaxWidth')
+    copy_peaking_time = C(EpicsSignal, 'CopyPeakingTime')
+    copy_preamp_gain = C(EpicsSignal, 'CopyPreampGain')
+    copy_roic_hannel = C(EpicsSignal, 'CopyROIChannel')
+    copy_roie_nergy = C(EpicsSignal, 'CopyROIEnergy')
+    copy_roi_sca = C(EpicsSignal, 'CopyROI_SCA')
+    copy_reset_delay = C(EpicsSignal, 'CopyResetDelay')
+    copy_trigger_gap_time = C(EpicsSignal, 'CopyTriggerGapTime')
+    copy_trigger_peaking_time = C(EpicsSignal, 'CopyTriggerPeakingTime')
+    copy_trigger_threshold = C(EpicsSignal, 'CopyTriggerThreshold')
+
+    # do_* executes the process:
+    do_read_all = C(EpicsSignal, 'DoReadAll')
+    do_read_baseline_histograms = C(EpicsSignal, 'DoReadBaselineHistograms')
+    do_read_traces = C(EpicsSignal, 'DoReadTraces')
+    do_status_all = C(EpicsSignal, 'DoStatusAll')
+
+    # Time
+    dead_time = C(EpicsSignal, 'DeadTime')
+    elapsed_live = C(EpicsSignal, 'ElapsedLive')
+    elapsed_real = C(EpicsSignal, 'ElapsedReal')
+    idead_time = C(EpicsSignal, 'IDeadTime')
+
+    # low-level
+    read_low_level_params = C(EpicsSignal, 'ReadLLParams')
+
+    # Traces
+    read_traces = C(EpicsSignal, 'ReadTraces')
+    trace_modes = C(EpicsSignal, 'TraceModes', string=True)
+    trace_times = C(EpicsSignal, 'TraceTimes')
+
+
 class SaturnMCA(EpicsMCA, EpicsMCACallback):
     pass
 
@@ -259,7 +350,7 @@ class SaturnDXP(EpicsDXP, EpicsDXPLowLevel):
     pass
 
 
-class Saturn(EpicsDXPSystem):
+class Saturn(EpicsDXPBaseSystem):
     '''DXP Saturn with 1 channel example'''
     dxp = C(SaturnDXP, 'dxp1:')
     mca = C(SaturnMCA, 'mca1')
@@ -269,7 +360,7 @@ class MercuryDXP(EpicsDXP, EpicsDXPLowLevel):
     pass
 
 
-class Mercury1(EpicsDXPSystem):
+class Mercury1(EpicsDXPMultiElementSystem):
     '''DXP Mercury with 1 channel example'''
     dxp = C(MercuryDXP, 'dxp1:')
     mca = C(EpicsMCARecord, 'mca1')
@@ -280,65 +371,40 @@ class SoftDXPTrigger(BlueskyInterface):
 
     Parameters
     ----------
-    acquisiton_signal : str, optional
-        Signal to start acquisition (default: 'mca.erase_start')
     count_signal : str, optional
-        Signal to set acquisition time (default: 'mca.preset_real_time')
+        Signal to set acquisition time (default: 'preset_real_time')
     preset_mode : str, optional
         Default preset mode for the stage signals (default: 'Real time')
-    mca_attr : str, optional
-        MCA attribute name (default: 'mca')
-        Used for setting initial stage signals
-    dxp_attr : str, optional
-        DXP attribute name (default: 'dxp')
-        Used for setting initial stage signals
+    mode_signal : str, optional
+        Preset mode signal attribute (default 'preset_mode')
+    stop_signal : str, optional
+        Stop signal attribute (default 'stop_all')
     '''
 
     count_time = C(Signal, value=None, doc='bluesky count time')
 
-    def __init__(self, *args, acquisition_signal='mca.erase_start',
-                 count_signal='mca.preset_real_time',
-                 preset_mode='Real time', mca_attr='mca',
-                 dxp_attr='dxp', **kwargs):
+    def __init__(self, *args, count_signal='preset_real_time',
+                 stop_signal='stop_all', mode_signal='preset_mode',
+                 preset_mode='Real time',
+                 **kwargs):
         super().__init__(*args, **kwargs)
         self._status = None
-
-        self._acquisition_signal = getattr(self, acquisition_signal)
         self._count_signal = getattr(self, count_signal)
 
-        # mca stage signals
-        mca = getattr(self, mca_attr)
-        self.stage_sigs[mca.stop_signal] = 1
+        stop_signal = getattr(self, stop_signal)
+        self.stage_sigs[stop_signal] = 1
 
-        # dxp stage signals
-        dxp = getattr(self, dxp_attr)
-        self.stage_sigs[dxp.preset_mode] = preset_mode
+        mode_signal = getattr(self, mode_signal)
+        self.stage_sigs[mode_signal] = preset_mode
 
     def stage(self):
-        if self.count_time.get() is not None:
+        if self.count_time.get() is None:
+            # remove count_time from the stage signals if count_time unset
+            try:
+                del self.stage_sigs[self._count_signal]
+            except KeyError:
+                pass
+        else:
             self.stage_sigs[self._count_signal] = self.count_time.get()
 
         super().stage()
-
-    def unstage(self):
-        try:
-            super().unstage()
-        finally:
-            if self._count_signal in self.stage_sigs:
-                del self.stage_sigs[self._count_signal]
-
-    def trigger(self):
-        "Trigger one acquisition."
-        if self._staged != Staged.yes:
-            raise RuntimeError("This detector is not ready to trigger."
-                               "Call the stage() method before triggering.")
-
-        self._status = DeviceStatus(self)
-        self._acquisition_signal.put(1, callback=self._acquisition_done)
-        return self._status
-
-    def _acquisition_done(self, **kwargs):
-        '''pyepics callback for when put completion finishes'''
-        if self._status is not None:
-            self._status._finished()
-            self._status = None
