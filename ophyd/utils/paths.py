@@ -21,13 +21,14 @@ def makedirs(path, *, mode=0o777, mode_base=None):
         return []
 
     head, tail = os.path.split(path)
-    ret = makedirs(head, mode=mode, mode_base=mode_base)
-    try:
-        os.mkdir(path)
-    except OSError as ex:
-        if 'File exists' not in str(ex):
-            raise
 
+    # Recurse on all directories above:
+    ret = makedirs(head, mode=mode, mode_base=mode_base)
+
+    # Then try to make the last directory:
+    os.makedirs(path, mode=mode, exist_ok=True)
+
+    # And set its permissions if after mode_base:
     if not mode_base or os.path.commonprefix((mode_base, path)) == mode_base:
         os.chmod(path, mode)
 
