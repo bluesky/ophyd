@@ -8,6 +8,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
 # This is used below by StatusBase.
 def _locked(func):
     "an decorator for running a method with the instance's lock"
@@ -97,9 +98,9 @@ class StatusBase:
         if success and self.settle_time > 0:
             # delay gratification until the settle time is up
             self._settle_thread = threading.Thread(
-                    target=self._settle_then_run_callbacks, daemon=True,
-                    kwargs=dict(success=success),
-                    )
+                target=self._settle_then_run_callbacks, daemon=True,
+                kwargs=dict(success=success),
+            )
             self._settle_thread.start()
         else:
             self._settle_then_run_callbacks(success=success)
@@ -159,8 +160,8 @@ class Status(StatusBase):
 class DeviceStatus(StatusBase):
     '''Device status'''
     def __init__(self, device, **kwargs):
-        super().__init__(**kwargs)
         self.device = device
+        super().__init__(**kwargs)
 
     def _handle_failure(self):
         super()._handle_failure()
@@ -214,18 +215,18 @@ class MoveStatus(DeviceStatus):
 
     def __init__(self, positioner, target, *, done=False, start_ts=None,
                  **kwargs):
-        # call the base class
-        super().__init__(positioner, **kwargs)
-
         self.done = done
         if start_ts is None:
             start_ts = time.time()
 
-        self.pos = self.device
+        self.pos = positioner
         self.target = target
         self.start_ts = start_ts
         self.finish_ts = None
         self.finish_pos = None
+
+        # call the base class
+        super().__init__(positioner, **kwargs)
 
     @property
     def error(self):
@@ -265,7 +266,6 @@ class MoveStatus(DeviceStatus):
                 )
 
     __repr__ = __str__
-
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):
