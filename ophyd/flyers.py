@@ -1,6 +1,15 @@
+import time as ttime
+import functools
+import logging
+from collections import OrderedDict
+
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .status import DeviceStatus
-from .device import (Device, Component as C)
+from .device import (Device, Component as C, BlueskyInterface)
+from .utils import OrderedDefaultDict
+
+
+logger = logging.getLogger(__name__)
 
 
 class AreaDetectorTimeseriesCollector(Device):
@@ -12,12 +21,14 @@ class AreaDetectorTimeseriesCollector(Device):
 
     def __init__(self, prefix, *, read_attrs=None,
                  configuration_attrs=None, name=None,
-                 parent=None, **kwargs):
+                 parent=None, stream_name=None, **kwargs):
         if read_attrs is None:
             read_attrs = []
 
         if configuration_attrs is None:
             configuration_attrs = ['num_points']
+
+        self.stream_name = stream_name
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -33,26 +44,61 @@ class AreaDetectorTimeseriesCollector(Device):
 
     def kickoff(self):
         # Erase buffer and start collection
-        self.control.put(0, wait=True)
+        self.control.put('Erase/Start', wait=True)
         # make status object
         status = DeviceStatus(self)
         # it always done, the scan should never even try to wait for this
         status._finished()
         return status
 
+    def pause(self):
+        # Stop without clearing buffers
+        self.control.put('Stop', wait=True)
+        super().pause()
+
+    def resume(self):
+        # Resume without erasing
+        self.control.put('Start', wait=True)
+        super().resume()
+
+    def complete(self):
+        if self.control.get(as_string=True) == 'Stop':
+            raise RuntimeError('Not acquiring')
+
+        self.pause()
+
+        # Data is ready immediately
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
+
     def collect(self):
-        self.stop()
+        if self.control.get(as_string=True) != 'Stop':
+            raise RuntimeError('Acquisition still in progress. Call complete()'
+                               ' first.')
+
         payload_val, payload_time = self._get_waveforms()
         for v, t in zip(payload_val, payload_time):
             yield {'data': {self.name: v},
                    'timestamps': {self.name: t},
                    'time': t}
 
-    def stop(self):
-        self.control.put(2, wait=True)  # Stop Collection
+    def describe_collect(self):
+        '''Describe details for the flyer collect() method'''
+        desc = self._describe_attr_list(['waveform', 'waveform_ts'])
+        return {self.stream_name: desc}
 
 
 class WaveformCollector(Device):
+    '''Waveform collector
+
+    See: https://github.com/NSLS-II-CSX/timestamp
+
+    Parameters
+    ----------
+    data_is_time : bool, optional
+        Use time as the data being acquired
+    '''
     select = C(EpicsSignal, "Sw-Sel")
     reset = C(EpicsSignal, "Rst-Sel")
     waveform_count = C(EpicsSignalRO, "Val:TimeN-I")
@@ -60,14 +106,16 @@ class WaveformCollector(Device):
     waveform_nord = C(EpicsSignalRO, "Val:Time-Wfrm.NORD")
     data_is_time = C(Signal)
 
-    def __init__(self, prefix, *, read_attrs=None,
-                 configuration_attrs=None, name=None,
-                 parent=None, data_is_time=True, **kwargs):
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 name=None, parent=None, data_is_time=True, stream_name=None,
+                 **kwargs):
         if read_attrs is None:
             read_attrs = []
 
         if configuration_attrs is None:
             configuration_attrs = ['data_is_time']
+
+        self.stream_name = stream_name
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -80,6 +128,20 @@ class WaveformCollector(Device):
             return self.waveform.get(count=int(self.waveform_nord.get()))
         else:
             return []
+
+    def pause(self):
+        # Stop without clearing buffers
+        self.select.put(0, wait=True)
+
+    def resume(self):
+        # Resume without erasing
+        self.select.put(1, wait=True)
+
+    def complete(self):
+        self.pause()
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
 
     def kickoff(self):
         # Put us in reset mode
@@ -95,7 +157,6 @@ class WaveformCollector(Device):
         return status
 
     def collect(self):
-        self.stop()
         payload = self._get_waveform()
         if payload:
             data_is_time = self.data_is_time.get()
@@ -105,10 +166,160 @@ class WaveformCollector(Device):
                       'timestamps': {self.name: v},
                       'time': v}
                 yield ev
-
-    def stop(self):
-        self.select.put(0, wait=True)  # Stop Collection
+        else:
+            yield from []
 
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('data_is_time', self.data_is_time.get())
+
+    def describe_collect(self):
+        '''Describe details for the flyer collect() method'''
+        desc = self._describe_attr_list(['waveform'])
+        return {self.stream_name: desc}
+
+
+class MonitorFlyerMixin(BlueskyInterface):
+    '''A bluesky-compatible flyer mixin, using monitor_attrs
+
+    At kickoff(), all monitor_attrs will be subscribed to and monitored for the
+    until complete() is called. `complete` returns a DeviceStatus instance,
+    which indicates when the data is ready to be collected.  The acquired
+    values are then be retrievable as bluesky bulk-readable documents in
+    collect().
+
+    Parameters
+    ----------
+    monitor_attrs : list, optional
+        List of signal attribute names to monitor
+    stream_names : dict, optional
+        A mapping of attribute -> stream name
+        If an attribute is not in this dictionary, the stream name will default
+        to the object's name.
+    '''
+    def __init__(self, *args, monitor_attrs=None, stream_names=None, **kwargs):
+        if monitor_attrs is None:
+            monitor_attrs = []
+        if stream_names is None:
+            stream_names = {}
+
+        self.monitor_attrs = monitor_attrs
+        self.stream_names = stream_names
+        self._acquiring = False
+        self._paused = False
+        self._collected_data = None
+        self._monitors = {}
+
+        super().__init__(*args, **kwargs)
+
+    def kickoff(self):
+        '''Start collection
+
+        Returns
+        -------
+        DeviceStatus
+            This will be set to done when acquisition has begun
+        '''
+        self._collected_data = OrderedDefaultDict(lambda: {'values': [],
+                                                           'timestamps': []})
+        self._start_time = ttime.time()
+        self._acquiring = True
+        self._paused = False
+        self._add_monitors()
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
+
+    def _add_monitors(self):
+        for attr in self.monitor_attrs:
+            obj = getattr(self, attr)
+            if isinstance(obj, Device):
+                raise ValueError('Cannot monitor Devices, only Signals.')
+
+            cb = functools.partial(self._monitor_callback, attribute=attr)
+            self._monitors[obj] = cb
+            obj.subscribe(cb)
+
+    def _monitor_callback(self, attribute=None, obj=None, value=None,
+                          timestamp=None, **kwargs):
+        '''A monitor_attr signal has changed'''
+        if not self._acquiring or self._paused:
+            return
+
+        if value is None or timestamp is None:
+            data = obj.read()[obj.name]
+            value = data['value']
+            timestamp = data['timestamp']
+
+        collected = self._collected_data[attribute]
+        collected['values'].append(value)
+        collected['timestamps'].append(timestamp)
+
+    def _get_stream_name(self, attr):
+        obj = getattr(self, attr)
+        return self.stream_names.get(attr, obj.name)
+
+    def describe_collect(self):
+        '''Description of monitored attributes retrieved by collect'''
+        return {self._get_stream_name(attr): self._describe_attr_list([attr])
+                for attr in self.monitor_attrs
+                }
+
+    def _clear_monitors(self):
+        '''Clear all subscriptions'''
+        for obj, monitor in self._monitors.items():
+            try:
+                obj.clear_sub(monitor, event_type=obj._default_sub)
+            except Exception as ex:
+                logger.debug('Failed to clear subscription',
+                             exc_info=ex)
+
+        self._monitors.clear()
+
+    def pause(self):
+        '''Pause acquisition'''
+        if not self._acquiring:
+            # nothing to do
+            return
+        self._paused = True
+        self._clear_monitors()
+        super().pause()
+
+    def resume(self):
+        '''Resume acquisition'''
+        if not self._acquiring:
+            # nothing to do
+            return
+        self._paused = False
+        self._add_monitors()
+        super().resume()
+
+    def complete(self):
+        '''Acquisition completed'''
+        if not self._acquiring:
+            raise RuntimeError('Not acquiring')
+
+        self._acquiring = False
+        self._paused = False
+        self._clear_monitors()
+
+        # Data is ready immediately
+        st = DeviceStatus(self)
+        st._finished(success=True)
+        return st
+
+    def collect(self):
+        '''Retrieve all collected data'''
+        if self._acquiring:
+            raise RuntimeError('Acquisition still in progress. Call complete()'
+                               ' first.')
+
+        collected = self._collected_data
+        self._collected_data = None
+
+        for attr, data in collected.items():
+            name = getattr(self, attr).name
+            yield dict(time=self._start_time,
+                       timestamps={name: data['timestamps']},
+                       data={name: data['values']},
+                       )

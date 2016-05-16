@@ -492,6 +492,12 @@ class BlueskyInterface:
         self._staged = Staged.no
         return devices_unstaged
 
+    def pause(self):
+        pass
+
+    def resume(self):
+        pass
+
 
 class GenerateDatumInterface:
     """Classes that inherit from this can safely customize the
