@@ -157,16 +157,18 @@ class Signal(OphydObject):
                 if settle_time is not None:
                     time.sleep(settle_time)
             finally:
-                self._set_thread = None
                 st._finished(success=success)
+                self._set_thread = None
 
         if self._set_thread is not None:
             raise RuntimeError('Another set() call is still in progress')
 
         st = Status(self)
+        self._status = st
         self._set_thread = epics.ca.CAThread(target=set_thread)
+        self._set_thread.daemon = True
         self._set_thread.start()
-        return st
+        return self._status
 
     @property
     def value(self):
@@ -644,6 +646,8 @@ class EpicsSignal(EpicsSignalBase):
     @raise_if_disconnected
     def tolerance(self):
         '''The tolerance of the write PV, as reported by EPICS
+
+        Can be overidden by the user at the EpicsSignal level.
 
         Returns
         -------

@@ -64,7 +64,6 @@ class FakeEpicsPV(object):
             self.add_callback(callback)
 
     def __del__(self):
-        print('del', self.pvname)
         self.clear_callbacks()
         self._running = False
 
