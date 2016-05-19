@@ -571,6 +571,14 @@ def test_epicssignal_set(put_complete):
     sim_pv = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
                          read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV',
                          put_complete=put_complete)
+    sim_pv.wait_for_connection()
+
+    logging.getLogger('ophyd.signal').setLevel(logging.DEBUG)
+    logging.getLogger('ophyd.utils.epics_pvs').setLevel(logging.DEBUG)
+    print('tolerance=', sim_pv.tolerance)
+    assert sim_pv.tolerance is not None
+
+    start_pos = sim_pv.get()
 
     # move to +0.2 and check the status object
     target = sim_pv.get() + 0.2
@@ -578,17 +586,19 @@ def test_epicssignal_set(put_complete):
     wait(st)
     assert st.done
     assert st.success
+    print('status 1', st)
     assert abs(target - sim_pv.get()) < 0.05
 
     # move back to -0.2, forcing a timeout with a low value
     target = sim_pv.get() - 0.2
     st = sim_pv.set(target, timeout=1e-6)
     time.sleep(0.1)
+    print('status 2', st)
     assert st.done
     assert not st.success
 
     # keep the axis in position
-    st = sim_pv.set(target)
+    st = sim_pv.set(start_pos)
     wait(st)
 
 

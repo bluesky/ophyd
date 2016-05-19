@@ -93,6 +93,9 @@ class StatusBase:
                 self._cb = None
 
     def _finished(self, success=True, **kwargs):
+        if self.done:
+            return
+
         # args/kwargs are not really used, but are passed - because pyepics
         # gives in a bunch of kwargs that we don't care about
         if success and self.settle_time > 0:
