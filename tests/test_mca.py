@@ -1,16 +1,10 @@
-
-
 import logging
 import unittest
-import time
-from copy import copy
-
-import epics
 
 from ophyd import EpicsMCA, EpicsDXP
 from ophyd.mca import add_rois
 from ophyd.utils import enum, ReadOnlyError
-from .test_signal import FakeEpicsPV
+from .test_signal import using_fake_epics_pv
 from . import main
 
 MCAMode = enum(PHA='PHA', MCS='MCS', List='List')
@@ -25,46 +19,30 @@ REAL_SCALER = False
 devs = ['XF:23ID2-ES{Vortex}mca1', 'XF:23ID2-ES{Vortex}dxp1:']
 
 
-def setUpModule():
-    if not REAL_SCALER:
-        epics._PV = epics.PV
-        epics.PV = FakeEpicsPV
-
-
-def tearDownModule():
-    if __name__ == '__main__':
-        epics.ca.destroy_context()
-
-    if not REAL_SCALER:
-        epics.PV = epics._PV
-
-    logger.debug('Cleaning up')
-
-
 class MCATests(unittest.TestCase):
+    @using_fake_epics_pv
     def test_spectrum(self):
         mca = EpicsMCA(devs[0])
         self.assertRaises(ReadOnlyError, mca.spectrum.put, 3.14)
         self.assertRaises(ReadOnlyError, mca.background.put, 3.14)
 
+    @using_fake_epics_pv
     def test_read_attrs(self):
-        mca = EpicsMCA(devs[0], read_attrs=['spectrum', 'rois.roi1.count',
-                       'rois.roi2.count'])
         r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
-        self.assertEquals(r_attrs,mca.read_attrs)
+        mca = EpicsMCA(devs[0], read_attrs=r_attrs)
+        self.assertEquals(r_attrs, mca.read_attrs)
 
+    @using_fake_epics_pv
     def test_describe(self):
         mca = EpicsMCA(devs[0])
+
         desc = mca.describe()
         d = desc[mca.prefix + '_spectrum']
 
-        if not REAL_SCALER:
-            self.assertEquals(d['dtype'], 'number')
-            self.assertEquals(d['shape'], [])
-        else:
-            self.assertEquals(d['dtype'], 'array')
-            self.assertEquals(d['shape'], [4096, ])
+        self.assertEquals(d['dtype'], 'number')
+        self.assertEquals(d['shape'], [])
 
+    @using_fake_epics_pv
     def test_signals(self):
         mca = EpicsMCA(devs[0], name='mca')
         mca.wait_for_connection()
@@ -78,6 +56,7 @@ class MCATests(unittest.TestCase):
         mca.stop()
         mca.unstage()
 
+    @using_fake_epics_pv
     def test_rois(self):
         # iterables only
         self.assertRaises(TypeError, add_rois, 1)
@@ -92,6 +71,7 @@ class MCATests(unittest.TestCase):
 
 class DxpTests(unittest.TestCase):
 
+    @using_fake_epics_pv
     def test_signals(self):
         # NOTE: values used below are those currently used at 23id2
         dxp = EpicsDXP(devs[1], name='dxp')
