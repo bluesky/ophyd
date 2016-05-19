@@ -1,14 +1,7 @@
 
-
 import logging
-import unittest
-
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-
-import epics
+import pytest
+from io import StringIO
 
 from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger)
 from ophyd.areadetector.util import stub_templates
@@ -17,10 +10,12 @@ from ophyd.device import (Component as Cpt, )
 logger = logging.getLogger(__name__)
 
 
-def setUpModule():
 
-    prefix = 'XF:31IDA-BI{Cam:Tbl}'
+prefix = 'XF:31IDA-BI{Cam:Tbl}'
+ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
 
+
+def test_basic():
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
@@ -31,97 +26,95 @@ def setUpModule():
     det.unstage()
 
 
-def tearDownModule():
-    if __name__ == '__main__':
-        epics.ca.destroy_context()
+def test_stubbing():
+    try:
+        for line in stub_templates(ad_path):
+            logger.debug('Stub line: %s', line)
+    except OSError:
+        # self.fail('AreaDetector db path needed to run test')
+        pass
 
 
-class ADTest(unittest.TestCase):
-    prefix = 'XF:31IDA-BI{Cam:Tbl}'
-    ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
+def test_detector():
+    det = SimDetector(prefix)
 
-    def test_stubbing(self):
-        try:
-            for line in stub_templates(self.ad_path):
-                logger.debug('Stub line: %s', line)
-        except OSError:
-            # self.fail('AreaDetector db path needed to run test')
-            pass
+    det.find_signal('a', f=StringIO())
+    det.find_signal('a', use_re=True, f=StringIO())
+    det.find_signal('a', case_sensitive=True, f=StringIO())
+    det.find_signal('a', use_re=True, case_sensitive=True, f=StringIO())
+    det.signal_names
+    det.report
 
-    def test_detector(self):
-        det = SimDetector(self.prefix)
+    cam = det.cam
 
-        det.find_signal('a', f=StringIO())
-        det.find_signal('a', use_re=True, f=StringIO())
-        det.find_signal('a', case_sensitive=True, f=StringIO())
-        det.find_signal('a', use_re=True, case_sensitive=True, f=StringIO())
-        det.signal_names
-        det.report
+    cam.image_mode.put('Single')
+    # plugins don't live on detectors now:
+    # det.image1.enable.put('Enable')
+    cam.array_callbacks.put('Enable')
 
-        cam = det.cam
+    det.get()
+    st = det.trigger()
+    repr(st)
+    det.read()
 
-        cam.image_mode.put('Single')
-        # plugins don't live on detectors now:
-        # det.image1.enable.put('Enable')
-        cam.array_callbacks.put('Enable')
+    # values = tuple(det.gain_xy.get())
+    cam.gain_xy.put(cam.gain_xy.get(), wait=True)
 
-        det.get()
-        st = det.trigger()
-        repr(st)
-        det.read()
+    # fail when only specifying x
+    with pytest.raises(ValueError):
+        cam.gain_xy.put((0.0, ), wait=True)
 
-        # values = tuple(det.gain_xy.get())
-        cam.gain_xy.put(cam.gain_xy.get(), wait=True)
+    det.describe()
+    det.report
 
-        # fail when only specifying x
-        self.assertRaises(ValueError, cam.gain_xy.put, (0.0, ), wait=True)
 
-        det.describe()
-        det.report
+def test_tiff_plugin():
+    # det = AreaDetector(prefix)
+    class TestDet(SimDetector):
+        p = Cpt(TIFFPlugin, 'TIFF1:')
 
-    def test_tiff_plugin(self):
-        # det = AreaDetector(self.prefix)
-        class TestDet(SimDetector):
-            p = Cpt(TIFFPlugin, 'TIFF1:')
+    det = TestDet(prefix)
+    plugin = det.p
 
-        det = TestDet(self.prefix)
-        plugin = det.p
+    plugin.file_template.put('%s%s_%3.3d.tif')
 
-        plugin.file_template.put('%s%s_%3.3d.tif')
+    plugin.array_pixels
+    plugin
 
-        plugin.array_pixels
-        plugin
 
-    def test_hdf5_plugin(self):
+def test_hdf5_plugin():
 
-        class MyDet(SimDetector):
-            p = Cpt(HDF5Plugin, suffix='HDF1:')
+    class MyDet(SimDetector):
+        p = Cpt(HDF5Plugin, suffix='HDF1:')
 
-        d = MyDet(self.prefix)
-        d.p.file_path.put('/tmp')
-        d.p.file_name.put('--')
-        d.p.warmup()
-        d.stage()
+    d = MyDet(prefix)
+    d.p.file_path.put('/tmp')
+    d.p.file_name.put('--')
+    d.p.warmup()
+    d.stage()
 
-    def test_subclass(self):
-        class MyDetector(SimDetector):
-            tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-        det = MyDetector(self.prefix)
-        det.wait_for_connection()
+def test_subclass():
+    class MyDetector(SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-        print(det.describe())
-        print(det.tiff1.capture.describe())
+    det = MyDetector(prefix)
+    det.wait_for_connection()
 
-    def test_getattr(self):
-        class MyDetector(SimDetector):
-            tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+    print(det.describe())
+    print(det.tiff1.capture.describe())
 
-        det = MyDetector(self.prefix)
-        self.assertEquals(getattr(det, 'tiff1.name'), det.tiff1.name)
-        self.assertIs(getattr(det, 'tiff1'), det.tiff1)
-        # raise
-        # TODO subclassing issue
+
+def test_getattr():
+    class MyDetector(SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+
+    det = MyDetector(prefix)
+    assert getattr(det, 'tiff1.name') == det.tiff1.name
+    assert getattr(det, 'tiff1') is det.tiff1
+    # raise
+    # TODO subclassing issue
+
 
 from . import main
 is_main = (__name__ == '__main__')

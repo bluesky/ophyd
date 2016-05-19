@@ -7,6 +7,7 @@ import time
 import copy
 import pytest
 from functools import wraps
+import weakref
 
 import numpy as np
 import epics
@@ -16,6 +17,9 @@ from ophyd.utils import ReadOnlyError
 from ophyd.status import wait
 
 logger = logging.getLogger(__name__)
+
+
+_FAKE_PV_LIST = []
 
 
 class FakeEpicsPV(object):
@@ -30,8 +34,10 @@ class FakeEpicsPV(object):
                  auto_monitor=True, enum_strs=None,
                  **kwargs):
 
+        global _FAKE_PV_LIST
+        _FAKE_PV_LIST.append(self)
+
         self._pvname = pvname
-        self._callback = callback
         self._connection_callback = connection_callback
         self._form = form
         self._auto_monitor = auto_monitor
@@ -50,16 +56,23 @@ class FakeEpicsPV(object):
         self._thread.start()
 
         # callbacks mechanism copied from pyepics
-        self.callbacks = {}
+        # ... but tweaked with a weakvaluedictionary so PV objects get
+        # destructed
+        self.callbacks = weakref.WeakValueDictionary()
 
         if callback:
             self.add_callback(callback)
 
     def __del__(self):
-        self.callbacks.clear()
+        print('del', self.pvname)
+        self.clear_callbacks()
         self._running = False
-        self._thread.join()
-        self._thread = None
+
+        try:
+            self._thread.join()
+            self._thread = None
+        except Exception:
+            pass
 
     def get_timevars(self):
         pass
@@ -115,10 +128,12 @@ class FakeEpicsPV(object):
 
     def run_callbacks(self):
         for index in sorted(list(self.callbacks.keys())):
+            if not self._running:
+                break
             self.run_callback(index)
 
     def run_callback(self, index):
-        fcn, kwargs = self.callbacks[index]
+        fcn = self.callbacks[index]
         kwd = dict(pvname=self._pvname,
                    count=1,
                    nelm=1,
@@ -132,19 +147,18 @@ class FakeEpicsPV(object):
                    value=self.value,
                    )
 
-        kwd.update(kwargs)
         kwd['cb_info'] = (index, self)
         if hasattr(fcn, '__call__'):
             fcn(**kwd)
 
     def add_callback(self, callback=None, index=None, run_now=False,
-                     with_ctrlvars=True, **kw):
+                     with_ctrlvars=True):
         if hasattr(callback, '__call__'):
             if index is None:
                 index = 1
                 if len(self.callbacks) > 0:
                     index = 1 + max(self.callbacks.keys())
-            self.callbacks[index] = (callback, kw)
+            self.callbacks[index] = callback
 
         if run_now:
             if self.connected:
@@ -156,7 +170,7 @@ class FakeEpicsPV(object):
             self.callbacks.pop(index)
 
     def clear_callbacks(self):
-        self.callbacks = {}
+        self.callbacks.clear()
 
     @property
     def precision(self):
@@ -216,6 +230,23 @@ class FakeEpicsWaveform(FakeEpicsPV):
     form = 'time'
 
 
+def _cleanup_fake_pvs():
+    pvs = list(_FAKE_PV_LIST)
+    del _FAKE_PV_LIST[:]
+
+    for pv in pvs:
+        pv.clear_callbacks()
+        pv._running = False
+        pv._connection_callback = None
+
+    for pv in pvs:
+        try:
+            pv._thread.join()
+            pv._thread = None
+        except Exception:
+            pass
+
+
 def using_fake_epics_pv(fcn):
     @wraps(fcn)
     def wrapped(*args, **kwargs):
@@ -225,6 +256,8 @@ def using_fake_epics_pv(fcn):
             return fcn(*args, **kwargs)
         finally:
             epics.PV = pv_backup
+            _cleanup_fake_pvs()
+
     return wrapped
 
 
@@ -237,118 +270,119 @@ def using_fake_epics_waveform(fcn):
             return fcn(*args, **kwargs)
         finally:
             epics.PV = pv_backup
+            _cleanup_fake_pvs()
+
     return wrapped
 
 
-class FakePVTests(unittest.TestCase):
-    @using_fake_epics_pv
-    def test_fakepv(self):
-        pvname = 'fakepv_nowaythisexists' * 10
+@using_fake_epics_pv
+def test_fakepv():
+    pvname = 'fakepv_nowaythisexists' * 10
 
-        info = dict(called=False)
+    info = dict(called=False)
 
-        def conn(**kwargs):
-            info['conn'] = True
-            info['conn_kw'] = kwargs
+    def conn(**kwargs):
+        info['conn'] = True
+        info['conn_kw'] = kwargs
 
-        def value_cb(**kwargs):
-            info['value'] = True
-            info['value_kw'] = kwargs
+    def value_cb(**kwargs):
+        info['value'] = True
+        info['value_kw'] = kwargs
 
-        pv = epics.PV(pvname, callback=value_cb, connection_callback=conn,
-                      )
+    pv = epics.PV(pvname, callback=value_cb, connection_callback=conn,
+                  )
 
-        if not pv.wait_for_connection():
-            raise ValueError('should return True on connection')
+    if not pv.wait_for_connection():
+        raise ValueError('should return True on connection')
 
-        assert pv.pvname == pvname
+    assert pv.pvname == pvname
 
-        pv._update_rate = 0.5
-        time.sleep(0.2)
+    pv._update_rate = 0.5
+    time.sleep(0.2)
 
-        assert info['conn']
-        assert info['value']
-        assert info['value_kw']['value'] == pv.value
+    assert info['conn']
+    assert info['value']
+    assert info['value_kw']['value'] == pv.value
 
 
-class SignalTests(unittest.TestCase):
-    def test_signal_base(self):
-        start_t = time.time()
+def test_signal_base():
+    start_t = time.time()
 
-        name = 'test'
-        value = 10.0
-        signal = Signal(name=name, value=value, timestamp=start_t)
-        signal.wait_for_connection()
+    name = 'test'
+    value = 10.0
+    signal = Signal(name=name, value=value, timestamp=start_t)
+    signal.wait_for_connection()
 
-        assert signal.connected
-        assert signal.name == name
-        assert signal.value == value
-        assert signal.get() == value
-        assert signal.timestamp == start_t
+    assert signal.connected
+    assert signal.name == name
+    assert signal.value == value
+    assert signal.get() == value
+    assert signal.timestamp == start_t
 
-        info = dict(called=False)
+    info = dict(called=False)
 
-        def _sub_test(**kwargs):
-            info['called'] = True
-            info['kw'] = kwargs
+    def _sub_test(**kwargs):
+        info['called'] = True
+        info['kw'] = kwargs
 
-        signal.subscribe(_sub_test, run=False)
-        assert not info['called']
+    signal.subscribe(_sub_test, run=False)
+    assert not info['called']
 
-        signal.value = value
-        signal.clear_sub(_sub_test)
+    signal.value = value
+    signal.clear_sub(_sub_test)
 
-        signal.subscribe(_sub_test, run=False)
-        signal.clear_sub(_sub_test, event_type=signal.SUB_VALUE)
+    signal.subscribe(_sub_test, run=False)
+    signal.clear_sub(_sub_test, event_type=signal.SUB_VALUE)
 
-        kw = info['kw']
-        assert 'value' in kw
-        assert 'timestamp' in kw
-        assert 'old_value' in kw
+    kw = info['kw']
+    assert 'value' in kw
+    assert 'timestamp' in kw
+    assert 'old_value' in kw
 
-        assert kw['value'] == value
-        assert kw['old_value'] == value
-        assert kw['timestamp'] == signal.timestamp
+    assert kw['value'] == value
+    assert kw['old_value'] == value
+    assert kw['timestamp'] == signal.timestamp
 
-        # readback callback for soft signal
-        info = dict(called=False)
-        signal.subscribe(_sub_test, event_type=Signal.SUB_VALUE,
-                         run=False)
-        assert not info['called']
-        signal.put(value + 1)
-        assert info['called']
+    # readback callback for soft signal
+    info = dict(called=False)
+    signal.subscribe(_sub_test, event_type=Signal.SUB_VALUE,
+                     run=False)
+    assert not info['called']
+    signal.put(value + 1)
+    assert info['called']
 
-        signal.clear_sub(_sub_test)
-        kw = info['kw']
+    signal.clear_sub(_sub_test)
+    kw = info['kw']
 
-        assert 'value' in kw
-        assert 'timestamp' in kw
-        assert 'old_value' in kw
+    assert 'value' in kw
+    assert 'timestamp' in kw
+    assert 'old_value' in kw
 
-        assert kw['value'] == value + 1
-        assert kw['old_value'] == value
-        assert kw['timestamp'] == signal.timestamp
+    assert kw['value'] == value + 1
+    assert kw['old_value'] == value
+    assert kw['timestamp'] == signal.timestamp
 
-        signal.trigger()
-        signal.read()
-        signal.describe()
-        signal.read_configuration()
-        signal.describe_configuration()
+    signal.trigger()
+    signal.read()
+    signal.describe()
+    signal.read_configuration()
+    signal.describe_configuration()
 
-        eval(repr(signal))
+    eval(repr(signal))
 
-    def test_signal_copy(self):
-        start_t = time.time()
 
-        name = 'test'
-        value = 10.0
-        signal = Signal(name=name, value=value, timestamp=start_t)
-        sig_copy = copy.copy(signal)
+def test_signal_copy():
+    start_t = time.time()
 
-        assert signal.name == sig_copy.name
-        assert signal.value == sig_copy.value
-        assert signal.get() == sig_copy.get()
-        assert signal.timestamp == sig_copy.timestamp
+    name = 'test'
+    value = 10.0
+    signal = Signal(name=name, value=value, timestamp=start_t)
+    sig_copy = copy.copy(signal)
+
+    assert signal.name == sig_copy.name
+    assert signal.value == sig_copy.value
+    assert signal.get() == sig_copy.get()
+    assert signal.timestamp == sig_copy.timestamp
 
 
 def test_rw_removal():

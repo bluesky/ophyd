@@ -1,5 +1,5 @@
 import logging
-import unittest
+import pytest
 
 from ophyd import EpicsMCA, EpicsDXP
 from ophyd.mca import add_rois
@@ -19,94 +19,108 @@ REAL_SCALER = False
 devs = ['XF:23ID2-ES{Vortex}mca1', 'XF:23ID2-ES{Vortex}dxp1:']
 
 
-class MCATests(unittest.TestCase):
-    @using_fake_epics_pv
-    def test_spectrum(self):
-        mca = EpicsMCA(devs[0])
-        self.assertRaises(ReadOnlyError, mca.spectrum.put, 3.14)
-        self.assertRaises(ReadOnlyError, mca.background.put, 3.14)
-
-    @using_fake_epics_pv
-    def test_read_attrs(self):
-        r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
-        mca = EpicsMCA(devs[0], read_attrs=r_attrs)
-        self.assertEquals(r_attrs, mca.read_attrs)
-
-    @using_fake_epics_pv
-    def test_describe(self):
-        mca = EpicsMCA(devs[0])
-
-        desc = mca.describe()
-        d = desc[mca.prefix + '_spectrum']
-
-        self.assertEquals(d['dtype'], 'number')
-        self.assertEquals(d['shape'], [])
-
-    @using_fake_epics_pv
-    def test_signals(self):
-        mca = EpicsMCA(devs[0], name='mca')
-        mca.wait_for_connection()
-        mca.mode.put(MCAMode.PHA)
-        mca.stage()
-        mca.start.put(1)
-        mca.stop_signal.put(1)
-        mca.preset_real_time.put(3.14)
-        mca.preset_live_time.put(3.14)
-        mca.erase_start.put(1)
-        mca.stop()
-        mca.unstage()
-
-    @using_fake_epics_pv
-    def test_rois(self):
-        # iterables only
-        self.assertRaises(TypeError, add_rois, 1)
-        # check range
-        self.assertRaises(ValueError, add_rois, [-1, ])
-        self.assertRaises(ValueError, add_rois, [32, ])
-        # read-only?
-        mca = EpicsMCA(devs[0])
-        self.assertRaises(ReadOnlyError, mca.rois.roi1.count.put, 3.14)
-        self.assertRaises(ReadOnlyError, mca.rois.roi1.net_count.put, 3.14)
+@using_fake_epics_pv
+def test_mca_spectrum():
+    mca = EpicsMCA(devs[0])
+    with pytest.raises(ReadOnlyError):
+        mca.spectrum.put(3.14)
+    with pytest.raises(ReadOnlyError):
+        mca.background.put(3.14)
 
 
-class DxpTests(unittest.TestCase):
+@using_fake_epics_pv
+def test_mca_read_attrs():
+    r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
+    mca = EpicsMCA(devs[0], read_attrs=r_attrs)
+    assert r_attrs == mca.read_attrs
 
-    @using_fake_epics_pv
-    def test_signals(self):
-        # NOTE: values used below are those currently used at 23id2
-        dxp = EpicsDXP(devs[1], name='dxp')
-        dxp.wait_for_connection()
-        dxp.preset_mode.put(DxpPresetMode.Real_time)
-        dxp.stage()
-        dxp.unstage()
 
-        dxp.trigger_peaking_time.put(0.2)
-        dxp.trigger_threshold.put(0.6)
-        dxp.trigger_gap_time.put(0.0)
-        dxp.max_width.put(1.0)
-        dxp.peaking_time.put(0.25)
-        dxp.energy_threshold.put(0.35)
-        dxp.gap_time.put(0.05)
+@using_fake_epics_pv
+def test_mca_describe():
+    mca = EpicsMCA(devs[0])
 
-        dxp.baseline_cut_percent.put(5.0)
-        dxp.baseline_cut_enable.put(1)
-        dxp.baseline_filter_length.put(128)
-        dxp.baseline_threshold.put(0.20)
+    desc = mca.describe()
+    d = desc[mca.prefix + '_spectrum']
 
-        dxp.preamp_gain.put(5.5)
-        dxp.detector_polarity.put(1)
-        dxp.reset_delay.put(10.0)
-        dxp.decay_time.put(50.0)
-        dxp.max_energy.put(2.0)
-        dxp.adc_percent_rule.put(5.0)
+    assert d['dtype'] == 'number'
+    assert d['shape'] == []
 
-        # read-only
-        self.assertRaises(ReadOnlyError, dxp.triggers.put, 2)
-        self.assertRaises(ReadOnlyError, dxp.events.put, 2)
-        self.assertRaises(ReadOnlyError, dxp.overflows.put, 2)
-        self.assertRaises(ReadOnlyError, dxp.underflows.put, 2)
-        self.assertRaises(ReadOnlyError, dxp.input_count_rate.put, 2)
-        self.assertRaises(ReadOnlyError, dxp.output_count_rate.put, 2)
+
+@using_fake_epics_pv
+def test_mca_signals():
+    mca = EpicsMCA(devs[0], name='mca')
+    mca.wait_for_connection()
+    mca.mode.put(MCAMode.PHA)
+    mca.stage()
+    mca.start.put(1)
+    mca.stop_signal.put(1)
+    mca.preset_real_time.put(3.14)
+    mca.preset_live_time.put(3.14)
+    mca.erase_start.put(1)
+    mca.stop()
+    mca.unstage()
+
+
+@using_fake_epics_pv
+def test_rois():
+    # iterables only
+    with pytest.raises(TypeError):
+        add_rois(1)
+    # check range
+    with pytest.raises(ValueError):
+        add_rois([-1, ])
+    with pytest.raises(ValueError):
+        add_rois([32, ])
+    # read-only?
+    mca = EpicsMCA(devs[0])
+    with pytest.raises(ReadOnlyError):
+        mca.rois.roi1.count.put(3.14)
+    with pytest.raises(ReadOnlyError):
+        mca.rois.roi1.net_count.put(3.14)
+
+
+@using_fake_epics_pv
+def test_dxp_signals():
+    # NOTE: values used below are those currently used at 23id2
+    dxp = EpicsDXP(devs[1], name='dxp')
+    dxp.wait_for_connection()
+    dxp.preset_mode.put(DxpPresetMode.Real_time)
+    dxp.stage()
+    dxp.unstage()
+
+    dxp.trigger_peaking_time.put(0.2)
+    dxp.trigger_threshold.put(0.6)
+    dxp.trigger_gap_time.put(0.0)
+    dxp.max_width.put(1.0)
+    dxp.peaking_time.put(0.25)
+    dxp.energy_threshold.put(0.35)
+    dxp.gap_time.put(0.05)
+
+    dxp.baseline_cut_percent.put(5.0)
+    dxp.baseline_cut_enable.put(1)
+    dxp.baseline_filter_length.put(128)
+    dxp.baseline_threshold.put(0.20)
+
+    dxp.preamp_gain.put(5.5)
+    dxp.detector_polarity.put(1)
+    dxp.reset_delay.put(10.0)
+    dxp.decay_time.put(50.0)
+    dxp.max_energy.put(2.0)
+    dxp.adc_percent_rule.put(5.0)
+
+    # read-only
+    with pytest.raises(ReadOnlyError):
+        dxp.triggers.put(2)
+    with pytest.raises(ReadOnlyError):
+        dxp.events.put(2)
+    with pytest.raises(ReadOnlyError):
+        dxp.overflows.put(2)
+    with pytest.raises(ReadOnlyError):
+        dxp.underflows.put(2)
+    with pytest.raises(ReadOnlyError):
+        dxp.input_count_rate.put(2)
+    with pytest.raises(ReadOnlyError):
+        dxp.output_count_rate.put(2)
 
 
 is_main = (__name__ == '__main__')

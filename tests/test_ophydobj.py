@@ -1,7 +1,6 @@
-
 import logging
 import unittest
-# import copy
+import pytest
 
 from unittest.mock import Mock
 from ophyd.ophydobj import OphydObject
@@ -12,53 +11,61 @@ from . import main
 logger = logging.getLogger(__name__)
 
 
-class StatusTests(unittest.TestCase):
-    def test_basic(self):
-        st = StatusBase()
-        st._finished()
+def test_status_basic():
+    st = StatusBase()
+    st._finished()
 
-    def test_callback(self):
-        st = StatusBase()
-        cb = Mock()
 
-        st.finished_cb = cb
-        self.assertIs(st.finished_cb, cb)
-        self.assertRaises(RuntimeError, setattr, st, 'finished_cb', None)
+def test_status_callback():
+    st = StatusBase()
+    cb = Mock()
 
-        st._finished()
-        cb.assert_called_once_with()
+    st.finished_cb = cb
+    assert st.finished_cb is cb
+    with pytest.raises(RuntimeError):
+        st.finished_cb = None
 
-    def test_others(self):
-        DeviceStatus(None)
+    st._finished()
+    cb.assert_called_once_with()
 
-    def test_wait(self):
-        st = StatusBase()
-        st._finished()
+
+def test_status_others():
+    DeviceStatus(None)
+
+
+def test_status_wait():
+    st = StatusBase()
+    st._finished()
+    wait(st)
+
+
+def test_wait_status_failed():
+    st = StatusBase(timeout=0.05)
+    with pytest.raises(RuntimeError):
         wait(st)
 
-    def test_wait_status_failed(self):
-        st = StatusBase(timeout=0.05)
-        self.assertRaises(RuntimeError, wait, st)
 
-    def test_wait_timeout(self):
-        st = StatusBase()
-        self.assertRaises(TimeoutError, wait, st, timeout=0.05)
+def test_status_wait_timeout():
+    st = StatusBase()
+
+    with pytest.raises(TimeoutError):
+        wait(st, timeout=0.05)
 
 
-class OphydObjTests(unittest.TestCase):
-    def test_ophydobj(self):
-        parent = OphydObject(name='name', parent=None)
-        child = OphydObject(name='name', parent=parent)
-        self.assertIs(child.parent, parent)
+def test_ophydobj():
+    parent = OphydObject(name='name', parent=None)
+    child = OphydObject(name='name', parent=parent)
+    assert child.parent is parent
 
-        child._run_sub('not_a_callable', sub_type='sub')
+    child._run_sub('not_a_callable', sub_type='sub')
 
-        self.assertRaises(ValueError, child.subscribe, None,
-                          event_type=None)
-        self.assertRaises(KeyError, child.subscribe, None,
-                          event_type='unknown_event_type')
+    with pytest.raises(ValueError):
+        child.subscribe(None, event_type=None)
 
-        self.assertIs(parent.connected, True)
+    with pytest.raises(KeyError):
+        child.subscribe(None, event_type='unknown_event_type')
+
+    assert parent.connected
 
 
 is_main = (__name__ == '__main__')
