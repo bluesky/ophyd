@@ -420,8 +420,8 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
     # to compare:
     if atol is not None or rtol is not None:
         return np.allclose(a, b,
-                           rtol=rtol if rtol is not None else 1e-7,
-                           atol=atol if atol is not None else 1e-5,
+                           rtol=rtol if rtol is not None else 1e-5,
+                           atol=atol if atol is not None else 1e-8,
                            )
     return a == b
 
