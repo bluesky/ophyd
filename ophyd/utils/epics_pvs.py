@@ -382,12 +382,13 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     except AttributeError:
         es = ()
 
-    within_str = []
     if atol is not None:
-        within_str.append('within {!r}'.format(atol))
+        within_str = ['within {!r}'.format(atol)]
+    else:
+        within_str = []
 
     if rtol is not None:
-        within_str.append('(relatively tolerance of {!r})'.format(rtol))
+        within_str.append('(relative tolerance of {!r})'.format(rtol))
 
     if within_str:
         within_str = ' '.join([''] + within_str)
