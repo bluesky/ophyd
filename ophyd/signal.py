@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class Signal(OphydObject):
     '''A signal, which can have a read-write or read-only value.
 
+
     Parameters
     ----------
     value : any, optional
@@ -29,12 +30,13 @@ class Signal(OphydObject):
     tolerance : any, optional
         The absolute tolerance associated with the value
     rtolerance : any, optional
-        The relative tolerance associated with the value
+        The relative tolerance associated with the value, used in
+        set_and_wait as follows:
+            absolute(setpoint - readback) <= (tolerance + rtolerance *
+                                              absolute(readback))
 
     Attributes
     ----------
-    tolerance : any, optional
-        The absolute tolerance associated with the value
     rtolerance : any, optional
         The relative tolerance associated with the value
     '''
@@ -52,7 +54,8 @@ class Signal(OphydObject):
 
         self._timestamp = timestamp
         self._set_thread = None
-        self.tolerance = tolerance
+        self._tolerance = tolerance
+        # self.tolerance is a property
         self.rtolerance = rtolerance
 
     def trigger(self):
