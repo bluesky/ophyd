@@ -75,6 +75,15 @@ class Signal(OphydObject):
         '''Timestamp of the readback value'''
         return self._timestamp
 
+    @property
+    def tolerance(self):
+        '''The absolute tolerance associated with the value.'''
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, tolerance):
+        self._tolerance = tolerance
+
     def _repr_info(self):
         yield from super()._repr_info()
         value = self.value
@@ -659,6 +668,7 @@ class EpicsSignal(EpicsSignalBase):
             If precision == 0, tolerance will be None
             If precision > 0, calculated to be 10**(-precision)
         '''
+        # NOTE: overrides Signal.tolerance property
         if self._tolerance is not None:
             return self._tolerance
 
