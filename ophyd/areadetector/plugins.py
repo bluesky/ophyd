@@ -82,6 +82,9 @@ class PluginBase(ADBase):
                                      'asyn_pipeline_config',
                                      'configuration_names'))
 
+        # If True, set self.enable to 'Enable' during staging.
+        self.auto_enable = True
+
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
     _suffix_re = None
@@ -100,8 +103,9 @@ class PluginBase(ADBase):
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
 
     def stage(self):
-        # Ensure the plugin is enabled. We do not disable it on unstage.
-        set_and_wait(self.enable, 1)
+        if self.auto_enable:
+            # Ensure the plugin is enabled. We do not disable it on unstage.
+            set_and_wait(self.enable, 1)  # 'Enabled'
         super().stage()
 
     @property
