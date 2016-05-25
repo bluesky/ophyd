@@ -196,8 +196,13 @@ class MonitorFlyerMixin(BlueskyInterface):
         A mapping of attribute -> stream name
         If an attribute is not in this dictionary, the stream name will default
         to the object's name.
+    pivot : bool, optional
+        If set, each value and timestamp pair will be in separate events.
+        Otherwise, a single event will be generated with an array. Defaults to
+        False.
     '''
-    def __init__(self, *args, monitor_attrs=None, stream_names=None, **kwargs):
+    def __init__(self, *args, monitor_attrs=None, stream_names=None,
+                 pivot=False, **kwargs):
         if monitor_attrs is None:
             monitor_attrs = []
         if stream_names is None:
@@ -209,6 +214,7 @@ class MonitorFlyerMixin(BlueskyInterface):
         self._paused = False
         self._collected_data = None
         self._monitors = {}
+        self._pivot = pivot
 
         super().__init__(*args, **kwargs)
 
@@ -259,11 +265,26 @@ class MonitorFlyerMixin(BlueskyInterface):
         obj = getattr(self, attr)
         return self.stream_names.get(attr, obj.name)
 
+    def _describe_with_dtype(self, attr, *, dtype='array'):
+        '''Describe an attribute and change its dtype'''
+        desc = self._describe_attr_list([attr])
+
+        obj = getattr(self, attr)
+        desc[obj.name]['dtype'] = dtype
+        return desc
+
     def describe_collect(self):
         '''Description of monitored attributes retrieved by collect'''
-        return {self._get_stream_name(attr): self._describe_attr_list([attr])
-                for attr in self.monitor_attrs
-                }
+        if self._pivot:
+            return {self._get_stream_name(attr):
+                    self._describe_attr_list([attr])
+                    for attr in self.monitor_attrs
+                    }
+        else:
+            return {self._get_stream_name(attr):
+                    self._describe_with_dtype(attr, dtype='array')
+                    for attr in self.monitor_attrs
+                    }
 
     def _clear_monitors(self):
         '''Clear all subscriptions'''
@@ -317,9 +338,18 @@ class MonitorFlyerMixin(BlueskyInterface):
         collected = self._collected_data
         self._collected_data = None
 
-        for attr, data in collected.items():
-            name = getattr(self, attr).name
-            yield dict(time=self._start_time,
-                       timestamps={name: data['timestamps']},
-                       data={name: data['values']},
-                       )
+        if self._pivot:
+            for attr, data in collected.items():
+                name = getattr(self, attr).name
+                for ts, value in zip(data['timestamps'], data['values']):
+                    yield dict(time=ts,
+                               timestamps={name: ts},
+                               data={name: value},
+                               )
+        else:
+            for attr, data in collected.items():
+                name = getattr(self, attr).name
+                yield dict(time=self._start_time,
+                           timestamps={name: data['timestamps']},
+                           data={name: data['values']},
+                           )
