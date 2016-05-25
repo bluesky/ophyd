@@ -56,7 +56,7 @@ customize ``stage_sigs`` in the device's ``__init__`` method, like so:
     class MyMotor(EpicsMotor):
         def __init__(*args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.stage_sigs['user_offset'] = 5
+            self.stage_sigs[self.user_offset] = 5
 
 When a ``MyMotor`` device is staged, its ``user_offset`` value will be set
 to 5. When it is unstaged, it will be set back to whatever value it had
