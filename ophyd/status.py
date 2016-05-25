@@ -34,12 +34,13 @@ class StatusBase:
         The amount of time to wait between the caller specifying that the
         status has completed to running callbacks
     """
-    def __init__(self, *, timeout=None, settle_time=None):
+    def __init__(self, *, timeout=None, settle_time=None, done=False,
+                 success=False):
         super().__init__()
         self._lock = RLock()
         self._cb = None
-        self.done = False
-        self.success = False
+        self.done = done
+        self.success = success
         self.timeout = None
 
         if settle_time is None:
@@ -49,6 +50,11 @@ class StatusBase:
 
         if timeout is not None:
             self.timeout = float(timeout)
+
+        if self.done:
+            # in the case of a pre-completed status object,
+            # don't handle timeout
+            return
 
         if self.timeout is not None and self.timeout > 0.0:
             thread = threading.Thread(target=self._timeout_thread, daemon=True)
@@ -93,6 +99,9 @@ class StatusBase:
                 self._cb = None
 
     def _finished(self, success=True, **kwargs):
+        if self.done:
+            return
+
         # args/kwargs are not really used, but are passed - because pyepics
         # gives in a bunch of kwargs that we don't care about
         if success and self.settle_time > 0:
@@ -158,7 +167,22 @@ class Status(StatusBase):
 
 
 class DeviceStatus(StatusBase):
-    '''Device status'''
+    '''Device status
+
+    Parameters
+    ----------
+    device : obj
+    done : bool, optional
+        Whether or not the motion has already completed
+    success : bool, optional
+        If motion has already completed, the status of that motion
+    timeout : float, optional
+        The default timeout to use for a blocking wait, and the amount of time
+        to wait to mark the motion as failed
+    settle_time : float, optional
+        The amount of time to wait between motion completion and running
+        callbacks
+    '''
     def __init__(self, device, **kwargs):
         self.device = device
         super().__init__(**kwargs)
@@ -187,6 +211,8 @@ class MoveStatus(DeviceStatus):
         Target position
     done : bool, optional
         Whether or not the motion has already completed
+    success : bool, optional
+        If motion has already completed, the status of that motion
     start_ts : float, optional
         The motion start timestamp
     timeout : float, optional
@@ -213,9 +239,8 @@ class MoveStatus(DeviceStatus):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, *, done=False, start_ts=None,
+    def __init__(self, positioner, target, *, start_ts=None,
                  **kwargs):
-        self.done = done
         if start_ts is None:
             start_ts = time.time()
 

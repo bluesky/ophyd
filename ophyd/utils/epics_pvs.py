@@ -344,26 +344,36 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
-def set_and_wait(signal, val, poll_time=0.01, timeout=10):
-    """
-    Set a signal to a value and wait until it reads correctly.
+def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
+                 atol=None):
+    """Set a signal to a value and wait until it reads correctly.
 
-    There are cases where this would not work well, so it should be revisited.
+    For floating point values, it is strongly recommended to set a tolerance.
+    If tolerances are unset, the values will be compared exactly.
 
     Parameters
     ----------
     signal : EpicsSignal (or any object with `get` and `put`)
     val : object
         value to set signal to
-    poll_time : float
+    poll_time : float, optional
         how soon to check whether the value has been successfully set
-    timeout : float
+    timeout : float, optional
         maximum time to wait for value to be successfully set
+    rtol : float, optional
+        allowed absolute tolerance between the readback and setpoint values
+    atol : float, optional
+        allowed relative tolerance between the readback and setpoint values
 
     Raises
     ------
     TimeoutError if timeout is exceeded
     """
+    if atol is None and hasattr(signal, 'tolerance'):
+        atol = signal.tolerance
+    if rtol is None and hasattr(signal, 'rtolerance'):
+        rtol = signal.rtolerance
+
     signal.put(val)
     expiration_time = ttime.time() + timeout
     current_value = signal.get()
@@ -372,9 +382,22 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10):
     except AttributeError:
         es = ()
 
-    while not _compare_maybe_enum(val, current_value, es):
-        logger.info("Waiting for %s to be set from %r to %r...",
-                    signal.name, current_value, val)
+    if atol is not None:
+        within_str = ['within {!r}'.format(atol)]
+    else:
+        within_str = []
+
+    if rtol is not None:
+        within_str.append('(relative tolerance of {!r})'.format(rtol))
+
+    if within_str:
+        within_str = ' '.join([''] + within_str)
+    else:
+        within_str = ''
+
+    while not _compare_maybe_enum(val, current_value, es, atol, rtol):
+        logger.info("Waiting for %s to be set from %r to %r%s...",
+                    signal.name, current_value, val, within_str)
         ttime.sleep(poll_time)
         poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
@@ -384,14 +407,25 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10):
                                (signal, val, timeout, current_value))
 
 
-def _compare_maybe_enum(a, b, enums):
-    if not enums:
+def _compare_maybe_enum(a, b, enums, atol, rtol):
+    if enums:
+        # convert enum values to strings if necessary first:
+        if not isinstance(a, str):
+            a = enums[a]
+        if not isinstance(b, str):
+            b = enums[b]
+        # then compare the strings
         return a == b
-    if not isinstance(a, str):
-        a = enums[a]
-    if not isinstance(b, str):
-        b = enums[b]
+
+    # if either relative/absolute tolerance is used, use numpy
+    # to compare:
+    if atol is not None or rtol is not None:
+        return np.allclose(a, b,
+                           rtol=rtol if rtol is not None else 1e-5,
+                           atol=atol if atol is not None else 1e-8,
+                           )
     return a == b
+
 
 _type_map = {'number': (float, ),
              'array': (np.ndarray, ),

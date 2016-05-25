@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class Signal(OphydObject):
     '''A signal, which can have a read-write or read-only value.
 
+
     Parameters
     ----------
     value : any, optional
@@ -26,11 +27,24 @@ class Signal(OphydObject):
     timestamp : float, optional
         The timestamp associated with the initial value. Defaults to the
         current local time.
+    tolerance : any, optional
+        The absolute tolerance associated with the value
+    rtolerance : any, optional
+        The relative tolerance associated with the value, used in
+        set_and_wait as follows:
+            absolute(setpoint - readback) <= (tolerance + rtolerance *
+                                              absolute(readback))
+
+    Attributes
+    ----------
+    rtolerance : any, optional
+        The relative tolerance associated with the value
     '''
     SUB_VALUE = 'value'
     _default_sub = SUB_VALUE
 
-    def __init__(self, *, value=None, timestamp=None, name=None, parent=None):
+    def __init__(self, *, value=None, timestamp=None, name=None, parent=None,
+                 tolerance=None, rtolerance=None):
         super().__init__(name=name, parent=parent)
 
         self._readback = value
@@ -40,6 +54,9 @@ class Signal(OphydObject):
 
         self._timestamp = timestamp
         self._set_thread = None
+        self._tolerance = tolerance
+        # self.tolerance is a property
+        self.rtolerance = rtolerance
 
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
@@ -58,10 +75,26 @@ class Signal(OphydObject):
         '''Timestamp of the readback value'''
         return self._timestamp
 
+    @property
+    def tolerance(self):
+        '''The absolute tolerance associated with the value.'''
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, tolerance):
+        self._tolerance = tolerance
+
     def _repr_info(self):
         yield from super()._repr_info()
-        yield ('value', self.value)
-        yield ('timestamp', self.timestamp)
+        value = self.value
+        if value is not None:
+            yield ('value', value)
+        if self.timestamp is not None:
+            yield ('timestamp', self.timestamp)
+        if self.tolerance is not None:
+            yield ('tolerance', self.tolerance)
+        if self.rtolerance is not None:
+            yield ('rtolerance', self.rtolerance)
 
     def get(self, **kwargs):
         '''The readback value'''
@@ -119,7 +152,8 @@ class Signal(OphydObject):
                 #      and 10 is its default timeout
 
             try:
-                set_and_wait(self, value, timeout=timeout)
+                set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
+                             rtol=self.rtolerance)
             except TimeoutError:
                 logger.debug('set_and_wait(%r, %s) timed out', self.name,
                              value)
@@ -129,20 +163,24 @@ class Signal(OphydObject):
                              exc_info=ex)
                 success = False
             else:
+                logger.debug('set_and_wait(%r, %s) succeeded => %s', self.name,
+                             value, self.value)
                 success = True
                 if settle_time is not None:
                     time.sleep(settle_time)
             finally:
-                self._set_thread = None
                 st._finished(success=success)
+                self._set_thread = None
 
         if self._set_thread is not None:
             raise RuntimeError('Another set() call is still in progress')
 
         st = Status(self)
+        self._status = st
         self._set_thread = epics.ca.CAThread(target=set_thread)
+        self._set_thread.daemon = True
         self._set_thread.start()
-        return st
+        return self._status
 
     @property
     def value(self):
@@ -552,6 +590,12 @@ class EpicsSignal(EpicsSignalBase):
         Name of signal.  If not given defaults to read_pv
     put_complete : bool, optional
         Use put completion when writing the value
+    tolerance : any, optional
+        The absolute tolerance associated with the value.
+        If specified, this overrides any precision information calculated from
+        the write PV
+    rtolerance : any, optional
+        The relative tolerance associated with the value
     '''
     SUB_SETPOINT = 'setpoint'
 
@@ -603,12 +647,40 @@ class EpicsSignal(EpicsSignalBase):
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
-        super().wait_for_connection(timeout=1.0)
+        super().wait_for_connection(timeout=timeout)
 
         if self._write_pv is not None and not self._write_pv.connected:
             if not self._write_pv.wait_for_connection(timeout=timeout):
                 raise TimeoutError('Failed to connect to %s' %
                                    self._write_pv.pvname)
+
+    @property
+    @raise_if_disconnected
+    def tolerance(self):
+        '''The tolerance of the write PV, as reported by EPICS
+
+        Can be overidden by the user at the EpicsSignal level.
+
+        Returns
+        -------
+        tolerance : float or None
+        Using the write PV's precision:
+            If precision == 0, tolerance will be None
+            If precision > 0, calculated to be 10**(-precision)
+        '''
+        # NOTE: overrides Signal.tolerance property
+        if self._tolerance is not None:
+            return self._tolerance
+
+        precision = self.precision
+        if precision == 0 or precision is None:
+            return None
+
+        return 10. ** (-precision)
+
+    @tolerance.setter
+    def tolerance(self, tolerance):
+        self._tolerance = tolerance
 
     @property
     @raise_if_disconnected
@@ -790,8 +862,8 @@ class AttributeSignal(Signal):
     parent : Device, optional
         The parent device instance
     '''
-    def __init__(self, attr, *, name=None, parent=None):
-        super().__init__(name=name, parent=parent)
+    def __init__(self, attr, *, name=None, parent=None, **kwargs):
+        super().__init__(name=name, parent=parent, **kwargs)
 
         if '.' in attr:
             self.attr_base, self.attr = attr.rsplit('.', 1)
