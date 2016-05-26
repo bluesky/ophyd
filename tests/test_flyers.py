@@ -117,7 +117,8 @@ def test_waveform(wf_sim_detector, wfcol):
     print('wfcol flyer desc', wfcol.describe_collect())
 
 
-def test_monitor_flyer():
+@pytest.mark.parametrize('pivot', [True, False])
+def test_monitor_flyer(pivot):
     class BasicDevice(Device):
         mtr1 = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X2}Mtr')
         mtr2 = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X3}Mtr')
@@ -125,7 +126,8 @@ def test_monitor_flyer():
     class FlyerDevice(MonitorFlyerMixin, BasicDevice):
         pass
 
-    fdev = FlyerDevice('', name='fdev', stream_names={'mtr1.user_readback': 'oranges'})
+    fdev = FlyerDevice('', name='fdev', stream_names={'mtr1.user_readback': 'oranges'},
+                       pivot=pivot)
     fdev.wait_for_connection()
 
     fdev.monitor_attrs = ['mtr1.user_readback', 'mtr2.user_readback']
@@ -149,20 +151,40 @@ def test_monitor_flyer():
     wait(st)
 
     print(fdev.describe_collect())
+
+    desc1 = fdev.mtr1.user_readback.describe()
+    desc2 = fdev.mtr2.user_readback.describe()
+
+    if not pivot:
+        desc1[fdev.mtr1.user_readback.name]['dtype'] = 'array'
+        desc2[fdev.mtr2.user_readback.name]['dtype'] = 'array'
+
     assert (fdev.describe_collect() ==
-            {'oranges': fdev.mtr1.user_readback.describe(),
-             'fdev_mtr2': fdev.mtr2.user_readback.describe(),
+            {'oranges': desc1,
+             'fdev_mtr2': desc2,
              }
             )
     data = list(fdev.collect())
+    print('collected data', data)
     # data from both motors
-    assert len(data) == 2
-    d1 = data[0]['data']['fdev_mtr1']
-    d2 = data[1]['data']['fdev_mtr2']
+
+    if not pivot:
+        assert len(data) == 2
+        d1 = data[0]['data']['fdev_mtr1']
+        d2 = data[1]['data']['fdev_mtr2']
+
+    else:
+        assert len(data) >= 2
+
+        d1 = [d['data']['fdev_mtr1'] for d in data
+              if 'fdev_mtr1' in d['data']]
+        d2 = [d['data']['fdev_mtr2'] for d in data
+              if 'fdev_mtr2' in d['data']]
 
     # and at least more than one data point...
     assert len(d1) > 1
     assert len(d2) > 1
+
     print('data1', d1)
     print('data2', d2)
     # raise ValueError()
