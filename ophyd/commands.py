@@ -19,7 +19,6 @@ from epics import caget, caput
 from . import (EpicsMotor, PositionerBase, PVPositioner, Device)
 from .utils import DisconnectedError
 from .utils.startup import setup as setup_ophyd
-from prettytable import PrettyTable
 import numpy as np
 
 

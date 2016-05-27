@@ -47,7 +47,7 @@ dependencies:
     - env
     - caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
 
-    - conda install numpy pyepics prettytable filestore ipython pyolog
+    - conda install numpy pyepics filestore ipython pyolog
     - conda install nose coverage
     - $CONDA_ROOT/bin/pip install codecov pytest pytest-cov
 
