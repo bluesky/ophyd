@@ -17,15 +17,13 @@ cache:
 
 matrix:
   include:
-    #  - python: 2.7  # ophyd is python 3+ only at the moment
-  - python: 3.4
-  # - python: 3.5
-  - BUILD_DOCS=true
-    BUILD_DOCS_BRANCH=auto-build
-    DOCS_DIR="$TRAVIS_BUILD_DIR/doc"
-    HTML_DIR="$TRAVIS_BUILD_DIR/doc/build/html/"
-    TRAVIS_PULL_REQUEST=false
-    GH_REF=github.com/ericdill/ericdill.github.io
+    # - python: 3.4
+    - BUILD_DOCS=true
+      BUILD_DOCS_BRANCH=auto-build
+      DOCS_DIR="$TRAVIS_BUILD_DIR/doc"
+      HTML_DIR="$TRAVIS_BUILD_DIR/doc/build/html/"
+      TRAVIS_PULL_REQUEST=false
+      GH_REF=github.com/ericdill/ericdill.github.io
 
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
