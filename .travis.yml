@@ -7,13 +7,16 @@ env:
   global:
     - secure: "s9XSaRrPqRopq8k5xM31zf8YmwCguTTGjbqNmrZlUP1ljnkX8NxgBARLXn7UXVZvcKY3gcNVnIih8EaRTFPdW3ODba5HeEF/VD6YG53GZaBWGmbMp6alv207xa+lgAh179UaBVdWdrfXOh1zNb4LeQhaOIi+JwLy6KKkmrkxoTc="
     - BUILD_DOCS: false
-  matrix:
-    include:
-      # - python: 3.4
-      - BUILD_DOCS=true
-        BUILD_DOCS_BRANCH=auto-build
-        TRAVIS_PULL_REQUEST=false
-        GH_REF=github.com/ericdill/ericdill.github.io
+# python:
+#   - 3.4
+#   - 3.5
+matrix:
+  include:
+    - BUILD_DOCS: true
+      BUILD_DOCS_BRANCH: auto-build
+      TRAVIS_PULL_REQUEST: false
+      GH_REF: github.com/ericdill/ericdill.github.io
+      PYTHON: 3.5
 services:
   - docker
 
@@ -74,7 +77,8 @@ install:
   - echo "PATH=$PATH"
 
 script:
-  - if [[ BUILD_DOCS == 'true' ]]; then
+  - env
+  - if [ BUILD_DOCS == 'true' ]; then
       DOCS_DIR="$TRAVIS_BUILD_DIR/doc" HTML_DIR="$TRAVIS_BUILD_DIR/doc/build/html/" . ~/scripts/do-the-docs.sh;
     else
       echo "Checking if the motor IOC is running:";
