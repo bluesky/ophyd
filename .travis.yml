@@ -3,6 +3,11 @@ language: python
 sudo: required
 dist: trusty
 
+env:
+  global:
+    - secure: "s9XSaRrPqRopq8k5xM31zf8YmwCguTTGjbqNmrZlUP1ljnkX8NxgBARLXn7UXVZvcKY3gcNVnIih8EaRTFPdW3ODba5HeEF/VD6YG53GZaBWGmbMp6alv207xa+lgAh179UaBVdWdrfXOh1zNb4LeQhaOIi+JwLy6KKkmrkxoTc="
+    - BUILD_DOCS: false
+
 services:
   - docker
 
@@ -15,8 +20,16 @@ matrix:
     #  - python: 2.7  # ophyd is python 3+ only at the moment
   - python: 3.4
   # - python: 3.5
+  - BUILD_DOCS=true
+    BUILD_DOCS_BRANCH=auto-build
+    DOCS_DIR="$TRAVIS_BUILD_DIR/doc"
+    HTML_DIR="$TRAVIS_BUILD_DIR/doc/build/html/"
+    TRAVIS_PULL_REQUEST=false
+    GH_REF=github.com/ericdill/ericdill.github.io
 
 before_install:
+  - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
+  - chmod +x ~/scripts
   - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
   - export EPICS_CA_ADDR_LIST=$( echo $DOCKER0_IP | sed -e 's/^\([0-9]\+\)\.\([0-9]\+\)\..*$/\1.\2.255.255/' )
   - export EPICS_CA_AUTO_ADDR_LIST="no"
@@ -66,19 +79,20 @@ install:
   - echo "PATH=$PATH"
 
 script:
-  - echo "Checking if the motor IOC is running:"
-  - caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
-  - echo "Checking if the areaDetector IOC is running:"
-  - caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter
+  - if [[ BUILD_DOCS == 'true' ]]; then
+      . ~/scripts/do-the-docs.sh;
+    else
+      echo "Checking if the motor IOC is running:";
+      caget XF:31IDA-OP{Tbl-Ax:X1}Mtr;
+      echo "Checking if the areaDetector IOC is running:";
+      caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter;
 
-  # check pyepics
-  # - export PYEPICS_LIBCA=$EPICS_BASE/lib/$EPICS_HOST_ARCH/libca.so
-  - python -c "import epics; print(epics.__version__)"
-  - python -c "import epics.ca; print(epics.ca.find_libca())"
-  - python -c "import epics; print(epics.caget('XF:31IDA-OP{Tbl-Ax:X1}Mtr'))"
+      python -c "import epics; print(epics.__version__)";
+      python -c "import epics.ca; print(epics.ca.find_libca())";
+      python -c "import epics; print(epics.caget('XF:31IDA-OP{Tbl-Ax:X1}Mtr'))";
 
-  # running tests
-  - py.test -v --cov=ophyd --cov-report term-missing
+      py.test -v --cov=ophyd --cov-report term-missing;
+    fi;
 
 after_success:
     - env
