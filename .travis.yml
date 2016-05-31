@@ -7,7 +7,15 @@ env:
   global:
     - secure: "s9XSaRrPqRopq8k5xM31zf8YmwCguTTGjbqNmrZlUP1ljnkX8NxgBARLXn7UXVZvcKY3gcNVnIih8EaRTFPdW3ODba5HeEF/VD6YG53GZaBWGmbMp6alv207xa+lgAh179UaBVdWdrfXOh1zNb4LeQhaOIi+JwLy6KKkmrkxoTc="
     - BUILD_DOCS: false
-
+  matrix:
+    include:
+      # - python: 3.4
+      - BUILD_DOCS=true
+        BUILD_DOCS_BRANCH=auto-build
+        DOCS_DIR="$TRAVIS_BUILD_DIR/doc"
+        HTML_DIR="$TRAVIS_BUILD_DIR/doc/build/html/"
+        TRAVIS_PULL_REQUEST=false
+        GH_REF=github.com/ericdill/ericdill.github.io
 services:
   - docker
 
@@ -15,15 +23,6 @@ cache:
   directories:
     - $HOME/.cache/pip
 
-matrix:
-  include:
-    # - python: 3.4
-    - BUILD_DOCS=true
-      BUILD_DOCS_BRANCH=auto-build
-      DOCS_DIR="$TRAVIS_BUILD_DIR/doc"
-      HTML_DIR="$TRAVIS_BUILD_DIR/doc/build/html/"
-      TRAVIS_PULL_REQUEST=false
-      GH_REF=github.com/ericdill/ericdill.github.io
 
 before_install:
   - git clone https://github.com/nsls-ii/nsls2-ci ~/scripts
