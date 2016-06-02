@@ -1,6 +1,7 @@
 # vi: ts=4 sw=4
 import logging
 import time
+import threading
 
 import numpy as np
 import epics
@@ -331,6 +332,7 @@ class EpicsSignalBase(Signal):
         if pv_kw is None:
             pv_kw = dict()
 
+        self._lock = threading.RLock()
         self._read_pv = None
         self._string = bool(string)
         self._pv_kw = pv_kw
@@ -397,21 +399,25 @@ class EpicsSignalBase(Signal):
         # auto monitoring
         obj_mon = (event_type == self.SUB_VALUE and
                    self._auto_monitor is not True)
-
+        
         # but if the epics.PV has already connected and determined that it
         # should automonitor (based on the maximum automonitor length), then we
         # don't need to reinitialize it
-        if obj_mon and not self._read_pv.auto_monitor:
-            self._read_pv = self._reinitialize_pv(self._read_pv,
-                                                  auto_monitor=True,
-                                                  **self._pv_kw)
-            self._read_pv.add_callback(self._read_changed,
-                                       run_now=self._read_pv.connected)
+        with self._lock:
+            if obj_mon and not self._read_pv.auto_monitor:
+                self._read_pv = self._reinitialize_pv(self._read_pv,
+                                                      auto_monitor=True,
+                                                      **self._pv_kw)
+                self._read_pv.add_callback(self._read_changed,
+                                           run_now=self._read_pv.connected)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
-        if not self._read_pv.connected:
+        if self._read_pv.connected:
+            return
+
+        with self._lock:
             if not self._read_pv.wait_for_connection(timeout=timeout):
                 raise TimeoutError('Failed to connect to %s' %
                                    self._read_pv.pvname)
@@ -420,10 +426,11 @@ class EpicsSignalBase(Signal):
     @raise_if_disconnected
     def timestamp(self):
         '''Timestamp of readback PV, according to EPICS'''
-        if not self._read_pv.auto_monitor:
-            # force updating the timestamp when not using auto monitoring
-            self._read_pv.get_timevars()
-        return self._read_pv.timestamp
+        with self._lock:
+            if not self._read_pv.auto_monitor:
+                # force updating the timestamp when not using auto monitoring
+                self._read_pv.get_timevars()
+            return self._read_pv.timestamp
 
     @property
     def pvname(self):
@@ -447,8 +454,9 @@ class EpicsSignalBase(Signal):
         '''The read PV limits'''
 
         # This overrides the base limits
-        pv = self._read_pv
-        pv.get_ctrlvars()
+        with self._lock:
+            pv = self._read_pv
+            pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
     def get(self, *, as_string=None, **kwargs):
@@ -475,12 +483,13 @@ class EpicsSignalBase(Signal):
         if as_string is None:
             as_string = self._string
 
-        if not self._read_pv.connected:
-            if not self._read_pv.wait_for_connection():
-                raise TimeoutError('Failed to connect to %s' %
-                                   self._read_pv.pvname)
+        with self._lock:
+            if not self._read_pv.connected:
+                if not self._read_pv.wait_for_connection():
+                    raise TimeoutError('Failed to connect to %s' %
+                                       self._read_pv.pvname)
 
-        ret = self._read_pv.get(as_string=as_string, **kwargs)
+            ret = self._read_pv.get(as_string=as_string, **kwargs)
 
         if as_string:
             return waveform_to_string(ret)
@@ -637,22 +646,24 @@ class EpicsSignal(EpicsSignalBase):
         # but if the epics.PV has already connected and determined that it
         # should automonitor (based on the maximum automonitor length), then we
         # don't need to reinitialize it
-        if obj_mon and not self._write_pv.auto_monitor:
-            self._write_pv = self._reinitialize_pv(self._write_pv,
-                                                   auto_monitor=True,
-                                                   **self._pv_kw)
-            self._write_pv.add_callback(self._write_changed,
-                                        run_now=self._write_pv.connected)
+        with self._lock:
+            if obj_mon and not self._write_pv.auto_monitor:
+                self._write_pv = self._reinitialize_pv(self._write_pv,
+                                                       auto_monitor=True,
+                                                       **self._pv_kw)
+                self._write_pv.add_callback(self._write_changed,
+                                            run_now=self._write_pv.connected)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
         super().wait_for_connection(timeout=timeout)
-
-        if self._write_pv is not None and not self._write_pv.connected:
-            if not self._write_pv.wait_for_connection(timeout=timeout):
-                raise TimeoutError('Failed to connect to %s' %
-                                   self._write_pv.pvname)
+        
+        with self._lock:
+            if self._write_pv is not None and not self._write_pv.connected:
+                if not self._write_pv.wait_for_connection(timeout=timeout):
+                    raise TimeoutError('Failed to connect to %s' %
+                                       self._write_pv.pvname)
 
     @property
     @raise_if_disconnected
@@ -686,10 +697,11 @@ class EpicsSignal(EpicsSignalBase):
     @raise_if_disconnected
     def setpoint_ts(self):
         '''Timestamp of setpoint PV, according to EPICS'''
-        if not self._write_pv.auto_monitor:
-            # force updating the timestamp when not using auto monitoring
-            self._write_pv.get_timevars()
-        return self._write_pv.timestamp
+        with self._lock:
+            if not self._write_pv.auto_monitor:
+                # force updating the timestamp when not using auto monitoring
+                self._write_pv.get_timevars()
+            return self._write_pv.timestamp
 
     @property
     def setpoint_pvname(self):
@@ -713,8 +725,9 @@ class EpicsSignal(EpicsSignalBase):
     def limits(self):
         '''The write PV limits'''
         # read_pv_limits = super().limits
-        pv = self._write_pv
-        pv.get_ctrlvars()
+        with self._lock:
+            pv = self._write_pv
+            pv.get_ctrlvars()
         return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
     def check_value(self, value):
@@ -780,15 +793,16 @@ class EpicsSignal(EpicsSignalBase):
         if not force:
             self.check_value(value)
 
-        if not self._write_pv.connected:
-            if not self._write_pv.wait_for_connection():
-                raise TimeoutError('Failed to connect to %s' %
-                                   self._write_pv.pvname)
+        with self._lock:
+            if not self._write_pv.connected:
+                if not self._write_pv.wait_for_connection():
+                    raise TimeoutError('Failed to connect to %s' %
+                                       self._write_pv.pvname)
 
-        use_complete = kwargs.pop('use_complete', self._put_complete)
-
-        self._write_pv.put(value, use_complete=use_complete,
-                           **kwargs)
+            use_complete = kwargs.pop('use_complete', self._put_complete)
+        
+            self._write_pv.put(value, use_complete=use_complete,
+                               **kwargs)
 
         old_value = self._setpoint
         self._setpoint = value
