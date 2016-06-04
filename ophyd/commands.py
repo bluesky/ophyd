@@ -449,8 +449,12 @@ def log_pos(positioners=None, extra_msg=None):
     int
         The ID of the logbook entry returned by the logbook.log method.
     """
-    positioners = _normalize_positioners(positioners)
     logbook = get_logbook()
+    if logbook is None:
+        raise RuntimeError("you do not have a logbook setup")
+
+    positioners = _normalize_positioners(positioners)
+
     if extra_msg:
         msg = extra_msg + '\n'
     else:
@@ -477,12 +481,11 @@ def log_pos(positioners=None, extra_msg=None):
     pdict['objects'] = repr(positioners)
     pdict['values'] = repr(pdict['values'])
 
-    if logbook:
-        id_ = logbook.log(msg, properties={'OphydPositioners': pdict},
-                          ensure=True)
+    id_ = logbook.log(msg, properties={'OphydPositioners': pdict},
+                      ensure=True)
 
-        print('Logbook positions added as Logbook ID {}'.format(id_))
-        return id_
+    print('Logbook positions added as Logbook ID {}'.format(id_))
+    return id_
 
 
 def log_pos_mov(id=None, dry_run=False, positioners=None, **kwargs):
