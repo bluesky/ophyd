@@ -359,13 +359,15 @@ class EpicsSignalBase(Signal):
     @raise_if_disconnected
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
-        return self._read_pv.precision
+        with self._lock:
+            return self._read_pv.precision
 
     @property
     @raise_if_disconnected
     def enum_strs(self):
         """List of strings if PV is an enum type"""
-        return self._read_pv.enum_strs
+        with self._lock:
+            return self._read_pv.enum_strs
 
     def _reinitialize_pv(self, old_instance, **pv_kw):
         '''Reinitialize a PV instance
@@ -457,7 +459,7 @@ class EpicsSignalBase(Signal):
         with self._lock:
             pv = self._read_pv
             pv.get_ctrlvars()
-        return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
+            return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
     def get(self, *, as_string=None, connection_timeout=1.0, **kwargs):
         '''Get the readback value through an explicit call to EPICS
@@ -531,11 +533,14 @@ class EpicsSignalBase(Signal):
             desc['precision'] = int(self.precision)
         except (ValueError, TypeError):
             pass
-        desc['units'] = self._read_pv.units
+
+        with self._lock:
+            desc['units'] = self._read_pv.units
 
         if hasattr(self, '_write_pv'):
-            desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
-            desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
+            with self._lock:
+                desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
+                desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
 
         if self.enum_strs:
             desc['enum_strs'] = list(self.enum_strs)
@@ -731,7 +736,7 @@ class EpicsSignal(EpicsSignalBase):
         with self._lock:
             pv = self._write_pv
             pv.get_ctrlvars()
-        return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
+            return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
     def check_value(self, value):
         '''Check if the value is within the setpoint PV's control limits
