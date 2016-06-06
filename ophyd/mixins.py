@@ -1,6 +1,6 @@
-import types
 from .signal import EpicsSignal
 from .positioner import PositionerBase
+from .status import wait as status_wait
 
 
 class SignalPositionerMixin(PositionerBase):
@@ -19,11 +19,7 @@ class SignalPositionerMixin(PositionerBase):
     hold_on_stop : bool, optional
         When stop is called on the positioner
     '''
-    def __init__(self, *args, set_func=None, egu='', hold_on_stop=False,
-                 **kwargs):
-        if set_func is None:
-            raise RuntimeError('set() functionality not stashed: '
-                               'see SignalPositionerMixin docs')
+    def __init__(self, *args, set_func, egu='', hold_on_stop=False, **kwargs):
         super().__init__(*args, **kwargs)
         self._egu = egu
         self._hold_on_stop = hold_on_stop
@@ -53,7 +49,7 @@ class SignalPositionerMixin(PositionerBase):
         '''The engineering units (EGU) for positions'''
         return self._egu
 
-    def move(self, position, moved_cb=None, timeout=None):
+    def move(self, position, wait=True, moved_cb=None, timeout=None):
         '''Move to a specified position, optionally waiting for motion to
         complete.
 
@@ -61,6 +57,8 @@ class SignalPositionerMixin(PositionerBase):
         ----------
         position
             Position to move to
+        wait : bool, optional
+            Wait until motion has completed before returning
         moved_cb : callable
             Call this callback when movement has finished. This callback
             must accept one keyword argument: 'obj' which will be set to
@@ -102,9 +100,16 @@ class SignalPositionerMixin(PositionerBase):
             self._status = None
 
         # set() functionality depends on the signal
-        self._status = self._mixed_set(self, position, timeout=timeout,
+        self._status = self._mixed_set(position, timeout=timeout,
                                        settle_time=self.settle_time)
         self._status.finished_cb = finished
+
+        if wait:
+            try:
+                status_wait(self._status)
+            except RuntimeError:
+                raise RuntimeError('Motion did not complete successfully')
+
         return self._status
 
     def stop(self):
