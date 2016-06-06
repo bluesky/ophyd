@@ -537,10 +537,9 @@ class EpicsSignalBase(Signal):
         with self._lock:
             desc['units'] = self._read_pv.units
 
-        if hasattr(self, '_write_pv'):
-            with self._lock:
-                desc['lower_ctrl_limit'] = self._write_pv.lower_ctrl_limit
-                desc['upper_ctrl_limit'] = self._write_pv.upper_ctrl_limit
+        low_limit, high_limit = self.limits
+        desc['lower_ctrl_limit'] = low_limit
+        desc['upper_ctrl_limit'] = high_limit
 
         if self.enum_strs:
             desc['enum_strs'] = list(self.enum_strs)
