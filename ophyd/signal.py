@@ -767,7 +767,8 @@ class EpicsSignal(EpicsSignalBase):
 
         Keyword arguments are passed on to epics.PV.get()
         '''
-        setpoint = self._write_pv.get(**kwargs)
+        with self._lock:
+            setpoint = self._write_pv.get(**kwargs)
         return self._fix_type(setpoint)
 
     def _write_changed(self, value=None, timestamp=None, **kwargs):
