@@ -1,6 +1,11 @@
+import logging
+
 from .signal import EpicsSignal
 from .positioner import PositionerBase
-from .status import wait as status_wait
+from .status import (MoveStatus, wait as status_wait)
+
+
+logger = logging.getLogger(__name__)
 
 
 class SignalPositionerMixin(PositionerBase):
@@ -23,7 +28,8 @@ class SignalPositionerMixin(PositionerBase):
         super().__init__(*args, **kwargs)
         self._egu = egu
         self._hold_on_stop = hold_on_stop
-        self._status = None
+        self._internal_status = None
+        self._external_status = None
 
         # bind method to this class instance:
         self._mixed_set = set_func.__get__(self, self.__class__)
@@ -92,25 +98,40 @@ class SignalPositionerMixin(PositionerBase):
         self._run_subs(sub_type=self.SUB_START)
 
         def finished():
-            self._done_moving(success=self._status.success)
+            success = self._internal_status.success
+            self._done_moving(success=success)
 
             if moved_cb is not None:
-                moved_cb(obj=self)
+                try:
+                    moved_cb(obj=self)
+                except Exception as ex:
+                    logger.error('Move callback failed', exc_info=ex)
 
-            self._status = None
+            try:
+                self._external_status._finished(success=success)
+            except Exception as ex:
+                logger.error('Status completion failed', exc_info=ex)
+
+            self._internal_status = None
+            self._external_status = None
+
+        # this external status object is fully dependent on the internal status
+        # object and does not have its own timeout/settle_time settings:
+        self._external_status = MoveStatus(self, target=position,
+                                           settle_time=0.0, timeout=None)
 
         # set() functionality depends on the signal
-        self._status = self._mixed_set(position, timeout=timeout,
-                                       settle_time=self.settle_time)
-        self._status.finished_cb = finished
+        self._internal_status = self._mixed_set(position, timeout=timeout,
+                                                settle_time=self.settle_time)
+        self._internal_status.finished_cb = finished
 
         if wait:
             try:
-                status_wait(self._status)
+                status_wait(self._internal_status)
             except RuntimeError:
                 raise RuntimeError('Motion did not complete successfully')
 
-        return self._status
+        return self._external_status
 
     def stop(self):
         '''Stops motion'''
