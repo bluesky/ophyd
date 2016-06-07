@@ -57,7 +57,7 @@ before_install:
 install:
   # INSTALL OPHYD
   - conda install numpy pyepics prettytable filestore ipython pyolog
-  - pip install coveralls pytest pytest-cov
+  - pip install coveralls pytest pytest-cov codecov
   - python setup.py develop
 
   # setup some path environment variables for epics
@@ -83,3 +83,4 @@ script:
 after_success:
     - env
     - coveralls
+    - codecov
