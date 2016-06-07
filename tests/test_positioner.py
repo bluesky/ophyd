@@ -1,17 +1,11 @@
-
-
-import time
 import logging
 import unittest
-import pytest
 from copy import copy
 from unittest import mock
 from unittest.mock import Mock
 
-import epics
 import ophyd
-from ophyd import (SoftPositioner, PVPositioner)
-from ophyd import (Component as C)
+from ophyd import (SoftPositioner, )
 
 logger = logging.getLogger(__name__)
 
