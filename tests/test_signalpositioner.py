@@ -34,6 +34,7 @@ def test_epics_signal_positioner():
     position_callback = Mock()
     started_motion_callback = Mock()
     finished_motion_callback = Mock()
+    moved_cb = Mock()
     assert p.egu == 'egu'
 
     p.subscribe(position_callback, event_type=p.SUB_READBACK)
@@ -42,11 +43,12 @@ def test_epics_signal_positioner():
 
     start_pos = p.position
     target_pos = start_pos - 1.5
-    p.move(target_pos, wait=True)
+    p.move(target_pos, wait=True, moved_cb=moved_cb)
     logger.debug(str(p))
     assert not p.moving
     assert abs(p.position - target_pos) <= p.tolerance
 
+    moved_cb.assert_called_with(obj=p)
     position_callback.assert_called_with(
         obj=p, value=target_pos, sub_type=p.SUB_READBACK, timestamp=mock.ANY)
     started_motion_callback.assert_called_once_with(
