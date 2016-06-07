@@ -1,3 +1,4 @@
+import time
 import logging
 
 from .signal import EpicsSignal
@@ -19,12 +20,15 @@ class SignalPositionerMixin(PositionerBase):
     set_func : callable
         The set() functionality for the class. Must be specified as the mixin
         takes over set() functionality.
+    readback_event : str, optional
+        Readback value subscription event_type
     egu : str, optional
         Engineering units of positioner
     hold_on_stop : bool, optional
         When stop is called on the positioner
     '''
-    def __init__(self, *args, set_func, egu='', hold_on_stop=False, **kwargs):
+    def __init__(self, *args, set_func, readback_event='value', egu='',
+                 hold_on_stop=False, **kwargs):
         super().__init__(*args, **kwargs)
         self._egu = egu
         self._hold_on_stop = hold_on_stop
@@ -34,7 +38,7 @@ class SignalPositionerMixin(PositionerBase):
         # bind method to this class instance:
         self._mixed_set = set_func.__get__(self, self.__class__)
 
-        self.subscribe(self._position_updated)
+        self.subscribe(self._position_updated, event_type=readback_event)
 
     def _position_updated(self, value=None, **kwargs):
         # for readback subscriptions
@@ -95,10 +99,11 @@ class SignalPositionerMixin(PositionerBase):
         self._reset_sub(self._SUB_REQ_DONE)
 
         self._moving = True
-        self._run_subs(sub_type=self.SUB_START)
+        self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
 
         def finished():
             success = self._internal_status.success
+            self._moving = False
             self._done_moving(success=success)
 
             if moved_cb is not None:
@@ -127,7 +132,7 @@ class SignalPositionerMixin(PositionerBase):
 
         if wait:
             try:
-                status_wait(self._internal_status)
+                status_wait(self._external_status)
             except RuntimeError:
                 raise RuntimeError('Motion did not complete successfully')
 
