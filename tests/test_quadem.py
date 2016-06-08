@@ -80,7 +80,8 @@ def test_reading(quadem):
     desc = quadem.describe()
     desc_keys = list(desc['quadem_current1_mean_value'].keys())
     assert (set(desc_keys) == set(['dtype', 'precision', 'shape', 'source',
-                                   'units']))
+                                   'units', 'lower_ctrl_limit',
+                                   'upper_ctrl_limit']))
 
     vals = quadem.read()
     assert 'quadem_current1_mean_value' in vals
