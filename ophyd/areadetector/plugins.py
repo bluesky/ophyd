@@ -140,9 +140,10 @@ class PluginBase(ADBase):
                      doc='The array size')
 
     bayer_pattern = C(EpicsSignalRO, 'BayerPattern_RBV')
-    blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks')
+    blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks',
+                           string=True)
     color_mode = C(EpicsSignalRO, 'ColorMode_RBV')
-    data_type = C(EpicsSignalRO, 'DataType_RBV')
+    data_type = C(EpicsSignalRO, 'DataType_RBV', string=True)
 
     dim0_sa = C(EpicsSignal, 'Dim0SA')
     dim1_sa = C(EpicsSignal, 'Dim1SA')
@@ -155,7 +156,7 @@ class PluginBase(ADBase):
 
     dimensions = C(EpicsSignalRO, 'Dimensions_RBV')
     dropped_arrays = C(SignalWithRBV, 'DroppedArrays')
-    enable = C(SignalWithRBV, 'EnableCallbacks')
+    enable = C(SignalWithRBV, 'EnableCallbacks', string=True)
     min_callback_time = C(SignalWithRBV, 'MinCallbackTime')
     nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
     nd_array_port = C(SignalWithRBV, 'NDArrayPort')
@@ -216,10 +217,10 @@ class StatsPlugin(PluginBase):
                              ('y', 'CentroidY_RBV'))),
                    doc='The centroid XY')
 
-    compute_centroid = C(SignalWithRBV, 'ComputeCentroid')
-    compute_histogram = C(SignalWithRBV, 'ComputeHistogram')
-    compute_profiles = C(SignalWithRBV, 'ComputeProfiles')
-    compute_statistics = C(SignalWithRBV, 'ComputeStatistics')
+    compute_centroid = C(SignalWithRBV, 'ComputeCentroid', string=True)
+    compute_histogram = C(SignalWithRBV, 'ComputeHistogram', string=True)
+    compute_profiles = C(SignalWithRBV, 'ComputeProfiles', string=True)
+    compute_statistics = C(SignalWithRBV, 'ComputeStatistics', string=True)
 
     cursor = DDC(ad_group(SignalWithRBV,
                           (('x', 'CursorX'),
@@ -290,7 +291,7 @@ class StatsPlugin(PluginBase):
                                 ('y', 'TSCentroidY'))),
                       doc='Time series centroid in XY')
 
-    ts_control = C(EpicsSignal, 'TSControl')
+    ts_control = C(EpicsSignal, 'TSControl', string=True)
     ts_current_point = C(EpicsSignal, 'TSCurrentPoint')
     ts_max_value = C(EpicsSignal, 'TSMaxValue')
 
@@ -368,11 +369,11 @@ class ProcessPlugin(PluginBase):
         'valid_background',
         'valid_flat_field')
     )
-    auto_offset_scale = C(EpicsSignal, 'AutoOffsetScale')
-    auto_reset_filter = C(SignalWithRBV, 'AutoResetFilter')
+    auto_offset_scale = C(EpicsSignal, 'AutoOffsetScale', string=True)
+    auto_reset_filter = C(SignalWithRBV, 'AutoResetFilter', string=True)
     average_seq = C(EpicsSignal, 'AverageSeq')
     copy_to_filter_seq = C(EpicsSignal, 'CopyToFilterSeq')
-    data_type_out = C(SignalWithRBV, 'DataTypeOut')
+    data_type_out = C(SignalWithRBV, 'DataTypeOut', string=True)
     difference_seq = C(EpicsSignal, 'DifferenceSeq')
     enable_background = C(SignalWithRBV, 'EnableBackground', string=True)
     enable_filter = C(SignalWithRBV, 'EnableFilter', string=True)
@@ -390,8 +391,8 @@ class ProcessPlugin(PluginBase):
 
     foffset = C(SignalWithRBV, 'FOffset')
     fscale = C(SignalWithRBV, 'FScale')
-    filter_callbacks = C(SignalWithRBV, 'FilterCallbacks')
-    filter_type = C(EpicsSignal, 'FilterType')
+    filter_callbacks = C(SignalWithRBV, 'FilterCallbacks', string=True)
+    filter_type = C(EpicsSignal, 'FilterType', string=True)
     filter_type_seq = C(EpicsSignal, 'FilterTypeSeq')
     high_clip = C(SignalWithRBV, 'HighClip')
     low_clip = C(SignalWithRBV, 'LowClip')
@@ -424,8 +425,8 @@ class ProcessPlugin(PluginBase):
     scale = C(SignalWithRBV, 'Scale')
     scale_flat_field = C(SignalWithRBV, 'ScaleFlatField')
     sum_seq = C(EpicsSignal, 'SumSeq')
-    valid_background = C(EpicsSignalRO, 'ValidBackground_RBV')
-    valid_flat_field = C(EpicsSignalRO, 'ValidFlatField_RBV')
+    valid_background = C(EpicsSignalRO, 'ValidBackground_RBV', string=True)
+    valid_flat_field = C(EpicsSignalRO, 'ValidFlatField_RBV', string=True)
 
 
 class Overlay(ADBase):
@@ -493,7 +494,7 @@ class ROIPlugin(PluginBase):
     _html_docs = ['NDPluginROI.html']
     _plugin_type = 'NDPluginROI'
     _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
-        'roi_enable', 'name_', 'bin_', 'data_type_out', )
+        'roi_enable', 'name_', 'bin_', 'data_type_out', 'enable_scale')
     )
     array_size = DDC(ad_group(EpicsSignalRO,
                               (('x', 'ArraySizeX_RBV'),
@@ -514,8 +515,8 @@ class ROIPlugin(PluginBase):
                          ('z', 'BinZ'))),
                doc='Binning in XYZ')
 
-    data_type_out = C(SignalWithRBV, 'DataTypeOut')
-    enable_scale = C(SignalWithRBV, 'EnableScale')
+    data_type_out = C(SignalWithRBV, 'DataTypeOut', string=True)
+    enable_scale = C(SignalWithRBV, 'EnableScale', string=True)
 
     roi_enable = DDC(ad_group(SignalWithRBV,
                               (('x', 'EnableX'),
