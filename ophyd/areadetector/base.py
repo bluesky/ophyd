@@ -3,6 +3,7 @@ import inspect
 import re
 import sys
 from collections import OrderedDict
+import networkx as nx
 
 from ..signal import EpicsSignal
 from . import docs
@@ -148,3 +149,108 @@ class ADBase(Device):
 
             if match:
                 match_fcn(attr=attr, signal=getattr(self, attr), doc=doc)
+
+    def stage(self, *args, **kwargs):
+        if not self.validate_asyn_ports():
+            missing_plugins = self.missing_plugins()
+            raise RuntimeError('The asyn ports {!r} are used by plugins '
+                               'that ophyd is aware of but the source plugin '
+                               'is not.  Please reconfigure your device to '
+                               'include the source plugin or reconfigure '
+                               'to not use these ports.'
+                               ''.format(missing_plugins))
+        return super().stage(*args, **kwargs)
+
+    def get_plugin_by_asyn_port(self, port_name):
+        '''Get the plugin which has the given asyn port name
+
+        Parameters
+        ----------
+        port_name : str
+            The port name to search for
+
+        Returns
+        -------
+        ret : ADBase or None
+            Either the requested plugin or None if not found
+
+        '''
+        try:
+            name = self.port_name.get()
+        except AttributeError:
+            pass
+        else:
+            if name == port_name:
+                return self
+
+        for nm in self._sub_devices:
+            cpt = getattr(self, nm)
+            if hasattr(cpt, 'get_plugin_by_asyn_port'):
+                sig = cpt.get_plugin_by_asyn_port(port_name)
+                if sig is not None:
+                    return sig
+        return None
+
+    def get_asyn_port_dictionary(self):
+        '''Return port name : component map
+
+        Returns
+        -------
+        port_map : dict
+            Mapping between port_name and ADBase objects
+        '''
+        # uniqueness of port names enforced at IOC layer
+        ret = {}
+        try:
+            ret.update({self.port_name.get(): self})
+        except AttributeError:
+            pass
+
+        for nm in self._sub_devices:
+            sig = getattr(self, nm)
+            if hasattr(sig, 'get_asyn_port_dictionary'):
+                ret.update(sig.get_asyn_port_dictionary())
+
+        return ret
+
+    def get_asyn_digraph(self):
+        '''Get the directed graph of the ASYN ports
+
+        Returns
+        -------
+        G : networkx.DiGraph
+            Directed graph of pipelines
+
+        port_map : dict
+            Mapping between port_name and ADBase objects
+        '''
+        port_map = self.get_asyn_port_dictionary()
+        G = nx.DiGraph()
+        for out_port, cpt in port_map.items():
+            try:
+                in_port = cpt.nd_array_port.get()
+            except AttributeError:
+                # attribute error because we hit a component which is not
+                # a plugin, but is the 'base' data source
+                G.add_node(out_port)
+            else:
+                G.add_edge(in_port, out_port)
+
+        return G, port_map
+
+    def validate_asyn_ports(self):
+        g, port_map = self.get_asyn_digraph()
+        g = nx.Graph(g)
+        if nx.number_connected_components(g) != 1:
+            return False
+        return True
+
+    def missing_plugins(self):
+        g, port_map = self.get_asyn_digraph()
+        ret = []
+
+        for node in g:
+            if node not in port_map:
+                ret.append(node)
+
+        return ret

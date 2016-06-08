@@ -3,7 +3,8 @@ import logging
 import pytest
 from io import StringIO
 
-from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger)
+from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger,
+                   StatsPlugin, ROIPlugin)
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 
@@ -115,6 +116,41 @@ def test_getattr():
     # raise
     # TODO subclassing issue
 
+
+def test_invalid_plugins():
+    class MyDetector(SingleTrigger, SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+
+    det = MyDetector(prefix)
+    det.wait_for_connection()
+    det.tiff1.nd_array_port.put(det.cam.port_name.get())
+    det.stats1.nd_array_port.put('AARDVARK')
+
+    with pytest.raises(RuntimeError):
+        det.stage()
+
+    assert not det.validate_asyn_ports()
+    assert ['AARDVARK'] == det.missing_plugins()
+
+
+def test_get_plugin_by_port():
+    class MyDetector(SingleTrigger, SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+
+    det = MyDetector(prefix)
+
+    det.tiff1.nd_array_port.put(det.cam.port_name.get())
+    det.roi1.nd_array_port.put(det.cam.port_name.get())
+    det.stats1.nd_array_port.put(det.roi1.port_name.get())
+
+    assert det.validate_asyn_ports()
+
+    assert det.tiff1 is det.get_plugin_by_port(det.tiff1.port_name.get())
+    assert det.cam is det.get_plugin_by_port(det.cam.port_name.get())
+    assert det.roi1 is det.get_plugin_by_port(det.roi1.port_name.get())
 
 from . import main
 is_main = (__name__ == '__main__')
