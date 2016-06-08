@@ -347,8 +347,9 @@ class EpicsSignalBase(Signal):
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
 
-        self._read_pv.add_callback(self._read_changed,
-                                   run_now=self._read_pv.connected)
+        with self._lock:
+            self._read_pv.add_callback(self._read_changed,
+                                       run_now=self._read_pv.connected)
 
     @property
     def as_string(self):
@@ -382,16 +383,16 @@ class EpicsSignalBase(Signal):
         pv_kw : kwargs
             The parameters to pass to the initializer
         '''
+        with self._lock:
+            old_instance.clear_callbacks()
+            was_connected = old_instance.connected
 
-        old_instance.clear_callbacks()
-        was_connected = old_instance.connected
+            new_instance = epics.PV(old_instance.pvname,
+                                    form=old_instance.form, **pv_kw)
+            if was_connected:
+                new_instance.wait_for_connection()
 
-        new_instance = epics.PV(old_instance.pvname, form=old_instance.form,
-                                **pv_kw)
-        if was_connected:
-            new_instance.wait_for_connection()
-
-        return new_instance
+            return new_instance
 
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
