@@ -13,18 +13,6 @@ logger = logging.getLogger(__name__)
 @using_fake_epics_pv
 def quadem():
     em = QuadEM('quadem:', name='quadem')
-    em.wait_for_connection()
-
-    return em
-
-
-def test_connected(quadem):
-    assert quadem.connected
-
-
-@using_fake_epics_pv
-def test_scan_point(quadem):
-    assert quadem._staged.value == 'no'
 
     ''' Beware: Ugly Hack below
 
@@ -41,29 +29,48 @@ def test_scan_point(quadem):
             means that set_and_wait() will never be successful for
             EpicsSignalWithRBVs... :-(
     '''
-    for sig in quadem.stage_sigs:
+    for sig in em.stage_sigs:
         sig._read_pv = sig._write_pv
 
-    for sig in quadem.image.stage_sigs:
+    for sig in em.image.stage_sigs:
         sig._read_pv = sig._write_pv
-    quadem.image.enable._read_pv = quadem.image.enable._write_pv
+    em.image.enable._read_pv = em.image.enable._write_pv
 
-    for sig in quadem.current1.stage_sigs:
+    for sig in em.current1.stage_sigs:
         sig._read_pv = sig._write_pv
-    quadem.current1.enable._read_pv = quadem.current1.enable._write_pv
+    em.current1.enable._read_pv = em.current1.enable._write_pv
 
-    for sig in quadem.current2.stage_sigs:
+    for sig in em.current2.stage_sigs:
         sig._read_pv = sig._write_pv
-    quadem.current2.enable._read_pv = quadem.current2.enable._write_pv
+    em.current2.enable._read_pv = em.current2.enable._write_pv
 
-    for sig in quadem.current3.stage_sigs:
+    for sig in em.current3.stage_sigs:
         sig._read_pv = sig._write_pv
-    quadem.current3.enable._read_pv = quadem.current3.enable._write_pv
+    em.current3.enable._read_pv = em.current3.enable._write_pv
 
-    for sig in quadem.current4.stage_sigs:
+    for sig in em.current4.stage_sigs:
         sig._read_pv = sig._write_pv
-    quadem.current4.enable._read_pv = quadem.current4.enable._write_pv
+    em.current4.enable._read_pv = em.current4.enable._write_pv
     ''' End: Ugly Hack '''
+
+    for sig in ['image'] + ['current{}'.format(j) for j in range(1, 5)]:
+        cpt = getattr(em, sig)
+        cpt.nd_array_port._read_pv = cpt.nd_array_port._write_pv
+        cpt.port_name._read_pv.put(sig.upper())
+        cpt.nd_array_port.put('NSLS2_EM')
+
+    em.wait_for_connection()
+
+    return em
+
+
+def test_connected(quadem):
+    assert quadem.connected
+
+
+@using_fake_epics_pv
+def test_scan_point(quadem):
+    assert quadem._staged.value == 'no'
 
     quadem.stage()
     assert quadem._staged.value == 'yes'
