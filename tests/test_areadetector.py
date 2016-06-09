@@ -4,7 +4,7 @@ import pytest
 from io import StringIO
 
 from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger,
-                   StatsPlugin, ROIPlugin)
+                   StatsPlugin, ROIPlugin, ProcessPlugin)
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 
@@ -134,7 +134,7 @@ def test_invalid_plugins():
     assert ['AARDVARK'] == det.missing_plugins()
 
 
-def test_get_plugin_by_port():
+def test_get_plugin_by_asyn_port():
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
@@ -148,9 +148,32 @@ def test_get_plugin_by_port():
 
     assert det.validate_asyn_ports()
 
-    assert det.tiff1 is det.get_plugin_by_port(det.tiff1.port_name.get())
-    assert det.cam is det.get_plugin_by_port(det.cam.port_name.get())
-    assert det.roi1 is det.get_plugin_by_port(det.roi1.port_name.get())
+    assert det.tiff1 is det.get_plugin_by_asyn_port(det.tiff1.port_name.get())
+    assert det.cam is det.get_plugin_by_asyn_port(det.cam.port_name.get())
+    assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
+
+
+def test_read_configuration_smoke():
+    class MyDetector(SingleTrigger, SimDetector):
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+        porc1 = Cpt(ProcessPlugin, 'ROI1:')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+
+    det = MyDetector(prefix, name='test')
+    det.proc1.nd_array_port.put(det.cam.port_name.get())
+    det.roi1.nd_array_port.put(det.proc1.port_name.get())
+    det.stats1.nd_array_port.put(det.roi1.port_name.get())
+    # smoke test
+    det.stage()
+    conf = det.stats1.read_configuration()
+    desc = det.stats1.describe_configuration()
+    det.unstage()
+    for k in conf:
+        assert k in desc
+
+    assert len(conf) > 0
+    assert len(conf) == len(desc)
+
 
 from . import main
 is_main = (__name__ == '__main__')

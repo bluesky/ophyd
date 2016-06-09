@@ -59,14 +59,20 @@ def register_plugin(cls):
 
 class PluginBase(ADBase):
     '''AreaDetector plugin base class'''
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, configuration_attrs=None, **kwargs):
+        if configuration_attrs is None:
+            configuration_attrs = self._default_configuration_attrs
         # Turn array callbacks on during staging.
         # Without this, no array data is sent to the plugins.
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, configuration_attrs=configuration_attrs,
+                         **kwargs)
         self.stage_sigs[self.blocking_callbacks] = 'Yes'
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([(self.parent.cam.array_callbacks, 1),
-                                   ])
+                                    ])
+
+    _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
+                                    'blocking_callbacks', 'plugin_type')
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
@@ -105,6 +111,24 @@ class PluginBase(ADBase):
             pixels *= dim
 
         return pixels
+
+    def read_configuration(self):
+        ret = super().read_configuration()
+
+        source_port = self.nd_array_port.get()
+        source_plugin = self.root.get_plugin_by_asyn_port(source_port)
+        ret.update(source_plugin.read_configuration())
+
+        return ret
+
+    def describe_configuration(self):
+        ret = super().describe_configuration()
+
+        source_port = self.nd_array_port.get()
+        source_plugin = self.root.get_plugin_by_asyn_port(source_port)
+        ret.update(source_plugin.describe_configuration())
+
+        return ret
 
     width = C(EpicsSignalRO, 'ArraySize0_RBV')
     height = C(EpicsSignalRO, 'ArraySize1_RBV')
@@ -155,6 +179,7 @@ class ImagePlugin(PluginBase):
     _plugin_type = 'NDPluginStdArrays'
 
     array_data = C(EpicsSignal, 'ArrayData')
+    _default_configuration_attrs = PluginBase._default_configuration_attrs
 
     @property
     def image(self):
@@ -175,6 +200,13 @@ class StatsPlugin(PluginBase):
     _suffix_re = 'Stats\d:'
     _html_docs = ['NDPluginStats.html']
     _plugin_type = 'NDPluginStats'
+
+    _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
+        'centroid_threshold', 'compute_centroid', 'compute_histogram',
+        'compute_profiles', 'ts_control', 'compute_statistics', 'bgd_width',
+        'hist_size', 'hist_min', 'hist_max', 'ts_num_points', 'profile_size',
+        'profile_cursor')
+    )
 
     bgd_width = C(SignalWithRBV, 'BgdWidth')
     centroid_threshold = C(SignalWithRBV, 'CentroidThreshold')
@@ -301,19 +333,53 @@ class ProcessPlugin(PluginBase):
     _suffix_re = 'Proc\d:'
     _html_docs = ['NDPluginProcess.html']
     _plugin_type = 'NDPluginProcess'
-
+    _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
+        'data_type',
+        'auto_offset_scale',
+        'auto_reset_filter',
+        'copy_to_filter_seq',
+        'data_type_out',
+        'difference_seq',
+        'enable_background',
+        'enable_filter',
+        'enable_flat_field',
+        'enable_high_clip',
+        'enable_low_clip',
+        'enable_offset_scale',
+        'fc',
+        'foffset',
+        'fscale',
+        'filter_callbacks',
+        'filter_type',
+        'filter_type_seq',
+        'high_clip',
+        'low_clip',
+        'num_filter',
+        'num_filter_recip',
+        'num_filtered',
+        'oc',
+        'o_offset',
+        'o_scale',
+        'offset',
+        'rc',
+        'roffset',
+        'scale',
+        'scale_flat_field',
+        'valid_background',
+        'valid_flat_field')
+    )
     auto_offset_scale = C(EpicsSignal, 'AutoOffsetScale')
     auto_reset_filter = C(SignalWithRBV, 'AutoResetFilter')
     average_seq = C(EpicsSignal, 'AverageSeq')
     copy_to_filter_seq = C(EpicsSignal, 'CopyToFilterSeq')
     data_type_out = C(SignalWithRBV, 'DataTypeOut')
     difference_seq = C(EpicsSignal, 'DifferenceSeq')
-    enable_background = C(SignalWithRBV, 'EnableBackground')
-    enable_filter = C(SignalWithRBV, 'EnableFilter')
-    enable_flat_field = C(SignalWithRBV, 'EnableFlatField')
-    enable_high_clip = C(SignalWithRBV, 'EnableHighClip')
-    enable_low_clip = C(SignalWithRBV, 'EnableLowClip')
-    enable_offset_scale = C(SignalWithRBV, 'EnableOffsetScale')
+    enable_background = C(SignalWithRBV, 'EnableBackground', string=True)
+    enable_filter = C(SignalWithRBV, 'EnableFilter', string=True)
+    enable_flat_field = C(SignalWithRBV, 'EnableFlatField', string=True)
+    enable_high_clip = C(SignalWithRBV, 'EnableHighClip', string=True)
+    enable_low_clip = C(SignalWithRBV, 'EnableLowClip', string=True)
+    enable_offset_scale = C(SignalWithRBV, 'EnableOffsetScale', string=True)
 
     fc = DDC(ad_group(SignalWithRBV,
                       (('fc1', 'FC1'),
@@ -426,7 +492,9 @@ class ROIPlugin(PluginBase):
     _suffix_re = 'ROI\d:'
     _html_docs = ['NDPluginROI.html']
     _plugin_type = 'NDPluginROI'
-
+    _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
+        'roi_enable', 'name_', 'bin_', 'data_type_out', )
+    )
     array_size = DDC(ad_group(EpicsSignalRO,
                               (('x', 'ArraySizeX_RBV'),
                                ('y', 'ArraySizeY_RBV'),
