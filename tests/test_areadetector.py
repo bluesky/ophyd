@@ -10,8 +10,6 @@ from ophyd.device import (Component as Cpt, )
 
 logger = logging.getLogger(__name__)
 
-
-
 prefix = 'XF:31IDA-BI{Cam:Tbl}'
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
 
@@ -156,7 +154,7 @@ def test_get_plugin_by_asyn_port():
 def test_read_configuration_smoke():
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
-        porc1 = Cpt(ProcessPlugin, 'ROI1:')
+        proc1 = Cpt(ProcessPlugin, 'Proc1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
     det = MyDetector(prefix, name='test')

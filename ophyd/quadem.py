@@ -18,6 +18,10 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
 
 
 class QuadEM(SingleTrigger, DetectorBase):
+    # This is needed because ophyd verifies that it can see all
+    # of the nodes in the asyn pipeline, however these IOCs do not
+    # expose their port name via a PV, but nevertheless server as the
+    # root node for the plugins.
     port_name = Cpt(Signal, value='NSLS2_EM')
     model = Cpt(EpicsSignalRO, 'Model')
     firmware = Cpt(EpicsSignalRO, 'Firmware')

@@ -1,8 +1,8 @@
 import logging
 import pytest
 
-import epics
-from ophyd import QuadEM
+from ophyd import QuadEM, Component as Cpt, Signal
+from ophyd.areadetector.plugins import ImagePlugin, StatsPlugin
 from .test_signal import using_fake_epics_pv
 
 
@@ -12,7 +12,22 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope='function')
 @using_fake_epics_pv
 def quadem():
-    em = QuadEM('quadem:', name='quadem')
+    class FakeStats(StatsPlugin):
+        plugin_type = Cpt(Signal, value=StatsPlugin._plugin_type)
+        nd_array_port = Cpt(Signal, value='NSLS2_EM')
+
+    class FakeImage(ImagePlugin):
+        plugin_type = Cpt(Signal, value=ImagePlugin._plugin_type)
+        nd_array_port = Cpt(Signal, value='NSLS2_EM')
+
+    class FakeQuadEM(QuadEM):
+        image = Cpt(FakeImage, 'image1:')
+        current1 = Cpt(FakeStats, 'Current1:')
+        current2 = Cpt(FakeStats, 'Current2:')
+        current3 = Cpt(FakeStats, 'Current3:')
+        current4 = Cpt(FakeStats, 'Current4:')
+
+    em = FakeQuadEM('quadem:', name='quadem')
 
     ''' Beware: Ugly Hack below
 
@@ -55,9 +70,7 @@ def quadem():
 
     for sig in ['image'] + ['current{}'.format(j) for j in range(1, 5)]:
         cpt = getattr(em, sig)
-        cpt.nd_array_port._read_pv = cpt.nd_array_port._write_pv
         cpt.port_name._read_pv.put(sig.upper())
-        cpt.nd_array_port.put('NSLS2_EM')
 
     em.wait_for_connection()
 

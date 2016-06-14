@@ -66,6 +66,16 @@ class PluginBase(ADBase):
         # Without this, no array data is sent to the plugins.
         super().__init__(*args, configuration_attrs=configuration_attrs,
                          **kwargs)
+        # make sure it is the right type of plugin
+        if (self._plugin_type is not None and
+                not self.plugin_type.get().startswith(self._plugin_type)):
+            raise TypeError('Trying to use {!r} class which is for {!r} '
+                            'plugin type for a plugin that reports being '
+                            'of type {!r} with base prefix '
+                            '{!r}'.format(self.__class__.__name__,
+                                          self._plugin_type,
+                                          self.plugin_type.get(), self.prefix))
+
         self.stage_sigs[self.blocking_callbacks] = 'Yes'
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([(self.parent.cam.array_callbacks, 1),
