@@ -18,9 +18,10 @@ import numpy as np
 
 import epics
 
+from ophyd import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
-from ..signal import (EpicsSignalRO, EpicsSignal)
+from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
 
@@ -40,7 +41,6 @@ __all__ = ['ColorConvPlugin',
            'StatsPlugin',
            'TIFFPlugin',
            'TransformPlugin',
-
            'get_areadetector_plugin',
            'plugin_from_pvname',
            'register_plugin',
@@ -82,7 +82,8 @@ class PluginBase(ADBase):
                                     ])
 
     _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
-                                    'blocking_callbacks', 'plugin_type')
+                                    'blocking_callbacks', 'plugin_type',
+                                    'asyn_pipeline_config', 'configuration_names')
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
@@ -139,6 +140,20 @@ class PluginBase(ADBase):
         ret.update(source_plugin.describe_configuration())
 
         return ret
+
+    @property
+    def _asyn_pipeline(self):
+        parent = self.root.get_plugin_by_asyn_port(self.nd_array_port.get())
+        if hasattr(parent, '_asyn_pipeline'):
+            return parent._asyn_pipeline + (self, )
+        return (parent, self)
+
+    @property
+    def _asyn_pipeline_configuration_names(self):
+        return [_.configuration_names.name for _ in self._asyn_pipeline]
+
+    asyn_pipeline_config = Cpt(ArrayAttributeSignal,
+                               attr='_asyn_pipeline_configuration_names')
 
     width = C(EpicsSignalRO, 'ArraySize0_RBV')
     height = C(EpicsSignalRO, 'ArraySize1_RBV')
@@ -531,7 +546,7 @@ class ROIPlugin(PluginBase):
     roi_enable = DDC(ad_group(SignalWithRBV,
                               (('x', 'EnableX'),
                                ('y', 'EnableY'),
-                               ('z', 'EnableZ'))),
+                               ('z', 'EnableZ')), string=True),
                      doc=('Enable ROI calculations in the X, Y, Z dimensions. '
                           'If not enabled then the start, size, binning, and '
                           'reverse operations are disabled in the X/Y/Z '
@@ -753,6 +768,7 @@ class HDF5Plugin(FilePlugin):
         for sig, val in reversed(list(original_vals.items())):
             ttime.sleep(0.1)
             set_and_wait(sig, val)
+
 
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'

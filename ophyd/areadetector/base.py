@@ -8,6 +8,7 @@ import networkx as nx
 from ..signal import EpicsSignal
 from . import docs
 from ..device import (Device, Component)
+from ..signal import (ArrayAttributeSignal)
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -254,3 +255,10 @@ class ADBase(Device):
                 ret.append(node)
 
         return ret
+    configuration_names = Component(ArrayAttributeSignal,
+                                    attr='_configuration_names')
+
+    @property
+    def _configuration_names(self):
+        return [getattr(self, c).name
+                for c in self.configuration_attrs]
