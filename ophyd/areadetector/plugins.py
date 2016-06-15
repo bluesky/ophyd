@@ -126,17 +126,22 @@ class PluginBase(ADBase):
     def read_configuration(self):
         ret = super().read_configuration()
 
-        source_port = self.nd_array_port.get()
-        source_plugin = self.root.get_plugin_by_asyn_port(source_port)
-        ret.update(source_plugin.read_configuration())
+        ret.update(self.source_plugin.read_configuration())
 
         return ret
+
+    @property
+    def source_plugin(self):
+        '''The PluginBase object that is the asyn source for this plugin.
+        '''
+        source_port = self.nd_array_port.get()
+        source_plugin = self.root.get_plugin_by_asyn_port(source_port)
+        return source_plugin
 
     def describe_configuration(self):
         ret = super().describe_configuration()
 
-        source_port = self.nd_array_port.get()
-        source_plugin = self.root.get_plugin_by_asyn_port(source_port)
+        source_plugin = self.source_plugin
         ret.update(source_plugin.describe_configuration())
 
         return ret
