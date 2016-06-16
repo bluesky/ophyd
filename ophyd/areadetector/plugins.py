@@ -83,7 +83,8 @@ class PluginBase(ADBase):
 
     _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
                                     'blocking_callbacks', 'plugin_type',
-                                    'asyn_pipeline_config', 'configuration_names')
+                                    'asyn_pipeline_config',
+                                    'configuration_names')
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
@@ -210,7 +211,6 @@ class ImagePlugin(PluginBase):
     _plugin_type = 'NDPluginStdArrays'
 
     array_data = C(EpicsSignal, 'ArrayData')
-    _default_configuration_attrs = PluginBase._default_configuration_attrs
 
     @property
     def image(self):
@@ -354,6 +354,8 @@ class ColorConvPlugin(PluginBase):
     _suffix_re = 'CC\d:'
     _html_docs = ['NDPluginColorConvert.html']
     _plugin_type = 'NDPluginColorConvert'
+    _default_configuration_attrs = (PluginBase._default_configuration_attrs +
+                                    ('color_mode_out', 'false_color'))
 
     color_mode_out = C(SignalWithRBV, 'ColorModeOut')
     false_color = C(SignalWithRBV, 'FalseColor')
@@ -502,7 +504,10 @@ class OverlayPlugin(PluginBase):
     _suffix_re = 'Over\d:'
     _html_docs = ['NDPluginOverlay.html']
     _plugin_type = 'NDPluginOverlay'
-
+    _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
+        'overlay_1', 'overlay_2', 'overlay_3', 'overlay_4', 'overlay_5',
+        'overlay_6', 'overlay_7', 'overlay_8')
+    )
     max_size = DDC(ad_group(EpicsSignalRO,
                             (('x', 'MaxSizeX_RBV'),
                              ('y', 'MaxSizeY_RBV'))),
@@ -651,7 +656,18 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
     _default_suffix = ''
     _html_docs = ['NDPluginFile.html']
     _plugin_type = 'NDPluginFile'
-
+    _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
+        'auto_increment',
+        'auto_save',
+        'file_format',
+        'file_name',
+        'file_path',
+        'file_path_exists',
+        'file_template',
+        'file_write_mode',
+        'full_file_name',
+        'num_capture'
+        ))
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
     auto_increment = C(SignalWithRBV, 'AutoIncrement')
@@ -695,6 +711,8 @@ class JPEGPlugin(FilePlugin):
     _suffix_re = 'JPEG\d:'
     _html_docs = ['NDFileJPEG.html']
     _plugin_type = 'NDFileJPEG'
+    _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
+        'jpeg_quality',))
 
     jpeg_quality = C(SignalWithRBV, 'JPEGQuality')
 
@@ -705,6 +723,8 @@ class NexusPlugin(FilePlugin):
     _html_docs = ['NDFileNexus.html']
     # _plugin_type = 'NDPluginFile'  # TODO was this ever fixed?
     _plugin_type = 'NDPluginNexus'
+    _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
+        'template_file_name', 'template_file_path'))
 
     file_template_valid = C(EpicsSignal, 'FileTemplateValid')
     template_file_name = C(SignalWithRBV, 'TemplateFileName', string=True)
@@ -716,6 +736,27 @@ class HDF5Plugin(FilePlugin):
     _suffix_re = 'HDF\d:'
     _html_docs = ['NDFileHDF5.html']
     _plugin_type = 'NDFileHDF5'
+
+    _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
+        'boundary_align',
+        'boundary_threshold',
+        'compression',
+        'data_bits_offset',
+        'extra_dim_name',
+        'extra_dim_size',
+        'io_speed',
+        'num_col_chunks',
+        'num_data_bits',
+        'num_extra_dims',
+        'num_frames_chunks',
+        'num_frames_flush',
+        'num_row_chunks',
+        'run_time',
+        'store_attr',
+        'store_perform',
+        'szip_num_pixels',
+        'zlevel')
+    )
 
     boundary_align = C(SignalWithRBV, 'BoundaryAlign')
     boundary_threshold = C(SignalWithRBV, 'BoundaryThreshold')
@@ -780,6 +821,8 @@ class MagickPlugin(FilePlugin):
     _suffix_re = 'Magick\d:'
     _html_docs = ['NDFileMagick']  # sic., no html extension
     _plugin_type = 'NDFileMagick'
+    _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
+        'bit_depth', 'compress_type', 'quality',))
 
     bit_depth = C(SignalWithRBV, 'BitDepth')
     compress_type = C(SignalWithRBV, 'CompressType')
