@@ -3,16 +3,34 @@ import logging
 import pytest
 from io import StringIO
 
-from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger)
+from ophyd import (SimDetector, SingleTrigger, Component,
+                   DynamicDeviceComponent)
+from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
+                                        ColorConvPlugin,
+                                        ProcessPlugin, OverlayPlugin,
+                                        ROIPlugin, TransformPlugin,
+                                        NetCDFPlugin, TIFFPlugin, JPEGPlugin,
+                                        HDF5Plugin,
+                                        MagickPlugin)
+# we do not have nexus installed on our test IOC
+# from ophyd.areadetector.plugins import NexusPlugin
+from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 
 logger = logging.getLogger(__name__)
 
-
-
 prefix = 'XF:31IDA-BI{Cam:Tbl}'
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
+
+
+# lifted from soft-matter/pims source
+def _recursive_subclasses(cls):
+    "Return all subclasses (and their subclasses, etc.)."
+    # Source: http://stackoverflow.com/a/3862957/1221924
+    return (cls.__subclasses__() +
+            [g for s in cls.__subclasses__()
+             for g in _recursive_subclasses(s)])
 
 
 def test_basic():
@@ -87,11 +105,14 @@ def test_hdf5_plugin():
     class MyDet(SimDetector):
         p = Cpt(HDF5Plugin, suffix='HDF1:')
 
-    d = MyDet(prefix)
+    d = MyDet(prefix, name='d')
     d.p.file_path.put('/tmp')
     d.p.file_name.put('--')
     d.p.warmup()
     d.stage()
+    print(d.p.read_configuration())
+    d.p.describe_configuration()
+    d.unstage()
 
 
 def test_subclass():
@@ -114,6 +135,94 @@ def test_getattr():
     assert getattr(det, 'tiff1') is det.tiff1
     # raise
     # TODO subclassing issue
+
+
+def test_invalid_plugins():
+    class MyDetector(SingleTrigger, SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+
+    det = MyDetector(prefix)
+    det.wait_for_connection()
+    det.tiff1.nd_array_port.put(det.cam.port_name.get())
+    det.stats1.nd_array_port.put('AARDVARK')
+
+    with pytest.raises(RuntimeError):
+        det.stage()
+
+    assert not det.validate_asyn_ports()
+    assert ['AARDVARK'] == det.missing_plugins()
+
+
+def test_get_plugin_by_asyn_port():
+    class MyDetector(SingleTrigger, SimDetector):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+
+    det = MyDetector(prefix)
+
+    det.tiff1.nd_array_port.put(det.cam.port_name.get())
+    det.roi1.nd_array_port.put(det.cam.port_name.get())
+    det.stats1.nd_array_port.put(det.roi1.port_name.get())
+
+    assert det.validate_asyn_ports()
+
+    assert det.tiff1 is det.get_plugin_by_asyn_port(det.tiff1.port_name.get())
+    assert det.cam is det.get_plugin_by_asyn_port(det.cam.port_name.get())
+    assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
+
+
+def test_read_configuration_smoke():
+    class MyDetector(SingleTrigger, SimDetector):
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+        proc1 = Cpt(ProcessPlugin, 'Proc1:')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+
+    det = MyDetector(prefix, name='test')
+    det.proc1.nd_array_port.put(det.cam.port_name.get())
+    det.roi1.nd_array_port.put(det.proc1.port_name.get())
+    det.stats1.nd_array_port.put(det.roi1.port_name.get())
+    # smoke test
+    det.stage()
+    conf = det.stats1.read_configuration()
+    desc = det.stats1.describe_configuration()
+    det.unstage()
+    for k in conf:
+        assert k in desc
+
+    assert len(conf) > 0
+    assert len(conf) == len(desc)
+
+
+def test_default_configuration_smoke():
+    class MyDetector(SimDetector):
+        imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
+        statsplugin = Cpt(StatsPlugin, StatsPlugin._default_suffix)
+        colorconvplugin = Cpt(ColorConvPlugin, ColorConvPlugin._default_suffix)
+        processplugin = Cpt(ProcessPlugin, ProcessPlugin._default_suffix)
+        overlayplugin = Cpt(OverlayPlugin, OverlayPlugin._default_suffix)
+        roiplugin = Cpt(ROIPlugin, ROIPlugin._default_suffix)
+        transformplugin = Cpt(TransformPlugin, TransformPlugin._default_suffix)
+        netcdfplugin = Cpt(NetCDFPlugin, NetCDFPlugin._default_suffix)
+        tiffplugin = Cpt(TIFFPlugin, TIFFPlugin._default_suffix)
+        jpegplugin = Cpt(JPEGPlugin, JPEGPlugin._default_suffix)
+        # nexusplugin = Cpt(NexusPlugin, NexusPlugin._default_suffix)
+        hdf5plugin = Cpt(HDF5Plugin, HDF5Plugin._default_suffix)
+        magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
+
+    d = MyDetector(prefix, name='d')
+    {n: getattr(d, n).read_configuration() for n in d.signal_names}
+    {n: getattr(d, n).describe_configuration() for n in d.signal_names}
+
+
+@pytest.mark.parametrize('plugin',
+                         _recursive_subclasses(PluginBase))
+def test_default_configuration_attrs(plugin):
+    for k in plugin._default_configuration_attrs:
+        assert hasattr(plugin, k)
+        assert isinstance(getattr(plugin, k),
+                          (Component, DynamicDeviceComponent))
 
 
 from . import main

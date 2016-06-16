@@ -1,10 +1,10 @@
 from collections import OrderedDict
 
 from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
-               DynamicDeviceComponent as DDCpt)
+               DynamicDeviceComponent as DDCpt, Signal)
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
-                            ImagePlugin, StatsPlugin, DetectorBase,
-                            SingleTrigger)
+                           ImagePlugin, StatsPlugin, DetectorBase,
+                           SingleTrigger)
 
 
 def _current_fields(attr_base, field_base, range_, **kwargs):
@@ -16,7 +16,13 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
 
     return defn
 
+
 class QuadEM(SingleTrigger, DetectorBase):
+    # This is needed because ophyd verifies that it can see all
+    # of the nodes in the asyn pipeline, however these IOCs do not
+    # expose their port name via a PV, but nevertheless server as the
+    # root node for the plugins.
+    port_name = Cpt(Signal, value='NSLS2_EM')
     model = Cpt(EpicsSignalRO, 'Model')
     firmware = Cpt(EpicsSignalRO, 'Firmware')
 
@@ -40,7 +46,7 @@ class QuadEM(SingleTrigger, DetectorBase):
     hvi_readback = Cpt(EpicsSignalRO, 'HVIReadback')
 
     values_per_read = Cpt(EpicsSignalWithRBV, 'ValuesPerRead')
-    sample_time = Cpt(EpicsSignalRO, 'SampleTime_RBV') # yay for consistency
+    sample_time = Cpt(EpicsSignalRO, 'SampleTime_RBV')  # yay for consistency
     averaging_time = Cpt(EpicsSignalWithRBV, 'AveragingTime')
     num_average = Cpt(EpicsSignalRO, 'NumAverage_RBV')
     num_averaged = Cpt(EpicsSignalRO, 'NumAveraged_RBV')
@@ -51,12 +57,13 @@ class QuadEM(SingleTrigger, DetectorBase):
     trigger_mode = Cpt(EpicsSignal, 'TriggerMode')
     reset = Cpt(EpicsSignal, 'Reset')
 
-    current_names = DDCpt(_current_fields('ch', 'CurrentName', range(1,5),
+    current_names = DDCpt(_current_fields('ch', 'CurrentName', range(1, 5),
                                           string=True))
-    current_offsets = DDCpt(_current_fields('ch', 'CurrentOffset', range(1,5)))
+    current_offsets = DDCpt(_current_fields('ch', 'CurrentOffset',
+                                            range(1, 5)))
     current_offset_calcs = DDCpt(_current_fields('ch', 'ComputeCurrentOffset',
-                                                 range(1,5)))
-    current_scales = DDCpt(_current_fields('ch', 'CurrentScale', range(1,5)))
+                                                 range(1, 5)))
+    current_scales = DDCpt(_current_fields('ch', 'CurrentScale', range(1, 5)))
 
     position_offset_x = Cpt(EpicsSignal, 'PositionOffsetX')
     position_offset_y = Cpt(EpicsSignal, 'PositionOffsetY')
@@ -73,15 +80,14 @@ class QuadEM(SingleTrigger, DetectorBase):
     current3 = ADCpt(StatsPlugin, 'Current3:')
     current4 = ADCpt(StatsPlugin, 'Current4:')
 
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.stage_sigs.update([(self.acquire, 0), # if acquiring, stop
-                                (self.acquire_mode, 2) # single mode
-                               ])
+        self.stage_sigs.update([(self.acquire, 0),  # if acquiring, stop
+                                (self.acquire_mode, 2)  # single mode
+                                ])
         self._acquisition_signal = self.acquire
 
         self.configuration_attrs = ['integration_time', 'averaging_time']
-        self.read_attrs = ['current1.mean_value','current2.mean_value',
-                            'current3.mean_value','current4.mean_value']
+        self.read_attrs = ['current1.mean_value', 'current2.mean_value',
+                           'current3.mean_value', 'current4.mean_value']
