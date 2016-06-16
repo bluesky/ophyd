@@ -213,6 +213,7 @@ def test_default_configuration_smoke():
 
     d = MyDetector(prefix, name='d')
     {n: getattr(d, n).read_configuration() for n in d.signal_names}
+    {n: getattr(d, n).describe_configuration() for n in d.signal_names}
 
 
 @pytest.mark.parametrize('plugin',
