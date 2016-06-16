@@ -4,7 +4,9 @@ import pytest
 from io import StringIO
 
 from ophyd import (SimDetector, TIFFPlugin, HDF5Plugin, SingleTrigger,
-                   StatsPlugin, ROIPlugin, ProcessPlugin)
+                   StatsPlugin, ROIPlugin, ProcessPlugin, Component,
+                   DynamicDeviceComponent)
+from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 
@@ -12,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 prefix = 'XF:31IDA-BI{Cam:Tbl}'
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
+
+
+# lifted from soft-matter/pims source
+def _recursive_subclasses(cls):
+    "Return all subclasses (and their subclasses, etc.)."
+    # Source: http://stackoverflow.com/a/3862957/1221924
+    return (cls.__subclasses__() +
+            [g for s in cls.__subclasses__()
+             for g in _recursive_subclasses(s)])
 
 
 def test_basic():
@@ -171,6 +182,15 @@ def test_read_configuration_smoke():
 
     assert len(conf) > 0
     assert len(conf) == len(desc)
+
+
+@pytest.mark.parametrize('plugin',
+                         _recursive_subclasses(PluginBase))
+def test_default_configuration_attrs(plugin):
+    for k in plugin._default_configuration_attrs:
+        assert hasattr(plugin, k)
+        assert isinstance(getattr(plugin, k),
+                          (Component, DynamicDeviceComponent))
 
 
 from . import main
