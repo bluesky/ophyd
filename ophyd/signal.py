@@ -918,8 +918,7 @@ class AttributeSignal(Signal):
             try:
                 obj = getattr(obj, part)
             except AttributeError as ex:
-                attr = '.'.join(self.parent_attr[:i + 1])
-                raise AttributeError('{} ({})'.format(attr, ex))
+                raise AttributeError('{} ({})'.format(part, ex))
 
         return obj
 
