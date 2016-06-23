@@ -918,7 +918,7 @@ class AttributeSignal(Signal):
             try:
                 obj = getattr(obj, part)
             except AttributeError as ex:
-                raise AttributeError('{} ({})'.format(part, ex))
+                raise AttributeError('{}.{} ({})'.format(obj.name, part, ex))
 
         return obj
 
