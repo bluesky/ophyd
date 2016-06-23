@@ -1,5 +1,6 @@
 import logging
 import unittest
+import pytest
 
 import numpy as np
 
@@ -233,6 +234,19 @@ def test_attribute_signal():
 
     assert dev.sub_attrsig.get() == init_value
     dev.sub_attrsig.put(0)
+
+
+def test_attribute_signal_attributeerror():
+    class MyDevice(Device):
+        sig1 = Component(AttributeSignal, 'unknownattribute')
+        sig2 = Component(AttributeSignal, '__class__.__name')
+        sig3 = Component(AttributeSignal, 'unknown.attribute')
+
+    dev = MyDevice('', name='mydev')
+    pytest.raises(AttributeError, dev.sig1.get)
+    pytest.raises(AttributeError, dev.sig2.get)
+    pytest.raises(AttributeError, dev.sig3.get)
+    pytest.raises(AttributeError, getattr, dev.sig3, 'base')
 
 
 def test_array_attribute_signal():
