@@ -19,6 +19,9 @@ __all__ = ['CamBase',
            'LightFieldDetectorCam',
            'Mar345DetectorCam',
            'MarCCDDetectorCam',
+           'PcoDetectorCam',
+           'PcoDetectorIO',
+           'PcoDetectorSimIO',
            'PerkinElmerDetectorCam',
            'PilatusDetectorCam',
            'PixiradDetectorCam',
@@ -339,6 +342,46 @@ class MarCCDDetectorCam(CamBase):
     two_theta = C(EpicsSignal, 'TwoTheta')
     wavelength = C(EpicsSignal, 'Wavelength')
     mar_server_asyn = C(EpicsSignal, 'marServerAsyn')
+
+
+class PcoDetectorCam(CamBase):
+    _html_docs = ['']
+    adc_mode = C(SignalWithRBV, 'ADC_MODE')
+    arm_mode = C(SignalWithRBV, 'ARM_MODE')
+    bit_alignment = C(SignalWithRBV, 'BIT_ALIGNMENT')
+    camera_setup = C(SignalWithRBV, 'CAMERA_SETUP')
+    cam_ram_use = C(EpicsSignalRO, 'CAM_RAM_USE_RBV')
+    delay_time = C(SignalWithRBV, 'DELAY_TIME')
+    elec_temp = C(EpicsSignalRO, 'ELEC_TEMP_RBV')
+    exposure_base = C(EpicsSignalRO, 'EXPOSUREBASE_RBV')
+    pco_acquire_mode = C(SignalWithRBV, 'ACQUIRE_MODE')
+    pco_image_number = C(EpicsSignalRO, 'IMAGE_NUMBER_RBV')
+    pix_rate = C(SignalWithRBV, 'PIX_RATE')
+    power_temp = C(EpicsSignalRO, 'POWER_TEMP_RBV')
+    recorder_mode = C(SignalWithRBV, 'RECORDER_MODE')
+    storage_mode = C(SignalWithRBV, 'STORAGE_MODE')
+    timestamp_mode = C(SignalWithRBV, 'TIMESTAMP_MODE')
+
+
+class PcoDetectorIO(ADBase):
+    _html_docs = ['']
+    busy = C(EpicsSignal, 'DIO:BUSY')
+    capture = C(EpicsSignal, 'DIO:CAPTURE')
+    exposing = C(EpicsSignal, 'DIO:EXPOSING')
+    ready = C(EpicsSignal, 'DIO:READY')
+    trig = C(EpicsSignal, 'DIO:TRIG')
+    trig_when_ready = C(EpicsSignal, 'DIO:TrigWhenReady')
+
+
+class PcoDetectorSimIO(ADBase):
+    _html_docs = ['']
+    busy = C(EpicsSignal, 'SIM:BUSY')
+    dfan = C(EpicsSignal, 'SIM:Dfan')
+    exposing = C(EpicsSignal, 'SIM:EXPOSING')
+    set_busy = C(EpicsSignal, 'SIM:SetBusy')
+    set_exp = C(EpicsSignal, 'SIM:SetExp')
+    set_state = C(EpicsSignal, 'SIM:SetState')
+    trig = C(EpicsSignal, 'SIM:TRIG')
 
 
 class PerkinElmerDetectorCam(CamBase):
