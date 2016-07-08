@@ -22,9 +22,14 @@ before_install:
   - export EPICS_CA_MAX_ARRAY_BYTES=10000000
   - export DOCKERIMAGE="klauer/epics-docker"
   - export CONDA_ENV="testenv"
+  - export BUILD_DOCS_BRANCH="master"
 
   - perl --version
   - git fetch --unshallow
+
+  # include nsls2's ci scripts
+  - git clone https://github.com/nsls-ii/nsls2-ci $HOME/ci-scripts
+
   - docker pull ${DOCKERIMAGE}
   - docker images
   - docker ps -a
@@ -34,10 +39,10 @@ before_install:
   # INSTALL CONDA
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
-  - "./miniconda.sh -b -p /home/travis/mc"
+  - "./miniconda.sh -b -p $HOME/mc"
   - env
 
-  - export PATH=/home/travis/mc/bin:$PATH
+  - export PATH=$HOME/mc/bin:$PATH
   - conda config --set always_yes true
   - conda update conda --yes
   - conda install conda-build anaconda-client jinja2
@@ -85,3 +90,4 @@ after_success:
     - env
     - coveralls
     - codecov
+    - pushd $HOME/ci-scripts && chmod +x do-the-docs.sh && HTML_DIR="build/html" DOCS_DIR="$TRAVIS_BUILD_DIR/docs" . do-the-docs.sh && popd
