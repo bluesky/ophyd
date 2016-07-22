@@ -14,6 +14,12 @@ StubInfo = namedtuple('StubInfo', ('signal_type', 'record'))
 
 def get_prop_name(pv):
     '''Get a property name from the camel-case AreaDetector PV name'''
+    # If it's all capital letters and underscores, then just convert
+    # to lower-case and that's it
+    m = re.match('^[A-Z0-9_]+$', pv)
+    if m:
+        return pv.lower()
+
     # If the name starts with a bunch of capital letters, use
     # all but the last one as one word
     # e.g., TESTOne -> test_one
@@ -96,7 +102,7 @@ def get_stub_info(db_file, macros=None, base_class=AreaDetector):
     records -= set(rbv_records)
     rbv_only = [record
                 for record in rbv_records
-                if record.rsplit('_')[0] not in records]
+                if record.rsplit('_', 1)[0] not in records]
 
     records = set(records).union(rbv_only)
     records = list(records)
