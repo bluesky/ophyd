@@ -152,14 +152,7 @@ class ADBase(Device):
                 match_fcn(attr=attr, signal=getattr(self, attr), doc=doc)
 
     def stage(self, *args, **kwargs):
-        if not self.validate_asyn_ports():
-            missing_plugins = self.missing_plugins()
-            raise RuntimeError('The asyn ports {!r} are used by plugins '
-                               'that ophyd is aware of but the source plugin '
-                               'is not.  Please reconfigure your device to '
-                               'include the source plugin or reconfigure '
-                               'to not use these ports.'
-                               ''.format(missing_plugins))
+        self.validate_asyn_ports()
         return super().stage(*args, **kwargs)
 
     def get_plugin_by_asyn_port(self, port_name):
@@ -243,8 +236,13 @@ class ADBase(Device):
         g, port_map = self.get_asyn_digraph()
         g = nx.Graph(g)
         if nx.number_connected_components(g) != 1:
-            return False
-        return True
+            missing_plugins = self.missing_plugins()
+            raise RuntimeError('The asyn ports {!r} are used by plugins '
+                               'that ophyd is aware of but the source plugin '
+                               'is not.  Please reconfigure your device to '
+                               'include the source plugin or reconfigure '
+                               'to not use these ports.'
+                               ''.format(missing_plugins))
 
     def missing_plugins(self):
         g, port_map = self.get_asyn_digraph()
@@ -255,6 +253,7 @@ class ADBase(Device):
                 ret.append(node)
 
         return ret
+
     configuration_names = Component(ArrayAttributeSignal,
                                     attr='_configuration_names')
 

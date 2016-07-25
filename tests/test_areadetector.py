@@ -150,7 +150,9 @@ def test_invalid_plugins():
     with pytest.raises(RuntimeError):
         det.stage()
 
-    assert not det.validate_asyn_ports()
+    with pytest.raises(RuntimeError):
+        det.validate_asyn_ports()
+
     assert ['AARDVARK'] == det.missing_plugins()
 
 
@@ -166,7 +168,7 @@ def test_get_plugin_by_asyn_port():
     det.roi1.nd_array_port.put(det.cam.port_name.get())
     det.stats1.nd_array_port.put(det.roi1.port_name.get())
 
-    assert det.validate_asyn_ports()
+    det.validate_asyn_ports()
 
     assert det.tiff1 is det.get_plugin_by_asyn_port(det.tiff1.port_name.get())
     assert det.cam is det.get_plugin_by_asyn_port(det.cam.port_name.get())
