@@ -597,11 +597,6 @@ class ROIPlugin(PluginBase):
                          ('z', 'SizeZ'))),
                doc='Size of the ROI in XYZ')
 
-    size_link = DDC(ad_group(EpicsSignal,
-                             (('x', 'SizeXLink'),
-                              ('y', 'SizeYLink'))),
-                    doc='Size link in XY')
-
 
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
