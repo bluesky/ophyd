@@ -5,6 +5,7 @@ from copy import copy
 from numpy.testing import assert_approx_equal
 
 from ophyd import (EpicsMotor, Signal, EpicsSignalRO, Component as C)
+from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,13 @@ def motor():
     return m
 
 
+class CustomAlarmEpicsSignalRO(EpicsSignalRO):
+    alarm_status = AlarmStatus.NO_ALARM
+    alarm_severity = AlarmSeverity.NO_ALARM
+
+
 class TestEpicsMotor(EpicsMotor):
+    user_readback = C(CustomAlarmEpicsSignalRO, '.RBV')
     high_limit_switch = C(Signal, value=0)
     low_limit_switch = C(Signal, value=0)
     direction_of_travel = C(Signal, value=0)
@@ -233,3 +240,19 @@ def test_homing_invalid(motor):
 
         assert not res.success
         m.stop()
+
+
+def test_move_alarm(motor):
+    try:
+        motor.user_readback.alarm_status = AlarmStatus.COMM
+        motor.user_readback.alarm_severity = AlarmSeverity.MAJOR
+
+        st = motor.move(motor.position + 1, wait=False)
+
+        while not st.done:
+            time.sleep(0.1)
+
+        assert not st.success
+    finally:
+        motor.user_readback.alarm_status = AlarmStatus.NO_ERROR
+        motor.user_readback.alarm_severity = AlarmSeverity.NO_ERROR
