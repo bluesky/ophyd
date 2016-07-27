@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 def quadem():
     class FakeStats(StatsPlugin):
         plugin_type = Cpt(Signal, value=StatsPlugin._plugin_type)
-        nd_array_port = Cpt(Signal, value='NSLS2_EM')
+        nd_array_port = Cpt(Signal, value='NSLS_EM')
 
     class FakeImage(ImagePlugin):
         plugin_type = Cpt(Signal, value=ImagePlugin._plugin_type)
-        nd_array_port = Cpt(Signal, value='NSLS2_EM')
+        nd_array_port = Cpt(Signal, value='NSLS_EM')
 
     class FakeQuadEM(QuadEM):
         image = Cpt(FakeImage, 'image1:')
