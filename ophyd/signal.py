@@ -8,7 +8,8 @@ import epics
 
 from .utils import (ReadOnlyError, LimitError)
 from .utils.epics_pvs import (pv_form, waveform_to_string,
-                              raise_if_disconnected, data_type, data_shape)
+                              raise_if_disconnected, data_type, data_shape,
+                              AlarmStatus, AlarmSeverity)
 from .ophydobj import OphydObject
 from .status import Status
 from .utils import set_and_wait
@@ -370,6 +371,26 @@ class EpicsSignalBase(Signal):
         with self._lock:
             return self._read_pv.enum_strs
 
+    @property
+    @raise_if_disconnected
+    def alarm_status(self):
+        """PV status"""
+        with self._lock:
+            status = self._read_pv.status
+            if status is None:
+                return None
+            return AlarmStatus(status)
+
+    @property
+    @raise_if_disconnected
+    def alarm_severity(self):
+        """PV alarm severity"""
+        with self._lock:
+            severity = self._read_pv.severity
+            if severity is None:
+                return None
+            return AlarmSeverity(severity)
+
     def _reinitialize_pv(self, old_instance, **pv_kw):
         '''Reinitialize a PV instance
 
@@ -715,6 +736,26 @@ class EpicsSignal(EpicsSignalBase):
     def setpoint_pvname(self):
         '''The setpoint PV name'''
         return self._write_pv.pvname
+
+    @property
+    @raise_if_disconnected
+    def setpoint_alarm_status(self):
+        """Setpoint PV status"""
+        with self._lock:
+            status = self._write_pv.status
+            if status is None:
+                return None
+            return AlarmStatus(status)
+
+    @property
+    @raise_if_disconnected
+    def setpoint_alarm_severity(self):
+        """Setpoint PV alarm severity"""
+        with self._lock:
+            severity = self._write_pv.severity
+            if severity is None:
+                return None
+            return AlarmSeverity(severity)
 
     def _repr_info(self):
         yield from super()._repr_info()
