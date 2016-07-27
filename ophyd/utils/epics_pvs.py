@@ -19,12 +19,11 @@ import numpy as np
 
 import epics
 
-from .errors import (MinorAlarmError, get_alarm_class, DisconnectedError)
+from .errors import DisconnectedError
 
 __all__ = ['split_record_field',
            'strip_field',
            'record_field',
-           'check_alarm',
            'MonitorDispatcher',
            'get_pv_form',
            'set_and_wait',
@@ -99,43 +98,6 @@ def record_field(record, field):
     '''
     record = strip_field(record)
     return '%s.%s' % (record, field.upper())
-
-
-def check_alarm(base_pv, stat_field='STAT', severity_field='SEVR',
-                reason_field=None, reason_pv=None,
-                min_severity=MinorAlarmError.severity):
-    """Raise an exception if an alarm is set
-
-    Raises
-    ------
-    AlarmError (MinorAlarmError, MajorAlarmError)
-    """
-    stat_pv = '%s.%s' % (base_pv, stat_field)
-    severity_pv = '%s.%s' % (base_pv, severity_field)
-    if reason_field is not None:
-        reason_pv = '%s.%s' % (base_pv, reason_field)
-    reason = None
-
-    severity = epics.caget(severity_pv)
-
-    if severity >= min_severity:
-        try:
-            error_class = get_alarm_class(severity)
-        except KeyError:
-            pass
-        else:
-            severity = epics.caget(severity_pv, as_string=True)
-            alarm = epics.caget(stat_pv, as_string=True)
-            if reason_pv is not None:
-                reason = epics.caget(reason_pv, as_string=True)
-
-            message = 'Alarm status %s [severity %s]' % (alarm, severity)
-            if reason is not None:
-                message = '%s: %s' % (message, reason)
-
-            raise error_class(message)
-
-    return True
 
 
 class MonitorDispatcher(epics.ca.CAThread):
