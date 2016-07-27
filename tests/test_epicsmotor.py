@@ -254,5 +254,5 @@ def test_move_alarm(motor):
 
         assert not st.success
     finally:
-        motor.user_readback.alarm_status = AlarmStatus.NO_ERROR
-        motor.user_readback.alarm_severity = AlarmSeverity.NO_ERROR
+        motor.user_readback.alarm_status = AlarmStatus.NO_ALARM
+        motor.user_readback.alarm_severity = AlarmSeverity.NO_ALARM
