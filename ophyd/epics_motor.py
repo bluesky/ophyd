@@ -243,10 +243,10 @@ class EpicsMotor(Device, PositionerBase):
                 if self.high_limit_switch.get() == 1:
                     success = False
 
-            severity = self.user_setpoint.alarm_severity
+            severity = self.user_readback.alarm_severity
 
             if severity != AlarmSeverity.NO_ALARM:
-                status = self.user_setpoint.status
+                status = self.user_readback.alarm_status
                 logger.error('Motion failed: %s is in an alarm state '
                              'status=%s severity=%s',
                              self.name, status, severity)
