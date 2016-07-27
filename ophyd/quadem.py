@@ -22,7 +22,8 @@ class QuadEM(SingleTrigger, DetectorBase):
     # of the nodes in the asyn pipeline, however these IOCs do not
     # expose their port name via a PV, but nevertheless server as the
     # root node for the plugins.
-    port_name = Cpt(Signal, value='NSLS2_EM')
+    # Leaving this port_name here for compatibility
+    port_name = Cpt(Signal, value='NSLS_EM')
     model = Cpt(EpicsSignalRO, 'Model')
     firmware = Cpt(EpicsSignalRO, 'Firmware')
 
@@ -91,3 +92,16 @@ class QuadEM(SingleTrigger, DetectorBase):
         self.configuration_attrs = ['integration_time', 'averaging_time']
         self.read_attrs = ['current1.mean_value', 'current2.mean_value',
                            'current3.mean_value', 'current4.mean_value']
+
+
+class NSLS_EM(QuadEM):
+    port_name = Cpt(Signal, value='NSLS_EM')
+
+
+class TetrAMM(QuadEM):
+    port_name = Cpt(Signal, value='TetrAMM')
+
+
+class APS_EM(QuadEM):
+    port_name = Cpt(Signal, value='APS_EM')
+
