@@ -659,6 +659,21 @@ def test_epicssignal_set(put_complete):
     wait(st)
 
 
+def test_epicssignal_alarm_status():
+    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
+                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    sig.alarm_status
+    sig.alarm_severity
+    sig.setpoint_alarm_status
+    sig.setpoint_alarm_severity
+
+
+def test_epicssignalro_alarm_status():
+    sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    sig.alarm_status
+    sig.alarm_severity
+
+
 from . import main
 is_main = (__name__ == '__main__')
 main(is_main)

@@ -4,7 +4,7 @@ from epics.pv import fmt_time
 
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
-from .utils.epics_pvs import raise_if_disconnected
+from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
 from .positioner import PositionerBase
 from .device import (Device, Component as Cpt)
 from .status import wait as status_wait
@@ -242,6 +242,15 @@ class EpicsMotor(Device, PositionerBase):
             else:
                 if self.high_limit_switch.get() == 1:
                     success = False
+
+            severity = self.user_readback.alarm_severity
+
+            if severity != AlarmSeverity.NO_ALARM:
+                status = self.user_readback.alarm_status
+                logger.error('Motion failed: %s is in an alarm state '
+                             'status=%s severity=%s',
+                             self.name, status, severity)
+                success = False
 
             self._done_moving(success=success, timestamp=timestamp, value=value)
 

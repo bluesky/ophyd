@@ -36,15 +36,6 @@ class EpicsUtilTest(unittest.TestCase):
 
         self.assertEquals(utils.record_field('record', 'field'), 'record.FIELD')
 
-    def test_alarm(self):
-        utils = epics_utils
-
-        rec = config.motor_recs[0]
-        try:
-            utils.check_alarm(rec)
-        except Exception:
-            pass
-
     def test_waveform_to_string(self):
         s = 'abcdefg'
         asc = [ord(c) for c in s]
@@ -97,18 +88,6 @@ class EpicsUtilTest(unittest.TestCase):
         self.assertEquals(utils.data_shape(np.array([[1, 2], [3, 4]])), [2, 2])
 
         self.assertRaises(ValueError, utils.data_shape, list())
-
-
-class ErrorsTest(unittest.TestCase):
-    def test_alarm(self):
-        self.assertIs(errors.get_alarm_class(errors.MinorAlarmError.severity),
-                      errors.MinorAlarmError)
-        self.assertIs(errors.get_alarm_class(errors.MajorAlarmError.severity),
-                      errors.MajorAlarmError)
-
-        errors.MajorAlarmError('', alarm='NO_ALARM')
-        errors.MajorAlarmError('', alarm='TIMEOUT_ALARM')
-        errors.MajorAlarmError('', alarm=0)
 
 
 def assert_OD_equal_ignore_ts(a, b):
