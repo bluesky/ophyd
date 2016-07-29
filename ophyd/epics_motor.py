@@ -40,6 +40,7 @@ class EpicsMotor(Device, PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
+    record_type = Cpt(EpicsSignalRO, '.RTYP', string=True)
     user_offset = Cpt(EpicsSignal, '.OFF')
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
@@ -68,6 +69,9 @@ class EpicsMotor(Device, PositionerBase):
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          name=name, parent=parent, **kwargs)
+
+        if self.record_type.get() != "motor":
+            raise ValueError("Prefix: {} is not a valid Epics Motor Record.")
 
         # Make the default alias for the user_readback the name of the
         # motor itself.

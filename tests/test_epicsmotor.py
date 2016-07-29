@@ -41,6 +41,19 @@ def test_timeout(motor):
     assert motor.timeout == 20.0
 
 
+def test_record_type():
+    sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
+
+    m = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
+                       timeout=10.0)
+
+    sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL'
+
+    with pytest.raises(ValueError):
+        TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
+                       timeout=10.0)
+
+
 def test_connected(motor):
     assert motor.connected
 
