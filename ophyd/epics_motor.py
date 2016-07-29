@@ -71,7 +71,7 @@ class EpicsMotor(Device, PositionerBase):
                          name=name, parent=parent, **kwargs)
 
         if self.record_type.get() != "motor":
-            raise ValueError("Prefix: {} is not a valid Epics Motor Record.")
+            raise ValueError("Prefix: {} is not a valid Epics Motor Record.".format(prefix))
 
         # Make the default alias for the user_readback the name of the
         # motor itself.
