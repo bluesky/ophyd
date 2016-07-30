@@ -9,7 +9,7 @@ import epics
 from .utils import (ReadOnlyError, LimitError)
 from .utils.epics_pvs import (pv_form, waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
-                              AlarmStatus, AlarmSeverity)
+                              AlarmStatus, AlarmSeverity, validate_pv_name)
 from .ophydobj import OphydObject
 from .status import Status
 from .utils import set_and_wait
@@ -344,6 +344,7 @@ class EpicsSignalBase(Signal):
 
         super().__init__(name=name, **kwargs)
 
+        validate_pv_name(read_pv)
         self._read_pv = epics.PV(read_pv, form=pv_form,
                                  auto_monitor=auto_monitor,
                                  **pv_kw)
@@ -655,6 +656,7 @@ class EpicsSignal(EpicsSignalBase):
                          auto_monitor=auto_monitor, name=name, **kwargs)
 
         if write_pv is not None:
+            validate_pv_name(write_pv)
             self._write_pv = epics.PV(write_pv, form=pv_form,
                                       auto_monitor=self._auto_monitor,
                                       **self._pv_kw)
