@@ -428,10 +428,8 @@ class BlueskyInterface:
         stage_sigs = OrderedDict()
         for k, v in self.stage_sigs.items():
             if isinstance(k, str):
-                attr = self
-                for attrname in k.split('.'):
-                    attr = getattr(attr, attrname)
-                stage_sigs[attr] = v
+                # Device.__getattr__ handles nested attr lookup
+                stage_sigs[getattr(self, k)] = v
             else:
                 stage_sigs[k] = v
 
