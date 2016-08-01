@@ -1,3 +1,4 @@
+import pytest
 import os
 import logging
 import unittest
@@ -116,6 +117,11 @@ def test_make_dir_tree():
 
         assert os.path.join(tempdir, '2016', '03', '04') in paths
         assert os.path.join(tempdir, '2016', '02', '29') in paths
+
+
+def test_valid_pvname():
+    with pytest.raises(epics_utils.BadPVName):
+        epics_utils.validate_pv_name('this.will.fail')
 
 
 from . import main

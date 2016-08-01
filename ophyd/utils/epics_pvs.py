@@ -6,7 +6,6 @@
 .. module:: ophyd.utils.epics_pvs
    :synopsis:
 '''
-
 from enum import IntEnum
 import time as ttime
 import ctypes
@@ -19,7 +18,7 @@ import numpy as np
 
 import epics
 
-from .errors import DisconnectedError
+from .errors import DisconnectedError, OpException
 
 __all__ = ['split_record_field',
            'strip_field',
@@ -32,6 +31,10 @@ __all__ = ['split_record_field',
            ]
 
 logger = logging.getLogger(__name__)
+
+
+class BadPVName(ValueError, OpException):
+    ...
 
 
 class AlarmSeverity(IntEnum):
@@ -64,6 +67,22 @@ class AlarmStatus(IntEnum):
     SIMM = 19
     READ_ACCESS = 20
     WRITE_ACCESS = 21
+
+
+def validate_pv_name(pv):
+    '''Validates that there is not more than 1 '.' in pv
+
+    Parameters
+    ----------
+    pv : str
+        The pv to check
+
+    Raises
+    ------
+    BadPVName
+    '''
+    if pv.count('.') > 1:
+        raise BadPVName(pv)
 
 
 def split_record_field(pv):
@@ -429,6 +448,7 @@ _type_map = {'number': (float, ),
              'integer': (int, ),
              }
 
+
 def data_type(val):
     '''Determine data-type of val.
 
@@ -442,6 +462,7 @@ def data_type(val):
             return json_type
     # no legit type found...
     raise ValueError('{} not a valid type (int, float, ndarray, str)'.format(val))
+
 
 def data_shape(val):
     '''Determine data-shape (dimensions)
