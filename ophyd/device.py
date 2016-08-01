@@ -424,8 +424,17 @@ class BlueskyInterface:
         logger.debug("Staging %s", self.name)
         self._staged = Staged.partially
 
+        # Resolve any stage_sigs keys given as strings: 'a.b' -> self.a.b
+        stage_sigs = OrderedDict()
+        for k, v in self.stage_sigs.items():
+            if isinstance(k, str):
+                # Device.__getattr__ handles nested attr lookup
+                stage_sigs[getattr(self, k)] = v
+            else:
+                stage_sigs[k] = v
+
         # Read current values, to be restored by unstage()
-        original_vals = {sig: sig.get() for sig, _ in self.stage_sigs.items()}
+        original_vals = {sig: sig.get() for sig, _ in stage_sigs.items()}
 
         # We will add signals and values from original_vals to
         # self._original_vals one at a time so that
@@ -434,7 +443,7 @@ class BlueskyInterface:
         # Apply settings.
         devices_staged = []
         try:
-            for sig, val in self.stage_sigs.items():
+            for sig, val in stage_sigs.items():
                 logger.debug("Setting %s to %r (original value: %r)", self.name,
                              val, original_vals[sig])
                 set_and_wait(sig, val)
