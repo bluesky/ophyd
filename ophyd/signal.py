@@ -248,9 +248,13 @@ class DerivedSignal(Signal):
         super().__init__(name=name, parent=parent, **kwargs)
 
         self._derived_from = derived_from
-        if self._derived_from.connected:
+        connected = self._derived_from.connected
+        if connected:
             # set up the initial timestamp reporting, if connected
             self._timestamp = self._derived_from.timestamp
+
+        self._derived_from.subscribe(self._derived_value_callback,
+                                     event_type=self.SUB_VALUE, run=connected)
 
     @property
     def derived_from(self):
@@ -263,17 +267,33 @@ class DerivedSignal(Signal):
         desc['derived_from'] = self._derived_from.name
         return {self.name: desc}
 
+    def _derived_value_callback(self, value=None, timestamp=None, **kwargs):
+        value = self.compute_derived(value)
+        self._run_subs(sub_type=self.SUB_VALUE, timestamp=timestamp,
+                       value=value)
+
     def get(self, **kwargs):
         '''Get the value from the original signal'''
         value = self._derived_from.get(**kwargs)
+        value = self.compute_derived(value)
         self._timestamp = self._derived_from.timestamp
+        return value
+
+    def compute_derived(self, value):
+        '''Compute the derived value from the original value'''
+        # TODO: any kwargs? name maybe forward/inverse?
         return value
 
     def put(self, value, **kwargs):
         '''Put the value to the original signal'''
+        value = self.compute_original(value)
         res = self._derived_from.put(value, **kwargs)
         self._timestamp = self._derived_from.timestamp
         return res
+
+    def compute_original(self, value):
+        '''Compute the original value from a derived value'''
+        return value
 
     def wait_for_connection(self, timeout=0.0):
         '''Wait for the original signal to connect'''
