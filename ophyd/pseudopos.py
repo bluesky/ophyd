@@ -15,15 +15,16 @@ import functools
 
 from collections import (OrderedDict, namedtuple, Sequence)
 
-from .utils import DisconnectedError
+from .utils import (DisconnectedError, ExceptionBundle)
 from .positioner import (PositionerBase, SoftPositioner)
-from .device import Device
-from .status import (wait as status_wait)
+from .device import (Device, Component as Cpt)
+from .signal import AttributeSignal
+
 
 logger = logging.getLogger(__name__)
 
 
-class PseudoSingle(SoftPositioner):
+class PseudoSingle(Device, SoftPositioner):
     '''A single axis of a PseudoPositioner
 
     This should not be instantiated on its own, but rather used as a Component
@@ -50,10 +51,22 @@ class PseudoSingle(SoftPositioner):
         The default timeout to use for motion requests, in seconds.
     '''
 
-    def __init__(self, prefix=None, *, limits=None, egu='', parent=None,
-                 name=None, source='computed', **kwargs):
-        super().__init__(name=name, parent=parent, limits=limits,
-                         egu=egu, source=source, **kwargs)
+    setpoint = Cpt(AttributeSignal, attr='target')
+    readback = Cpt(AttributeSignal, attr='position')
+
+    def __init__(self, prefix='', *, limits=None, egu='', parent=None,
+                 name=None, source='computed', read_attrs=None,
+                 **kwargs):
+
+        if read_attrs is None:
+            read_attrs = ['setpoint', 'readback']
+
+        super().__init__(prefix=prefix, name=name, parent=parent,
+                         limits=limits, egu=egu, source=source,
+                         read_attrs=read_attrs, **kwargs)
+
+        # the readback name should default to the name of the positioner
+        self.readback.name = self.name
 
         self._target = None
 
@@ -155,6 +168,17 @@ class PseudoSingle(SoftPositioner):
         '''
         self._target = pos
         return self._parent.move_single(self, pos, **kwargs)
+
+    def describe(self):
+        desc = super().describe()
+        low_limit, high_limit = self.limits
+
+        for d in (desc[self.readback.name], desc[self.setpoint.name]):
+            d['upper_ctrl_limit'] = high_limit
+            d['lower_ctrl_limit'] = low_limit
+            d['units'] = self.egu
+
+        return desc
 
 
 def position_argument_wrapper(type_):
@@ -466,15 +490,30 @@ class PseudoPositioner(Device, SoftPositioner):
 
     def stop(self):
         del self._move_queue[:]
+        exc_list = []
 
-        for pos in self._real:
+        for attr in self._sub_devices:
+            dev = getattr(self, attr)
+
+            if isinstance(dev, PseudoSingle) or not dev.connected:
+                continue
+
             try:
-                pos.stop()
+                dev.stop()
+            except ExceptionBundle as ex:
+                exc_list.extend([('{}.{}'.format(attr, sub_attr), ex)
+                                 for sub_attr, ex in ex.exceptions.items()])
             except Exception as ex:
-                logger.error('%s failed to stop positioner: %s', self.name,
-                             pos.name, exc_info=ex)
+                exc_list.append((attr, ex))
+                logger.error('Device %s (%s) stop failed', attr, dev,
+                             exc_info=ex)
 
-        super().stop()
+        if exc_list:
+            exc_info = '\n'.join('{} raised {!r}'.format(attr, ex)
+                                 for attr, ex in exc_list)
+            raise ExceptionBundle('{} exception(s) were raised during stop: \n'
+                                  '{}'.format(len(exc_list), exc_info),
+                                  exceptions=dict(exc_list))
 
     def check_single(self, pseudo_single, single_pos):
         '''Check if a new position for a single pseudo positioner is valid'''
