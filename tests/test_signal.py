@@ -590,7 +590,15 @@ def test_soft_derived():
     value = 'q'
     original = Signal(name='original', timestamp=timestamp, value=value)
 
+    cb_values = []
+
+    def callback(value=None, **kwargs):
+        nonlocal cb_values
+        cb_values.append(value)
+
     derived = DerivedSignal(derived_from=original, name='derived')
+    derived.subscribe(callback)
+
     assert derived.timestamp == timestamp
     assert derived.get() == value
     assert derived.timestamp == timestamp
@@ -607,6 +615,9 @@ def test_soft_derived():
     assert copied.derived_from.value == original.value
     assert copied.derived_from.timestamp == original.timestamp
     assert copied.derived_from.name == original.name
+
+    derived.put('s')
+    assert cb_values == ['r', 's']
 
 
 @using_fake_epics_pv
