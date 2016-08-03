@@ -5,12 +5,11 @@ dist: trusty
 env:
   global:
     BUILD_DOCS_BRANCH: master
-    DOCS_SUBDIR: ..
-    TARGET_DEV_SUBDIR: .
+    DOCS_SUBDIR: doc/
+    TARGET_DEV_SUBDIR: ophyd/
     HTML_SUBDIR: build/html
     DOCS_CONDA_DEPS: "ophyd"
     DOCS_PIP_DEPS: "tqdm"
-    DOCS_SUBDIR: "doc/"
 
 
 services:
