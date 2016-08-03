@@ -268,31 +268,30 @@ class DerivedSignal(Signal):
         return {self.name: desc}
 
     def _derived_value_callback(self, value=None, timestamp=None, **kwargs):
-        value = self.compute_derived(value)
+        value = self.inverse(value)
         self._run_subs(sub_type=self.SUB_VALUE, timestamp=timestamp,
                        value=value)
 
     def get(self, **kwargs):
         '''Get the value from the original signal'''
         value = self._derived_from.get(**kwargs)
-        value = self.compute_derived(value)
+        value = self.inverse(value)
         self._timestamp = self._derived_from.timestamp
         return value
 
-    def compute_derived(self, value):
-        '''Compute the derived value from the original value'''
-        # TODO: any kwargs? name maybe forward/inverse?
+    def inverse(self, value):
+        '''Compute original signal value -> derived signal value'''
         return value
 
     def put(self, value, **kwargs):
         '''Put the value to the original signal'''
-        value = self.compute_original(value)
+        value = self.forward(value)
         res = self._derived_from.put(value, **kwargs)
         self._timestamp = self._derived_from.timestamp
         return res
 
-    def compute_original(self, value):
-        '''Compute the original value from a derived value'''
+    def forward(self, value):
+        '''Compute derived signal value -> original signal value'''
         return value
 
     def wait_for_connection(self, timeout=0.0):
