@@ -327,6 +327,11 @@ class PseudoPositioner(Device, SoftPositioner):
         ``read_configuration()``) and to adjust via ``configure()``
     name : str, optional
         The name of the device
+    egu : str, optional
+        The user-defined engineering units for the whole PseudoPositioner
+    auto_target : bool, optional
+        Automatically set the target position of PseudoSingle devices when
+        moving to a single PseudoPosition
     parent : instance or None
         The instance of the parent device, if applicable
     settle_time : float, optional
@@ -335,13 +340,15 @@ class PseudoPositioner(Device, SoftPositioner):
         The default timeout to use for motion requests, in seconds.
     '''
     def __init__(self, prefix, *, concurrent=True, read_attrs=None,
-                 configuration_attrs=None, name=None, egu='', **kwargs):
+                 configuration_attrs=None, name=None, egu='', auto_target=True,
+                 **kwargs):
 
         self._finished_lock = threading.RLock()
         self._concurrent = bool(concurrent)
         self._finish_thread = None
         self._real_waiting = []
         self._move_queue = []
+        self.auto_target = auto_target
 
         if self.__class__ is PseudoPositioner:
             raise TypeError('PseudoPositioner must be subclassed with the '
@@ -769,6 +776,11 @@ class PseudoPositioner(Device, SoftPositioner):
         RuntimeError
             If motion fails other than timing out
         '''
+        if self.auto_target:
+            # in auto-target mode, we update the setpoints of the PseudoSingles
+            # on every motion of the PseudoPositioner
+            for positioner, single_pos in zip(self._pseudo, position):
+                positioner._target = single_pos
         return super().move(position, wait=wait, timeout=timeout,
                             moved_cb=moved_cb)
 
