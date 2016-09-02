@@ -44,6 +44,9 @@ class PseudoSingle(SoftPositioner):
     source : str, optional
         Metadata indicating the source of this positioner's position. Defaults
         to 'computed'
+    use_initial_position : bool, optional
+        Use initial inverse-calculated position as the default setpoint/target
+        for this axis
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
     timeout : float, optional
@@ -51,10 +54,12 @@ class PseudoSingle(SoftPositioner):
     '''
 
     def __init__(self, prefix=None, *, limits=None, egu='', parent=None,
-                 name=None, source='computed', **kwargs):
+                 name=None, source='computed', use_initial_position=True,
+                 **kwargs):
         super().__init__(name=name, parent=parent, limits=limits,
                          egu=egu, source=source, **kwargs)
 
+        self._use_initial_position = use_initial_position
         self._target = None
 
         # The index of this PseudoSingle in the parent PseudoPositioner tuple
@@ -587,8 +592,15 @@ class PseudoPositioner(Device, SoftPositioner):
         if None in real_cur_pos:
             raise DisconnectedError('Not all positioners connected')
 
+        initial_position = (self._position is None)
         calc_pseudo_pos = self.inverse(real_cur_pos)
         self._set_position(calc_pseudo_pos)
+
+        if initial_position:
+            for positioner, single_pos in zip(self._pseudo, calc_pseudo_pos):
+                if positioner._use_initial_position:
+                    positioner._target = single_pos
+
         return calc_pseudo_pos
 
     def _real_pos_update(self, obj=None, value=None, **kwargs):
