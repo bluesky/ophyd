@@ -1,13 +1,14 @@
-
-
 import time
 import logging
 import unittest
+import pytest
+
 from copy import copy
 
 import epics
 from ophyd import (PseudoPositioner, PseudoSingle, EpicsMotor)
 from ophyd import (Component as C)
+from ophyd.utils import ExceptionBundle
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,15 @@ class Pseudo1x3(PseudoPositioner):
         real_pos = self.RealPosition(*real_pos)
         # logger.debug('inverse %s', real_pos)
         return self.PseudoPosition(pseudo1=-real_pos.real1)
+
+
+class FaultyStopperEpicsMotor(EpicsMotor):
+    def stop(self):
+        raise RuntimeError('Expected exception')
+
+
+class FaultyPseudo1x3(Pseudo1x3):
+    real1 = C(FaultyStopperEpicsMotor, motor_recs[0])
 
 
 class PseudoPosTests(unittest.TestCase):
@@ -147,6 +157,14 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.pseudo1.stop()
 
         pseudo.real3.move(0, wait=True)
+
+    def test_faulty_stopper(self):
+        pseudo = FaultyPseudo1x3('', name='mypseudo', concurrent=False)
+        pseudo.wait_for_connection()
+
+        with pytest.raises(ExceptionBundle):
+            # smoke-testing for coverage
+            pseudo.pseudo1.stop()
 
     def test_limits(self):
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=True)
