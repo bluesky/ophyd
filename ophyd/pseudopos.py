@@ -45,18 +45,20 @@ class PseudoSingle(Device, SoftPositioner):
     source : str, optional
         Metadata indicating the source of this positioner's position. Defaults
         to 'computed'
+    target_initial_position : bool, optional
+        Use initial inverse-calculated position as the default setpoint/target
+        for this axis
     settle_time : float, optional
         The amount of time to wait after moves to report status completion
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
-
     setpoint = Cpt(AttributeSignal, attr='target')
     readback = Cpt(AttributeSignal, attr='position')
 
     def __init__(self, prefix='', *, limits=None, egu='', parent=None,
                  name=None, source='computed', read_attrs=None,
-                 **kwargs):
+                 target_initial_position=False, **kwargs):
 
         if read_attrs is None:
             read_attrs = ['setpoint', 'readback']
@@ -68,6 +70,7 @@ class PseudoSingle(Device, SoftPositioner):
         # the readback name should default to the name of the positioner
         self.readback.name = self.name
 
+        self._target_initial_position = target_initial_position
         self._target = None
 
         # The index of this PseudoSingle in the parent PseudoPositioner tuple
@@ -626,8 +629,15 @@ class PseudoPositioner(Device, SoftPositioner):
         if None in real_cur_pos:
             raise DisconnectedError('Not all positioners connected')
 
+        initial_position = (self._position is None)
         calc_pseudo_pos = self.inverse(real_cur_pos)
         self._set_position(calc_pseudo_pos)
+
+        if initial_position:
+            for positioner, single_pos in zip(self._pseudo, calc_pseudo_pos):
+                if positioner._target_initial_position:
+                    positioner._target = single_pos
+
         return calc_pseudo_pos
 
     def _real_pos_update(self, obj=None, value=None, **kwargs):
