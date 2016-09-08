@@ -327,10 +327,20 @@ class ComponentMeta(type):
     def __new__(cls, name, bases, clsdict):
         clsobj = super().__new__(cls, name, bases, clsdict)
 
-        RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
+        # This attrs are defined at instanitation time and must not
+        # collide with class attributes.
+        INSTANCE_ATTRS = ['name', 'parent', 'signal_names', '_signals',
                           'read_attrs', 'configuration_attrs', '_sig_attrs',
                           '_sub_devices']
-        for attr in RESERVED_ATTRS:
+        # These attributes are part of the bluesky interface and cannot be
+        # used as component names.
+        RESERVED_ATTRS = ['read', 'describe', 'trigger',
+                          'configure', 'read_configuration',
+                          'describe_configuration', 'describe_collect',
+                          'set', 'stage', 'unstage', 'subscribe',
+                          'clear_sub', 'pause', 'resume', 'kickoff',
+                          'complete', 'collect', 'position', 'stop']
+        for attr in INSTANCE_ATTRS:
             if attr in clsdict:
                 raise TypeError("The attribute name %r is reserved for "
                                 "use by the Device class. Choose a different "
@@ -347,6 +357,11 @@ class ComponentMeta(type):
         # map component classes to their attribute names from this class
         for attr, value in clsdict.items():
             if isinstance(value, (Component, DynamicDeviceComponent)):
+                if attr in RESERVED_ATTRS:
+                    raise TypeError("The attribute name %r is part of the "
+                                    "bluesky interface and cannot be used as "
+                                    "the name of a component. Choose a "
+                                    "different name." % attr)
                 clsobj._sig_attrs[attr] = value
 
         for cpt_attr, cpt in clsobj._sig_attrs.items():
