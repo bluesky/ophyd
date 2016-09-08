@@ -102,7 +102,7 @@ class EpicsMCA(EpicsMCARecord):
     check_acquiring = C(EpicsSignal, 'CheckACQG')
     client_wait = C(EpicsSignal, 'ClientWait')
     enable_wait = C(EpicsSignal, 'EnableWait')
-    read = C(EpicsSignal, 'Read')
+    force_read = C(EpicsSignal, 'Read')
     set_client_wait = C(EpicsSignal, 'SetClientWait')
     status = C(EpicsSignal, 'Status')
     when_acq_stops = C(EpicsSignal, 'WhenAcqStops')
@@ -122,7 +122,7 @@ class EpicsMCAReadNotify(EpicsMCARecord):
     check_acquiring = C(EpicsSignal, 'CheckACQG')
     client_wait = C(EpicsSignal, 'ClientWait')
     enable_wait = C(EpicsSignal, 'EnableWait')
-    read = C(EpicsSignal, 'Read')
+    force_read = C(EpicsSignal, 'Read')
     set_client_wait = C(EpicsSignal, 'SetClientWait')
     status = C(EpicsSignal, 'Status')
 
