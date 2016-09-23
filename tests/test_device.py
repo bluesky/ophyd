@@ -249,6 +249,16 @@ def test_attribute_signal_attributeerror():
     pytest.raises(AttributeError, getattr, dev.sig3, 'base')
 
 
+def test_shadowing_bs_interface_raises_typeerror():
+    class LegalDevice(Device):
+        cpt = Component(FakeSignal, 'cpt')
+
+    with pytest.raises(TypeError):
+        class IllegalDevice(Device):
+            # 'read' shadows the bluesky interface and should not be allowed
+            read = Component(FakeSignal, 'read')
+
+
 def test_array_attribute_signal():
     init_value = range(10)
 
