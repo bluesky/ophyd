@@ -1,6 +1,25 @@
 Release Notes
 -------------
 
+0.3.1
+=====
+
+Enhancements
+************
+
+* Check alarm status of EpicsMotor to decide success/failure
+* Allow ``stage_sigs`` to be attribute *names* to enable lazy-loading.
+* Add ``target_initial_position`` parameter to ``PseudoSingle``.
+
+Fixes
+*****
+
+* Add size-link to ROI plugin.
+* Fix QuadEM port name uniqueness.
+* Rename ``read`` attribute on MCA, which was shadowing ``read`` method, to
+  ``force_read``. Add check to ``Device`` to avoid repeating this mistake in
+  the future.
+
 0.3.0
 =====
 
