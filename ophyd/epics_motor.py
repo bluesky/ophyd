@@ -105,9 +105,9 @@ class EpicsMotor(Device, PositionerBase):
         return bool(self.motor_is_moving.get(use_monitor=False))
 
     @raise_if_disconnected
-    def stop(self):
+    def stop(self, *, success=False):
         self.motor_stop.put(1, wait=False)
-        super().stop()
+        super().stop(success=success)
 
     @raise_if_disconnected
     def move(self, position, wait=True, **kwargs):

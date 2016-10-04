@@ -132,9 +132,9 @@ class PseudoSingle(Device, SoftPositioner):
         '''
         return self._parent.position[self._idx]
 
-    def stop(self):
+    def stop(self, *, success=False):
         '''Stop motion on the PseudoPositioner'''
-        return self._parent.stop()
+        return self._parent.stop(success=success)
 
     @property
     def _started_moving(self):
@@ -498,7 +498,7 @@ class PseudoPositioner(Device, SoftPositioner):
     def connected(self):
         return all(mtr.connected for mtr in self._real)
 
-    def stop(self):
+    def stop(self, success=False):
         del self._move_queue[:]
         exc_list = []
 
@@ -509,7 +509,7 @@ class PseudoPositioner(Device, SoftPositioner):
                 continue
 
             try:
-                dev.stop()
+                dev.stop(success=success)
             except ExceptionBundle as ex:
                 exc_list.extend([('{}.{}'.format(attr, sub_attr), ex)
                                  for sub_attr, ex in ex.exceptions.items()])

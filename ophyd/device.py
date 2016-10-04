@@ -770,7 +770,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         acq_signal.put(1, wait=False, callback=done_acquisition)
         return status
 
-    def stop(self):
+    def stop(self, *, success=False):
         '''Stop the Device and all (instantiated) subdevices'''
         exc_list = []
 
@@ -783,7 +783,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 continue
 
             try:
-                dev.stop()
+                dev.stop(success=success)
             except ExceptionBundle as ex:
                 exc_list.extend([('{}.{}'.format(attr, sub_attr), ex)
                                  for sub_attr, ex in ex.exceptions.items()])
