@@ -765,3 +765,61 @@ def _print_pos(positioners, file=sys.stdout):
         pt.add_row([p.name, value, low_limit, high_limit])
 
     print(pt, file=file)
+
+
+def python_stop_all_hook(exctype, value, traceback):
+    """
+    Stop all movable devices before handling an exception.
+
+    See http://stackoverflow.com/a/6598286/3781327
+    """
+    for device in get_all_positioners():
+        try:
+            device.stop(success=True)
+        except Exception as exc:
+            warnings.warning("This exception was raised while trying to stop "
+                             "{}; it was ignored so that other devices "
+                             "could be stopped:\n{}".format(device, exc))
+    # Finally process the original exception.
+    sys.__excepthook__(exctype, value, traceback)
+
+
+def ipython_stop_all_hook(self, etype, value, tb, tb_offset=None):
+    """
+    Stop all movable devices before handling an exception in IPython.
+
+    See https://mail.scipy.org/pipermail/ipython-dev/2012-April/008945.html
+    The API has slightly changed from that email, so check out the official
+    docs instead at
+    http://ipython.org/ipython-doc/dev/api/generated/IPython.core.interactiveshell.html#IPython.core.interactiveshell.InteractiveShell.set_custom_exc
+    """
+    for device in get_all_positioners():
+        try:
+            device.stop(success=True)
+        except Exception as exc:
+            warnings.warning("This exception was raised while trying to stop "
+                             "{}; it was ignored so that other devices "
+                             "could be stopped:\n{}".format(device, exc))
+    # Finally process the original exception.
+    import IPython
+    IPython.get_ipython().showtraceback()
+
+
+def install_stop_all_handler():
+    """
+    Register an exception handler with Python and IPython (if applicable)
+
+    This custom handler stops all movable devices in an attempt to make them
+    safe before handling the original exception.
+    """
+    # Install the Python one.
+    sys.excepthook = python_stop_all_hook
+    # Install the IPython one if applicable.
+    try:
+        import IPython
+    except ImportError:
+        return
+    ip = IPython.get_ipython()
+    if ip is not None:
+        ip.set_custom_exc((Exception, KeyboardInterrupt),
+                          ipython_stop_all_hook)
