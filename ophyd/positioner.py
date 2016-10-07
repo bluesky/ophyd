@@ -139,9 +139,19 @@ class PositionerBase(OphydObject):
                        timestamp=timestamp)
         self._reset_sub(self._SUB_REQ_DONE)
 
-    def stop(self):
-        '''Stops motion'''
-        self._done_moving(success=False)
+    def stop(self, *, success=False):
+        '''Stops motion.
+
+        Sub-classes must extend this method to _actually_ stop the device.
+
+        Parameters
+        ----------
+        success : bool, optional
+            If the move should be considered a success despite the stop.
+
+            Defaults to False
+        '''
+        self._done_moving(success=success)
 
     @property
     def position(self):

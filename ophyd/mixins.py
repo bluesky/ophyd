@@ -138,12 +138,12 @@ class SignalPositionerMixin(PositionerBase):
 
         return self._external_status
 
-    def stop(self):
+    def stop(self, *, success=False):
         '''Stops motion'''
         if self._hold_on_stop:
             self.move(self.get(), wait=False)
         # TODO status object?
-        return super().stop()
+        return super().stop(success=success)
 
     def _repr_info(self):
         yield from super()._repr_info()

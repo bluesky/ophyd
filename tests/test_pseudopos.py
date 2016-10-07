@@ -78,7 +78,7 @@ class Pseudo1x3(PseudoPositioner):
 
 
 class FaultyStopperEpicsMotor(EpicsMotor):
-    def stop(self):
+    def stop(self, *, success=False):
         raise RuntimeError('Expected exception')
 
 

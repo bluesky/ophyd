@@ -120,9 +120,9 @@ class DeviceTests(unittest.TestCase):
         class SubSubDevice(Device):
             cpt4 = Component(FakeSignal, '4')
 
-            def stop(self):
+            def stop(self, *, success=False):
                 self.stop_called = True
-
+                self.success = success
                 if self.prefix.endswith('_raises_'):
                     raise Exception('stop failed for some reason')
 
@@ -132,9 +132,10 @@ class DeviceTests(unittest.TestCase):
             cpt3 = Component(FakeSignal, '3')
             subsub = Component(SubSubDevice, '')
 
-            def stop(self):
+            def stop(self, *, success=False):
                 self.stop_called = True
-                super().stop()
+                self.success = success
+                super().stop(success=success)
 
         class MyDevice(Device):
             sub1 = Component(SubDevice, '1')
@@ -151,9 +152,36 @@ class DeviceTests(unittest.TestCase):
         self.assertTrue(dev.sub1.stop_called)
         self.assertTrue(dev.sub2.stop_called)
         self.assertTrue(dev.sub3.stop_called)
+        self.assertFalse(dev.sub1.success)
+        self.assertFalse(dev.sub2.success)
+        self.assertFalse(dev.sub3.success)
+
         self.assertTrue(dev.sub1.subsub.stop_called)
         self.assertTrue(dev.sub2.subsub.stop_called)
         self.assertTrue(dev.sub3.subsub.stop_called)
+        self.assertFalse(dev.sub1.subsub.success)
+        self.assertFalse(dev.sub2.subsub.success)
+        self.assertFalse(dev.sub3.subsub.success)
+
+        dev = MyDevice('', name='mydev')
+        with self.assertRaises(ExceptionBundle) as cm:
+            dev.stop(success=True)
+
+        ex = cm.exception
+        self.assertEquals(len(ex.exceptions), 2)
+        self.assertTrue(dev.sub1.stop_called)
+        self.assertTrue(dev.sub2.stop_called)
+        self.assertTrue(dev.sub3.stop_called)
+        self.assertTrue(dev.sub1.success)
+        self.assertTrue(dev.sub2.success)
+        self.assertTrue(dev.sub3.success)
+
+        self.assertTrue(dev.sub1.subsub.stop_called)
+        self.assertTrue(dev.sub2.subsub.stop_called)
+        self.assertTrue(dev.sub3.subsub.stop_called)
+        self.assertTrue(dev.sub1.subsub.success)
+        self.assertTrue(dev.sub2.subsub.success)
+        self.assertTrue(dev.sub3.subsub.success)
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',

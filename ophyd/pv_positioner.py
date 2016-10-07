@@ -232,10 +232,10 @@ class PVPositioner(Device, PositionerBase):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
-    def stop(self):
+    def stop(self, *, success=False):
         if self.stop_signal is not None:
             self.stop_signal.put(self.stop_value, wait=False)
-        super().stop()
+        super().stop(success=success)
 
     @property
     def report(self):
