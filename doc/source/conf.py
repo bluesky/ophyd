@@ -26,11 +26,12 @@ import sphinx_rtd_theme
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx',
-              'sphinx.ext.coverage', 'sphinx.ext.mathjax',
-              'sphinx.ext.viewcode', 'sphinxcontrib.napoleon',
-              'sphinx.ext.inheritance_diagram', 'sphinx.ext.autosummary',
-              ]
+extensions = ['sphinx.ext.autodoc', 'matplotlib.sphinxext.only_directives',
+              'sphinx.ext.doctest', 'sphinx.ext.autosummary',
+              'matplotlib.sphinxext.plot_directive',
+              'sphinx.ext.inheritance_diagram',
+              'numpydoc']
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -249,7 +250,13 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {'http://docs.python.org/': None,
+                       'http://nsls-ii.github.io/bluesky/': None}
 inheritance_graph_attrs = dict(rankdir="LR")
 inheritance_node_attrs = dict(fontsize=24)
 autosummary_generate = True
+autodoc_docstring_signature = True
+autoclass_content = 'both'
+# numpydoc config
+
+numpydoc_show_class_members = False
