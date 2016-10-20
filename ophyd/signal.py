@@ -909,7 +909,7 @@ class EpicsSignal(EpicsSignalBase):
 
         See Also
         --------
-        `Signal.set`
+        Signal.set
         '''
         if not self._put_complete:
             return super().set(value, timeout=timeout, settle_time=settle_time)

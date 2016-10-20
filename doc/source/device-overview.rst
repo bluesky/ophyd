@@ -4,14 +4,13 @@ Overview of a Device
 Signals and Devices
 ===================
 
-* A **Signal** represents a single value. In EPICS, it corresponds to either
-  a single read-only PV or a pair of read and write PVs, grouped together.
+* A **Signal** represents a single value. In EPICS, it corresponds to
+  either a single read-only PV, a read-write PV, or a pair of read and
+  write PVs, grouped together.
 * A **Device** is composed of Signals or of other Devices. Devices can be
   nested. Some devices map to single pieces of hardware (like a motor).
   Others group together many different pieces of hardware (like a
   diffractometer).
-* In one process, the same PVs might appear in multiple different Devices,
-  so organized for different uses.
 
 Staging
 =======
@@ -65,24 +64,30 @@ right before it was staged.
 
 Device API
 ==========
-
+.. currentmodule:: ophyd
 
 All Devices have certain methods and attributes in common.
 
-.. autoclass:: ophyd.Device
+.. autoclass:: Device
+
 
 High-level Interface (used by bluesky)
 ======================================
 
-.. automethod:: ophyd.Device.read
-.. automethod:: ophyd.Device.describe
-.. automethod:: ophyd.Device.set
-.. automethod:: ophyd.Device.trigger
-.. automethod:: ophyd.Device.stage
-.. automethod:: ophyd.Device.unstage
-.. automethod:: ophyd.Device.configure
-.. automethod:: ophyd.Device.read_configuration
-.. automethod:: ophyd.Device.describe_configuration
+
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   Device.read
+   Device.describe
+   Device.set
+   Device.trigger
+   Device.stage
+   Device.unstage
+   Device.configure
+   Device.read_configuration
+   Device.describe_configuration
 
 Low-level Interface (for exploration, debugging)
 ================================================
