@@ -20,6 +20,7 @@ To be used like so:
     det = MyDetector(...)
 """
 
+import os
 import logging
 import uuid
 import filestore.api as fs
@@ -44,6 +45,17 @@ def new_short_uid():
     return '-'.join(new_uid().split('-')[:-1])
 
 
+def _ensure_trailing_slash(path):
+    """
+    'a/b/c' -> 'a/b/c/'
+
+    EPICS adds the trailing slash itself if we do not, so in order for the
+    setpoint filepath to match the readback filepath, we need to add the
+    trailing slash ourselves.
+    """
+    return os.path.join(path, '')
+
+
 class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     """Base class for FileStore mixin classes
 
@@ -57,7 +69,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         if write_path_template is None:
             raise ValueError("write_path_template is required")
         self.write_path_template = write_path_template
-        self._read_path_template = read_path_template
+        self.read_path_template = read_path_template
         super().__init__(*args, **kwargs)
         self._point_counter = None
         self._locked_key_list = False
@@ -73,7 +85,17 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @read_path_template.setter
     def read_path_template(self, val):
+        if val is not None:
+            val = _ensure_trailing_slash(val)
         self._read_path_template = val
+
+    @property
+    def write_path_template(self):
+        return self._write_path_template
+
+    @write_path_template.setter
+    def write_path_template(self, val):
+        self._write_path_template = _ensure_trailing_slash(val)
 
     def stage(self):
         self._point_counter = count()
