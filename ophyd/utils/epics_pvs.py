@@ -390,7 +390,7 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         rtol = signal.rtolerance
 
     signal.put(val)
-    expiration_time = ttime.time() + timeout
+    expiration_time = ttime.time() + timeout if timeout is not None else None
     current_value = signal.get()
     try:
         es = signal.enum_strs
@@ -416,7 +416,7 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         ttime.sleep(poll_time)
         poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
-        if ttime.time() > expiration_time:
+        if expiration_time is not None and ttime.time() > expiration_time:
             raise TimeoutError("Attempted to set %r to value %r and timed "
                                "out after %r seconds. Current value is %r." %
                                (signal, val, timeout, current_value))

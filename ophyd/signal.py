@@ -146,13 +146,6 @@ class Signal(OphydObject):
             case of basic soft Signals
         '''
         def set_thread():
-            nonlocal timeout
-
-            if timeout is None:
-                timeout = 10
-                # TODO set_and_wait does not support a timeout of None
-                #      and 10 is its default timeout
-
             try:
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
                              rtol=self.rtolerance)
