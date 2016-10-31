@@ -155,6 +155,17 @@ def test_invalid_plugins():
 
     assert ['AARDVARK'] == det.missing_plugins()
 
+def test_validete_plugins_no_portname():
+    class MyDetector(SingleTrigger, SimDetector):
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+        over1 = Cpt(OverlayPlugin, 'Over1:')
+
+    det = MyDetector(prefix)
+
+    det.roi1.nd_array_port.put(det.cam.port_name.get())
+    det.over1.nd_array_port.put(det.roi1.port_name.get())
+
+    det.validate_asyn_ports()
 
 def test_get_plugin_by_asyn_port():
     class MyDetector(SingleTrigger, SimDetector):
