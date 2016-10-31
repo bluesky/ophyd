@@ -235,7 +235,7 @@ class ADBase(Device):
     def validate_asyn_ports(self):
         g, port_map = self.get_asyn_digraph()
         g = nx.Graph(g)
-        if nx.number_connected_components(g) != 1:
+        if port_map and nx.number_connected_components(g) != 1:
             missing_plugins = self.missing_plugins()
             raise RuntimeError('The asyn ports {!r} are used by plugins '
                                'that ophyd is aware of but the source plugin '
