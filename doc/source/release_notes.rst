@@ -1,6 +1,23 @@
 Release Notes
 -------------
 
+0.4.0
+=====
+
+Enhancements
+************
+
+* Allow ``set_and_wait`` to have a timeout.
+* Allow a plugin to have no port name.
+* Ensure trailing slashes are included in file plugin filepaths to avoid common
+  user mistake.
+
+API Changes
+***********
+
+* The bluesky interface now expects the ``stop`` method to accept an optional
+  ``success`` argument.
+
 0.3.1
 =====
 
