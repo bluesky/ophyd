@@ -81,7 +81,6 @@ High-level Interface (used by bluesky)
 
    Device.read
    Device.describe
-   Device.set
    Device.trigger
    Device.stage
    Device.unstage

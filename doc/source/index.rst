@@ -39,6 +39,7 @@ interactive exploration.
   different Devices, so organized for different uses.
 
 Signals and devices have:
+
 * a ``connected`` attribute, to quickly check whether *all* the involved PVs
   are responding
 * a ``name`` attribute, assigning a human-friendly alias (e.g., "temperature")
@@ -54,10 +55,10 @@ Signals and devices have:
 * a single ``describe`` method which extrats the metadata (PV, units,
   precision, data type, etc.) of all a device's designated components
 
-Contents:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Contents
 
    device-overview
    commands
@@ -67,3 +68,5 @@ Contents:
    signals
    area-detector
    architecture
+   OEP/index
+   release_notes
