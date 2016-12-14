@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 class Signal(OphydObject):
     '''A signal, which can have a read-write or read-only value.
 
-
     Parameters
     ----------
     value : any, optional
@@ -33,9 +32,12 @@ class Signal(OphydObject):
         The absolute tolerance associated with the value
     rtolerance : any, optional
         The relative tolerance associated with the value, used in
-        set_and_wait as follows:
-            absolute(setpoint - readback) <= (tolerance + rtolerance *
-                                              absolute(readback))
+        set_and_wait as follows
+
+        .. math::
+
+          |setpoint - readback| \leq (tolerance + rtolerance * |readback|)
+
 
     Attributes
     ----------
@@ -316,7 +318,7 @@ class EpicsSignalBase(Signal):
     read_pv : str
         The PV to read from
     pv_kw : dict, optional
-        Keyword arguments for epics.PV(**pv_kw)
+        Keyword arguments for ``epics.PV(**pv_kw)``
     auto_monitor : bool, optional
         Use automonitor with epics.PV
     name : str, optional
@@ -605,7 +607,7 @@ class EpicsSignalRO(EpicsSignalBase):
     read_pv : str
         The PV to read from
     pv_kw : dict, optional
-        Keyword arguments for epics.PV(**pv_kw)
+        Keyword arguments for ``epics.PV(**pv_kw)``
     limits : bool, optional
         Check limits prior to writing value
     auto_monitor : bool, optional
@@ -632,7 +634,7 @@ class EpicsSignal(EpicsSignalBase):
     write_pv : str, optional
         The PV to write to if different from the read PV
     pv_kw : dict, optional
-        Keyword arguments for epics.PV(**pv_kw)
+        Keyword arguments for ``epics.PV(**pv_kw)``
     limits : bool, optional
         Check limits prior to writing value
     auto_monitor : bool, optional

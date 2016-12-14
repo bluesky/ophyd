@@ -47,7 +47,7 @@ such a PseudoPositioner, one must subclass from PseudoPositioner:
 
     from ophyd import (PseudoPositioner, PseudoSingle, EpicsMotor)
     from ophyd import (Component as Cpt)
-    from ophyd.pseudopos import (pseudo_position_argument, 
+    from ophyd.pseudopos import (pseudo_position_argument,
                                  real_position_argument)
 
 
@@ -61,7 +61,7 @@ such a PseudoPositioner, one must subclass from PseudoPositioner:
         rx = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X1}Mtr')
         ry = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X2}Mtr')
         rz = Cpt(EpicsMotor, 'XF:31IDA-OP{Tbl-Ax:X3}Mtr')
-        
+
         @pseudo_position_argument
         def forward(self, pseudo_pos):
             '''Run a forward (pseudo -> real) calculation'''
@@ -82,7 +82,7 @@ positioners are (rx, ry, rz).
 
 There is no restriction that the real axes must be tied to physical hardware.
 A physical axis could just as well be a ``SoftPositioner``, or any subclass of
-``PositionerBase`` (with the sole exception of ``PseudoSingle``). 
+``PositionerBase`` (with the sole exception of ``PseudoSingle``).
 
 The forward calculation says that, for any given pseudo position, the real
 motors should move to the opposite position. For example, for a pseudo position
