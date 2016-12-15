@@ -1,16 +1,16 @@
-Overview of a Device
-********************
+======================
+ Overview of a Device
+======================
 
-Signals and Devices
-===================
 
-* A **Signal** represents a single value. In EPICS, it corresponds to
-  either a single read-only PV, a read-write PV, or a pair of read and
-  write PVs, grouped together.
-* A **Device** is composed of Signals or of other Devices. Devices can be
-  nested. Some devices map to single pieces of hardware (like a motor).
-  Others group together many different pieces of hardware (like a
-  diffractometer).
+Device API
+==========
+.. currentmodule:: ophyd
+
+All Devices have certain methods and attributes in common.
+
+.. autoclass:: Device
+
 
 Staging
 =======
@@ -61,14 +61,6 @@ When a ``MyMotor`` device is staged, its ``user_offset`` value will be set
 to 5. When it is unstaged, it will be set back to whatever value it had
 right before it was staged.
 
-
-Device API
-==========
-.. currentmodule:: ophyd
-
-All Devices have certain methods and attributes in common.
-
-.. autoclass:: Device
 
 
 High-level Interface (used by bluesky)

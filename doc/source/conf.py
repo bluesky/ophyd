@@ -30,7 +30,7 @@ extensions = ['sphinx.ext.autodoc', 'matplotlib.sphinxext.only_directives',
               'sphinx.ext.doctest', 'sphinx.ext.autosummary',
               'matplotlib.sphinxext.plot_directive',
               'sphinx.ext.inheritance_diagram',
-              'numpydoc', 'sphinx.ext.mathjax']
+              'numpydoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx']
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -251,8 +251,8 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None,
-                       'http://nsls-ii.github.io/bluesky/': None}
+intersphinx_mapping = {'https://docs.python.org/3.5': None,
+                       'https://nsls-ii.github.io/bluesky/': None}
 inheritance_graph_attrs = dict(rankdir="LR")
 inheritance_node_attrs = dict(fontsize=24)
 autosummary_generate = True

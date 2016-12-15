@@ -67,3 +67,4 @@ target/
 
 # generated docs
 doc/source/generated
+doc/source/_as_gen
