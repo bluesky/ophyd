@@ -7,7 +7,7 @@
 ``Ophyd`` is hardware abstraction layer to provide a consistent
 interface between the underlying control communication protocol and
 `bluesky <https://nsls-ii.github.io/bluesky>`_.  This is done by
-bundling sets of the underlying process variables in to hierarchical
+bundling sets of the underlying process variables into hierarchical
 devices and exposing a semantic API in terms of control system
 primitives.  Thus we have two terms that will be used through out
 
@@ -20,7 +20,7 @@ Hardware abstraction
   **Signal**
     Represents an atomic 'process variable'. This is nominally a
     'scalar' value and can not be decomposed any further by layers
-    above :mod:`ohpyd`.
+    above :mod:`ophyd`.
 
   **Device**
     Hierarchy composed of Signals and other Devices.  The components of
@@ -38,12 +38,13 @@ any of those cases, a single value is exposed to `bluesky`_.  For more
 complex hardware, for example a `motor record
 <http://www.aps.anl.gov/bcda/synApps/motor/>`_, the relationships
 between the individual process variables needs to be encoded in a
-:class:`~device.Device` (a :class:`~epics_motor.EpicsMotor` class ships with ohpyd for this
-case).  This includes both what **Signals** are grouped together, but
-also how to manipulate them a coordinated fashion to achieve the
-high-level action (moving a motor, changing a temperature, opening a
-valve, or taking data).  More complex devices, like a diffractometer
-or a Area Detector, can be assembled out of simpler component devices.
+:class:`~device.Device` (a :class:`~epics_motor.EpicsMotor` class
+ships with ophyd for this case).  This includes both what **Signals**
+are grouped together, but also how to manipulate them a coordinated
+fashion to achieve the high-level action (moving a motor, changing a
+temperature, opening a valve, or taking data).  More complex devices,
+like a diffractometer or a Area Detector, can be assembled out of
+simpler component devices.
 
 Asynchronous status
 -------------------
