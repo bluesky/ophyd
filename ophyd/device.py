@@ -337,9 +337,10 @@ class ComponentMeta(type):
         RESERVED_ATTRS = ['read', 'describe', 'trigger',
                           'configure', 'read_configuration',
                           'describe_configuration', 'describe_collect',
-                          'set', 'stage', 'unstage', 'subscribe',
-                          'clear_sub', 'pause', 'resume', 'kickoff',
-                          'complete', 'collect', 'position', 'stop']
+                          'set', 'stage', 'unstage', 'pause', 'resume',
+                          'kickoff', 'complete', 'collect', 'position', 'stop',
+                          # from OphydObject
+                          'subscribe', 'clear_sub', 'event_types', 'root']
         for attr in INSTANCE_ATTRS:
             if attr in clsdict:
                 raise TypeError("The attribute name %r is reserved for "

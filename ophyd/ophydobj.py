@@ -35,11 +35,11 @@ class OphydObject:
 
         # find magic class attributes to name 'event' types.
         # for publicly exposed event types
-        self._pub_event_types = [getattr(self, k) for k in dir(self) if
-                                 k.startswith('SUB_')]
+        self._pub_event_types = tuple(getattr(self, k) for k in dir(self) if
+                                      k.startswith('SUB_'))
         # and for private event types
-        self._priv_event_types = [getattr(self, k) for k in dir(self) if
-                                  k.startswith('_SUB_')]
+        self._priv_event_types = tuple(getattr(self, k) for k in dir(self) if
+                                       k.startswith('_SUB_'))
 
         self._subs = {k: [] for k in
                       self._pub_event_types + self._priv_event_types}
