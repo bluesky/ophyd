@@ -225,9 +225,10 @@ def test_default_configuration_smoke():
         magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
 
     d = MyDetector(prefix, name='d')
+    d.stage()
     {n: getattr(d, n).read_configuration() for n in d.signal_names}
     {n: getattr(d, n).describe_configuration() for n in d.signal_names}
-
+    d.unstage()
 
 @pytest.mark.parametrize('plugin',
                          _recursive_subclasses(PluginBase))
