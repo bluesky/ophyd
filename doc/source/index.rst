@@ -13,8 +13,8 @@ To represent a complex device with many components, it employs a hierarchical
 structure wherein a device is a composition of subdevices, all sharing the
 common interface.
 
-Why not just use pyepics?
--------------------------
+Overview
+--------
 
 Ophyd builds on pyepics, Python bindings to EPICS. It provides full access to
 the underlying pyepics PV objects, but it also provides some higher-level
@@ -39,6 +39,7 @@ interactive exploration.
   different Devices, so organized for different uses.
 
 Signals and devices have:
+
 * a ``connected`` attribute, to quickly check whether *all* the involved PVs
   are responding
 * a ``name`` attribute, assigning a human-friendly alias (e.g., "temperature")
@@ -54,16 +55,29 @@ Signals and devices have:
 * a single ``describe`` method which extrats the metadata (PV, units,
   precision, data type, etc.) of all a device's designated components
 
-Contents:
 
 .. toctree::
    :maxdepth: 1
+   :caption: Signals and Devices
 
+   architecture
    device-overview
-   commands
+   signals
+   status
    builtin-devices
    positioners
-   custom-devices
-   signals
    area-detector
-   architecture
+   custom-devices
+
+.. toctree::
+   :maxdepth: 1
+   :caption: CLI tools
+
+   commands
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer notes
+
+   release_notes
+   OEP/index

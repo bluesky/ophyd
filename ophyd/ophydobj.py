@@ -33,18 +33,29 @@ class OphydObject:
         self.name = name
         self._parent = parent
 
-        self._subs = dict((getattr(self, sub), []) for sub in dir(self)
-                          if sub.startswith('SUB_') or sub.startswith('_SUB_'))
+        # find magic class attributes to name 'event' types.
+        # for publicly exposed event types
+        self._pub_event_types = tuple(getattr(self, k) for k in dir(self) if
+                                      k.startswith('SUB_'))
+        # and for private event types
+        self._priv_event_types = tuple(getattr(self, k) for k in dir(self) if
+                                       k.startswith('_SUB_'))
+
+        self._subs = {k: [] for k in
+                      self._pub_event_types + self._priv_event_types}
+
         self._sub_cache = defaultdict(lambda: None)
 
     @property
     def connected(self):
-        '''Subclasses should override this'''
+        '''If the device is connected.
+
+        Subclasses should override this'''
         return True
 
     @property
     def parent(self):
-        '''The parent of the ophyd object
+        '''The parent of the ophyd object.
 
         If at the top of its hierarchy, `parent` will be None
         '''
@@ -61,7 +72,14 @@ class OphydObject:
 
     @property
     def report(self):
+        '''A report on the object.'''
         return {}
+
+    @property
+    def event_types(self):
+        '''Events that can be subscribed to via `obj.subscribe`
+        '''
+        return self._pub_event_types
 
     def _run_sub(self, cb, *args, **kwargs):
         '''Run a single subscription callback
@@ -75,8 +93,8 @@ class OphydObject:
         try:
             cb(*args, **kwargs)
         except Exception as ex:
-            sub_type = kwargs['sub_type']
-            logger.error('Subscription %s callback exception (%s)', sub_type,
+            logger.error('Subscription %s callback exception (%s)',
+                         kwargs['sub_type'],
                          self, exc_info=ex)
 
     def _run_cached_sub(self, sub_type, cb):
@@ -95,20 +113,22 @@ class OphydObject:
             args, kwargs = cached
             self._run_sub(cb, *args, **kwargs)
 
-    def _run_subs(self, *args, **kwargs):
+    def _run_subs(self, *args, sub_type, **kwargs):
         '''Run a set of subscription callbacks
 
-        Only the kwarg :param:`sub_type` is required, indicating
+        Only the kwarg ``sub_type`` is required, indicating
         the type of callback to perform. All other positional arguments
         and kwargs are passed directly to the callback function.
 
         No exceptions are raised when the callback functions fail.
-        '''
-        sub_type = kwargs['sub_type']
 
-        # Guarantee that the object will be in the kwargs
-        if 'obj' not in kwargs:
-            kwargs['obj'] = self
+        Parameters
+        ----------
+        sub_type : str
+            The name of the event (sub_type) to run all of the callbacks for.
+        '''
+        kwargs['sub_type'] = sub_type
+        kwargs.setdefault('obj', self)
 
         # And if a timestamp key exists, but isn't filled -- supply it with
         # a new timestamp
@@ -125,18 +145,33 @@ class OphydObject:
     def subscribe(self, cb, event_type=None, run=True):
         '''Subscribe to events this signal group emits
 
-        See also :func:`clear_sub`
+        .. warning::
+
+           If the callback raises any exceptions when run they will be
+           silently ignored.
 
         Parameters
         ----------
         cb : callable
             A callable function (that takes kwargs) to be run when the event is
-            generated
+            generated.  The expected signature is ::
+
+              def cb(*args, obj: OphydObject, sub_type: str, **kwargs) -> None:
+
+            The exact args/kwargs passed are whatever are passed to
+            ``_run_subs``
         event_type : str, optional
             The name of the event to subscribe to (if None, defaults to
             the default sub for the instance - obj._default_sub)
+
+            This maps to the ``sub_type`` kwargs in `_run_subs`
         run : bool, optional
             Run the callback now
+
+        See Also
+        --------
+        clear_sub, _run_subs
+
         '''
         if event_type is None:
             event_type = self._default_sub

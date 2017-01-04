@@ -99,11 +99,25 @@ class StatusBase:
                 self._cb = None
 
     def _finished(self, success=True, **kwargs):
+        '''Inform the status object that it is done and if it succeeded
+
+        .. warning::
+
+           kwargs are not used, but are accepted because pyepics gives
+           in a bunch of kwargs that we don't care about.  This allows
+           the status object to be handed directly to pyepics (but
+           this is probably a bad idea for other reason.
+
+           This may be deprecated in the future.
+
+        Parameters
+        ----------
+        success : bool, optional
+           if the action succeeded.
+        '''
         if self.done:
             return
 
-        # args/kwargs are not really used, but are passed - because pyepics
-        # gives in a bunch of kwargs that we don't care about
         if success and self.settle_time > 0:
             # delay gratification until the settle time is up
             self._settle_thread = threading.Thread(
@@ -119,7 +133,10 @@ class StatusBase:
         """
         Callback to be run when the status is marked as finished
 
-        The call back has no arguments
+        The callback has no arguments ::
+
+            def cb() -> None:
+
         """
         return self._cb
 

@@ -54,8 +54,6 @@ class PVPositioner(Device, PositionerBase):
         The stop PV to set when motion should be stopped
     stop_value : any, optional
         The value sent to stop_signal when a stop is requested
-    egu : str, optional
-        The engineering units (EGU) for a position
     done : Signal
         A readback value indicating whether motion is finished
     done_val : any, optional
