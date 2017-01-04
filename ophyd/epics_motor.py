@@ -40,22 +40,32 @@ class EpicsMotor(Device, PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
-    user_offset = Cpt(EpicsSignal, '.OFF')
+    # position
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
-    motor_egu = Cpt(EpicsSignal, '.EGU')
-    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN')
-    motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
-    motor_stop = Cpt(EpicsSignal, '.STOP')
+
+    # calibration dial <-> user
+    user_offset = Cpt(EpicsSignal, '.OFF')
+    user_offset_dir = Cpt(EpicsSignal, '.DIR')
     offset_freeze_switch = Cpt(EpicsSignal, '.FOFF')
+    set_use_switch = Cpt(EpicsSignal, '.SET')
+
+    # configuration
     velocity = Cpt(EpicsSignal, '.VELO')
     acceleration = Cpt(EpicsSignal, '.ACCL')
-    set_use_switch = Cpt(EpicsSignal, '.SET')
+    motor_egu = Cpt(EpicsSignal, '.EGU')
+
+    # motor status
+    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN')
+    motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
     high_limit_switch = Cpt(EpicsSignal, '.HLS')
     low_limit_switch = Cpt(EpicsSignal, '.LLS')
+    direction_of_travel = Cpt(EpicsSignal, '.TDIR')
+
+    # commands
+    motor_stop = Cpt(EpicsSignal, '.STOP')
     home_forward = Cpt(EpicsSignal, '.HOMF')
     home_reverse = Cpt(EpicsSignal, '.HOMR')
-    direction_of_travel = Cpt(EpicsSignal, '.TDIR')
 
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  name=None, parent=None, **kwargs):
@@ -63,7 +73,8 @@ class EpicsMotor(Device, PositionerBase):
             read_attrs = ['user_readback', 'user_setpoint']
 
         if configuration_attrs is None:
-            configuration_attrs = ['motor_egu', ]
+            configuration_attrs = ['motor_egu', 'velocity', 'acceleration',
+                                   'user_offset', 'user_offset_dir']
 
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
