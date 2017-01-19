@@ -68,5 +68,30 @@ def test_ophydobj():
     assert parent.connected
 
 
+def test_self_removing_cb():
+    class TestObj(OphydObject):
+        SUB_TEST = 'value'
+
+    test_obj = TestObj(name='name', parent=None)
+
+    hit_A = False
+    hit_B = False
+
+    def remover(obj, **kwargs):
+        nonlocal hit_A
+        hit_A = True
+        obj.clear_sub(remover)
+
+    def sitter(**kwargs):
+        nonlocal hit_B
+        hit_B = True
+
+    test_obj.subscribe(remover, 'value')
+    test_obj.subscribe(sitter, 'value')
+    test_obj._run_subs(sub_type='value')
+
+    assert hit_A
+    assert hit_B
+
 is_main = (__name__ == '__main__')
 main(is_main)
