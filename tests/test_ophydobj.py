@@ -74,24 +74,30 @@ def test_self_removing_cb():
 
     test_obj = TestObj(name='name', parent=None)
 
-    hit_A = False
-    hit_B = False
+    hit_A = 0
+    hit_B = 0
 
     def remover(obj, **kwargs):
         nonlocal hit_A
-        hit_A = True
+        hit_A += 1
         obj.clear_sub(remover)
 
     def sitter(**kwargs):
         nonlocal hit_B
-        hit_B = True
+        hit_B += 1
 
     test_obj.subscribe(remover, 'value')
     test_obj.subscribe(sitter, 'value')
     test_obj._run_subs(sub_type='value')
 
-    assert hit_A
-    assert hit_B
+    assert hit_A == 1
+    assert hit_B == 1
+
+    test_obj._run_subs(sub_type='value')
+
+    assert hit_A == 1
+    assert hit_B == 2
+
 
 is_main = (__name__ == '__main__')
 main(is_main)
