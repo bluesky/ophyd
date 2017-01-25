@@ -166,8 +166,12 @@ class Signal(OphydObject):
                 if settle_time is not None:
                     time.sleep(settle_time)
             finally:
-                st._finished(success=success)
+                # keep a local reference to avoid any GC shenanigans
+                th = self._set_thread
+                # these two must be in this order to avoid a race condition
                 self._set_thread = None
+                st._finished(success=success)
+                del th
 
         if self._set_thread is not None:
             raise RuntimeError('Another set() call is still in progress')
