@@ -139,7 +139,7 @@ class OphydObject:
         # callback at a later time (e.g., when a new subscription is made)
         self._sub_cache[sub_type] = (tuple(args), dict(kwargs))
 
-        for cb in self._subs[sub_type]:
+        for cb in tuple(self._subs[sub_type]):
             self._run_sub(cb, *args, **kwargs)
 
     def subscribe(self, cb, event_type=None, run=True):
