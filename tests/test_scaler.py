@@ -30,9 +30,16 @@ def test_scaler_functionality():
     sca = scaler.EpicsScaler(scalers[0], name='scaler',
                              read_attrs=['channels'])
     # hack the fake PV to know the enums
+    sca.wait_for_connection()
     if not REAL_SCALER:
         sca.count_mode._read_pv.enum_strs = ['OneShot', 'AutoCount']
-    sca.wait_for_connection()
+        sca.count_mode.put('OneShot')
+        # pin the fake PVs by setting them
+        attr_map = {getattr(sca, n).name: n for n in sca.configuration_attrs}
+        cnf = {attr_map[k]: v['value']
+               for k, v in sca.read_configuration().items()}
+
+        sca.configure(cnf)
 
     sca.preset_time.put(5.2)
 
