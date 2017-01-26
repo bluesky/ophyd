@@ -44,4 +44,4 @@ class EpicsScaler(Device):
                          configuration_attrs=configuration_attrs,
                          name=name, parent=parent, **kwargs)
 
-        self.stage_sigs.update([(self.count_mode, 0)])
+        self.stage_sigs.update([('count_mode', 0)])

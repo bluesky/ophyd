@@ -141,10 +141,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 class FileStorePluginBase(FileStoreBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.stage_sigs.update([(self.auto_increment, 'Yes'),
-                                (self.array_counter, 0),
-                                (self.auto_save, 'Yes'),
-                                (self.num_capture, 0),
+        self.stage_sigs.update([('auto_increment', 'Yes'),
+                                ('array_counter', 0),
+                                ('auto_save', 'Yes'),
+                                ('num_capture', 0),
                                 ])
         self._fn = None
 
@@ -199,9 +199,9 @@ class FileStoreHDF5(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.filestore_spec = 'AD_HDF5'  # spec name stored in resource doc
-        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.h5'),
-                                (self.file_write_mode, 'Stream'),
-                                (self.capture, 1)
+        self.stage_sigs.update([('file_template', '%s%s_%6.6d.h5'),
+                                ('file_write_mode', 'Stream'),
+                                ('capture', 1)
                                 ])
 
     def get_frames_per_point(self):
@@ -219,8 +219,8 @@ class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.filestore_spec = 'AD_TIFF'  # spec name stored in resource doc
-        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
-                                (self.file_write_mode, 'Single'),
+        self.stage_sigs.update([('file_template', '%s%s_%6.6d.tiff'),
+                                ('file_write_mode', 'Single'),
                                 ])
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.
@@ -249,15 +249,15 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         self._proc_name = proc_name
         cam = getattr(self.parent, self._cam_name)
         proc = getattr(self.parent, self._proc_name)
-        self.stage_sigs.update([(self.file_template, '%s%s_%6.6d.tiff'),
-                                (self.file_write_mode, 'Single'),
+        self.stage_sigs.update([('file_template', '%s%s_%6.6d.tiff'),
+                                ('file_write_mode', 'Single'),
                                 (proc.nd_array_port, cam.port_name.get()),
                                 (proc.reset_filter, 1),
                                 (proc.enable_filter, 1),
                                 (proc.filter_type, 'Average'),
                                 (proc.auto_reset_filter, 1),
                                 (proc.filter_callbacks, 1),
-                                (self.nd_array_port, proc.port_name.get())
+                                ('nd_array_port', proc.port_name.get())
                                 ])
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.

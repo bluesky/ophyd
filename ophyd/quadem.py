@@ -84,8 +84,8 @@ class QuadEM(SingleTrigger, DetectorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.stage_sigs.update([(self.acquire, 0),  # if acquiring, stop
-                                (self.acquire_mode, 2)  # single mode
+        self.stage_sigs.update([('acquire', 0),  # if acquiring, stop
+                                ('acquire_mode', 2)  # single mode
                                 ])
         self._acquisition_signal = self.acquire
 

@@ -76,9 +76,9 @@ class PluginBase(ADBase):
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
 
-        self.stage_sigs[self.blocking_callbacks] = 'Yes'
+        self.stage_sigs['blocking_callbacks'] = 'Yes'
         if self.parent is not None and hasattr(self.parent, 'cam'):
-            self.stage_sigs.update([(self.parent.cam.array_callbacks, 1),
+            self.stage_sigs.update([('parent.cam.array_callbacks', 1),
                                     ])
 
     _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
