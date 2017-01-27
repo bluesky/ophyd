@@ -22,8 +22,8 @@ To be used like so:
 
 import os
 import logging
+import warnings
 import uuid
-import filestore.api as fs
 
 from datetime import datetime
 from collections import defaultdict
@@ -63,8 +63,15 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     `datetime.strftime`, which accepts the standard tokens, such as
     %Y-%m-%d.
     """
-    def __init__(self, *args, write_path_template=None,
+    def __init__(self, *args, fs=None, write_path_template=None,
                  read_path_template=None, **kwargs):
+        if fs is None:
+            warnings.warn("The device {} is not provided with a FileStore "
+                          "instance. It will fall back to using the singleton "
+                          "configured at import-time. This will not be "
+                          "supported in future version of ophyd.".format(self))
+            import filestore.api as fs
+        self._fs = fs
         # TODO Can we make these args? Depends on plugin details.
         if write_path_template is None:
             raise ValueError("write_path_template is required")
@@ -211,8 +218,8 @@ class FileStoreHDF5(FileStorePluginBase):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
-        self._resource = fs.insert_resource(self.filestore_spec,
-                                            self._fn, res_kwargs)
+        self._resource = self._fs.insert_resource(self.filestore_spec,
+                                                  self._fn, res_kwargs)
 
 
 class FileStoreTIFF(FileStorePluginBase):
@@ -233,8 +240,8 @@ class FileStoreTIFF(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        self._resource = fs.insert_resource(self.filestore_spec,
-                                            self._fp, res_kwargs)
+        self._resource = self._fs.insert_resource(self.filestore_spec,
+                                                  self._fp, res_kwargs)
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -278,8 +285,8 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        self._resource = fs.insert_resource(self.filestore_spec,
-                                            self._fp, res_kwargs)
+        self._resource = self._fs.insert_resource(self.filestore_spec,
+                                                  self._fp, res_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
@@ -287,7 +294,7 @@ class FileStoreIterativeWrite(FileStoreBase):
     def generate_datum(self, key, timestamp):
         uid = super().generate_datum(key, timestamp)
         i = next(self._point_counter)
-        fs.insert_datum(self._resource, uid, {'point_number': i})
+        self._fs.insert_datum(self._resource, uid, {'point_number': i})
         return uid
 
 
@@ -311,7 +318,7 @@ class FileStoreBulkWrite(FileStoreBase):
             for reading in readings:
                 uid = reading['value']
                 kwargs = self._datum_kwargs_map[uid]
-                fs.insert_datum(self._resource, uid, kwargs)
+                self._fs.insert_datum(self._resource, uid, kwargs)
         return super().unstage()
 
 
