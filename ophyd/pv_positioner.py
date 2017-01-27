@@ -184,6 +184,9 @@ class PVPositioner(Device, PositionerBase):
         RuntimeError
             If motion fails other than timing out
         '''
+        # Before moving, ensure we can stop (if a stop_signal is configured).
+        if self.stop_signal is not None:
+            self.stop_signal.wait_for_connection()
         status = super().move(position, timeout=timeout, moved_cb=moved_cb)
 
         has_done = self.done is not None
