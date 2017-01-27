@@ -33,8 +33,8 @@ class TriggerBase(BlueskyInterface):
         # careful here: quadEM devices have areadetector components but,
         # they have no 'cam' plugin. See QuadEM initializer.
         if hasattr(self, 'cam'):
-            self.stage_sigs.update([(self.cam.acquire, 0),  # If acquiring, stop
-                                    (self.cam.image_mode, 1),  # 'Multiple' mode
+            self.stage_sigs.update([('cam.acquire', 0),  # If acquiring, stop
+                                    ('cam.image_mode', 1),  # 'Multiple' mode
                                     ])
             self._acquisition_signal = self.cam.acquire
 
