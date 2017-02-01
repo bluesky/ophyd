@@ -1,5 +1,5 @@
 # vi: ts=4 sw=4
-'''
+'''AreaDetector Devices
 
 `areaDetector`_ detector abstractions
 

@@ -1,6 +1,7 @@
 # vi: ts=4 sw=4
-'''
-`areaDetector`_ plugin abstractions
+'''AreaDetector plugins
+
+ `areaDetector`_ plugin abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
