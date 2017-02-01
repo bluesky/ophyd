@@ -1,11 +1,4 @@
 # vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.pvpositioner` - Ophyd PV positioners
-========================================================
-
-.. module:: ophyd.control.pvpositioner
-   :synopsis:
-'''
 
 import logging
 

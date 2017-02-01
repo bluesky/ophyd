@@ -11,7 +11,8 @@ class OphydObject:
     '''The base class for all objects in Ophyd
 
     Handles:
-    * Subscription/callback mechanism
+
+      * Subscription/callback mechanism
 
     Parameters
     ----------

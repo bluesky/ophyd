@@ -1,13 +1,3 @@
-'''
-:mod:`ophyd.utils.errors` - Ophyd exceptions
-============================================
-
-.. module:: ophyd.utils.errors
-   :synopsis: Exceptions and error-handling routines that
-       are specific to Ophyd
-'''
-
-
 class OpException(Exception):
     '''Ophyd base exception class'''
     pass

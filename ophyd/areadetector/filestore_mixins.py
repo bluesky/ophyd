@@ -1,7 +1,7 @@
 """Mixin classes that customize the filestore integration of AreaDetector
 FilePlugins.
 
-To be used like so:
+To be used like so ::
 
     from ophyd.areadetector.detectors import PerkinElmerDetector
     from ophyd.areadetector.plugins import HDF5Plugin

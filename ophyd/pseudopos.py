@@ -1,11 +1,4 @@
 # vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.pseudopos` - Pseudo positioners
-===================================================
-
-.. module:: ophyd.control.pseudopos
-   :synopsis: Pseudo positioner support
-'''
 
 
 import logging

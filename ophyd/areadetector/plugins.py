@@ -1,10 +1,6 @@
 # vi: ts=4 sw=4
 '''
-:mod:`ophyd.control.areadetector.plugins` - areaDetector plugins
-======================================================
-
-.. module:: ophyd.control.areadetector.plugins
- :synopsis:  `areaDetector`_ plugin abstractions
+`areaDetector`_ plugin abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''

@@ -36,8 +36,8 @@ class ROI(Device):
 def add_rois(range_, **kwargs):
     '''Add one or more ROIs to an MCA instance
 
-       Parameters:
-       -----------
+       Parameters
+       ----------
        range_ : sequence of ints
            Must be be in the set [0,31]
 

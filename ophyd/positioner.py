@@ -1,8 +1,7 @@
 import logging
 import time
-from functools import partial
 from collections import OrderedDict
-
+import functools
 from .ophydobj import OphydObject
 from .status import (MoveStatus, wait as status_wait)
 from .utils.epics_pvs import (data_type, data_shape)
@@ -15,9 +14,13 @@ class PositionerBase(OphydObject):
 
     Subclass from this to implement your own positioners.
 
-    Note: Subclasses should add an additional 'wait' keyword argument on the
-    move method. The MoveStatus object returned from PositionerBase can then be
-    waited on after the subclass finishes the motion configuration.
+    .. note ::
+
+       Subclasses should add an additional 'wait' keyword argument on
+       the move method. The `MoveStatus` object returned from
+       `PositionerBase` can then be waited on after the subclass
+       finishes the motion configuration.
+
     '''
 
     SUB_START = 'start_moving'
@@ -109,6 +112,8 @@ class PositionerBase(OphydObject):
         RuntimeError
             If motion fails other than timing out
         '''
+
+
         if timeout is None:
             timeout = self._timeout
 
@@ -121,7 +126,7 @@ class PositionerBase(OphydObject):
                             settle_time=self._settle_time)
 
         if moved_cb is not None:
-            status.finished_cb = partial(moved_cb, obj=self)
+            status.finished_cb = functools.partial(moved_cb, obj=self)
             # the status object will run this callback when finished
 
         self.subscribe(status._finished, event_type=self._SUB_REQ_DONE,
@@ -130,7 +135,7 @@ class PositionerBase(OphydObject):
         return status
 
     def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
-        '''Call when motion has completed.  Runs SUB_DONE subscription.'''
+        '''Call when motion has completed.  Runs ``SUB_DONE`` subscription.'''
         if success:
             self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
                            value=value)
