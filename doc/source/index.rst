@@ -26,11 +26,10 @@ and development.
 
    architecture
    device-overview
+   positioners
    signals
    status
-   positioners
    area-detector
-   custom-devices
 
 
 .. toctree::

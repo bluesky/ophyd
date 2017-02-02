@@ -5,8 +5,10 @@ from enum import Enum
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject
-from .status import DeviceStatus
+from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging)
+
+from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
@@ -399,7 +401,9 @@ class ComponentMeta(type):
 
 class BlueskyInterface:
     """Classes that inherit from this can safely customize the
-    these methods without breaking mro."""
+    these methods without breaking mro.
+
+    """
     def __init__(self, *args, **kwargs):
         # Subclasses can populate this with (signal, value) pairs, to be
         # set by stage() and restored back by unstage().
@@ -409,23 +413,103 @@ class BlueskyInterface:
         self._original_vals = OrderedDict()
         super().__init__(*args, **kwargs)
 
-    def trigger(self):
+    def trigger(self) -> StatusBase:
+        """Trigger the device and return status object
+
+        This method is responsible for implementing 'trigger' or
+        'acquire' functionality of this device.
+
+        If there is an appreciable time between triggering the device
+        and it being able to be read (via the
+        :meth:`~BlueskyInterface.read` method) then this method is
+        also responsible for arranging that the
+        :obj:`~ophyd.status.StatusBase` object returned my this method
+        is notified when the device is ready to be read.
+
+        If there is no delay between triggering and being readable,
+        then this method must return a :obj:`~ophyd.status.SatusBase`
+        object which is already completed.
+
+        Returns
+        -------
+        status : StatusBase
+            :obj:`~ophyd.status.StatusBase` object which will be marked
+            as complete when the device is ready to be read.
+
+        """
         pass
 
-    def read(self):
-        return OrderedDict()
+    def read(self) -> Dict[str, dict]:
+        """Read data from the device
 
-    def describe(self):
-        return OrderedDict()
+        This method is expected to be as instantaneous as possible,
+        with any substantial acquisition time taken care of in
+        :meth:`~BlueskyInterface.trigger`.
 
-    def stage(self):
+        The `OrderedDict` returned by this method must have identical
+        keys (in the same order) as the `OrderedDict` returned by
+        :meth:`~BlueskyInterface.describe()`.
+
+        By convention, the first key in the return is the 'primary' key
+        and maybe used by heuristics in :mod:`bluesky`.
+
+        The values in the ordered dictionary must be dict (-likes) with the
+        keys ``{'value', 'timestamp'}``.  The ``'value'`` may have any type,
+        the timestamp must be a float UNIX epoch timestamp in UTC.
+
+        Returns
+        -------
+        data : OrderedDict
+            The keys must be strings and the values must be dict-like
+            with the keys ``{'value', 'timestamp'}``
+
         """
-        Prepare the device to be triggered.
+        return OrderedDict()
+
+    def describe(self) -> Dict[str, dict]:
+        """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
+
+        This keys in the `OrderedDict` this method returns must match the
+        keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
+
+        This provides schema related information, (ex shape, dtype), the
+        source (ex PV name), and if available, units, limits, precision etc.
+
+        Returns
+        -------
+        data_keys : OrderedDict
+            The keys must be strings and the values must be dict-like
+            with the ``event_model.event_descriptor.data_key`` schema.
+        """
+        return OrderedDict()
+
+    def stage(self) -> List[object]:
+        """Stage the device for data collection.
+
+        This method is expected to put the device into a state where
+        repeated calls to :meth:`~BlueskyInterface.trigger` and
+        :meth:`~BlueskyInterface.read` will 'do the right thing'.
+
+        Staging not idempotent and should raise
+        :obj:`RedundantStaging` if staged twice without an
+        intermediate :meth:`~BlueskyInterface.unstage`.
+
+        This method should be as fast as is feasible as it does not return
+        a status object.
+
+        The return value of this is a list of all of the (sub) devices
+        stage, including it's self.  This is used to ensure devices
+        are not staged twice by the :obj:`~bluesky.run_engine.RunEngine`.
+
+        This is an optional method, if the device does not need
+        staging behavior it should not implement `stage` (or
+        `unstage`).
 
         Returns
         -------
         devices : list
             list including self and all child devices staged
+
         """
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
@@ -484,16 +568,23 @@ class BlueskyInterface:
             self._staged = Staged.yes
         return devices_staged
 
-    def unstage(self):
-        """
-        Restore the device to 'standby'.
+    def unstage(self) -> List[object]:
+        """Unstage the device.
 
-        Multiple calls (without a new call to 'stage') have no effect.
+        This method returns the device to the state it was prior to the
+        last `stage` call.
+
+        This method should be as fast as feasible as it does not
+        return a status object.
+
+        This method must be idempotent, multiple calls (without a new
+        call to 'stage') have no effect.
 
         Returns
         -------
         devices : list
             list including self and all child devices unstaged
+
         """
         logger.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
@@ -517,10 +608,32 @@ class BlueskyInterface:
         self._staged = Staged.no
         return devices_unstaged
 
-    def pause(self):
+    def pause(self) -> None:
+        """Attempt to 'pause' the device.
+
+        This is called when ever the
+        :obj:`~bluesky.run_engine.RunEngine` is interrupted.
+
+        A device may have internal state that means plans can not
+        safely be re-wound.  This method may: put the device in a
+        'paused' state and/or raise
+        :obj:`~bluesky.run_engine.NoReplayAllowed` to indicate that
+        the plan can not be rewound.
+
+        Raises
+        ------
+        bluesky.run_engine.NoReplayAllowed
+
+        """
         pass
 
-    def resume(self):
+    def resume(self) -> None:
+        """Resume a device from a 'paused' state
+
+        This is called by the :obj:`bluesky.run_engine.RunEngine`
+        when it resumes from an interruption and is responsible for
+        ensuring that the device is ready to take data again.
+        """
         pass
 
 
