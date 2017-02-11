@@ -29,6 +29,7 @@ Hardware abstraction
 Put another way, if a hierarchical device is a tree, **Signals** are the leaves
 and **Devices** are the nodes.
 
+.. _hl_api:
 
 Uniform High-level Interface
 ============================
@@ -44,7 +45,6 @@ system.  Thus, from the perspective of the `bluesky`_, a motor, a
 temperature controller, a gate valve, and software pseudo-positioner
 can all be treated the same.
 
-See :ref:`hl_api` and :ref:`positioners` for details and semantics.
 
 Read-able Interface
 -------------------

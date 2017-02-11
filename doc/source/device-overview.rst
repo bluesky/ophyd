@@ -21,7 +21,7 @@ it must be sub-classed to provide it with
 Constructing `Device`
 =====================
 
-Under the hood, `Device` uses some sophisticated
+Under the hood, `Device` uses a metaclass to allow for
 
 .. code-block:: python
 
@@ -48,26 +48,6 @@ or simply as ``EpicsSignals`` on their own.
 
 Components
 ----------
-
-
-.. _hl_api:
-
-High level API
-==============
-
-.. autosummary::
-
-   Device.trigger
-
-   Device.read
-   Device.describe
-
-   Device.configure
-   Device.read_configuration
-   Device.describe_configuration
-
-   Device.stage
-   Device.unstage
 
 
 
