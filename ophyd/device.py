@@ -106,7 +106,10 @@ class Component:
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
-        if self.suffix is not None:
+        if DynamicDeviceComponent in self.cls.mro():
+            cpt_inst = self.cls(self.suffix).create_component(self)
+
+        elif self.suffix is not None:
             pv_name = self.maybe_add_prefix(instance, 'suffix', self.suffix)
             cpt_inst = self.cls(pv_name, parent=instance, **kwargs)
         else:
