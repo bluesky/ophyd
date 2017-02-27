@@ -1,19 +1,67 @@
-======================
- Overview of a Device
-======================
+========
+ Device
+========
+
+.. automodule:: ophyd.device
 
 
-Device API
-==========
-.. currentmodule:: ophyd
-
-All Devices have certain methods and attributes in common.
-
-.. autoclass:: Device
+The core class of :mod:`ophyd` is :class:`Device` which encodes
+the structure of the device and provides much of core API.
 
 
-Staging
-=======
+.. autosummary::
+   :toctree: _as_gen
+
+   Device
+
+The base :class:`Device` is not particularly useful on it's own,
+it must be sub-classed to provide it with
+
+
+Constructing `Device`
+=====================
+
+Under the hood, `Device` uses a metaclass to allow for
+
+.. code-block:: python
+
+    from ophyd import Device, EpicsSignal, EpicsSignalRO
+    from ophyd import Component as Cpt
+    from ophyd.utils import set_and_wait
+
+    class Robot(Device):
+        sample_number = Cpt(EpicsSignal, 'ID:Tgt-SP')
+        load_cmd = Cpt(EpicsSignal, 'Cmd:Load-Cmd.PROC')
+        unload_cmd = Cpt(EpicsSignal, 'Cmd:Unload-Cmd.PROC')
+        execute_cmd = Cpt(EpicsSignal, 'Cmd:Exec-Cmd')
+        status = Cpt(EpicsSignal, 'Sts-Sts')
+
+    my_robot = Robot('pv_prefix:', name='my_robot')
+
+
+In this case, ``my_robot.load_cmd`` would be an ``EpicsSignal`` that points to
+the PV ``pv_prefix:Cmd:Load-Cmd.PROC``.  Each of the components can be used as
+``stage_sigs``, added to the list of ``read_attrs`` or ``configuration_attrs``,
+or simply as ``EpicsSignals`` on their own.
+
+
+
+Components
+----------
+
+
+
+
+Trigger, Read and Describe
+--------------------------
+
+
+configure, read_configuration, describe_configuration
+-----------------------------------------------------
+
+
+Stage and unstage
+-----------------
 
 When a Device ``d`` is used in scan, it is "staged" and "unstaged." Think of
 this as "setup" and "cleanup". That is, before a device is triggered, read, or
@@ -62,32 +110,24 @@ to 5. When it is unstaged, it will be set back to whatever value it had
 right before it was staged.
 
 
+Implicit triggering
+-------------------
 
-High-level Interface (used by bluesky)
-======================================
+
+Count Time
+----------
+
+
+Low level API
+=============
 
 
 .. autosummary::
    :toctree: _as_gen
    :nosignatures:
 
-   Device.read
-   Device.describe
-   Device.trigger
-   Device.stage
-   Device.unstage
-   Device.configure
-   Device.read_configuration
-   Device.describe_configuration
-
-Low-level Interface (for exploration, debugging)
-================================================
-
-.. autoattribute:: ophyd.Device.connected
-
-   ``True`` is all components are connected, ``False`` if any are not
-
-.. automethod:: ophyd.Device.wait_for_connection
-.. automethod:: ophyd.Device.get
-.. automethod:: ophyd.Device.put
-.. automethod:: ophyd.Device.get_device_tuple
+   Device.connected
+   Device.wait_for_connection
+   Device.get
+   Device.put
+   Device.get_device_tuple

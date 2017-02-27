@@ -1,11 +1,4 @@
 # vi: ts=4 sw=4 sts=4 expandtab
-'''
-:mod:`ophyd.utils.epics_pvs` - EPICS-related utilities
-======================================================
-
-.. module:: ophyd.utils.epics_pvs
-   :synopsis:
-'''
 from enum import IntEnum
 import time as ttime
 import ctypes
@@ -126,11 +119,15 @@ class MonitorDispatcher(epics.ca.CAThread):
     Using epics CA calls (caget, caput, etc.) from those callbacks is not
     possible without this dispatcher workaround.
 
-    ... note:: Without `all_contexts` set, only the callbacks that are run with
-        the same context as the the main thread are affected.
+    ... note::
 
-    ... note:: Ensure that you call epics.ca.use_initial_context() at startup in
-        the main thread
+       Without `all_contexts` set, only the callbacks that are run with
+       the same context as the the main thread are affected.
+
+    ... note::
+
+       Ensure that you call epics.ca.use_initial_context() at startup in
+       the main thread
 
     Parameters
     ----------
@@ -452,8 +449,8 @@ _type_map = {'number': (float, ),
 def data_type(val):
     '''Determine data-type of val.
 
-    Returns:
-    -----------
+    Returns
+    -------
     str
         One of ('number', 'array', 'string'), else raises ValueError
     '''
@@ -467,10 +464,11 @@ def data_type(val):
 def data_shape(val):
     '''Determine data-shape (dimensions)
 
-    Returns:
-    --------
+    Returns
+    -------
     list
-        Empty list if val is number or string, otherwise list(np.ndarray.shape)
+        Empty list if val is number or string, otherwise
+        ``list(np.ndarray.shape)``
     '''
     for json_type, py_types in _type_map.items():
         if type(val) in py_types:

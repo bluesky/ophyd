@@ -1,6 +1,6 @@
 """Mixin classes that customize the triggering behavior of AreaDetector
 
-To be used like so:
+To be used like so ::
 
     from ophyd.areadetector.detectors import PerkinElmerDetector
     from ophyd.areadetector.trigger_mixins import SingleTrigger
@@ -45,8 +45,9 @@ class SingleTrigger(TriggerBase):
     """
     This trigger mixin class takes one acquisition per trigger.
 
-    Example
-    -------
+    Examples
+    --------
+
     >>> class SimDetector(SingleTrigger):
     ...     pass
     >>> det = SimDetector('..pv..')
@@ -103,8 +104,9 @@ class MultiTrigger(TriggerBase):
     See the example below, which takes and 3 and 1 acquisitions in
     alternation.
 
-    Example
-    -------
+    Examples
+    --------
+
     >>> class MyDetector(SimDetector, MultiTrigger):
     ...     pass
     # EXAMPLE:

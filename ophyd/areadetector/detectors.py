@@ -1,10 +1,7 @@
 # vi: ts=4 sw=4
-'''
-:mod:`ophyd.control.areadetector` - areaDetector
-================================================
+'''AreaDetector Devices
 
-.. module:: ophyd.areadetector.detectors
- :synopsis:  `areaDetector`_ detector abstractions
+`areaDetector`_ detector abstractions
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
