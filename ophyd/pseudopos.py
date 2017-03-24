@@ -46,8 +46,8 @@ class PseudoSingle(Device, SoftPositioner):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
-    setpoint = Cpt(AttributeSignal, attr='target')
     readback = Cpt(AttributeSignal, attr='position')
+    setpoint = Cpt(AttributeSignal, attr='target')
 
     def __init__(self, prefix='', *, limits=None, egu='', parent=None,
                  name=None, source='computed', read_attrs=None,
