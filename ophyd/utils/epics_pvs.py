@@ -411,7 +411,8 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         logger.info("Waiting for %s to be set from %r to %r%s...",
                     signal.name, current_value, val, within_str)
         ttime.sleep(poll_time)
-        poll_time *= 2  # logarithmic back-off
+        if poll_time < 0.1:
+            poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
         if expiration_time is not None and ttime.time() > expiration_time:
             raise TimeoutError("Attempted to set %r to value %r and timed "
