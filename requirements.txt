@@ -1,0 +1,6 @@
+ipython
+networkx
+numpy
+prettytable
+pyepics
+git+https://github.com/NSLS-II/filestore#egg=filestore
