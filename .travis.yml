@@ -21,9 +21,11 @@ cache:
 
 matrix:
   include:
-    - python: 3.4
-      env: BUILD_DOCS=false
     - python: 3.5
+      env: BUILD_DOCS=false CONDA_ENV=1
+    - python: 3.6
+      env: BUILD_DOCS=false CONDA_ENV=1
+    - python: 3.6
       env: BUILD_DOCS=true
 
 before_install:
@@ -33,7 +35,6 @@ before_install:
   - export EPICS_CA_AUTO_ADDR_LIST="no"
   - export EPICS_CA_MAX_ARRAY_BYTES=10000000
   - export DOCKERIMAGE="klauer/epics-docker"
-  - export CONDA_ENV="testenv"
 
   - perl --version
   - git fetch --unshallow
@@ -43,34 +44,28 @@ before_install:
   - docker run -d -p $DOCKER0_IP:5064:5064/tcp -p $DOCKER0_IP:5065:5065/udp --name epics_iocs ${DOCKERIMAGE}
   - docker ps -a
 
-  # INSTALL CONDA
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - "./miniconda.sh -b -p /home/travis/mc"
-  - env
-
-  - export PATH=/home/travis/mc/bin:$PATH
-  - conda config --set always_yes true
-  - conda update conda --yes
-  - conda install conda-build anaconda-client jinja2
-  - conda config --add channels lightsource2-dev
-  - conda config --add channels lightsource2
-  - conda config --add channels soft-matter
-  - conda config --add channels defaults
-
-  # MAKE THE CONDA RECIPE
-  - conda create -n $CONDA_ENV python=$TRAVIS_PYTHON_VERSION -c defaults
-  - source activate $CONDA_ENV
-
-  # need to reactivate after installing epics-base so that the EPICS_BASE env
-  # var is set
-  - source activate $CONDA_ENV
+  - |
+    if [ $CONDA_ENV ]; then
+       wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+       chmod +x miniconda.sh
+       ./miniconda.sh -b -p /home/travis/mc
+       export PATH=/home/travis/mc/bin:$PATH
+       conda config --set show_channel_urls True
+       conda config --set always_yes True
+    fi
 
 install:
-  # INSTALL OPHYD
-  - conda install numpy pyepics prettytable filestore ipython pyolog networkx
-  - conda install readline -c lightsource2
-  - pip install coveralls pytest pytest-cov codecov
+  - |
+    if [ $CONDA_ENV ]; then
+       conda create -n testenv python=$TRAVIS_PYTHON_VERSION numpy pyepics prettytable filestore ipython pyolog networkx -c lightsource2-tag -c conda-forge -c soft-matter -c defaults --override-channels
+       source activate testenv
+       conda install readline -c lightsource2
+       source activate testenv
+    else
+       sudo bash install_epics_on_travis.sh
+       pip install -r requirements.txt
+    fi
+  - pip install -r test-requirements.txt
   - python setup.py develop
 
   # setup some path environment variables for epics
