@@ -20,6 +20,8 @@ import epics
 
 from .errors import DisconnectedError, OpException
 
+MIN_POLL_TIME = 0.0001
+
 __all__ = ['split_record_field',
            'strip_field',
            'record_field',
@@ -388,6 +390,9 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         atol = signal.tolerance
     if rtol is None and hasattr(signal, 'rtolerance'):
         rtol = signal.rtolerance
+    if poll_time < MIN_POLL_TIME:
+        raise ValueError("poll_time {} < MIN_POLL_TIME == {}"
+                         "".format(poll_time, MIN_POLL_TIME))
 
     signal.put(val)
     expiration_time = ttime.time() + timeout if timeout is not None else None
