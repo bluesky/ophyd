@@ -59,8 +59,7 @@ install:
     if [ $CONDA_ENV ]; then
        conda create -n testenv python=$TRAVIS_PYTHON_VERSION numpy pyepics prettytable filestore ipython pyolog networkx -c lightsource2-tag -c conda-forge -c soft-matter -c defaults --override-channels
        source activate testenv
-       conda install readline -c lightsource2
-       source activate testenv
+       conda install readline -c lightsource2-tag
     else
        sudo -E bash install_epics_on_travis.sh
        pip install -r requirements.txt
