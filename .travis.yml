@@ -24,9 +24,9 @@ matrix:
     - python: 3.5
       env: BUILD_DOCS=false CONDA_ENV=1
     - python: 3.6
-      env: BUILD_DOCS=false CONDA_ENV=1
+      env: BUILD_DOCS=true CONDA_ENV=1
     - python: 3.6
-      env: BUILD_DOCS=true EPICS_DEB_DIST="jessie/staging"
+      env: BUILD_DOCS=false EPICS_DEB_DIST="jessie/staging"
 
 before_install:
   - git clone https://github.com/NSLS-II/nsls2-ci --branch master --single-branch ~/ci_scripts
