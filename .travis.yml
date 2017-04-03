@@ -8,7 +8,12 @@ env:
     DOCS_SUBDIR: doc/
     TARGET_DEV_SUBDIR: ophyd/
     HTML_SUBDIR: build/html
-    DOCS_PIP_DEPS: "tqdm"
+    DOCS_PIP_DEPS: "tqdm graphviz"
+
+addons:
+  apt:
+    packages:
+      - graphviz
 
 
 services:
