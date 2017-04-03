@@ -8,7 +8,13 @@ from .ophydobj import OphydObject
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging)
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, TypeVar
+A, B = TypeVar('A'), TypeVar('B')
+
+
+class OrderedDictType(Dict[A, B]):
+    ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -442,7 +448,7 @@ class BlueskyInterface:
         """
         pass
 
-    def read(self) -> Dict[str, dict]:
+    def read(self) -> OrderedDictType[str, dict]:
         """Read data from the device
 
         This method is expected to be as instantaneous as possible,
@@ -469,7 +475,7 @@ class BlueskyInterface:
         """
         return OrderedDict()
 
-    def describe(self) -> Dict[str, dict]:
+    def describe(self) -> OrderedDictType[str, dict]:
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
 
         This keys in the `OrderedDict` this method returns must match the

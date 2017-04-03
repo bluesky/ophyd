@@ -4,26 +4,31 @@
  Architecture
 ==============
 
-``Ophyd`` is hardware abstraction layer to provide a consistent
+Hardware abstraction
+====================
+
+
+``Ophyd`` is the hardware abstraction layer that provides a consistent
 interface between the underlying control communication protocol and
 `bluesky <https://nsls-ii.github.io/bluesky>`_.  This is done by
 bundling sets of the underlying process variables into hierarchical
 devices and exposing a semantic API in terms of control system
-primitives.  Thus we have two terms that will be used through out
+primitives.  Two terms that will be used throughout are
 
-Hardware abstraction
-====================
 
   **Signal**
+
     Represents an atomic 'process variable'. This is nominally a
-    'scalar' value and can not be decomposed any further by layers
+    'scalar' value and cannot be decomposed any further by layers
     above :mod:`ophyd`.  In this context an array (waveform) or string
-    would be a scalar because there is no way to read only part of it.
+    would be a scalar because there is no ophyd API to read only part
+    of it.
 
   **Device**
-    Hierarchy composed of Signals and other Devices.  The components of
-    a Device can be introspected by layers above :mod:`ophyd` and may be
-    decomposed to, ultimately, the underlying Signals.
+
+    Hierarchy composed of Signals and other Devices.  The components
+    of a Device can be introspected by layers above :mod:`ophyd` and
+    may be decomposed to, ultimately, the underlying Signals.
 
 
 Put another way, if a hierarchical device is a tree, **Signals** are the leaves
@@ -49,7 +54,7 @@ can all be treated the same.
 Read-able Interface
 -------------------
 
-The bare minimum of functions that an objects needs to implement is
+The minimum set of methods an object must implement is
 
 .. autosummary::
    :toctree: _as_gen
@@ -58,11 +63,21 @@ The bare minimum of functions that an objects needs to implement is
    ~device.BlueskyInterface.read
    ~device.BlueskyInterface.describe
 
-along with a ``name`` attribute which give a `str` name of the device
-and a ``parent`` attribute which is either another `Device` or `None`
+along with two attributes:
 
-For complex devices which may have 'modes' of operation, the following
-methods manage changing from 'stand-by' to 'data-collection' modes.
+  ==============   ==========================================================
+  :attr:`name`     name of the device (:class:`str`)
+  :attr:`parent`   parent in tree (:class:`Device` or :obj:`None`)
+  ==============   ==========================================================
+
+There are two optional methods which plans may use to 'enable' or
+'disable' a device for data collection.  For example, a beam position
+monitor maybe in continuous mode when not collecting data but be
+stitched to a triggered mode for scanning.  By convention ``unstage``
+'undoes' whatever ``stage`` did to the state of the underlying
+hardware and should return it to the state it was before ``stage`` was
+called.
+
 
 .. autosummary::
    :toctree: _as_gen
@@ -70,12 +85,9 @@ methods manage changing from 'stand-by' to 'data-collection' modes.
    ~device.BlueskyInterface.stage
    ~device.BlueskyInterface.unstage
 
-Data collection may be suspended by the
-:obj:`~bluesky.run_engine.RunEngine`, either automatically or due to
-user intervention.  The :meth:`pause` and :meth:`resume` methods are
-used to notify devices of the interruption and :meth:`pause` offers a
-way to control the re-winding behavior of the
-:obj:`~bluesky.run_engine.RunEngine`.
+Two additional optional methods are used to notify devices if,
+during a scan, the run is suspended.  The semantics of these methods
+is coupled to :class:`~bluesky.run_engine.RunEngine`.
 
 .. autosummary::
    :toctree: _as_gen

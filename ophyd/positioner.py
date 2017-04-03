@@ -3,9 +3,9 @@ import time
 from collections import OrderedDict
 import functools
 from .ophydobj import OphydObject
-from .status import (MoveStatus, wait as status_wait)
+from .status import (MoveStatus, wait as status_wait, StatusBase)
 from .utils.epics_pvs import (data_type, data_shape)
-
+from typing import Any, Callable
 logger = logging.getLogger(__name__)
 
 
@@ -39,12 +39,66 @@ class PositionerBase(OphydObject):
         self._settle_time = settle_time
         self._timeout = timeout
 
-    @property
-    def report(self):
-        rep = super().report
-        rep['position'] = self.position
-        return rep
+    # High level
+    def set(self, new_position: Any, *,
+            timeout: float=None,
+            moved_cb: Callable =None,
+            wait: bool =False) -> StatusBase:
+        """Set a value and return a Status object
 
+
+        Parameters
+        ----------
+        new_position : object
+
+            The input here is whatever the device requires (this
+            should be over-ridden by the implementation.  For example
+            a motor would take a float, a shutter the strings {'Open',
+            'Close'}, and a goineometer (h, k, l) tuples
+
+        timeout : float, optional
+
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
+
+        moved_cb : callable, optional
+            Deprecated
+
+            Call this callback when movement has finished. This callback
+            must accept one keyword argument: 'obj' which will be set to
+            this positioner instance.
+
+        wait : bool, optional
+            Deprecated
+
+            If the method should block until the Status object reports
+            it is done.
+
+            Defaults to False
+
+        Returns
+        -------
+        status : StatusBase
+            Status object to indicate when the motion / set is done.
+        """
+        return self.move(new_position, wait=wait, moved_cb=moved_cb,
+                         timeout=timeout)
+
+    def stop(self, *, success: bool =False):
+        '''Stops motion.
+
+        Sub-classes must extend this method to _actually_ stop the device.
+
+        Parameters
+        ----------
+        success : bool, optional
+            If the move should be considered a success despite the stop.
+
+            Defaults to False
+        '''
+        self._done_moving(success=success)
+
+    # Suggested properties
     @property
     def settle_time(self):
         '''Amount of time to wait after moves to report status completion'''
@@ -65,6 +119,13 @@ class PositionerBase(OphydObject):
             self._timeout = None
         else:
             self._timeout = float(timeout)
+
+    # low level
+    @property
+    def report(self):
+        rep = super().report
+        rep['position'] = self.position
+        return rep
 
     @property
     def egu(self):
@@ -113,7 +174,6 @@ class PositionerBase(OphydObject):
             If motion fails other than timing out
         '''
 
-
         if timeout is None:
             timeout = self._timeout
 
@@ -144,20 +204,6 @@ class PositionerBase(OphydObject):
                        timestamp=timestamp)
         self._reset_sub(self._SUB_REQ_DONE)
 
-    def stop(self, *, success=False):
-        '''Stops motion.
-
-        Sub-classes must extend this method to _actually_ stop the device.
-
-        Parameters
-        ----------
-        success : bool, optional
-            If the move should be considered a success despite the stop.
-
-            Defaults to False
-        '''
-        self._done_moving(success=success)
-
     @property
     def position(self):
         '''The current position of the motor in its engineering units
@@ -185,20 +231,6 @@ class PositionerBase(OphydObject):
         moving : bool
         '''
         return self._moving
-
-    def set(self, new_position, *, wait=False, moved_cb=None, timeout=None):
-        """
-        Bluesky-compatible API for controlling movers.
-
-        Parameters
-        ----------
-        new_position : dict
-            A dictionary of new positions keyed on axes name.  This is
-            symmetric with read such that `mot.set(mot.read())` works as
-            as expected.
-        """
-        return self.move(new_position, wait=wait, moved_cb=moved_cb,
-                         timeout=timeout)
 
     def _repr_info(self):
         yield from super()._repr_info()
