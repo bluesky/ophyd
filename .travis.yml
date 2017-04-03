@@ -8,7 +8,6 @@ env:
     DOCS_SUBDIR: doc/
     TARGET_DEV_SUBDIR: ophyd/
     HTML_SUBDIR: build/html
-    DOCS_CONDA_DEPS: "ophyd"
     DOCS_PIP_DEPS: "tqdm"
 
 
