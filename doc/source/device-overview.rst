@@ -1,12 +1,12 @@
-========
- Device
-========
+======================
+ Device and Component
+======================
 
 .. automodule:: ophyd.device
 
 
 The core class of :mod:`ophyd` is :class:`Device` which encodes
-the structure of the device and provides much of core API.
+the hierarchical structure of the device and provides much of core API.
 
 
 .. autosummary::
@@ -34,7 +34,7 @@ Under the hood, `Device` uses a metaclass to allow for
         load_cmd = Cpt(EpicsSignal, 'Cmd:Load-Cmd.PROC')
         unload_cmd = Cpt(EpicsSignal, 'Cmd:Unload-Cmd.PROC')
         execute_cmd = Cpt(EpicsSignal, 'Cmd:Exec-Cmd')
-        status = Cpt(EpicsSignal, 'Sts-Sts')
+        status = Cpt(EpicsSignalRO, 'Sts-Sts')
 
     my_robot = Robot('pv_prefix:', name='my_robot')
 

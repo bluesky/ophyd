@@ -156,11 +156,12 @@ Asynchronous status
 
 Hardware control and data collection is an inherently asynchronous
 activity.  The many devices on a beamline are (in general) uncoupled
-and can move / read independently.  This is reflected in the callback
-registry at the core of :obj:`~ophydobj.OphydObject` and most of the
-object methods in :obj:`BlueskyInterface` returning `Status` objects.
-These objects are one of the bridges between the asynchronous behavior
-of the underlying control system and the asynchronous behavior of
+and can move / read independently.  This is reflected in the API as
+most of the methods in :obj:`BlueskyInterface` returning `Status`
+objects and in the callback registry at the core of
+:obj:`~ophydobj.OphydObject`.  The :class:`StatusBase` objects are the
+bridge between the asynchronous behavior of the underlying control
+system and the asynchronous behavior of
 :class:`~bluesky.run_engine.RunEngine`.
 
 The core API of the status objects is a property and a private method:
@@ -205,7 +206,7 @@ and a callback registry
    ophydobj.OphydObject.clear_sub
    ophydobj.OphydObject._run_subs
 
-This registry is used to connect to the underlying hardware events and
-propagate events from the hardware up to bluesky, either via
+This registry is used to connect to the underlying events from the
+control system and propagate them up to bluesky, either via
 `~status.StatusBase` objects or via direct subscription from the
 :class:`~bluesky.run_engine.RunEngine`.
