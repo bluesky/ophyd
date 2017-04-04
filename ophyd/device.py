@@ -6,9 +6,10 @@ from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject
 from .status import DeviceStatus, StatusBase
-from .utils import (ExceptionBundle, set_and_wait, RedundantStaging)
+from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
+                    doc_annotation_forwarder)
 
-from typing import Dict, List, Any, TypeVar
+from typing import Dict, List, Any, TypeVar, Tuple
 A, B = TypeVar('A'), TypeVar('B')
 
 
@@ -448,7 +449,7 @@ class BlueskyInterface:
         """
         pass
 
-    def read(self) -> OrderedDictType[str, dict]:
+    def read(self) -> OrderedDictType[str, Dict[str, Any]]:
         """Read data from the device
 
         This method is expected to be as instantaneous as possible,
@@ -475,7 +476,7 @@ class BlueskyInterface:
         """
         return OrderedDict()
 
-    def describe(self) -> OrderedDictType[str, dict]:
+    def describe(self) -> OrderedDictType[str, Dict[str, Any]]:
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
 
         This keys in the `OrderedDict` this method returns must match the
@@ -814,16 +815,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return values
 
+    @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
-        """returns dictionary mapping names to (value, timestamp) pairs
-
-        To control which fields are included, adjust the ``read_attrs`` list.
-        """
         res = super().read()
         res.update(self._read_attr_list(self.read_attrs))
         return res
 
-    def read_configuration(self):
+    def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
         """
         returns dictionary mapping names to (value, timestamp) pairs
 
@@ -844,14 +842,27 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return desc
 
+    @doc_annotation_forwarder(BlueskyInterface)
     def describe(self):
-        '''describe the read data keys' data types and other metadata'''
         res = super().describe()
         res.update(self._describe_attr_list(self.read_attrs))
         return res
 
-    def describe_configuration(self):
-        '''describe the configuration data keys' data types/other metadata'''
+    def describe_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
+        """Provide schema & meta-data for :meth:`~BlueskyInterface.read_configuration`
+
+        This keys in the `OrderedDict` this method returns must match the
+        keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
+
+        This provides schema related information, (ex shape, dtype), the
+        source (ex PV name), and if available, units, limits, precision etc.
+
+        Returns
+        -------
+        data_keys : OrderedDict
+            The keys must be strings and the values must be dict-like
+            with the ``event_model.event_descriptor.data_key`` schema.
+        """
         return self._describe_attr_list(self.configuration_attrs, config=True)
 
     @property
@@ -868,6 +879,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         self._reset_sub(self.SUB_ACQ_DONE)
 
+    @doc_annotation_forwarder(BlueskyInterface)
     def trigger(self):
         """Start acquisition"""
         signals = self.trigger_signals
@@ -965,7 +977,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         '''
         return cls._device_tuple
 
-    def configure(self, d):
+    def configure(self,
+                  d: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         '''Configure the device for something during a run
 
         This default implementation allows the user to change any of the

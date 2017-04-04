@@ -42,13 +42,7 @@ Uniform High-level Interface
 All ophyd objects implemented a small set of methods which are used by
 `bluesky`_ plans.  It is the responsibility of the `ophyd` objects to
 correctly implement these methods in terms of the underlying control
-system.  For example, to 'move' a device, `bluesky`_ will call the
-``set`` method which returns `Status` that can be used to tell when
-motion is done.  It is the responsibility of the `ophyd` objects to
-implement this functionality in terms of the underlying control
-system.  Thus, from the perspective of the `bluesky`_, a motor, a
-temperature controller, a gate valve, and software pseudo-positioner
-can all be treated the same.
+system.
 
 
 Read-able Interface
@@ -98,6 +92,19 @@ is coupled to :class:`~bluesky.run_engine.RunEngine`.
 Set-able Interface
 ------------------
 
+Of course, most interesting uses of hardware requires telling it to do
+rather than just reading from it!  To do that the high-level API has
+the ``set`` method and a corresponding ``stop`` method to halt motion
+before it is complete.
+
+The ``set`` method which returns `Status` that can be used to tell
+when motion is done. It is the responsibility of the `ophyd` objects
+to implement this functionality in terms of the underlying control
+system. Thus, from the perspective of the `bluesky`_, a motor, a
+temperature controller, a gate valve, and software pseudo-positioner
+can all be treated the same.
+
+
 .. autosummary::
    :toctree: _as_gen
 
@@ -107,6 +114,14 @@ Set-able Interface
 
 Configuration
 -------------
+
+In addition to values we will want to read, as 'data', or set, as a
+'position', there tend to be many values associated with the
+configuration of hardware.  This is things like the velocity of a
+motor, the PID loop parameters of a feedback loop, or the chip
+temperature of a detector.  In general these are measurements that are
+not directly related to the measurement of interest, but maybe needed for
+understanding the measured data.
 
 .. autosummary::
    :toctree: _as_gen
@@ -120,7 +135,21 @@ Configuration
 Fly-able Interface
 ------------------
 
+There is some hardware where instead of the fine-grained control
+provided by ``set``, ``trigger``, and ``read`` we just want to tell it
+"Go!" and check back later when it is done.  This is typically done
+when there needs to coordinated motion or triggering at rates beyond
+what can reasonably done in via EPICS/Python and tend to be called 'fly scans'.
 
+The flyable interface provides four methods
+
+.. autosummary::
+   :toctree: _as_gen
+
+   ~flyers.FlyerInterface.kickoff
+   ~flyers.FlyerInterface.complete
+   ~flyers.FlyerInterface.describe_collect
+   ~flyers.FlyerInterface.collect
 
 Asynchronous status
 ===================
