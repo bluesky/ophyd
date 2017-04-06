@@ -5,8 +5,9 @@
 .. automodule:: ophyd.device
 
 
-The core class of :mod:`ophyd` is :class:`Device` which encodes
-the hierarchical structure of the device and provides much of core API.
+The core class of :mod:`ophyd` is :class:`Device` which encodes the
+nodes of the hierarchical structure of the device and provides much of
+core API.
 
 
 .. autosummary::
@@ -14,14 +15,15 @@ the hierarchical structure of the device and provides much of core API.
 
    Device
 
-The base :class:`Device` is not particularly useful on it's own,
-it must be sub-classed to provide it with
+The base :class:`Device` is not particularly useful on it's own, it
+must be sub-classed to provide it with components to do something
+with.
 
 
-Constructing `Device`
-=====================
+Constructing :class:`Device`
+============================
 
-Under the hood, `Device` uses a metaclass to allow for
+Creating a custom device is as simple as:
 
 .. code-block:: python
 
@@ -34,15 +36,52 @@ Under the hood, `Device` uses a metaclass to allow for
         load_cmd = Cpt(EpicsSignal, 'Cmd:Load-Cmd.PROC')
         unload_cmd = Cpt(EpicsSignal, 'Cmd:Unload-Cmd.PROC')
         execute_cmd = Cpt(EpicsSignal, 'Cmd:Exec-Cmd')
+
         status = Cpt(EpicsSignalRO, 'Sts-Sts')
 
-    my_robot = Robot('pv_prefix:', name='my_robot')
+    my_robot = Robot('PV_PREFIX:', name='my_robot',
+                     read_attrs=['sample_number', 'status'])
 
+Which creates an instance ``my_robot`` with 5 children
 
-In this case, ``my_robot.load_cmd`` would be an ``EpicsSignal`` that points to
-the PV ``pv_prefix:Cmd:Load-Cmd.PROC``.  Each of the components can be used as
-``stage_sigs``, added to the list of ``read_attrs`` or ``configuration_attrs``,
-or simply as ``EpicsSignals`` on their own.
+   ======================   ===============================    =====================
+   python attribute         PV name                            in ``read()``
+   ======================   ===============================    =====================
+   my_robot.sample_number   'PV_PREFIX:ID:Tgt-SP'              Y
+   my_robot.load_cmd        'PV_PREFIX:CMD:Load-Cmd.PROC'      N
+   my_robot.unload_cmd      'PV_PREFIX:CMD:Unload-Cmd.PROC'    N
+   my_robot.execute_cmd     'PV_PREFIX:CMD:Exec-Cmd'           N
+   my_robot.status          'PV_PREFIX:Sts-Sts'                Y
+   ======================   ===============================    =====================
+
+only 2 of which will be included when reading from the robot.  You could now use this
+device in a scan like
+
+.. code-block:: python
+
+   import bluesky.plans as bp
+
+   def load_sample(robot, sample):
+       yield from bp.mv(robot.sample_number, sample)
+       yield from bp.mv(robot.load_cmd, 1)
+       yield from bp.mv(robot.execute_cmd, 1)
+
+   def unload_sample(robot):
+       yield from bp.mv(robot.unload_cmd, 1)
+       yield from bp.mv(robot.execute_cmd, 1)
+
+   def robot_plan(list_of_samples):
+       for sample in list_of_samples:
+           # load the sample
+	   yield from load_sample(my_robot, sample)
+	   # take a measurement
+	   yield from bp.count([det], md={'sample': sample})
+	   # unload the sample
+	   yield from unload_sample(my_robot)
+
+and from the command line ::
+
+  RE(robot_plan([1, 2. 6]))
 
 
 
