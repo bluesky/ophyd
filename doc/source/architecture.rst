@@ -201,7 +201,7 @@ The base class of almost all objects in ``ophyd`` is :obj:`~ophydobj.OphydObject
 
    ~ophydobj.OphydObject._run_subs
 
-   ~ophydobj.OphydObject._reset_subs
+   ~ophydobj.OphydObject._reset_sub
 
 This registry is used to connect to the underlying events from the
 control system and propagate them up to bluesky, either via
