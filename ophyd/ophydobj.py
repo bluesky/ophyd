@@ -31,7 +31,7 @@ class OphydObject:
     def __init__(self, *, name=None, parent=None):
         super().__init__()
 
-        self.name = name
+        self._name = name
         self._parent = parent
 
         # find magic class attributes to name 'event' types.
@@ -46,6 +46,15 @@ class OphydObject:
                       self._pub_event_types + self._priv_event_types}
 
         self._sub_cache = defaultdict(lambda: None)
+
+    @property
+    def name(self):
+        '''name of the device'''
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
 
     @property
     def connected(self):

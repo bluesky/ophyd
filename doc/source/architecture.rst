@@ -57,12 +57,16 @@ The minimum set of methods an object must implement is
    ~device.BlueskyInterface.read
    ~device.BlueskyInterface.describe
 
-along with two attributes:
+along with three properties:
 
-  ==============   ==========================================================
-  :attr:`name`     name of the device (:class:`str`)
-  :attr:`parent`   parent in tree (:class:`Device` or :obj:`None`)
-  ==============   ==========================================================
+.. autosummary::
+   :toctree: _as_gen
+   :nosignatures:
+
+   ~ophydobj.OphydObject.name
+   ~ophydobj.OphydObject.parent
+   ~ophydobj.OphydObject.root
+
 
 There are two optional methods which plans may use to 'enable' or
 'disable' a device for data collection.  For example, a beam position
@@ -179,32 +183,25 @@ conveys both that the action it 'done' and if the action was
 successful or not.
 
 
+
 Callbacks
 =========
 
 The base class of almost all objects in ``ophyd`` is :obj:`~ophydobj.OphydObject`
-which provides the core set of properties, reper/reporting
+ a callback registry
 
 .. autosummary::
    :toctree: _as_gen
    :nosignatures:
 
-   ophydobj.OphydObject
-   ophydobj.OphydObject.connected
-   ophydobj.OphydObject.parent
-   ophydobj.OphydObject.root
+   ~ophydobj.OphydObject
+   ~ophydobj.OphydObject.event_types
+   ~ophydobj.OphydObject.subscribe
+   ~ophydobj.OphydObject.clear_sub
 
-and a callback registry
+   ~ophydobj.OphydObject._run_subs
 
-.. autosummary::
-   :toctree: _as_gen
-   :nosignatures:
-
-
-   ophydobj.OphydObject.event_types
-   ophydobj.OphydObject.subscribe
-   ophydobj.OphydObject.clear_sub
-   ophydobj.OphydObject._run_subs
+   ~ophydobj.OphydObject._reset_subs
 
 This registry is used to connect to the underlying events from the
 control system and propagate them up to bluesky, either via
