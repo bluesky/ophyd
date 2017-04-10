@@ -14,6 +14,12 @@ from .ophydobj import OphydObject
 from .status import Status
 from .utils import set_and_wait
 
+try:
+    epics.ca.find_libca()
+except epics.ca.ChannelAccessException:
+    thread_class = threading.Thread
+else:
+    thread_class = epics.ca.CAThread
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +184,7 @@ class Signal(OphydObject):
 
         st = Status(self)
         self._status = st
-        self._set_thread = epics.ca.CAThread(target=set_thread)
+        self._set_thread = thread_class(target=set_thread)
         self._set_thread.daemon = True
         self._set_thread.start()
         return self._status

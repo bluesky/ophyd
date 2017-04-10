@@ -61,3 +61,17 @@ class OrderedDefaultDict(OrderedDict):
     def __repr__(self):
         return '%s(%s, %s)' % (self.__class__.__name__, self.default_factory,
                                super().__repr__())
+
+
+def doc_annotation_forwarder(base_klass):
+    def wrapper(f):
+        f_name = getattr(f, '__name__')
+        base_func = getattr(base_klass, f_name)
+        base_docs = getattr(base_func, '__doc__')
+        base_annotation = getattr(base_func, '__annotations__')
+        f.__doc__ = base_docs
+        f.__annotations__ = base_annotation
+
+        return f
+
+    return wrapper

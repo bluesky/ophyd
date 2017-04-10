@@ -6,9 +6,16 @@ from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject
 from .status import DeviceStatus, StatusBase
-from .utils import (ExceptionBundle, set_and_wait, RedundantStaging)
+from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
+                    doc_annotation_forwarder)
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, TypeVar, Tuple
+A, B = TypeVar('A'), TypeVar('B')
+
+
+class OrderedDictType(Dict[A, B]):
+    ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +49,23 @@ class Component:
         during the component instance creation.
 
     suffix : str, optional
-        The PV suffix, which gets appended onto the device prefix to
+        The PV suffix, which gets appended onto ``parent.prefix`` to
         generate the final PV that the instance component will bind to.
+        Also see ``add_prefix``
 
     lazy : bool, optional
-        Lazily instantiate the signal. If False, the signal will be
+        Lazily instantiate the signal. If ``False``, the signal will be
         instantiated upon component instantiation
+
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
+
     add_prefix : sequence, optional
         Keys in the kwargs to prefix with the Device PV prefix during
         creation of the component instance.
-        Defaults to ('suffix', 'write_pv', )
+        Defaults to ``('suffix', 'write_pv', )``
+
     doc : str, optional
         string to attach to component DvcClass.component.__doc__
     '''
@@ -206,11 +217,15 @@ class DynamicDeviceComponent:
     Parameters
     ----------
     defn : OrderedDict
-        The definition of all attributes to be created, in the form of:
+        The definition of all attributes to be created, in the form of::
+
             defn['attribute_name'] = (SignalClass, pv_suffix, keyword_arg_dict)
+
         This will create an attribute on the sub-device of type `SignalClass`,
-        with a suffix of pv_suffix, which looks something like this:
+        with a suffix of pv_suffix, which looks something like this::
+
             parent.attribute_name = SignalClass(pv_suffix, **keyword_arg_dict)
+
         Keep in mind that this is actually done in the metaclass creation, and
         not exactly as written above.
     clsname : str, optional
@@ -442,7 +457,7 @@ class BlueskyInterface:
         """
         pass
 
-    def read(self) -> Dict[str, dict]:
+    def read(self) -> OrderedDictType[str, Dict[str, Any]]:
         """Read data from the device
 
         This method is expected to be as instantaneous as possible,
@@ -469,7 +484,7 @@ class BlueskyInterface:
         """
         return OrderedDict()
 
-    def describe(self) -> Dict[str, dict]:
+    def describe(self) -> OrderedDictType[str, Dict[str, Any]]:
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
 
         This keys in the `OrderedDict` this method returns must match the
@@ -808,16 +823,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return values
 
+    @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
-        """returns dictionary mapping names to (value, timestamp) pairs
-
-        To control which fields are included, adjust the ``read_attrs`` list.
-        """
         res = super().read()
         res.update(self._read_attr_list(self.read_attrs))
         return res
 
-    def read_configuration(self):
+    def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
         """
         returns dictionary mapping names to (value, timestamp) pairs
 
@@ -838,14 +850,27 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return desc
 
+    @doc_annotation_forwarder(BlueskyInterface)
     def describe(self):
-        '''describe the read data keys' data types and other metadata'''
         res = super().describe()
         res.update(self._describe_attr_list(self.read_attrs))
         return res
 
-    def describe_configuration(self):
-        '''describe the configuration data keys' data types/other metadata'''
+    def describe_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
+        """Provide schema & meta-data for :meth:`~BlueskyInterface.read_configuration`
+
+        This keys in the `OrderedDict` this method returns must match the
+        keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
+
+        This provides schema related information, (ex shape, dtype), the
+        source (ex PV name), and if available, units, limits, precision etc.
+
+        Returns
+        -------
+        data_keys : OrderedDict
+            The keys must be strings and the values must be dict-like
+            with the ``event_model.event_descriptor.data_key`` schema.
+        """
         return self._describe_attr_list(self.configuration_attrs, config=True)
 
     @property
@@ -862,6 +887,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         self._reset_sub(self.SUB_ACQ_DONE)
 
+    @doc_annotation_forwarder(BlueskyInterface)
     def trigger(self):
         """Start acquisition"""
         signals = self.trigger_signals
@@ -959,7 +985,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         '''
         return cls._device_tuple
 
-    def configure(self, d):
+    def configure(self,
+                  d: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         '''Configure the device for something during a run
 
         This default implementation allows the user to change any of the

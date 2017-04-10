@@ -4,12 +4,94 @@ import logging
 from collections import OrderedDict
 
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
-from .status import DeviceStatus
+from .status import DeviceStatus, StatusBase
 from .device import (Device, Component as C, BlueskyInterface)
 from .utils import OrderedDefaultDict
 
+from typing import Generator, Dict, Iterable, Any
+
 
 logger = logging.getLogger(__name__)
+
+
+class FlyerInterface(BlueskyInterface):
+    def kickoff(self) -> StatusBase:
+        '''Start a flyer
+
+        The status object return is marked as done once flying
+        has started.
+
+        Returns
+        -------
+        kickoff_status : StatusBase
+            Indicate when flying has started.
+
+        '''
+
+    def complete(self) -> StatusBase:
+        '''Wait for flying to be complete.
+
+        This can either be a question ("are you done yet") or a
+        command ("please wrap up") to accommodate flyers that have a
+        fixed trajectory (ex. high-speed raster scans) or that are
+        passive collectors (ex MAIA or a hardware buffer).
+
+        In either case, the returned status object should indicate when
+        the device is actually finished flying.
+
+        Returns
+        -------
+        complete_status : StatusBase
+            Indicate when flying has completed
+        '''
+
+    def collect(self) -> Generator[Dict, None, None]:
+        '''Retrieve data from the flyer as proto-events
+
+        The events can be from a mixture of event streams, it is
+        the responsibility of the consumer (ei the RunEngine) to sort
+        them out.
+
+        Yields
+        ------
+        event_data : dict
+            Must have the keys {'time', 'timestamps', 'data'}.
+
+        '''
+
+    def collect_tables(self) -> Iterable[Any]:
+        '''Retrieve data from flyer as tables
+
+        PROPOSED
+
+
+        Yields
+        ------
+        time : Iterable[Float]
+
+        data : dict
+
+        timestamps : dict
+        '''
+
+    def describe_collect(self) -> Dict[str, Dict]:
+        '''Provide schema & meta-data from :meth:`collect`
+
+        This is analogous to :meth:`describe`, but nested by stream name.
+
+        This provides schema related information, (ex shape, dtype), the
+        source (ex PV name), and if available, units, limits, precision etc.
+
+        The data_keys are mapped to events from `collect` by matching the
+        keys.
+
+        Returns
+        -------
+        data_keys_by_stream : dict
+            The keys must be strings and the values must be dict-like
+            with keys that are str and the inner values are dict-like
+            with the ``event_model.event_descriptor.data_key`` schema.
+        '''
 
 
 class AreaDetectorTimeseriesCollector(Device):
