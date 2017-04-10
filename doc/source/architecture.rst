@@ -61,7 +61,6 @@ along with three properties:
 
 .. autosummary::
    :toctree: _as_gen
-   :nosignatures:
 
    ~ophydobj.OphydObject.name
    ~ophydobj.OphydObject.parent

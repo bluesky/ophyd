@@ -19,10 +19,6 @@ The base :class:`Device` is not particularly useful on it's own, it
 must be sub-classed to provide it with components to do something
 with.
 
-
-Constructing :class:`Device`
-============================
-
 Creating a custom device is as simple as:
 
 .. code-block:: python
@@ -54,8 +50,9 @@ Which creates an instance ``my_robot`` with 5 children
    my_robot.status          'PV_PREFIX:Sts-Sts'                Y
    ======================   ===============================    =====================
 
-only 2 of which will be included when reading from the robot.  You could now use this
-device in a scan like
+only 2 of which will be included when reading from the robot.
+
+You could now use this device in a scan like
 
 .. code-block:: python
 
@@ -84,22 +81,91 @@ and from the command line ::
   RE(robot_plan([1, 2. 6]))
 
 
+These classes were co-developed with :mod:`bluesky` and are the
+reference implementation of a hardware abstraction layer for
+:mod:`bluesky`.  However, these are closely tied to EPICS and make
+some assumptions about the PV naming based on NSLS-II's naming scheme.
+Despite attempting generality, it is likely that as :mod:`ophyd` and
+:mod:`bluesky` are used at other facilities (and when :mod:`ophyd` is
+adapted for a different control system) we will discover some latent
+NSLS-II-isms that should be corrected (or at least acknowledged and
+documented).
 
-Components
-----------
+
+:class:`Device`
+===============
+
+:class:`Device` adds a number of additional attributes beyond the
+required :mod:`bluesky` API and what is inherited from :class:`~ohpyd.ophydobj.OphydObj`
+for run-time configuration
+
+ ===========================  ========================================================
+ Attribute                    Description
+ ===========================  ========================================================
+ :attr:`read_attrs`           Names of components for ``read()`` See :ref:`trd`
+ ---------------------------  --------------------------------------------------------
+ :attr:`configuration_attrs`  Names of components for ``read_configuration()``.
+			      See :ref:`cfg_and_f`
+ ---------------------------  --------------------------------------------------------
+ :attr:`stage_sigs`           Signals to be set during `Stage and Unstage`_
+ ===========================  ========================================================
+
+and static information about the object
+
+ ===========================  ========================================================
+ Attribute                    Description
+ ===========================  ========================================================
+ :attr:`prefix`               'base' of PV name, used when building components
+ ---------------------------  --------------------------------------------------------
+ :attr:`signal_names`         List of the names components on this device.
+	                      Direct children only
+ ---------------------------  --------------------------------------------------------
+ :attr:`trigger_signals`      Signals for use in `Implicit Triggering`_
+                              (provisional)
+ ===========================  ========================================================
 
 
 
+
+:class:`Component`
+------------------
+
+The :class:`Compent` class is a python descriptor_ which override the
+behavior on attribute access.  This allows us to use a declarative
+style to define the software representation of the hardware.  The best
+way to understand ::
+
+  class Foo(Device):
+      bar = Cpt(EpicsSignal, ':bar', string=True)
+
+is "When a ``Foo`` instance is created give it a ``bar`` attribute
+which is an instance of :class:`EpicsSignal` and use the extra args
+and kwargs when creating it".  It is a declaration of what you want
+and it is the responsibility of :mod:`ophyd` to make it happen.
+
+There are three classes
+
+.. autosummary::
+   :toctree: _as_gen
+
+   Component
+   FormattedComponent
+   DynamicDeviceComponent
+
+
+.. _trd:
 
 Trigger, Read and Describe
 --------------------------
 
-
-configure, read_configuration, describe_configuration
------------------------------------------------------
+.. _cfg_and_f:
 
 
-Stage and unstage
+Configuration and Friends
+-------------------------
+
+
+Stage and Unstage
 -----------------
 
 When a Device ``d`` is used in scan, it is "staged" and "unstaged." Think of
@@ -149,12 +215,38 @@ to 5. When it is unstaged, it will be set back to whatever value it had
 right before it was staged.
 
 
-Implicit triggering
+Implicit Triggering
 -------------------
 
 
 Count Time
 ----------
+
+ComponentMeta
+-------------
+
+All of this is enabled by :class:`ComponentMeta` class which works
+with the :class:`Component` instances to provide the :class:`Device`
+with enough semantics to implement generic versions of the
+:mod:`bluesky` interface.  As a metaclass, this extends the behavior
+of :meth:`__new__` and :meth:`__preapare__` which are used while
+creating :class:`type` instances that are classes in Python.  We use
+this chance to identify the relevant children, do some validation on the
+component names (to not shadow any other part of the API) and tell the
+component instances what their name on the device is.
+
+With python 3.6 much of this functionally is available on plain
+classes (via ``__init__subclass__``, ``__set_name__``, class dict
+guaranteed to be ordered).  Hence, this meta-class maybe simplified or
+eliminated in the future.
+
+.. autosummary::
+   :toctree: _as_gen
+
+   ComponentMeta
+   ComponentMeta.__new__
+   ComponentMeta.__prepare__
+
 
 
 Low level API
@@ -167,6 +259,12 @@ Low level API
 
    Device.connected
    Device.wait_for_connection
+   Device.get_instantiated_signals
    Device.get
    Device.put
    Device.get_device_tuple
+
+.. _descriptor: https://docs.python.org/3/reference/datamodel.html#implementing-descriptors
+
+
+.. todo ['trigger_signals', ]

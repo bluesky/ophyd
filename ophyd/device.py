@@ -49,19 +49,23 @@ class Component:
         during the component instance creation.
 
     suffix : str, optional
-        The PV suffix, which gets appended onto the device prefix to
+        The PV suffix, which gets appended onto ``parent.prefix`` to
         generate the final PV that the instance component will bind to.
+        Also see ``add_prefix``
 
     lazy : bool, optional
-        Lazily instantiate the signal. If False, the signal will be
+        Lazily instantiate the signal. If ``False``, the signal will be
         instantiated upon component instantiation
+
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
         at trigger time.
+
     add_prefix : sequence, optional
         Keys in the kwargs to prefix with the Device PV prefix during
         creation of the component instance.
-        Defaults to ('suffix', 'write_pv', )
+        Defaults to ``('suffix', 'write_pv', )``
+
     doc : str, optional
         string to attach to component DvcClass.component.__doc__
     '''
@@ -213,11 +217,15 @@ class DynamicDeviceComponent:
     Parameters
     ----------
     defn : OrderedDict
-        The definition of all attributes to be created, in the form of:
+        The definition of all attributes to be created, in the form of::
+
             defn['attribute_name'] = (SignalClass, pv_suffix, keyword_arg_dict)
+
         This will create an attribute on the sub-device of type `SignalClass`,
-        with a suffix of pv_suffix, which looks something like this:
+        with a suffix of pv_suffix, which looks something like this::
+
             parent.attribute_name = SignalClass(pv_suffix, **keyword_arg_dict)
+
         Keep in mind that this is actually done in the metaclass creation, and
         not exactly as written above.
     clsname : str, optional
