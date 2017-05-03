@@ -24,6 +24,7 @@ import os
 import logging
 import warnings
 import uuid
+from pathlib import PurePath
 
 from datetime import datetime
 from collections import defaultdict
@@ -63,8 +64,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     `datetime.strftime`, which accepts the standard tokens, such as
     %Y-%m-%d.
     """
-    def __init__(self, *args, fs=None, write_path_template=None,
-                 read_path_template=None, **kwargs):
+    def __init__(self, *args, fs=None,
+                 write_path_template=None,
+                 root=None, read_path_template=None,
+                 **kwargs):
         if fs is None:
             warnings.warn("The device {} is not provided with a FileStore "
                           "instance. It will fall back to using the singleton "
@@ -75,6 +78,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         # TODO Can we make these args? Depends on plugin details.
         if write_path_template is None:
             raise ValueError("write_path_template is required")
+        self.root = root
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
         super().__init__(*args, **kwargs)
@@ -83,12 +87,32 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids = defaultdict(list)
 
     @property
+    def root(self):
+        return self._root
+
+    @root.setter
+    def root(self, val):
+        self._root = PurePath(val)
+
+    @property
     def read_path_template(self):
         "Returns write_path_template if read_path_template is not set"
+        rootp = self.root
+
         if self._read_path_template is None:
-            return self.write_path_template
+            ret = PurePath(self.write_path_template)
         else:
-            return self._read_path_template
+            ret = PurePath(self._read_path_template)
+
+        if rootp not in ret.parents:
+            if not ret.is_absolute():
+                ret = rootp / ret
+            else:
+                raise ValueError(
+                    ('root: {!r} in not consistent with '
+                     'read_path_template: {!r}').format(rootp, ret))
+
+        return _ensure_trailing_slash(str(ret))
 
     @read_path_template.setter
     def read_path_template(self, val):
@@ -218,8 +242,10 @@ class FileStoreHDF5(FileStorePluginBase):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
+        fn = PurePath(self._fn).relative_to(self.root)
         self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  self._fn, res_kwargs)
+                                                  str(fn), res_kwargs,
+                                                  root=str(self.root))
 
 
 class FileStoreTIFF(FileStorePluginBase):
@@ -240,8 +266,11 @@ class FileStoreTIFF(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
+        fp = PurePath(self._fp).relative_to(self.root)
+
         self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  self._fp, res_kwargs)
+                                                  str(fp), res_kwargs,
+                                                  root=str(self.root))
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -285,8 +314,11 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
+        fp = PurePath(self._fp).relative_to(self.root)
+
         self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  self._fp, res_kwargs)
+                                                  str(fp), res_kwargs,
+                                                  root=str(self.root))
 
 
 class FileStoreIterativeWrite(FileStoreBase):
