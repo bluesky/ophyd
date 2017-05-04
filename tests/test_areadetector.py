@@ -15,7 +15,8 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         MagickPlugin)
 
 from ophyd.areadetector.filestore_mixins import (
-    FileStoreTIFF, FileStoreIterativeWrite)
+    FileStoreTIFF, FileStoreIterativeWrite, FileStoreBulkWrite,
+    FileStoreHDF5)
 
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
@@ -273,18 +274,28 @@ def test_default_configuration_attrs(plugin):
                           (Component, DynamicDeviceComponent))
 
 
-def test_fstiff_plugin():
+@pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
+                                         FileStoreBulkWrite))
+@pytest.mark.parametrize('root,wpath, rpath',
+                         ((None, '/data/%Y/%m/%d', None),
+                          (None,  '/data/%Y/%m/%d', None),
+                          ('/data',  '%Y/%m/%d', None),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d'),
+                          ('/', '/data/%Y/%m/%d', None),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d')))
+def test_fstiff_plugin(root, wpath, rpath, WriterClass):
     fs = DummyFS()
 
     class FS_tiff(TIFFPlugin, FileStoreTIFF,
-                  FileStoreIterativeWrite):
+                  WriterClass):
         pass
 
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(FS_tiff, 'TIFF1:',
-                    write_path_template='/data/%Y/%m/%d',
-                    root='/data', fs=fs)
-
+                    write_path_template=wpath,
+                    read_path_template=rpath,
+                    root=root, fs=fs)
+    target_root = root or '/'
     det = MyDetector(prefix, name='det')
     det.read_attrs = ['tiff1']
     det.tiff1.read_attrs = []
@@ -297,7 +308,45 @@ def test_fstiff_plugin():
     det.unstage()
     res_uid = fs.datum[reading['det_image']['value']]['resource']
     res_doc = fs.resource[res_uid]
-    assert res_doc['root'] == '/data'
+    assert res_doc['root'] == target_root
+    assert not PurePath(res_doc['resource_path']).is_absolute()
+
+
+@pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
+                                         FileStoreBulkWrite))
+@pytest.mark.parametrize('root,wpath, rpath',
+                         ((None, '/data/%Y/%m/%d', None),
+                          (None,  '/data/%Y/%m/%d', None),
+                          ('/data',  '%Y/%m/%d', None),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d'),
+                          ('/', '/data/%Y/%m/%d', None),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d')))
+def test_fshdf_plugin(root, wpath, rpath, WriterClass):
+    fs = DummyFS()
+
+    class FS_hdf(HDF5Plugin, FileStoreHDF5,
+                 WriterClass):
+        pass
+
+    class MyDetector(SingleTrigger, SimDetector):
+        hdf1 = Cpt(FS_hdf, 'HDF1:',
+                   write_path_template=wpath,
+                   read_path_template=rpath,
+                   root=root, fs=fs)
+    target_root = root or '/'
+    det = MyDetector(prefix, name='det')
+    det.read_attrs = ['hdf1']
+    det.hdf1.read_attrs = []
+
+    det.stage()
+    st = det.trigger()
+    while not st.done:
+        time.sleep(.1)
+    reading = det.read()
+    det.unstage()
+    res_uid = fs.datum[reading['det_image']['value']]['resource']
+    res_doc = fs.resource[res_uid]
+    assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
 
 
