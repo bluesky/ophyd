@@ -39,13 +39,13 @@ before_install:
   - export EPICS_CA_AUTO_ADDR_LIST="no"
   - export EPICS_CA_MAX_ARRAY_BYTES=10000000
   - export DOCKERIMAGE="klauer/epics-docker"
-
+  - mkdir /tmp/data
   - perl --version
   - git fetch --unshallow
   - docker pull ${DOCKERIMAGE}
   - docker images
   - docker ps -a
-  - docker run -d -p $DOCKER0_IP:5064:5064/tcp -p $DOCKER0_IP:5065:5065/udp --name epics_iocs ${DOCKERIMAGE}
+  - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/data:/data --name epics_iocs ${DOCKERIMAGE}
   - docker ps -a
 
   - |
@@ -70,7 +70,8 @@ install:
     fi
   - pip install -r test-requirements.txt
   - python setup.py develop
-
+  # set up directories we will need
+  - python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
   # setup some path environment variables for epics
   - export PATH=$PATH:$EPICS_BASE/bin/$EPICS_HOST_ARCH
   - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$EPICS_BASE/lib/$EPICS_HOST_ARCH"
@@ -87,6 +88,7 @@ script:
   - python -c "import epics; print(epics.__version__)"
   - python -c "import epics.ca; print(epics.ca.find_libca())"
   - python -c "import epics; print(epics.caget('XF:31IDA-OP{Tbl-Ax:X1}Mtr'))"
+
 
   # running tests
   - py.test -v --cov=ophyd --cov-report term-missing
