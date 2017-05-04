@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 def motor():
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
-    m = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
-                       timeout=10.0)
+    m = tstEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
+                      timeout=10.0)
     print('epicsmotor', m)
     m.wait_for_connection()
     return m
@@ -26,7 +26,7 @@ class CustomAlarmEpicsSignalRO(EpicsSignalRO):
     alarm_severity = AlarmSeverity.NO_ALARM
 
 
-class TestEpicsMotor(EpicsMotor):
+class tstEpicsMotor(EpicsMotor):
     user_readback = C(CustomAlarmEpicsSignalRO, '.RBV')
     high_limit_switch = C(Signal, value=0)
     low_limit_switch = C(Signal, value=0)
