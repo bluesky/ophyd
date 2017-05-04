@@ -92,6 +92,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @root.setter
     def root(self, val):
+        if val is None:
+            val = os.path.sep
         self._root = PurePath(val)
 
     @property
@@ -122,7 +124,17 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @property
     def write_path_template(self):
-        return self._write_path_template
+        rootp = self.root
+        ret = PurePath(self._write_path_template)
+        if rootp not in ret.parents:
+            if not ret.is_absolute():
+                ret = rootp / ret
+            else:
+                raise ValueError(
+                    ('root: {!r} in not consistent with '
+                     'read_path_template: {!r}').format(rootp, ret))
+
+        return _ensure_trailing_slash(str(ret))
 
     @write_path_template.setter
     def write_path_template(self, val):
