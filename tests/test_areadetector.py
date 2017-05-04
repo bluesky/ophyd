@@ -305,7 +305,9 @@ def test_fstiff_plugin(root, wpath, rpath, WriterClass):
     while not st.done:
         time.sleep(.1)
     reading = det.read()
+    det.describe()
     det.unstage()
+
     res_uid = fs.datum[reading['det_image']['value']]['resource']
     res_doc = fs.resource[res_uid]
     assert res_doc['root'] == target_root
@@ -343,6 +345,7 @@ def test_fshdf_plugin(root, wpath, rpath, WriterClass):
     while not st.done:
         time.sleep(.1)
     reading = det.read()
+    det.describe()
     det.unstage()
     res_uid = fs.datum[reading['det_image']['value']]['resource']
     res_doc = fs.resource[res_uid]
