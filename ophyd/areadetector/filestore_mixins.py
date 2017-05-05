@@ -140,9 +140,11 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     This class may be collapsed with :class:`FileStorePluginBase`
 
     """
-    def __init__(self, *args, fs=None,
-                 write_path_template=None,
-                 root=None, read_path_template=None,
+    def __init__(self, *args,
+                 write_path_template,
+                 root=os.path.sep,
+                 read_path_template=None,
+                 fs=None,
                  **kwargs):
         if fs is None:
             warnings.warn("The device {} is not provided with a FileStore "
@@ -201,7 +203,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def write_path_template(self):
         rootp = self.root
         ret = PurePath(self._write_path_template)
-        if rootp not in ret.parents:
+        if self._read_path_template is None and rootp not in ret.parents:
             if not ret.is_absolute():
                 ret = rootp / ret
             else:
