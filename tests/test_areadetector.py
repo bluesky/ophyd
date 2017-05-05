@@ -362,7 +362,8 @@ def test_fshdf_plugin(root, wpath, rpath, check_files, WriterClass):
     res_doc = fs.resource[res_uid]
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
-    if check_files:
+    if False and check_files:
+        time.sleep(.1)
         path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
         handler = fh.AreaDetectorHDF5Handler(str(path),
                                              **res_doc['resource_kwargs'])
