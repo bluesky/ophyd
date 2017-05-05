@@ -5,3 +5,4 @@ pytest-cov
 git+https://github.com/NSLS-II/pyOlog#egg=pyOlog
 h5py
 tifffile
+pims
