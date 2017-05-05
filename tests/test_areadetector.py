@@ -2,7 +2,7 @@ import time
 import logging
 import pytest
 from io import StringIO
-from pathlib import PurePath
+from pathlib import PurePath, Path
 
 from ophyd import (SimDetector, SingleTrigger, Component,
                    DynamicDeviceComponent)
@@ -17,6 +17,7 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite, FileStoreBulkWrite,
     FileStoreHDF5)
+import filestore.handlers as fh
 
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
@@ -24,6 +25,7 @@ from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 import uuid
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -276,14 +278,15 @@ def test_default_configuration_attrs(plugin):
 
 @pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
                                          FileStoreBulkWrite))
-@pytest.mark.parametrize('root,wpath, rpath',
-                         ((None, '/data/%Y/%m/%d', None),
-                          (None,  '/data/%Y/%m/%d', None),
-                          ('/data',  '%Y/%m/%d', None),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d'),
-                          ('/', '/data/%Y/%m/%d', None),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d')))
-def test_fstiff_plugin(root, wpath, rpath, WriterClass):
+@pytest.mark.parametrize('root,wpath,rpath,check_files',
+                         ((None, '/data/%Y/%m/%d', None, False),
+                          (None, '/data/%Y/%m/%d', None, False),
+                          ('/data', '%Y/%m/%d', None, False),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/data/%Y/%m/%d', None, False),
+                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                          ))
+def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
     fs = DummyFS()
 
     class FS_tiff(TIFFPlugin, FileStoreTIFF,
@@ -312,18 +315,26 @@ def test_fstiff_plugin(root, wpath, rpath, WriterClass):
     res_doc = fs.resource[res_uid]
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
+    if check_files:
+        path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
+        handler = fh.AreaDetectorTiffHandler(str(path) + os.path.sep,
+                                             **res_doc['resource_kwargs'])
+        for fn in handler.get_file_list(datum['datum_kwargs'] for datum in
+                                        fs.datum_by_resource[res_uid]):
+            assert Path(fn).exists()
 
 
 @pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
                                          FileStoreBulkWrite))
-@pytest.mark.parametrize('root,wpath, rpath',
-                         ((None, '/data/%Y/%m/%d', None),
-                          (None,  '/data/%Y/%m/%d', None),
-                          ('/data',  '%Y/%m/%d', None),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d'),
-                          ('/', '/data/%Y/%m/%d', None),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d')))
-def test_fshdf_plugin(root, wpath, rpath, WriterClass):
+@pytest.mark.parametrize('root,wpath,rpath,check_files',
+                         ((None, '/data/%Y/%m/%d', None, False),
+                          (None, '/data/%Y/%m/%d', None, False),
+                          ('/data', '%Y/%m/%d', None, False),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/data/%Y/%m/%d', None, False),
+                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                          ))
+def test_fshdf_plugin(root, wpath, rpath, check_files, WriterClass):
     fs = DummyFS()
 
     class FS_hdf(HDF5Plugin, FileStoreHDF5,
@@ -351,6 +362,13 @@ def test_fshdf_plugin(root, wpath, rpath, WriterClass):
     res_doc = fs.resource[res_uid]
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
+    if check_files:
+        path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
+        handler = fh.AreaDetectorHDF5Handler(str(path),
+                                             **res_doc['resource_kwargs'])
+        for fn in handler.get_file_list(datum['datum_kwargs'] for datum in
+                                        fs.datum_by_resource[res_uid]):
+            assert Path(fn).exists()
 
 
 from . import main
