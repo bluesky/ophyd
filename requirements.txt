@@ -4,5 +4,5 @@ numpy
 prettytable
 pyepics
 git+https://github.com/NSLS-II/filestore#egg=filestore
-git+https://github.com/NSLS-II/doct#egg=doct
+doct
 boltons

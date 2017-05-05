@@ -50,7 +50,7 @@ class DetectorBase(ADBase):
         It in turn calls all of the file plugins and makes them insert a
         datum into FileStore.
 
-        File plugins are identified by searching from a
+        File plugins are identified by searching for a
         :meth:`~ophyd.areadetector.filestore_mixins.FileStoreBase.generate_datum`
         method that must have the siganture ::
 

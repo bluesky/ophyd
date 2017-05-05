@@ -62,7 +62,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     This class provides
 
-      - python side path management (root, seperate write / readback paths)
+      - python side path management (root, seperate write / read paths)
       - provides :meth:`generate_datum` to work with
         :meth:`~ophyd.areadetector.detectors.DetectorBase.dispatch`
       - cooperative stage / unstage methods
