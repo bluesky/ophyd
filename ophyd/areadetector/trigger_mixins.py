@@ -97,9 +97,10 @@ class MultiTrigger(TriggerBase):
     positions.
 
     The are two levels of nesting here:
-    - cycling through different actions on successive calls to `trigger`
-    - within each trigger, executing a list of acquisitions with different
-      settings
+
+     - cycling through different actions on successive calls to `trigger`
+     - within each trigger, executing a list of acquisitions with different
+       settings
 
     See the example below, which takes and 3 and 1 acquisitions in
     alternation.
@@ -123,15 +124,12 @@ class MultiTrigger(TriggerBase):
     ...                   ('gain2', {'image_gain': 2}),
     ...                   ('gain8', {'image_gain': 8}),
     ...                   ('light', {'shutter': 'open'})],
-
     # This list only has one element; it will only take one acquisition.
     >>> light_only = [('light', {'shutter': 'open'}]]
-
     # Finally, put the lists together. The detector will cycle through
     # this list as it is triggered.
     >>> trigger_cycle = [dark_and_light, light_only]
     >>> det = MyDetector(trigger_cycle=trigger_cycle)
-
     # Note: for simplicity, the settings were specified as dictionaries. If
     # you need to control the order that they are processed, use
     # OrderedDict instead.

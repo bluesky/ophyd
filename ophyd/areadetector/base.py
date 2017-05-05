@@ -233,6 +233,14 @@ class ADBase(Device):
         return G, port_map
 
     def validate_asyn_ports(self):
+        '''Validate that all components of pipeline are known
+
+        Raises
+        ------
+        RuntimeError
+           If there any input ports to known plugins where the source is
+           not known to ophyd
+        '''
         g, port_map = self.get_asyn_digraph()
         g = nx.Graph(g)
         if port_map and nx.number_connected_components(g) != 1:
@@ -245,6 +253,7 @@ class ADBase(Device):
                                ''.format(missing_plugins))
 
     def missing_plugins(self):
+        '''Find missing ports'''
         g, port_map = self.get_asyn_digraph()
         ret = []
 

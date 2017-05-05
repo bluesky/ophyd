@@ -24,6 +24,7 @@ import os
 import logging
 import warnings
 import uuid
+from pathlib import PurePath
 
 from datetime import datetime
 from collections import defaultdict
@@ -59,22 +60,102 @@ def _ensure_trailing_slash(path):
 class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     """Base class for FileStore mixin classes
 
-    The `write_path_template` and `read_path_template` are formatted using
-    `datetime.strftime`, which accepts the standard tokens, such as
-    %Y-%m-%d.
+    This class provides
+
+      - python side path management (root, seperate write / read paths)
+      - provides :meth:`generate_datum` to work with
+        :meth:`~ophyd.areadetector.detectors.DetectorBase.dispatch`
+      - cooperative stage / unstage methods
+      - cooperative read / describe methods that inject datums
+
+    Separate read and write paths are supported because the IOC that
+    writes the files may not have the data storage mounted at the same
+    place as the computers that are expected to access it later (for
+    example, if the IOC is running on a windows machine and mounting a
+    NFS share via samba).
+
+    ``write_path_template`` must always be provided, only provide
+    ``read_path_template`` if the writer and reader will not have the
+    same mount point.
+
+    The properties :attr:`read_path_template` and
+    :attr:`write_path_template` do the following check against
+    ``root``
+
+      - if the only ``write_path_template`` is provided
+
+        - Used to generate read and write paths (which are identical)
+        - verify that the path starts with :attr:`root` or the path is
+          a relative, prepend :attr:`root`
+
+      - if ``read_path_template`` is also provided then the above
+        checks are applied to it, but ``write_path_template`` is
+        returned without any validation.
+
+    Parameters
+    ----------
+    write_path_template : str
+        Template feed to :py:meth:`~datetime.datetime.strftime` to generate the
+        path to set the IOC to write saved files to.
+
+        See above for interactions with root and read_path_template
+
+    root : str, optional
+        The 'root' of the file path.  This is inserted into filestore and
+        enables files to be renamed or re-mounted with only some pain.
+
+        This represents the part of the full path that is not
+        'semantic'.  For example in the path
+        '/data/XF42ID/2248/05/01/', the first two parts,
+        '/data/XF42ID/', would be part of the 'root', where as the
+        final 3 parts, '2248/05/01' is the date the data was taken.
+        If the files were to be renamed, it is likely that only the
+        'root' will be changed (for example of the whole file tree is
+        copied to / mounted on another system or external hard drive).
+
+    read_path_template : str, optional
+        The read path template, if different from the write path.   See the
+        docstings for `write_path_template` and `root`.
+
+    fs : FileStore
+        If None provided, try to import the top-level api from
+        filestore.api This will be deprecated 17Q3.
+
+        This object must provide::
+
+           def insert_resource(spec: str, fn: str, res_kwargs: dict, root: str):
+               ...
+
+           def insert_datum(resource: str, datum_id: str, datum_kwargs: dict):
+               ...
+
+
+    Notes
+    -----
+
+    This class in cooperative and expected to particpate in multiple
+    inheritance, all ``*args`` and extra ``**kwargs`` are passed up the
+    MRO chain.
+
+    This class may be collapsed with :class:`FileStorePluginBase`
+
     """
-    def __init__(self, *args, fs=None, write_path_template=None,
-                 read_path_template=None, **kwargs):
+    def __init__(self, *args,
+                 write_path_template,
+                 root=os.path.sep,
+                 read_path_template=None,
+                 fs=None,
+                 **kwargs):
         if fs is None:
             warnings.warn("The device {} is not provided with a FileStore "
                           "instance. It will fall back to using the singleton "
                           "configured at import-time. This will not be "
-                          "supported in future version of ophyd.".format(self))
+                          "supported past 17Q3.".format(self))
             import filestore.api as fs
         self._fs = fs
-        # TODO Can we make these args? Depends on plugin details.
         if write_path_template is None:
             raise ValueError("write_path_template is required")
+        self.root = root
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
         super().__init__(*args, **kwargs)
@@ -83,12 +164,34 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids = defaultdict(list)
 
     @property
+    def root(self):
+        return self._root
+
+    @root.setter
+    def root(self, val):
+        if val is None:
+            val = os.path.sep
+        self._root = PurePath(val)
+
+    @property
     def read_path_template(self):
         "Returns write_path_template if read_path_template is not set"
+        rootp = self.root
+
         if self._read_path_template is None:
-            return self.write_path_template
+            ret = PurePath(self.write_path_template)
         else:
-            return self._read_path_template
+            ret = PurePath(self._read_path_template)
+
+        if rootp not in ret.parents:
+            if not ret.is_absolute():
+                ret = rootp / ret
+            else:
+                raise ValueError(
+                    ('root: {!r} in not consistent with '
+                     'read_path_template: {!r}').format(rootp, ret))
+
+        return _ensure_trailing_slash(str(ret))
 
     @read_path_template.setter
     def read_path_template(self, val):
@@ -98,7 +201,17 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @property
     def write_path_template(self):
-        return self._write_path_template
+        rootp = self.root
+        ret = PurePath(self._write_path_template)
+        if self._read_path_template is None and rootp not in ret.parents:
+            if not ret.is_absolute():
+                ret = rootp / ret
+            else:
+                raise ValueError(
+                    ('root: {!r} in not consistent with '
+                     'read_path_template: {!r}').format(rootp, ret))
+
+        return _ensure_trailing_slash(str(ret))
 
     @write_path_template.setter
     def write_path_template(self, val):
@@ -218,8 +331,10 @@ class FileStoreHDF5(FileStorePluginBase):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
+        fn = PurePath(self._fn).relative_to(self.root)
         self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  self._fn, res_kwargs)
+                                                  str(fn), res_kwargs,
+                                                  root=str(self.root))
 
 
 class FileStoreTIFF(FileStorePluginBase):
@@ -240,14 +355,66 @@ class FileStoreTIFF(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
+        fp = PurePath(self._fp).relative_to(self.root)
+
         self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  self._fp, res_kwargs)
+                                                  str(fp), res_kwargs,
+                                                  root=str(self.root))
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
-    def __init__(self, *args, images_per_set_name='images_per_set',
+    '''Write out 'squashed' tiffs
+
+    .. note::
+
+       See :class:`FileStoreBase` for the rest of the required parametrs
+
+    This mixin will also configure the ``cam`` and ``proc`` plugins
+    on the parent.
+
+    This is useful to work around the dynamic range of detectors
+    and minimizing disk spaced used by synthetically increasing
+    the exposure time of the saved images.
+
+    Parameters
+    ----------
+    images_per_set_name, number_of_sets_name : str, optional
+        The names of the signals on the parent to get the
+        images_pre_set and number_of_sets from.
+
+        The total number of frames extracted from the camera will be
+        :math:`number\_of\_sets * images\_per\_set` and result in
+        ``number_of_sets`` tiff files each of which is the average of
+        ``images_per_set`` frames from the detector.
+
+        Defaults to ``'images_per_set'`` and ``'number_of_sets'``
+    cam_name : str, optional
+        The name of the :class:`~ophyd.areadetector.cam.CamBase`
+        instance on the parent.
+
+        Defaults to ``'cam'``
+
+    proc_name : str, optional
+        The name of the
+        :class:`~ophyd.areadetector.plugins.ProcessPlugin` instance on
+        the parent.
+
+        Defaults to ``'proc1'``
+
+    Notes
+    -----
+
+    This class in cooperative and expected to particpate in multiple
+    inheritance, all ``*args`` and extra ``**kwargs`` are passed up the
+    MRO chain.
+
+    '''
+
+    def __init__(self, *args,
+                 images_per_set_name='images_per_set',
                  number_of_sets_name="number_of_sets",
-                 cam_name='cam', proc_name='proc1', **kwargs):
+                 cam_name='cam', proc_name='proc1',
+                 **kwargs):
         super().__init__(*args, **kwargs)
         self.filestore_spec = 'AD_TIFF'  # spec name stored in resource doc
         self._ips_name = images_per_set_name
@@ -285,13 +452,17 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
+        fp = PurePath(self._fp).relative_to(self.root)
+
         self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  self._fp, res_kwargs)
+                                                  str(fp), res_kwargs,
+                                                  root=str(self.root))
 
 
 class FileStoreIterativeWrite(FileStoreBase):
     "Save records to filestore as they are generated."
     def generate_datum(self, key, timestamp):
+        'Generate the datum and insert'
         uid = super().generate_datum(key, timestamp)
         i = next(self._point_counter)
         self._fs.insert_datum(self._resource, uid, {'point_number': i})

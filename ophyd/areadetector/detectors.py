@@ -42,11 +42,21 @@ class DetectorBase(ADBase):
     This adds some AD-specific methods that are not shared by the plugins.
     """
     def dispatch(self, key, timestamp):
-        """When a new acquisition is finished, this method is called with a
+        """Notify plugins of acquisition being complete.
+
+        When a new acquisition is finished, this method is called with a
         key which is a label like 'light', 'dark', or 'gain8'.
 
         It in turn calls all of the file plugins and makes them insert a
         datum into FileStore.
+
+        File plugins are identified by searching for a
+        :meth:`~ophyd.areadetector.filestore_mixins.FileStoreBase.generate_datum`
+        method that must have the siganture ::
+
+           def generate_datum(key: str, timestamp: float):
+              ...
+
         """
         file_plugins = [s for s in self._signals.values() if
                         hasattr(s, 'generate_datum')]

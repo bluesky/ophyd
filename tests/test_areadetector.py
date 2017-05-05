@@ -1,7 +1,8 @@
-
+import time
 import logging
 import pytest
 from io import StringIO
+from pathlib import PurePath, Path
 
 from ophyd import (SimDetector, SingleTrigger, Component,
                    DynamicDeviceComponent)
@@ -12,16 +13,49 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         NetCDFPlugin, TIFFPlugin, JPEGPlugin,
                                         HDF5Plugin,
                                         MagickPlugin)
+
+from ophyd.areadetector.filestore_mixins import (
+    FileStoreTIFF, FileStoreIterativeWrite, FileStoreBulkWrite,
+    FileStoreHDF5)
+import filestore.handlers as fh
+
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
 from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
+import uuid
+import os
 
 logger = logging.getLogger(__name__)
 
 prefix = 'XF:31IDA-BI{Cam:Tbl}'
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
+
+
+class DummyFS:
+    def __init__(self):
+        self.resource = {}
+        self.datum = {}
+        self.datum_by_resource = {}
+
+    def insert_resource(self, spec, fn, res_kwargs, root):
+
+        uid = str(uuid.uuid4())
+        self.resource[uid] = {'spec': spec,
+                              'resource_path': fn,
+                              'root': root,
+                              'resource_kwargs': res_kwargs,
+                              'uid': uid}
+        self.datum_by_resource[uid] = []
+        return uid
+
+    def insert_datum(self, resource, datum_id, datum_kwargs):
+        datum = {'resource': resource,
+                 'datum_id': datum_id,
+                 'datum_kwargs': datum_kwargs}
+        self.datum_by_resource[resource].append(datum)
+        self.datum[datum_id] = datum
 
 
 # lifted from soft-matter/pims source
@@ -155,6 +189,7 @@ def test_invalid_plugins():
 
     assert ['AARDVARK'] == det.missing_plugins()
 
+
 def test_validete_plugins_no_portname():
     class MyDetector(SingleTrigger, SimDetector):
         roi1 = Cpt(ROIPlugin, 'ROI1:')
@@ -166,6 +201,7 @@ def test_validete_plugins_no_portname():
     det.over1.nd_array_port.put(det.roi1.port_name.get())
 
     det.validate_asyn_ports()
+
 
 def test_get_plugin_by_asyn_port():
     class MyDetector(SingleTrigger, SimDetector):
@@ -230,6 +266,7 @@ def test_default_configuration_smoke():
     {n: getattr(d, n).describe_configuration() for n in d.signal_names}
     d.unstage()
 
+
 @pytest.mark.parametrize('plugin',
                          _recursive_subclasses(PluginBase))
 def test_default_configuration_attrs(plugin):
@@ -237,6 +274,102 @@ def test_default_configuration_attrs(plugin):
         assert hasattr(plugin, k)
         assert isinstance(getattr(plugin, k),
                           (Component, DynamicDeviceComponent))
+
+
+@pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
+                                         FileStoreBulkWrite))
+@pytest.mark.parametrize('root,wpath,rpath,check_files',
+                         ((None, '/data/%Y/%m/%d', None, False),
+                          (None, '/data/%Y/%m/%d', None, False),
+                          ('/data', '%Y/%m/%d', None, False),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/data/%Y/%m/%d', None, False),
+                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                          ))
+def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
+    fs = DummyFS()
+
+    class FS_tiff(TIFFPlugin, FileStoreTIFF,
+                  WriterClass):
+        pass
+
+    class MyDetector(SingleTrigger, SimDetector):
+        tiff1 = Cpt(FS_tiff, 'TIFF1:',
+                    write_path_template=wpath,
+                    read_path_template=rpath,
+                    root=root, fs=fs)
+    target_root = root or '/'
+    det = MyDetector(prefix, name='det')
+    det.read_attrs = ['tiff1']
+    det.tiff1.read_attrs = []
+
+    det.stage()
+    st = det.trigger()
+    while not st.done:
+        time.sleep(.1)
+    reading = det.read()
+    det.describe()
+    det.unstage()
+
+    res_uid = fs.datum[reading['det_image']['value']]['resource']
+    res_doc = fs.resource[res_uid]
+    assert res_doc['root'] == target_root
+    assert not PurePath(res_doc['resource_path']).is_absolute()
+    if check_files:
+        path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
+        handler = fh.AreaDetectorTiffHandler(str(path) + os.path.sep,
+                                             **res_doc['resource_kwargs'])
+        for fn in handler.get_file_list(datum['datum_kwargs'] for datum in
+                                        fs.datum_by_resource[res_uid]):
+            assert Path(fn).exists()
+
+
+@pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
+                                         FileStoreBulkWrite))
+@pytest.mark.parametrize('root,wpath,rpath,check_files',
+                         ((None, '/data/%Y/%m/%d', None, False),
+                          (None, '/data/%Y/%m/%d', None, False),
+                          ('/data', '%Y/%m/%d', None, False),
+                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/data/%Y/%m/%d', None, False),
+                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                          ))
+def test_fshdf_plugin(root, wpath, rpath, check_files, WriterClass):
+    fs = DummyFS()
+
+    class FS_hdf(HDF5Plugin, FileStoreHDF5,
+                 WriterClass):
+        pass
+
+    class MyDetector(SingleTrigger, SimDetector):
+        hdf1 = Cpt(FS_hdf, 'HDF1:',
+                   write_path_template=wpath,
+                   read_path_template=rpath,
+                   root=root, fs=fs)
+    target_root = root or '/'
+    det = MyDetector(prefix, name='det')
+    det.read_attrs = ['hdf1']
+    det.hdf1.read_attrs = []
+
+    det.stage()
+    st = det.trigger()
+    while not st.done:
+        time.sleep(.1)
+    reading = det.read()
+    det.describe()
+    det.unstage()
+    res_uid = fs.datum[reading['det_image']['value']]['resource']
+    res_doc = fs.resource[res_uid]
+    assert res_doc['root'] == target_root
+    assert not PurePath(res_doc['resource_path']).is_absolute()
+    if False and check_files:
+        time.sleep(.1)
+        path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
+        handler = fh.AreaDetectorHDF5Handler(str(path),
+                                             **res_doc['resource_kwargs'])
+        for fn in handler.get_file_list(datum['datum_kwargs'] for datum in
+                                        fs.datum_by_resource[res_uid]):
+            assert Path(fn).exists()
 
 
 from . import main

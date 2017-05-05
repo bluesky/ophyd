@@ -251,10 +251,10 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/3.5': None,
+intersphinx_mapping = {'https://docs.python.org/3': None,
                        'https://nsls-ii.github.io/bluesky/': None}
-inheritance_graph_attrs = dict(rankdir="LR")
-inheritance_node_attrs = dict(fontsize=24)
+#inheritance_graph_attrs = dict(rankdir="LR")
+#inheritance_node_attrs = dict(fontsize=24)
 autosummary_generate = True
 autodoc_docstring_signature = True
 autoclass_content = 'both'
