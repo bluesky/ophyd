@@ -155,7 +155,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._fs = fs
         if write_path_template is None:
             raise ValueError("write_path_template is required")
-        self.root = root
+        self.fs_root = root
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
         super().__init__(*args, **kwargs)
@@ -164,11 +164,11 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids = defaultdict(list)
 
     @property
-    def root(self):
+    def fs_root(self):
         return self._root
 
-    @root.setter
-    def root(self, val):
+    @fs_root.setter
+    def fs_root(self, val):
         if val is None:
             val = os.path.sep
         self._root = PurePath(val)
@@ -176,7 +176,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def read_path_template(self):
         "Returns write_path_template if read_path_template is not set"
-        rootp = self.root
+        rootp = self.fs_root
 
         if self._read_path_template is None:
             ret = PurePath(self.write_path_template)
@@ -201,7 +201,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @property
     def write_path_template(self):
-        rootp = self.root
+        rootp = self.fs_root
         ret = PurePath(self._write_path_template)
         if self._read_path_template is None and rootp not in ret.parents:
             if not ret.is_absolute():
@@ -331,10 +331,10 @@ class FileStoreHDF5(FileStorePluginBase):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
-        fn = PurePath(self._fn).relative_to(self.root)
+        fn = PurePath(self._fn).relative_to(self.fs_root)
         self._resource = self._fs.insert_resource(self.filestore_spec,
                                                   str(fn), res_kwargs,
-                                                  root=str(self.root))
+                                                  root=str(self.fs_root))
 
 
 class FileStoreTIFF(FileStorePluginBase):
@@ -355,11 +355,11 @@ class FileStoreTIFF(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        fp = PurePath(self._fp).relative_to(self.root)
+        fp = PurePath(self._fp).relative_to(self.fs_root)
 
         self._resource = self._fs.insert_resource(self.filestore_spec,
                                                   str(fp), res_kwargs,
-                                                  root=str(self.root))
+                                                  root=str(self.fs_root))
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -452,11 +452,11 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        fp = PurePath(self._fp).relative_to(self.root)
+        fp = PurePath(self._fp).relative_to(self.fs_root)
 
         self._resource = self._fs.insert_resource(self.filestore_spec,
                                                   str(fp), res_kwargs,
-                                                  root=str(self.root))
+                                                  root=str(self.fs_root))
 
 
 class FileStoreIterativeWrite(FileStoreBase):
