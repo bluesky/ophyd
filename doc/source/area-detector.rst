@@ -67,7 +67,7 @@ provide the basic methods required for integrating AreaDetector file plugins wit
    ~filestore_mixins.FileStoreBase.generate_datum
 
    ~filestore_mixins.FileStoreBase.write_path_template
-   ~filestore_mixins.FileStoreBase.root
+   ~filestore_mixins.FileStoreBase.fs_root
    ~filestore_mixins.FileStoreBase.read_path_template
 
    ~filestore_mixins.FileStorePluginBase.make_filename
