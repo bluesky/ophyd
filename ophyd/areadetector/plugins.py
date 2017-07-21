@@ -102,7 +102,7 @@ class PluginBase(ADBase):
 
     def stage(self):
         # Ensure the plugin is enabled. We do not disable it on unstage.
-        set_and_wait(self.enable, 'Enable')
+        set_and_wait(self.enable, 1)
         super().stage()
 
     @property
