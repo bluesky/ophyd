@@ -44,39 +44,20 @@ def quadem():
             means that set_and_wait() will never be successful for
             EpicsSignalWithRBVs... :-(
     '''
+
     for sig in em.stage_sigs:
         sig = getattr(em, sig)
         sig._read_pv = sig._write_pv
 
-    for sig in em.image.stage_sigs:
-        sig = getattr(em.image, sig)
-        sig._read_pv = sig._write_pv
-    em.image.enable._read_pv = em.image.enable._write_pv
-
-    for sig in em.current1.stage_sigs:
-        sig = getattr(em.current1, sig)
-        sig._read_pv = sig._write_pv
-    em.current1.enable._read_pv = em.current1.enable._write_pv
-
-    for sig in em.current2.stage_sigs:
-        sig = getattr(em.current2, sig)
-        sig._read_pv = sig._write_pv
-    em.current2.enable._read_pv = em.current2.enable._write_pv
-
-    for sig in em.current3.stage_sigs:
-        sig = getattr(em.current3, sig)
-        sig._read_pv = sig._write_pv
-    em.current3.enable._read_pv = em.current3.enable._write_pv
-
-    for sig in em.current4.stage_sigs:
-        sig = getattr(em.current4, sig)
-        sig._read_pv = sig._write_pv
-    em.current4.enable._read_pv = em.current4.enable._write_pv
+    for k in ['image', *['current{}'.format(j) for j in range(1, 5)]]:
+        cc = getattr(em, k)
+        for sig in cc.stage_sigs:
+            sig = getattr(cc, sig)
+            sig._read_pv = sig._write_pv
+        cc.enable._read_pv = cc.enable._write_pv
+        cc.enable._write_pv.enum_strs = ['Disabled', 'Enabled']
+        cc.port_name._read_pv.put(k.upper())
     ''' End: Ugly Hack '''
-
-    for sig in ['image'] + ['current{}'.format(j) for j in range(1, 5)]:
-        cpt = getattr(em, sig)
-        cpt.port_name._read_pv.put(sig.upper())
 
     em.wait_for_connection()
 
