@@ -6,7 +6,7 @@ from copy import copy
 
 from ophyd import scaler
 from ophyd.utils import enum
-from .test_signal import using_fake_epics_pv
+from ophyd.utils.epics_pvs import using_fake_epics_pv
 from .test_utils import assert_OD_equal_ignore_ts
 
 
