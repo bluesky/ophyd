@@ -3,8 +3,7 @@ import pytest
 
 from ophyd import QuadEM, Component as Cpt, Signal
 from ophyd.areadetector.plugins import ImagePlugin, StatsPlugin
-from .test_signal import using_fake_epics_pv
-
+from ophyd.utils.epics_pvs import using_fake_epics_pv
 
 logger = logging.getLogger(__name__)
 
