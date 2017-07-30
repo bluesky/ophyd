@@ -4,7 +4,7 @@ import pytest
 from ophyd import EpicsMCA, EpicsDXP
 from ophyd.mca import add_rois
 from ophyd.utils import enum, ReadOnlyError
-from .test_signal import using_fake_epics_pv
+from .conftest import using_fake_epics_pv
 from . import main
 
 MCAMode = enum(PHA='PHA', MCS='MCS', List='List')
