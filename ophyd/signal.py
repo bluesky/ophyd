@@ -540,8 +540,9 @@ class EpicsSignalBase(Signal):
                 if not self._read_pv.wait_for_connection(connection_timeout):
                     raise TimeoutError('Failed to connect to %s' %
                                        self._read_pv.pvname)
-
-            ret = self._read_pv.get(as_string=as_string, **kwargs)
+            ret = None
+            while ret is None:
+                ret = self._read_pv.get(as_string=as_string, **kwargs)
 
         if as_string:
             return waveform_to_string(ret)
