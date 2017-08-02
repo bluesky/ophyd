@@ -5,8 +5,7 @@ import unittest
 import epics
 
 from ophyd.utils.startup import setup as setup_ophyd
-
-
+from .conftest import using_fake_epics_pv, using_fake_epics_waveform
 logger = logging.getLogger('ophyd_session_test')
 setup_ophyd()
 
