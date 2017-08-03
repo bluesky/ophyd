@@ -152,8 +152,13 @@ class ADBase(Device):
                 match_fcn(attr=attr, signal=getattr(self, attr), doc=doc)
 
     def stage(self, *args, **kwargs):
-        self.validate_asyn_ports()
-        return super().stage(*args, **kwargs)
+        ret = super().stage(*args, **kwargs)
+        try:
+            self.validate_asyn_ports()
+        except RuntimeError as err:
+            self.unstage(*args, **kwargs)
+            raise err
+        return ret
 
     def get_plugin_by_asyn_port(self, port_name):
         '''Get the plugin which has the given asyn port name
