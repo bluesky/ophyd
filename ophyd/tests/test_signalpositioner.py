@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    ophyd.commands.setup_ophyd()
+    ophyd.setup_ophyd()
     logging.getLogger('ophyd.mixins').setLevel(logging.DEBUG)
 
 

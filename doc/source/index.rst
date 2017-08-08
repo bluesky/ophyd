@@ -57,13 +57,6 @@ other control systems.
    status
    area-detector
 
-
-.. toctree::
-   :maxdepth: 1
-   :caption: CLI tools
-
-   commands
-
 .. toctree::
    :maxdepth: 1
    :caption: Developer notes

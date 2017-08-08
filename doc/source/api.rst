@@ -10,7 +10,6 @@ API
    ophyd
    ophyd.signal
    ophyd.callbacks
-   ophyd.commands
    ophyd.device
    ophyd.epics_motor
    ophyd.flyers

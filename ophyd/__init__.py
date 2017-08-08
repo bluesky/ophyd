@@ -27,9 +27,6 @@ from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM
 from .areadetector import *
 from ._version import get_versions
 
-from .commands import (mov, movr, set_pos, wh_pos, set_lm, log_pos,
-                       log_pos_diff, log_pos_mov)
-
 from .utils.startup import setup as setup_ophyd
 
 

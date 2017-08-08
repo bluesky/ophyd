@@ -1,6 +1,60 @@
 Release Notes
 -------------
 
+0.7.0
+=====
+
+API Changes
+***********
+
+* The module :mod:`ophyd.commands`, a grab bag of convenient tools, has been
+  entirely removed. The functionality is available in other ways:
+
+    * The functions :func:`mov` and :func:`movr` ("move" and "move relative")
+      have been replaced by bluesky plans in bluesky v0.10.0:
+
+      .. code-block:: python
+
+         from bluesky.plans import mov, movr
+
+         # Move eta to 3 and set temperature to 273, in parallel.
+         RE(mov(eta, 3, temp, 273)))
+
+         # Shift eta +1 and temperature to -5, in parallel, relative
+         # to initial values.
+         RE(movr(eta, 1, temp, -5)))
+
+      And by (experimental) IPython magics, also available from bluesky,
+      which accomplish the same thing.
+
+      .. code-block:: python
+
+         %mov eta 3 temp 273
+         %movr eta 1 temp -5
+
+    * The function :func:`wh_pos` for surveying current positioners has
+      been supplanted by an IPython magic packaged with bluesky: ``%wa`` (short
+      for "where all", an abbreviation borrowed from SPEC).
+
+       .. code-block:: python
+
+          %wa
+
+    * The fucntionality of :func:`set_pos`---setting zero---is available via a
+      device method :meth:`set_current_pos`, if applicable.
+
+    * The functionality of :func:`set_lm` for altering limits has been removed.
+      It is not something users should generally change, and now must be done
+      directly via EPICS or pyepics.
+
+    * The logging-related functionality, including all functions named
+      ``log_*`` and also :func:`get_all_positioners` have been moved to
+      `pyOlog <https://github.com/NSLS-II/pyOlog>`_.
+
+    * The function ``setup_ophyd`` was merely a shim to
+      :func:`ophyd.setup_ophyd`, which is still available as a top-level
+      import.
+
 0.4.0
 =====
 
