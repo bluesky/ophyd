@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    ophyd.commands.setup_ophyd()
+    ophyd.setup_ophyd()
 
 
 def tearDownModule():
