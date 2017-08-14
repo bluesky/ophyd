@@ -57,15 +57,19 @@ class StatusBase:
             return
 
         if self.timeout is not None and self.timeout > 0.0:
-            thread = threading.Thread(target=self._timeout_thread, daemon=True)
+            thread = threading.Thread(target=self._wait_and_cleanup,
+                                      daemon=True)
             self._timeout_thread = thread
             self._timeout_thread.start()
 
-    def _timeout_thread(self):
+    def _wait_and_cleanup(self):
         '''Handle timeout'''
         try:
-            wait(self, timeout=self.timeout + self.settle_time,
-                 poll_rate=max(1.0, self.timeout / 10.0))
+            if self.timeout is not None:
+                timeout = self.timeout + self.settle_time
+            else:
+                timeout = None
+            wait(self, timeout=timeout, poll_rate=0.2)
         except TimeoutError:
             logger.debug('Status object %s timed out', str(self))
             try:
@@ -264,11 +268,46 @@ class MoveStatus(DeviceStatus):
         self.pos = positioner
         self.target = target
         self.start_ts = start_ts
+        self.start_pos = self.pos.position
         self.finish_ts = None
         self.finish_pos = None
 
+        self._watchers = []
+
         # call the base class
         super().__init__(positioner, **kwargs)
+
+        # Notify watchers (things like progress bars) of new values
+        # at the device's natural update rate.
+        if not self.done:
+            self.pos.subscribe(self._notify_watchers)
+
+    def watch(self, func):
+        """
+        Subscribe to notifications about progress. Useful for progress bars.
+
+        Parameters
+        ----------
+        func : callable
+            Expected signature: ``func(fraction_done)``
+        """
+        self._watchers.append(func)
+
+    def _notify_watchers(self, value, *args, **kwargs):
+        # *args and **kwargs catch extra junk from pyepics, not used here
+        if not self._watchers:
+            return
+        try:
+            fraction = ((self.pos.position - self.start_pos) /
+                        (self.target - self.start_pos))
+        except ZeroDivisionError:
+            fraction = 1
+        except Exception as exc:
+            print('Error in progress computation on {}: {}'.format(self, exc))
+            self._watchers.clear()  # give up of notification
+        else:
+            for watcher in self._watchers:
+                watcher(fraction)
 
     @property
     def error(self):
@@ -289,6 +328,8 @@ class MoveStatus(DeviceStatus):
     def _settled(self):
         '''Hook for when motion has completed and settled'''
         super()._settled()
+        self.pos.clear_sub(self._notify_watchers)
+        self._watchers.clear()
         self.finish_ts = time.time()
         self.finish_pos = self.pos.position
 
