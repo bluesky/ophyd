@@ -152,7 +152,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                           "configured at import-time. This will not be "
                           "supported past 17Q3.".format(self))
             import filestore.api as fs
-        self._fs = fs
+        self._reg = fs
         if write_path_template is None:
             raise ValueError("write_path_template is required")
         self.fs_root = root
@@ -332,7 +332,7 @@ class FileStoreHDF5(FileStorePluginBase):
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
         fn = PurePath(self._fn).relative_to(self.fs_root)
-        self._resource = self._fs.insert_resource(self.filestore_spec,
+        self._resource = self._reg.insert_resource(self.filestore_spec,
                                                   str(fn), res_kwargs,
                                                   root=str(self.fs_root))
 
@@ -357,7 +357,7 @@ class FileStoreTIFF(FileStorePluginBase):
                       'frame_per_point': self.get_frames_per_point()}
         fp = PurePath(self._fp).relative_to(self.fs_root)
 
-        self._resource = self._fs.insert_resource(self.filestore_spec,
+        self._resource = self._reg.insert_resource(self.filestore_spec,
                                                   str(fp), res_kwargs,
                                                   root=str(self.fs_root))
 
@@ -454,9 +454,9 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
                       'frame_per_point': self.get_frames_per_point()}
         fp = PurePath(self._fp).relative_to(self.fs_root)
 
-        self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  str(fp), res_kwargs,
-                                                  root=str(self.fs_root))
+        self._resource = self._reg.insert_resource(self.filestore_spec,
+                                                   str(fp), res_kwargs,
+                                                   root=str(self.fs_root))
 
 
 class FileStoreIterativeWrite(FileStoreBase):
@@ -465,7 +465,7 @@ class FileStoreIterativeWrite(FileStoreBase):
         'Generate the datum and insert'
         uid = super().generate_datum(key, timestamp)
         i = next(self._point_counter)
-        self._fs.insert_datum(self._resource, uid, {'point_number': i})
+        self._reg.insert_datum(self._resource, uid, {'point_number': i})
         return uid
 
 
@@ -489,7 +489,7 @@ class FileStoreBulkWrite(FileStoreBase):
             for reading in readings:
                 uid = reading['value']
                 kwargs = self._datum_kwargs_map[uid]
-                self._fs.insert_datum(self._resource, uid, kwargs)
+                self._reg.insert_datum(self._resource, uid, kwargs)
         return super().unstage()
 
 
