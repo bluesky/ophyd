@@ -1,8 +1,4 @@
-boltons
 git+https://github.com/NSLS-II/databroker#egg=databroker
-doct
-ipython
 networkx
 numpy
-prettytable
 pyepics
