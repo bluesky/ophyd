@@ -485,43 +485,11 @@ class FileStoreIterativeWrite(FileStoreBase):
         return super().generate_datum(key, timestamp, datum_kwargs)
 
 
-class FileStoreBulkWrite(FileStoreBase):
-    "Cache records as they are created and save them all at the end."
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._datum_kwargs_map = dict()  # store kwargs for each uid
-
-    def generate_datum(self, key, timestamp):
-        "Stash kwargs for each datum, to be used below by unstage."
-        uid = super().generate_datum(key, timestamp)
-        i = next(self._point_counter)
-        self._datum_kwargs_map[uid] = {'point_number': i}
-        # (don't insert, obviously)
-        return uid
-
-    def unstage(self):
-        "Insert all datums at the end."
-        for readings in self._datum_uids.values():
-            for reading in readings:
-                uid = reading['value']
-                kwargs = self._datum_kwargs_map[uid]
-                self._reg.insert_datum(self._resource, uid, kwargs)
-        return super().unstage()
-
-
 # ready-to-use combinations
 
 class FileStoreHDF5IterativeWrite(FileStoreHDF5, FileStoreIterativeWrite):
     pass
 
 
-class FileStoreHDF5BulkWrite(FileStoreHDF5, FileStoreBulkWrite):
-    pass
-
-
 class FileStoreTIFFIterativeWrite(FileStoreTIFF, FileStoreIterativeWrite):
-    pass
-
-
-class FileStoreTIFFBulkWrite(FileStoreTIFF, FileStoreBulkWrite):
     pass

@@ -15,7 +15,7 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         MagickPlugin)
 
 from ophyd.areadetector.filestore_mixins import (
-    FileStoreTIFF, FileStoreIterativeWrite, FileStoreBulkWrite,
+    FileStoreTIFF, FileStoreIterativeWrite,
     FileStoreHDF5)
 import databroker.assets.handlers as fh
 
@@ -284,7 +284,7 @@ def test_default_configuration_attrs(plugin):
 
 
 @pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
-                                         FileStoreBulkWrite))
+                                         ))
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/data/%Y/%m/%d', None, False),
                           (None, '/data/%Y/%m/%d', None, False),
@@ -332,7 +332,7 @@ def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
 
 
 @pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
-                                         FileStoreBulkWrite))
+                                         ))
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/data/%Y/%m/%d', None, False),
                           (None, '/data/%Y/%m/%d', None, False),
