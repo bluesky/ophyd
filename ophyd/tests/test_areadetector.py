@@ -15,9 +15,9 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         MagickPlugin)
 
 from ophyd.areadetector.filestore_mixins import (
-    FileStoreTIFF, FileStoreIterativeWrite, FileStoreBulkWrite,
+    FileStoreTIFF, FileStoreIterativeWrite,
     FileStoreHDF5)
-import filestore.handlers as fh
+import databroker.assets.handlers as fh
 
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
@@ -39,7 +39,7 @@ class DummyFS:
         self.datum = {}
         self.datum_by_resource = {}
 
-    def insert_resource(self, spec, fn, res_kwargs, root):
+    def register_resource(self, spec, root, fn, res_kwargs):
 
         uid = str(uuid.uuid4())
         self.resource[uid] = {'spec': spec,
@@ -50,12 +50,14 @@ class DummyFS:
         self.datum_by_resource[uid] = []
         return uid
 
-    def insert_datum(self, resource, datum_id, datum_kwargs):
+    def register_datum(self, resource, datum_kwargs):
+        datum_id = str(uuid.uuid4())
         datum = {'resource': resource,
                  'datum_id': datum_id,
                  'datum_kwargs': datum_kwargs}
         self.datum_by_resource[resource].append(datum)
         self.datum[datum_id] = datum
+        return datum_id
 
 
 # lifted from soft-matter/pims source
@@ -277,7 +279,7 @@ def test_default_configuration_attrs(plugin):
 
 
 @pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
-                                         FileStoreBulkWrite))
+                                         ))
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/data/%Y/%m/%d', None, False),
                           (None, '/data/%Y/%m/%d', None, False),
@@ -325,7 +327,7 @@ def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
 
 
 @pytest.mark.parametrize('WriterClass', (FileStoreIterativeWrite,
-                                         FileStoreBulkWrite))
+                                         ))
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/data/%Y/%m/%d', None, False),
                           (None, '/data/%Y/%m/%d', None, False),

@@ -92,6 +92,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         checks are applied to it, but ``write_path_template`` is
         returned without any validation.
 
+    This mixin assumes that it's peers provide an `enable` signal
+
     Parameters
     ----------
     write_path_template : str
@@ -117,16 +119,19 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         The read path template, if different from the write path.   See the
         docstings for `write_path_template` and `root`.
 
-    fs : FileStore
+    reg : Registry
         If None provided, try to import the top-level api from
         filestore.api This will be deprecated 17Q3.
 
         This object must provide::
 
-           def insert_resource(spec: str, fn: str, res_kwargs: dict, root: str):
+           def register_resource(spec: str,
+                                 root: str, rpath: str,
+                                 rkwargs: dict,
+                                 path_semantics: Optional[str]): -> str
                ...
 
-           def insert_datum(resource: str, datum_id: str, datum_kwargs: dict):
+           def register_datum(resource: str, datum_kwargs: dict): -> str
                ...
 
 
@@ -144,24 +149,28 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                  write_path_template,
                  root=os.path.sep,
                  read_path_template=None,
-                 fs=None,
+                 reg=None,
                  **kwargs):
-        if fs is None:
-            warnings.warn("The device {} is not provided with a FileStore "
-                          "instance. It will fall back to using the singleton "
-                          "configured at import-time. This will not be "
-                          "supported past 17Q3.".format(self))
-            import filestore.api as fs
-        self._fs = fs
+        PH = object()
+        fs = kwargs.pop('fs', PH)
+        super().__init__(*args, **kwargs)
+
         if write_path_template is None:
             raise ValueError("write_path_template is required")
         self.fs_root = root
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
-        super().__init__(*args, **kwargs)
+
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
+        if reg is None and fs is not PH:
+            reg = fs
+            warnings.warn("The device is provided with fs not reg"
+                          .format(self),
+                          stacklevel=2)
+
+        self._reg = reg
 
     @property
     def fs_root(self):
@@ -222,13 +231,17 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._locked_key_list = False
         self._datum_uids.clear()
         super().stage()
+        if self.enable.get() and self._reg is None:
+            raise RuntimeError('The plugin {!r} is enabled, but '
+                               'the Registry (self._reg) is `None`')
 
-    def generate_datum(self, key, timestamp):
+    def generate_datum(self, key, timestamp, datum_kwargs):
         "Generate a uid and cache it with its key for later insertion."
+        datum_kwargs = datum_kwargs or {}
         if self._locked_key_list:
             if key not in self._datum_uids:
                 raise RuntimeError("modifying after lock")
-        uid = new_uid()
+        uid = self._reg.register_datum(self._resource, datum_kwargs)
         reading = {'value': uid, 'timestamp': timestamp}
         # datum_uids looks like {'dark': [reading1, reading2], ...}
         self._datum_uids[key].append(reading)
@@ -332,9 +345,10 @@ class FileStoreHDF5(FileStorePluginBase):
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
         fn = PurePath(self._fn).relative_to(self.fs_root)
-        self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  str(fn), res_kwargs,
-                                                  root=str(self.fs_root))
+        self._resource = self._reg.register_resource(
+            self.filestore_spec,
+            str(self.fs_root), str(fn),
+            res_kwargs)
 
 
 class FileStoreTIFF(FileStorePluginBase):
@@ -357,9 +371,10 @@ class FileStoreTIFF(FileStorePluginBase):
                       'frame_per_point': self.get_frames_per_point()}
         fp = PurePath(self._fp).relative_to(self.fs_root)
 
-        self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  str(fp), res_kwargs,
-                                                  root=str(self.fs_root))
+        self._resource = self._reg.register_resource(
+            self.filestore_spec,
+            str(self.fs_root), str(fp),
+            res_kwargs)
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -454,43 +469,20 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
                       'frame_per_point': self.get_frames_per_point()}
         fp = PurePath(self._fp).relative_to(self.fs_root)
 
-        self._resource = self._fs.insert_resource(self.filestore_spec,
-                                                  str(fp), res_kwargs,
-                                                  root=str(self.fs_root))
+        self._resource = self._reg.register_resource(
+            self.filestore_spec,
+            str(self.fs_root), str(fp),
+            res_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
     "Save records to filestore as they are generated."
-    def generate_datum(self, key, timestamp):
+    def generate_datum(self, key, timestamp, datum_kwargs):
         'Generate the datum and insert'
-        uid = super().generate_datum(key, timestamp)
+        datum_kwargs = datum_kwargs or {}
         i = next(self._point_counter)
-        self._fs.insert_datum(self._resource, uid, {'point_number': i})
-        return uid
-
-
-class FileStoreBulkWrite(FileStoreBase):
-    "Cache records as they are created and save them all at the end."
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._datum_kwargs_map = dict()  # store kwargs for each uid
-
-    def generate_datum(self, key, timestamp):
-        "Stash kwargs for each datum, to be used below by unstage."
-        uid = super().generate_datum(key, timestamp)
-        i = next(self._point_counter)
-        self._datum_kwargs_map[uid] = {'point_number': i}
-        # (don't insert, obviously)
-        return uid
-
-    def unstage(self):
-        "Insert all datums at the end."
-        for readings in self._datum_uids.values():
-            for reading in readings:
-                uid = reading['value']
-                kwargs = self._datum_kwargs_map[uid]
-                self._fs.insert_datum(self._resource, uid, kwargs)
-        return super().unstage()
+        datum_kwargs.update({'point_number': i})
+        return super().generate_datum(key, timestamp, datum_kwargs)
 
 
 # ready-to-use combinations
@@ -499,13 +491,5 @@ class FileStoreHDF5IterativeWrite(FileStoreHDF5, FileStoreIterativeWrite):
     pass
 
 
-class FileStoreHDF5BulkWrite(FileStoreHDF5, FileStoreBulkWrite):
-    pass
-
-
 class FileStoreTIFFIterativeWrite(FileStoreTIFF, FileStoreIterativeWrite):
-    pass
-
-
-class FileStoreTIFFBulkWrite(FileStoreTIFF, FileStoreBulkWrite):
     pass

@@ -88,23 +88,15 @@ The :class:`~filestore_mixins.FileStoreTIFFSquashing` also makes use of the
 processing plugin to 'squash' multiple frames together into a single
 saved image.
 
-To create a functioning class you must also mixin one of
+To create a functioning class you must also mixin
 
 .. autosummary::
    :toctree: _as_gen
 
    ~filestore_mixins.FileStoreIterativeWrite
-   ~filestore_mixins.FileStoreBulkWrite
 
-which extend :meth:`~filestore_mixins.FileStoreBase.generate_datum` to
-insert into the ``FileStore`` instance either as data is taken or at
-the end of the experiment.
-`~filestore_mixins.FileStoreIterativeWrite` is better for something
-like a directory of ``tiff`` files which can be individually accessed
-as soon as they are written to disk, but
-`~filestore_mixins.FileStoreBulkWrite` is a better option for
-something like non-SWMR hdf5 where the data can not be accessed until
-after the full acqusition is complete.
+which extends :meth:`~filestore_mixins.FileStoreBase.generate_datum` to
+insert into the ``FileStore`` instance as data is taken.
 
 For convince we provide
 
@@ -112,11 +104,9 @@ For convince we provide
    :toctree: _as_gen
 
    ~filestore_mixins.FileStoreHDF5IterativeWrite
-   ~filestore_mixins.FileStoreHDF5BulkWrite
    ~filestore_mixins.FileStoreTIFFIterativeWrite
-   ~filestore_mixins.FileStoreTIFFBulkWrite
 
-.. inheritance-diagram:: ophyd.areadetector.filestore_mixins.FileStoreBase ophyd.areadetector.filestore_mixins.FileStoreBulkWrite ophyd.areadetector.filestore_mixins.FileStoreHDF5 ophyd.areadetector.filestore_mixins.FileStoreHDF5BulkWrite ophyd.areadetector.filestore_mixins.FileStoreHDF5IterativeWrite ophyd.areadetector.filestore_mixins.FileStoreIterativeWrite ophyd.areadetector.filestore_mixins.FileStorePluginBase ophyd.areadetector.filestore_mixins.FileStoreTIFF ophyd.areadetector.filestore_mixins.FileStoreTIFFBulkWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFSquashing ophyd.device.GenerateDatumInterface ophyd.device.BlueskyInterface
+.. inheritance-diagram:: ophyd.areadetector.filestore_mixins.FileStoreBase ophyd.areadetector.filestore_mixins.FileStoreHDF5 ophyd.areadetector.filestore_mixins.FileStoreHDF5IterativeWrite ophyd.areadetector.filestore_mixins.FileStoreIterativeWrite ophyd.areadetector.filestore_mixins.FileStorePluginBase ophyd.areadetector.filestore_mixins.FileStoreTIFF ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFSquashing ophyd.device.GenerateDatumInterface ophyd.device.BlueskyInterface
     :parts: 1
 
 
@@ -284,5 +274,5 @@ Helpers
 Full Inheritance
 ================
 
-.. inheritance-diagram:: ophyd.areadetector.plugins.FilePlugin ophyd.areadetector.plugins.HDF5Plugin ophyd.areadetector.plugins.JPEGPlugin ophyd.areadetector.plugins.MagickPlugin ophyd.areadetector.plugins.NetCDFPlugin ophyd.areadetector.plugins.NexusPlugin ophyd.areadetector.plugins.TIFFPlugin ophyd.areadetector.plugins.PluginBase ophyd.areadetector.plugins.ColorConvPlugin ophyd.areadetector.plugins.ImagePlugin ophyd.areadetector.plugins.OverlayPlugin ophyd.areadetector.plugins.ProcessPlugin ophyd.areadetector.plugins.ROIPlugin ophyd.areadetector.plugins.StatsPlugin ophyd.areadetector.plugins.TransformPlugin ophyd.areadetector.filestore_mixins.FileStoreBase ophyd.areadetector.filestore_mixins.FileStoreBulkWrite ophyd.areadetector.filestore_mixins.FileStoreHDF5 ophyd.areadetector.filestore_mixins.FileStoreHDF5BulkWrite ophyd.areadetector.filestore_mixins.FileStoreHDF5IterativeWrite ophyd.areadetector.filestore_mixins.FileStoreIterativeWrite ophyd.areadetector.filestore_mixins.FileStorePluginBase ophyd.areadetector.filestore_mixins.FileStoreTIFF ophyd.areadetector.filestore_mixins.FileStoreTIFFBulkWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFSquashing ophyd.device.GenerateDatumInterface ophyd.device.BlueskyInterface ophyd.areadetector.trigger_mixins.TriggerBase ophyd.areadetector.trigger_mixins.SingleTrigger ophyd.areadetector.trigger_mixins.MultiTrigger ophyd.areadetector.cam.CamBase ophyd.areadetector.cam.AdscDetectorCam ophyd.areadetector.cam.Andor3DetectorCam ophyd.areadetector.cam.AndorDetectorCam ophyd.areadetector.cam.BrukerDetectorCam ophyd.areadetector.cam.FirewireLinDetectorCam ophyd.areadetector.cam.FirewireWinDetectorCam ophyd.areadetector.cam.LightFieldDetectorCam ophyd.areadetector.cam.Mar345DetectorCam ophyd.areadetector.cam.MarCCDDetectorCam ophyd.areadetector.cam.PSLDetectorCam ophyd.areadetector.cam.PcoDetectorCam ophyd.areadetector.cam.PcoDetectorIO ophyd.areadetector.cam.PcoDetectorSimIO ophyd.areadetector.cam.PerkinElmerDetectorCam ophyd.areadetector.cam.PilatusDetectorCam ophyd.areadetector.cam.PixiradDetectorCam ophyd.areadetector.cam.PointGreyDetectorCam ophyd.areadetector.cam.ProsilicaDetectorCam ophyd.areadetector.cam.PvcamDetectorCam ophyd.areadetector.cam.RoperDetectorCam ophyd.areadetector.cam.SimDetectorCam ophyd.areadetector.cam.URLDetectorCam ophyd.areadetector.detectors.AreaDetector ophyd.areadetector.detectors.AdscDetector ophyd.areadetector.detectors.Andor3Detector ophyd.areadetector.detectors.AndorDetector ophyd.areadetector.detectors.BrukerDetector ophyd.areadetector.detectors.FirewireLinDetector ophyd.areadetector.detectors.FirewireWinDetector ophyd.areadetector.detectors.LightFieldDetector ophyd.areadetector.detectors.Mar345Detector ophyd.areadetector.detectors.MarCCDDetector ophyd.areadetector.detectors.PSLDetector ophyd.areadetector.detectors.PerkinElmerDetector ophyd.areadetector.detectors.PilatusDetector ophyd.areadetector.detectors.PixiradDetector ophyd.areadetector.detectors.PointGreyDetector ophyd.areadetector.detectors.ProsilicaDetector ophyd.areadetector.detectors.PvcamDetector ophyd.areadetector.detectors.RoperDetector ophyd.areadetector.detectors.SimDetector ophyd.areadetector.detectors.URLDetector ophyd.areadetector.base.ADComponent ophyd.areadetector.base.EpicsSignalWithRBV
+.. inheritance-diagram:: ophyd.areadetector.plugins.FilePlugin ophyd.areadetector.plugins.HDF5Plugin ophyd.areadetector.plugins.JPEGPlugin ophyd.areadetector.plugins.MagickPlugin ophyd.areadetector.plugins.NetCDFPlugin ophyd.areadetector.plugins.NexusPlugin ophyd.areadetector.plugins.TIFFPlugin ophyd.areadetector.plugins.PluginBase ophyd.areadetector.plugins.ColorConvPlugin ophyd.areadetector.plugins.ImagePlugin ophyd.areadetector.plugins.OverlayPlugin ophyd.areadetector.plugins.ProcessPlugin ophyd.areadetector.plugins.ROIPlugin ophyd.areadetector.plugins.StatsPlugin ophyd.areadetector.plugins.TransformPlugin ophyd.areadetector.filestore_mixins.FileStoreBase ophyd.areadetector.filestore_mixins.FileStoreHDF5 ophyd.areadetector.filestore_mixins.FileStoreHDF5IterativeWrite ophyd.areadetector.filestore_mixins.FileStoreIterativeWrite ophyd.areadetector.filestore_mixins.FileStorePluginBase ophyd.areadetector.filestore_mixins.FileStoreTIFF ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFSquashing ophyd.device.GenerateDatumInterface ophyd.device.BlueskyInterface ophyd.areadetector.trigger_mixins.TriggerBase ophyd.areadetector.trigger_mixins.SingleTrigger ophyd.areadetector.trigger_mixins.MultiTrigger ophyd.areadetector.cam.CamBase ophyd.areadetector.cam.AdscDetectorCam ophyd.areadetector.cam.Andor3DetectorCam ophyd.areadetector.cam.AndorDetectorCam ophyd.areadetector.cam.BrukerDetectorCam ophyd.areadetector.cam.FirewireLinDetectorCam ophyd.areadetector.cam.FirewireWinDetectorCam ophyd.areadetector.cam.LightFieldDetectorCam ophyd.areadetector.cam.Mar345DetectorCam ophyd.areadetector.cam.MarCCDDetectorCam ophyd.areadetector.cam.PSLDetectorCam ophyd.areadetector.cam.PcoDetectorCam ophyd.areadetector.cam.PcoDetectorIO ophyd.areadetector.cam.PcoDetectorSimIO ophyd.areadetector.cam.PerkinElmerDetectorCam ophyd.areadetector.cam.PilatusDetectorCam ophyd.areadetector.cam.PixiradDetectorCam ophyd.areadetector.cam.PointGreyDetectorCam ophyd.areadetector.cam.ProsilicaDetectorCam ophyd.areadetector.cam.PvcamDetectorCam ophyd.areadetector.cam.RoperDetectorCam ophyd.areadetector.cam.SimDetectorCam ophyd.areadetector.cam.URLDetectorCam ophyd.areadetector.detectors.AreaDetector ophyd.areadetector.detectors.AdscDetector ophyd.areadetector.detectors.Andor3Detector ophyd.areadetector.detectors.AndorDetector ophyd.areadetector.detectors.BrukerDetector ophyd.areadetector.detectors.FirewireLinDetector ophyd.areadetector.detectors.FirewireWinDetector ophyd.areadetector.detectors.LightFieldDetector ophyd.areadetector.detectors.Mar345Detector ophyd.areadetector.detectors.MarCCDDetector ophyd.areadetector.detectors.PSLDetector ophyd.areadetector.detectors.PerkinElmerDetector ophyd.areadetector.detectors.PilatusDetector ophyd.areadetector.detectors.PixiradDetector ophyd.areadetector.detectors.PointGreyDetector ophyd.areadetector.detectors.ProsilicaDetector ophyd.areadetector.detectors.PvcamDetector ophyd.areadetector.detectors.RoperDetector ophyd.areadetector.detectors.SimDetector ophyd.areadetector.detectors.URLDetector ophyd.areadetector.base.ADComponent ophyd.areadetector.base.EpicsSignalWithRBV
    :parts: 1
