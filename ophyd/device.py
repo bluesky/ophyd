@@ -659,7 +659,7 @@ class GenerateDatumInterface:
     """Classes that inherit from this can safely customize the
     `generate_datum` method without breaking mro. If used along with the
     BlueskyInterface, inherit from this second."""
-    def generate_datum(self, key, timestamp):
+    def generate_datum(self, key, timestamp, datum_kwargs):
         pass
 
 

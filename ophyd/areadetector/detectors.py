@@ -61,7 +61,7 @@ class DetectorBase(ADBase):
         file_plugins = [s for s in self._signals.values() if
                         hasattr(s, 'generate_datum')]
         for p in file_plugins:
-            p.generate_datum(key, timestamp)
+            p.generate_datum(key, timestamp, {})
 
     def make_data_key(self):
         source = 'PV:{}'.format(self.prefix)

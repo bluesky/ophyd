@@ -235,12 +235,13 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             raise RuntimeError('The plugin {!r} is enabled, but '
                                'the Registry (self._reg) is `None`')
 
-    def generate_datum(self, key, timestamp):
+    def generate_datum(self, key, timestamp, datum_kwargs):
         "Generate a uid and cache it with its key for later insertion."
+        datum_kwargs = datum_kwargs or {}
         if self._locked_key_list:
             if key not in self._datum_uids:
                 raise RuntimeError("modifying after lock")
-        uid = new_uid()
+        uid = self._reg.register_datum(self._resource, datum_kwargs)
         reading = {'value': uid, 'timestamp': timestamp}
         # datum_uids looks like {'dark': [reading1, reading2], ...}
         self._datum_uids[key].append(reading)
@@ -476,12 +477,12 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
 
 class FileStoreIterativeWrite(FileStoreBase):
     "Save records to filestore as they are generated."
-    def generate_datum(self, key, timestamp):
+    def generate_datum(self, key, timestamp, datum_kwargs):
         'Generate the datum and insert'
-        uid = super().generate_datum(key, timestamp)
+        datum_kwargs = datum_kwargs or {}
         i = next(self._point_counter)
-        self._reg.insert_datum(self._resource, uid, {'point_number': i})
-        return uid
+        datum_kwargs.update({'point_number': i})
+        return super().generate_datum(key, timestamp, datum_kwargs)
 
 
 class FileStoreBulkWrite(FileStoreBase):
