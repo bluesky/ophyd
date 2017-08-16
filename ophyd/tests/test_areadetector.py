@@ -50,19 +50,14 @@ class DummyFS:
         self.datum_by_resource[uid] = []
         return uid
 
-    def insert_resource(self, spec, fn, res_kwargs, root):
-        return self.register_resource(spec, root, fn, res_kwargs)
-
-    def insert_datum(self, resource, datum_id, datum_kwargs):
+    def register_datum(self, resource, datum_kwargs):
+        datum_id = str(uuid.uuid4())
         datum = {'resource': resource,
                  'datum_id': datum_id,
                  'datum_kwargs': datum_kwargs}
         self.datum_by_resource[resource].append(datum)
         self.datum[datum_id] = datum
         return datum_id
-
-    def register_datum(self, resource, datum_kwargs):
-        return self.insert_datum(resource, str(uuid.uuid4()), datum_kwargs)
 
 
 # lifted from soft-matter/pims source
