@@ -17,7 +17,7 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite, FileStoreBulkWrite,
     FileStoreHDF5)
-import filestore.handlers as fh
+import databroker.assets.handlers as fh
 
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
@@ -39,7 +39,7 @@ class DummyFS:
         self.datum = {}
         self.datum_by_resource = {}
 
-    def insert_resource(self, spec, fn, res_kwargs, root):
+    def register_resource(self, spec, root, fn, res_kwargs):
 
         uid = str(uuid.uuid4())
         self.resource[uid] = {'spec': spec,
@@ -50,12 +50,19 @@ class DummyFS:
         self.datum_by_resource[uid] = []
         return uid
 
+    def insert_resource(self, spec, fn, res_kwargs, root):
+        return self.register_resource(spec, root, fn, res_kwargs)
+
     def insert_datum(self, resource, datum_id, datum_kwargs):
         datum = {'resource': resource,
                  'datum_id': datum_id,
                  'datum_kwargs': datum_kwargs}
         self.datum_by_resource[resource].append(datum)
         self.datum[datum_id] = datum
+        return datum_id
+
+    def register_datum(self, resource, datum_kwargs):
+        return self.insert_datum(resource, str(uuid.uuid4()), datum_kwargs)
 
 
 # lifted from soft-matter/pims source

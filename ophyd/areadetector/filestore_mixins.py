@@ -123,7 +123,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
         This object must provide::
 
-           def insert_resource(spec: str, fn: str, res_kwargs: dict, root: str):
+           def.register_resource(spec: str, fn: str, res_kwargs: dict, root: str):
                ...
 
            def insert_datum(resource: str, datum_id: str, datum_kwargs: dict):
@@ -332,9 +332,10 @@ class FileStoreHDF5(FileStorePluginBase):
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
         fn = PurePath(self._fn).relative_to(self.fs_root)
-        self._resource = self._reg.insert_resource(self.filestore_spec,
-                                                  str(fn), res_kwargs,
-                                                  root=str(self.fs_root))
+        self._resource = self._reg.register_resource(
+            self.filestore_spec,
+            str(self.fs_root), str(fn),
+            res_kwargs)
 
 
 class FileStoreTIFF(FileStorePluginBase):
@@ -357,9 +358,10 @@ class FileStoreTIFF(FileStorePluginBase):
                       'frame_per_point': self.get_frames_per_point()}
         fp = PurePath(self._fp).relative_to(self.fs_root)
 
-        self._resource = self._reg.insert_resource(self.filestore_spec,
-                                                  str(fp), res_kwargs,
-                                                  root=str(self.fs_root))
+        self._resource = self._reg.register_resource(
+            self.filestore_spec,
+            str(self.fs_root), str(fp),
+            res_kwargs)
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -454,9 +456,10 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
                       'frame_per_point': self.get_frames_per_point()}
         fp = PurePath(self._fp).relative_to(self.fs_root)
 
-        self._resource = self._reg.insert_resource(self.filestore_spec,
-                                                   str(fp), res_kwargs,
-                                                   root=str(self.fs_root))
+        self._resource = self._reg.register_resource(
+            self.filestore_spec,
+            str(self.fs_root), str(fp),
+            res_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
