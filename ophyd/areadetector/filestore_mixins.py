@@ -92,6 +92,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         checks are applied to it, but ``write_path_template`` is
         returned without any validation.
 
+    This mixin assumes that it's peers provide an `enable` signal
+
     Parameters
     ----------
     write_path_template : str
@@ -117,16 +119,19 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         The read path template, if different from the write path.   See the
         docstings for `write_path_template` and `root`.
 
-    fs : FileStore
+    reg : Registry
         If None provided, try to import the top-level api from
         filestore.api This will be deprecated 17Q3.
 
         This object must provide::
 
-           def.register_resource(spec: str, fn: str, res_kwargs: dict, root: str):
+           def register_resource(spec: str,
+                                 root: str, rpath: str,
+                                 rkwargs: dict,
+                                 path_semantics: Optional[str]): -> str
                ...
 
-           def insert_datum(resource: str, datum_id: str, datum_kwargs: dict):
+           def register_datum(resource: str, datum_kwargs: dict): -> str
                ...
 
 
@@ -144,24 +149,28 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                  write_path_template,
                  root=os.path.sep,
                  read_path_template=None,
-                 fs=None,
+                 reg=None,
                  **kwargs):
-        if fs is None:
-            warnings.warn("The device {} is not provided with a FileStore "
-                          "instance. It will fall back to using the singleton "
-                          "configured at import-time. This will not be "
-                          "supported past 17Q3.".format(self))
-            import filestore.api as fs
-        self._reg = fs
+        PH = object()
+        fs = kwargs.pop('fs', PH)
+        super().__init__(*args, **kwargs)
+
         if write_path_template is None:
             raise ValueError("write_path_template is required")
         self.fs_root = root
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
-        super().__init__(*args, **kwargs)
+
         self._point_counter = None
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
+        if reg is None and fs is not PH:
+            reg = fs
+            warnings.warn("The device is provided with fs not reg"
+                          .format(self),
+                          stacklevel=2)
+
+        self._reg = reg
 
     @property
     def fs_root(self):
@@ -222,6 +231,9 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._locked_key_list = False
         self._datum_uids.clear()
         super().stage()
+        if self.enable.get() and self._reg is None:
+            raise RuntimeError('The plugin {!r} is enabled, but '
+                               'the Registry (self._reg) is `None`')
 
     def generate_datum(self, key, timestamp):
         "Generate a uid and cache it with its key for later insertion."
