@@ -250,6 +250,34 @@ class PVPosTest(unittest.TestCase):
         # TODO
         self.skipTest('TODO')
 
+    def test_hints(self):
+        fm = self.fake_motor
+
+        class MyPositioner(PVPositioner):
+            '''Setpoint, readback, no put completion. No done pv.'''
+            setpoint = C(EpicsSignal, fm['setpoint'])
+            readback = C(EpicsSignalRO, fm['readback'])
+            actuate = C(EpicsSignal, fm['actuate'])
+            stop_signal = C(EpicsSignal, fm['stop'])
+            done = C(EpicsSignal, fm['moving'])
+
+            actuate_value = 1
+            stop_value = 1
+            done_value = 1
+
+        motor = MyPositioner('', name='pv_pos_fake_mtr')
+
+        desc = motor.describe()
+        f_hints = motor.hints['fields']
+        assert len(f_hints) > 0
+        for k in f_hints:
+            assert k in desc
+
+        motor.hints = {'fields': ['foo']}
+        assert motor.hints == {'fields': ['foo']}
+        motor.hints = None
+
+        assert motor.hints['fields'] == f_hints
 
 from . import main
 is_main = (__name__ == '__main__')
