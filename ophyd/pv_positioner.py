@@ -103,6 +103,7 @@ class PVPositioner(Device, PositionerBase):
 
         if self.done is not None:
             self.done.subscribe(self._move_changed)
+        self._hints = None
 
     @property
     def egu(self):
@@ -256,6 +257,16 @@ class PVPositioner(Device, PositionerBase):
             self._move_changed(value=self.done_value)
 
         super()._done_moving(**kwargs)
+
+    @property
+    def hints(self):
+        if self._hints is None:
+            return {'fields': [self.readback.name]}
+        return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        self._hints = val if val is None else dict(val)
 
 
 class PVPositionerPC(PVPositioner):

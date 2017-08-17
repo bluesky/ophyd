@@ -94,3 +94,18 @@ def test_reading(quadem):
     assert 'quadem_current1_mean_value' in vals
     assert (set(('value', 'timestamp')) ==
             set(vals['quadem_current1_mean_value'].keys()))
+
+
+@using_fake_epics_pv
+def test_hints(quadem):
+
+    desc = quadem.describe()
+    f_hints = quadem.hints['fields']
+    assert len(f_hints) > 0
+    for k in f_hints:
+        assert k in desc
+    quadem.hints = {'fields': ['foo']}
+    assert quadem.hints == {'fields': ['foo']}
+    quadem.hints = None
+
+    assert quadem.hints['fields'] == f_hints

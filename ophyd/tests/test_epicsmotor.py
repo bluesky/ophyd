@@ -256,3 +256,18 @@ def test_move_alarm(motor):
     finally:
         motor.user_readback.alarm_status = AlarmStatus.NO_ALARM
         motor.user_readback.alarm_severity = AlarmSeverity.NO_ALARM
+
+
+def test_hints(motor):
+
+    desc = motor.describe()
+    f_hints = motor.hints['fields']
+    assert len(f_hints) > 0
+    for k in f_hints:
+        assert k in desc
+
+    motor.hints = {'fields': ['foo']}
+    assert motor.hints == {'fields': ['foo']}
+    motor.hints = None
+
+    assert motor.hints['fields'] == f_hints

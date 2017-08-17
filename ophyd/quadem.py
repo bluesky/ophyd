@@ -92,6 +92,36 @@ class QuadEM(SingleTrigger, DetectorBase):
         self.configuration_attrs = ['integration_time', 'averaging_time']
         self.read_attrs = ['current1.mean_value', 'current2.mean_value',
                            'current3.mean_value', 'current4.mean_value']
+        self._hints = None
+
+    @property
+    def hints(self):
+        """Provide hints to bluesky
+
+        The default value is ::
+
+           {'fields': list_of_channel_mean_value_names}
+
+        To override this, set another dictionary.
+
+        To restore the default value set ``None``
+
+        To suppress all hints set ``{}``
+        """
+        if self._hints is None:
+            return {'fields': [getattr(self, c).mean_value.name
+                               for c in ['current1', 'current2',
+                                         'current3', 'current4']]}
+        return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        self._hints = val if val is None else dict(val)
+
+    def wtf(self):
+        print([getattr(self, c).mean_value.name
+               for c in ['current1', 'current2',
+                         'current3', 'current4']])
 
 
 class NSLS_EM(QuadEM):
@@ -104,4 +134,3 @@ class TetrAMM(QuadEM):
 
 class APS_EM(QuadEM):
     port_name = Cpt(Signal, value='APS_EM')
-

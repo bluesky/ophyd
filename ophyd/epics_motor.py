@@ -75,7 +75,7 @@ class EpicsMotor(Device, PositionerBase):
         if configuration_attrs is None:
             configuration_attrs = ['motor_egu', 'velocity', 'acceleration',
                                    'user_offset', 'user_offset_dir']
-
+        self._hints = None
         super().__init__(prefix, read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
                          name=name, parent=parent, **kwargs)
@@ -86,6 +86,7 @@ class EpicsMotor(Device, PositionerBase):
 
         self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
+        self._hints = None
 
     @property
     @raise_if_disconnected
@@ -263,7 +264,8 @@ class EpicsMotor(Device, PositionerBase):
                              self.name, status, severity)
                 success = False
 
-            self._done_moving(success=success, timestamp=timestamp, value=value)
+            self._done_moving(success=success, timestamp=timestamp,
+                              value=value)
 
     @property
     def report(self):
@@ -274,3 +276,25 @@ class EpicsMotor(Device, PositionerBase):
             rep = {'position': 'disconnected'}
         rep['pv'] = self.user_readback.pvname
         return rep
+
+    @property
+    def hints(self):
+        """Provide hints to bluesky
+
+        The default value is ::
+
+           {'fields': [self.user_readback.name]}
+
+        To override this, set another dictionary.
+
+        To restore the default value set ``None``
+
+        To suppress all hints set ``{}``
+        """
+        if self._hints is None:
+            return {'fields': [self.user_readback.name]}
+        return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        self._hints = val if val is None else dict(val)

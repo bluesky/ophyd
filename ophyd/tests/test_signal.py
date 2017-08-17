@@ -433,6 +433,11 @@ def test_epicssignalro_alarm_status():
     sig.alarm_severity
 
 
+def test_hints():
+    sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    assert sig.hints == {'fields': [sig.name]}
+
+
 from . import main
 is_main = (__name__ == '__main__')
 main(is_main)
