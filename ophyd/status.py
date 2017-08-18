@@ -318,7 +318,7 @@ class MoveStatus(DeviceStatus):
         self._watchers.append(func)
 
     def _notify_watchers(self, value, *args, **kwargs):
-        # *args and **kwargs catch extra junk from pyepics, not used here
+        # *args and **kwargs catch extra inputs from pyepics, not needed here
         if not self._watchers:
             return
         current = self.pos.position
