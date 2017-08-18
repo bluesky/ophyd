@@ -818,8 +818,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             obj = getattr(self, attr)
             if config:
                 values.update(obj.read_configuration())
-
-            values.update(obj.read())
+            else:
+                values.update(obj.read())
 
         return values
 
@@ -845,8 +845,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             obj = getattr(self, attr)
             if config:
                 desc.update(obj.describe_configuration())
-
-            desc.update(obj.describe())
+            else:
+                desc.update(obj.describe())
 
         return desc
 
