@@ -21,7 +21,6 @@ def print_device_summary(dev):
     def print_leaf(a):
         s = getattr(dev, a)
         print(f'{a:<20} {type(s).__name__:<20}({s.name!r})')
-        print()
 
     print()
     print('data keys (* hints)')
