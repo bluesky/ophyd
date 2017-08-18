@@ -321,7 +321,7 @@ class MoveStatus(DeviceStatus):
         # *args and **kwargs catch extra inputs from pyepics, not needed here
         if not self._watchers:
             return
-        current = self.pos.position
+        current = value
         target = self.target
         initial = self.start_pos
         time_elapsed = time.time() - self.start_ts
