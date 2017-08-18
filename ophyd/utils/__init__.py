@@ -1,10 +1,15 @@
 # vi: ts=4 sw=4 sts=4 expandtab
 import logging
 from collections import OrderedDict
+import sys
 
 from .errors import *
 from .epics_pvs import *
 from .paths import makedirs, make_dir_tree
+
+if not sys.version_info < (3, 6):
+    from ._utils36 import *
+
 
 
 logger = logging.getLogger(__name__)
