@@ -281,8 +281,8 @@ def test_watchers(motor):
 
     collector = []
 
-    def collect(number):
-        collector.append(number)
+    def collect(fraction, **kwargs):
+        collector.append(fraction)
 
     st = motor.set(1)
     st.watch(collect)

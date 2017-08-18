@@ -273,6 +273,9 @@ class MoveStatus(DeviceStatus):
         self.finish_pos = None
 
         self._watchers = []
+        self._unit = getattr(self.pos, 'egu', None)
+        self._precision = getattr(self.pos, 'precision', None)
+        self._name = self.pos.name
 
         # call the base class
         super().__init__(positioner, **kwargs)
@@ -289,7 +292,17 @@ class MoveStatus(DeviceStatus):
         Parameters
         ----------
         func : callable
-            Expected signature: ``func(fraction_done)``
+            Expected to accept the keyword aruments:
+
+                * ``name``
+                * ``current``
+                * ``initial``
+                * ``target``
+                * ``unit``
+                * ``precision``
+                * ``fraction``
+                * ``time_elapsed``
+                * ``time_remaining``
         """
         self._watchers.append(func)
 
@@ -297,17 +310,29 @@ class MoveStatus(DeviceStatus):
         # *args and **kwargs catch extra junk from pyepics, not used here
         if not self._watchers:
             return
+        current = self.pos.position
+        target = self.target
+        initial = self.start_pos
+        time_elapsed = time.time() - self.start_ts
         try:
-            fraction = ((self.pos.position - self.start_pos) /
-                        (self.target - self.start_pos))
+            fraction = (current - initial) / (target - initial)
         except ZeroDivisionError:
             fraction = 1
         except Exception as exc:
-            print('Error in progress computation on {}: {}'.format(self, exc))
-            self._watchers.clear()  # give up of notification
+            fraction = None
+            time_remaining = None
         else:
-            for watcher in self._watchers:
-                watcher(fraction)
+            time_remaining = time_elapsed / fraction + self.settle_time
+        for watcher in self._watchers:
+            watcher(name=self._name,
+                    current=current,
+                    initial=initial,
+                    target=target,
+                    unit=self._unit,
+                    precision=self._precision,
+                    fraction=fraction,
+                    time_elapsed=time_elapsed,
+                    time_remaining=time_remaining)
 
     @property
     def error(self):
