@@ -271,3 +271,22 @@ def test_hints(motor):
     motor.hints = None
 
     assert motor.hints['fields'] == f_hints
+
+
+def test_watchers(motor):
+
+    st = motor.set(0)
+    while not st.done:
+        continue
+
+    collector = []
+
+    def collect(fraction, **kwargs):
+        collector.append(fraction)
+
+    st = motor.set(1)
+    st.watch(collect)
+    while not st.done:
+        continue
+    assert collector
+    assert collector[-1] == 1
