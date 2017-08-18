@@ -206,6 +206,7 @@ class DeviceStatus(StatusBase):
     '''
     def __init__(self, device, **kwargs):
         self.device = device
+        self._watchers = []
         super().__init__(**kwargs)
 
     def _handle_failure(self):
@@ -218,6 +219,17 @@ class DeviceStatus(StatusBase):
                 'success={1.success})'
                 ''.format(self.__class__.__name__, self)
                 )
+
+    def watch(self, func):
+        # See MoveStatus.watch for a richer implementation and more info.
+        if self.device is not None:
+            self._watchers.append(func)
+            func(name=self.device.name)
+
+    def _settled(self):
+        '''Hook for when status has completed and settled'''
+        for watcher in self._watchers:
+            watcher(name=self.device.name, fraction=1)
 
     __repr__ = __str__
 
@@ -272,7 +284,6 @@ class MoveStatus(DeviceStatus):
         self.finish_ts = None
         self.finish_pos = None
 
-        self._watchers = []
         self._unit = getattr(self.pos, 'egu', None)
         self._precision = getattr(self.pos, 'precision', None)
         self._name = self.pos.name
