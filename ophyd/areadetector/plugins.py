@@ -56,13 +56,9 @@ def register_plugin(cls):
 
 class PluginBase(ADBase):
     '''AreaDetector plugin base class'''
-    def __init__(self, *args, configuration_attrs=None, **kwargs):
-        if configuration_attrs is None:
-            configuration_attrs = self._default_configuration_attrs
-        # Turn array callbacks on during staging.
-        # Without this, no array data is sent to the plugins.
-        super().__init__(*args, configuration_attrs=configuration_attrs,
-                         **kwargs)
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
         # make sure it is the right type of plugin
         if (self._plugin_type is not None and
                 not self.plugin_type.get().startswith(self._plugin_type)):
@@ -73,15 +69,18 @@ class PluginBase(ADBase):
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
 
+        # Turn array callbacks on during staging.
+        # Without this, no array data is sent to the plugins.
         self.stage_sigs['blocking_callbacks'] = 'Yes'
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([('parent.cam.array_callbacks', 1),
                                     ])
 
-    _default_configuration_attrs = ('port_name', 'nd_array_port', 'enable',
-                                    'blocking_callbacks', 'plugin_type',
-                                    'asyn_pipeline_config',
-                                    'configuration_names')
+    _default_configuration_attrs = (ADBase._default_configuration_attrs +
+                                    ('port_name', 'nd_array_port', 'enable',
+                                     'blocking_callbacks', 'plugin_type',
+                                     'asyn_pipeline_config',
+                                     'configuration_names'))
 
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
