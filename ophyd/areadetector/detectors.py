@@ -41,6 +41,9 @@ class DetectorBase(ADBase):
     Note that Plugin also inherits from ADBase.
     This adds some AD-specific methods that are not shared by the plugins.
     """
+    _default_configuration_attrs = (ADBase._default_configuration_attrs +
+                                    ('cam', ))
+
     def dispatch(self, key, timestamp):
         """Notify plugins of acquisition being complete.
 

@@ -36,6 +36,11 @@ __all__ = ['CamBase',
 
 
 class CamBase(ADBase):
+    _default_configuration_attrs = (ADBase._default_configuration_attrs +
+                                    ('acquire_time', 'acquire_period',
+                                     'model', 'num_exposures', 'image_mode',
+                                     'manufacturer', 'trigger_mode'))
+
     ImageMode = enum(SINGLE=0, MULTIPLE=1, CONTINUOUS=2)
 
     # Shared among all cams and plugins
