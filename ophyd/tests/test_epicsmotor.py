@@ -290,3 +290,7 @@ def test_watchers(motor):
         continue
     assert collector
     assert collector[-1] == 1
+
+
+def test_str_smoke(motor):
+    str(motor)

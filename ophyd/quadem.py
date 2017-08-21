@@ -18,6 +18,10 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
 
 
 class QuadEM(SingleTrigger, DetectorBase):
+    _default_configuration_attrs = ('integration_time', 'averaging_time')
+    _default_read_attrs = ('current1.mean_value', 'current2.mean_value',
+                           'current3.mean_value', 'current4.mean_value')
+
     # This is needed because ophyd verifies that it can see all
     # of the nodes in the asyn pipeline, however these IOCs do not
     # expose their port name via a PV, but nevertheless server as the
@@ -89,9 +93,6 @@ class QuadEM(SingleTrigger, DetectorBase):
                                 ])
         self._acquisition_signal = self.acquire
 
-        self.configuration_attrs = ['integration_time', 'averaging_time']
-        self.read_attrs = ['current1.mean_value', 'current2.mean_value',
-                           'current3.mean_value', 'current4.mean_value']
         self._hints = None
 
     @property

@@ -89,6 +89,8 @@ class ADBase(Device):
     '''
 
     _html_docs = ['areaDetectorDoc.html']
+    _default_read_attrs = ()
+    _default_configuration_attrs = ()
 
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):

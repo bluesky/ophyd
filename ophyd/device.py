@@ -686,6 +686,14 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
+    # over ride in sub-classes to control the default
+    # contents of read and configuration attrs lists
+
+    # If `None`, defaults to `self.signal_names'
+    _default_read_attrs = None
+    # If `None`, defaults to `[]`
+    _default_configuration_attrs = None
+
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  name=None, parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
@@ -701,11 +709,16 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         super().__init__(name=name, parent=parent, **kwargs)
 
-        if read_attrs is None:
-            read_attrs = self.signal_names
-
         if configuration_attrs is None:
-            configuration_attrs = []
+            dflt_c_attrs = self._default_configuration_attrs
+            configuration_attrs = (dflt_c_attrs if
+                                   dflt_c_attrs is not None
+                                   else [])
+
+        if read_attrs is None:
+            read_attrs = (self._default_read_attrs if
+                          self._default_read_attrs is not None
+                          else self.signal_names)
 
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)
@@ -713,6 +726,52 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
          if not cpt.lazy]
+
+    def __str__(self):
+        desc = self.describe()
+        config_desc = self.describe_configuration()
+        read_attrs = self.read_attrs
+        config_attrs = self.configuration_attrs
+        used_attrs = set(read_attrs + config_attrs)
+        extra_attrs = [a for a in self.signal_names
+                       if a not in used_attrs]
+        hints = getattr(self, 'hints', {}).get('fields', [])
+
+        def format_leaf(a):
+            s = getattr(self, a)
+            return '{:<20} {:<20}({!r})'.format(a, type(s).__name__,
+                                                s.name)
+
+        out = []
+        out.append('data keys (* hints)')
+        out.append('-------------------')
+        for k in sorted(desc):
+            out.append(('*' if k in hints else ' ') + k)
+        out.append('')
+
+        out.append('read attrs')
+        out.append('----------')
+        for a in read_attrs:
+            out.append(format_leaf(a))
+
+        out.append('')
+        out.append('config keys')
+        out.append('-----------')
+        for k in sorted(config_desc):
+            out.append(k)
+        out.append('')
+
+        out.append('configuration attrs')
+        out.append('----------')
+        for a in config_attrs:
+            out.append(format_leaf(a))
+        out.append('')
+
+        out.append('Unused attrs')
+        out.append('------------')
+        for a in extra_attrs:
+            out.append(format_leaf(a))
+        return '\n'.join(out)
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):
         '''Wait for signals to connect
@@ -818,8 +877,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             obj = getattr(self, attr)
             if config:
                 values.update(obj.read_configuration())
-
-            values.update(obj.read())
+            else:
+                values.update(obj.read())
 
         return values
 
@@ -845,8 +904,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             obj = getattr(self, attr)
             if config:
                 desc.update(obj.describe_configuration())
-
-            desc.update(obj.describe())
+            else:
+                desc.update(obj.describe())
 
         return desc
 

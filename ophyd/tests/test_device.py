@@ -60,11 +60,11 @@ class DeviceTests(unittest.TestCase):
 
         self.assertEqual(list(d.read().keys()), [d.cpt1.name])
         self.assertEqual(set(d.read_configuration().keys()),
-                         {d.cpt2.name, d.cpt2.name + '_conf'})
+                         {d.cpt2.name + '_conf'})
 
         self.assertEqual(list(d.describe().keys()), [d.cpt1.name])
         self.assertEqual(set(d.describe_configuration().keys()),
-                         {d.cpt2.name, d.cpt2.name + '_conf'})
+                         {d.cpt2.name + '_conf', })
 
     def test_complexdevice(self):
         class SubDevice(Device):
@@ -103,12 +103,7 @@ class DeviceTests(unittest.TestCase):
                      'dev_subsub2_cpt4_conf', # from subsub2.cpt4
                      'dev_cpt3_conf',         # from cpt3
 
-                     'dev_sub1_cpt1',         # from sub1.*
-                     'dev_sub1_cpt2',         # from sub1.*
-                                              #  (and sub1.read_attrs)
-                     'dev_subsub2_cpt2',      # from subsub2.cpt2
-                     'dev_subsub2_cpt4',      # from subsub2.cpt4
-                     'dev_cpt3'               # from cpt3
+
                      }
 
         self.assertEquals(set(device.describe_configuration().keys()),
