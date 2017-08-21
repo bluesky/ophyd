@@ -686,6 +686,14 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
+    # over ride in sub-classes to control the default
+    # contents of read and configuration attrs lists
+
+    # If `None`, defaults to `self.signal_names'
+    _default_read_attrs = None
+    # If `None`, defaults to `[]`
+    _default_configuration_attrs = None
+
     def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
                  name=None, parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
@@ -701,11 +709,16 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         super().__init__(name=name, parent=parent, **kwargs)
 
-        if read_attrs is None:
-            read_attrs = self.signal_names
-
         if configuration_attrs is None:
-            configuration_attrs = []
+            dflt_c_attrs = self._default_configuration_attrs
+            configuration_attrs = (dflt_c_attrs if
+                                   dflt_c_attrs is not None
+                                   else [])
+
+        if read_attrs is None:
+            read_attrs = (self._default_read_attrs if
+                          self._default_read_attrs is not None
+                          else self.signal_names)
 
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)

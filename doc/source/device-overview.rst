@@ -124,7 +124,28 @@ and static information about the object
                               (provisional)
  ===========================  ========================================================
 
+:class:`Device` also has two class-level attributes to control the default contents of
+:attr:`read_attrs` and :attr:`configuration_attrs`.
 
+ ====================================  ========================================================
+ Attribute                             Description
+ ====================================  ========================================================
+ :attr:`_default_read_attrs`           The default contents of :attr:`read_attrs` if a subset
+                                       of all available children.
+
+			               An iterable or `None`.  If `None` defaults to
+			               all children
+
+				       A :class:`tuple` is recommended.
+
+ ------------------------------------  --------------------------------------------------------
+ :attr:`_default_configuration_attrs`  The default contents of :attr:`configuration_attrs`
+
+			               An iterable or `None`.  If `None` defaults to ``[]``
+
+				       A :class:`tuple` is recommended.
+
+ ====================================  ========================================================
 
 
 :class:`Component`

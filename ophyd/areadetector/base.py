@@ -92,20 +92,6 @@ class ADBase(Device):
     _default_read_attrs = ()
     _default_configuration_attrs = ()
 
-    def __init__(self, *args,
-                 configuration_attrs=None, read_attrs=None,
-                 **kwargs):
-        if configuration_attrs is None:
-            configuration_attrs = self._default_configuration_attrs
-
-        if read_attrs is None:
-            read_attrs = self._default_read_attrs
-
-        super().__init__(*args,
-                         configuration_attrs=configuration_attrs,
-                         read_attrs=read_attrs,
-                         **kwargs)
-
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):
         '''Search through the signal docs on this detector for the string text
