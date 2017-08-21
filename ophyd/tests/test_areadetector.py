@@ -244,6 +244,21 @@ def test_read_configuration_smoke():
 
     assert len(conf) > 0
     assert len(conf) == len(desc)
+    assert set(conf) == set(desc)
+
+
+def test_str_smoke():
+    class MyDetector(SingleTrigger, SimDetector):
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+        proc1 = Cpt(ProcessPlugin, 'Proc1:')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+
+    det = MyDetector(prefix, name='test')
+    det.read_attrs = ['stats1']
+    det.stats1.read_attrs = ['mean_value']
+    det.hints = {'fields': [det.stats1.mean_value.name]}
+
+    str(det)
 
 
 def test_default_configuration_smoke():
@@ -267,6 +282,7 @@ def test_default_configuration_smoke():
     {n: getattr(d, n).read_configuration() for n in d.signal_names}
     {n: getattr(d, n).describe_configuration() for n in d.signal_names}
     d.unstage()
+
 
 
 @pytest.mark.parametrize('plugin',
