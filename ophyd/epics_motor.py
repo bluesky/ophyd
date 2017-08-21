@@ -40,6 +40,9 @@ class EpicsMotor(Device, PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
+    _default_read_attrs = ('user_readback', 'user_setpoint')
+    _default_configuration_attrs = ('motor_egu', 'velocity', 'acceleration',
+                                    'user_offset', 'user_offset_dir')
     # position
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
@@ -67,18 +70,10 @@ class EpicsMotor(Device, PositionerBase):
     home_forward = Cpt(EpicsSignal, '.HOMF')
     home_reverse = Cpt(EpicsSignal, '.HOMR')
 
-    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, **kwargs):
-        if read_attrs is None:
-            read_attrs = ['user_readback', 'user_setpoint']
+    def __init__(self, *args, **kwargs):
 
-        if configuration_attrs is None:
-            configuration_attrs = ['motor_egu', 'velocity', 'acceleration',
-                                   'user_offset', 'user_offset_dir']
         self._hints = None
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Make the default alias for the user_readback the name of the
         # motor itself.
