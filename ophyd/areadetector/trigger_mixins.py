@@ -43,6 +43,8 @@ class ADTriggerStatus(DeviceStatus):
 
     def _notify_watchers(self, value, *args, **kwargs):
         # *args and **kwargs catch extra inputs from pyepics, not needed here
+        if self.done:
+            self.device.cam.array_counter.clear_sub(self._notify_watchers)
         if not self._watchers:
             return
         # Always start progress bar at 0 regardless of starting value of
