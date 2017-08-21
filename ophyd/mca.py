@@ -60,6 +60,9 @@ def add_rois(range_, **kwargs):
 
 class EpicsMCARecord(Device):
     '''SynApps MCA Record interface'''
+    _default_configuration_attrs = ('preset_real_time', )
+    _default_read_attrs = ('spectrum', 'preset_real_time', 'elapsed_real_time')
+
     stop_signal = C(EpicsSignal, '.STOP')
     preset_real_time = C(EpicsSignal, '.PRTM')
     preset_live_time = C(EpicsSignal, '.PLTM')
@@ -72,18 +75,9 @@ class EpicsMCARecord(Device):
 
     rois = DDC(add_rois(range(0, 32)))
 
-    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, **kwargs):
+    def __init__(self, *args, **kwargs):
 
-        if read_attrs is None:
-            read_attrs = ['spectrum', 'preset_real_time', 'elapsed_real_time']
-
-        if configuration_attrs is None:
-            configuration_attrs = ['preset_real_time']
-
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # could arguably be made a configuration_attr instead...
         self.stage_sigs['mode'] = 'PHA'
