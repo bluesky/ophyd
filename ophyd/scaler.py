@@ -126,3 +126,33 @@ class ScalerCH(Device):
         self.channels.read_attrs = ['chan01']
         self.channels.configuration_attrs = ['chan01']
 
+    def match_names(self):
+        for s in self.channels.signal_names:
+            getattr(self.channels, s).match_name()
+
+    def select_channels(self, chan_names):
+        '''Select channels based on the EPICS name PV
+
+        Parameters
+        ----------
+        chan_names : Iterable[str]
+
+            The names (as reported by the channel.chname signal)
+            of the channels to select.
+        '''
+        self.match_names()
+        name_map = {getattr(self.channels, s).name.get(): s
+                    for s in self.channels.signal_names}
+
+        read_attrs = ['chan01']  # always include time
+        for ch in chan_names:
+            try:
+                read_attrs.append(name_map[ch])
+            except KeyError:
+                raise RuntimeError("The channel {} is not configured "
+                                   "on the scaler.  The named channels are "
+                                   "{}".format(ch, tuple(name_map)))
+        self.channels.read_attrs = list(read_attrs)
+        self.channels.configuration_attrs = list(read_attrs)
+        self.hints = {'fields': [getattr(self.channels, ch).s.name
+                                 for ch in read_attrs[1:]]}
