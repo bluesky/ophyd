@@ -101,20 +101,14 @@ class AreaDetectorTimeseriesCollector(Device):
     waveform = C(EpicsSignalRO, "TSTotal")
     waveform_ts = C(EpicsSignalRO, "TSTimestamp")
 
-    def __init__(self, prefix, *, read_attrs=None,
-                 configuration_attrs=None, name=None,
-                 parent=None, stream_name=None, **kwargs):
-        if read_attrs is None:
-            read_attrs = []
+    _default_configuration_attrs = ('num_points', )
+    _default_read_attrs = ()
 
-        if configuration_attrs is None:
-            configuration_attrs = ['num_points']
+    def __init__(self, *args, stream_name=None, **kwargs):
 
         self.stream_name = stream_name
 
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _get_waveforms(self):
         n = self.cur_point.get()
@@ -181,6 +175,9 @@ class WaveformCollector(Device):
     data_is_time : bool, optional
         Use time as the data being acquired
     '''
+    _default_configuration_attrs = ('num_points', )
+    _default_read_attrs = ()
+
     select = C(EpicsSignal, "Sw-Sel")
     reset = C(EpicsSignal, "Rst-Sel")
     waveform_count = C(EpicsSignalRO, "Val:TimeN-I")
@@ -188,20 +185,12 @@ class WaveformCollector(Device):
     waveform_nord = C(EpicsSignalRO, "Val:Time-Wfrm.NORD")
     data_is_time = C(Signal)
 
-    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, data_is_time=True, stream_name=None,
+    def __init__(self, *args,
+                 data_is_time=True, stream_name=None,
                  **kwargs):
-        if read_attrs is None:
-            read_attrs = []
-
-        if configuration_attrs is None:
-            configuration_attrs = ['data_is_time']
-
         self.stream_name = stream_name
 
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.data_is_time.put(data_is_time)
 
