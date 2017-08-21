@@ -22,7 +22,11 @@ def _scaler_fields(cls, attr_base, field_base, range_, **kwargs):
 
 class EpicsScaler(Device):
     '''SynApps Scaler Record interface'''
-
+    _default_configuration_attrs = ('preset_time', 'presets', 'gates',
+                                    'names', 'freq', 'auto_count_time',
+                                    'count_mode', 'delay',
+                                    'auto_count_delay', 'egu')
+    _default_read_attrs = ('channels', 'time')
     # tigger + trigger mode
     count = C(EpicsSignal, '.CNT', trigger_value=1)
     count_mode = C(EpicsSignal, '.CONT', string=True)
@@ -49,41 +53,29 @@ class EpicsScaler(Device):
 
     egu = C(EpicsSignal, '.EGU')
 
-    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, **kwargs):
-        if read_attrs is None:
-            read_attrs = ['channels', 'time']
+    def __init__(self, *args, **kwargs):
 
-        if configuration_attrs is None:
-            configuration_attrs = ['preset_time', 'presets', 'gates',
-                                   'names', 'freq', 'auto_count_time',
-                                   'count_mode', 'delay',
-                                   'auto_count_delay', 'egu']
-
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.stage_sigs.update([('count_mode', 0)])
 
 
 class ScalerChannel(Device):
+    _default_configuration_attrs = ('chname', 'preset', 'gate')
+    _default_read_attrs = ('s',)
+
+    # TODO set up monitor on this to automatically change the name
     chname = FC(EpicsSignal, '{self.prefix}.NM{self._ch_num}')
     s = FC(EpicsSignalRO, '{self.prefix}.S{self._ch_num}')
     preset = FC(EpicsSignal, '{self.prefix}.PR{self._ch_num}')
     gate = FC(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True)
 
-    def __init__(self, prefix, ch_num, *, read_attrs=None,
-                 configuration_attrs=None,
+    def __init__(self, prefix, ch_num,
                  **kwargs):
         self._ch_num = ch_num
-        if read_attrs is None:
-            read_attrs = ['s']
-        if configuration_attrs is None:
-            configuration_attrs = ['chname', 'preset', 'gate']
-        super().__init__(prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         **kwargs)
+
+        super().__init__(prefix, **kwargs)
+        self.match_name()
 
     def match_name(self):
         self.s.name = self.chname.get()
@@ -98,6 +90,13 @@ def _sc_chans(attr_fix, id_range):
 
 
 class ScalerCH(Device):
+    _default_configuration_attrs = ('preset_time',
+                                    'freq', 'auto_count_time',
+                                    'count_mode', 'delay',
+                                    'auto_count_delay', 'egu', 'channels')
+
+    _default_read_attrs = ('time', 'channels')
+
     # The data
     channels = DDC(_sc_chans('chan', range(1, 33)))
 
@@ -120,19 +119,10 @@ class ScalerCH(Device):
 
     egu = C(EpicsSignal, '.EGU')
 
-    def __init__(self, *args, read_attrs=None, configuration_attrs=None,
-                 **kwargs):
+    def __init__(self, *args, **kwargs):
 
-        if configuration_attrs is None:
-            configuration_attrs = ['preset_time',
-                                   'freq', 'auto_count_time',
-                                   'count_mode', 'delay',
-                                   'auto_count_delay', 'egu', 'channels']
-
-        if read_attrs is None:
-            read_attrs = ['channels']
-
-        super().__init__(*args, configuration_attrs=configuration_attrs,
-                         read_attrs=read_attrs, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.channels.read_attrs = ['chan01']
+        self.channels.configuration_attrs = ['chan01']
+
