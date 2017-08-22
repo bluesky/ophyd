@@ -1,4 +1,3 @@
-git+https://github.com/NSLS-II/databroker#egg=databroker
 networkx
 numpy
 pyepics
