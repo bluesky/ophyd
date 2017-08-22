@@ -13,11 +13,65 @@ import time as ttime
 import logging
 import itertools
 
-from ..ophydobj import DeviceStatus
+from ..status import DeviceStatus
 from ..device import BlueskyInterface, Staged
 from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
+
+
+class ADTriggerStatus(DeviceStatus):
+    """
+    A special status object that notifies watches (progress bars)
+    based on comparing device.cam.array_counter to  device.cam.num_images.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_ts = ttime.time()
+
+        # Notify watchers (things like progress bars) of new values
+        # at the device's natural update rate.
+        if not self.done:
+            self.device.cam.array_counter.subscribe(self._notify_watchers)
+            # some state needed only by self._notify_watchers
+            self._name = self.device.name
+            self._initial_count = self.device.cam.array_counter.get()
+            self._target_count = self.device.cam.num_images.get()
+
+    def watch(self, func):
+        self._watchers.append(func)
+
+    def _notify_watchers(self, value, *args, **kwargs):
+        # *args and **kwargs catch extra inputs from pyepics, not needed here
+        if self.done:
+            self.device.cam.array_counter.clear_sub(self._notify_watchers)
+        if not self._watchers:
+            return
+        # Always start progress bar at 0 regardless of starting value of
+        # array_counter.
+        current = value - self._initial_count
+        target = self._target_count
+        initial = 0
+        time_elapsed = ttime.time() - self.start_ts
+        try:
+            fraction = (current - initial) / (target - initial)
+        except ZeroDivisionError:
+            fraction = 1
+        except Exception as exc:
+            fraction = None
+            time_remaining = None
+        else:
+            time_remaining = time_elapsed / fraction
+        for watcher in self._watchers:
+            watcher(name=self._name,
+                    current=current,
+                    initial=initial,
+                    target=target,
+                    unit='images',
+                    precision=0,
+                    fraction=fraction,
+                    time_elapsed=time_elapsed,
+                    time_remaining=time_remaining)
 
 
 class TriggerBase(BlueskyInterface):
@@ -54,6 +108,8 @@ class SingleTrigger(TriggerBase):
     # optionally, customize name of image
     >>> det = SimDetector('..pv..', image_name='fast_detector_image')
     """
+    _status_type = ADTriggerStatus
+
     def __init__(self, *args, image_name=None, **kwargs):
         super().__init__(*args, **kwargs)
         if image_name is None:
@@ -74,7 +130,7 @@ class SingleTrigger(TriggerBase):
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
 
-        self._status = DeviceStatus(self)
+        self._status = self._status_type(self)
         self._acquisition_signal.put(1, wait=False)
         self.dispatch(self._image_name, ttime.time())
         return self._status
