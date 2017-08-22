@@ -130,6 +130,13 @@ Enhancements
       home_forward         EpicsSignal         ('motor_home_forward')
       home_reverse         EpicsSignal         ('motor_home_reverse')
 
+* The Area Detector plugins formerly always enabled themselves during staging.
+  Now, this behavior is configurable using new methods, ``enable_on_stage()``
+  and ``disable_on_stage()``. After unstaging, devices are put into their
+  original state, whether enabled or disabled. Additionally, there are methods
+  to control blocking callbacks, ``ensure_blocking()`` and
+  ``ensure_nonblocking()``. We recommend using blocking callbacks always to
+  ensure that file names do not get out of sync with acquisitions.
 * A device's default read_attrs and configuration_attrs can be more succinctly
   specified via the class attributes ``_default_read_attrs`` and
   ``_default_configuration_attrs``.
