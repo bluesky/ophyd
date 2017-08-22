@@ -69,9 +69,8 @@ class PluginBase(ADBase):
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
 
-        # Turn array callbacks on during staging.
-        # Without this, no array data is sent to the plugins.
-        self.stage_sigs['blocking_callbacks'] = 'Yes'
+        self.enable_on_stage()
+        self.ensure_blocking()
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([('parent.cam.array_callbacks', 1),
                                     ])
@@ -100,9 +99,41 @@ class PluginBase(ADBase):
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
 
     def stage(self):
-        # Ensure the plugin is enabled. We do not disable it on unstage.
-        set_and_wait(self.enable, 1)
         super().stage()
+
+    def enable_on_stage(self):
+        """
+        when the plugin is staged, ensure that it is enabled.
+
+        a convenience method for adding ('enable', 1) to stage_sigs
+        """
+        self.stage_sigs['enable'] = 1
+
+    def disable_on_stage(self):
+        """
+        when the plugin is staged, ensure that it is disabled.
+
+        a convenience method for adding ```('enable', 0)`` to stage_sigs
+        """
+        self.stage_sigs['enable'] = 0
+
+    def ensure_blocking(self):
+        """
+        Ensure that if plugin is enabled after staging, callbacks block.
+
+        a convenience method for adding ```('blocking_callbacks', 1)`` to
+        stage_sigs
+        """
+        self.stage_sigs['blocking_callbacks'] = 'Yes'
+
+    def ensure_nonblocking(self):
+        """
+        Ensure that if plugin is enabled after staging, callbacks don't block.
+
+        a convenience method for adding ```('blocking_callbacks', 0)`` to
+        stage_sigs
+        """
+        self.stage_sigs['blocking_callbacks'] = 'No'
 
     @property
     def array_pixels(self):
