@@ -211,7 +211,7 @@ class DeviceStatus(StatusBase):
 
     def _handle_failure(self):
         super()._handle_failure()
-        logger.debug('Trying to stop %s', str(self.device))
+        logger.debug('Trying to stop %s', repr(self.device))
         self.device.stop()
 
     def __str__(self):
