@@ -69,11 +69,11 @@ class PluginBase(ADBase):
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
 
+        self.enable_on_stage()
+        self.ensure_blocking()
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([('parent.cam.array_callbacks', 1),
                                     ])
-        self.enable_on_stage()
-        self.ensure_blocking()
 
     _default_configuration_attrs = (ADBase._default_configuration_attrs +
                                     ('port_name', 'nd_array_port', 'enable',
