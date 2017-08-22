@@ -5,6 +5,7 @@ from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
                            ImagePlugin, StatsPlugin, DetectorBase,
                            SingleTrigger)
+from .status import DeviceStatus
 
 
 def _current_fields(attr_base, field_base, range_, **kwargs):
@@ -21,6 +22,7 @@ class QuadEM(SingleTrigger, DetectorBase):
     _default_configuration_attrs = ('integration_time', 'averaging_time')
     _default_read_attrs = ('current1.mean_value', 'current2.mean_value',
                            'current3.mean_value', 'current4.mean_value')
+    _status_type = DeviceStatus  # overrriding the default in SingleTrigger
 
     # This is needed because ophyd verifies that it can see all
     # of the nodes in the asyn pipeline, however these IOCs do not

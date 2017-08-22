@@ -108,6 +108,8 @@ class SingleTrigger(TriggerBase):
     # optionally, customize name of image
     >>> det = SimDetector('..pv..', image_name='fast_detector_image')
     """
+    _status_type = ADTriggerStatus
+
     def __init__(self, *args, image_name=None, **kwargs):
         super().__init__(*args, **kwargs)
         if image_name is None:
@@ -128,7 +130,7 @@ class SingleTrigger(TriggerBase):
             raise RuntimeError("This detector is not ready to trigger."
                                "Call the stage() method before triggering.")
 
-        self._status = ADTriggerStatus(self)
+        self._status = self._status_type(self)
         self._acquisition_signal.put(1, wait=False)
         self.dispatch(self._image_name, ttime.time())
         return self._status
