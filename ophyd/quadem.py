@@ -121,11 +121,6 @@ class QuadEM(SingleTrigger, DetectorBase):
     def hints(self, val):
         self._hints = val if val is None else dict(val)
 
-    def wtf(self):
-        print([getattr(self, c).mean_value.name
-               for c in ['current1', 'current2',
-                         'current3', 'current4']])
-
 
 class NSLS_EM(QuadEM):
     port_name = Cpt(Signal, value='NSLS_EM')
