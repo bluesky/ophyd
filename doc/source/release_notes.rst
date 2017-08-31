@@ -87,20 +87,20 @@ Enhancements
   fields. Example:
 
   .. code-block:: none
-  
+
       In [5]: motor = EpicsMotor('XF:31IDA-OP{Tbl-Ax:X1}Mtr', name='motor')
-  
+
       In [6]: print(motor)
       data keys (* hints)
       -------------------
       *motor
        motor_user_setpoint
-  
+
       read attrs
       ----------
       user_readback        EpicsSignalRO       ('motor')
       user_setpoint        EpicsSignal         ('motor_user_setpoint')
-  
+
       config keys
       -----------
       motor_acceleration
@@ -108,7 +108,7 @@ Enhancements
       motor_user_offset
       motor_user_offset_dir
       motor_velocity
-  
+
       configuration attrs
       ----------
       motor_egu            EpicsSignal         ('motor_motor_egu')
@@ -116,7 +116,7 @@ Enhancements
       acceleration         EpicsSignal         ('motor_acceleration')
       user_offset          EpicsSignal         ('motor_user_offset')
       user_offset_dir      EpicsSignal         ('motor_user_offset_dir')
-  
+
       Unused attrs
       ------------
       offset_freeze_switch EpicsSignal         ('motor_offset_freeze_switch')
@@ -164,6 +164,8 @@ Maintenance
     * ``ipython``
     * ``prettytable``
     * ``pyOlog`` (This was previous optional; now it is not used at all.)
+* :attr:`ophyd.AreaDetector.filestore_mixin.fs_root` has been deprecated in
+  favor of :attr:`ophyd.AreaDetector.filestore_mixin.reg_root`.
 
 0.4.0
 =====

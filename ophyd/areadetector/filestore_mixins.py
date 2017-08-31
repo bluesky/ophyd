@@ -157,7 +157,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
         if write_path_template is None:
             raise ValueError("write_path_template is required")
-        self.fs_root = root
+        self.reg_root = root
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
 
@@ -173,19 +173,33 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._reg = reg
 
     @property
-    def fs_root(self):
+    def reg_root(self):
+        "The 'root' put into the Asset Registry"
         return self._root
 
-    @fs_root.setter
-    def fs_root(self, val):
+    @reg_root.setter
+    def reg_root(self, val):
         if val is None:
             val = os.path.sep
         self._root = PurePath(val)
 
     @property
+    def fs_root(self):
+        "DEPRECATED: The 'root' put into the Asset registry, use reg_root"
+        warnings.warn("fs_root is deprecated, use reg_root instead",
+                      stacklevel=2)
+        return self.reg_root
+
+    @fs_root.setter
+    def fs_root(self, val):
+        warnings.warn("fs_root is deprecated, use reg_root instead",
+                      stacklevel=2)
+        self.reg_root = val
+
+    @property
     def read_path_template(self):
         "Returns write_path_template if read_path_template is not set"
-        rootp = self.fs_root
+        rootp = self.reg_root
 
         if self._read_path_template is None:
             ret = PurePath(self.write_path_template)
@@ -210,7 +224,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @property
     def write_path_template(self):
-        rootp = self.fs_root
+        rootp = self.reg_root
         ret = PurePath(self._write_path_template)
         if self._read_path_template is None and rootp not in ret.parents:
             if not ret.is_absolute():
@@ -344,10 +358,10 @@ class FileStoreHDF5(FileStorePluginBase):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         logger.debug("Inserting resource with filename %s", self._fn)
-        fn = PurePath(self._fn).relative_to(self.fs_root)
+        fn = PurePath(self._fn).relative_to(self.reg_root)
         self._resource = self._reg.register_resource(
             self.filestore_spec,
-            str(self.fs_root), str(fn),
+            str(self.reg_root), str(fn),
             res_kwargs)
 
 
@@ -369,11 +383,11 @@ class FileStoreTIFF(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        fp = PurePath(self._fp).relative_to(self.fs_root)
+        fp = PurePath(self._fp).relative_to(self.reg_root)
 
         self._resource = self._reg.register_resource(
             self.filestore_spec,
-            str(self.fs_root), str(fp),
+            str(self.reg_root), str(fp),
             res_kwargs)
 
 
@@ -467,11 +481,11 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         res_kwargs = {'template': self.file_template.get(),
                       'filename': self.file_name.get(),
                       'frame_per_point': self.get_frames_per_point()}
-        fp = PurePath(self._fp).relative_to(self.fs_root)
+        fp = PurePath(self._fp).relative_to(self.reg_root)
 
         self._resource = self._reg.register_resource(
             self.filestore_spec,
-            str(self.fs_root), str(fp),
+            str(self.reg_root), str(fp),
             res_kwargs)
 
 
