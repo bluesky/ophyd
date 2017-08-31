@@ -1,2 +1,0 @@
-* Moved ophyd/userapi/scan_api to ophyd/scans
-* Moved ophyd/userapi/cli_api to ophyd/commands
