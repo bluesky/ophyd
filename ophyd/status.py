@@ -234,6 +234,70 @@ class DeviceStatus(StatusBase):
     __repr__ = __str__
 
 
+class SubscriptionStatus(DeviceStatus):
+    """
+    Status updated via `ophyd` events
+
+    Parameters
+    ----------
+    device : obj
+
+    callback : callable
+        Callback that takes event information and returns a boolean. Signature
+        should be `f(*args, **kwargs)`
+
+    event_type : str, optional
+        Name of event type to check whether the device has finished succesfully
+
+    timeout : float, optional
+        Maximum timeout to wait to mark the request as a failure
+
+    settle_time : float, optional
+        Time to wait after completion until running callbacks
+    """
+    def __init__(self, device, callback, event_type=None,
+                 timeout=None, settle_time=None):
+        #Store device and attribute information
+        self.device    = device
+        self.callback  = callback
+
+        #Start timeout thread in the background
+        super().__init__(device, timeout=timeout, settle_time=settle_time)
+
+        #Subscribe callback and run initial check
+        self.device.subscribe(self.check_value,
+                              event_type=event_type,
+                              run=True)
+
+
+    def check_value(self, *args, **kwargs):
+        """
+        Update the status object
+        """
+        #Get attribute from device
+        try:
+            success = self.callback(*args, **kwargs)
+
+        #Do not fail silently
+        except Exception as e:
+            logger.error(e)
+            raise
+
+        #If successfull indicate completion
+        if success:
+            self._finished(success=True)
+
+
+    def _finished(self, *args, **kwargs):
+        """
+        Reimplemented finished command to cleanup callback subscription
+        """
+        #Clear callback
+        self.device.clear_sub(self.check_value)
+        #Run completion
+        super()._finished(**kwargs)
+
+
 class MoveStatus(DeviceStatus):
     '''Asynchronous movement status
 
