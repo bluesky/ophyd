@@ -99,7 +99,7 @@ To create a functioning class you must also mixin
 which extends :meth:`~filestore_mixins.FileStoreBase.generate_datum` to
 insert into the ``FileStore`` instance as data is taken.
 
-For convince we provide
+For convenience we provide
 
 
 .. autosummary::
