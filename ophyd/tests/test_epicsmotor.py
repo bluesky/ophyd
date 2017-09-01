@@ -4,7 +4,8 @@ import pytest
 from copy import copy
 from numpy.testing import assert_approx_equal
 
-from ophyd import (EpicsMotor, Signal, EpicsSignalRO, Component as C)
+from ophyd import (EpicsMotor, Signal, EpicsSignalRO, Component as C,
+                   MotorBundle)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 
 logger = logging.getLogger(__name__)
@@ -296,3 +297,21 @@ def test_watchers(motor):
 
 def test_str_smoke(motor):
     str(motor)
+
+
+def test_motor_bundle():
+    class Bundle(MotorBundle):
+        a = C(EpicsMotor, ':mtr1')
+        b = C(EpicsMotor, ':mtr2')
+        c = C(EpicsMotor, ':mtr3')
+
+    bundle = Bundle('sim', name='bundle')
+
+    assert bundle.hints['fields'] == ['bundle_{}'.format(k)
+                                      for k in 'abc']
+
+    assert bundle.read_attrs == list('abc')
+    assert bundle.configuration_attrs == list('abc')
+
+    bundle.hints = {}
+    assert bundle.hints == {}

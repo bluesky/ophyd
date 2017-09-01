@@ -11,7 +11,7 @@ from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 
 # Positioners
 from .positioner import (PositionerBase, SoftPositioner)
-from .epics_motor import EpicsMotor
+from .epics_motor import EpicsMotor, MotorBundle
 from .pv_positioner import (PVPositioner, PVPositionerPC)
 from .pseudopos import (PseudoPositioner, PseudoSingle)
 
