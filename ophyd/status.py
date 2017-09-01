@@ -325,15 +325,6 @@ class MoveStatus(DeviceStatus):
         target = self.target
         initial = self.start_pos
         time_elapsed = time.time() - self.start_ts
-        try:
-            fraction = (current - initial) / (target - initial)
-        except ZeroDivisionError:
-            fraction = 1
-        except Exception as exc:
-            fraction = None
-            time_remaining = None
-        else:
-            time_remaining = time_elapsed / fraction + self.settle_time
         for watcher in self._watchers:
             watcher(name=self._name,
                     current=current,
@@ -341,9 +332,7 @@ class MoveStatus(DeviceStatus):
                     target=target,
                     unit=self._unit,
                     precision=self._precision,
-                    fraction=fraction,
-                    time_elapsed=time_elapsed,
-                    time_remaining=time_remaining)
+                    time_elapsed=time_elapsed)
 
     @property
     def error(self):
