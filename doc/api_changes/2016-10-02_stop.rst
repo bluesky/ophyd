@@ -1,6 +1,0 @@
-BlueSky API: ``stop``
-=====================
-
-The stop method on objects that implement the BlueSky api now must
-accept a ``success`` kwarg the value of which should make it into the
-final state of any status objects waiting on the object.

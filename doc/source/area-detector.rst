@@ -67,6 +67,7 @@ provide the basic methods required for integrating AreaDetector file plugins wit
    ~filestore_mixins.FileStoreBase.generate_datum
 
    ~filestore_mixins.FileStoreBase.write_path_template
+   ~filestore_mixins.FileStoreBase.reg_root
    ~filestore_mixins.FileStoreBase.fs_root
    ~filestore_mixins.FileStoreBase.read_path_template
 
@@ -100,11 +101,13 @@ insert into the ``FileStore`` instance as data is taken.
 
 For convince we provide
 
+
 .. autosummary::
    :toctree: _as_gen
 
    ~filestore_mixins.FileStoreHDF5IterativeWrite
    ~filestore_mixins.FileStoreTIFFIterativeWrite
+
 
 .. inheritance-diagram:: ophyd.areadetector.filestore_mixins.FileStoreBase ophyd.areadetector.filestore_mixins.FileStoreHDF5 ophyd.areadetector.filestore_mixins.FileStoreHDF5IterativeWrite ophyd.areadetector.filestore_mixins.FileStoreIterativeWrite ophyd.areadetector.filestore_mixins.FileStorePluginBase ophyd.areadetector.filestore_mixins.FileStoreTIFF ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFSquashing ophyd.device.GenerateDatumInterface ophyd.device.BlueskyInterface
     :parts: 1
