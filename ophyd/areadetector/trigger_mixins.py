@@ -143,6 +143,10 @@ class SingleTrigger(TriggerBase):
             # Negative-going edge means an acquisition just finished.
             self._status._finished()
 
+    def stop(self):
+        self._acquisition_signal.put(0)
+
+
 
 class MultiTrigger(TriggerBase):
     """This trigger mixin class can take multiple acquisitions per trigger.
