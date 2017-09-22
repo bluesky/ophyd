@@ -408,8 +408,8 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         within_str = ''
 
     while not _compare_maybe_enum(val, current_value, es, atol, rtol):
-        logger.info("Waiting for %s to be set from %r to %r%s...",
-                    signal.name, current_value, val, within_str)
+        logger.debug("Waiting for %s to be set from %r to %r%s...",
+                     signal.name, current_value, val, within_str)
         ttime.sleep(poll_time)
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
