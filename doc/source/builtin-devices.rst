@@ -68,6 +68,6 @@ This must be sub-classed (like :class:`~ophyd.device.Device`) to be useful.
 
    class StageXY(MotorBundle):
        x = Cpt(EpicsMotor, ':X')
-       y = Cpt(EpicsMotor, ':X')
+       y = Cpt(EpicsMotor, ':Y')
 
    stage = StageXY('STAGE_PV', name='stage')

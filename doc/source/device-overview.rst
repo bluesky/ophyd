@@ -31,7 +31,7 @@ Creating a custom device is as simple as
 
    class StageXY(Device):
        x = Cpt(EpicsMotor, ':X')
-       y = Cpt(EpicsMotor, ':X')
+       y = Cpt(EpicsMotor, ':Y')
 
    stage = StageXY('STAGE_PV', name='stage')
 
