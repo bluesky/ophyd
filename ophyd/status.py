@@ -257,44 +257,42 @@ class SubscriptionStatus(DeviceStatus):
     """
     def __init__(self, device, callback, event_type=None,
                  timeout=None, settle_time=None):
-        #Store device and attribute information
-        self.device    = device
-        self.callback  = callback
+        # Store device and attribute information
+        self.device = device
+        self.callback = callback
 
-        #Start timeout thread in the background
+        # Start timeout thread in the background
         super().__init__(device, timeout=timeout, settle_time=settle_time)
 
-        #Subscribe callback and run initial check
+        # Subscribe callback and run initial check
         self.device.subscribe(self.check_value,
                               event_type=event_type,
                               run=True)
-
 
     def check_value(self, *args, **kwargs):
         """
         Update the status object
         """
-        #Get attribute from device
+        # Get attribute from device
         try:
             success = self.callback(*args, **kwargs)
 
-        #Do not fail silently
+        # Do not fail silently
         except Exception as e:
             logger.error(e)
             raise
 
-        #If successfull indicate completion
+        # If successfull indicate completion
         if success:
             self._finished(success=True)
-
 
     def _finished(self, *args, **kwargs):
         """
         Reimplemented finished command to cleanup callback subscription
         """
-        #Clear callback
+        # Clear callback
         self.device.clear_sub(self.check_value)
-        #Run completion
+        # Run completion
         super()._finished(**kwargs)
 
 

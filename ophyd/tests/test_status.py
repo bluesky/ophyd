@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 from ophyd import Device
-from ophyd.status  import StatusBase, SubscriptionStatus
+from ophyd.status import StatusBase, SubscriptionStatus
 
 
 def _setup_st():
@@ -11,7 +11,6 @@ def _setup_st():
         state['done'] = True
     repr(st)
     return st, state, cb
-
 
 
 def test_status_post():
@@ -37,26 +36,25 @@ def test_status_pre():
 
 
 def test_subscription_status():
-    #Arbitrary device
+    # Arbitrary device
     d = Device("Tst:Prefix")
-    #Mock callback
+    # Mock callback
     m = Mock()
 
-    #Full fake callback signature
+    # Full fake callback signature
     def cb(*args, done=False, **kwargs):
-        #Run mock callback
+        # Run mock callback
         m()
-        #Return finished or not
+        # Return finished or not
         return done
 
     status = SubscriptionStatus(d, cb, event_type=d.SUB_ACQ_DONE)
 
-    #Run callbacks but do not mark as complete
+    # Run callbacks but do not mark as complete
     d._run_subs(sub_type=d.SUB_ACQ_DONE, done=False)
     assert m.called
     assert not status.done and not status.success
 
-    #Run callbacks and mark as complete
+    # Run callbacks and mark as complete
     d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
     assert status.done and status.success
-
