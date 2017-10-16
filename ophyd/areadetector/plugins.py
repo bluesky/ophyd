@@ -96,9 +96,6 @@ class PluginBase(ADBase):
     pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
 
-    def stage(self):
-        super().stage()
-
     def enable_on_stage(self):
         """
         when the plugin is staged, ensure that it is enabled.
