@@ -73,6 +73,15 @@ class DetectorBase(ADBase):
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 
+    def stage(self, *args, **kwargs):
+        ret = super().stage(*args, **kwargs)
+        try:
+            self.validate_asyn_ports()
+        except RuntimeError as err:
+            self.unstage(*args, **kwargs)
+            raise err
+        return ret
+
 
 class AreaDetector(DetectorBase):
     cam = C(cam.AreaDetectorCam, 'cam1:')
