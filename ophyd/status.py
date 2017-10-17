@@ -77,11 +77,15 @@ class StatusBase:
                 timeout = None
             wait(self, timeout=timeout, poll_rate=0.2)
         except TimeoutError:
-            logger.debug('Status object %s timed out', str(self))
-            try:
-                self._handle_failure()
-            finally:
-                self._finished(success=False)
+            with self._lock:
+                if self.done:
+                    # Avoid race condition with settling.
+                    return
+                logger.debug('Status object %s timed out', str(self))
+                try:
+                    self._handle_failure()
+                finally:
+                    self._finished(success=False)
         except RuntimeError:
             pass
         finally:
@@ -100,6 +104,9 @@ class StatusBase:
             time.sleep(self.settle_time)
 
         with self._lock:
+            if self.done:
+                # We timed out while waiting for the settle time.
+                return
             self.success = success
             self.done = True
             self._settled()
