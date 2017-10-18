@@ -72,13 +72,15 @@ def test_signal_base():
         info['called'] = True
         info['kw'] = kwargs
 
-    signal.subscribe(_sub_test, run=False)
+    signal.subscribe(_sub_test, run=False,
+                     event_type=signal.SUB_VALUE)
     assert not info['called']
 
     signal.value = value
     signal.clear_sub(_sub_test)
 
-    signal.subscribe(_sub_test, run=False)
+    signal.subscribe(_sub_test, run=False,
+                     event_type=signal.SUB_VALUE)
     signal.clear_sub(_sub_test, event_type=signal.SUB_VALUE)
 
     kw = info['kw']

@@ -97,5 +97,25 @@ def test_self_removing_cb():
     assert hit_B == 2
 
 
+def test_unsubscribe():
+    class TestObj(OphydObject):
+        SUB_TEST = 'value'
+
+    test_obj = TestObj(name='name', parent=None)
+
+    hit = 0
+
+    def increment(**kwargs):
+        nonlocal hit
+        hit += 1
+
+    cid = test_obj.subscribe(increment, 'value')
+    test_obj._run_subs(sub_type='value')
+    assert hit == 1
+    test_obj.unsubscribe(cid)
+    test_obj._run_subs(sub_type='value')
+    assert hit == 1
+
+
 is_main = (__name__ == '__main__')
 main(is_main)
