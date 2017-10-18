@@ -91,7 +91,7 @@ script:
 
 
   # running tests
-  - py.test -v --cov=ophyd --cov-report term-missing
+  - python run_tests.py --cov=ophyd --cov-report term-missing
 
   - |
     if [ $BUILD_DOCS == true ]; then
