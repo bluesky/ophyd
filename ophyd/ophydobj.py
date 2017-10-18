@@ -1,10 +1,17 @@
-from collections import defaultdict
+import warnings
+from itertools import count
+
 import time
 import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
 
 logger = logging.getLogger(__name__)
+
+
+class UnknownSubscription(KeyError):
+    "Subclass of KeyError.  Raised for unknown event type"
+    ...
 
 
 class OphydObject:
@@ -31,21 +38,28 @@ class OphydObject:
     def __init__(self, *, name=None, parent=None):
         super().__init__()
 
+        # base name and ref to parent, these go with properties
+        if name is None:
+            name = ''
         self._name = name
         self._parent = parent
 
-        # find magic class attributes to name 'event' types.
-        # for publicly exposed event types
-        self._pub_event_types = tuple(getattr(self, k) for k in dir(self) if
-                                      k.startswith('SUB_'))
-        # and for private event types
-        self._priv_event_types = tuple(getattr(self, k) for k in dir(self) if
-                                       k.startswith('_SUB_'))
+        self.subscriptions = {getattr(self, k)
+                              for k in dir(type(self))
+                              if (k.startswith('SUB') or
+                                  k.startswith('_SUB'))}
 
-        self._subs = {k: [] for k in
-                      self._pub_event_types + self._priv_event_types}
-
-        self._sub_cache = defaultdict(lambda: None)
+        # dictionary of wrapped callbacks
+        self._callbacks = {k: {} for k in self.subscriptions}
+        # this is to maintain api on clear_sub
+        self._unwrapped_callbacks = {k: {} for k in self.subscriptions}
+        # map cid -> back to which event it is in
+        self._cid_to_event_mapping = dict()
+        # cache of last inputs to _run_subs, the semi-private way
+        # to trigger the callbacks for a given subscription to be run
+        self._args_cache = {k: None for k in self.subscriptions}
+        # count of subscriptions we have handed out, used to give unique ids
+        self._cb_count = count()
 
     @property
     def name(self):
@@ -89,39 +103,7 @@ class OphydObject:
     def event_types(self):
         '''Events that can be subscribed to via `obj.subscribe`
         '''
-        return self._pub_event_types
-
-    def _run_sub(self, cb, *args, **kwargs):
-        '''Run a single subscription callback
-
-        Parameters
-        ----------
-        cb
-            The callback
-        '''
-
-        try:
-            cb(*args, **kwargs)
-        except Exception as ex:
-            logger.error('Subscription %s callback exception (%s)',
-                         kwargs['sub_type'],
-                         self, exc_info=ex)
-
-    def _run_cached_sub(self, sub_type, cb):
-        '''Run a single subscription callback using the most recent
-        cached arguments
-
-        Parameters
-        ----------
-        sub_type
-            The subscription type
-        cb
-            The callback
-        '''
-        cached = self._sub_cache[sub_type]
-        if cached:
-            args, kwargs = cached
-            self._run_sub(cb, *args, **kwargs)
+        return tuple(self.subscriptions)
 
     def _run_subs(self, *args, sub_type, **kwargs):
         '''Run a set of subscription callbacks
@@ -130,14 +112,21 @@ class OphydObject:
         the type of callback to perform. All other positional arguments
         and kwargs are passed directly to the callback function.
 
-        No exceptions are raised when the callback functions fail.
+        The host object will be injected into kwargs as 'obj' unless that key
+        already exists.
 
-        Parameters
-        ----------
-        sub_type : str
-            The name of the event (sub_type) to run all of the callbacks for.
+        If the `timestamp` is None, then it will be replaced by the current
+        time.
+
+        No exceptions are raised if the callback functions fail.
         '''
+        if sub_type not in self.subscriptions:
+            raise UnknownSubscription(
+                "Unknown subscription {}, must be one of {!r}"
+                .format(sub_type, self.subscriptions))
+
         kwargs['sub_type'] = sub_type
+        # Guarantee that the object will be in the kwargs
         kwargs.setdefault('obj', self)
 
         # And if a timestamp key exists, but isn't filled -- supply it with
@@ -147,13 +136,25 @@ class OphydObject:
 
         # Shallow-copy the callback arguments for replaying the
         # callback at a later time (e.g., when a new subscription is made)
-        self._sub_cache[sub_type] = (tuple(args), dict(kwargs))
+        self._args_cache[sub_type] = (tuple(args), dict(kwargs))
 
-        for cb in tuple(self._subs[sub_type]):
-            self._run_sub(cb, *args, **kwargs)
+        for cb in list(self._callbacks[sub_type].values()):
+            cb(*args, **kwargs)
 
     def subscribe(self, cb, event_type=None, run=True):
-        '''Subscribe to events this signal group emits
+        '''Subscribe to events this event_type generates.
+
+        The callback will be called as ``cb(*args, **kwargs)`` with
+        the values passed to `_run_subs` with the following additional keys:
+
+           sub_type : the string value of the event_type
+           obj : the host object, added if 'obj' not already in kwargs
+
+        if the key 'timestamp' is in kwargs _and_ is None, then it will
+        be replaced with the current time before running the callback.
+
+        The ``*args``, ``**kwargs`` passed to _run_subs will be cached as
+        shallow copies, be aware of passing in mutable data.
 
         .. warning::
 
@@ -182,8 +183,20 @@ class OphydObject:
         --------
         clear_sub, _run_subs
 
+        Returns
+        -------
+        cid : int
+            id of callback, can be passed to `unsubscribe` to remove the
+            callback
+
         '''
+        if not callable(cb):
+            raise ValueError("cb must be callable")
+        # do default event type
         if event_type is None:
+            # warnings.warn("Please specify which call back you wish to "
+            #               "attach to defaulting to {}"
+            #               .format(self._default_sub), stacklevel=2)
             event_type = self._default_sub
 
         if event_type is None:
@@ -191,22 +204,46 @@ class OphydObject:
                              ' {} has no default subscription set'
                              ''.format(self.name, self.__class__.__name__))
 
-        try:
-            self._subs[event_type].append(cb)
-        except KeyError:
-            raise KeyError('Unknown event type: %s' % event_type)
+        # check that this is a valid event type
+        if event_type not in self.subscriptions:
+            raise UnknownSubscription(
+                "Unknown subscription {}, must be one of {!r}"
+                .format(event_type, self.subscriptions))
+
+        # wrapper for callback to snarf exceptions
+        def wrap_cb(cb):
+            def inner(*args, **kwargs):
+                try:
+                    cb(*args, **kwargs)
+                except Exception as ex:
+                    sub_type = kwargs['sub_type']
+                    logger.error('Subscription %s callback exception (%s)',
+                                 sub_type, self, exc_info=ex)
+            return inner
+        # get next cid
+        cid = next(self._cb_count)
+        wrapped = wrap_cb(cb)
+        self._unwrapped_callbacks[event_type][cid] = cb
+        self._callbacks[event_type][cid] = wrapped
+        self._cid_to_event_mapping[cid] = event_type
 
         if run:
-            self._run_cached_sub(event_type, cb)
+            cached = self._args_cache[event_type]
+            if cached is not None:
+                args, kwargs = cached
+                wrapped(*args, **kwargs)
+
+        return cid
 
     def _reset_sub(self, event_type):
         '''Remove all subscriptions in an event type'''
-        del self._subs[event_type][:]
+        self._callbacks[event_type].clear()
+        self._unwrapped_callbacks[event_type].clear()
 
     def clear_sub(self, cb, event_type=None):
         '''Remove a subscription, given the original callback function
 
-        See also :func:`subscribe`
+        See also :meth:`subscribe`, :meth:`unsubscribe`
 
         Parameters
         ----------
@@ -217,16 +254,38 @@ class OphydObject:
             types)
         '''
         if event_type is None:
-            for event_type, cbs in self._subs.items():
-                try:
-                    cbs.remove(cb)
-                except ValueError:
-                    pass
+            event_types = self.event_types
         else:
-            self._subs[event_type].remove(cb)
+            event_types = [event_type]
+        cid_list = []
+        for et in event_types:
+            for cid, target in self._unwrapped_callbacks[et].items():
+                if cb == target:
+                    cid_list.append(cid)
+        for cid in cid_list:
+            self.unsubscribe(cid)
+
+    def unsubscribe(self, cid):
+        """Remove a subscription
+
+        See also :meth:`subscribe`, :meth:`clear_sub`
+
+        Parameters
+        ----------
+        cid : int
+           token return by :meth:`subscribe`
+        """
+        ev_type = self._cid_to_event_mapping.pop(cid, None)
+        if ev_type is None:
+            return
+        del self._unwrapped_callbacks[ev_type][cid]
+        del self._callbacks[ev_type][cid]
 
     def check_value(self, value, **kwargs):
         '''Check if the value is valid for this object
+
+        This function does no normalization, but may raise if the
+        value is invalid.
 
         Raises
         ------

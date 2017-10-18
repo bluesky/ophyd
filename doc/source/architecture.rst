@@ -189,18 +189,21 @@ Callbacks
 The base class of almost all objects in ``ophyd`` is :obj:`~ophydobj.OphydObject`
  a callback registry
 
+.. currentmodule:: ophyd.ophydobj
+
 .. autosummary::
    :toctree: _as_gen
    :nosignatures:
 
-   ~ophydobj.OphydObject
-   ~ophydobj.OphydObject.event_types
-   ~ophydobj.OphydObject.subscribe
-   ~ophydobj.OphydObject.clear_sub
+   OphydObject
+   OphydObject.event_types
+   OphydObject.subscribe
+   OphydObject.unsubscribe
+   OphydObject.clear_sub
 
-   ~ophydobj.OphydObject._run_subs
+   OphydObject._run_subs
 
-   ~ophydobj.OphydObject._reset_sub
+   OphydObject._reset_sub
 
 This registry is used to connect to the underlying events from the
 control system and propagate them up to bluesky, either via

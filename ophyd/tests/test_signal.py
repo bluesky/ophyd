@@ -72,13 +72,15 @@ def test_signal_base():
         info['called'] = True
         info['kw'] = kwargs
 
-    signal.subscribe(_sub_test, run=False)
+    signal.subscribe(_sub_test, run=False,
+                     event_type=signal.SUB_VALUE)
     assert not info['called']
 
     signal.value = value
     signal.clear_sub(_sub_test)
 
-    signal.subscribe(_sub_test, run=False)
+    signal.subscribe(_sub_test, run=False,
+                     event_type=signal.SUB_VALUE)
     signal.clear_sub(_sub_test, event_type=signal.SUB_VALUE)
 
     kw = info['kw']
@@ -246,7 +248,7 @@ def test_epicssignal_waveform():
 
     signal.wait_for_connection()
 
-    signal.subscribe(update_cb)
+    signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
     assert signal.value in FakeEpicsWaveform.strings
 
 
@@ -289,7 +291,8 @@ def test_setpoint():
 def test_epicssignalro():
     # not in initializer parameters anymore
     pytest.raises(TypeError, EpicsSignalRO, 'test',
-                      write_pv='nope_sorry')
+                  write_pv='nope_sorry')
+
 
 @using_fake_epics_pv
 def test_describe():
@@ -345,7 +348,7 @@ def test_soft_derived():
         cb_values.append(value)
 
     derived = DerivedSignal(derived_from=original, name='derived')
-    derived.subscribe(callback)
+    derived.subscribe(callback, event_type=derived.SUB_VALUE)
 
     assert derived.timestamp == timestamp
     assert derived.get() == value

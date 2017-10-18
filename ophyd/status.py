@@ -441,7 +441,8 @@ class MoveStatus(DeviceStatus):
         # Notify watchers (things like progress bars) of new values
         # at the device's natural update rate.
         if not self.done:
-            self.pos.subscribe(self._notify_watchers)
+            self.pos.subscribe(self._notify_watchers,
+                               event_type=self.pos.SUB_READBACK)
 
     def watch(self, func):
         """

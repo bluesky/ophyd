@@ -284,7 +284,6 @@ def test_default_configuration_smoke():
     d.unstage()
 
 
-
 @pytest.mark.parametrize('plugin',
                          _recursive_subclasses(PluginBase))
 def test_default_configuration_attrs(plugin):
@@ -315,7 +314,7 @@ def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
         tiff1 = Cpt(FS_tiff, 'TIFF1:',
                     write_path_template=wpath,
                     read_path_template=rpath,
-                    root=root, fs=fs)
+                    root=root, reg=fs)
     target_root = root or '/'
     det = MyDetector(prefix, name='det')
     det.read_attrs = ['tiff1']
@@ -363,7 +362,7 @@ def test_fshdf_plugin(root, wpath, rpath, check_files, WriterClass):
         hdf1 = Cpt(FS_hdf, 'HDF1:',
                    write_path_template=wpath,
                    read_path_template=rpath,
-                   root=root, fs=fs)
+                   root=root, reg=fs)
     target_root = root or '/'
     det = MyDetector(prefix, name='det')
     det.read_attrs = ['hdf1']

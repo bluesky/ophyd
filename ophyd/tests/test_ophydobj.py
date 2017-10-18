@@ -57,13 +57,11 @@ def test_ophydobj():
     child = OphydObject(name='name', parent=parent)
     assert child.parent is parent
 
-    child._run_sub('not_a_callable', sub_type='sub')
-
     with pytest.raises(ValueError):
         child.subscribe(None, event_type=None)
 
     with pytest.raises(KeyError):
-        child.subscribe(None, event_type='unknown_event_type')
+        child.subscribe(lambda *args: None, event_type='unknown_event_type')
 
     assert parent.connected
 
@@ -97,6 +95,47 @@ def test_self_removing_cb():
 
     assert hit_A == 1
     assert hit_B == 2
+
+
+def test_unsubscribe():
+    class TestObj(OphydObject):
+        SUB_TEST = 'value'
+
+    test_obj = TestObj(name='name', parent=None)
+
+    hit = 0
+
+    def increment(**kwargs):
+        nonlocal hit
+        hit += 1
+
+    cid = test_obj.subscribe(increment, 'value')
+    test_obj._run_subs(sub_type='value')
+    assert hit == 1
+    test_obj.unsubscribe(cid)
+    test_obj._run_subs(sub_type='value')
+    assert hit == 1
+
+    # check multi unsubscribe
+    test_obj.unsubscribe(cid)
+    test_obj.clear_sub(increment)
+
+
+def test_subscribe_warn(recwarn):
+    class TestObj(OphydObject):
+        SUB_TEST = 'value'
+        _default_sub = SUB_TEST
+
+    test_obj = TestObj(name='name', parent=None)
+    test_obj.subscribe(lambda *args, **kwargs: None)
+    assert len(recwarn) == 0
+
+
+def test_subscribe_no_default():
+    o = OphydObject(name='name', parent=None)
+
+    with pytest.raises(ValueError):
+        o.subscribe(lambda *a, **k: None)
 
 
 is_main = (__name__ == '__main__')
