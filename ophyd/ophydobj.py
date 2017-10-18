@@ -17,6 +17,10 @@ from .status import (StatusBase, MoveStatus, DeviceStatus)
 logger = logging.getLogger(__name__)
 
 
+class UnknownSubscription(KeyError):
+    ...
+
+
 class OphydObject:
     '''The base class for all objects in Ophyd
 
@@ -124,8 +128,10 @@ class OphydObject:
         No exceptions are raised if the callback functions fail.
         '''
         if sub_type not in self.subscriptions:
-            raise ValueError("Unknown subscription {}, must be one of {!r}"
-                             .format(sub_type, self.subscriptions))
+            raise UnknownSubscription(
+                "Unknown subscription {}, must be one of {!r}"
+                .format(sub_type, self.subscriptions))
+
         kwargs['sub_type'] = sub_type
         # Guarantee that the object will be in the kwargs
         kwargs.setdefault('obj', self)
@@ -207,8 +213,9 @@ class OphydObject:
 
         # check that this is a valid event type
         if event_type not in self.subscriptions:
-            raise ValueError("Unknown subscription {}, must be one of {!r}"
-                             .format(event_type, self.subscriptions))
+            raise UnknownSubscription(
+                "Unknown subscription {}, must be one of {!r}"
+                .format(event_type, self.subscriptions))
 
         # wrapper for callback to snarf exceptions
         def wrap_cb(cb):
