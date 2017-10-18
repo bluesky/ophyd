@@ -117,7 +117,7 @@ and static information about the object
  ===========================  ========================================================
  :attr:`prefix`               'base' of PV name, used when building components
  ---------------------------  --------------------------------------------------------
- :attr:`signal_names`         List of the names components on this device.
+ :attr:`component_names`      List of the names components on this device.
 	                      Direct children only
  ---------------------------  --------------------------------------------------------
  :attr:`trigger_signals`      Signals for use in `Implicit Triggering`_

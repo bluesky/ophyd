@@ -96,7 +96,7 @@ def test_detector():
     det.find_signal('a', use_re=True, f=StringIO())
     det.find_signal('a', case_sensitive=True, f=StringIO())
     det.find_signal('a', use_re=True, case_sensitive=True, f=StringIO())
-    det.signal_names
+    det.component_names
     det.report
 
     cam = det.cam
@@ -279,8 +279,8 @@ def test_default_configuration_smoke():
 
     d = MyDetector(prefix, name='d')
     d.stage()
-    {n: getattr(d, n).read_configuration() for n in d.signal_names}
-    {n: getattr(d, n).describe_configuration() for n in d.signal_names}
+    {n: getattr(d, n).read_configuration() for n in d.component_names}
+    {n: getattr(d, n).describe_configuration() for n in d.component_names}
     d.unstage()
 
 
