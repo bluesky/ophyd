@@ -145,7 +145,7 @@ class OphydObject:
         # callback at a later time (e.g., when a new subscription is made)
         self._args_cache[sub_type] = (tuple(args), dict(kwargs))
 
-        for cb in self._callbacks[sub_type].values():
+        for cb in list(self._callbacks[sub_type].values()):
             cb(*args, **kwargs)
 
     def subscribe(self, cb, event_type=None, run=True):
