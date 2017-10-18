@@ -57,8 +57,6 @@ def test_ophydobj():
     child = OphydObject(name='name', parent=parent)
     assert child.parent is parent
 
-    child._run_sub('not_a_callable', sub_type='sub')
-
     with pytest.raises(ValueError):
         child.subscribe(None, event_type=None)
 
