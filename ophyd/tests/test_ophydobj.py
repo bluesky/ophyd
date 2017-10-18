@@ -128,7 +128,7 @@ def test_subscribe_warn(recwarn):
 
     test_obj = TestObj(name='name', parent=None)
     test_obj.subscribe(lambda *args, **kwargs: None)
-    assert len(recwarn) == 1
+    assert len(recwarn) == 0
 
 
 def test_subscribe_no_default():

@@ -194,9 +194,9 @@ class OphydObject:
             raise ValueError("cb must be callable")
         # do default event type
         if event_type is None:
-            warnings.warn("Please specify which call back you wish to "
-                          "attach to defaulting to {}"
-                          .format(self._default_sub), stacklevel=2)
+            # warnings.warn("Please specify which call back you wish to "
+            #               "attach to defaulting to {}"
+            #               .format(self._default_sub), stacklevel=2)
             event_type = self._default_sub
 
         if event_type is None:
