@@ -110,7 +110,7 @@ class OphydObject:
     def event_types(self):
         '''Events that can be subscribed to via `obj.subscribe`
         '''
-        return list(self.subscriptions)
+        return tuple(self.subscriptions)
 
     def _run_subs(self, *args, sub_type, **kwargs):
         '''Run a set of subscription callbacks
@@ -261,7 +261,7 @@ class OphydObject:
             types)
         '''
         if event_type is None:
-            event_types = self.subscriptions
+            event_types = self.event_types
         else:
             event_types = [event_type]
         cid_list = []

@@ -116,6 +116,27 @@ def test_unsubscribe():
     test_obj._run_subs(sub_type='value')
     assert hit == 1
 
+    # check multi unsubscribe
+    test_obj.unsubscribe(cid)
+    test_obj.clear_sub(increment)
+
+
+def test_subscribe_warn(recwarn):
+    class TestObj(OphydObject):
+        SUB_TEST = 'value'
+        _default_sub = SUB_TEST
+
+    test_obj = TestObj(name='name', parent=None)
+    test_obj.subscribe(lambda *args, **kwargs: None)
+    assert len(recwarn) == 1
+
+
+def test_subscribe_no_default():
+    o = OphydObject(name='name', parent=None)
+
+    with pytest.raises(ValueError):
+        o.subscribe(lambda *a, **k: None)
+
 
 is_main = (__name__ == '__main__')
 main(is_main)
