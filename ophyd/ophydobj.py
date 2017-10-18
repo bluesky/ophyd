@@ -1,11 +1,3 @@
-'''
-:mod:`ophyd.control.ophydobj` - Base object type
-================================================
-
-.. module:: ophyd.control.ophydobj
-   :synopsis:
-'''
-
 import warnings
 from itertools import count
 
@@ -18,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class UnknownSubscription(KeyError):
+    "Subclass of KeyError.  Raised for unknown event type"
     ...
 
 
@@ -273,6 +266,15 @@ class OphydObject:
             self.unsubscribe(cid)
 
     def unsubscribe(self, cid):
+        """Remove a subscription
+
+        See also :meth:`subscribe`, :meth:`clear_sub`
+
+        Parameters
+        ----------
+        cid : int
+           token return by :meth:`subscribe`
+        """
         ev_type = self._cid_to_event_mapping.pop(cid, None)
         if ev_type is None:
             return
