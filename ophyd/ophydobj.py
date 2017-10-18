@@ -151,7 +151,7 @@ class OphydObject:
     def subscribe(self, cb, event_type=None, run=True):
         '''Subscribe to events this event_type generates.
 
-        The callback will be called as cb(*args, **kwargs) with
+        The callback will be called as ``cb(*args, **kwargs)`` with
         the values passed to `_run_subs` with the following additional keys:
 
            sub_type : the string value of the event_type
@@ -160,7 +160,7 @@ class OphydObject:
         if the key 'timestamp' is in kwargs _and_ is None, then it will
         be replaced with the current time before running the callback.
 
-        The *args, **kwargs passed to _run_subs will be cached as
+        The ``*args``, ``**kwargs`` passed to _run_subs will be cached as
         shallow copies, be aware of passing in mutable data.
 
         .. warning::
