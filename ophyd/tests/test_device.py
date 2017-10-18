@@ -92,9 +92,9 @@ class DeviceTests(unittest.TestCase):
         self.assertIs(device.subsub2.parent, device)
         self.assertIs(device.cpt3.parent, device)
 
-        self.assertEquals(device.sub1.signal_names,
+        self.assertEquals(device.sub1.component_names,
                           ['cpt1', 'cpt2', 'cpt3'])
-        self.assertEquals(device.subsub2.signal_names,
+        self.assertEquals(device.subsub2.component_names,
                           ['cpt1', 'cpt2', 'cpt3', 'cpt4'])
 
         conf_keys = {'dev_sub1_cpt1_conf',    # from sub1.*
@@ -179,7 +179,7 @@ class DeviceTests(unittest.TestCase):
         self.assertTrue(dev.sub3.subsub.success)
 
     def test_name_shadowing(self):
-        RESERVED_ATTRS = ['name', 'parent', 'signal_names', '_signals',
+        RESERVED_ATTRS = ['name', 'parent', 'component_names', '_signals',
                           'read_attrs', 'configuration_attrs', '_sig_attrs',
                           '_sub_devices']
 
@@ -296,3 +296,15 @@ def test_array_attribute_signal():
     np.testing.assert_array_equal(dev.attrsig.get(), init_value)
     assert isinstance(dev.attrsig.get(), np.ndarray)
     assert isinstance(dev.attrsig.get(), np.ndarray)
+
+
+def test_signal_names():
+
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix')
+
+    d = MyDevice('')
+    with pytest.warns(UserWarning):
+        signal_names = d.signal_names
+
+    assert signal_names is d.component_names

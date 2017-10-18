@@ -1,6 +1,17 @@
 Release Notes
 -------------
 
+0.8.0
+=====
+
+Deprecations
+************
+
+* The ``signal_names`` attribute of devices has been renamed
+  ``component_names`` for clarity because it may include a mixture of Signals
+  and Devices -- any Components. The old name now issues a warning when
+  accessed, and it may be removed in a future release of ophyd.
+
 0.7.0
 =====
 

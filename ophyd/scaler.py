@@ -127,7 +127,7 @@ class ScalerCH(Device):
         self.channels.configuration_attrs = ['chan01']
 
     def match_names(self):
-        for s in self.channels.signal_names:
+        for s in self.channels.component_names:
             getattr(self.channels, s).match_name()
 
     def select_channels(self, chan_names):
@@ -142,7 +142,7 @@ class ScalerCH(Device):
         '''
         self.match_names()
         name_map = {getattr(self.channels, s).name.get(): s
-                    for s in self.channels.signal_names}
+                    for s in self.channels.component_names}
 
         read_attrs = ['chan01']  # always include time
         for ch in chan_names:

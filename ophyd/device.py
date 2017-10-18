@@ -3,6 +3,7 @@ import logging
 import textwrap
 from enum import Enum
 from collections import (OrderedDict, namedtuple)
+import warnings
 
 from .ophydobj import OphydObject
 from .status import DeviceStatus, StatusBase
@@ -349,7 +350,7 @@ class ComponentMeta(type):
 
         # This attrs are defined at instanitation time and must not
         # collide with class attributes.
-        INSTANCE_ATTRS = ['name', 'parent', 'signal_names', '_signals',
+        INSTANCE_ATTRS = ['name', 'parent', 'component_names', '_signals',
                           'read_attrs', 'configuration_attrs', '_sig_attrs',
                           '_sub_devices']
         # These attributes are part of the bluesky interface and cannot be
@@ -360,7 +361,9 @@ class ComponentMeta(type):
                           'set', 'stage', 'unstage', 'pause', 'resume',
                           'kickoff', 'complete', 'collect', 'position', 'stop',
                           # from OphydObject
-                          'subscribe', 'clear_sub', 'event_types', 'root']
+                          'subscribe', 'clear_sub', 'event_types', 'root',
+                          # for back-compat
+                          'signal_names']
         for attr in INSTANCE_ATTRS:
             if attr in clsdict:
                 raise TypeError("The attribute name %r is reserved for "
@@ -390,10 +393,10 @@ class ComponentMeta(type):
             cpt.attr = cpt_attr
 
         # List Signal attribute names.
-        clsobj.signal_names = list(clsobj._sig_attrs.keys())
+        clsobj.component_names = list(clsobj._sig_attrs.keys())
 
         # The namedtuple associated with the device
-        clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.signal_names,
+        clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.component_names,
                                           rename=True)
 
         # Finally, create all the component docstrings
@@ -689,7 +692,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     # over ride in sub-classes to control the default
     # contents of read and configuration attrs lists
 
-    # If `None`, defaults to `self.signal_names'
+    # If `None`, defaults to `self.component_names'
     _default_read_attrs = None
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
@@ -700,7 +703,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         self._signals = {}
 
         self.prefix = prefix
-        if self.signal_names and prefix is None:
+        if self.component_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
                              'used')
 
@@ -718,7 +721,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if read_attrs is None:
             read_attrs = (self._default_read_attrs if
                           self._default_read_attrs is not None
-                          else self.signal_names)
+                          else self.component_names)
 
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)
@@ -727,13 +730,21 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
          if not cpt.lazy]
 
+    @property
+    def signal_names(self):
+        warnings.warn("'signal_names' has been renamed 'component_names' for "
+                      "clarity because it may include a mixture of Signals "
+                      "and Devices -- any Components. This alias may be "
+                      "removed in a future release of ophyd.")
+        return self.component_names
+
     def __str__(self):
         desc = self.describe()
         config_desc = self.describe_configuration()
         read_attrs = self.read_attrs
         config_attrs = self.configuration_attrs
         used_attrs = set(read_attrs + config_attrs)
-        extra_attrs = [a for a in self.signal_names
+        extra_attrs = [a for a in self.component_names
                        if a not in used_attrs]
         hints = getattr(self, 'hints', {}).get('fields', [])
 
@@ -1007,7 +1018,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         Keyword arguments are passed onto each signal.get()
         '''
         values = {}
-        for attr in self.signal_names:
+        for attr in self.component_names:
             signal = getattr(self, attr)
             values[attr] = signal.get(**kwargs)
 
@@ -1030,7 +1041,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 raise ValueError('{}\n\tDevice tuple fields: {}'
                                  ''.format(ex, self._device_tuple._fields))
 
-        for attr in self.signal_names:
+        for attr in self.component_names:
             value = getattr(dev_t, attr)
             signal = getattr(self, attr)
             signal.put(value, **kwargs)
@@ -1067,7 +1078,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         for key, val in d.items():
             if key not in self.configuration_attrs:
                 # a little extra checking for a more specific error msg
-                if key not in self.signal_names:
+                if key not in self.component_names:
                     raise ValueError("There is no signal named %s" % key)
                 else:
                     raise ValueError("%s is not one of the "
