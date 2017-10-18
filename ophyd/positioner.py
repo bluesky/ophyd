@@ -186,7 +186,7 @@ class PositionerBase(OphydObject):
                             settle_time=self._settle_time)
 
         if moved_cb is not None:
-            status.finished_cb = functools.partial(moved_cb, obj=self)
+            status.add_callback(functools.partial(moved_cb, obj=self))
             # the status object will run this callback when finished
 
         self.subscribe(status._finished, event_type=self._SUB_REQ_DONE,

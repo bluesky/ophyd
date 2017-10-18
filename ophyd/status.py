@@ -1,6 +1,8 @@
+from collections import deque
 import time
 from threading import RLock
 from functools import wraps
+from warnings import warn
 
 import logging
 import threading
@@ -9,13 +11,17 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
+class UseNewProperty(RuntimeError):
+    ...
+
+
 # This is used below by StatusBase.
 def _locked(func):
     "an decorator for running a method with the instance's lock"
     @wraps(func)
     def f(self, *args, **kwargs):
         with self._lock:
-            func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
 
     return f
 
@@ -38,7 +44,7 @@ class StatusBase:
                  success=False):
         super().__init__()
         self._lock = RLock()
-        self._cb = None
+        self._callbacks = deque()
         self.done = done
         self.success = success
         self.timeout = None
@@ -71,11 +77,15 @@ class StatusBase:
                 timeout = None
             wait(self, timeout=timeout, poll_rate=0.2)
         except TimeoutError:
-            logger.debug('Status object %s timed out', str(self))
-            try:
-                self._handle_failure()
-            finally:
-                self._finished(success=False)
+            with self._lock:
+                if self.done:
+                    # Avoid race condition with settling.
+                    return
+                logger.debug('Status object %s timed out', str(self))
+                try:
+                    self._handle_failure()
+                finally:
+                    self._finished(success=False)
         except RuntimeError:
             pass
         finally:
@@ -94,13 +104,16 @@ class StatusBase:
             time.sleep(self.settle_time)
 
         with self._lock:
+            if self.done:
+                # We timed out while waiting for the settle time.
+                return
             self.success = success
             self.done = True
             self._settled()
 
-            if self._cb is not None:
-                self._cb()
-                self._cb = None
+            for cb in self._callbacks:
+                cb()
+            self._callbacks.clear()
 
     def _finished(self, success=True, **kwargs):
         '''Inform the status object that it is done and if it succeeded
@@ -133,26 +146,98 @@ class StatusBase:
             self._settle_then_run_callbacks(success=success)
 
     @property
-    def finished_cb(self):
+    def callbacks(self):
         """
-        Callback to be run when the status is marked as finished
+        Callbacks to be run when the status is marked as finished
 
         The callback has no arguments ::
 
             def cb() -> None:
 
         """
-        return self._cb
+        return self._callbacks
+
+    @property
+    @_locked
+    def finished_cb(self):
+        if len(self.callbacks) == 1:
+            warn("The property `finished_cb` is deprecated, and must raise "
+                 "an error if a status object has multiple callbacks. Use "
+                 "the `callbacks` property instead.")
+            cb, = self.callbacks
+            assert cb is not None
+            return cb
+        else:
+            raise UseNewProperty("The deprecated `finished_cb` property "
+                                 "cannot be used for status objects that have "
+                                 "multiple callbacks. Use the `callbacks` "
+                                 "property instead.")
+
+    @_locked
+    def add_callback(self, cb):
+        if self.done:
+            cb()
+        else:
+            self._callbacks.append(cb)
 
     @finished_cb.setter
     @_locked
     def finished_cb(self, cb):
-        if self._cb is not None:
-            raise RuntimeError("Can not change the call back")
-        if self.done:
-            cb()
+        if not self.callbacks:
+            warn("The setter `finished_cb` is deprecated, and must raise "
+                 "an error if a status object already has one callback. Use "
+                 "the `add_callback` method instead.")
+            self.add_callback(cb)
         else:
-            self._cb = cb
+            raise UseNewProperty("The deprecated `finished_cb` setter cannot "
+                                 "be used for status objects that already "
+                                 "have one callback. Use the `add_callbacks` "
+                                 "method instead.")
+
+    def __and__(self, other):
+        """
+        Returns a new 'composite' status object, AndStatus,
+        with the same base API.
+
+        It will finish when both `self` or `other` finish.
+        """
+        return AndStatus(self, other)
+
+
+class AndStatus(StatusBase):
+    "a Status that has composes two other Status objects using logical and"
+    def __init__(self, left, right, **kwargs):
+        super().__init__(**kwargs)
+        self.left = left
+        self.right = right
+
+        def inner():
+            with self._lock:
+                with self.left._lock:
+                    with self.right._lock:
+                        l_success = self.left.success
+                        r_success = self.right.success
+                        l_done = self.left.done
+                        r_done = self.right.done
+
+                        # At least one is done.
+                        # If it failed, do not wait for the second one.
+                        if (not l_success) and l_done:
+                            self._finished(success=False)
+                        elif (not r_success) and r_done:
+                            self._finished(success=False)
+
+                        elif l_success and r_success and l_done and r_done:
+                            # Both are done, successfully.
+                            self._finished(success=True)
+                        # Else one is done, successfully, and we wait for #2,
+                        # when this function will be called again.
+
+        self.left.add_callback(inner)
+        self.right.add_callback(inner)
+
+    def __repr__(self):
+        return "({self.left!r} & {self.right!r})".format(self=self)
 
     def __str__(self):
         return ('{0}(done={1.done}, '
