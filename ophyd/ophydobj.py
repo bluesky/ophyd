@@ -52,7 +52,7 @@ class OphydObject:
         # dictionary of wrapped callbacks
         self._callbacks = {k: {} for k in self.subscriptions}
         # this is to maintain api on clear_sub
-        self._unwrapperd_callbacks = {k: {} for k in self.subscriptions}
+        self._unwrapped_callbacks = {k: {} for k in self.subscriptions}
         # map cid -> back to which event it is in
         self._cid_to_event_mapping = dict()
         # cache of last inputs to _run_subs, the semi-private way
@@ -223,7 +223,7 @@ class OphydObject:
         # get next cid
         cid = next(self._cb_count)
         wrapped = wrap_cb(cb)
-        self._unwrapperd_callbacks[event_type][cid] = cb
+        self._unwrapped_callbacks[event_type][cid] = cb
         self._callbacks[event_type][cid] = wrapped
         self._cid_to_event_mapping[cid] = event_type
 
@@ -238,12 +238,12 @@ class OphydObject:
     def _reset_sub(self, event_type):
         '''Remove all subscriptions in an event type'''
         self._callbacks[event_type].clear()
-        self._unwrapperd_callbacks[event_type].clear()
+        self._unwrapped_callbacks[event_type].clear()
 
     def clear_sub(self, cb, event_type=None):
         '''Remove a subscription, given the original callback function
 
-        See also :func:`subscribe`, :func:`unsubscribe`
+        See also :meth:`subscribe`, :meth:`unsubscribe`
 
         Parameters
         ----------
@@ -259,7 +259,7 @@ class OphydObject:
             event_types = [event_type]
         cid_list = []
         for et in event_types:
-            for cid, target in self._unwrapperd_callbacks[et].items():
+            for cid, target in self._unwrapped_callbacks[et].items():
                 if cb == target:
                     cid_list.append(cid)
         for cid in cid_list:
@@ -278,7 +278,7 @@ class OphydObject:
         ev_type = self._cid_to_event_mapping.pop(cid, None)
         if ev_type is None:
             return
-        del self._unwrapperd_callbacks[ev_type][cid]
+        del self._unwrapped_callbacks[ev_type][cid]
         del self._callbacks[ev_type][cid]
 
     def check_value(self, value, **kwargs):
