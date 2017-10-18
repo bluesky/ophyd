@@ -269,13 +269,11 @@ class OphydObject:
             for cid, target in self._unwrapperd_callbacks[et].items():
                 if cb == target:
                     cid_list.append(cid)
-        print(cid_list)
         for cid in cid_list:
             self.unsubscribe(cid)
 
     def unsubscribe(self, cid):
         ev_type = self._cid_to_event_mapping.pop(cid, None)
-        print(ev_type)
         if ev_type is None:
             return
         del self._unwrapperd_callbacks[ev_type][cid]
