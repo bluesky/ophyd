@@ -61,7 +61,7 @@ def test_ophydobj():
         child.subscribe(None, event_type=None)
 
     with pytest.raises(KeyError):
-        child.subscribe(None, event_type='unknown_event_type')
+        child.subscribe(lambda *args: None, event_type='unknown_event_type')
 
     assert parent.connected
 
