@@ -100,7 +100,7 @@ def wf_sim_detector(prefix):
         wfcol = Cpt(WaveformCollector, suffix)
 
     try:
-        det = Detector(prefix)
+        det = Detector(prefix, name='det')
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')

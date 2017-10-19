@@ -69,7 +69,7 @@ def test_status_pre():
 
 def test_subscription_status():
     # Arbitrary device
-    d = Device("Tst:Prefix")
+    d = Device("Tst:Prefix", name='test')
     # Mock callback
     m = Mock()
 

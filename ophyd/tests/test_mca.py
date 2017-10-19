@@ -21,7 +21,7 @@ devs = ['XF:23ID2-ES{Vortex}mca1', 'XF:23ID2-ES{Vortex}dxp1:']
 
 @using_fake_epics_pv
 def test_mca_spectrum():
-    mca = EpicsMCA(devs[0])
+    mca = EpicsMCA(devs[0], name='test')
     with pytest.raises(ReadOnlyError):
         mca.spectrum.put(3.14)
     with pytest.raises(ReadOnlyError):
@@ -31,16 +31,16 @@ def test_mca_spectrum():
 @using_fake_epics_pv
 def test_mca_read_attrs():
     r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
-    mca = EpicsMCA(devs[0], read_attrs=r_attrs)
+    mca = EpicsMCA(devs[0], read_attrs=r_attrs, name='test')
     assert r_attrs == mca.read_attrs
 
 
 @using_fake_epics_pv
 def test_mca_describe():
-    mca = EpicsMCA(devs[0])
+    mca = EpicsMCA(devs[0], name='test')
 
     desc = mca.describe()
-    d = desc[mca.prefix + '_spectrum']
+    d = desc[mca.name + '_spectrum']
 
     assert d['dtype'] == 'number'
     assert d['shape'] == []
@@ -72,7 +72,7 @@ def test_rois():
     with pytest.raises(ValueError):
         add_rois([32, ])
     # read-only?
-    mca = EpicsMCA(devs[0])
+    mca = EpicsMCA(devs[0], name='test')
     with pytest.raises(ReadOnlyError):
         mca.rois.roi1.count.put(3.14)
     with pytest.raises(ReadOnlyError):
