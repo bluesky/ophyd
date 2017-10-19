@@ -22,7 +22,7 @@ scalers = ['XF:23ID2-ES{Sclr:1}']
 @using_fake_epics_pv
 def test_temp_scaler():
     # TODO fix
-    scaler.EpicsScaler(scalers[0])
+    scaler.EpicsScaler(scalers[0], name='test')
 
 
 @using_fake_epics_pv

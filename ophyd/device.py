@@ -676,13 +676,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     ----------
     prefix : str
         The PV prefix for all components of the device
+    name : str, keyword only
+        The name of the device
     read_attrs : sequence of attribute names
         the components to include in a normal reading (i.e., in ``read()``)
     configuration_attrs : sequence of attribute names
         the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
-    name : str, optional
-        The name of the device
     parent : instance or None
         The instance of the parent device, if applicable
     """
@@ -697,8 +697,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
 
-    def __init__(self, prefix='', *, read_attrs=None, configuration_attrs=None,
-                 name=None, parent=None, **kwargs):
+    def __init__(self, prefix='', *, name,
+                 read_attrs=None, configuration_attrs=None,
+                 parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
@@ -706,9 +707,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if self.component_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
                              'used')
-
-        if name is None:
-            name = prefix
 
         super().__init__(name=name, parent=parent, **kwargs)
 

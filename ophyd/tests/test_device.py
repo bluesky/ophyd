@@ -35,7 +35,7 @@ def tearDownModule():
 
 
 def test_device_state():
-    d = Device('test')
+    d = Device('test', name='test')
 
     d.stage()
     old, new = d.configure({})
@@ -52,6 +52,7 @@ class DeviceTests(unittest.TestCase):
 
         d = MyDevice('prefix', read_attrs=['cpt1'],
                      configuration_attrs=['cpt2'],
+                     name='test'
                      )
 
         d.read()
@@ -201,7 +202,7 @@ class DeviceTests(unittest.TestCase):
 
         ch_value = '_test_'
 
-        device = MyDevice('prefix:', ch=ch_value)
+        device = MyDevice('prefix:', ch=ch_value, name='test')
         self.assertIs(device.cpt.parent, device)
         self.assertIs(device.ch.parent, device)
         self.assertIs(device._ch, ch_value)
@@ -209,12 +210,11 @@ class DeviceTests(unittest.TestCase):
         self.assertEquals(device.cpt.read_pv,
                           device.prefix + MyDevice.cpt.suffix)
 
-
     def test_root(self):
         class MyDevice(Device):
             cpt = Component(FakeSignal, 'suffix')
 
-        d = MyDevice('')
+        d = MyDevice('', name='test')
         assert d.cpt.root == d
         assert d.root == d
 
@@ -303,7 +303,7 @@ def test_signal_names():
     class MyDevice(Device):
         cpt = Component(FakeSignal, 'suffix')
 
-    d = MyDevice('')
+    d = MyDevice('', name='test')
     with pytest.warns(UserWarning):
         signal_names = d.signal_names
 

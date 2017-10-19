@@ -18,11 +18,11 @@ def tearDownModule():
 
 class EpicsSignalTests(unittest.TestCase):
     def test_read_pv_timestamp_no_monitor(self):
-        mtr = EpicsMotor(config.motor_recs[0])
+        mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
 
-        sp = EpicsSignal(mtr.user_setpoint.pvname)
-        rbv = EpicsSignalRO(mtr.user_readback.pvname)
+        sp = EpicsSignal(mtr.user_setpoint.pvname, name='test')
+        rbv = EpicsSignalRO(mtr.user_readback.pvname, name='test')
 
         rbv_value0 = rbv.get()
         ts0 = rbv.timestamp
@@ -37,10 +37,10 @@ class EpicsSignalTests(unittest.TestCase):
         sp.put(sp.value - 0.1, wait=True)
 
     def test_write_pv_timestamp_no_monitor(self):
-        mtr = EpicsMotor(config.motor_recs[0])
+        mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
 
-        sp = EpicsSignal(mtr.user_setpoint.pvname)
+        sp = EpicsSignal(mtr.user_setpoint.pvname, name='test')
 
         sp_value0 = sp.get()
         ts0 = sp.timestamp
@@ -55,11 +55,11 @@ class EpicsSignalTests(unittest.TestCase):
         sp.put(sp.value - 0.1, wait=True)
 
     def test_read_pv_timestamp_monitor(self):
-        mtr = EpicsMotor(config.motor_recs[0])
+        mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
 
-        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True)
-        rbv = EpicsSignalRO(mtr.user_readback.pvname, auto_monitor=True)
+        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True, name='test')
+        rbv = EpicsSignalRO(mtr.user_readback.pvname, auto_monitor=True, name='test')
 
         rbv_value0 = rbv.get()
         ts0 = rbv.timestamp
@@ -74,10 +74,10 @@ class EpicsSignalTests(unittest.TestCase):
         sp.put(sp.value - 0.1, wait=True)
 
     def test_write_pv_timestamp_monitor(self):
-        mtr = EpicsMotor(config.motor_recs[0])
+        mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
 
-        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True)
+        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True, name='test')
 
         sp_value0 = sp.get()
         ts0 = sp.timestamp

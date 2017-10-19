@@ -73,7 +73,7 @@ def test_basic():
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name='test')
     det.wait_for_connection()
     det.stage()
     det.trigger()
@@ -90,7 +90,7 @@ def test_stubbing():
 
 
 def test_detector():
-    det = SimDetector(prefix)
+    det = SimDetector(prefix, name='test')
 
     det.find_signal('a', f=StringIO())
     det.find_signal('a', use_re=True, f=StringIO())
@@ -127,7 +127,7 @@ def test_tiff_plugin():
     class TestDet(SimDetector):
         p = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = TestDet(prefix)
+    det = TestDet(prefix, name='test')
     plugin = det.p
 
     plugin.file_template.put('%s%s_%3.3d.tif')
@@ -155,7 +155,7 @@ def test_subclass():
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name='test')
     det.wait_for_connection()
 
     print(det.describe())
@@ -166,7 +166,7 @@ def test_getattr():
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name='test')
     assert getattr(det, 'tiff1.name') == det.tiff1.name
     assert getattr(det, 'tiff1') is det.tiff1
     # raise
@@ -178,7 +178,7 @@ def test_invalid_plugins():
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
 
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name='test')
     det.wait_for_connection()
     det.tiff1.nd_array_port.put(det.cam.port_name.get())
     det.stats1.nd_array_port.put('AARDVARK')
@@ -197,7 +197,7 @@ def test_validete_plugins_no_portname():
         roi1 = Cpt(ROIPlugin, 'ROI1:')
         over1 = Cpt(OverlayPlugin, 'Over1:')
 
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name='test')
 
     det.roi1.nd_array_port.put(det.cam.port_name.get())
     det.over1.nd_array_port.put(det.roi1.port_name.get())
@@ -211,7 +211,7 @@ def test_get_plugin_by_asyn_port():
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name='test')
 
     det.tiff1.nd_array_port.put(det.cam.port_name.get())
     det.roi1.nd_array_port.put(det.cam.port_name.get())
