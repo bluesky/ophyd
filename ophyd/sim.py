@@ -3,13 +3,15 @@ import time as ttime
 from collections import deque, OrderedDict
 from threading import RLock
 import numpy as np
-
+import threading
 from tempfile import mkdtemp
 import os
+import weakref
 import uuid
 
-from .status import DeviceStatus
-from .device import Device
+from .signal import Signal
+from .status import DeviceStatus, StatusBase
+from .device import Device, Component
 
 
 # two convenience functions 'vendored' from bluesky.utils
@@ -26,19 +28,241 @@ def short_uid(label=None, truncate=6):
         return new_uid()[:truncate]
 
 
-SimpleStatus = DeviceStatus
-
-
-class NullStatus(DeviceStatus):
+class NullStatus(StatusBase):
     "A simple Status object that is always immediately done, successfully."
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._finsihed(success=True)
+        self._finished(success=True)
 
 
-class Reader:
+class SynSignal(Signal):
     """
+    A synthetic Signal that evaluates a Python function when triggered.
+
+    Parameters
+    ----------
+    func : callable, optional
+        This function sets the signal to a new value when it is triggered.
+        Expected signature: ``f() -> value``.
+        By default, triggering the signal does not change the value.
+    name : string, keyword only
+    trigger_delay : number, optional
+        Seconds of delay when triggered (simulated 'exposure time'). Default is
+        0.
+    parent : Device, optional
+        Used internally if this Signal is made part of a larger Device.
+    loop : event loop, optional
+    """
+    # This signature is arranged to mimic the signature of EpicsSignal, where
+    # the Python function (func) takes the place of the PV.
+    def __init__(self, func=None, *,
+                 name,  # required, keyword-only
+                 trigger_delay=0,
+                 parent=None,
+                 loop=None):
+        if func is None:
+            # When triggered, just put the current value.
+            func = self.get
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.loop = loop
+        self._func = func
+        self._trigger_delay = trigger_delay
+        super().__init__(value=0, timestamp=ttime.time(), name=name,
+                         parent=parent)
+
+    def trigger(self):
+        delay_time = self._trigger_delay
+        if delay_time:
+            st = DeviceStatus(device=self)
+            if self.loop.is_running():
+
+                def update_and_finish():
+                    self.put(self._func())
+                    st._finished()
+
+                self.loop.call_later(delay_time, update_and_finish)
+            else:
+
+                def sleep_and_finish():
+                    ttime.sleep(delay_time)
+                    self.put(self._func())
+                    st._finished()
+
+                threading.Thread(target=sleep_and_finish, daemon=True).start()
+            return st
+        else:
+            return NullStatus()
+
+    def get(self):
+        # Get a new value, which allows us to synthesize noisy data, for
+        # example.
+        return super().get()
+
+
+class SynSignalRO(SynSignal):
+    def put(self, value, *, timestamp=None, force=False):
+        raise NotImplementedError("The signal {} is readonly."
+                                  "".format(self.name))
+
+
+class SignalRO(Signal):
+    def put(self, value, *, timestamp=None, force=False):
+        raise NotImplementedError("The signal {} is readonly."
+                                  "".format(self.name))
+
+
+def periodic_update(ref, period, period_jitter):
+    while True:
+        signal = ref()
+        if not signal:
+            # Our target Signal has been garbage collected. Shut down the
+            # Thread.
+            return
+        signal.put(signal._func())
+        del signal
+        # Sleep for period +/- period_jitter.
+        ttime.sleep(max(period + period_jitter * np.random.randn(), 0))
+
+
+class SynPeriodicSignal(SynSignal):
+    """
+    A synthetic Signal that evaluates a Python function periodically.
+
+    Parameters
+    ----------
+    func : callable, optional
+        This function sets the signal to a new value when it is triggered.
+        Expected signature: ``f() -> value``.
+        By default, triggering the signal generates white noise on [0, 1].
+    name : string, keyword only
+    period : number, optional
+        How often the Signal's value is updated in the background. Default is
+        1 second.
+    period_jitter : number, optional
+        Random Gaussian variation of the period. Default is 1 second.
+    trigger_delay : number, optional
+        Seconds of delay when triggered (simulated 'exposure time'). Default is
+        0.
+    parent : Device, optional
+        Used internally if this Signal is made part of a larger Device.
+    loop : event loop, optional
+    """
+    def __init__(self, func=None, *,
+                 name,  # required, keyword-only
+                 period=1, period_jitter=1,
+                 trigger_delay=0,
+                 parent=None,
+                 loop=None):
+        if func is None:
+            func = np.random.rand
+        super().__init__(name=name, func=func,
+                         trigger_delay=trigger_delay,
+                         parent=parent, loop=loop)
+
+        self.__thread = threading.Thread(target=periodic_update, daemon=True,
+                                         args=(weakref.ref(self),
+                                               period,
+                                               period_jitter))
+        self.__thread.start()
+
+
+class ReadbackSignal(SignalRO):
+    def get(self):
+        return self.parent.sim_state['readback']
+
+
+class SetpointSignal(Signal):
+    def put(self, value, *, timestamp=None, force=False):
+        self.parent.set(value)
+        # TODO wait?
+
+    def get(self):
+        return self.parent.sim_state['setpoint']
+
+
+class SynAxis(Device):
+    """
+    A synthetic settable Device mimic any 1D Axis (position, temperature).
+
+    Parameters
+    ----------
+    name : string, keyword only
+    readback_func : callable, optional
+        When the Device is set to ``x``, its readback will be updated to
+        ``f(x)``. This can be used to introduce random noise or a systematic
+        offset.
+        Expected signature: ``f(x) -> value``.
+    value : object, optional
+        The initial value. Default is 0.
+    delay : number, optional
+        Simulates how long it takes the device to "move". Default is 0 seconds.
+    parent : Device, optional
+        Used internally if this Signal is made part of a larger Device.
+    loop : event loop, optional
+    """
+    readback = Component(ReadbackSignal, value=None)
+    setpoint = Component(SetpointSignal, value=None)
+
+    def __init__(*,
+                 name,
+                 readback_func=None, value=0, delay=0,
+                 parent=None,
+                 loop=None):
+        if readback_func is None:
+            readback_func = lambda x: x
+        if loop is None:
+            loop = asyncio.get_event_loop()
+
+        self.sim_state = {}
+        self._readback_func = readback_func
+
+        # initialize values
+        self.sim_state['readback'] = readback_func(value)
+        self.sim_state['setpoint'] = value
+
+
+    def set(self, value):
+
+        def update_state():
+            self.sim_state['readback'] = self._readback_func(value)
+            self.sim_state['setpoint'] = value
+
+        if loop.is_running():
+            st = Device(device=self)
+            st.add_callback(update_state)
+            loop.call_later(delay, st._finished)
+            return st
+        else:
+            ttime.sleep(delay)
+            update_state()
+            return NullStatus()
+
+    @property
+    def position(self):
+        return self.readbaack.get()
+
+    @property
+    def hints(self):
+        return {'fields': [self.readback.name]}
+
+
+###############################################################################
+#
+# The code below is migrated from early (pre-1.0) bluesky. It is not well
+# aligned with the ophyd API and generally should not be used. It is only
+# maintained to support some legacy code.
+#
+###############################################################################
+
+
+SimpleStatus = DeviceStatus
+
+
+def Reader(name, fields, *, conf=None, loop=None, exposure_time=0):
+    """
+    DEPRECATED. Use SynSignal with Device instead.
 
     Parameters
     ----------
@@ -48,9 +272,6 @@ class Reader:
         function will be passed no arguments.  These will be returned by `read`
     conf : dict, optional
         Dict of initial values to be returned by ``read_configuration()``.
-    monitor_intervals : list, optional
-        iterable of numbers, specifying the spacing in time of updates from the
-        device (this applies only if the ``subscribe`` method is used)
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -68,131 +289,37 @@ class Reader:
     >>> det = Reader('det',
     ...                {'intensity': lambda: 2 * motor.read()['value']})
     """
+    if conf is None:
+        conf = {}
+    if loop is None:
+        loop = asyncio.get_event_loop()
 
-    def __init__(self, name, fields, *,
-                 conf=None, monitor_intervals=None,
-                 loop=None, exposure_time=0):
-        self.exposure_time = exposure_time
-        self.name = name
-        self.parent = None
-        self._fields = fields
-
-        if conf is None:
-            conf = {}
-        self._conf_state = conf
-
-        # All this is used only by monitoring (subscribe/unsubscribe).
-        self._futures = {}
-        if monitor_intervals is None:
-            monitor_intervals = []
-        self._monitor_intervals = monitor_intervals
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self.loop = loop
-
-    @property
-    def conf_attrs(self):
-        return list(self._conf_state)
-
-    @property
-    def read_attrs(self):
-        return list(self._fields)
-
-    def __str__(self):
-        # Show just name for readability, as in the cycler example in the docs.
-        return ('{0}(name={1.name})'
-                ''.format(self.__class__.__name__, self)
-                )
-
-    __repr__ = __str__
-
-    def __setstate__(self, val):
-        name, fields, _conf_state, monitor_intervals = val
-        self.name = name
-        self._conf_state = _conf_state
-        self._futures = {}
-        self._monitor_intervals = monitor_intervals
-        self.loop = asyncio.get_event_loop()
-
-    def __getstate__(self):
-        return (self.name, self._fields, self._conf_state,
-                self._monitor_intervals)
-
-    def trigger(self):
-        delay_time = self.exposure_time
-        if delay_time:
-            if self.loop.is_running():
-                st = SimpleStatus(device=self)
-                self.loop.call_later(delay_time, st._finished)
-                return st
+    def trigger(instance):
+        # Return the AND of the trigger statuses of the child signals.
+        status = None
+        for field in fields:
+            if status is None:
+                status = getattr(instance, field).trigger()
             else:
-                ttime.sleep(delay_time)
-        return NullStatus()
+                status = status & getattr(instance, field).trigger()
+        return status
 
-    def read(self):
-        """
-        Simulate readings by calling functions.
-
-        The readings are collated with timestamps.
-        """
-        return {field: {'value': func(), 'timestamp': ttime.time()}
-                for field, func in self._fields.items()}
-
-    def describe(self):
-        ret = {}
-        d = {field: {'value': func(), 'timestamp': ttime.time()}
-             for field, func in self._fields.items()
-             if field in self.read_attrs}
-        for k, v in d.items():
-            v = v['value']
-            try:
-                shape = v.shape
-            except AttributeError:
-                shape = []
-            dtype = 'array' if len(shape) else 'number'
-            ret[k] = {'source': 'simulated using bluesky.examples',
-                      'dtype': dtype,
-                      'shape': shape,
-                      'precision': 2}
-        return ret
-
-    def read_configuration(self):
-        """
-        Like `read`, but providing slow-changing configuration readings.
-        """
-        return {k: {'value': v, 'timestamp': ttime.time()}
-                for k, v in self._conf_state.items()}
-
-    def describe_configuration(self):
-        return {field: {'source': 'simulated using bluesky.examples',
-                        'dtype': 'number',
-                        'shape': [],
-                        'precision': 2}
-                for field in self.conf_attrs}
-
-    def configure(self, d):
-        if not all(k in self.conf_attrs for k in d):
-            raise ValueError
-        old_conf = self.read_configuration()
-        self._conf_state.update(d)
-        new_conf = self.read_configuration()
-        return old_conf, new_conf
-
-    def subscribe(self, function):
-        "Simulate monitoring updates from a device."
-
-        def sim_monitor():
-            for interval in self._monitor_intervals:
-                ttime.sleep(interval)
-                function()
-
-        self._futures[function] = self.loop.run_in_executor(None, sim_monitor)
-
-    def clear_sub(self, function):
-        self._futures.pop(function).cancel()
+    # Define a Device subclass using type()
+    clsdict = dict(trigger=trigger,
+                   SUB_VALUE='value',
+                   _default_sub='value')
+    for field, func in fields.items():
+        clsdict[field] = Component(SynPeriodicSignal, func=func,
+                                   trigger_delay=exposure_time)
+    for name, value in conf.items():
+        clsdict[field] = Component(SignalRO, name=field, value=value)
+    cls = type('Reader_' + name, (Device,), clsdict)
+    # Return an instance of our subclass.
+    return cls(name=name)
 
 
-class Mover(Reader):
+def Mover(name, fields, initial_set, *,
+          conf=None, fake_sleep=0, monitor_intervals=None, loop=None):
     """
 
     Parameters
@@ -236,88 +363,25 @@ class Mover(Reader):
     ...                            ('motor_setpoint', lambda x: x)]),
     ...               {'x': 0})
     """
+    self._fake_sleep = 0
+    # Do initial set without any fake sleep.
+    self.set(**initial_set)
+    self._fake_sleep = fake_sleep
 
-    def __init__(self, name, fields, initial_set, *,
-                 conf=None, fake_sleep=0, monitor_intervals=None,
-                 loop=None):
-        super().__init__(name, fields,
-                         conf=conf,
-                         monitor_intervals=monitor_intervals,
-                         loop=loop)
-        # Do initial set without any fake sleep.
-        self._fake_sleep = 0
-        self.set(**initial_set)
-        self._fake_sleep = fake_sleep
-
-    def __setstate__(self, val):
-        name, fields, _conf_state, monitor_intervals, state, fk_slp = val
-        self.name = name
-        self._conf_state = _conf_state
-        self._futures = {}
-        self._monitor_intervals = monitor_intervals
-        self._state = state
-        self._fake_sleep = fk_slp
-        self.loop = asyncio.get_event_loop()
-
-    def __getstate__(self):
-        return (self.name, self._fields, self._conf_state,
-                self._monitor_intervals, self._state, self._fake_sleep)
-
-    def set(self, *args, **kwargs):
-        """
-        Pass the arguments to the functions to create the next reading.
-        """
-        new_state = {field: {'value': func(*args, **kwargs),
-                               'timestamp': ttime.time()}
-                       for field, func in self._fields.items()}
-
-        if self._fake_sleep:
-            if self.loop.is_running():
-                st = SimpleStatus(device=self)
-                def cb():
-                    self._state = new_state
-                    st._finished()
-                self.loop.call_later(self._fake_sleep, cb)
-                return st
-            else:
-                ttime.sleep(self._fake_sleep)
-
-        self._state = new_state
-        return NullStatus()
-
-    def read(self):
-        return {k: dict(v) for k, v in
-                self._state.items()}
-
-    def describe(self):
-        ret = {}
-        for k, v in self._state.items():
-            v = v['value']
-            try:
-                shape = v.shape
-            except AttributeError:
-                shape = []
-            dtype = 'array' if len(shape) else 'number'
-            ret[k] = {'source': 'simulated using bluesky.examples',
-                      'dtype': dtype,
-                      'shape': shape,
-                      'precision': 2}
-        return ret
-
-    @property
-    def hints(self):
-        return {'fields': [list(self._fields)[0]]}
-
-    @property
-    def position(self):
-        "A heuristic that picks a single scalar out of the `read` dict."
-        return self.read()[list(self._fields)[0]]['value']
-
-    def stop(self, *, success=False):
-        pass
+#     @property
+#     def hints(self):
+#         return {'fields': [list(self._fields)[0]]}
+# 
+#     @property
+#     def position(self):
+#         "A heuristic that picks a single scalar out of the `read` dict."
+#         return self.read()[list(self._fields)[0]]['value']
+# 
+#     def stop(self, *, success=False):
+#         pass
 
 
-class SynGauss(Reader):
+class SynGauss:
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -352,7 +416,7 @@ class SynGauss(Reader):
         super().__init__(name, {name: func}, **kwargs)
 
 
-class Syn2DGauss(Reader):
+class Syn2DGauss:
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -411,7 +475,7 @@ class Syn2DGauss(Reader):
         super().__init__(name, {name: func})
 
 
-class ReaderWithRegistry(Reader):
+class ReaderWithRegistry:
     """
 
     Parameters
@@ -629,7 +693,7 @@ class MockFlyer:
         pass
 
 
-class GeneralReaderWithRegistry(Reader):
+class GeneralReaderWithRegistry:
     """
 
     Parameters
@@ -734,38 +798,38 @@ class ReaderWithRegistryHandler:
                 for kwargs in datum_kwarg_gen]
 
 
-motor = Mover('motor', OrderedDict([('motor', lambda x: x),
-                                    ('motor_setpoint', lambda x: x)]),
-              {'x': 0})
-motor1 = Mover('motor1', OrderedDict([('motor1', lambda x: x),
-                                      ('motor1_setpoint', lambda x: x)]),
-               {'x': 0})
-motor2 = Mover('motor2', OrderedDict([('motor2', lambda x: x),
-                                      ('motor2_setpoint', lambda x: x)]),
-               {'x': 0})
-motor3 = Mover('motor3', OrderedDict([('motor3', lambda x: x),
-                                      ('motor3_setpoint', lambda x: x)]),
-               {'x': 0})
-jittery_motor1 = Mover('jittery_motor1',
-                       OrderedDict([('jittery_motor1',
-                                     lambda x: x + np.random.randn()),
-                                    ('jittery_motor1_setpoint', lambda x: x)]),
-                       {'x': 0})
-jittery_motor2 = Mover('jittery_motor2',
-                       OrderedDict([('jittery_motor2',
-                                     lambda x: x + np.random.randn()),
-                                    ('jittery_motor2_setpoint', lambda x: x)]),
-                       {'x': 0})
-noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
-                     noise='uniform', sigma=1, noise_multiplier=0.1)
-det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
-det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
-det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
-det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
-det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
-                  center=(0, 0), Imax=1)
-det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
-                  'jittery_motor2', center=(0, 0), Imax=1)
-
-flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
-flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
+# motor = Mover('motor', OrderedDict([('motor', lambda x: x),
+#                                     ('motor_setpoint', lambda x: x)]),
+#               {'x': 0})
+# motor1 = Mover('motor1', OrderedDict([('motor1', lambda x: x),
+#                                       ('motor1_setpoint', lambda x: x)]),
+#                {'x': 0})
+# motor2 = Mover('motor2', OrderedDict([('motor2', lambda x: x),
+#                                       ('motor2_setpoint', lambda x: x)]),
+#                {'x': 0})
+# motor3 = Mover('motor3', OrderedDict([('motor3', lambda x: x),
+#                                       ('motor3_setpoint', lambda x: x)]),
+#                {'x': 0})
+# jittery_motor1 = Mover('jittery_motor1',
+#                        OrderedDict([('jittery_motor1',
+#                                      lambda x: x + np.random.randn()),
+#                                     ('jittery_motor1_setpoint', lambda x: x)]),
+#                        {'x': 0})
+# jittery_motor2 = Mover('jittery_motor2',
+#                        OrderedDict([('jittery_motor2',
+#                                      lambda x: x + np.random.randn()),
+#                                     ('jittery_motor2_setpoint', lambda x: x)]),
+#                        {'x': 0})
+# noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
+#                      noise='uniform', sigma=1, noise_multiplier=0.1)
+# det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
+# det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
+# det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
+# det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
+# det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
+#                   center=(0, 0), Imax=1)
+# det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
+#                   'jittery_motor2', center=(0, 0), Imax=1)
+# 
+# flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
+# flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)

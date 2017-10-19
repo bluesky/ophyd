@@ -29,6 +29,7 @@ class Signal(OphydObject):
 
     Parameters
     ----------
+    name : string, keyword only
     value : any, optional
         The initial value
     timestamp : float, optional
@@ -53,7 +54,7 @@ class Signal(OphydObject):
     SUB_VALUE = 'value'
     _default_sub = SUB_VALUE
 
-    def __init__(self, *, value=None, timestamp=None, name=None, parent=None,
+    def __init__(self, *, name, value=None, timestamp=None, parent=None,
                  tolerance=None, rtolerance=None):
         super().__init__(name=name, parent=parent)
 
