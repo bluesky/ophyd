@@ -3,92 +3,38 @@ import time as ttime
 from collections import deque, OrderedDict
 from threading import RLock
 import numpy as np
-from bluesky.utils import Msg
 
 from tempfile import mkdtemp
 import os
-from bluesky.utils import new_uid, short_uid
+import uuid
+
+from .status import DeviceStatus
+from .device import Device
 
 
-class SimpleStatus:
-    """
-    This provides a single-slot callback for when the operation has finished.
+# two convenience functions 'vendored' from bluesky.utils
 
-    It is "simple" because it does not support a timeout or a settling time.
-    """
-
-    def __init__(self, *, done=False, success=False, device=None):
-        super().__init__()
-        self._lock = RLock()
-        self._cb = None
-        self.done = done
-        self.success = success
-        self.device = device
-        self._watchers = []
-
-    def watch(self, func):
-        if self.device is not None:
-            self._watchers.append(func)
-            func(name=str(self.device.name))
-
-    def _finished(self, success=True, **kwargs):
-        if self.done:
-            return
-
-        with self._lock:
-            self.success = success
-            self.done = True
-            for watcher in self._watchers:
-                watcher(name=str(self.device.name), fraction=1)
-
-            if self._cb is not None:
-                self._cb()
-                self._cb = None
-
-    @property
-    def finished_cb(self):
-        """
-        Callback to be run when the status is marked as finished
-
-        The call back has no arguments
-        """
-        return self._cb
-
-    @finished_cb.setter
-    def finished_cb(self, cb):
-        with self._lock:
-            if self._cb is not None:
-                raise RuntimeError("Cannot change the call back")
-            if self.done:
-                cb()
-            else:
-                self._cb = cb
-
-    def __str__(self):
-        return ('{0}(done={1.done}, '
-                'success={1.success})'
-                ''.format(self.__class__.__name__, self)
-                )
-
-    __repr__ = __str__
+def new_uid():
+    return str(uuid.uuid4())
 
 
-class NullStatus:
-    "a simple Status object that is always immediately done"
+def short_uid(label=None, truncate=6):
+    "Return a readable but unique id like 'label-fjfi5a'"
+    if label:
+        return '-'.join([label, new_uid()[:truncate]])
+    else:
+        return new_uid()[:truncate]
 
-    def __init__(self):
-        self._cb = None
-        self.done = True
-        self.success = True
 
-    @property
-    def finished_cb(self):
-        return self._cb
+SimpleStatus = DeviceStatus
 
-    @finished_cb.setter
-    def finished_cb(self, cb):
-        cb()
-        self._cb = cb
+
+class NullStatus(DeviceStatus):
+    "A simple Status object that is always immediately done, successfully."
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._finsihed(success=True)
 
 
 class Reader:
