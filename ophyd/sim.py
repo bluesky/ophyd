@@ -205,11 +205,15 @@ class SynAxis(Device):
     readback = Component(ReadbackSignal, value=None)
     setpoint = Component(SetpointSignal, value=None)
 
-    def __init__(*,
+    def __init__(self, *,
                  name,
                  readback_func=None, value=0, delay=0,
                  parent=None,
                  loop=None):
+        self.delay = delay
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.loop = loop
         if readback_func is None:
             readback_func = lambda x: x
         if loop is None:
@@ -222,6 +226,8 @@ class SynAxis(Device):
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['setpoint'] = value
 
+        super().__init__(name=name, parent=parent)
+
 
     def set(self, value):
 
@@ -229,14 +235,25 @@ class SynAxis(Device):
             self.sim_state['readback'] = self._readback_func(value)
             self.sim_state['setpoint'] = value
 
-        if loop.is_running():
-            st = Device(device=self)
-            st.add_callback(update_state)
-            loop.call_later(delay, st._finished)
+        if self.delay:
+            st = DeviceStatus(device=self)
+            if self.loop.is_running():
+
+                def update_and_finish():
+                    update_state()
+                    st._finished()
+
+                self.loop.call_later(self.delay, update_and_finish)
+            else:
+
+                def sleep_and_finish():
+                    ttime.sleep(self.delay)
+                    update_state()
+                    st._finished()
+
+                threading.Thread(target=sleep_and_finish, daemon=True).start()
             return st
         else:
-            ttime.sleep(delay)
-            update_state()
             return NullStatus()
 
     @property
@@ -260,12 +277,21 @@ class SynAxis(Device):
 SimpleStatus = DeviceStatus
 
 
-class SynGauss:
+class SynGauss(SynSignal):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
     Parameters
     ----------
+    name : string
+    motor : Device
+    motor_field : string
+    center : number
+        center of peak
+    Imax : number
+        max intensity of peak
+    sigma : number, optional
+        Default is 1.
     noise : {'poisson', 'uniform', None}
         Add noise to the gaussian peak.
     noise_multiplier : float
@@ -292,10 +318,10 @@ class SynGauss:
                 v += np.random.uniform(-1, 1) * noise_multiplier
             return v
 
-        super().__init__(name, {name: func}, **kwargs)
+        super().__init__(func=func, name=name, **kwargs)
 
 
-class Syn2DGauss:
+class Syn2DGauss(SynSignal):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -335,7 +361,8 @@ class Syn2DGauss:
     """
 
     def __init__(self, name, motor0, motor_field0, motor1, motor_field1,
-                 center, Imax, sigma=1, noise=None, noise_multiplier=1):
+                 center, Imax, sigma=1, noise=None, noise_multiplier=1,
+                 **kwargs):
 
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
@@ -351,7 +378,7 @@ class Syn2DGauss:
                 v += np.random.uniform(-1, 1) * noise_multiplier
             return v
 
-        super().__init__(name, {name: func})
+        super().__init__(name=name, func=func, **kwargs)
 
 
 class ReaderWithRegistry:
