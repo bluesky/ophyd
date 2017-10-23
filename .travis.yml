@@ -45,7 +45,6 @@ before_install:
   - mkdir /tmp/data
   - perl --version
   - git fetch --unshallow
-  - sudo bash install_epics_on_travis.sh
   - docker pull ${DOCKERIMAGE}
   - docker pull ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
   - docker images
