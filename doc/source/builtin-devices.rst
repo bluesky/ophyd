@@ -47,3 +47,27 @@ devices.
     :members:
 .. autoclass:: ophyd.mca.EpicsDXP
     :members:
+
+
+MotorBundle
+-----------
+
+Creating 'bundles' of motors in very common so we also have a helper
+class that tweaks the default behavior of :attr:`read_attrs`,
+:attr:`configuration_attrs`, and :attr:`hints`
+
+.. autoclass:: ophyd.epics_motor.MotorBundle
+    :members:
+
+This must be sub-classed (like :class:`~ophyd.device.Device`) to be useful.
+
+.. code-block:: python
+
+   from ophyd import MotorBundle, EpicsMotor
+   from ophyd import Component as Cpt
+
+   class StageXY(MotorBundle):
+       x = Cpt(EpicsMotor, ':X')
+       y = Cpt(EpicsMotor, ':Y')
+
+   stage = StageXY('STAGE_PV', name='stage')

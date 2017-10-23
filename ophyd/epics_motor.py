@@ -293,3 +293,46 @@ class EpicsMotor(Device, PositionerBase):
     @hints.setter
     def hints(self, val):
         self._hints = val if val is None else dict(val)
+
+
+class MotorBundle(Device):
+    """Sub-class this to device a bundle of motors
+
+    This provides better default behavior for ``hints``,
+    ``read_attrs`` and ``configuration_attrs``
+    """
+    _hints = None
+
+    @property
+    def hints(self):
+        """Provide hints to bluesky
+
+        The default value is the union of all the children's hints.
+
+        To override this, set another dictionary.
+
+        To restore the default value set ``None``
+
+        To suppress all hints set ``{}``
+        """
+        if self._hints is None:
+            return {'fields':
+                    [h
+                     for s in self.signal_names
+                     for h in getattr(getattr(self, s),
+                                      'hints', {}).get('fields', [])]}
+
+        return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        if val is None:
+            self._hints = None
+        else:
+            self._hints = dict(val)
+
+    def __init__(self, *args, configuration_attrs=None, **kwargs):
+        if configuration_attrs is None:
+            configuration_attrs = self.signal_names
+        super().__init__(*args, configuration_attrs=configuration_attrs,
+                         **kwargs)

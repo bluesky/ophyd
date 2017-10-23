@@ -5,6 +5,9 @@
 .. automodule:: ophyd.device
 
 
+Usage
+=====
+
 The core class of :mod:`ophyd` is :class:`Device` which encodes the
 nodes of the hierarchical structure of the device and provides much of
 core API.
@@ -19,7 +22,28 @@ The base :class:`Device` is not particularly useful on it's own, it
 must be sub-classed to provide it with components to do something
 with.
 
-Creating a custom device is as simple as:
+Creating a custom device is as simple as
+
+.. code-block:: python
+
+   from ophyd import Device, EpicsMotor
+   from ophyd import Component as Cpt
+
+   class StageXY(Device):
+       x = Cpt(EpicsMotor, ':X')
+       y = Cpt(EpicsMotor, ':Y')
+
+   stage = StageXY('STAGE_PV', name='stage')
+
+You can then use ``stage`` as an input to any plan as a detector and
+``stage.x`` and ``stage.y`` as independent motors.
+
+
+A Robot
+-------
+
+A slightly more complex example is to control a simple sample loading
+robot.
 
 .. code-block:: python
 

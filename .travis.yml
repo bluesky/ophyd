@@ -39,14 +39,19 @@ before_install:
   - export EPICS_CA_AUTO_ADDR_LIST="no"
   - export EPICS_CA_MAX_ARRAY_BYTES=10000000
   - export DOCKERIMAGE="klauer/epics-docker"
+  - export EPICS_BASE=/usr/lib/epics
+  - export PE_DOCKERIMAGE="klauer/simioc-docker"
+  - export PE_DOCKERTAG="pyepics-docker"
   - mkdir /tmp/data
   - perl --version
   - git fetch --unshallow
   - docker pull ${DOCKERIMAGE}
+  - docker pull ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
   - docker images
+  - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/data:/data ${DOCKERIMAGE}
+  - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
   - docker ps -a
-  - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/data:/data --name epics_iocs ${DOCKERIMAGE}
-  - docker ps -a
+  - ip addr
 
   - |
     if [ $CONDA_ENV ]; then
