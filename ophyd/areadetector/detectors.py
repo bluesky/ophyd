@@ -82,6 +82,19 @@ class DetectorBase(ADBase):
         except RuntimeError as err:
             self.unstage(*args, **kwargs)
             raise err
+
+        # get read to drain the queues
+
+        # disable all of the and cache current enabled status
+
+        # find anything that is not at 0 queue usage and install callbacks
+
+        # wait for all queues to drain to 0
+
+        # check that all quesue really are at 0
+
+        # re-enable the enabled callbacks starting from bottom
+
         return ret
 
 

@@ -7,8 +7,8 @@ import networkx as nx
 
 from ..signal import EpicsSignal
 from . import docs
-from ..device import (Device, Component)
-from ..signal import (ArrayAttributeSignal)
+from ..device import (Device, Component as C)
+from ..signal import (ArrayAttributeSignal, EpicsSignalRO)
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -19,7 +19,7 @@ class EpicsSignalWithRBV(EpicsSignal):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 
 
-class ADComponent(Component):
+class ADComponent(C):
     def __init__(self, cls, suffix, **kwargs):
         super().__init__(cls, suffix, lazy=True, **kwargs)
 
@@ -92,7 +92,10 @@ class ADBase(Device):
     _default_read_attrs = ()
     _default_configuration_attrs = ()
 
-    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
+    # unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
+    configuration_names = C(ArrayAttributeSignal,
+                            attr='_configuration_names')
+
 
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):
@@ -275,9 +278,6 @@ class ADBase(Device):
                 ret.append(node)
 
         return ret
-
-    configuration_names = Component(ArrayAttributeSignal,
-                                    attr='_configuration_names')
 
     @property
     def _configuration_names(self):
