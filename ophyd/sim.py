@@ -52,7 +52,9 @@ class SynSignal(Signal):
         0.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
-    loop : event loop, optional
+    loop : asyncio.EventLoop, optional
+        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
+        unspecified
     """
     # This signature is arranged to mimic the signature of EpicsSignal, where
     # the Python function (func) takes the place of the PV.
@@ -147,7 +149,9 @@ class SynPeriodicSignal(SynSignal):
         0.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
-    loop : event loop, optional
+    loop : asyncio.EventLoop, optional
+        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
+        unspecified
     """
     def __init__(self, func=None, *,
                  name,  # required, keyword-only
@@ -200,7 +204,9 @@ class SynAxis(Device):
         Simulates how long it takes the device to "move". Default is 0 seconds.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
-    loop : event loop, optional
+    loop : asyncio.EventLoop, optional
+        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
+        unspecified
     """
     readback = Component(ReadbackSignal, value=None)
     setpoint = Component(SetpointSignal, value=None)
@@ -263,18 +269,6 @@ class SynAxis(Device):
     @property
     def hints(self):
         return {'fields': [self.readback.name]}
-
-
-###############################################################################
-#
-# The code below is migrated from early (pre-1.0) bluesky. It is not well
-# aligned with the ophyd API and generally should not be used. It is only
-# maintained to support some legacy code.
-#
-###############################################################################
-
-
-SimpleStatus = DeviceStatus
 
 
 class SynGauss(SynSignal):
@@ -381,97 +375,6 @@ class Syn2DGauss(SynSignal):
         super().__init__(name=name, func=func, **kwargs)
 
 
-class ReaderWithRegistry:
-    """
-
-    Parameters
-    ----------
-    name : string
-    read_fields : dict
-        Mapping field names to functions that return simulated data. The
-        function will be passed no arguments.
-    conf_fields : dict, optional
-        Like `read_fields`, but providing slow-changing configuration data.
-        If `None`, the configuration will simply be an empty dict.
-    monitor_intervals : list, optional
-        iterable of numbers, specifying the spacing in time of updates from the
-        device (this applies only if the ``subscribe`` method is used)
-    loop : asyncio.EventLoop, optional
-        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
-        unspecified
-    reg : Registry
-        Registry object that supports inserting resource and datum documents
-    save_path : str, optional
-        Path to save files to, if None make a temp dir, defaults to None.
-
-    """
-
-    def __init__(self, *args, reg, save_path=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.reg = reg
-        self._resource_id = None
-        if save_path is None:
-            self.save_path = mkdtemp()
-        else:
-            self.save_path = save_path
-        self._spec = 'RWFS_NPY'  # spec name stored in resource doc
-
-        self._file_stem = None
-        self._path_stem = None
-        self._result = {}
-
-    def stage(self):
-        self._file_stem = short_uid()
-        self._path_stem = os.path.join(self.save_path, self._file_stem)
-        self._resource_id = self.reg.register_resource(self._spec,
-                                                       self.save_path,
-                                                       self._file_stem, {})
-
-    def trigger(self):
-        # save file stash file name
-        self._result.clear()
-        for idx, (name, reading) in enumerate(self.trigger_read().items()):
-            # Save the actual reading['value'] to disk and create a record
-            # in Registry.
-            np.save('{}_{}.npy'.format(self._path_stem, idx), reading['value'])
-            datum_id = new_uid()
-            self.reg.insert_datum(self._resource_id, datum_id,
-                                  dict(index=idx))
-            # And now change the reading in place, replacing the value with
-            # a reference to Registry.
-            reading['value'] = datum_id
-            self._result[name] = reading
-
-        delay_time = self.exposure_time
-        if delay_time:
-            if self.loop.is_running():
-                st = SimpleStatus(device=self)
-                self.loop.call_later(delay_time, st._finished)
-                return st
-            else:
-                ttime.sleep(delay_time)
-
-        return NullStatus()
-
-    def trigger_read(self):
-        return super().read()
-
-    def read(self):
-        return self._result
-
-    def describe(self):
-        res = super().describe()
-        for key in res:
-            res[key]['external'] = "FILESTORE"
-        return res
-
-    def unstage(self):
-        self._resource_id = None
-        self._file_stem = None
-        self._path_stem = None
-        self._result.clear()
-
-
 class TrivialFlyer:
     """Trivial flyer that complies to the API but returns empty data."""
     name = 'trivial_flyer'
@@ -555,7 +458,7 @@ class MockFlyer:
         # that is immediately done, and return that, indicated that
         # the 'kickoff' step is done.
         self._future = self.loop.run_in_executor(None, self._scan)
-        st = SimpleStatus(device=self)
+        st = DeviceStatus(device=self)
         self._completion_status = st
         self._future.add_done_callback(lambda x: st._finished())
 
@@ -599,21 +502,22 @@ class MockFlyer:
         pass
 
 
-class GeneralReaderWithRegistry:
+class SynSignalWithRegistry:
     """
+    A SynSignal integrated with databroker.assets
 
     Parameters
     ----------
-    name : string
-    read_fields : dict
-        Mapping field names to functions that return simulated data. The
-        function will be passed no arguments.
-    conf_fields : dict, optional
-        Like `read_fields`, but providing slow-changing configuration data.
-        If `None`, the configuration will simply be an empty dict.
-    monitor_intervals : list, optional
-        iterable of numbers, specifying the spacing in time of updates from the
-        device (this applies only if the ``subscribe`` method is used)
+    func : callable, optional
+        This function sets the signal to a new value when it is triggered.
+        Expected signature: ``f() -> value``.
+        By default, triggering the signal does not change the value.
+    name : string, keyword only
+    trigger_delay : number, optional
+        Seconds of delay when triggered (simulated 'exposure time'). Default is
+        0.
+    parent : Device, optional
+        Used internally if this Signal is made part of a larger Device.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -704,38 +608,24 @@ class ReaderWithRegistryHandler:
                 for kwargs in datum_kwarg_gen]
 
 
-# motor = Mover('motor', OrderedDict([('motor', lambda x: x),
-#                                     ('motor_setpoint', lambda x: x)]),
-#               {'x': 0})
-# motor1 = Mover('motor1', OrderedDict([('motor1', lambda x: x),
-#                                       ('motor1_setpoint', lambda x: x)]),
-#                {'x': 0})
-# motor2 = Mover('motor2', OrderedDict([('motor2', lambda x: x),
-#                                       ('motor2_setpoint', lambda x: x)]),
-#                {'x': 0})
-# motor3 = Mover('motor3', OrderedDict([('motor3', lambda x: x),
-#                                       ('motor3_setpoint', lambda x: x)]),
-#                {'x': 0})
-# jittery_motor1 = Mover('jittery_motor1',
-#                        OrderedDict([('jittery_motor1',
-#                                      lambda x: x + np.random.randn()),
-#                                     ('jittery_motor1_setpoint', lambda x: x)]),
-#                        {'x': 0})
-# jittery_motor2 = Mover('jittery_motor2',
-#                        OrderedDict([('jittery_motor2',
-#                                      lambda x: x + np.random.randn()),
-#                                     ('jittery_motor2_setpoint', lambda x: x)]),
-#                        {'x': 0})
-# noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
-#                      noise='uniform', sigma=1, noise_multiplier=0.1)
-# det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
-# det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
-# det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
-# det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
-# det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
-#                   center=(0, 0), Imax=1)
-# det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
-#                   'jittery_motor2', center=(0, 0), Imax=1)
-# 
-# flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
-# flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
+motor = SynAxis(name='motor')
+motor1 = SynAxis(name='motor1')
+motor2 = SynAxis(name='motor2')
+motor3 = SynAxis(name='motor3')
+jittery_motor1 = SynAxis(name='jittery_motor1',
+                         readback_func=lambda x: x + np.random.rand())
+jittery_motor2 = SynAxis(name='jittery_motor2',
+                         readback_func=lambda x: x + np.random.rand())
+noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
+                     noise='uniform', sigma=1, noise_multiplier=0.1)
+det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
+det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
+det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
+det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
+det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
+                  center=(0, 0), Imax=1)
+det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
+                  'jittery_motor2', center=(0, 0), Imax=1)
+
+flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
+flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
