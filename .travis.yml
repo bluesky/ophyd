@@ -48,7 +48,7 @@ before_install:
   - docker pull ${DOCKERIMAGE}
   - docker pull ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
   - docker images
-  - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp  ${DOCKERIMAGE}
+  - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/data:/data ${DOCKERIMAGE}
   - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
   - docker ps -a
   - ip addr
