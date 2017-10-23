@@ -95,6 +95,50 @@ class PluginBase(ADBase):
     pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
     pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
+    asyn_pipeline_config = Cpt(ArrayAttributeSignal,
+                               attr='_asyn_pipeline_configuration_names')
+
+    width = C(EpicsSignalRO, 'ArraySize0_RBV')
+    height = C(EpicsSignalRO, 'ArraySize1_RBV')
+    depth = C(EpicsSignalRO, 'ArraySize2_RBV')
+    array_size = DDC(ad_group(EpicsSignalRO,
+                              (('height', 'ArraySize1_RBV'),
+                               ('width', 'ArraySize0_RBV'),
+                               ('depth', 'ArraySize2_RBV'))),
+                     doc='The array size')
+
+    bayer_pattern = C(EpicsSignalRO, 'BayerPattern_RBV')
+    blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks',
+                           string=True)
+    color_mode = C(EpicsSignalRO, 'ColorMode_RBV')
+    data_type = C(EpicsSignalRO, 'DataType_RBV', string=True)
+
+    dim0_sa = C(EpicsSignal, 'Dim0SA')
+    dim1_sa = C(EpicsSignal, 'Dim1SA')
+    dim2_sa = C(EpicsSignal, 'Dim2SA')
+    dim_sa = DDC(ad_group(EpicsSignal,
+                          (('dim0', 'Dim0SA'),
+                           ('dim1', 'Dim1SA'),
+                           ('dim2', 'Dim2SA'))),
+                 doc='Dimension sub-arrays')
+
+    dimensions = C(EpicsSignalRO, 'Dimensions_RBV')
+    dropped_arrays = C(SignalWithRBV, 'DroppedArrays')
+    enable = C(SignalWithRBV, 'EnableCallbacks', string=True)
+    min_callback_time = C(SignalWithRBV, 'MinCallbackTime')
+    nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
+    nd_array_port = C(SignalWithRBV, 'NDArrayPort')
+    ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
+    plugin_type = C(EpicsSignalRO, 'PluginType_RBV')
+
+    queue_free = C(EpicsSignal, 'QueueFree')
+    queue_free_low = C(EpicsSignal, 'QueueFreeLow')
+    queue_size = C(EpicsSignal, 'QueueSize')
+    queue_use = C(EpicsSignal, 'QueueUse')
+    queue_use_high = C(EpicsSignal, 'QueueUseHIGH')
+    queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
+    time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
+    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
     def enable_on_stage(self):
         """
@@ -179,51 +223,6 @@ class PluginBase(ADBase):
     @property
     def _asyn_pipeline_configuration_names(self):
         return [_.configuration_names.name for _ in self._asyn_pipeline]
-
-    asyn_pipeline_config = Cpt(ArrayAttributeSignal,
-                               attr='_asyn_pipeline_configuration_names')
-
-    width = C(EpicsSignalRO, 'ArraySize0_RBV')
-    height = C(EpicsSignalRO, 'ArraySize1_RBV')
-    depth = C(EpicsSignalRO, 'ArraySize2_RBV')
-    array_size = DDC(ad_group(EpicsSignalRO,
-                              (('height', 'ArraySize1_RBV'),
-                               ('width', 'ArraySize0_RBV'),
-                               ('depth', 'ArraySize2_RBV'))),
-                     doc='The array size')
-
-    bayer_pattern = C(EpicsSignalRO, 'BayerPattern_RBV')
-    blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks',
-                           string=True)
-    color_mode = C(EpicsSignalRO, 'ColorMode_RBV')
-    data_type = C(EpicsSignalRO, 'DataType_RBV', string=True)
-
-    dim0_sa = C(EpicsSignal, 'Dim0SA')
-    dim1_sa = C(EpicsSignal, 'Dim1SA')
-    dim2_sa = C(EpicsSignal, 'Dim2SA')
-    dim_sa = DDC(ad_group(EpicsSignal,
-                          (('dim0', 'Dim0SA'),
-                           ('dim1', 'Dim1SA'),
-                           ('dim2', 'Dim2SA'))),
-                 doc='Dimension sub-arrays')
-
-    dimensions = C(EpicsSignalRO, 'Dimensions_RBV')
-    dropped_arrays = C(SignalWithRBV, 'DroppedArrays')
-    enable = C(SignalWithRBV, 'EnableCallbacks', string=True)
-    min_callback_time = C(SignalWithRBV, 'MinCallbackTime')
-    nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
-    nd_array_port = C(SignalWithRBV, 'NDArrayPort')
-    ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
-    plugin_type = C(EpicsSignalRO, 'PluginType_RBV')
-
-    queue_free = C(EpicsSignal, 'QueueFree')
-    queue_free_low = C(EpicsSignal, 'QueueFreeLow')
-    queue_size = C(EpicsSignal, 'QueueSize')
-    queue_use = C(EpicsSignal, 'QueueUse')
-    queue_use_high = C(EpicsSignal, 'QueueUseHIGH')
-    queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
-    time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
-    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
 
 class ImagePlugin(PluginBase):
