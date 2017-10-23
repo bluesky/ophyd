@@ -92,6 +92,8 @@ class ADBase(Device):
     _default_read_attrs = ()
     _default_configuration_attrs = ()
 
+    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
+
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):
         '''Search through the signal docs on this detector for the string text

@@ -138,7 +138,6 @@ class PluginBase(ADBase):
     queue_use_high = C(EpicsSignal, 'QueueUseHIGH')
     queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
     time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
-    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
     def enable_on_stage(self):
         """
