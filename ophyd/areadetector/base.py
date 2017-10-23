@@ -239,7 +239,20 @@ class ADBase(Device):
            If there any input ports to known plugins where the source is
            not known to ophyd
         '''
-        g, port_map = self.get_asyn_digraph()
+        self._validate_asyn_ports(*self.get_asyn_digraph())
+
+    def _validate_asyn_ports(self, g, port_map):
+        '''Internal helper for validate_asyn_ports
+
+        Parameters
+        ----------
+        G : networkx.Graph
+            Directed graph of pipelines
+
+        port_map : dict
+            Mapping between port_name and ADBase objects
+
+        '''
         g = nx.Graph(g)
         if port_map and nx.number_connected_components(g) != 1:
             missing_plugins = self.missing_plugins()

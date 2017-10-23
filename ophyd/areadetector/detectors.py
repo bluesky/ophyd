@@ -75,8 +75,10 @@ class DetectorBase(ADBase):
 
     def stage(self, *args, **kwargs):
         ret = super().stage(*args, **kwargs)
+        g, port_map = self.get_asyn_digraph()
+
         try:
-            self.validate_asyn_ports()
+            self._validate_asyn_ports(g, port_map)
         except RuntimeError as err:
             self.unstage(*args, **kwargs)
             raise err
