@@ -176,7 +176,7 @@ class PseudoSingle(Device, SoftPositioner):
         return desc
 
 
-def position_argument_wrapper(type_):
+def _position_argument_wrapper(type_):
     '''Wrapper to convert positional arguments to a PositionTuple'''
     if type_ not in ('pseudo', 'real'):
         raise ValueError("position_type should be either 'pseudo' or 'real'")
@@ -196,8 +196,8 @@ def position_argument_wrapper(type_):
     return wrapper
 
 
-real_position_argument = position_argument_wrapper('real')
-pseudo_position_argument = position_argument_wrapper('pseudo')
+real_position_argument = _position_argument_wrapper('real')
+pseudo_position_argument = _position_argument_wrapper('pseudo')
 
 _to_position_tuple_usage_info = '''Positions can be passed in a number of ways.
 
@@ -211,7 +211,7 @@ As kwargs:
 '''
 
 
-def to_position_tuple(cls, *args,  _cur=None, **kwargs):
+def _to_position_tuple(cls, *args,  _cur, **kwargs):
     '''Convert user-specified arguments to a Position namedtuple and kwargs
 
     Example:
@@ -548,13 +548,13 @@ class PseudoPositioner(Device, SoftPositioner):
 
     def to_pseudo_tuple(self, *args, **kwargs):
         '''Convert arguments to a PseudoPosition namedtuple and kwargs'''
-        return to_position_tuple(self.PseudoPosition, *args, **kwargs,
-                                 _cur=self.position)
+        return _to_position_tuple(self.PseudoPosition, *args, **kwargs,
+                                  _cur=self.position)
 
     def to_real_tuple(self, *args, **kwargs):
         '''Convert arguments to a RealPosition namedtuple and kwargs'''
-        return to_position_tuple(self.RealPosition, *args, **kwargs,
-                                 _cur=self.real_position)
+        return _to_position_tuple(self.RealPosition, *args, **kwargs,
+                                  _cur=self.real_position)
 
     def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid
