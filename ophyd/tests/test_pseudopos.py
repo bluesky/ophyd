@@ -142,21 +142,21 @@ class PseudoPosTests(unittest.TestCase):
         print(str(pseudo))
 
         pos2 = pseudo.PseudoPosition(pseudo1=0, pseudo2=0, pseudo3=0)
-        pseudo.move(pos2, wait=True)
+        pseudo.set(pos2, wait=True)
         print('moved to', pseudo.position)
         print('-----------------')
         time.sleep(1.0)
         pos1 = pseudo.PseudoPosition(pseudo1=.1, pseudo2=.2, pseudo3=.3)
-        pseudo.move(pos1, wait=True)
+        pseudo.set(pos1, wait=True)
         print('moved to', pseudo.position)
 
-        pseudo.real1.move(0, wait=True)
-        pseudo.real2.move(0, wait=True)
-        pseudo.real3.move(0, wait=True)
+        pseudo.real1.set(0, wait=True)
+        pseudo.real2.set(0, wait=True)
+        pseudo.real3.set(0, wait=True)
 
         pseudo.pseudo1.stop()
 
-        pseudo.real3.move(0, wait=True)
+        pseudo.real3.set(0, wait=True)
 
     def test_faulty_stopper(self):
         pseudo = FaultyPseudo1x3('', name='mypseudo', concurrent=False)
@@ -210,7 +210,7 @@ class PseudoPosTests(unittest.TestCase):
 
         logger.info('Move to (.2, .2, .2), which is (-.2, -.2, -.2) for real '
                     'motors')
-        pseudo.move(pseudo.PseudoPosition(.2, .2, .2), wait=True)
+        pseudo.set(pseudo.PseudoPosition(.2, .2, .2), wait=True)
         logger.info('Position is: %s (moving=%s)', pseudo.position,
                     pseudo.moving)
 
@@ -229,7 +229,7 @@ class PseudoPosTests(unittest.TestCase):
         except ValueError as ex:
             logger.info('Check value failed, as expected (%s)', ex)
 
-        ret = pseudo.move((2, 2, 2), wait=False, moved_cb=done)
+        ret = pseudo.set((2, 2, 2), wait=False, moved_cb=done)
         self.assertEqual(ret.settle_time, 0.1)
         while not ret.done:
             logger.info('Pos=%s %s (err=%s)', pseudo.position, ret, ret.error)
@@ -237,7 +237,7 @@ class PseudoPosTests(unittest.TestCase):
 
         logger.info('Single pseudo axis: %s', pseudo1)
 
-        pseudo1.move(0, wait=True)
+        pseudo1.set(0, wait=True)
 
         self.assertEquals(pseudo1.target, 0)
         pseudo1.sync()
@@ -260,7 +260,7 @@ class PseudoPosTests(unittest.TestCase):
 
         pseudo1.subscribe(single_sub, pseudo1.SUB_READBACK)
 
-        ret = pseudo1.move(1, wait=False)
+        ret = pseudo1.set(1, wait=False)
         self.assertEqual(pseudo.timeout, ret.timeout)
         while not ret.done:
             logger.info('pseudo1.pos=%s Pos=%s %s (err=%s)', pseudo1.position,
@@ -294,12 +294,12 @@ class PseudoPosTests(unittest.TestCase):
         reals = pos._real
 
         logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
-        pos.move((.2, ), wait=True)
+        pos.set((.2, ), wait=True)
         logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
         logger.info('Real positions: %s', [real.position for real in reals])
 
         logger.info('Move to -.2, which is (.2, .2, .2) for real motors')
-        pos.move((-.2, ), wait=True)
+        pos.set((-.2, ), wait=True)
         logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
         logger.info('Real positions: %s', [real.position for real in reals])
 
@@ -365,9 +365,24 @@ def hw():
         [((1, 2, 3), {}, (1, 2, 3), {}),
          ((1, 2, ), {}, (1, 2, -3), {}),
          ((1, ), {}, (1, -2, -3), {}),
+
+         (((1, 2, 3),), {}, (1, 2, 3), {}),
+         (([1, 2, ],), {}, (1, 2, -3), {}),
+         (((1, ),), {}, (1, -2, -3), {}),
+
          ((), {'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3}, (1, 2, 3), {}),
          ((), {'pseudo1': 1, 'pseudo2': 2}, (1, 2, -3), {}),
          ((), {'pseudo1': 1}, (1, -2, -3), {}),
+         ((), {'pseudo1': 1, 'foo': 'bar'}, (1, -2, -3), {'foo': 'bar'}),
+
+         (({'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3},), {}, (1, 2, 3), {}),
+         (({'pseudo1': 1, 'pseudo2': 2},), {}, (1, 2, -3), {}),
+         (({'pseudo1': 1},), {}, (1, -2, -3), {}),
+         (({'pseudo1': 1, 'foo': 'bar'},), {'baz': 'buz'},
+          (1, -2, -3), {'foo': 'bar', 'baz': 'buz'}),
+
+
+         ((1, 2, 3), {'foo': 'bar'}, (1, 2, 3), {'foo': 'bar'}),
          ]
     )
 def test_pseudo_position_input_3x3(hw, inpargs, inpkwargs,
@@ -403,9 +418,23 @@ def test_pseudo_position_fail_3x3(hw, inpargs, inpkwargs):
         [((1, 2, 3), {}, (1, 2, 3), {}),
          ((1, 2, ), {}, (1, 2, 3), {}),
          ((1, ), {}, (1, 2, 3), {}),
+
+         (((1, 2, 3),), {}, (1, 2, 3), {}),
+         (([1, 2, ],), {}, (1, 2, 3), {}),
+         (((1, ),), {}, (1, 2, 3), {}),
+
          ((), {'real1': 1, 'real2': 2, 'real3': 3}, (1, 2, 3), {}),
          ((), {'real1': 1, 'real2': 2}, (1, 2, 3), {}),
          ((), {'real1': 1}, (1, 2, 3), {}),
+         ((), {'real1': 1, 'foo': 'bar'}, (1, 2, 3), {'foo': 'bar'}),
+
+         (({'real1': 1, 'real2': 2, 'real3': 3},), {}, (1, 2, 3), {}),
+         (({'real1': 1, 'real2': 2},), {}, (1, 2, 3), {}),
+         (({'real1': 1},), {}, (1, 2, 3), {}),
+         (({'real1': 1, 'foo': 'bar'},), {'baz': 'buz'},
+          (1, 2, 3), {'foo': 'bar', 'baz': 'buz'}),
+
+         ((1, 2, 3), {'foo': 'bar'}, (1, 2, 3), {'foo': 'bar'}),
          ]
     )
 def test_real_position_input_3x3(hw, inpargs, inpkwargs,
@@ -428,6 +457,8 @@ def test_real_position_input_3x3(hw, inpargs, inpkwargs,
          ((1, ), {'real2': 1,
                   'real3': 1}),
          ((1, 2, ), {'real3': 1}),
+         (({'real3': 1, 'foo': 'bar'},), {'foo': 'bizz'}),
+         ((), {})
          ]
     )
 def test_real_position_fail_3x3(hw, inpargs, inpkwargs):
