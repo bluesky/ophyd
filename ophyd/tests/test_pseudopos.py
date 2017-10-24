@@ -3,10 +3,14 @@ import logging
 import unittest
 import pytest
 
+from types import SimpleNamespace
+
 from copy import copy
 
-import epics
-from ophyd import (PseudoPositioner, PseudoSingle, EpicsMotor)
+from ophyd.epics_motor import EpicsMotor
+from ophyd.pseudopos import (PseudoPositioner, PseudoSingle,
+                             real_position_argument, pseudo_position_argument)
+from ophyd.positioner import SoftPositioner
 from ophyd import (Component as C)
 from ophyd.utils import ExceptionBundle
 
@@ -20,6 +24,7 @@ def setUpModule():
 
 def tearDownModule():
     if __name__ == '__main__':
+        import epics
         epics.ca.destroy_context()
 
     logger.debug('Cleaning up')
@@ -305,6 +310,127 @@ class PseudoPosTests(unittest.TestCase):
         str(pos)
 
 
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)
+@pytest.fixture()
+def hw():
+    class SPseudo3x3(PseudoPositioner):
+        pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
+        pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
+        pseudo3 = C(PseudoSingle, limits=None, egu='c')
+        real1 = C(SoftPositioner, init_pos=0)
+        real2 = C(SoftPositioner, init_pos=0)
+        real3 = C(SoftPositioner, init_pos=0)
+
+        @pseudo_position_argument
+        def forward(self, pseudo_pos):
+            pseudo_pos = self.PseudoPosition(*pseudo_pos)
+            # logger.debug('forward %s', pseudo_pos)
+            return self.RealPosition(real1=-pseudo_pos.pseudo1,
+                                     real2=-pseudo_pos.pseudo2,
+                                     real3=-pseudo_pos.pseudo3)
+
+        @real_position_argument
+        def inverse(self, real_pos):
+            real_pos = self.RealPosition(*real_pos)
+            # logger.debug('inverse %s', real_pos)
+            return self.PseudoPosition(pseudo1=-real_pos.real1,
+                                       pseudo2=-real_pos.real2,
+                                       pseudo3=-real_pos.real3)
+
+    class SPseudo1x3(PseudoPositioner):
+        pseudo1 = C(PseudoSingle, limits=(-10, 10))
+        real1 = C(SoftPositioner, init_pos=0)
+        real2 = C(SoftPositioner, init_pos=0)
+        real3 = C(SoftPositioner, init_pos=0)
+
+        @pseudo_position_argument
+        def forward(self, pseudo_pos):
+            pseudo_pos = self.PseudoPosition(*pseudo_pos)
+            # logger.debug('forward %s', pseudo_pos)
+            return self.RealPosition(real1=-pseudo_pos.pseudo1,
+                                     real2=-pseudo_pos.pseudo1,
+                                     real3=-pseudo_pos.pseudo1)
+
+        @pseudo_position_argument
+        def inverse(self, real_pos):
+            real_pos = self.RealPosition(*real_pos)
+            # logger.debug('inverse %s', real_pos)
+            return self.PseudoPosition(pseudo1=-real_pos.real1)
+
+    return SimpleNamespace(pseudo3x3=SPseudo3x3(name='pseudo3x3'),
+                           pseudo1x3=SPseudo1x3(name='pseudo1x3'))
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs,expected_position,expected_kwargs',
+        [((1, 2, 3), {}, (1, 2, 3), {}),
+         ((1, 2, ), {}, (1, 2, -3), {}),
+         ((1, ), {}, (1, -2, -3), {}),
+         ((), {'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3}, (1, 2, 3), {}),
+         ((), {'pseudo1': 1, 'pseudo2': 2}, (1, 2, -3), {}),
+         ((), {'pseudo1': 1}, (1, -2, -3), {}),
+         ]
+    )
+def test_pseudo_position_input_3x3(hw, inpargs, inpkwargs,
+                                   expected_position, expected_kwargs):
+    pseudo3x3 = hw.pseudo3x3
+    pseudo3x3.real1.set(1)
+    pseudo3x3.real2.set(2)
+    pseudo3x3.real3.set(3)
+
+    out, extra_kwargs = pseudo3x3.to_pseudo_tuple(*inpargs, **inpkwargs)
+    assert out == pseudo3x3.PseudoPosition(*expected_position)
+    assert extra_kwargs == expected_kwargs
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs',
+        [((1, 2, 3, 5), {}),
+         ((1, 2, 3), {'pseudo1': 1}),
+         ((1, 2, 3), {'pseudo2': 1}),
+         ((1, ), {'pseudo2': 1,
+                  'pseudo3': 1}),
+         ((1, 2, ), {'pseudo3': 1}),
+         ]
+    )
+def test_pseudo_position_fail_3x3(hw, inpargs, inpkwargs):
+    pseudo3x3 = hw.pseudo3x3
+    with pytest.raises(ValueError):
+        pseudo3x3.to_pseudo_tuple(*inpargs, **inpkwargs)
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs,expected_position,expected_kwargs',
+        [((1, 2, 3), {}, (1, 2, 3), {}),
+         ((1, 2, ), {}, (1, 2, 3), {}),
+         ((1, ), {}, (1, 2, 3), {}),
+         ((), {'real1': 1, 'real2': 2, 'real3': 3}, (1, 2, 3), {}),
+         ((), {'real1': 1, 'real2': 2}, (1, 2, 3), {}),
+         ((), {'real1': 1}, (1, 2, 3), {}),
+         ]
+    )
+def test_real_position_input_3x3(hw, inpargs, inpkwargs,
+                                 expected_position, expected_kwargs):
+    pseudo3x3 = hw.pseudo3x3
+    pseudo3x3.real1.set(1)
+    pseudo3x3.real2.set(2)
+    pseudo3x3.real3.set(3)
+
+    out, extra_kwargs = pseudo3x3.to_real_tuple(*inpargs, **inpkwargs)
+    assert out == pseudo3x3.RealPosition(*expected_position)
+    assert extra_kwargs == expected_kwargs
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs',
+        [((1, 2, 3, 5), {}),
+         ((1, 2, 3), {'real1': 1}),
+         ((1, 2, 3), {'real2': 1}),
+         ((1, ), {'real2': 1,
+                  'real3': 1}),
+         ((1, 2, ), {'real3': 1}),
+         ]
+    )
+def test_real_position_fail_3x3(hw, inpargs, inpkwargs):
+    pseudo3x3 = hw.pseudo3x3
+    with pytest.raises(ValueError):
+        pseudo3x3.to_real_tuple(*inpargs, **inpkwargs)
