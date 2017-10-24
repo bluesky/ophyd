@@ -6,7 +6,7 @@ import time
 import threading
 import functools
 
-from collections import (OrderedDict, namedtuple, Sequence)
+from collections import (OrderedDict, namedtuple, Sequence, Mapping)
 
 from .utils import (DisconnectedError, ExceptionBundle)
 from .positioner import (PositionerBase, SoftPositioner)
@@ -211,7 +211,7 @@ As kwargs:
 '''
 
 
-def to_position_tuple(cls, *args, **kwargs):
+def to_position_tuple(cls, *args,  _cur=None, **kwargs):
     '''Convert user-specified arguments to a Position namedtuple and kwargs
 
     Example:
@@ -257,25 +257,42 @@ def to_position_tuple(cls, *args, **kwargs):
     if not fields:
         raise TypeError('Invalid position tuple')
 
-    if args and isinstance(args[0], (cls, Sequence)):
-        # Position is in the first positional argument
-        if len(args) > 1:
-            raise ValueError(_to_position_tuple_usage_info +
-                             'Cannot specify more than one positional '
-                             'argument if the first one is a {} '
-                             ''.format(cls.__name__))
+    if args:
+        if isinstance(args[0], (cls, Sequence)):
+            # Position is in the first positional argument
+            if len(args) > 1:
+                raise ValueError(_to_position_tuple_usage_info +
+                                 'Cannot specify more than one positional '
+                                 'argument if the first one is a {} '
+                                 ''.format(cls.__name__))
 
-        position = args[0]
-        if not isinstance(position, cls):
-            # Ensure a position tuple is passed back
-            position = cls(*position)
+            position = args[0]
+            if not isinstance(position, cls):
+                # Ensure a position tuple is passed back
+                position = cls(*position)
 
-        return position, kwargs
+            return position, kwargs
+        elif isinstance(args[0], Mapping):
+            arg, = args
+            if any(k in kwargs for k in arg):
+                raise ValueError('overlap between dict arg and kwargs')
+            kwargs.update(arg)
+            args = tuple()
 
-    elif len(args) == len(fields):
+    # as many args as fields, declare victory!
+    if len(args) == len(fields):
         # Position is in positional arguments
         return cls(*args), kwargs
 
+    # too many args, give up
+    elif len(args) > len(fields):
+        raise ValueError("too many args")
+
+    # have _cur, too few args, and no field names in kwargs, fill out
+    elif _cur is not None and not any(f in kwargs for f in fields):
+        return cls(*args, *_cur[len(args):]), kwargs
+
+    # have some field keys in kwargs and some args, give up (for now)
     elif len(args) > 0:
         # Position is in positional arguments
         raise ValueError(_to_position_tuple_usage_info +
@@ -292,10 +309,15 @@ def to_position_tuple(cls, *args, **kwargs):
                       if field not in kwargs]
 
     if missing_fields:
-        raise ValueError(_to_position_tuple_usage_info +
-                         'Missing keyword arguments for field names of {}:'
-                         ' {}'.format(cls.__name__,
-                                      ', '.join(missing_fields)))
+        # if not current position, give up
+        if _cur is None:
+            raise ValueError(_to_position_tuple_usage_info +
+                             'Missing keyword arguments for field names of {}:'
+                             ' {}'.format(cls.__name__,
+                                          ', '.join(missing_fields)))
+        # other wise, fill in missing values
+        else:
+            kwargs.update({k: getattr(_cur, k) for k in missing_fields})
 
     # separate position tuple kwargs from other kwargs
     position_kw = {field: kwargs[field] for field in fields}
@@ -526,11 +548,13 @@ class PseudoPositioner(Device, SoftPositioner):
 
     def to_pseudo_tuple(self, *args, **kwargs):
         '''Convert arguments to a PseudoPosition namedtuple and kwargs'''
-        return to_position_tuple(self.PseudoPosition, *args, **kwargs)
+        return to_position_tuple(self.PseudoPosition, *args, **kwargs,
+                                 _cur=self.position)
 
     def to_real_tuple(self, *args, **kwargs):
         '''Convert arguments to a RealPosition namedtuple and kwargs'''
-        return to_position_tuple(self.RealPosition, *args, **kwargs)
+        return to_position_tuple(self.RealPosition, *args, **kwargs,
+                                 _cur=self.real_position)
 
     def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid
