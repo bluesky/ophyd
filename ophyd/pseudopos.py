@@ -178,16 +178,12 @@ class PseudoSingle(Device, SoftPositioner):
 
 def _position_argument_wrapper(type_):
     '''Wrapper to convert positional arguments to a PositionTuple'''
-    if type_ not in ('pseudo', 'real'):
-        raise ValueError("position_type should be either 'pseudo' or 'real'")
-
     def wrapper(method):
         @functools.wraps(method)
         def wrapped(self, *args, **kwargs):
-            if type_ == 'pseudo':
-                pos, new_kwargs = self.to_pseudo_tuple(*args, **kwargs)
-            else:
-                pos, new_kwargs = self.to_real_tuple(*args, **kwargs)
+            m = {'pseudo': self.to_pseudo_tuple,
+                 'real': self.to_real_tuple}[type_]
+            pos, new_kwargs = m(*args, **kwargs)
 
             return method(self, pos, **new_kwargs)
 
