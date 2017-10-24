@@ -123,9 +123,6 @@ class PseudoPosTests(unittest.TestCase):
                           pseudo2=2, pseudo3=3)
 
     def test_multi_sequential(self):
-        def done(**kwargs):
-            logger.debug('** Finished moving (%s)', kwargs)
-
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=False)
         pseudo.wait_for_connection()
 
@@ -285,9 +282,6 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.pseudo1.describe_configuration()
 
     def test_single_pseudo(self):
-        def done(**kwargs):
-            logger.debug('** Finished moving (%s)', kwargs)
-
         logger.info('------- Sequential, single pseudo positioner')
         pos = Pseudo1x3('', name='mypseudo', concurrent=False)
 
@@ -350,7 +344,7 @@ def hw():
                                      real2=-pseudo_pos.pseudo1,
                                      real3=-pseudo_pos.pseudo1)
 
-        @pseudo_position_argument
+        @real_position_argument
         def inverse(self, real_pos):
             real_pos = self.RealPosition(*real_pos)
             # logger.debug('inverse %s', real_pos)
@@ -373,16 +367,17 @@ def hw():
          ((), {'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3}, (1, 2, 3), {}),
          ((), {'pseudo1': 1, 'pseudo2': 2}, (1, 2, -3), {}),
          ((), {'pseudo1': 1}, (1, -2, -3), {}),
-         ((), {'pseudo1': 1, 'foo': 'bar'}, (1, -2, -3), {'foo': 'bar'}),
+         ((), {'pseudo1': 1, 'wait': True}, (1, -2, -3), {'wait': True}),
 
          (({'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3},), {}, (1, 2, 3), {}),
          (({'pseudo1': 1, 'pseudo2': 2},), {}, (1, 2, -3), {}),
          (({'pseudo1': 1},), {}, (1, -2, -3), {}),
-         (({'pseudo1': 1, 'foo': 'bar'},), {'baz': 'buz'},
-          (1, -2, -3), {'foo': 'bar', 'baz': 'buz'}),
+         (({'pseudo1': 1, 'wait': True},), {'timeout': None},
+          (1, -2, -3), {'wait': True, 'timeout': None}),
 
 
-         ((1, 2, 3), {'foo': 'bar'}, (1, 2, 3), {'foo': 'bar'}),
+         ((1, 2, 3), {'timeout': 1}, (1, 2, 3), {'timeout': 1}),
+         (((1, 2, 3),), {'timeout': 1}, (1, 2, 3), {'timeout': 1}),
          ]
     )
 def test_pseudo_position_input_3x3(hw, inpargs, inpkwargs,
@@ -395,6 +390,9 @@ def test_pseudo_position_input_3x3(hw, inpargs, inpkwargs,
     out, extra_kwargs = pseudo3x3.to_pseudo_tuple(*inpargs, **inpkwargs)
     assert out == pseudo3x3.PseudoPosition(*expected_position)
     assert extra_kwargs == expected_kwargs
+
+    pseudo3x3.set(*inpargs, **inpkwargs)
+    assert pseudo3x3.position == pseudo3x3.PseudoPosition(*expected_position)
 
 
 @pytest.mark.parametrize(
@@ -465,3 +463,29 @@ def test_real_position_fail_3x3(hw, inpargs, inpkwargs):
     pseudo3x3 = hw.pseudo3x3
     with pytest.raises(ValueError):
         pseudo3x3.to_real_tuple(*inpargs, **inpkwargs)
+
+
+def test_single_pseudo(hw):
+    logger.info('------- Sequential, single pseudo positioner')
+    pos = hw.pseudo1x3
+
+    reals = pos._real
+
+    logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
+    pos.set((.2, ), wait=True)
+    logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
+    logger.info('Real positions: %s', [real.position for real in reals])
+
+    logger.info('Move to -.2, which is (.2, .2, .2) for real motors')
+    pos.set((-.2, ), wait=True)
+    logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
+    logger.info('Real positions: %s', [real.position for real in reals])
+
+    copy(pos)
+    pos.read()
+    pos.describe()
+    repr(pos)
+    str(pos)
+
+def test_multi_pseudo(hw):
+    pos = hw.pseudo3x3
