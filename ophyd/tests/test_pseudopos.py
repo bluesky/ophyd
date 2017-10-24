@@ -113,11 +113,6 @@ class PseudoPosTests(unittest.TestCase):
 
         # too many positional arguments
         self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, 2, 3, 4)
-        # too few positional arguments
-        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, 2)
-        # too few kwargs
-        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, pseudo1=1,
-                          pseudo2=2)
         # valid kwargs, but passing in args too
         self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, pseudo1=1,
                           pseudo2=2, pseudo3=3)
