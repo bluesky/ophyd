@@ -47,9 +47,11 @@ class SynSignal(Signal):
         Expected signature: ``f() -> value``.
         By default, triggering the signal does not change the value.
     name : string, keyword only
-    trigger_delay : number, optional
+    exposure_time : number, optional
         Seconds of delay when triggered (simulated 'exposure time'). Default is
         0.
+    precision : integer, optional
+        Digits of precision. Default is 3.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
     loop : asyncio.EventLoop, optional
@@ -60,7 +62,8 @@ class SynSignal(Signal):
     # the Python function (func) takes the place of the PV.
     def __init__(self, func=None, *,
                  name,  # required, keyword-only
-                 trigger_delay=0,
+                 exposure_time=0,
+                 precision=3,
                  parent=None,
                  loop=None):
         if func is None:
@@ -68,14 +71,22 @@ class SynSignal(Signal):
             func = self.get
         if loop is None:
             loop = asyncio.get_event_loop()
-        self.loop = loop
         self._func = func
-        self._trigger_delay = trigger_delay
+        self._exposure_time = exposure_time
+        self.precision = 3
+        self.loop = loop
         super().__init__(value=0, timestamp=ttime.time(), name=name,
                          parent=parent)
 
+    def describe(self):
+        res = super().describe()
+        # There should be only one key here, but for the sake of generality....
+        for k in res:
+            res[k]['precision'] = self.precision
+        return res
+
     def trigger(self):
-        delay_time = self._trigger_delay
+        delay_time = self._exposure_time
         if delay_time:
             st = DeviceStatus(device=self)
             if self.loop.is_running():
@@ -95,6 +106,7 @@ class SynSignal(Signal):
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             return st
         else:
+            self.put(self._func())
             return NullStatus()
 
     def get(self):
@@ -144,7 +156,7 @@ class SynPeriodicSignal(SynSignal):
         1 second.
     period_jitter : number, optional
         Random Gaussian variation of the period. Default is 1 second.
-    trigger_delay : number, optional
+    exposure_time : number, optional
         Seconds of delay when triggered (simulated 'exposure time'). Default is
         0.
     parent : Device, optional
@@ -156,13 +168,13 @@ class SynPeriodicSignal(SynSignal):
     def __init__(self, func=None, *,
                  name,  # required, keyword-only
                  period=1, period_jitter=1,
-                 trigger_delay=0,
+                 exposure_time=0,
                  parent=None,
                  loop=None):
         if func is None:
             func = np.random.rand
         super().__init__(name=name, func=func,
-                         trigger_delay=trigger_delay,
+                         exposure_time=exposure_time,
                          parent=parent, loop=loop)
 
         self.__thread = threading.Thread(target=periodic_update, daemon=True,
@@ -176,6 +188,14 @@ class ReadbackSignal(SignalRO):
     def get(self):
         return self.parent.sim_state['readback']
 
+    def describe(self):
+        res = super().describe()
+        # There should be only one key here, but for the sake of generality....
+        for k in res:
+            res[k]['precision'] = self.parent.precision
+        return res
+
+
 
 class SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
@@ -184,6 +204,14 @@ class SetpointSignal(Signal):
 
     def get(self):
         return self.parent.sim_state['setpoint']
+
+    def describe(self):
+        res = super().describe()
+        # There should be only one key here, but for the sake of generality....
+        for k in res:
+            res[k]['precision'] = self.parent.precision
+        return res
+
 
 
 class SynAxis(Device):
@@ -202,6 +230,8 @@ class SynAxis(Device):
         The initial value. Default is 0.
     delay : number, optional
         Simulates how long it takes the device to "move". Default is 0 seconds.
+    precision : integer, optional
+        Digits of precision. Default is 3.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
     loop : asyncio.EventLoop, optional
@@ -214,12 +244,9 @@ class SynAxis(Device):
     def __init__(self, *,
                  name,
                  readback_func=None, value=0, delay=0,
+                 precision=3,
                  parent=None,
                  loop=None):
-        self.delay = delay
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self.loop = loop
         if readback_func is None:
             readback_func = lambda x: x
         if loop is None:
@@ -227,12 +254,16 @@ class SynAxis(Device):
 
         self.sim_state = {}
         self._readback_func = readback_func
+        self.delay = delay
+        self.precision = precision
+        self.loop = loop
 
         # initialize values
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['setpoint'] = value
 
         super().__init__(name=name, parent=parent)
+        self.readback.name = self.name
 
 
     def set(self, value):
@@ -260,6 +291,7 @@ class SynAxis(Device):
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             return st
         else:
+            update_state()
             return NullStatus()
 
     @property
@@ -502,7 +534,7 @@ class MockFlyer:
         pass
 
 
-class SynSignalWithRegistry:
+class SynSignalWithRegistry(SynSignal):
     """
     A SynSignal integrated with databroker.assets
 
@@ -513,7 +545,7 @@ class SynSignalWithRegistry:
         Expected signature: ``f() -> value``.
         By default, triggering the signal does not change the value.
     name : string, keyword only
-    trigger_delay : number, optional
+    exposure_time : number, optional
         Seconds of delay when triggered (simulated 'exposure time'). Default is
         0.
     parent : Device, optional
@@ -536,7 +568,7 @@ class SynSignalWithRegistry:
     """
 
     def __init__(self, *args, reg, save_path=None, save_func=np.save,
-                 save_spec='RWFS_NPY', save_ext='.npy',
+                 save_spec='NPY_SEQ', save_ext='npy',
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.reg = reg
@@ -593,8 +625,8 @@ class SynSignalWithRegistry:
         self._result.clear()
 
 
-class ReaderWithRegistryHandler:
-    specs = {'RWFS_NPY'}
+class NumpySeqHandler:
+    specs = {'NPY_SEQ'}
 
     def __init__(self, filename, root=''):
         self._name = os.path.join(root, filename)
