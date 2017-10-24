@@ -259,19 +259,8 @@ def _to_position_tuple(cls, *args,  _cur, **kwargs):
 
     if args:
         if isinstance(args[0], (cls, Sequence)):
-            # Position is in the first positional argument
-            if len(args) > 1:
-                raise ValueError(_to_position_tuple_usage_info +
-                                 'Cannot specify more than one positional '
-                                 'argument if the first one is a {} '
-                                 ''.format(cls.__name__))
+            args, = args
 
-            position = args[0]
-            if not isinstance(position, cls):
-                # Ensure a position tuple is passed back
-                position = cls(*position)
-
-            return position, kwargs
         elif isinstance(args[0], Mapping):
             arg, = args
             if any(k in kwargs for k in arg):
@@ -279,45 +268,27 @@ def _to_position_tuple(cls, *args,  _cur, **kwargs):
             kwargs.update(arg)
             args = tuple()
 
-    # as many args as fields, declare victory!
-    if len(args) == len(fields):
-        # Position is in positional arguments
-        return cls(*args), kwargs
-
     # too many args, give up
-    elif len(args) > len(fields):
+    if len(args) > len(fields):
         raise ValueError("too many args")
 
     # have _cur, too few args, and no field names in kwargs, fill out
-    elif _cur is not None and not any(f in kwargs for f in fields):
+    elif len(args) > 0:
+        if any(f in kwargs for f in fields):
+            raise ValueError("can not mix args and kwargs for positions")
+
         return cls(*args, *_cur[len(args):]), kwargs
 
-    # have some field keys in kwargs and some args, give up (for now)
-    elif len(args) > 0:
-        # Position is in positional arguments
-        raise ValueError(_to_position_tuple_usage_info +
-                         'Wrong number of arguments for {}. '
-                         'Got {}, expected {}'
-                         ''.format(cls.__name__, len(args), len(fields)))
-
+    # No positional arguments, position described in terms of kwargs
     if not kwargs:
         # no positional arguments or kwargs, just show usage information
         raise ValueError(_to_position_tuple_usage_info)
 
-    # No positional arguments, position described in terms of kwargs
     missing_fields = [field for field in fields
                       if field not in kwargs]
 
     if missing_fields:
-        # if not current position, give up
-        if _cur is None:
-            raise ValueError(_to_position_tuple_usage_info +
-                             'Missing keyword arguments for field names of {}:'
-                             ' {}'.format(cls.__name__,
-                                          ', '.join(missing_fields)))
-        # other wise, fill in missing values
-        else:
-            kwargs.update({k: getattr(_cur, k) for k in missing_fields})
+        kwargs.update({k: getattr(_cur, k) for k in missing_fields})
 
     # separate position tuple kwargs from other kwargs
     position_kw = {field: kwargs[field] for field in fields}
