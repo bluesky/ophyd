@@ -276,8 +276,11 @@ def _to_position_tuple(cls, *args,  _cur, **kwargs):
     elif len(args) > 0:
         if any(f in kwargs for f in fields):
             raise ValueError("can not mix args and kwargs for positions")
-
-        return cls(*args, *_cur[len(args):]), kwargs
+        if len(args) == len(fields):
+            return cls(*args), kwargs
+        else:
+            _cur = _cur()
+            return cls(*args, *_cur[len(args):]), kwargs
 
     # No positional arguments, position described in terms of kwargs
     if not kwargs:
@@ -288,6 +291,7 @@ def _to_position_tuple(cls, *args,  _cur, **kwargs):
                       if field not in kwargs]
 
     if missing_fields:
+        _cur = _cur()
         kwargs.update({k: getattr(_cur, k) for k in missing_fields})
 
     # separate position tuple kwargs from other kwargs
@@ -520,12 +524,12 @@ class PseudoPositioner(Device, SoftPositioner):
     def to_pseudo_tuple(self, *args, **kwargs):
         '''Convert arguments to a PseudoPosition namedtuple and kwargs'''
         return _to_position_tuple(self.PseudoPosition, *args, **kwargs,
-                                  _cur=self.position)
+                                  _cur=lambda: self.target)
 
     def to_real_tuple(self, *args, **kwargs):
         '''Convert arguments to a RealPosition namedtuple and kwargs'''
         return _to_position_tuple(self.RealPosition, *args, **kwargs,
-                                  _cur=self.real_position)
+                                  _cur=lambda: self.real_position)
 
     def check_value(self, pseudo_pos):
         '''Check if a new position for all pseudo positioners is valid
