@@ -456,7 +456,7 @@ def data_type(val):
         One of ('number', 'array', 'string'), else raises ValueError
     '''
     for json_type, py_types in _type_map.items():
-        if type(val) in py_types:
+        if isinstance(val, py_types):
             return json_type
     # no legit type found...
     raise ValueError('{} not a valid type (int, float, ndarray, str)'.format(val))
