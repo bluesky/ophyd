@@ -72,7 +72,7 @@ class SynSignal(Signal):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._func = func
-        self._exposure_time = exposure_time
+        self.exposure_time = exposure_time
         self.precision = 3
         self.loop = loop
         super().__init__(value=0, timestamp=ttime.time(), name=name,
@@ -86,7 +86,7 @@ class SynSignal(Signal):
         return res
 
     def trigger(self):
-        delay_time = self._exposure_time
+        delay_time = self.exposure_time
         if delay_time:
             st = DeviceStatus(device=self)
             if self.loop.is_running():
