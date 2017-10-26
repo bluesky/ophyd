@@ -75,7 +75,7 @@ class SynSignal(Signal):
         self.exposure_time = exposure_time
         self.precision = 3
         self.loop = loop
-        super().__init__(value=0, timestamp=ttime.time(), name=name,
+        super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent)
 
     def describe(self):
