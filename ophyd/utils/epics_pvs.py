@@ -472,7 +472,7 @@ def data_shape(val):
         ``list(np.ndarray.shape)``
     '''
     for json_type, py_types in _type_map.items():
-        if type(val) in py_types:
+        if isinstance(val, py_types):
             if json_type is 'array':
                 return list(val.shape)
             else:
