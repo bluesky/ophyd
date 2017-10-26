@@ -3,10 +3,14 @@ import logging
 import unittest
 import pytest
 
+from types import SimpleNamespace
+
 from copy import copy
 
-import epics
-from ophyd import (PseudoPositioner, PseudoSingle, EpicsMotor)
+from ophyd.epics_motor import EpicsMotor
+from ophyd.pseudopos import (PseudoPositioner, PseudoSingle,
+                             real_position_argument, pseudo_position_argument)
+from ophyd.positioner import SoftPositioner
 from ophyd import (Component as C)
 from ophyd.utils import ExceptionBundle
 
@@ -20,6 +24,7 @@ def setUpModule():
 
 def tearDownModule():
     if __name__ == '__main__':
+        import epics
         epics.ca.destroy_context()
 
     logger.debug('Cleaning up')
@@ -113,19 +118,11 @@ class PseudoPosTests(unittest.TestCase):
 
         # too many positional arguments
         self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, 2, 3, 4)
-        # too few positional arguments
-        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, 2)
-        # too few kwargs
-        self.assertRaises(ValueError, pseudo.to_pseudo_tuple, pseudo1=1,
-                          pseudo2=2)
         # valid kwargs, but passing in args too
         self.assertRaises(ValueError, pseudo.to_pseudo_tuple, 1, pseudo1=1,
                           pseudo2=2, pseudo3=3)
 
     def test_multi_sequential(self):
-        def done(**kwargs):
-            logger.debug('** Finished moving (%s)', kwargs)
-
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=False)
         pseudo.wait_for_connection()
 
@@ -142,21 +139,21 @@ class PseudoPosTests(unittest.TestCase):
         print(str(pseudo))
 
         pos2 = pseudo.PseudoPosition(pseudo1=0, pseudo2=0, pseudo3=0)
-        pseudo.move(pos2, wait=True)
+        pseudo.set(pos2, wait=True)
         print('moved to', pseudo.position)
         print('-----------------')
         time.sleep(1.0)
         pos1 = pseudo.PseudoPosition(pseudo1=.1, pseudo2=.2, pseudo3=.3)
-        pseudo.move(pos1, wait=True)
+        pseudo.set(pos1, wait=True)
         print('moved to', pseudo.position)
 
-        pseudo.real1.move(0, wait=True)
-        pseudo.real2.move(0, wait=True)
-        pseudo.real3.move(0, wait=True)
+        pseudo.real1.set(0, wait=True)
+        pseudo.real2.set(0, wait=True)
+        pseudo.real3.set(0, wait=True)
 
         pseudo.pseudo1.stop()
 
-        pseudo.real3.move(0, wait=True)
+        pseudo.real3.set(0, wait=True)
 
     def test_faulty_stopper(self):
         pseudo = FaultyPseudo1x3('', name='mypseudo', concurrent=False)
@@ -210,7 +207,7 @@ class PseudoPosTests(unittest.TestCase):
 
         logger.info('Move to (.2, .2, .2), which is (-.2, -.2, -.2) for real '
                     'motors')
-        pseudo.move(pseudo.PseudoPosition(.2, .2, .2), wait=True)
+        pseudo.set(pseudo.PseudoPosition(.2, .2, .2), wait=True)
         logger.info('Position is: %s (moving=%s)', pseudo.position,
                     pseudo.moving)
 
@@ -229,7 +226,7 @@ class PseudoPosTests(unittest.TestCase):
         except ValueError as ex:
             logger.info('Check value failed, as expected (%s)', ex)
 
-        ret = pseudo.move((2, 2, 2), wait=False, moved_cb=done)
+        ret = pseudo.set((2, 2, 2), wait=False, moved_cb=done)
         self.assertEqual(ret.settle_time, 0.1)
         while not ret.done:
             logger.info('Pos=%s %s (err=%s)', pseudo.position, ret, ret.error)
@@ -237,7 +234,7 @@ class PseudoPosTests(unittest.TestCase):
 
         logger.info('Single pseudo axis: %s', pseudo1)
 
-        pseudo1.move(0, wait=True)
+        pseudo1.set(0, wait=True)
 
         self.assertEquals(pseudo1.target, 0)
         pseudo1.sync()
@@ -260,7 +257,7 @@ class PseudoPosTests(unittest.TestCase):
 
         pseudo1.subscribe(single_sub, pseudo1.SUB_READBACK)
 
-        ret = pseudo1.move(1, wait=False)
+        ret = pseudo1.set(1, wait=False)
         self.assertEqual(pseudo.timeout, ret.timeout)
         while not ret.done:
             logger.info('pseudo1.pos=%s Pos=%s %s (err=%s)', pseudo1.position,
@@ -285,21 +282,18 @@ class PseudoPosTests(unittest.TestCase):
         pseudo.pseudo1.describe_configuration()
 
     def test_single_pseudo(self):
-        def done(**kwargs):
-            logger.debug('** Finished moving (%s)', kwargs)
-
         logger.info('------- Sequential, single pseudo positioner')
         pos = Pseudo1x3('', name='mypseudo', concurrent=False)
 
         reals = pos._real
 
         logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
-        pos.move((.2, ), wait=True)
+        pos.set((.2, ), wait=True)
         logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
         logger.info('Real positions: %s', [real.position for real in reals])
 
         logger.info('Move to -.2, which is (.2, .2, .2) for real motors')
-        pos.move((-.2, ), wait=True)
+        pos.set((-.2, ), wait=True)
         logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
         logger.info('Real positions: %s', [real.position for real in reals])
 
@@ -310,6 +304,188 @@ class PseudoPosTests(unittest.TestCase):
         str(pos)
 
 
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)
+@pytest.fixture()
+def hw():
+    class SPseudo3x3(PseudoPositioner):
+        pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
+        pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
+        pseudo3 = C(PseudoSingle, limits=None, egu='c')
+        real1 = C(SoftPositioner, init_pos=0)
+        real2 = C(SoftPositioner, init_pos=0)
+        real3 = C(SoftPositioner, init_pos=0)
+
+        @pseudo_position_argument
+        def forward(self, pseudo_pos):
+            pseudo_pos = self.PseudoPosition(*pseudo_pos)
+            # logger.debug('forward %s', pseudo_pos)
+            return self.RealPosition(real1=-pseudo_pos.pseudo1,
+                                     real2=-pseudo_pos.pseudo2,
+                                     real3=-pseudo_pos.pseudo3)
+
+        @real_position_argument
+        def inverse(self, real_pos):
+            real_pos = self.RealPosition(*real_pos)
+            # logger.debug('inverse %s', real_pos)
+            return self.PseudoPosition(pseudo1=-real_pos.real1,
+                                       pseudo2=-real_pos.real2,
+                                       pseudo3=-real_pos.real3)
+
+    class SPseudo1x3(PseudoPositioner):
+        pseudo1 = C(PseudoSingle, limits=(-10, 10))
+        real1 = C(SoftPositioner, init_pos=0)
+        real2 = C(SoftPositioner, init_pos=0)
+        real3 = C(SoftPositioner, init_pos=0)
+
+        @pseudo_position_argument
+        def forward(self, pseudo_pos):
+            pseudo_pos = self.PseudoPosition(*pseudo_pos)
+            # logger.debug('forward %s', pseudo_pos)
+            return self.RealPosition(real1=-pseudo_pos.pseudo1,
+                                     real2=-pseudo_pos.pseudo1,
+                                     real3=-pseudo_pos.pseudo1)
+
+        @real_position_argument
+        def inverse(self, real_pos):
+            real_pos = self.RealPosition(*real_pos)
+            # logger.debug('inverse %s', real_pos)
+            return self.PseudoPosition(pseudo1=-real_pos.real1)
+
+    return SimpleNamespace(pseudo3x3=SPseudo3x3(name='pseudo3x3'),
+                           pseudo1x3=SPseudo1x3(name='pseudo1x3'))
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs,expected_position,expected_kwargs',
+        [((1, 2, 3), {}, (1, 2, 3), {}),
+         ((1, 2, ), {}, (1, 2, -3), {}),
+         ((1, ), {}, (1, -2, -3), {}),
+
+         (((1, 2, 3),), {}, (1, 2, 3), {}),
+         (([1, 2, ],), {}, (1, 2, -3), {}),
+         (((1, ),), {}, (1, -2, -3), {}),
+
+         ((), {'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3}, (1, 2, 3), {}),
+         ((), {'pseudo1': 1, 'pseudo2': 2}, (1, 2, -3), {}),
+         ((), {'pseudo1': 1}, (1, -2, -3), {}),
+         ((), {'pseudo1': 1, 'wait': True}, (1, -2, -3), {'wait': True}),
+
+         (({'pseudo1': 1, 'pseudo2': 2, 'pseudo3': 3},), {}, (1, 2, 3), {}),
+         (({'pseudo1': 1, 'pseudo2': 2},), {}, (1, 2, -3), {}),
+         (({'pseudo1': 1},), {}, (1, -2, -3), {}),
+         (({'pseudo1': 1, 'wait': True},), {'timeout': None},
+          (1, -2, -3), {'wait': True, 'timeout': None}),
+
+
+         ((1, 2, 3), {'timeout': 1}, (1, 2, 3), {'timeout': 1}),
+         (((1, 2, 3),), {'timeout': 1}, (1, 2, 3), {'timeout': 1}),
+         ]
+    )
+def test_pseudo_position_input_3x3(hw, inpargs, inpkwargs,
+                                   expected_position, expected_kwargs):
+    pseudo3x3 = hw.pseudo3x3
+    pseudo3x3.real1.set(1)
+    pseudo3x3.real2.set(2)
+    pseudo3x3.real3.set(3)
+
+    out, extra_kwargs = pseudo3x3.to_pseudo_tuple(*inpargs, **inpkwargs)
+    assert out == pseudo3x3.PseudoPosition(*expected_position)
+    assert extra_kwargs == expected_kwargs
+
+    pseudo3x3.set(*inpargs, **inpkwargs)
+    assert pseudo3x3.position == pseudo3x3.PseudoPosition(*expected_position)
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs',
+        [((1, 2, 3, 5), {}),
+         ((1, 2, 3), {'pseudo1': 1}),
+         ((1, 2, 3), {'pseudo2': 1}),
+         ((1, ), {'pseudo2': 1,
+                  'pseudo3': 1}),
+         ((1, 2, ), {'pseudo3': 1}),
+         ]
+    )
+def test_pseudo_position_fail_3x3(hw, inpargs, inpkwargs):
+    pseudo3x3 = hw.pseudo3x3
+    with pytest.raises(ValueError):
+        pseudo3x3.to_pseudo_tuple(*inpargs, **inpkwargs)
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs,expected_position,expected_kwargs',
+        [((1, 2, 3), {}, (1, 2, 3), {}),
+         ((1, 2, ), {}, (1, 2, 3), {}),
+         ((1, ), {}, (1, 2, 3), {}),
+
+         (((1, 2, 3),), {}, (1, 2, 3), {}),
+         (([1, 2, ],), {}, (1, 2, 3), {}),
+         (((1, ),), {}, (1, 2, 3), {}),
+
+         ((), {'real1': 1, 'real2': 2, 'real3': 3}, (1, 2, 3), {}),
+         ((), {'real1': 1, 'real2': 2}, (1, 2, 3), {}),
+         ((), {'real1': 1}, (1, 2, 3), {}),
+         ((), {'real1': 1, 'foo': 'bar'}, (1, 2, 3), {'foo': 'bar'}),
+
+         (({'real1': 1, 'real2': 2, 'real3': 3},), {}, (1, 2, 3), {}),
+         (({'real1': 1, 'real2': 2},), {}, (1, 2, 3), {}),
+         (({'real1': 1},), {}, (1, 2, 3), {}),
+         (({'real1': 1, 'foo': 'bar'},), {'baz': 'buz'},
+          (1, 2, 3), {'foo': 'bar', 'baz': 'buz'}),
+
+         ((1, 2, 3), {'foo': 'bar'}, (1, 2, 3), {'foo': 'bar'}),
+         ]
+    )
+def test_real_position_input_3x3(hw, inpargs, inpkwargs,
+                                 expected_position, expected_kwargs):
+    pseudo3x3 = hw.pseudo3x3
+    pseudo3x3.real1.set(1)
+    pseudo3x3.real2.set(2)
+    pseudo3x3.real3.set(3)
+
+    out, extra_kwargs = pseudo3x3.to_real_tuple(*inpargs, **inpkwargs)
+    assert out == pseudo3x3.RealPosition(*expected_position)
+    assert extra_kwargs == expected_kwargs
+
+
+@pytest.mark.parametrize(
+        'inpargs,inpkwargs',
+        [((1, 2, 3, 5), {}),
+         ((1, 2, 3), {'real1': 1}),
+         ((1, 2, 3), {'real2': 1}),
+         ((1, ), {'real2': 1,
+                  'real3': 1}),
+         ((1, 2, ), {'real3': 1}),
+         (({'real3': 1, 'foo': 'bar'},), {'foo': 'bizz'}),
+         ((), {})
+         ]
+    )
+def test_real_position_fail_3x3(hw, inpargs, inpkwargs):
+    pseudo3x3 = hw.pseudo3x3
+    with pytest.raises(ValueError):
+        pseudo3x3.to_real_tuple(*inpargs, **inpkwargs)
+
+
+def test_single_pseudo(hw):
+    logger.info('------- Sequential, single pseudo positioner')
+    pos = hw.pseudo1x3
+
+    reals = pos._real
+
+    logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
+    pos.set((.2, ), wait=True)
+    logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
+    logger.info('Real positions: %s', [real.position for real in reals])
+
+    logger.info('Move to -.2, which is (.2, .2, .2) for real motors')
+    pos.set((-.2, ), wait=True)
+    logger.info('Position is: %s (moving=%s)', pos.position, pos.moving)
+    logger.info('Real positions: %s', [real.position for real in reals])
+
+    copy(pos)
+    pos.read()
+    pos.describe()
+    repr(pos)
+    str(pos)
+
+def test_multi_pseudo(hw):
+    pos = hw.pseudo3x3

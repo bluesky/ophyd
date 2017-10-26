@@ -255,9 +255,12 @@ class SoftPositioner(PositionerBase):
         to 'computed'
     '''
 
-    def __init__(self, *, egu='', limits=None, source='computed', **kwargs):
+    def __init__(self, *, egu='', limits=None, source='computed',
+                 init_pos=None,
+                 **kwargs):
         super().__init__(**kwargs)
-
+        if init_pos is not None:
+            self.set(init_pos)
         self._egu = egu
         if limits is None:
             limits = (0, 0)
