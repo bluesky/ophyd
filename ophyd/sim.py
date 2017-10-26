@@ -587,6 +587,7 @@ class SynSignalWithRegistry(SynSignal):
                                                        self._file_stem, {})
 
     def trigger(self):
+        super().trigger()
         # save file stash file name
         self._result.clear()
         for idx, (name, reading) in enumerate(super().read().items()):
