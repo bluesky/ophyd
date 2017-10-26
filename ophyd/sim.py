@@ -485,20 +485,16 @@ class MockFlyer:
             raise RuntimeError("Already kicked off.")
         self._data = deque()
 
-        # Setup a status object that will be returned by
-        # self.complete(). Separately, make dummy status object
-        # that is immediately done, and return that, indicated that
-        # the 'kickoff' step is done.
         self._future = self.loop.run_in_executor(None, self._scan)
         st = DeviceStatus(device=self)
         self._completion_status = st
         self._future.add_done_callback(lambda x: st._finished())
-
-        return NullStatus()
+        return st
 
     def collect(self):
-        if self._completion_status is not None:
+        if not self._completion_status.done:
             raise RuntimeError("No reading until done!")
+        self._completion_status = None
 
         yield from self._data
 
@@ -527,8 +523,6 @@ class MockFlyer:
                     event['data'][k] = v['value']
                     event['timestamps'][k] = v['timestamp']
             self._data.append(event)
-        self._completion_status._finished()
-        self._completion_status = None
 
     def stop(self, *, success=False):
         pass
