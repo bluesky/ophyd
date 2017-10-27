@@ -2,7 +2,8 @@ import time
 import logging
 import unittest
 import pytest
-
+import operator
+import numpy as np
 from types import SimpleNamespace
 
 from copy import copy
@@ -487,5 +488,17 @@ def test_single_pseudo(hw):
     repr(pos)
     str(pos)
 
-def test_multi_pseudo(hw):
+
+@pytest.mark.parametrize('typ', ('to_real_tuple', 'to_pseudo_tuple'))
+@pytest.mark.parametrize('op', (operator.sub, operator.add))
+@pytest.mark.parametrize('a,b', [
+            ((0, 0, 0), (1, 1, 1)),
+            ((1, 0, 1), (1, 1, 1)),
+            ((9, 0, .3), (.3, .1, .5))])
+def test_pseudo_math(hw, a, b, op, typ):
     pos = hw.pseudo3x3
+    a, _ = getattr(pos, typ)(a)
+    b, _ = getattr(pos, typ)(b)
+
+    # TODO switch to np asserts
+    assert (np.asarray(op(a, b)) == op(np.asarray(a), np.asarray(b))).all()

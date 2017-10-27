@@ -207,13 +207,17 @@ As kwargs:
 '''
 
 
-def _to_position_tuple(cls, *args,  _cur, **kwargs):
+def _to_position_tuple(cls, *args, _cur, **kwargs):
     '''Convert user-specified arguments to a Position namedtuple and kwargs
 
-    Example:
+    TODO update for _cur
+
+    Example::
+
         Tuple = namedtuple('Tuple', 'px py pz')
 
-    All of the following will return the same thing:
+    All of the following will return the same thing::
+
         t, kwargs = to_position_tuple(Tuple, px, py, pz, a=4)
         t, kwargs = to_position_tuple(Tuple, (px, py, pz), a=4)
         t, kwargs = to_position_tuple(Tuple, Tuple(px, py, pz), a=4)
@@ -327,6 +331,29 @@ class PseudoPositioner(Device, SoftPositioner):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
+    class __add_sub_mixin:
+        """Helper mix-in to make RealPosition and PseudoPosition mathable
+
+        .. warning ::
+
+           Do not use this outside of this purpose.
+
+           No really, don't
+        """
+        __slots__ = ()
+
+        def __add__(self, other):
+            if not isinstance(other, type(self)):
+                raise NotImplemented
+            return type(self)(*(s + o for s, o in
+                                zip(self, other)))
+
+        def __sub__(self, other):
+            if not isinstance(other, type(self)):
+                raise NotImplemented
+            return type(self)(*(s - o for s, o in
+                                zip(self, other)))
+
     def __init__(self, prefix='', *, concurrent=True, read_attrs=None,
                  configuration_attrs=None, name, egu='', auto_target=True,
                  **kwargs):
@@ -410,9 +437,13 @@ class PseudoPositioner(Device, SoftPositioner):
         This is automatically generated at the class-level for all
         non-PseudoSingle-based positioners.
         '''
-        name = cls.__name__ + 'RealPos'
-        return namedtuple(name, [name for name, cpt in
-                                 cls._get_real_positioners()])
+        cname = cls.__name__ + 'RealPos'
+
+        return type(cname, (cls.__add_sub_mixin,
+                            namedtuple('_' + cname,
+                                       [name for name, cpt in
+                                        cls._get_real_positioners()])),
+                    {})
 
     @classmethod
     def _pseudo_position_tuple(cls):
@@ -421,9 +452,12 @@ class PseudoPositioner(Device, SoftPositioner):
         This is automatically generated at the class-level for all
         PseudoSingle-based positioners.
         '''
-        name = cls.__name__ + 'PseudoPos'
-        return namedtuple(name, [name for name, cpt in
-                                 cls._get_pseudo_positioners()])
+        cname = cls.__name__ + 'PseudoPos'
+        return type(cname, (cls.__add_sub_mixin,
+                            namedtuple('_' + cname,
+                                       [name for name, cpt in
+                                        cls._get_pseudo_positioners()])),
+                    {})
 
     @classmethod
     def _get_pseudo_positioners(cls):
