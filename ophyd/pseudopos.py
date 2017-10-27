@@ -344,13 +344,13 @@ class PseudoPositioner(Device, SoftPositioner):
 
         def __add__(self, other):
             if not isinstance(other, type(self)):
-                raise NotImplemented
+                return NotImplemented
             return type(self)(*(s + o for s, o in
                                 zip(self, other)))
 
         def __sub__(self, other):
             if not isinstance(other, type(self)):
-                raise NotImplemented
+                return NotImplemented
             return type(self)(*(s - o for s, o in
                                 zip(self, other)))
 
