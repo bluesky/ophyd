@@ -502,3 +502,17 @@ def test_pseudo_math(hw, a, b, op, typ):
 
     # TODO switch to np asserts
     assert (np.asarray(op(a, b)) == op(np.asarray(a), np.asarray(b))).all()
+
+
+def test_pseudo_hints(hw):
+    pos = hw.pseudo3x3
+
+    for j in (1, 2, 3):
+        p = getattr(pos, 'pseudo{}'.format(j))
+        assert p.hints['fields'] == [p.readback.name]
+        p.readback.name = 'aardvark{}'.format(j)
+        assert p.hints['fields'] == [p.readback.name]
+
+    expected_fields = [getattr(pos, 'pseudo{}'.format(j)).readback.name
+                       for j in (1, 2, 3)]
+    assert pos.hints['fields'] == expected_fields
