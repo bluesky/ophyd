@@ -10,7 +10,6 @@ from functools import wraps
 import weakref
 
 import numpy as np
-import epics
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
@@ -19,7 +18,7 @@ from ophyd.status import wait
 from .conftest import (FakeEpicsWaveform, using_fake_epics_pv,
                        using_fake_epics_waveform)
 logger = logging.getLogger(__name__)
-
+import ophyd.control_layer as cl
 
 
 @using_fake_epics_pv
@@ -36,8 +35,7 @@ def test_fakepv():
         info['value'] = True
         info['value_kw'] = kwargs
 
-    pv = epics.PV(pvname, callback=value_cb, connection_callback=conn,
-                  )
+    pv = cl.get_pv(pvname, callback=value_cb, connection_callback=conn)
 
     if not pv.wait_for_connection():
         raise ValueError('should return True on connection')
@@ -439,8 +437,3 @@ def test_epicssignalro_alarm_status():
 def test_hints():
     sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
     assert sig.hints == {'fields': [sig.name]}
-
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)

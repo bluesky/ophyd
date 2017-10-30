@@ -1,12 +1,9 @@
 import logging
-import unittest
 import pytest
 
 from unittest.mock import Mock
 from ophyd.ophydobj import OphydObject
 from ophyd.status import (StatusBase, DeviceStatus, wait)
-
-from . import main
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +133,3 @@ def test_subscribe_no_default():
 
     with pytest.raises(ValueError):
         o.subscribe(lambda *a, **k: None)
-
-
-is_main = (__name__ == '__main__')
-main(is_main)

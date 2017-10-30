@@ -4,22 +4,15 @@ import time
 import threading
 
 import numpy as np
-import epics
 
 from .utils import (ReadOnlyError, LimitError)
-from .utils.epics_pvs import (pv_form, waveform_to_string,
+from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
 from .ophydobj import OphydObject
 from .status import Status
 from .utils import set_and_wait
 
-try:
-    epics.ca.find_libca()
-except epics.ca.ChannelAccessException:
-    thread_class = threading.Thread
-else:
-    thread_class = epics.ca.CAThread
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +38,8 @@ class Signal(OphydObject):
 
           |setpoint - readback| \leq (tolerance + rtolerance * |readback|)
 
+    cl : namespace, optional
+        Control Layer.  Must provide 'get_pv' and 'thread_class'
 
     Attributes
     ----------
@@ -55,9 +50,11 @@ class Signal(OphydObject):
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=None, timestamp=None, parent=None,
-                 tolerance=None, rtolerance=None):
+                 tolerance=None, rtolerance=None, cl=None):
         super().__init__(name=name, parent=parent)
-
+        if cl is None:
+            from . import control_layer as cl
+        self.cl = cl
         self._readback = value
 
         if timestamp is None:
@@ -185,7 +182,7 @@ class Signal(OphydObject):
 
         st = Status(self)
         self._status = st
-        self._set_thread = thread_class(target=set_thread)
+        self._set_thread = self.cl.thread_class(target=set_thread)
         self._set_thread.daemon = True
         self._set_thread.start()
         return self._status
@@ -347,7 +344,6 @@ class EpicsSignalBase(Signal):
                  auto_monitor=False,
                  name=None,
                  **kwargs):
-
         if 'rw' in kwargs:
             if kwargs['rw']:
                 new_class = EpicsSignal
@@ -374,9 +370,10 @@ class EpicsSignalBase(Signal):
         super().__init__(name=name, **kwargs)
 
         validate_pv_name(read_pv)
-        self._read_pv = epics.PV(read_pv, form=pv_form,
-                                 auto_monitor=auto_monitor,
-                                 **pv_kw)
+        cl = self.cl
+        self._read_pv = cl.get_pv(read_pv, form=cl.pv_form,
+                                  auto_monitor=auto_monitor,
+                                  **pv_kw)
 
         with self._lock:
             self._read_pv.add_callback(self._read_changed,
@@ -438,8 +435,8 @@ class EpicsSignalBase(Signal):
             old_instance.clear_callbacks()
             was_connected = old_instance.connected
 
-            new_instance = epics.PV(old_instance.pvname,
-                                    form=old_instance.form, **pv_kw)
+            new_instance = self.cl.get_pv(old_instance.pvname,
+                                          form=old_instance.form, **pv_kw)
             if was_connected:
                 new_instance.wait_for_connection()
 
@@ -686,9 +683,10 @@ class EpicsSignal(EpicsSignalBase):
 
         if write_pv is not None:
             validate_pv_name(write_pv)
-            self._write_pv = epics.PV(write_pv, form=pv_form,
-                                      auto_monitor=self._auto_monitor,
-                                      **self._pv_kw)
+            cl = self.cl
+            self._write_pv = cl.get_pv(write_pv, form=cl.pv_form,
+                                       auto_monitor=self._auto_monitor,
+                                       **self._pv_kw)
             self._write_pv.add_callback(self._write_changed,
                                         run_now=self._write_pv.connected)
         else:

@@ -5,8 +5,6 @@ import unittest
 import numpy as np
 import tempfile
 
-import epics
-
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import errors
 from ophyd.utils import (make_dir_tree, makedirs)
@@ -46,16 +44,12 @@ class EpicsUtilTest(unittest.TestCase):
         self.assertEquals(epics_utils.waveform_to_string(asc), s)
 
     def test_pv_form(self):
-        self.assertIn(epics_utils.get_pv_form(), ('native', 'time'))
-        version = epics.__version__
-
-        try:
-            versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
-            for version in versions:
-                epics.__version__ = version
-                self.assertIn(epics_utils.get_pv_form(), ('native', 'time'))
-        finally:
-            epics.__version__ = version
+        import ophyd.control_layer as cl
+        import ophyd._pyepics_shim as o_ps
+        self.assertIn(cl.pv_form, ('native', 'time'))
+        versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
+        for version in versions:
+            self.assertIn(o_ps.get_pv_form(version), ('native', 'time'))
 
     def test_records_from_db(self):
         # db_dir = os.path.join(config.epics_base, 'db')
@@ -122,8 +116,3 @@ def test_make_dir_tree():
 def test_valid_pvname():
     with pytest.raises(epics_utils.BadPVName):
         epics_utils.validate_pv_name('this.will.fail')
-
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)

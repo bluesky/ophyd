@@ -387,8 +387,3 @@ def test_fshdf_plugin(root, wpath, rpath, check_files, WriterClass):
         for fn in handler.get_file_list(datum['datum_kwargs'] for datum in
                                         fs.datum_by_resource[res_uid]):
             assert Path(fn).exists()
-
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)

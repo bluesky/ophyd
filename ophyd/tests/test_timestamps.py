@@ -90,7 +90,3 @@ class EpicsSignalTests(unittest.TestCase):
         self.assertAlmostEqual(sp_value0 + 0.1, sp_value1)
 
         sp.put(sp.value - 0.1, wait=True)
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)

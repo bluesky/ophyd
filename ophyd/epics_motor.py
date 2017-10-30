@@ -1,6 +1,6 @@
 import logging
 
-from epics.pv import fmt_time
+from .utils.epics_pvs import fmt_time
 
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError

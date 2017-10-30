@@ -100,8 +100,3 @@ def test_signal_separate():
     data = sca.read()
     assert 'scaler_channels_chan1' in data
     assert 'scaler_channels_chan2' not in data
-
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)
