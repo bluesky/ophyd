@@ -339,6 +339,7 @@ class SynGauss(SynSignal):
                  noise=None, noise_multiplier=1, **kwargs):
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
+        self._motor = motor
 
         def func():
             m = motor.read()[motor_field]['value']
@@ -397,6 +398,8 @@ class Syn2DGauss(SynSignal):
 
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
+        self._motor = motor0
+        self._motor1 = motor1
 
         def func():
             x = motor0.read()[motor_field0]['value']
