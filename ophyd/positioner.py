@@ -355,6 +355,10 @@ class SoftPositioner(PositionerBase):
                         'timestamp': time.time()}
         return d
 
+    @property
+    def hints(self):
+        return {'fields': [self.name]}
+
     def describe(self):
         """Return the description as a dictionary
 
