@@ -486,6 +486,8 @@ class MockFlyer:
         return {'stream_name': dd}
 
     def complete(self):
+        if self._completion_status is None:
+            raise RuntimeError("No collection in progress")
         return self._completion_status
 
     def kickoff(self):
@@ -500,7 +502,7 @@ class MockFlyer:
         return st
 
     def collect(self):
-        if not self._completion_status.done:
+        if self._completion_status is None or not self._completion_status.done:
             raise RuntimeError("No reading until done!")
         self._completion_status = None
 
