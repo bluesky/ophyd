@@ -1,8 +1,10 @@
 import asyncio
+import copy
 import time as ttime
 from collections import deque, OrderedDict
 from threading import RLock
 import numpy as np
+import random
 import threading
 from tempfile import mkdtemp
 import os
@@ -11,7 +13,11 @@ import uuid
 
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
-from .device import Device, Component
+from .device import Device, Component, Component as C
+from types import SimpleNamespace
+from .pseudopos import (PseudoPositioner, PseudoSingle,
+                        real_position_argument, pseudo_position_argument)
+from .positioner import SoftPositioner
 
 
 # two convenience functions 'vendored' from bluesky.utils
@@ -645,24 +651,193 @@ class NumpySeqHandler:
                 for kwargs in datum_kwarg_gen]
 
 
-motor = SynAxis(name='motor')
-motor1 = SynAxis(name='motor1')
-motor2 = SynAxis(name='motor2')
-motor3 = SynAxis(name='motor3')
-jittery_motor1 = SynAxis(name='jittery_motor1',
-                         readback_func=lambda x: x + np.random.rand())
-jittery_motor2 = SynAxis(name='jittery_motor2',
-                         readback_func=lambda x: x + np.random.rand())
-noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
-                     noise='uniform', sigma=1, noise_multiplier=0.1)
-det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
-det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
-det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
-det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
-det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
-                  center=(0, 0), Imax=1)
-det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
-                  'jittery_motor2', center=(0, 0), Imax=1)
+class ABDetector(Device):
+    a = Component(SynSignal, func=random.random)
+    b = Component(SynSignal, func=random.random)
 
-flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
-flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
+    def trigger(self):
+        return self.a.trigger() & self.b.trigger()
+
+    @property
+    def hints(self):
+        return {'fields': [self.a.name]}
+
+
+class DetWithCountTime(Device):
+    intensity = Component(SynSignal, func=lambda: 0)
+    count_time = Component(Signal)
+    _default_read_attrs = ('intensity',)
+
+
+class DetWithConf(Device):
+    a = Component(SynSignal, func=lambda: 1)
+    b = Component(SynSignal, func=lambda: 2)
+    c = Component(SynSignal, func=lambda: 3)
+    d = Component(SynSignal, func=lambda: 4)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.read_attrs = ['a', 'b']
+        self.configuration_attrs = ['c', 'd']
+
+    def trigger(self):
+        return self.a.trigger() & self.b.trigger()
+
+    @property
+    def hints(self):
+        return {'fields': [self.a.name, self.b.name]}
+
+
+class InvariantSignal(SynSignal):
+    # Always returns the same reading, including timestamp.
+    def read(self):
+        res = super().read()
+        for k in res:
+            res[k]['timestamp'] = 0
+        return res
+    def __repr__(self):
+        return "<INVARIANT REPR>"
+
+
+class SPseudo3x3(PseudoPositioner):
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
+    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
+    pseudo3 = C(PseudoSingle, limits=None, egu='c')
+    real1 = C(SoftPositioner, init_pos=0)
+    real2 = C(SoftPositioner, init_pos=0)
+    real3 = C(SoftPositioner, init_pos=0)
+
+    sig = C(Signal, value=0)
+
+    @pseudo_position_argument
+    def forward(self, pseudo_pos):
+        pseudo_pos = self.PseudoPosition(*pseudo_pos)
+        # logger.debug('forward %s', pseudo_pos)
+        return self.RealPosition(real1=-pseudo_pos.pseudo1,
+                                    real2=-pseudo_pos.pseudo2,
+                                    real3=-pseudo_pos.pseudo3)
+
+    @real_position_argument
+    def inverse(self, real_pos):
+        real_pos = self.RealPosition(*real_pos)
+        # logger.debug('inverse %s', real_pos)
+        return self.PseudoPosition(pseudo1=-real_pos.real1,
+                                    pseudo2=-real_pos.real2,
+                                    pseudo3=-real_pos.real3)
+
+class SPseudo1x3(PseudoPositioner):
+    pseudo1 = C(PseudoSingle, limits=(-10, 10))
+    real1 = C(SoftPositioner, init_pos=0)
+    real2 = C(SoftPositioner, init_pos=0)
+    real3 = C(SoftPositioner, init_pos=0)
+
+    @pseudo_position_argument
+    def forward(self, pseudo_pos):
+        pseudo_pos = self.PseudoPosition(*pseudo_pos)
+        # logger.debug('forward %s', pseudo_pos)
+        return self.RealPosition(real1=-pseudo_pos.pseudo1,
+                                    real2=-pseudo_pos.pseudo1,
+                                    real3=-pseudo_pos.pseudo1)
+
+    @real_position_argument
+    def inverse(self, real_pos):
+        real_pos = self.RealPosition(*real_pos)
+        # logger.debug('inverse %s', real_pos)
+        return self.PseudoPosition(pseudo1=-real_pos.real1)
+
+
+class SynAxisNoPosition(SynAxis):
+    @property
+    def position(self):
+        raise AttributeError
+
+
+def hw():
+    "Build a set of synthetic hardware (hence the abbreviated name, hw)"
+    motor = SynAxis(name='motor')
+    motor1 = SynAxis(name='motor1')
+    motor2 = SynAxis(name='motor2')
+    motor3 = SynAxis(name='motor3')
+    jittery_motor1 = SynAxis(name='jittery_motor1',
+                            readback_func=lambda x: x + np.random.rand())
+    jittery_motor2 = SynAxis(name='jittery_motor2',
+                            readback_func=lambda x: x + np.random.rand())
+    noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
+                        noise='uniform', sigma=1, noise_multiplier=0.1)
+    det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
+    identical_det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
+    det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
+    det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
+    det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
+    det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
+                    center=(0, 0), Imax=1)
+    det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
+                    'jittery_motor2', center=(0, 0), Imax=1)
+
+    flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
+    flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
+    trivial_flyer = TrivialFlyer()
+
+    # Some extras not defined in ophyd.sim (should they be?)
+    ab_det = ABDetector(name='det')
+    # area detector that directly stores image data in Event
+    direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
+                           name='img')
+    # area detector that stores data in file and registers it with Registry
+    img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
+                                name='img',
+                                reg=None)  # do hw.img.reg = db.reg in test!
+    invariant1 = InvariantSignal(func=lambda: 0, name='invariant1')
+    invariant2 = InvariantSignal(func=lambda: 0, name='invariant2')
+    det_with_conf = DetWithConf(name='det')
+    det_with_count_time = DetWithCountTime(name='det')
+    rand = SynPeriodicSignal(name='rand')
+    rand2 = SynPeriodicSignal(name='rand2')
+    motor_no_pos = SynAxisNoPosition(name='motor')
+    bool_sig = Signal(value=False, name='bool_sig')
+
+    motor_no_hints1 = SynAxisNoHints(name='motor1')
+    motor_no_hints2 = SynAxisNoHints(name='motor2')
+    # Because some of these reference one another we must define them (above)
+    # before we pack them into a namespace (below).
+
+    return SimpleNamespace(
+        motor=motor,
+        motor1=motor1,
+        motor2=motor2,
+        motor3=motor3,
+        jittery_motor1=jittery_motor1,
+        jittery_motor2=jittery_motor2,
+        noisy_det=noisy_det,
+        det=det,
+        identical_det=identical_det,
+        det1=det1,
+        det2=det2,
+        det3=det3,
+        det4=det4,
+        det5=det5,
+        flyer1=flyer1,
+        flyer2=flyer2,
+        trivial_flyer=trivial_flyer,
+        ab_det=ab_det,
+        direct_img=direct_img,
+        img=img,
+        invariant1=invariant1,
+        invariant2=invariant2,
+        pseudo3x3=SPseudo3x3(name='pseudo3x3'),
+        pseudo1x3=SPseudo1x3(name='pseudo1x3'),
+        sig=Signal(name='sig', value=0),
+        det_with_conf=det_with_conf,
+        det_with_count_time=det_with_count_time,
+        rand=rand,
+        rand2=rand2,
+        motor_no_pos=motor_no_pos,
+        motor_no_hints1=motor_no_hints1,
+        motor_no_hints2=motor_no_hints2,
+        bool_sig=bool_sig,
+    )
+
+
+# Dump instances of the example hardware generated by hw() into the global
+# namespcae for convenience and back-compat.
+globals().update(hw().__dict__)
