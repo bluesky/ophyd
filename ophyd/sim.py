@@ -212,7 +212,7 @@ class SetpointSignal(Signal):
         return res
 
 
-class SynAxis(Device):
+class SynAxisNoHints(Device):
     """
     A synthetic settable Device mimic any 1D Axis (position, temperature).
 
@@ -295,6 +295,8 @@ class SynAxis(Device):
     def position(self):
         return self.readback.get()
 
+
+class SynAxis(SynAxisNoHints):
     @property
     def hints(self):
         if self._hints is None:
