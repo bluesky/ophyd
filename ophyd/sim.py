@@ -196,7 +196,6 @@ class ReadbackSignal(SignalRO):
         return res
 
 
-
 class SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
         self.parent.set(value)
@@ -211,7 +210,6 @@ class SetpointSignal(Signal):
         for k in res:
             res[k]['precision'] = self.parent.precision
         return res
-
 
 
 class SynAxis(Device):
@@ -251,7 +249,7 @@ class SynAxis(Device):
             readback_func = lambda x: x
         if loop is None:
             loop = asyncio.get_event_loop()
-
+        self._hints = None
         self.sim_state = {}
         self._readback_func = readback_func
         self.delay = delay
@@ -299,7 +297,13 @@ class SynAxis(Device):
 
     @property
     def hints(self):
-        return {'fields': [self.readback.name]}
+        if self._hints is None:
+            return {'fields': [self.readback.name]}
+        return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        self._hints = dict(val)
 
 
 class SynGauss(SynSignal):
