@@ -265,7 +265,6 @@ class SynAxis(Device):
         super().__init__(name=name, parent=parent)
         self.readback.name = self.name
 
-
     def set(self, value):
 
         def update_state():
@@ -296,7 +295,7 @@ class SynAxis(Device):
 
     @property
     def position(self):
-        return self.readbaack.get()
+        return self.readback.get()
 
     @property
     def hints(self):
