@@ -120,7 +120,8 @@ class Component:
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
-        if DynamicDeviceComponent in self.cls.mro():
+        if (isinstance(self.cls, type) and  # is a class
+                issubclass(self.cls, DynamicDeviceComponent)):
             cpt_inst = self.cls(self.suffix).create_component(self)
 
         elif self.suffix is not None:
@@ -407,7 +408,9 @@ class ComponentMeta(type):
         # This list is used by stage/unstage. Only Devices need to be staged.
         clsobj._sub_devices = []
         for attr, cpt in clsobj._sig_attrs.items():
-            if isinstance(cpt, Component) and not issubclass(cpt.cls, Device):
+            if (isinstance(cpt, Component) and 
+                    (not isinstance(cpt.cls, type) or  # not a class
+                     not issubclass(cpt.cls, Device))):  # not a Device
                 continue
             clsobj._sub_devices.append(attr)
 
@@ -674,7 +677,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     Parameters
     ----------
-    prefix : str
+    prefix : str, optional
         The PV prefix for all components of the device
     name : str, keyword only
         The name of the device

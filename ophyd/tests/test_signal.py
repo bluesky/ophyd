@@ -327,7 +327,7 @@ def test_describe():
 
 
 def test_set_method():
-    sig = Signal()
+    sig = Signal(name='sig')
 
     st = sig.set(28)
     wait(st)
