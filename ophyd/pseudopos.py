@@ -354,13 +354,31 @@ class PseudoPositioner(Device, SoftPositioner):
 
         def __add__(self, other):
             if not isinstance(other, type(self)):
-                return NotImplemented
+                try:
+                    for k in self._fields:
+                        other.setdefault(k, 0)
+                    other = type(self)(**other)
+                except (TypeError, AttributeError):
+                    try:
+                        other = type(self)(*other)
+                    except TypeError:
+                        return NotImplemented
+
             return type(self)(*(s + o for s, o in
                                 zip(self, other)))
 
         def __sub__(self, other):
             if not isinstance(other, type(self)):
-                return NotImplemented
+                try:
+                    for k in self._fields:
+                        other.setdefault(k, 0)
+                    other = type(self)(**other)
+                except (TypeError, AttributeError):
+                    try:
+                        other = type(self)(*other)
+                    except TypeError:
+                        return NotImplemented
+
             return type(self)(*(s - o for s, o in
                                 zip(self, other)))
 

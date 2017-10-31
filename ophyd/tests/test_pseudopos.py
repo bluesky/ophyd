@@ -501,7 +501,12 @@ def test_pseudo_math(hw, a, b, op, typ):
     b, _ = getattr(pos, typ)(b)
 
     # TODO switch to np asserts
-    assert (np.asarray(op(a, b)) == op(np.asarray(a), np.asarray(b))).all()
+    expected = op(np.asarray(a), np.asarray(b))
+    assert (np.asarray(op(a, b)) == expected).all()
+    assert (np.asarray(op(a, tuple(b))) == expected).all()
+    assert (np.asarray(op(a, list(b))) == expected).all()
+    assert (np.asarray(op(a, b._asdict())) == expected).all()
+    assert (np.asarray(op(a, {})) == a).all()
 
 
 def test_pseudo_hints(hw):
