@@ -1,14 +1,12 @@
-
-
 import time
 import logging
 import unittest
 from copy import copy
 
-import epics
 from ophyd import (PVPositioner, PVPositionerPC, EpicsMotor)
 from ophyd import (EpicsSignal, EpicsSignalRO)
 from ophyd import (Component as C)
+import ophyd.control_layer as cl
 
 logger = logging.getLogger(__name__)
 
@@ -193,13 +191,13 @@ class PVPosTest(unittest.TestCase):
 
         # ensure we start at 0 for this simple test
         fm = self.fake_motor
-        epics.caput(fm['setpoint'], 0.05)
+        cl.caput(fm['setpoint'], 0.05)
         time.sleep(0.5)
-        epics.caput(fm['actuate'], 1)
+        cl.caput(fm['actuate'], 1)
         time.sleep(0.5)
-        epics.caput(fm['setpoint'], 0)
+        cl.caput(fm['setpoint'], 0)
         time.sleep(0.5)
-        epics.caput(fm['actuate'], 1)
+        cl.caput(fm['actuate'], 1)
         time.sleep(0.5)
 
         class MyPositioner(PVPositioner):
@@ -278,7 +276,3 @@ class PVPosTest(unittest.TestCase):
         motor.hints = None
 
         assert motor.hints['fields'] == f_hints
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)

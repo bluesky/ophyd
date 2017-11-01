@@ -75,8 +75,3 @@ def test_epics_signal_positioner():
     pc = copy(p)
     assert pc.egu == p.egu
     assert pc.limits == p.limits
-
-
-from . import main
-is_main = (__name__ == '__main__')
-main(is_main)

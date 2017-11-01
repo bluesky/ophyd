@@ -5,7 +5,6 @@ from ophyd import EpicsMCA, EpicsDXP
 from ophyd.mca import add_rois
 from ophyd.utils import enum, ReadOnlyError
 from .conftest import using_fake_epics_pv
-from . import main
 
 MCAMode = enum(PHA='PHA', MCS='MCS', List='List')
 DxpPresetMode = enum(No_preset='No preset',
@@ -121,7 +120,3 @@ def test_dxp_signals():
         dxp.input_count_rate.put(2)
     with pytest.raises(ReadOnlyError):
         dxp.output_count_rate.put(2)
-
-
-is_main = (__name__ == '__main__')
-main(is_main)

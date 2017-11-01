@@ -1,14 +1,14 @@
 import sys
 import time
-import copy
 import random
 import logging
+import pytest
 import threading
 from functools import wraps
 import weakref
 
-import epics
 import numpy as np
+import ophyd.control_layer as cl
 
 logger = logging.getLogger(__name__)
 
@@ -242,12 +242,16 @@ def _cleanup_fake_pvs():
 def using_fake_epics_pv(fcn):
     @wraps(fcn)
     def wrapped(*args, **kwargs):
-        pv_backup = epics.PV
-        epics.PV = FakeEpicsPV
+        get_pv_backup = cl.get_pv
+
+        def _fake_get_pv(pvname, form='time', connect=False,
+                         context=False, timout=5.0, **kw):
+            return FakeEpicsPV(pvname, form=form, **kw)
+        cl.get_pv = _fake_get_pv
         try:
             return fcn(*args, **kwargs)
         finally:
-            epics.PV = pv_backup
+            cl.get_pv = get_pv_backup
             _cleanup_fake_pvs()
 
     return wrapped
@@ -256,12 +260,22 @@ def using_fake_epics_pv(fcn):
 def using_fake_epics_waveform(fcn):
     @wraps(fcn)
     def wrapped(*args, **kwargs):
-        pv_backup = epics.PV
-        epics.PV = FakeEpicsWaveform
+        get_pv_backup = cl.get_pv
+
+        def _fake_get_pv(pvname, form='time', connect=False,
+                         context=False, timout=5.0, **kw):
+            return FakeEpicsWaveform(pvname, form=form, **kw)
+
+        cl.get_pv = _fake_get_pv
         try:
             return fcn(*args, **kwargs)
         finally:
-            epics.PV = pv_backup
+            cl.get_pv = get_pv_backup
             _cleanup_fake_pvs()
 
     return wrapped
+
+@pytest.fixture()
+def hw():
+    from ophyd.sim import hw
+    return hw()

@@ -13,8 +13,6 @@ import logging
 from collections import OrderedDict
 import numpy as np
 
-import epics
-
 from ophyd import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
@@ -898,12 +896,14 @@ def get_areadetector_plugin_class(prefix, timeout=2.0):
     ValueError
         If the plugin type can't be determined
     '''
+    from .. import control_layer as cl
+
     cls = plugin_from_pvname(prefix)
     if cls is not None:
         return cls
 
     type_rbv = prefix + 'PluginType_RBV'
-    type_ = epics.caget(type_rbv, timeout=timeout)
+    type_ = cl.caget(type_rbv, timeout=timeout)
 
     if type_ is None:
         raise ValueError('Unable to determine plugin type (caget timed out)')

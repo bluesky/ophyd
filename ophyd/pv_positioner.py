@@ -2,7 +2,7 @@
 
 import logging
 
-from epics.pv import fmt_time
+from .utils.epics_pvs import fmt_time
 
 from .device import Device
 from .positioner import PositionerBase
