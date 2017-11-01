@@ -166,6 +166,8 @@ class Component:
         return ('{self.__class__.__name__}({self.cls.__name__}{arg_str})'
                 ''.format(self=self, arg_str=arg_str))
 
+    __str__ = __repr__
+
     def __get__(self, instance, owner):
         if instance is None:
             return self
@@ -739,7 +741,11 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                       "removed in a future release of ophyd.")
         return self.component_names
 
-    def __str__(self):
+    def summary(self):
+        print(self._summary())
+
+    def _summary(self):
+        "Return a string summarizing the structure of the Device."
         desc = self.describe()
         config_desc = self.describe_configuration()
         read_attrs = self.read_attrs
