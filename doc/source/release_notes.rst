@@ -1,6 +1,23 @@
 Release Notes
 -------------
 
+v1.0.0
+======
+
+This tag marks an important release for ophyd, signifying the conclusion of
+the early development phase. From this point on, we intend that this project
+will be co-developed between multiple facilities. The 1.x series is intended to
+be a long-term-support release.
+
+API Changes
+***********
+
+* To access the human-friendly summary of a Device's layout, use
+  ``device.summary()`` instead of ``print(device)``. The verbosity of the
+  summary was overwhelming when it appeared in error messages and logs, so it
+  was moved from ``Device.__str__`` this new method. Now ``Device.__str__``
+  gives the same result as ``Device.__repr__``, as it did before v0.7.0.
+
 0.8.0
 =====
 
