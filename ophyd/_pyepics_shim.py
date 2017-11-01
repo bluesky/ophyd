@@ -122,7 +122,7 @@ class MonitorDispatcher(epics.ca.CAThread):
         return epics.ca._onMonitorEvent(args)
 
 
-def setup(logger=None):
+def setup(logger):
     '''Setup ophyd for use
 
     Must be called once per session using ophyd

@@ -1,4 +1,4 @@
 import logging
 
-from ophyd.utils.startup import setup as setup_ophyd
+from ophyd import setup_ophyd
 setup_ophyd()
