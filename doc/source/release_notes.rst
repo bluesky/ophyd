@@ -4,6 +4,16 @@ Release Notes
 0.8.0
 =====
 
+API Changes
+***********
+
+* Make the ``name`` keyword to Device a required, keyword-only argument. This
+  ensures that the names that appear in the read dictionary are always
+  human-readable.
+* When a ``PseudoPositioner`` is set with only a subset of its parameters
+  specified, fill in the unspecified values with the current *target* position,
+  not the current *actual* position.
+
 Deprecations
 ************
 
@@ -11,6 +21,45 @@ Deprecations
   ``component_names`` for clarity because it may include a mixture of Signals
   and Devices -- any Components. The old name now issues a warning when
   accessed, and it may be removed in a future release of ophyd.
+* Status objects' new ``add_callback`` method and ``callbacks`` attribute
+  should be preferred over the ``finished_cb`` property, which only supports
+  one callback and now warns if set or accessed.
+
+Enhancements
+************
+
+* Add ``ophyd.sim`` module with various synthetic 'hardware' for testing and
+  teaching.
+* The 'children' of a ``PseudoPositioner`` can now be simultaneously used as
+  independent axes in a bluesky plan.
+* Add ``SubscriptionStatus``, which reports done when a Python function of the
+  subscription returns ``True``.
+* It is possible to register more than one callback function to be called on
+  completion of a Status object (i.e. when a Device is finished triggering or
+  moving).
+* Status objects support ``__and__``, such that ``status1 & status2`` return a
+  new status object that completes when both ``status1`` and ``status2`` are
+  complete.
+* Do not require a ``prefix`` argument to ``Device``. It is not applicable in
+  cases of synthetic 'hardware'.
+* Add ``MotorBundle`` for bundling ``EpicsMotors`` and automatically composing
+  a useful combined hint.
+* Add hints to ``PseudoSingle``, ``PseudoPositioner``, and ``SoftPositioner``.
+* Make it possible to plug in a different "control layer" --- i.e. an interface
+  to EPICS other than pyepics. This is experimental and may be changed in the
+  future in a way that is not backward-compatible.
+
+Bug Fixes
+*********
+
+* Avoid a race condition when timing out during a settle time.
+
+Internal Changes
+****************
+
+* Reduce set_and_wait log messages to DEBUG level.
+* Refactor OphydObj callbacks to make the logic easier to follow. This change
+  is fully backward-compatible.
 
 0.7.0
 =====
