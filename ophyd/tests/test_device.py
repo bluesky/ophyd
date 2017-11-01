@@ -308,3 +308,14 @@ def test_signal_names():
         signal_names = d.signal_names
 
     assert signal_names is d.component_names
+
+
+def test_summary():
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix')
+
+    d = MyDevice('', name='test')
+    # smoke tests
+    d.summary()
+    d.__str__()
+    d.__repr__()
