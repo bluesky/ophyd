@@ -42,6 +42,286 @@ class NullStatus(StatusBase):
         self._finished(success=True)
 
 
+class Reader:
+    """
+
+    Parameters
+    ----------
+    name : string
+    fields : dict
+        Mapping field names to functions that return simulated data. The
+        function will be passed no arguments.  These will be returned by `read`
+    conf : dict, optional
+        Dict of initial values to be returned by ``read_configuration()``.
+    monitor_intervals : list, optional
+        iterable of numbers, specifying the spacing in time of updates from the
+        device (this applies only if the ``subscribe`` method is used)
+    loop : asyncio.EventLoop, optional
+        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
+        unspecified
+    exposure_time : float, optional
+       Simulated exposure time is seconds.  Defaults to 0
+
+    Examples
+    --------
+    A detector that always returns 5.
+    >>> det = Reader('det', {'intensity': lambda: 5})
+
+    A detector that is coupled to a motor, such that measured insensity
+    varies with motor position.
+    >>> motor = Mover('motor', {'motor': lambda x: x}, {'x': 0})
+    >>> det = Reader('det',
+    ...                {'intensity': lambda: 2 * motor.read()['value']})
+    """
+
+    def __init__(self, name, fields, *,
+                 conf=None, monitor_intervals=None,
+                 loop=None, exposure_time=0):
+        self.exposure_time = exposure_time
+        self.name = name
+        self.parent = None
+        self._fields = fields
+
+        if conf is None:
+            conf = {}
+        self._conf_state = conf
+
+        # All this is used only by monitoring (subscribe/unsubscribe).
+        self._futures = {}
+        if monitor_intervals is None:
+            monitor_intervals = []
+        self._monitor_intervals = monitor_intervals
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.loop = loop
+
+    @property
+    def conf_attrs(self):
+        return list(self._conf_state)
+
+    @property
+    def read_attrs(self):
+        return list(self._fields)
+
+    def __str__(self):
+        # Show just name for readability, as in the cycler example in the docs.
+        return ('{0}(name={1.name})'
+                ''.format(self.__class__.__name__, self)
+                )
+
+    __repr__ = __str__
+
+    def __setstate__(self, val):
+        name, fields, _conf_state, monitor_intervals = val
+        self.name = name
+        self._conf_state = _conf_state
+        self._futures = {}
+        self._monitor_intervals = monitor_intervals
+        self.loop = asyncio.get_event_loop()
+
+    def __getstate__(self):
+        return (self.name, self._fields, self._conf_state,
+                self._monitor_intervals)
+
+    def trigger(self):
+        delay_time = self.exposure_time
+        if delay_time:
+            if self.loop.is_running():
+                st = SimpleStatus(device=self)
+                self.loop.call_later(delay_time, st._finished)
+                return st
+            else:
+                ttime.sleep(delay_time)
+        return NullStatus()
+
+    def read(self):
+        """
+        Simulate readings by calling functions.
+
+        The readings are collated with timestamps.
+        """
+        return {field: {'value': func(), 'timestamp': ttime.time()}
+                for field, func in self._fields.items()}
+
+    def describe(self):
+        ret = {}
+        d = {field: {'value': func(), 'timestamp': ttime.time()}
+             for field, func in self._fields.items()
+             if field in self.read_attrs}
+        for k, v in d.items():
+            v = v['value']
+            try:
+                shape = v.shape
+            except AttributeError:
+                shape = []
+            dtype = 'array' if len(shape) else 'number'
+            ret[k] = {'source': 'simulated using bluesky.examples',
+                      'dtype': dtype,
+                      'shape': shape,
+                      'precision': 2}
+        return ret
+
+    def read_configuration(self):
+        """
+        Like `read`, but providing slow-changing configuration readings.
+        """
+        return {k: {'value': v, 'timestamp': ttime.time()}
+                for k, v in self._conf_state.items()}
+
+    def describe_configuration(self):
+        return {field: {'source': 'simulated using bluesky.examples',
+                        'dtype': 'number',
+                        'shape': [],
+                        'precision': 2}
+                for field in self.conf_attrs}
+
+    def configure(self, d):
+        if not all(k in self.conf_attrs for k in d):
+            raise ValueError
+        old_conf = self.read_configuration()
+        self._conf_state.update(d)
+        new_conf = self.read_configuration()
+        return old_conf, new_conf
+
+    def subscribe(self, function):
+        "Simulate monitoring updates from a device."
+
+        def sim_monitor():
+            for interval in self._monitor_intervals:
+                ttime.sleep(interval)
+                function()
+
+        self._futures[function] = self.loop.run_in_executor(None, sim_monitor)
+
+    def clear_sub(self, function):
+        self._futures.pop(function).cancel()
+
+
+class Mover(Reader):
+    """
+
+    Parameters
+    ----------
+    name : string
+    fields : dict
+        Mapping field names to functions that return simulated data. The
+        function will be passed no arguments.
+    initial_set : dict
+        passed to ``set`` as ``set(**initial_set)`` to initialize readings
+    fake_sleep : float, optional
+        simulate moving time
+    read_attrs : list, optional
+        List of field names to include in ``read()`` . By default, all fields.
+    conf_attrs : list, optional
+        List of field names to include in ``read_configuration()``. By default,
+        no fields. Any field nmaes specified here are then not included in
+        ``read_attrs`` by default.
+    monitor_intervals : list, optional
+        iterable of numbers, specifying the spacing in time of updates from the
+        device (this applies only if the ``subscribe`` method is used)
+    loop : asyncio.EventLoop, optional
+        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
+        unspecified
+
+    Examples
+    --------
+    A motor with one field.
+    >>> motor = Mover('motor', {'motor': lambda x: x}, {'x': 0})
+
+    A motor that simply goes where it is set.
+    >>> motor = Mover('motor',
+    ...               OrderedDict([('motor', lambda x: x),
+    ...                            ('motor_setpoint', lambda x: x)]),
+    ...               {'x': 0})
+
+    A motor that adds jitter.
+    >>> import numpy as np
+    >>> motor = Mover('motor',
+    ...               OrderedDict([('motor', lambda x: x + np.random.randn()),
+    ...                            ('motor_setpoint', lambda x: x)]),
+    ...               {'x': 0})
+    """
+
+    def __init__(self, name, fields, initial_set, *,
+                 conf=None, fake_sleep=0, monitor_intervals=None,
+                 loop=None):
+        super().__init__(name, fields,
+                         conf=conf,
+                         monitor_intervals=monitor_intervals,
+                         loop=loop)
+        # Do initial set without any fake sleep.
+        self._fake_sleep = 0
+        self.set(**initial_set)
+        self._fake_sleep = fake_sleep
+
+    def __setstate__(self, val):
+        name, fields, _conf_state, monitor_intervals, state, fk_slp = val
+        self.name = name
+        self._conf_state = _conf_state
+        self._futures = {}
+        self._monitor_intervals = monitor_intervals
+        self._state = state
+        self._fake_sleep = fk_slp
+        self.loop = asyncio.get_event_loop()
+
+    def __getstate__(self):
+        return (self.name, self._fields, self._conf_state,
+                self._monitor_intervals, self._state, self._fake_sleep)
+
+    def set(self, *args, **kwargs):
+        """
+        Pass the arguments to the functions to create the next reading.
+        """
+        new_state = {field: {'value': func(*args, **kwargs),
+                               'timestamp': ttime.time()}
+                       for field, func in self._fields.items()}
+
+        if self._fake_sleep:
+            if self.loop.is_running():
+                st = SimpleStatus(device=self)
+                def cb():
+                    self._state = new_state
+                    st._finished()
+                self.loop.call_later(self._fake_sleep, cb)
+                return st
+            else:
+                ttime.sleep(self._fake_sleep)
+
+        self._state = new_state
+        return NullStatus()
+
+    def read(self):
+        return {k: dict(v) for k, v in
+                self._state.items()}
+
+    def describe(self):
+        ret = {}
+        for k, v in self._state.items():
+            v = v['value']
+            try:
+                shape = v.shape
+            except AttributeError:
+                shape = []
+            dtype = 'array' if len(shape) else 'number'
+            ret[k] = {'source': 'simulated using bluesky.examples',
+                      'dtype': dtype,
+                      'shape': shape,
+                      'precision': 2}
+        return ret
+
+    @property
+    def hints(self):
+        return {'fields': [list(self._fields)[0]]}
+
+    @property
+    def position(self):
+        "A heuristic that picks a single scalar out of the `read` dict."
+        return self.read()[list(self._fields)[0]]['value']
+
+    def stop(self, *, success=False):
+        pass
+
+
 class SynSignal(Signal):
     """
     A synthetic Signal that evaluates a Python function when triggered.
@@ -725,6 +1005,7 @@ class SPseudo3x3(PseudoPositioner):
                                     pseudo2=-real_pos.real2,
                                     pseudo3=-real_pos.real3)
 
+
 class SPseudo1x3(PseudoPositioner):
     pseudo1 = C(PseudoSingle, limits=(-10, 10))
     real1 = C(SoftPositioner, init_pos=0)
@@ -839,5 +1120,5 @@ def hw():
 
 
 # Dump instances of the example hardware generated by hw() into the global
-# namespcae for convenience and back-compat.
+# namespace for convenience and back-compat.
 globals().update(hw().__dict__)
