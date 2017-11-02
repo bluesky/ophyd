@@ -75,6 +75,8 @@ class SynSignal(Signal):
         if func is None:
             # When triggered, just put the current value.
             func = self.get
+            # Initialize readback with a None value
+            self._readback = None
         if loop is None:
             loop = asyncio.get_event_loop()
         self._func = func
