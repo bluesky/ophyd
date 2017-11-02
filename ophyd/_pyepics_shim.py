@@ -127,7 +127,13 @@ def setup(logger):
 
     Must be called once per session using ophyd
     '''
-    import epics
+    try:
+        epics.ca.find_libca()
+        # if we can not find libca, then we clearly are not
+        # going to be using CA threads so no need to install
+        # the trampoline
+    except epics.ca.ChannelAccessException:
+        return
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
