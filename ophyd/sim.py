@@ -337,7 +337,7 @@ class SynGauss(SynSignal):
 
     Example
     -------
-    motor = Mover('motor', {'motor': lambda x: x}, {'x': 0})
+    motor = SynAxis(name='motor')
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
 
@@ -367,11 +367,11 @@ class Syn2DGauss(SynSignal):
     ----------
     name : str
         The name of the detector
-    motor0 : `Mover`
+    motor0 : SynAxis
         The 'x' coordinate of the 2-D gaussian blob
     motor_field0 : str
         The name field of the motor. Should be the key in motor0.describe()
-    motor1 : `Mover`
+    motor1 : SynAxis
         The 'y' coordinate of the 2-D gaussian blob
     motor_field1 : str
         The name field of the motor. Should be the key in motor1.describe()
@@ -394,7 +394,7 @@ class Syn2DGauss(SynSignal):
 
     Example
     -------
-    motor = Mover('motor', ['motor'])
+    motor = SynAxis(name='motor')
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
 
