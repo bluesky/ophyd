@@ -1,11 +1,9 @@
-import time
-import warnings
-import logging
 import atexit
 import ctypes
-import threading
-import queue
 import epics
+import queue
+import threading
+import warnings
 
 from epics import get_pv as _get_pv, caget, caget, caput
 
@@ -109,12 +107,15 @@ class MonitorDispatcher(epics.ca.CAThread):
         else:
             fcn = epics.ca._onMonitorEvent
 
-        epics.ca._CB_EVENT = ctypes.CFUNCTYPE(None, epics.dbr.event_handler_args)(fcn)
+        epics.ca._CB_EVENT = (
+            ctypes.CFUNCTYPE(None, epics.dbr.event_handler_args)(fcn))
 
     def _monitor_event(self, args):
-        if self._all_contexts or self.main_context == epics.ca.current_context():
+        if (self._all_contexts or
+                self.main_context == epics.ca.current_context()):
             if callable(args.usr):
-                if not hasattr(args.usr, '_disp_tag') or args.usr._disp_tag is not self:
+                if (not hasattr(args.usr, '_disp_tag') or
+                        args.usr._disp_tag is not self):
                     args.usr = lambda orig_cb=args.usr, **kwargs: \
                         self.queue.put((orig_cb, [], kwargs))
                     args.usr._disp_tag = self
