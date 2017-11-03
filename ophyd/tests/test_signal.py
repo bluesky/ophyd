@@ -50,6 +50,20 @@ def test_fakepv():
     assert info['value_kw']['value'] == pv.value
 
 
+@using_fake_epics_pv
+def test_fakepv_signal():
+    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
+                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    st = sig.set(1)
+
+    for j in range(10):
+        if st.done:
+            break
+        time.sleep(.1)
+
+    assert st.done
+
+
 def test_signal_base():
     start_t = time.time()
 

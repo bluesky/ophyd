@@ -51,7 +51,7 @@ class FakeEpicsPV(object):
         # callbacks mechanism copied from pyepics
         # ... but tweaked with a weakvaluedictionary so PV objects get
         # destructed
-        self.callbacks = weakref.WeakValueDictionary()
+        self.callbacks = dict()
 
         if callback:
             self.add_callback(callback)
@@ -125,7 +125,11 @@ class FakeEpicsPV(object):
             self.run_callback(index)
 
     def run_callback(self, index):
-        fcn = self.callbacks[index]
+        fcn = self.callbacks[index]()
+        if fcn is None:
+            self.remove_callback(index)
+            return
+
         kwd = dict(pvname=self._pvname,
                    count=1,
                    nelm=1,
@@ -150,7 +154,10 @@ class FakeEpicsPV(object):
                 index = 1
                 if len(self.callbacks) > 0:
                     index = 1 + max(self.callbacks.keys())
-            self.callbacks[index] = callback
+            try:
+                self.callbacks[index] = weakref.WeakMethod(callback)
+            except TypeError:
+                self.callbacks[index] = weakref.ref(callback)
 
         if run_now:
             if self.connected:
@@ -158,8 +165,7 @@ class FakeEpicsPV(object):
         return index
 
     def remove_callback(self, index=None):
-        if index in self.callbacks:
-            self.callbacks.pop(index)
+        self.callbacks.pop(index, None)
 
     def clear_callbacks(self):
         self.callbacks.clear()
