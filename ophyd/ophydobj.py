@@ -281,6 +281,10 @@ class OphydObject:
         del self._unwrapped_callbacks[ev_type][cid]
         del self._callbacks[ev_type][cid]
 
+    def unsubscribe_all(self):
+        for ev_type in self._callbacks:
+            self._reset_sub(ev_type)
+
     def check_value(self, value, **kwargs):
         '''Check if the value is valid for this object
 
