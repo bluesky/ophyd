@@ -6,10 +6,8 @@ import numpy as np
 import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
-from ophyd.utils import errors
 from ophyd.utils import (make_dir_tree, makedirs)
 
-from . import config
 
 logger = logging.getLogger(__name__)
 

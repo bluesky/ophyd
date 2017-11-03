@@ -1,15 +1,8 @@
-import sys
 import logging
-import unittest
-import threading
-import random
 import time
 import copy
 import pytest
-from functools import wraps
-import weakref
-
-import numpy as np
+import ophyd.control_layer as cl
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
@@ -18,7 +11,6 @@ from ophyd.status import wait
 from .conftest import (FakeEpicsWaveform, using_fake_epics_pv,
                        using_fake_epics_waveform)
 logger = logging.getLogger(__name__)
-import ophyd.control_layer as cl
 
 
 @using_fake_epics_pv
