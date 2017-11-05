@@ -1,15 +1,8 @@
-import sys
 import logging
-import unittest
-import threading
-import random
 import time
 import copy
 import pytest
-from functools import wraps
-import weakref
-
-import numpy as np
+import ophyd.control_layer as cl
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
@@ -18,7 +11,6 @@ from ophyd.status import wait
 from .conftest import (FakeEpicsWaveform, using_fake_epics_pv,
                        using_fake_epics_waveform)
 logger = logging.getLogger(__name__)
-import ophyd.control_layer as cl
 
 
 @using_fake_epics_pv
@@ -48,6 +40,20 @@ def test_fakepv():
     assert info['conn']
     assert info['value']
     assert info['value_kw']['value'] == pv.value
+
+
+@using_fake_epics_pv
+def test_fakepv_signal():
+    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
+                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    st = sig.set(1)
+
+    for j in range(10):
+        if st.done:
+            break
+        time.sleep(.1)
+
+    assert st.done
 
 
 def test_signal_base():

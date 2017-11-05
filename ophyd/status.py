@@ -163,7 +163,7 @@ class StatusBase:
         if len(self.callbacks) == 1:
             warn("The property `finished_cb` is deprecated, and must raise "
                  "an error if a status object has multiple callbacks. Use "
-                 "the `callbacks` property instead.")
+                 "the `callbacks` property instead.", stacklevel=2)
             cb, = self.callbacks
             assert cb is not None
             return cb
@@ -186,7 +186,7 @@ class StatusBase:
         if not self.callbacks:
             warn("The setter `finished_cb` is deprecated, and must raise "
                  "an error if a status object already has one callback. Use "
-                 "the `add_callback` method instead.")
+                 "the `add_callback` method instead.", stacklevel=2)
             self.add_callback(cb)
         else:
             raise UseNewProperty("The deprecated `finished_cb` setter cannot "

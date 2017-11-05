@@ -1,8 +1,6 @@
 import asyncio
-import copy
 import time as ttime
 from collections import deque, OrderedDict
-from threading import RLock
 import numpy as np
 import random
 import threading
@@ -697,6 +695,7 @@ class InvariantSignal(SynSignal):
         for k in res:
             res[k]['timestamp'] = 0
         return res
+
     def __repr__(self):
         return "<INVARIANT REPR>"
 
@@ -716,16 +715,17 @@ class SPseudo3x3(PseudoPositioner):
         pseudo_pos = self.PseudoPosition(*pseudo_pos)
         # logger.debug('forward %s', pseudo_pos)
         return self.RealPosition(real1=-pseudo_pos.pseudo1,
-                                    real2=-pseudo_pos.pseudo2,
-                                    real3=-pseudo_pos.pseudo3)
+                                 real2=-pseudo_pos.pseudo2,
+                                 real3=-pseudo_pos.pseudo3)
 
     @real_position_argument
     def inverse(self, real_pos):
         real_pos = self.RealPosition(*real_pos)
         # logger.debug('inverse %s', real_pos)
         return self.PseudoPosition(pseudo1=-real_pos.real1,
-                                    pseudo2=-real_pos.real2,
-                                    pseudo3=-real_pos.real3)
+                                   pseudo2=-real_pos.real2,
+                                   pseudo3=-real_pos.real3)
+
 
 class SPseudo1x3(PseudoPositioner):
     pseudo1 = C(PseudoSingle, limits=(-10, 10))
@@ -738,8 +738,8 @@ class SPseudo1x3(PseudoPositioner):
         pseudo_pos = self.PseudoPosition(*pseudo_pos)
         # logger.debug('forward %s', pseudo_pos)
         return self.RealPosition(real1=-pseudo_pos.pseudo1,
-                                    real2=-pseudo_pos.pseudo1,
-                                    real3=-pseudo_pos.pseudo1)
+                                 real2=-pseudo_pos.pseudo1,
+                                 real3=-pseudo_pos.pseudo1)
 
     @real_position_argument
     def inverse(self, real_pos):
@@ -761,20 +761,20 @@ def hw():
     motor2 = SynAxis(name='motor2')
     motor3 = SynAxis(name='motor3')
     jittery_motor1 = SynAxis(name='jittery_motor1',
-                            readback_func=lambda x: x + np.random.rand())
+                             readback_func=lambda x: x + np.random.rand())
     jittery_motor2 = SynAxis(name='jittery_motor2',
-                            readback_func=lambda x: x + np.random.rand())
+                             readback_func=lambda x: x + np.random.rand())
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
-                        noise='uniform', sigma=1, noise_multiplier=0.1)
+                         noise='uniform', sigma=1, noise_multiplier=0.1)
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     identical_det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
     det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
     det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
     det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
-                    center=(0, 0), Imax=1)
+                      center=(0, 0), Imax=1)
     det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
-                    'jittery_motor2', center=(0, 0), Imax=1)
+                      'jittery_motor2', center=(0, 0), Imax=1)
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
