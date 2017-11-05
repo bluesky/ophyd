@@ -560,7 +560,7 @@ class BlueskyInterface:
                 stage_sigs[k] = v
 
         # Read current values, to be restored by unstage()
-        original_vals = {sig: sig.get() for sig, _ in stage_sigs.items()}
+        original_vals = {sig: sig.get() for sig in stage_sigs}
 
         # We will add signals and values from original_vals to
         # self._original_vals one at a time so that
