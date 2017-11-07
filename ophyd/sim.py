@@ -329,11 +329,13 @@ class SynGauss(SynSignal):
         max intensity of peak
     sigma : number, optional
         Default is 1.
-    noise : {'poisson', 'uniform', None}
+    noise : {'poisson', 'uniform', None}, optional
         Add noise to the gaussian peak.
-    noise_multiplier : float
+    noise_multiplier : float, optional
         Only relevant for 'uniform' noise. Multiply the random amount of
         noise by 'noise_multiplier'
+    random_state : numpy random state object, optional
+        np.random.RandomState(0), to generate random number with given seed
 
     Example
     -------
@@ -342,18 +344,19 @@ class SynGauss(SynSignal):
     """
 
     def __init__(self, name, motor, motor_field, center, Imax, sigma=1,
-                 noise=None, noise_multiplier=1, **kwargs):
+                 noise=None, noise_multiplier=1, random_state=None, **kwargs):
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
         self._motor = motor
-
+        if random_state is None:
+            random_state = np.random
         def func():
             m = motor.read()[motor_field]['value']
             v = Imax * np.exp(-(m - center) ** 2 / (2 * sigma ** 2))
             if noise == 'poisson':
-                v = int(np.random.poisson(np.round(v), 1))
+                v = int(random_state.poisson(np.round(v), 1))
             elif noise == 'uniform':
-                v += np.random.uniform(-1, 1) * noise_multiplier
+                v += random_state.uniform(-1, 1) * noise_multiplier
             return v
 
         super().__init__(func=func, name=name, **kwargs)
@@ -384,13 +387,15 @@ class Syn2DGauss(SynSignal):
     sigma : float, optional
         Standard deviation for gaussian blob
         Defaults to 1
-    noise : {'poisson', 'uniform', None}
+    noise : {'poisson', 'uniform', None}, optional
         Add noise to the gaussian peak..
         Defaults to None
     noise_multiplier : float, optional
         Only relevant for 'uniform' noise. Multiply the random amount of
         noise by 'noise_multiplier'
         Defaults to 1
+    random_state : numpy random state object, optional
+        np.random.RandomState(0), to generate random number with given seed
 
     Example
     -------
@@ -400,22 +405,23 @@ class Syn2DGauss(SynSignal):
 
     def __init__(self, name, motor0, motor_field0, motor1, motor_field1,
                  center, Imax, sigma=1, noise=None, noise_multiplier=1,
-                 **kwargs):
+                 random_state=None, **kwargs):
 
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
         self._motor = motor0
         self._motor1 = motor1
-
+        if random_state is None:
+            random_state = np.random
         def func():
             x = motor0.read()[motor_field0]['value']
             y = motor1.read()[motor_field1]['value']
             m = np.array([x, y])
             v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma ** 2))
             if noise == 'poisson':
-                v = int(np.random.poisson(np.round(v), 1))
+                v = int(random_state.poisson(np.round(v), 1))
             elif noise == 'uniform':
-                v += np.random.uniform(-1, 1) * noise_multiplier
+                v += random_state.uniform(-1, 1) * noise_multiplier
             return v
 
         super().__init__(name=name, func=func, **kwargs)
