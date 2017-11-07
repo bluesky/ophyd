@@ -17,6 +17,14 @@ API Changes
   summary was overwhelming when it appeared in error messages and logs, so it
   was moved from ``Device.__str__`` this new method. Now ``Device.__str__``
   gives the same result as ``Device.__repr__``, as it did before v0.7.0.
+* Add (empty) hints to `~ophyd.sim.SynSignalWithRegistry`.
+
+Bug Fixes
+*********
+
+* Initiate :class:`~ophyd.sim.SynSignal` with a function that returns ``None``
+  if no ``func`` parameter is provided.
+* Make ophyd importable without pyepics and libca.
 
 0.8.0
 =====
