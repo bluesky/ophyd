@@ -6,7 +6,7 @@ def test_random_state_gauss1d():
     """With given random state, the output value should stay the same.
     Test performs on 1D gaussian.
     """
-    dlist=  []
+    dlist = []
     motor = SynAxis(name='motor')
     for i in range(2):
         s = np.random.RandomState(0)
@@ -17,6 +17,16 @@ def test_random_state_gauss1d():
         d = noisy_det.read()['noisy_det']['value']
         dlist.append(d)
     assert dlist[0] == dlist[1]
+
+    # Without random state, output will be different.
+    dlist.clear()
+    for i in range(2):
+        noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
+                             noise='uniform', sigma=1, noise_multiplier=0.1)
+        noisy_det.trigger()
+        d = noisy_det.read()['noisy_det']['value']
+        dlist.append(d)
+    assert dlist[0] != dlist[1]
 
 
 def test_random_state_gauss2d():
