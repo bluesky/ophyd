@@ -6,7 +6,7 @@ v1.0.0
 
 This tag marks an important release for ophyd, signifying the conclusion of
 the early development phase. From this point on, we intend that this project
-will be co-developed between multiple facilities. The 1.x series is intended to
+will be co-developed between multiple facilities. The 1.x series is planned to
 be a long-term-support release.
 
 API Changes
@@ -17,6 +17,14 @@ API Changes
   summary was overwhelming when it appeared in error messages and logs, so it
   was moved from ``Device.__str__`` this new method. Now ``Device.__str__``
   gives the same result as ``Device.__repr__``, as it did before v0.7.0.
+* Add (empty) hints to `~ophyd.sim.SynSignalWithRegistry`.
+
+Bug Fixes
+*********
+
+* Initiate :class:`~ophyd.sim.SynSignal` with a function that returns ``None``
+  if no ``func`` parameter is provided.
+* Make ophyd importable without pyepics and libca.
 
 0.8.0
 =====
