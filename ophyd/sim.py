@@ -595,6 +595,21 @@ class SynSignalWithRegistry(SynSignal):
         self._path_stem = None
         self._result = {}
 
+        self._hints = None
+
+    @property
+    def hints(self):
+        if self._hints is None:
+            # Since data is external, hint that it should not be printed or
+            # plotted. Relax this when LiveTable etc. get smarter about
+            # external data.
+            return {'fields': []}
+        return self._hints
+
+    @hints.setter
+    def hints(self, val):
+        self._hints = dict(val)
+
     def stage(self):
         self._file_stem = short_uid()
         self._path_stem = os.path.join(self.save_path, self._file_stem)
