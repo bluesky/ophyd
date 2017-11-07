@@ -14,7 +14,7 @@ core API.
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    Device
 
@@ -191,7 +191,7 @@ and it is the responsibility of :mod:`ophyd` to make it happen.
 There are three classes
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    Component
    FormattedComponent
@@ -286,7 +286,7 @@ guaranteed to be ordered).  Hence, this meta-class maybe simplified or
 eliminated in the future.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ComponentMeta
    ComponentMeta.__new__
@@ -299,7 +299,7 @@ Low level API
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    Device.connected

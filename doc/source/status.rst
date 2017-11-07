@@ -6,7 +6,7 @@ Status Objects
 The core API of the status objects is a property and a private method:
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    StatusBase
@@ -19,7 +19,7 @@ In addition we provide two specialized sub-classes that know more about the obje
 they are tied to.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
 

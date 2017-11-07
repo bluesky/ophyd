@@ -51,7 +51,7 @@ Read-able Interface
 The minimum set of methods an object must implement is
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~device.BlueskyInterface.trigger
    ~device.BlueskyInterface.read
@@ -60,7 +60,7 @@ The minimum set of methods an object must implement is
 along with three properties:
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~ophydobj.OphydObject.name
    ~ophydobj.OphydObject.parent
@@ -77,7 +77,7 @@ called.
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~device.BlueskyInterface.stage
    ~device.BlueskyInterface.unstage
@@ -87,7 +87,7 @@ during a scan, the run is suspended.  The semantics of these methods
 is coupled to :class:`~bluesky.run_engine.RunEngine`.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~device.BlueskyInterface.pause
    ~device.BlueskyInterface.resume
@@ -109,7 +109,7 @@ can all be treated the same.
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~positioner.PositionerBase.set
    ~positioner.PositionerBase.stop
@@ -127,7 +127,7 @@ not directly related to the measurement of interest, but maybe needed for
 understanding the measured data.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~device.Device.configure
    ~device.Device.read_configuration
@@ -147,7 +147,7 @@ what can reasonably done in via EPICS/Python and tend to be called 'fly scans'.
 The flyable interface provides four methods
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~flyers.FlyerInterface.kickoff
    ~flyers.FlyerInterface.complete
@@ -192,7 +192,7 @@ The base class of almost all objects in ``ophyd`` is :obj:`~ophydobj.OphydObject
 .. currentmodule:: ophyd.ophydobj
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
    :nosignatures:
 
    OphydObject
