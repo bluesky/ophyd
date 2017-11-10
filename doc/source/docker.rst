@@ -5,7 +5,7 @@ Docker setup
 
 
 You can use Docker to run test IOCs that are convenient for testing
-with out having to locally build and install epics IOCs.  To communicate
+with out having to locally build and install EPICS IOCs.  To communicate
 with the Docker you have set up some environmental variables ::
 
    #!/usr/bin/bash
@@ -37,7 +37,7 @@ block is saved in :file:`epics_export`) ::
 
    docker pull ${DOCKERIMAGE}
    docker pull ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
-   mkdir /tmp/data
+   mkdir -p /tmp/data
    # this is required because the images use a version of AD which
    # does not create missing directories.
    python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
@@ -46,3 +46,20 @@ block is saved in :file:`epics_export`) ::
 
 Running this multiple times will lead to multiple instances of the
 images running.
+
+For EPICS to know where to search for the IOCs you will need to do ::
+
+  source epics_exports
+
+
+to setup the EPICS environmental variables.  To check that it is setup
+correctly ::
+
+  $ env | grep -i epics
+  EPICS_CA_ADDR_LIST=172.17.255.255
+  EPICS_CA_AUTO_ADDR_LIST=no
+  EPICS_CA_MAX_ARRAY_BYTES=10000000
+
+To check if it is working, try ::
+
+  $ caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
