@@ -24,7 +24,7 @@ Ports
 =====
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~base.ADBase
    ~base.ADBase.get_plugin_by_asyn_port
@@ -52,7 +52,7 @@ detector.
 The base classes (which may be merged in the future)
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~filestore_mixins.FileStoreBase
    ~filestore_mixins.FileStorePluginBase
@@ -62,7 +62,7 @@ provide the basic methods required for integrating AreaDetector file plugins wit
 :mod:`filestore`
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~filestore_mixins.FileStoreBase.generate_datum
 
@@ -78,7 +78,7 @@ each file plugin and take care of inserting the correct meta-data into
 `FileStore` and configuring the file plugin.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~filestore_mixins.FileStoreTIFF
    ~filestore_mixins.FileStoreHDF5
@@ -92,7 +92,7 @@ saved image.
 To create a functioning class you must also mixin
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~filestore_mixins.FileStoreIterativeWrite
 
@@ -103,7 +103,7 @@ For convenience we provide
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~filestore_mixins.FileStoreHDF5IterativeWrite
    ~filestore_mixins.FileStoreTIFFIterativeWrite
@@ -123,7 +123,7 @@ Area Detector Trigger dispatching
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~detectors.DetectorBase
    ~detectors.DetectorBase.dispatch
@@ -133,7 +133,7 @@ The translation between the :meth:`~ophyd.device.BlueskyInterface.trigger` and t
 the underlying camera is mediated by the trigger mix-ins.
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~trigger_mixins.TriggerBase
    ~trigger_mixins.SingleTrigger
@@ -147,7 +147,7 @@ Plugins
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~plugins.PluginBase
    ~plugins.ColorConvPlugin
@@ -164,7 +164,7 @@ Plugins
 File Plugins
 ============
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~plugins.FilePlugin
    ~plugins.HDF5Plugin
@@ -201,7 +201,7 @@ To use these model-specific classes, swap out ``AreaDetector`` like so:
         pass
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~detectors.AreaDetector
    ~detectors.AdscDetector
@@ -234,7 +234,7 @@ Cams
 The vendor specific details are embedded in the cams
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~cam.CamBase
    ~cam.AdscDetectorCam
@@ -267,7 +267,7 @@ Helpers
 =======
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ~base.EpicsSignalWithRBV
    ~base.ADComponent

@@ -5,7 +5,7 @@ API
 
 
 .. autosummary::
-   :toctree: _as_gen
+   :toctree: generated
 
    ophyd
    ophyd.signal
