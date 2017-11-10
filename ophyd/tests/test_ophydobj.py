@@ -116,6 +116,27 @@ def test_unsubscribe():
     # check multi unsubscribe
     test_obj.unsubscribe(cid)
     test_obj.clear_sub(increment)
+    assert hit == 1
+
+
+def test_unsubscribe_all():
+    class TestObj(OphydObject):
+        SUB_TEST = 'value'
+
+    test_obj = TestObj(name='name', parent=None)
+
+    hit = 0
+
+    def increment(**kwargs):
+        nonlocal hit
+        hit += 1
+
+    test_obj.subscribe(increment, 'value')
+    test_obj._run_subs(sub_type='value')
+    assert hit == 1
+    test_obj.unsubscribe_all()
+    test_obj._run_subs(sub_type='value')
+    assert hit == 1
 
 
 def test_subscribe_warn(recwarn):
