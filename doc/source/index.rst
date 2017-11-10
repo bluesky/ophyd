@@ -63,6 +63,7 @@ other control systems.
 
    release_notes
    OEP/index
+   docker
 
 .. toctree::
    :maxdepth: 1
