@@ -374,6 +374,9 @@ class ComponentMeta(type):
                                 "name." % attr)
 
         clsobj._sig_attrs = OrderedDict()
+        # this is so that the _sig_attrs class attribute includes the
+        # sigattrs from all of it's class-inheritance-parents so we do
+        # not have to do this look up everytime we look at it.
         for base in reversed(bases):
             if not hasattr(base, '_sig_attrs'):
                 continue
@@ -399,7 +402,8 @@ class ComponentMeta(type):
         clsobj.component_names = list(clsobj._sig_attrs.keys())
 
         # The namedtuple associated with the device
-        clsobj._device_tuple = namedtuple(name + 'Tuple', clsobj.component_names,
+        clsobj._device_tuple = namedtuple(name + 'Tuple',
+                                          clsobj.component_names,
                                           rename=True)
 
         # Finally, create all the component docstrings
@@ -410,7 +414,7 @@ class ComponentMeta(type):
         # This list is used by stage/unstage. Only Devices need to be staged.
         clsobj._sub_devices = []
         for attr, cpt in clsobj._sig_attrs.items():
-            if (isinstance(cpt, Component) and 
+            if (isinstance(cpt, Component) and
                     (not isinstance(cpt.cls, type) or  # not a class
                      not issubclass(cpt.cls, Device))):  # not a Device
                 continue
@@ -570,7 +574,8 @@ class BlueskyInterface:
         devices_staged = []
         try:
             for sig, val in stage_sigs.items():
-                logger.debug("Setting %s to %r (original value: %r)", self.name,
+                logger.debug("Setting %s to %r (original value: %r)",
+                             self.name,
                              val, original_vals[sig])
                 set_and_wait(sig, val)
                 # It worked -- now add it to this list of sigs to unstage.
@@ -625,7 +630,8 @@ class BlueskyInterface:
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
-            logger.debug("Setting %s back to its original value: %r)", self.name,
+            logger.debug("Setting %s back to its original value: %r)",
+                         self.name,
                          val)
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
