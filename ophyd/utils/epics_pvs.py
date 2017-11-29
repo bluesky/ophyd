@@ -225,14 +225,15 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     ------
     TimeoutError if timeout is exceeded
     """
+    signal.put(val)
+    expiration_time = ttime.time() + timeout if timeout is not None else None
+    current_value = signal.get()
+
     if atol is None and hasattr(signal, 'tolerance'):
         atol = signal.tolerance
     if rtol is None and hasattr(signal, 'rtolerance'):
         rtol = signal.rtolerance
 
-    signal.put(val)
-    expiration_time = ttime.time() + timeout if timeout is not None else None
-    current_value = signal.get()
     try:
         es = signal.enum_strs
     except AttributeError:
