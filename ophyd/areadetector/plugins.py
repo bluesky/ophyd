@@ -702,9 +702,9 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
     num_capture = C(SignalWithRBV, 'NumCapture')
     num_captured = C(EpicsSignalRO, 'NumCaptured_RBV')
     read_file = C(SignalWithRBV, 'ReadFile')
-    write_file = C(SignalWithRBV, 'WriteFile')
+    write_file = C(SignalWithRBV, 'WriteFile', string=True)
     write_message = C(EpicsSignal, 'WriteMessage', string=True)
-    write_status = C(EpicsSignal, 'WriteStatus')
+    write_status = C(EpicsSignal, 'WriteStatus', string=True)
 
 
 class NetCDFPlugin(FilePlugin):

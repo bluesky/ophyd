@@ -78,7 +78,7 @@ class CamBase(ADBase):
     frame_type = C(SignalWithRBV, 'FrameType')
     gain = C(SignalWithRBV, 'Gain')
 
-    image_mode = C(SignalWithRBV, 'ImageMode')
+    image_mode = C(SignalWithRBV, 'ImageMode', string=True)
     manufacturer = C(EpicsSignalRO, 'Manufacturer_RBV')
 
     max_size = DDC(ad_group(EpicsSignalRO,
