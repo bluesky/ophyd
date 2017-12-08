@@ -92,10 +92,8 @@ class ADBase(Device):
     _default_read_attrs = ()
     _default_configuration_attrs = ()
 
-    # unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
     configuration_names = C(ArrayAttributeSignal,
                             attr='_configuration_names')
-
 
     def find_signal(self, text, use_re=False, case_sensitive=False,
                     match_fcn=None, f=sys.stdout):
@@ -259,6 +257,8 @@ class ADBase(Device):
 
         '''
         g = nx.Graph(g)
+        # make this aware of _enable_state, only check things
+        # that will be enabled
         if port_map and nx.number_connected_components(g) != 1:
             missing_plugins = self.missing_plugins()
             raise RuntimeError('The asyn ports {!r} are used by plugins '

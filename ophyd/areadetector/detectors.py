@@ -74,16 +74,7 @@ class DetectorBase(ADBase):
                     external='FILESTORE:')
 
     def stage(self, *args, **kwargs):
-        ret = super().stage(*args, **kwargs)
-        g, port_map = self.get_asyn_digraph()
-
-        try:
-            self._validate_asyn_ports(g, port_map)
-        except RuntimeError as err:
-            self.unstage(*args, **kwargs)
-            raise err
-
-        # get read to drain the queues
+        # get ready to drain the queues
 
         # disable all of the and cache current enabled status
 
@@ -92,6 +83,24 @@ class DetectorBase(ADBase):
         # wait for all queues to drain to 0
 
         # check that all quesue really are at 0
+
+        # this has to be done first, staging might re-wire
+        # the plugins
+        ret = super().stage(*args, **kwargs)
+
+        g, port_map = self.get_asyn_digraph()
+        try:
+            # check that everything in self.read is enabled
+            pass
+        except RuntimeError:
+            self.unstage()
+            raise
+
+        try:
+            self._validate_asyn_ports(g, port_map)
+        except RuntimeError as err:
+            self.unstage(*args, **kwargs)
+            raise err
 
         # re-enable the enabled callbacks starting from bottom
 
