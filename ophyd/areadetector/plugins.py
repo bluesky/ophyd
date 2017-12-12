@@ -12,6 +12,8 @@ import time as ttime
 import logging
 from collections import OrderedDict
 import numpy as np
+from enum import Enum
+from typing import List, Any
 
 from ophyd import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
@@ -42,6 +44,11 @@ __all__ = ['ColorConvPlugin',
            ]
 
 
+class EnableRule(Enum):
+    DISABLE = 0
+    ENABLE = 1
+    IGNORE = 2
+
 _plugin_class = {}
 
 
@@ -66,7 +73,7 @@ class PluginBase(ADBase):
                             '{!r}'.format(self.__class__.__name__,
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
-        self._enable_state = False
+        self._enable_rule = EnableRule.ENABLE
         self.enable_on_stage()
         self.ensure_blocking()
         if self.parent is not None and hasattr(self.parent, 'cam'):
@@ -147,7 +154,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ('enable', 1) to stage_sigs
         """
-        self._enable_state = True
+        self._enable_rule = EnableRule.ENABLE
         self.stage_sigs['enable'] = 1
 
     def disable_on_stage(self):
@@ -156,8 +163,25 @@ class PluginBase(ADBase):
 
         a convenience method for adding ```('enable', 0)`` to stage_sigs
         """
-        self._enable_state = False
+        self._enable_rule = EnableRule.DISABLE
         self.stage_sigs['enable'] = 0
+
+    def ignore_on_stage(self):
+        """Exempt plugin from any changes on stage
+
+        This is to allow a plugin to be available to bluesky, but
+        completely ignored during staging / unstaging.
+
+        """
+        self._enable_rule = EnableRule.IGNORE
+        self.stage_sigs.pop('enable', None)
+        self.stage_sigs.pop(self.enable, None)
+
+    def stage(self) -> List[Any]:
+        # if the rule is IGNORE then bail!
+        if self._enable_rule == EnableRule.IGNORE:
+            return []
+        return super().stage()
 
     def ensure_blocking(self):
         """
