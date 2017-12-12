@@ -513,7 +513,7 @@ class BlueskyInterface:
         """
         return OrderedDict()
 
-    def stage(self) -> List[object]:
+    def stage(self) -> List[Any]:
         """Stage the device for data collection.
 
         This method is expected to put the device into a state where
