@@ -208,8 +208,14 @@ class ADBase(Device):
 
         return ret
 
-    def get_asyn_digraph(self):
+    def get_asyn_digraph(self, *, enable_rule=None):
         '''Get the directed graph of the ASYN ports
+
+        Parameters
+        ----------
+        enable_rule : EnableRule, optional
+            If given, only consider plugins with the given
+            enable rule and 'base' data sources.
 
         Returns
         -------
@@ -221,6 +227,7 @@ class ADBase(Device):
         '''
         port_map = self.get_asyn_port_dictionary()
         G = nx.DiGraph()
+        ret = {}
         for out_port, cpt in port_map.items():
             try:
                 in_port = cpt.nd_array_port.get()
@@ -229,9 +236,13 @@ class ADBase(Device):
                 # a plugin, but is the 'base' data source
                 G.add_node(out_port)
             else:
+                if enable_rule is not None:
+                    if cpt._enable_rule != enable_rule:
+                        continue
                 G.add_edge(in_port, out_port)
+            ret[out_port] = cpt
 
-        return G, port_map
+        return G, ret
 
     def validate_asyn_ports(self):
         '''Validate that all components of pipeline are known
