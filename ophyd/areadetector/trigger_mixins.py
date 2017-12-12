@@ -118,11 +118,12 @@ class SingleTrigger(TriggerBase):
 
     def stage(self):
         self._acquisition_signal.subscribe(self._acquire_changed)
-        super().stage()
+        return super().stage()
 
     def unstage(self):
-        super().unstage()
+        ret = super().unstage()
         self._acquisition_signal.clear_sub(self._acquire_changed)
+        return ret
 
     def trigger(self):
         "Trigger one acquisition."

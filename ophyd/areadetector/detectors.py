@@ -5,8 +5,11 @@
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
+import networkx as nx
+from collections import OrderedDict
 
-from .base import (ADBase, ADComponent as C)
+from .base import (ADBase, ADComponent as C, EnableRule)
+from ..utils import set_and_wait
 from . import cam
 
 
@@ -74,23 +77,60 @@ class DetectorBase(ADBase):
                     external='FILESTORE:')
 
     def stage(self, *args, **kwargs):
+        from threading import Event
         # get ready to drain the queues
+        g, port_map = self.get_asyn_digraph(enable_rule=EnableRule.ENABLE)
 
-        # disable all of the and cache current enabled status
+        # walk the tree from top to bottom
+        plugins = OrderedDict()
+        for name in nx.topological_sort(g):
+            plugins[name] = port_map[name]
+
+        # disable all of the and cache current enable state
+        previous_enable_values = {}
+        for cpt in plugins.values():
+            if hasattr(cpt, 'enable'):
+                previous_enable_values[cpt.enable] = cpt.enable.get()
+                set_and_wait(cpt.enable, 0)
 
         # find anything that is not at 0 queue usage and install callbacks
+        need_draining = {cpt
+                         for cpt in plugins.values()
+                         if (hasattr(cpt, 'queue_use') and
+                             cpt.queue_use.get() > 0)}
+        drain_events = {}
+
+        for cpt in need_draining:
+            print("NEEDS DRAINING")
+            ev = Event()
+            drain_events
+            cid = cpt.queue_use.subscribe(
+                lambda value, _evt=ev, **kwargs:
+                ev.set()
+                if value == 0 else None)
+
+            drain_events[ev] = (cid, cpt)
 
         # wait for all queues to drain to 0
+        for ev, (cid, cpt) in drain_events.items():
+            ev.wait()
+            cpt.unsubscribe(cid)
 
         # check that all quesue really are at 0
+        for cpt in plugins.values():
+            if hasattr(cpt, 'queue_use') and cpt.queue_use.get() > 0:
+                raise RuntimeError("Queue still draining, should be empty")
 
-        # this has to be done first, staging might re-wire
-        # the plugins
+        # do the base stage which may re-wire the plugins and will recurse
+        # down through any children
         ret = super().stage(*args, **kwargs)
-
-        g, port_map = self.get_asyn_digraph()
+        # due to the above code, the base stage thinks everything is disabled,
+        # update with the values we grabbed above.
+        self._original_vals.update(previous_enable_values)
+        # grab the port map again
+        g, port_map = self.get_asyn_digraph(enable_rule=EnableRule.ENABLE)
         try:
-            # check that everything in self.read is enabled
+            # TODO check that everything in self.read is enabled
             pass
         except RuntimeError:
             self.unstage()
@@ -99,7 +139,7 @@ class DetectorBase(ADBase):
         try:
             self._validate_asyn_ports(g, port_map)
         except RuntimeError as err:
-            self.unstage(*args, **kwargs)
+            self.unstage()
             raise err
 
         # re-enable the enabled callbacks starting from bottom

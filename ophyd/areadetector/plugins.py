@@ -12,12 +12,12 @@ import time as ttime
 import logging
 from collections import OrderedDict
 import numpy as np
-from enum import Enum
+
 from typing import List, Any
 
 from ophyd import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
-                   EpicsSignalWithRBV as SignalWithRBV)
+                   EpicsSignalWithRBV as SignalWithRBV, EnableRule)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
@@ -43,11 +43,6 @@ __all__ = ['ColorConvPlugin',
            'register_plugin',
            ]
 
-
-class EnableRule(Enum):
-    DISABLE = 0
-    ENABLE = 1
-    IGNORE = 2
 
 _plugin_class = {}
 
@@ -182,6 +177,12 @@ class PluginBase(ADBase):
         if self._enable_rule == EnableRule.IGNORE:
             return []
         return super().stage()
+
+    def unstage(self):
+        # if the rule is IGNORE then bail!
+        if self._enable_rule == EnableRule.IGNORE:
+            return []
+        return super().unstage()
 
     def ensure_blocking(self):
         """

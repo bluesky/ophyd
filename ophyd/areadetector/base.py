@@ -8,7 +8,14 @@ import networkx as nx
 from ..signal import EpicsSignal
 from . import docs
 from ..device import (Device, Component as C)
-from ..signal import (ArrayAttributeSignal, EpicsSignalRO)
+from ..signal import ArrayAttributeSignal
+from enum import Enum
+
+
+class EnableRule(Enum):
+    DISABLE = 0
+    ENABLE = 1
+    IGNORE = 2
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -24,8 +31,7 @@ class ADComponent(C):
         super().__init__(cls, suffix, lazy=True, **kwargs)
 
     def find_docs(self, parent_class):
-        '''Find all the documentation related to this class, all the way up the
-        MRO'''
+        'Find documentation related to this class, all the way up the MRO'
 
         classes = inspect.getmro(parent_class)
         for class_ in classes:
