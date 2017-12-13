@@ -1,7 +1,7 @@
 import logging
 
 from ..utils import enum
-from .base import (ADBase, ADComponent as C, ad_group,
+from .base import (ArrayBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal)
 from ..device import DynamicDeviceComponent as DDC
@@ -35,8 +35,8 @@ __all__ = ['CamBase',
            ]
 
 
-class CamBase(ADBase):
-    _default_configuration_attrs = (ADBase._default_configuration_attrs +
+class CamBase(ArrayBase):
+    _default_configuration_attrs = (ArrayBase._default_configuration_attrs +
                                     ('acquire_time', 'acquire_period',
                                      'model', 'num_exposures', 'image_mode',
                                      'manufacturer', 'trigger_mode'))
@@ -55,7 +55,6 @@ class CamBase(ADBase):
     pool_max_mem = C(EpicsSignalRO, 'PoolMaxMem')
     pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
     pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
-    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
 
     # Cam-specific
     acquire = C(SignalWithRBV, 'Acquire')

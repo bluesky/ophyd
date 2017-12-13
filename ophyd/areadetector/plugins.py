@@ -16,7 +16,7 @@ import numpy as np
 from typing import List, Any
 
 from ophyd import Component as Cpt
-from .base import (ADBase, ADComponent as C, ad_group,
+from .base import (ArrayBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV, EnableRule)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
@@ -54,7 +54,7 @@ def register_plugin(cls):
     _plugin_class[cls._plugin_type] = cls
 
 
-class PluginBase(ADBase):
+class PluginBase(ArrayBase):
     '''AreaDetector plugin base class'''
     def __init__(self, *args, **kwargs):
 
@@ -75,7 +75,7 @@ class PluginBase(ADBase):
             self.stage_sigs.update([('parent.cam.array_callbacks', 1),
                                     ])
 
-    _default_configuration_attrs = (ADBase._default_configuration_attrs +
+    _default_configuration_attrs = (ArrayBase._default_configuration_attrs +
                                     ('port_name', 'nd_array_port', 'enable',
                                      'blocking_callbacks', 'plugin_type',
                                      'asyn_pipeline_config',
@@ -96,7 +96,6 @@ class PluginBase(ADBase):
     pool_max_mem = C(EpicsSignalRO, 'PoolMaxMem')
     pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
     pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
-    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
     asyn_pipeline_config = Cpt(ArrayAttributeSignal,
                                attr='_asyn_pipeline_configuration_names')
 

@@ -5,7 +5,7 @@ import sys
 from collections import OrderedDict
 import networkx as nx
 
-from ..signal import EpicsSignal
+from ..signal import EpicsSignal, EpicsSignalRO
 from . import docs
 from ..device import (Device, Component as C)
 from ..signal import ArrayAttributeSignal
@@ -300,3 +300,9 @@ class ADBase(Device):
     def _configuration_names(self):
         return [getattr(self, c).name
                 for c in self.configuration_attrs]
+
+
+class ArrayBase(ADBase):
+    adcore_version = C(EpicsSignalRO, 'ADCoreVersion_RBV')
+    driver_version = C(EpicsSignalRO, 'DriverVersion_RBV')
+    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
