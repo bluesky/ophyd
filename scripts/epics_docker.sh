@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 systemctl status docker.service > /dev/null
 if ! [ $? -eq 0 ]; then
