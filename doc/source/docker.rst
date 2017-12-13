@@ -8,7 +8,7 @@ You can use Docker to run test IOCs that are convenient for testing
 with out having to locally build and install EPICS IOCs.  To communicate
 with the Docker you have set up some environmental variables ::
 
-   #!/usr/bin/bash
+   #!/bin/bash
 
    export DOCKER0_IP="172.17.0.1"
    export EPICS_CA_ADDR_LIST=$( echo $DOCKER0_IP | sed -e 's/^\([0-9]\+\)\.\([0-9]\+\)\..*$/\1.\2.255.255/' )
@@ -17,9 +17,9 @@ with the Docker you have set up some environmental variables ::
 
 
 and to run docker with the correct images (assuming the preceding code
-block is saved in :file:`epics_export`) ::
+block is saved in :file:`epics_exports.sh`) ::
 
-   #!/usr/bin/bash
+   #!/bin/bash
 
    systemctl status docker.service > /dev/null
    if ! [ $? -eq 0 ]
@@ -28,7 +28,7 @@ block is saved in :file:`epics_export`) ::
        systemctl restart docker.service
    fi
 
-   source epics_exports
+   source epics_exports.sh
 
 
    DOCKERIMAGE="klauer/epics-docker"
@@ -49,7 +49,7 @@ images running.
 
 For EPICS to know where to search for the IOCs you will need to do ::
 
-  source epics_exports
+  source epics_exports.sh
 
 
 to setup the EPICS environmental variables.  To check that it is setup
