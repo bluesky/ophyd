@@ -52,7 +52,7 @@ For EPICS to know where to search for the IOCs you will need to do ::
   source epics_exports.sh
 
 
-to setup the EPICS environmental variables.  To check that it is setup
+to setup the EPICS environmental variables. To check that it is setup
 correctly ::
 
   $ env | grep -i epics
@@ -63,3 +63,10 @@ correctly ::
 To check if it is working, try ::
 
   $ caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
+
+.. note::
+  You may need to install ``pyepics``, which installes ``epics-base``
+  and the corresponding ``caget`` executable: ::
+
+    conda install -c lightsource2-tag pyepics
+
