@@ -101,7 +101,6 @@ class DetectorBase(ADBase):
         drain_events = {}
 
         for cpt in need_draining:
-            print("NEEDS DRAINING")
             ev = Event()
             drain_events
             cid = cpt.queue_use.subscribe(
