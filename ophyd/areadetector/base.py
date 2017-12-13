@@ -303,6 +303,4 @@ class ADBase(Device):
 
 
 class ArrayBase(ADBase):
-    adcore_version = C(EpicsSignalRO, 'ADCoreVersion_RBV')
-    driver_version = C(EpicsSignalRO, 'DriverVersion_RBV')
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)

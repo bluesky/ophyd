@@ -16,7 +16,7 @@ import numpy as np
 from typing import List, Any
 
 from ophyd import Component as Cpt
-from .base import (ArrayBase, ADComponent as C, ad_group,
+from .base import (ArrayBase, ADComponent as C, ad_group, ADBase,
                    EpicsSignalWithRBV as SignalWithRBV, EnableRule)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
@@ -84,6 +84,9 @@ class PluginBase(ArrayBase):
     _html_docs = ['pluginDoc.html']
     _plugin_type = None
     _suffix_re = None
+
+    adcore_version = C(EpicsSignalRO, 'ADCoreVersion_RBV')
+    driver_version = C(EpicsSignalRO, 'DriverVersion_RBV')
 
     array_counter = C(SignalWithRBV, 'ArrayCounter')
     array_rate = C(EpicsSignalRO, 'ArrayRate_RBV')

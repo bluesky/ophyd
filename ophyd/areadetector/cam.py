@@ -367,7 +367,7 @@ class PcoDetectorCam(CamBase):
     timestamp_mode = C(SignalWithRBV, 'TIMESTAMP_MODE')
 
 
-class PcoDetectorIO(ADBase):
+class PcoDetectorIO(ArrayBase):
     _html_docs = ['']
     busy = C(EpicsSignal, 'DIO:BUSY')
     capture = C(EpicsSignal, 'DIO:CAPTURE')
@@ -377,7 +377,7 @@ class PcoDetectorIO(ADBase):
     trig_when_ready = C(EpicsSignal, 'DIO:TrigWhenReady')
 
 
-class PcoDetectorSimIO(ADBase):
+class PcoDetectorSimIO(ArrayBase):
     _html_docs = ['']
     busy = C(EpicsSignal, 'SIM:BUSY')
     dfan = C(EpicsSignal, 'SIM:Dfan')
