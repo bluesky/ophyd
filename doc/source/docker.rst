@@ -17,7 +17,7 @@ with the Docker you have set up some environmental variables ::
 
 
 and to run docker with the correct images (assuming the preceding code
-block is saved in :file:`epics_export`) ::
+block is saved in :file:`epics_exports.sh`) ::
 
    #!/usr/bin/bash
 
@@ -28,7 +28,7 @@ block is saved in :file:`epics_export`) ::
        systemctl restart docker.service
    fi
 
-   source epics_exports
+   source epics_exports.sh
 
 
    DOCKERIMAGE="klauer/epics-docker"
@@ -49,7 +49,7 @@ images running.
 
 For EPICS to know where to search for the IOCs you will need to do ::
 
-  source epics_exports
+  source epics_exports.sh
 
 
 to setup the EPICS environmental variables.  To check that it is setup
