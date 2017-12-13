@@ -142,7 +142,7 @@ class SingleTrigger(TriggerBase):
             return
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
-            self._install_array_uniqueid_watcher()
+            self._install_array_uniqueid_watcher(None)
 
     def _install_array_uniqueid_watcher(self, uniqueid):
         # find all enabled callbacks attached to cam
