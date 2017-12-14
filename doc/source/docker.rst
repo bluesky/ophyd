@@ -4,9 +4,14 @@ Docker setup
 .. highlight:: bash
 
 
-You can use Docker to run test IOCs that are convenient for testing
-with out having to locally build and install EPICS IOCs.  To communicate
-with the Docker you have set up some environmental variables ::
+You can use Docker to run test IOCs that are convenient for testing without
+having to locally build and install EPICS IOCs. Please use the following
+Docker links to install and configure Docker:
+
+  - `Installing Docker on ubuntu <https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/#uninstall-docker-ce>`_
+  - `Configuring Docker (allowing to run as non-root, running at startup, etc.) <https://docs.docker.com/engine/installation/linux/linux-postinstall/>`_
+
+To communicate with the Docker you have set up some environmental variables: ::
 
    #!/bin/bash
 
@@ -16,8 +21,8 @@ with the Docker you have set up some environmental variables ::
    export EPICS_CA_MAX_ARRAY_BYTES=10000000
 
 
-and to run docker with the correct images (assuming the preceding code
-block is saved in :file:`epics_exports.sh`) ::
+and to run docker with the correct images (assuming the preceding code block is
+saved in :file:`epics_exports.sh`): ::
 
    #!/bin/bash
 
