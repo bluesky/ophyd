@@ -65,7 +65,8 @@ To check if it is working, try ::
   $ caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
 
 .. note::
-  You may need to install ``pyepics``, which installes ``epics-base``
+
+  You may need to install ``pyepics``, which installs ``epics-base``
   and the corresponding ``caget`` executable: ::
 
     conda install -c lightsource2-tag pyepics
