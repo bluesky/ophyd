@@ -8,8 +8,9 @@ You can use Docker to run test IOCs that are convenient for testing without
 having to locally build and install EPICS IOCs. Please use the following
 Docker links to install and configure Docker:
 
-  - `Installing Docker on ubuntu <https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/#uninstall-docker-ce>`_
-  - `Configuring Docker (allowing to run as non-root, running at startup, etc.) <https://docs.docker.com/engine/installation/linux/linux-postinstall/>`_
+  - `Installing Docker on Ubuntu <https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/>`_
+  - `Configuring Docker <https://docs.docker.com/engine/installation/linux/linux-postinstall/>`_
+    (allowing to run as non-root, running at startup, etc.)
 
 To communicate with the Docker you have set up some environmental variables: ::
 
