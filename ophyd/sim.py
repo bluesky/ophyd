@@ -201,6 +201,11 @@ class ReadbackSignal(SignalRO):
             res[k]['precision'] = self.parent.precision
         return res
 
+    @property
+    def timestamp(self):
+        '''Timestamp of the readback value'''
+        return self.parent.sim_state['readback_ts']
+
 
 class SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
@@ -216,6 +221,11 @@ class SetpointSignal(Signal):
         for k in res:
             res[k]['precision'] = self.parent.precision
         return res
+
+    @property
+    def timestamp(self):
+        '''Timestamp of the readback value'''
+        return self.parent.sim_state['setpoint_ts']
 
 
 class SynAxisNoHints(Device):
@@ -264,17 +274,21 @@ class SynAxisNoHints(Device):
         self.loop = loop
 
         # initialize values
-        self.sim_state['readback'] = readback_func(value)
         self.sim_state['setpoint'] = value
+        self.sim_state['setpoint_ts'] = ttime.time()
+        self.sim_state['readback'] = readback_func(value)
+        self.sim_state['readback_ts'] = ttime.time()
 
         super().__init__(name=name, parent=parent)
         self.readback.name = self.name
 
     def set(self, value):
+        self.sim_state['setpoint'] = value
+        self.sim_state['setpoint_ts'] = ttime.time()
 
         def update_state():
             self.sim_state['readback'] = self._readback_func(value)
-            self.sim_state['setpoint'] = value
+            self.sim_state['readback_ts'] = ttime.time()
 
         if self.delay:
             st = DeviceStatus(device=self)
