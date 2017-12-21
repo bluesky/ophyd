@@ -252,7 +252,8 @@ class SynAxisNoHints(Device):
                  parent=None,
                  loop=None):
         if readback_func is None:
-            readback_func = lambda x: x
+            def readback_func(x):
+                return x
         if loop is None:
             loop = asyncio.get_event_loop()
         self._hints = None
