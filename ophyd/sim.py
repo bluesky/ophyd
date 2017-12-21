@@ -210,7 +210,6 @@ class ReadbackSignal(SignalRO):
 class SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
         self.parent.set(value)
-        # TODO wait?
 
     def get(self):
         return self.parent.sim_state['setpoint']
@@ -254,6 +253,8 @@ class SynAxisNoHints(Device):
     """
     readback = Component(ReadbackSignal, value=None)
     setpoint = Component(SetpointSignal, value=None)
+    SUB_READBACK = 'readback'
+    _default_sub = SUB_READBACK
 
     def __init__(self, *,
                  name,
@@ -283,12 +284,26 @@ class SynAxisNoHints(Device):
         self.readback.name = self.name
 
     def set(self, value):
+        old_setpoint = self.sim_state['setpoint']
         self.sim_state['setpoint'] = value
         self.sim_state['setpoint_ts'] = ttime.time()
+        self.setpoint._run_subs(sub_type=self.setpoint.SUB_VALUE,
+                                old_value=old_setpoint,
+                                value=self.sim_state['setpoint'],
+                                timestamp=self.sim_state['setpoint_ts'])
 
         def update_state():
+            old_readback = self.sim_state['readback']
             self.sim_state['readback'] = self._readback_func(value)
             self.sim_state['readback_ts'] = ttime.time()
+            self.readback._run_subs(sub_type=self.readback.SUB_VALUE,
+                                    old_value=old_readback,
+                                    value=self.sim_state['readback'],
+                                    timestamp=self.sim_state['readback_ts'])
+            self._run_subs(sub_type=self.SUB_READBACK,
+                           old_value=old_readback,
+                           value=self.sim_state['readback'],
+                           timestamp=self.sim_state['readback_ts'])
 
         if self.delay:
             st = DeviceStatus(device=self)
@@ -365,6 +380,7 @@ class SynGauss(SynSignal):
         self._motor = motor
         if random_state is None:
             random_state = np.random
+
         def func():
             m = motor.read()[motor_field]['value']
             v = Imax * np.exp(-(m - center) ** 2 / (2 * sigma ** 2))
@@ -428,6 +444,7 @@ class Syn2DGauss(SynSignal):
         self._motor1 = motor1
         if random_state is None:
             random_state = np.random
+
         def func():
             x = motor0.read()[motor_field0]['value']
             y = motor1.read()[motor_field1]['value']
