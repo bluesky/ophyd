@@ -68,6 +68,7 @@ install:
     if [ $CONDA_ENV ]; then
        conda create -n testenv python=$TRAVIS_PYTHON_VERSION numpy pyepics databroker networkx -c lightsource2-tag -c conda-forge -c soft-matter -c defaults --override-channels
        source activate testenv
+       export PYEPICS_LIBCA=$CONDA_PREFIX/lib/libca.so
        conda install readline -c lightsource2-tag
     else
        sudo -E bash install_epics_on_travis.sh
@@ -81,6 +82,7 @@ install:
   - export PATH=$PATH:$EPICS_BASE/bin/$EPICS_HOST_ARCH
   - export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$EPICS_BASE/lib/$EPICS_HOST_ARCH"
   - echo "PATH=$PATH"
+  - echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
 script:
   - echo "Checking if the motor IOC is running:"
