@@ -333,6 +333,6 @@ class MotorBundle(Device):
 
     def __init__(self, *args, configuration_attrs=None, **kwargs):
         if configuration_attrs is None:
-            configuration_attrs = self.signal_names
+            configuration_attrs = self.component_names
         super().__init__(*args, configuration_attrs=configuration_attrs,
                          **kwargs)
