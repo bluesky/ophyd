@@ -744,7 +744,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         warnings.warn("'signal_names' has been renamed 'component_names' for "
                       "clarity because it may include a mixture of Signals "
                       "and Devices -- any Components. This alias may be "
-                      "removed in a future release of ophyd.")
+                      "removed in a future release of ophyd.", stacklevel=2)
         return self.component_names
 
     def summary(self):
