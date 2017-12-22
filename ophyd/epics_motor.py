@@ -318,7 +318,7 @@ class MotorBundle(Device):
         if self._hints is None:
             return {'fields':
                     [h
-                     for s in self.signal_names
+                     for s in self.component_names
                      for h in getattr(getattr(self, s),
                                       'hints', {}).get('fields', [])]}
 
