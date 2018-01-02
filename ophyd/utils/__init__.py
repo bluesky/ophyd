@@ -75,3 +75,46 @@ def doc_annotation_forwarder(base_klass):
         return f
 
     return wrapper
+
+
+def _filtered_ip_ns():
+    import IPython
+    return {k: v
+            for k, v in IPython.get_ipython().user_ns.items()
+            if not v.startswith('_')}
+
+
+def instances_from_namespace(classes, *, ns=None):
+    '''Get instances of `classes` from the user namespace
+
+    Parameters
+    ----------
+    classes : type, or sequence of types
+        Passed directly to isinstance(), only instances of these classes
+        will be returned.
+
+    ns : Dict[str, Any], optional
+       namespace to pull from, defaults to getting the
+    '''
+    if ns is None:
+        ns = _filtered_ip_ns()
+    return [val for val in ns.values()
+            if isinstance(val, classes)]
+
+
+def ducks_from_namespace(attrs, *, ns=None):
+    '''Get instances that have all of attributes.
+
+    "Ducks" is a reference to "duck-typing." If it looks like a duck....
+
+    Parameters
+    ----------
+    attr : Union[str, Iterable[str]]
+        name of attribute or list of names
+    '''
+    if isinstance(attrs, str):
+        attrs = [attrs]
+    if ns is None:
+        ns = _filtered_ip_ns()
+    return [val for val in ns.values()
+            if all(hasattr(val, attr) for attr in attrs)]
