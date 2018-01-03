@@ -47,17 +47,17 @@ class DetectorBase(ADBase):
     def dispatch(self, key, timestamp):
         """Notify plugins of acquisition being complete.
 
-        When a new acquisition is finished, this method is called with a
+        When a new acquisition is started, this method is called with a
         key which is a label like 'light', 'dark', or 'gain8'.
 
-        It in turn calls all of the file plugins and makes them insert a
-        datum into FileStore.
+        It in turn calls ``generate_datum`` on all of the plugins that have
+        that method.
 
         File plugins are identified by searching for a
         :meth:`~ophyd.areadetector.filestore_mixins.FileStoreBase.generate_datum`
-        method that must have the siganture ::
+        method that must have the signature ::
 
-           def generate_datum(key: str, timestamp: float):
+           def generate_datum(key: str, timestamp: float, datum_kwargs: dict):
               ...
 
         """
