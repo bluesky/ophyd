@@ -81,7 +81,7 @@ def _filtered_ip_ns():
     import IPython
     return {k: v
             for k, v in IPython.get_ipython().user_ns.items()
-            if not v.startswith('_')}
+            if not k.startswith('_')}
 
 
 def instances_from_namespace(classes, *, ns=None):
