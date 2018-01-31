@@ -92,10 +92,24 @@ class AndorDetector(DetectorBase):
     _html_docs = ['andorDoc.html']
     cam = C(cam.AndorDetectorCam, 'cam1:')
 
+    def __init__(*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The default cam.image_mode imposed by SingleTrigger is 'Multiple'
+        # but Andor does not support that mode, so we override that default
+        # here.
+        self.stage_sigs['cam.image_mode'] = 0  # 'Fixed'
+
 
 class Andor3Detector(DetectorBase):
     _html_docs = ['andor3Doc.html']
     cam = C(cam.Andor3DetectorCam, 'cam1:')
+
+    def __init__(*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The default cam.image_mode imposed by SingleTrigger is 'Multiple'
+        # but Andor does not support that mode, so we override that default
+        # here.
+        self.stage_sigs['cam.image_mode'] = 0  # 'Fixed'
 
 
 class BrukerDetector(DetectorBase):
