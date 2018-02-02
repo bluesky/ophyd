@@ -1,16 +1,16 @@
-Release Notes
--------------
+Release History
+---------------
 
-v1.0.0
-======
+v1.0.0 (2017-11-17)
+===================
 
 This tag marks an important release for ophyd, signifying the conclusion of
 the early development phase. From this point on, we intend that this project
 will be co-developed between multiple facilities. The 1.x series is planned to
 be a long-term-support release.
 
-API Changes
-***********
+Breaking Changes
+****************
 
 * To access the human-friendly summary of a Device's layout, use
   ``device.summary()`` instead of ``print(device)``. The verbosity of the
@@ -26,11 +26,11 @@ Bug Fixes
   if no ``func`` parameter is provided.
 * Make ophyd importable without pyepics and libca.
 
-0.8.0
-=====
+v0.8.0 (2017-11-01)
+===================
 
-API Changes
-***********
+Breaking Changes
+****************
 
 * Make the ``name`` keyword to Device a required, keyword-only argument. This
   ensures that the names that appear in the read dictionary are always
@@ -50,8 +50,8 @@ Deprecations
   should be preferred over the ``finished_cb`` property, which only supports
   one callback and now warns if set or accessed.
 
-Enhancements
-************
+Features
+********
 
 * Add ``ophyd.sim`` module with various synthetic 'hardware' for testing and
   teaching.
@@ -86,11 +86,11 @@ Internal Changes
 * Refactor OphydObj callbacks to make the logic easier to follow. This change
   is fully backward-compatible.
 
-0.7.0
-=====
+v0.7.0 (2017-09-06)
+===================
 
-API Changes
-***********
+Breaking Changes
+****************
 
 * The module :mod:`ophyd.commands`, a grab bag of convenient tools, has been
   entirely removed. The functionality is available in other ways:
@@ -153,8 +153,8 @@ API Changes
     * The method ``generate_datum`` on area detector file plugins requires an
       additional argument, ``datum_kwargs``.
 
-Enhancements
-************
+Features
+********
 
 * Many devices picked up a new ``hints`` property. Its goal is to highlight the
   most interesting or important fields---often a small subset of all the fields
@@ -252,8 +252,23 @@ Maintenance
 * :attr:`ophyd.AreaDetector.filestore_mixin.fs_root` has been deprecated in
   favor of :attr:`ophyd.AreaDetector.filestore_mixin.reg_root`.
 
-0.4.0
-=====
+v0.6.1 (2017-05-22)
+===================
+
+(TO DO)
+
+v0.6.0 (2017-05-05)
+===================
+
+(TO DO)
+
+v0.5.0 (2017-01-27)
+===================
+
+(TO DO)
+
+v0.4.0 (2016-11-01)
+===================
 
 Enhancements
 ************
@@ -263,14 +278,14 @@ Enhancements
 * Ensure trailing slashes are included in file plugin filepaths to avoid common
   user mistake.
 
-API Changes
-***********
+Breaking Changes
+****************
 
 * The bluesky interface now expects the ``stop`` method to accept an optional
   ``success`` argument.
 
-0.3.1
-=====
+v0.3.1 (2016-09-23)
+===================
 
 Enhancements
 ************
@@ -288,11 +303,11 @@ Fixes
   ``force_read``. Add check to ``Device`` to avoid repeating this mistake in
   the future.
 
-0.3.0
-=====
+v0.3.0 (2016-07-25)
+===================
 
-API Changes
-***********
+Breaking Changes
+****************
 
 * Area detector now checks that all plugins in the pipeline of
   anything that will be collected as part of ``read``.  The
@@ -313,3 +328,23 @@ Bug Fixes
 *********
 
 * Be more careful about thread safety around ``pyepics``
+
+v0.2.3 (2016-05-05)
+===================
+
+(TO DO)
+
+v0.2.2 (2016-03-14)
+===================
+
+(TO DO)
+
+v0.2.1 (2016-02-23)
+===================
+
+(TO DO)
+
+v0.2.0 (2016-02-10)
+===================
+
+(TO DO)
