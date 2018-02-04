@@ -237,14 +237,22 @@ class DynamicDeviceComponent:
         This defaults to {parent_name}{this_attribute_name.capitalize()}
     doc : str, optional
         The docstring to put on the dynamically generated class
+    default_read_attrs : list, optional
+        A class attribute to put on the dynamically generated class
+    default_configuration_attrs : list, optional
+        A class attribute to put on the dynamically generated class
     '''
 
-    def __init__(self, defn, *, clsname=None, doc=None):
+    def __init__(self, defn, *, clsname=None, doc=None,
+                 default_read_attrs=None, default_configuration_attrs=None):
         self.defn = defn
         self.clsname = clsname
         self.attr = None  # attr is set later by the device when known
         self.lazy = False
         self.doc = doc
+        self.default_read_attrs = tuple(default_read_attrs or [])
+        self.default_configuration_attrs = tuple(default_configuration_attrs
+                                                 or [])
 
         # TODO: component compatibility
         self.trigger_value = None
@@ -306,7 +314,11 @@ class DynamicDeviceComponent:
         if docstring is None:
             docstring = '{} sub-device'.format(clsname)
 
-        clsdict = OrderedDict(__doc__=docstring)
+        clsdict = OrderedDict(
+            __doc__=docstring,
+            _default_read_attrs=self.default_read_attrs or (), 
+            _default_configuration_attrs=\
+                self.default_configuration_attrs or ())
 
         for attr in self.defn.keys():
             clsdict[attr] = self.create_attr(attr)
