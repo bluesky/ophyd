@@ -206,7 +206,7 @@ def get_pv_form(version):
 
     try:
         version = parse_version(_fix_git_versioning(version))
-    except ValueError:
+    except TypeError:
         version = None
 
     if version is None:
