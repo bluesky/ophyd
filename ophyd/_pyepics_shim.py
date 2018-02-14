@@ -204,7 +204,10 @@ def get_pv_form(version):
     except ImportError:
         parse_version = _naive_parse_version
 
-    version = parse_version(_fix_git_versioning(version))
+    try:
+        version = parse_version(_fix_git_versioning(version))
+    except TypeError:
+        version = None
 
     if version is None:
         warnings.warn('Unrecognized PyEpics version; using local timestamps',
@@ -220,4 +223,5 @@ def get_pv_form(version):
         return 'time'
 
 
+print(epics.__version__)
 pv_form = get_pv_form(epics.__version__)
