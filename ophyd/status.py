@@ -339,9 +339,12 @@ class SubscriptionStatus(DeviceStatus):
 
     settle_time : float, optional
         Time to wait after completion until running callbacks
+
+    run: bool, optional
+        Run the callback now
     """
     def __init__(self, device, callback, event_type=None,
-                 timeout=None, settle_time=None):
+                 timeout=None, settle_time=None, run=True):
         # Store device and attribute information
         self.device = device
         self.callback = callback
@@ -352,7 +355,7 @@ class SubscriptionStatus(DeviceStatus):
         # Subscribe callback and run initial check
         self.device.subscribe(self.check_value,
                               event_type=event_type,
-                              run=True)
+                              run=run)
 
     def check_value(self, *args, **kwargs):
         """
