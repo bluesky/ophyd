@@ -1,6 +1,41 @@
 Release History
 ---------------
 
+v1.1.0 (2017-02-20)
+===================
+
+Features
+********
+
+* Add a new ``run`` keyword, which defaults to ``True``, which can be used to
+  keep :class:`.SubscriptionStatus` objects from running callbacks immediately.
+* Add an :meth:`unsuscribe_all` method to OphydObj.
+* Support timestamps and subscriptions in the simulated motor
+  :class:`.SynAxis` and related classes.
+* Extend :class:`.DynamicDeviceComponent` to accept optional
+  ``default_read_attrs`` and ``default_configuration_attrs`` arguments, which
+  it will assign as class attributes on the class it dynamically creates.
+* Systematically add ``default_read_attrs=(...)`` to every DDC on every
+  Area Detector plugin. Now, for example, adding ``'centroid'`` to the read
+  attributes of a :class:`.StatsPlugin` instance also effectively adds
+  ``'centroid_x'`` and ``'centroid_y'``, which is presumably the desired
+  result.
+* On :class:`.ScalerCH`, omit any channels whose name is ``''`` from
+  the read attributes by default.
+* Add new ``random_state`` keyword to relevant simulated devices so that their
+  randomness can be made deterministic for testing purposes.
+* Restore namespace-scraping utilities :func:`.instances_from_namespace` and
+  :func:`.ducks_from_namespace` which had been moved in pyolog during previous
+  refactor.
+
+Bug Fixes
+*********
+
+* Fix race condition in :func:`.set_and_wait`.
+* Fix a bug in aforementioned namespace-scraping utilities.
+* Do not use deprecated API (``signal_names``, now called ``component_names``)
+  internally.
+
 v1.0.0 (2017-11-17)
 ===================
 
