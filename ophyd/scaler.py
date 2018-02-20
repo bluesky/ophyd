@@ -123,8 +123,14 @@ class ScalerCH(Device):
 
         super().__init__(*args, **kwargs)
 
-        self.channels.read_attrs = ['chan01']
-        self.channels.configuration_attrs = ['chan01']
+        active_channels = []
+        for s in self.channels.component_names:
+            ch_name = getattr(self.channels, s).name
+            if ch_name:
+                active_channels.append(ch_name)
+
+        self.channels.read_attrs = list(active_channels)
+        self.channels.configuration_attrs = list(active_channels)
 
     def match_names(self):
         for s in self.channels.component_names:
