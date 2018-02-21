@@ -98,8 +98,6 @@ class PluginBase(ADBase):
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
 
     def stage(self):
-        if self._enable_on_stage:
-           set_and_wait(self.enable, 1)
         super().stage()
 
     def enable_on_stage(self):
