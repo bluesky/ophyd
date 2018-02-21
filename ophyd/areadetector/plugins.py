@@ -108,7 +108,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ('enable', 1) to stage_sigs
         """
-        self.enable_on_stage = True
+        self._enable_on_stage = True
 
     def disable_on_stage(self):
         """
@@ -116,7 +116,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ```('enable', 0)`` to stage_sigs
         """
-        self.enable_on_stage = False
+        self._enable_on_stage = False
 	
 
     def ensure_blocking(self):
