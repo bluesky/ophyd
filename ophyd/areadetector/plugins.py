@@ -67,7 +67,7 @@ class PluginBase(ADBase):
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
 
-        self._enable_on_stage = True
+	self.stage_sigs.move_to_end('enable', last=False)
         self.enable_on_stage()
         self.ensure_blocking()
         if self.parent is not None and hasattr(self.parent, 'cam'):
@@ -108,7 +108,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ('enable', 1) to stage_sigs
         """
-        self._enable_on_stage = True
+	self.stage_sigs['enable'] = 1
 
     def disable_on_stage(self):
         """
@@ -116,8 +116,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ```('enable', 0)`` to stage_sigs
         """
-        self._enable_on_stage = False
-	
+	self.stage_sigs['enable'] = 0	
 
     def ensure_blocking(self):
         """
