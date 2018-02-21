@@ -67,8 +67,8 @@ class PluginBase(ADBase):
                                           self._plugin_type,
                                           self.plugin_type.get(), self.prefix))
 
-        self.stage_sigs.move_to_end('enable', last=False)
         self.enable_on_stage()
+        self.stage_sigs.move_to_end('enable', last=False)
         self.ensure_blocking()
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([('parent.cam.array_callbacks', 1),
