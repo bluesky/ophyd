@@ -218,6 +218,13 @@ class DeviceTests(unittest.TestCase):
         assert d.cpt.root == d
         assert d.root == d
 
+    def test_hidden_component(self):
+        class MyDevice(Device):
+            _hidden_sig = Component(FakeSignal, 'suffix')
+        d = MyDevice('', name='test')
+        assert '_hidden_sig' in d.component_names
+        assert not hasattr(d.get(), '_hidden_sig')
+
 
 def test_attribute_signal():
     init_value = 33
