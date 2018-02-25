@@ -1040,7 +1040,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def get(self, **kwargs):
         '''Get the value of all components in the device
 
-        Keyword arguments are passed onto each signal.get()
+        Keyword arguments are passed onto each signal.get(). Components
+        beginning with an underscore will not be included.
         '''
         values = {}
         for attr in self.component_names:
