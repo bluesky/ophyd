@@ -118,3 +118,8 @@ def ducks_from_namespace(attrs, *, ns=None):
         ns = _filtered_ip_ns()
     return [val for val in ns.values()
             if all(hasattr(val, attr) for attr in attrs)]
+
+
+class DO_NOT_USE:
+    "sentinel value"
+    ...
