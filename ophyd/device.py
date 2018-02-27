@@ -414,10 +414,10 @@ class ComponentMeta(type):
         clsobj.component_names = list(clsobj._sig_attrs.keys())
 
         # The namedtuple associated with the device
-        clsobj._device_tuple = namedtuple(name + 'Tuple',
-                                          clsobj.component_names,
-                                          rename=True)
-
+        clsobj._device_tuple = namedtuple(
+                                    name + 'Tuple',
+                                    [comp for comp in clsobj.component_names
+                                     if not comp.startswith('_')])
         # Finally, create all the component docstrings
         for cpt in clsobj._sig_attrs.values():
             cpt.__doc__ = cpt.make_docstring(clsobj)
@@ -1040,12 +1040,14 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def get(self, **kwargs):
         '''Get the value of all components in the device
 
-        Keyword arguments are passed onto each signal.get()
+        Keyword arguments are passed onto each signal.get(). Components
+        beginning with an underscore will not be included.
         '''
         values = {}
         for attr in self.component_names:
-            signal = getattr(self, attr)
-            values[attr] = signal.get(**kwargs)
+            if not attr.startswith('_'):
+                signal = getattr(self, attr)
+                values[attr] = signal.get(**kwargs)
 
         return self._device_tuple(**values)
 
