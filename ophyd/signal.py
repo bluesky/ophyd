@@ -245,15 +245,17 @@ class DerivedSignal(Signal):
 
         Parameters
         ----------
-        derived_from : Signal
-            The signal from which this one is derived
+        derived_from : Union[Signal, str]
+            The signal from which this one is derived.  If a string assumed
+            to be a sibling on the parent.
         name : str, optional
             The signal name
         parent : Device, optional
             The parent device
         '''
         super().__init__(name=name, parent=parent, **kwargs)
-
+        if isinstance(derived_from, str):
+            derived_from = getattr(parent, derived_from)
         self._derived_from = derived_from
         connected = self._derived_from.connected
         if connected:
