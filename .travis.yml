@@ -4,11 +4,8 @@ sudo: required
 dist: trusty
 env:
   global:
-    BUILD_DOCS_BRANCH: master
-    DOCS_SUBDIR: doc/
-    TARGET_DEV_SUBDIR: ophyd/
-    HTML_SUBDIR: build/html
-    DOCS_PIP_DEPS: "tqdm graphviz"
+    # Doctr deploy key for NSLS-II/NSLS-II.github.io
+    - secure: "jUZbT6RuZCGVKEvBCsK22mvXDvGIN10zlHRqj7Q6cl6lf2KaaXnOKb6azCQRJhbvgi9IUkJzjT3ghqeNhjsWOdxzbX4qzTh6jooySP0nyAY+iOQ/F9Q62RdRwM+N5y/t++1Cv2n5BVAYEnGIrE3SyZbeaYLTvNveJnVdeTIKif4="
 
 addons:
   apt:
@@ -33,7 +30,6 @@ matrix:
       env: BUILD_DOCS=false EPICS_DEB_DIST="jessie/staging"
 
 before_install:
-  - git clone https://github.com/NSLS-II/nsls2-ci --branch master --single-branch ~/ci_scripts
   - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
   - export EPICS_CA_ADDR_LIST=$( echo $DOCKER0_IP | sed -e 's/^\([0-9]\+\)\.\([0-9]\+\)\..*$/\1.\2.255.255/' )
   - export EPICS_CA_AUTO_ADDR_LIST="no"
@@ -100,21 +96,14 @@ script:
   # running tests
   - python run_tests.py --cov=ophyd --cov-report term-missing
 
+  - set -e
+  # Build docs.
   - |
-    if [ $BUILD_DOCS == true ]; then
-      source ~/ci_scripts/make-docs.sh
+    if [ $BUILD_DOCS ]; then
+      pip install -r docs-requirements.txt
+      pushd doc
+      make html
+      popd
+      # Publish docs.
+      doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master databroker
     fi
-
-after_success:
-    - env
-    - coveralls
-    - codecov
-    - |
-      if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == 'NSLS-II/ophyd' && $BUILD_DOCS == true && $TRAVIS_BRANCH == 'master' ]]; then
-        echo "Adding encrypted deployment key for uploading docs"
-        openssl aes-256-cbc -K $encrypted_bd91194538bd_key -iv $encrypted_bd91194538bd_iv -in ophyd-docs-deploy.enc -out ophyd-docs-deploy -d
-        eval `ssh-agent -s`
-        chmod 600 ophyd-docs-deploy
-        ssh-add ophyd-docs-deploy
-        source ~/ci_scripts/push-docs.sh
-      fi
