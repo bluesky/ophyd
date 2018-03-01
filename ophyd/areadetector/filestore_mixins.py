@@ -115,6 +115,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         'root' will be changed (for example of the whole file tree is
         copied to / mounted on another system or external hard drive).
 
+    path_semantics : {'posix', 'windows'}, optional
+
     read_path_template : str, optional
         The read path template, if different from the write path.   See the
         docstings for `write_path_template` and `root`.
@@ -148,6 +150,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def __init__(self, *args,
                  write_path_template,
                  root=os.path.sep,
+                 path_semantics='posix',
                  read_path_template=None,
                  reg=None,
                  **kwargs):
@@ -158,10 +161,13 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         if write_path_template is None:
             raise ValueError("write_path_template is required")
         self.reg_root = root
+        self.path_semantics = path_semantics
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
 
-        self._point_counter = None
+        self._resource_uid = None
+        self._datum_counter = None  # becomes an itertools.count() in stage()
+        self._asset_docs_cache = []
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
         if reg is None and fs is not PH:
@@ -241,22 +247,63 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._write_path_template = _ensure_trailing_slash(val)
 
     def stage(self):
-        self._point_counter = count()
+        self._datum_counter = count()
         self._locked_key_list = False
         self._datum_uids.clear()
         super().stage()
         if self.enable.get() and self._reg is None:
             raise RuntimeError('The plugin {!r} is enabled, but '
                                'the Registry (self._reg) is `None`')
+        # Subclasses will assemble resource_kwargs and call
+        # self._generate_resource(resource_kwrags)
+
+    def _generate_resource(self, resource_kwargs):
+        fn = PurePath(self._fn).relative_to(self.reg_root)
+        resource = {'spec': self.filestore_spec,
+                    'root': str(self.reg_root),
+                    'resource_path': str(fn),
+                    'resource_kwargs':resource_kwargs,
+                    'path_semantics': self.path_semantics}
+        # If a Registry is set, we need to allow it to generate the uid for us.
+        if self.reg is not None:
+            logger.debug("Inserting resource with filename %s", self._fn)
+            # register_resource has accidentally different parameter names...
+            self._resource_uid = self.reg.register_resource(
+                rpath=resource['resource_path'],
+                rkwargs=resource['resource_kwargs'],
+                root=resource['root'],
+                spec=resource['spec'],
+                path_semantics=resource['path_semantics'])
+        # If a Registry is not set, we need to generate the uid.
+        else:
+            self._resource_uid = new_uid()
+        resource['uid'] = self._resource_uid
+        self._asset_docs_cache.append(('resource', resource))
 
     def generate_datum(self, key, timestamp, datum_kwargs):
         "Generate a uid and cache it with its key for later insertion."
+        i = next(self._datum_counter)
         datum_kwargs = datum_kwargs or {}
+        datum_kwargs.update({'point_number': i})
         if self._locked_key_list:
             if key not in self._datum_uids:
                 raise RuntimeError("modifying after lock")
-        uid = self._reg.register_datum(self._resource, datum_kwargs)
-        reading = {'value': uid, 'timestamp': timestamp}
+        # This is temporarily more complicated than it will be in the
+        # future.  It needs to support old configurations that have a
+        # registry.
+        datum = {'resource': self._resource_uid,
+                 'datum_kwargs': datum_kwargs}
+        if self.reg is not None:
+            # If a Registry is set, we need to allow it to generate the
+            # datum_id for us.
+            datum_id = self.reg.register_datum(
+                datum_kwargs=datum['datum_kwargs'],
+                resource_uid=datum['resource'])
+        else:
+            # If a Registry is not set, we need to generate the datum_id.
+            datum_id = '{}/{}'.format(self._resource_uid, i)
+        self._asset_docs_cache.append(('datum', datum))
+        reading = {'value': datum_id, 'timestamp': timestamp}
         # datum_uids looks like {'dark': [reading1, reading2], ...}
         self._datum_uids[key].append(reading)
         return uid
@@ -279,9 +326,16 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             res[k] = v[-1]
         return res
 
+    def collect_asset_docs(self):
+        ret = tuple(self._asset_docs_cache)
+        self._asset_docs_cache.clear()
+        return ret
+
     def unstage(self):
         self._locked_key_list = False
-        self._resource = None
+        self._resource_uid = None
+        self._datum_counter = None
+        self._asset_docs_cache.clear()
         return super().unstage()
 
 
@@ -341,6 +395,9 @@ class FileStorePluginBase(FileStoreBase):
             raise IOError("Path %s does not exist on IOC."
                           "" % self.file_path.get())
 
+    def unstage(self):
+        super().unstage()
+
 
 class FileStoreHDF5(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
@@ -357,13 +414,7 @@ class FileStoreHDF5(FileStorePluginBase):
     def stage(self):
         super().stage()
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
-        logger.debug("Inserting resource with filename %s", self._fn)
-        fn = PurePath(self._fn).relative_to(self.reg_root)
-        self._resource = self._reg.register_resource(
-            self.filestore_spec,
-            str(self.reg_root), str(fn),
-            res_kwargs)
-
+        self._generate_resource(res_kwargs)
 
 class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
@@ -380,15 +431,10 @@ class FileStoreTIFF(FileStorePluginBase):
 
     def stage(self):
         super().stage()
-        res_kwargs = {'template': self.file_template.get(),
-                      'filename': self.file_name.get(),
-                      'frame_per_point': self.get_frames_per_point()}
-        fp = PurePath(self._fp).relative_to(self.reg_root)
-
-        self._resource = self._reg.register_resource(
-            self.filestore_spec,
-            str(self.reg_root), str(fp),
-            res_kwargs)
+        resource_kwargs = {'template': self.file_template.get(),
+                           'filename': self.file_name.get(),
+                           'frame_per_point': self.get_frames_per_point()}
+        self._generate_resource(resource_kwargs)
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
@@ -478,25 +524,14 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
                                 (cam.num_images, images_per_set * num_sets)])
         super().stage()
 
-        res_kwargs = {'template': self.file_template.get(),
-                      'filename': self.file_name.get(),
-                      'frame_per_point': self.get_frames_per_point()}
-        fp = PurePath(self._fp).relative_to(self.reg_root)
-
-        self._resource = self._reg.register_resource(
-            self.filestore_spec,
-            str(self.reg_root), str(fp),
-            res_kwargs)
+        resource_kwargs = {'template': self.file_template.get(),
+                           'filename': self.file_name.get(),
+                           'frame_per_point': self.get_frames_per_point()}
+        self._generate_resource(resource_kwargs)
 
 
 class FileStoreIterativeWrite(FileStoreBase):
-    "Save records to filestore as they are generated."
-    def generate_datum(self, key, timestamp, datum_kwargs):
-        'Generate the datum and insert'
-        datum_kwargs = datum_kwargs or {}
-        i = next(self._point_counter)
-        datum_kwargs.update({'point_number': i})
-        return super().generate_datum(key, timestamp, datum_kwargs)
+    ...
 
 
 # ready-to-use combinations

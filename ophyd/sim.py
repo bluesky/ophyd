@@ -731,10 +731,14 @@ class SynSignalWithRegistry(SynSignal):
         return res
 
     def collect_asset_docs(self):
-        return tuple(self._asset_docs_cache)
+        ret = tuple(self._asset_docs_cache)
+        self._asset_docs_cache.clear()
+        return ret
 
     def unstage(self):
         self._resource_uid = None
+        self._datum_counter = None
+        self._asset_docs_cache.clear()
         self._file_stem = None
         self._path_stem = None
         self._result.clear()
