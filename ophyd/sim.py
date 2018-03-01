@@ -7,6 +7,7 @@ import random
 import threading
 from tempfile import mkdtemp
 import os
+import warnings
 import weakref
 import uuid
 
@@ -626,7 +627,7 @@ class SynSignalWithRegistry(SynSignal):
         self.save_ext = save_ext
         self._resource_uid = None
         self._datum_counter = None
-        self._asset_docs_cache = []
+        self._asset_docs_cache = deque()
         if save_path is None:
             self.save_path = mkdtemp()
         else:

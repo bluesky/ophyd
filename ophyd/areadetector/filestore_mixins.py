@@ -19,7 +19,7 @@ To be used like so ::
 
     det = MyDetector(...)
 """
-
+from collections import deque
 import os
 import logging
 import warnings
@@ -167,7 +167,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
         self._resource_uid = None
         self._datum_counter = None  # becomes an itertools.count() in stage()
-        self._asset_docs_cache = []
+        self._asset_docs_cache = deque()
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
         if reg is None and fs is not PH:
