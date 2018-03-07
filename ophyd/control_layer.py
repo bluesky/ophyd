@@ -2,8 +2,10 @@ import os
 import warnings
 
 
-warnings.warn("This module is deprecated, use the 'cl' object "
-              "at the top level instead", stacklevel=2)
+warnings.warn("This module is deprecated in ophyd 1.1 and "
+              "will be removed in 1.2. "
+              "use the cl attribute at the top level instead",
+              stacklevel=2)
 
 __all__ = ['setup',
            'caput', 'caget',

@@ -53,7 +53,7 @@ class Signal(OphydObject):
                  tolerance=None, rtolerance=None, cl=None):
         super().__init__(name=name, parent=parent)
         if cl is None:
-            from . import control_layer as cl
+            from . import cl
         self.cl = cl
         self._readback = value
 
