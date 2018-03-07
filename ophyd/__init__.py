@@ -3,8 +3,9 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-from . import *
-
+from . import (callbacks, device, epics_motor, flyers, mca, mixins,
+               ophydobj, positioner, pseudopos, pv_positioner, quadem,
+               scaler, signal, sim, status, utils)
 
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
