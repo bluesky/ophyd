@@ -6,7 +6,7 @@ from copy import copy
 from ophyd import (PVPositioner, PVPositionerPC, EpicsMotor)
 from ophyd import (EpicsSignal, EpicsSignalRO)
 from ophyd import (Component as C)
-import ophyd.control_layer as cl
+from ophyd import cl
 
 logger = logging.getLogger(__name__)
 

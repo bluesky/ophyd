@@ -42,7 +42,7 @@ class EpicsUtilTest(unittest.TestCase):
         self.assertEquals(epics_utils.waveform_to_string(asc), s)
 
     def test_pv_form(self):
-        import ophyd.control_layer as cl
+        from ophyd import cl
         import ophyd._pyepics_shim as o_ps
         self.assertIn(cl.pv_form, ('native', 'time'))
         versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')

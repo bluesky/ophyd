@@ -2,7 +2,7 @@ import logging
 import time
 import copy
 import pytest
-import ophyd.control_layer as cl
+from ophyd import cl
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
