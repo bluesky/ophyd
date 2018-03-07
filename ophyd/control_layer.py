@@ -1,4 +1,9 @@
 import os
+import warnings
+
+
+warnings.warn("This module is deprecated, use the 'cl' object "
+              "at the top level instead", stacklevel=2)
 
 __all__ = ['setup',
            'caput', 'caget',
