@@ -8,10 +8,10 @@ def setup(logger):
     ...
 
 def caget(*args, **kwargs):
-    raise NotImplemented
+    raise NotImplementedError
 
 def caput(*args, **kwargs):
-    raise NotImplemented
+    raise NotImplementedError
 
 def get_pv(*args, **kwargs):
-    raise NotImplemented
+    raise NotImplementedError
