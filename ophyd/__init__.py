@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 cl = None
+
+
 def set_cl(control_layer=None):
     global cl
     known_layers = ('pyepics', 'caproto', 'dummy')
@@ -20,7 +22,7 @@ def set_cl(control_layer=None):
             except ImportError:
                 continue
             else:
-                break
+                return
         else:
             raise ImportError('no valid control layer found')
 
@@ -40,6 +42,7 @@ def set_cl(control_layer=None):
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})
     cl.setup(logger)
+
 
 def get_cl():
     if cl is None:
