@@ -265,10 +265,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                     'resource_kwargs':resource_kwargs,
                     'path_semantics': self.path_semantics}
         # If a Registry is set, we need to allow it to generate the uid for us.
-        if self.reg is not None:
+        if self._reg is not None:
             logger.debug("Inserting resource with filename %s", self._fn)
             # register_resource has accidentally different parameter names...
-            self._resource_uid = self.reg.register_resource(
+            self._resource_uid = self._reg.register_resource(
                 rpath=resource['resource_path'],
                 rkwargs=resource['resource_kwargs'],
                 root=resource['root'],
@@ -293,10 +293,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         # registry.
         datum = {'resource': self._resource_uid,
                  'datum_kwargs': datum_kwargs}
-        if self.reg is not None:
+        if self._reg is not None:
             # If a Registry is set, we need to allow it to generate the
             # datum_id for us.
-            datum_id = self.reg.register_datum(
+            datum_id = self._reg.register_datum(
                 datum_kwargs=datum['datum_kwargs'],
                 resource_uid=datum['resource'])
         else:
