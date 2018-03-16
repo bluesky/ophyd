@@ -335,6 +335,7 @@ def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
     if check_files:
+        time.sleep(5)  # Give AD some time to finish writing.
         path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
         handler = fh.AreaDetectorTiffHandler(str(path) + os.path.sep,
                                              **res_doc['resource_kwargs'])
