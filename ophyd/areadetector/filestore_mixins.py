@@ -306,7 +306,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         reading = {'value': datum_id, 'timestamp': timestamp}
         # datum_uids looks like {'dark': [reading1, reading2], ...}
         self._datum_uids[key].append(reading)
-        return uid
+        return datum_id
 
     def describe(self):
         # One object has been 'described' once, no new keys can be added
