@@ -39,23 +39,25 @@ class DummyFS:
         self.datum = {}
         self.datum_by_resource = {}
 
-    def register_resource(self, spec, root, fn, res_kwargs):
+    def register_resource(self, spec, root, rpath, rkwargs,
+                          path_semantics=None):
 
         uid = str(uuid.uuid4())
         self.resource[uid] = {'spec': spec,
-                              'resource_path': fn,
+                              'resource_path': rpath,
                               'root': root,
-                              'resource_kwargs': res_kwargs,
-                              'uid': uid}
+                              'resource_kwargs': rkwargs,
+                              'uid': uid,
+                              'path_semantics': path_semantics}
         self.datum_by_resource[uid] = []
         return uid
 
-    def register_datum(self, resource, datum_kwargs):
+    def register_datum(self, resource_uid, datum_kwargs):
         datum_id = str(uuid.uuid4())
-        datum = {'resource': resource,
+        datum = {'resource': resource_uid,
                  'datum_id': datum_id,
                  'datum_kwargs': datum_kwargs}
-        self.datum_by_resource[resource].append(datum)
+        self.datum_by_resource[resource_uid].append(datum)
         self.datum[datum_id] = datum
         return datum_id
 
