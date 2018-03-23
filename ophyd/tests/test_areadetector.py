@@ -77,7 +77,9 @@ def test_basic():
     det = MyDetector(prefix, name='test')
     det.wait_for_connection()
     det.stage()
-    det.trigger()
+    st = det.trigger()
+    while not st.done:
+        time.sleep(.1)
     det.unstage()
 
 
