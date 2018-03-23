@@ -285,10 +285,10 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
     return a == b
 
 
-_type_map = {'number': (float, ),
+_type_map = {'number': (float, np.floating),
              'array': (np.ndarray, ),
              'string': (str, ),
-             'integer': (int, ),
+             'integer': (int, np.integer),
              }
 
 
