@@ -23,11 +23,11 @@ cache:
 matrix:
   include:
     - python: 3.5
-      env: BUILD_DOCS=false CONDA_ENV=1
+      env: CONDA_ENV=1
     - python: 3.6
       env: BUILD_DOCS=true CONDA_ENV=1
     - python: 3.6
-      env: BUILD_DOCS=false EPICS_DEB_DIST="jessie/staging"
+      env: EPICS_DEB_DIST="jessie/staging"
 
 before_install:
   - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
