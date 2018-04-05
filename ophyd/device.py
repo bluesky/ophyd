@@ -563,7 +563,7 @@ class BlueskyInterface:
                                    "Maybe the most recent unstaging "
                                    "encountered an error before finishing. "
                                    "Try unstaging again.".format(self))
-        logger.debug("Staging %s", self.name)
+        self.log.debug("Staging %s", self.name)
         self._staged = Staged.partially
 
         # Resolve any stage_sigs keys given as strings: 'a.b' -> self.a.b
@@ -586,7 +586,7 @@ class BlueskyInterface:
         devices_staged = []
         try:
             for sig, val in stage_sigs.items():
-                logger.debug("Setting %s to %r (original value: %r)",
+                self.log.debug("Setting %s to %r (original value: %r)",
                              self.name,
                              val, original_vals[sig])
                 set_and_wait(sig, val)
@@ -601,7 +601,7 @@ class BlueskyInterface:
                     device.stage()
                     devices_staged.append(device)
         except Exception:
-            logger.debug("An exception was raised while staging %s or "
+            self.log.debug("An exception was raised while staging %s or "
                          "one of its children. Attempting to restore "
                          "original settings before re-raising the "
                          "exception.", self.name)
@@ -629,7 +629,7 @@ class BlueskyInterface:
             list including self and all child devices unstaged
 
         """
-        logger.debug("Unstaging %s", self.name)
+        self.log.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
         devices_unstaged = []
 
@@ -642,7 +642,7 @@ class BlueskyInterface:
 
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
-            logger.debug("Setting %s back to its original value: %r)",
+            self.log.debug("Setting %s back to its original value: %r)",
                          self.name,
                          val)
             set_and_wait(sig, val)
@@ -1016,7 +1016,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             dev = getattr(self, attr)
 
             if not dev.connected:
-                logger.debug('stop: device %s (%s) is not connected; '
+                self.log.debug('stop: device %s (%s) is not connected; '
                              'skipping', attr, dev)
                 continue
 
@@ -1027,7 +1027,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                                  for sub_attr, ex in ex.exceptions.items()])
             except Exception as ex:
                 exc_list.append((attr, ex))
-                logger.error('Device %s (%s) stop failed', attr, dev,
+                self.log.error('Device %s (%s) stop failed', attr, dev,
                              exc_info=ex)
 
         if exc_list:

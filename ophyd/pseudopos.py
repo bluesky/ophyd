@@ -418,8 +418,8 @@ class PseudoPositioner(Device, SoftPositioner):
         self.RealPosition = self._real_position_tuple()
         self.PseudoPosition = self._pseudo_position_tuple()
 
-        logger.debug('Real positioners: %s', self._real)
-        logger.debug('Pseudo positioners: %s', self._pseudo)
+        self.log.debug('Real positioners: %s', self._real)
+        self.log.debug('Pseudo positioners: %s', self._pseudo)
 
         for idx, pseudo in enumerate(self._pseudo):
             pseudo._idx = idx
@@ -562,8 +562,8 @@ class PseudoPositioner(Device, SoftPositioner):
                                  for sub_attr, ex in ex.exceptions.items()])
             except Exception as ex:
                 exc_list.append((attr, ex))
-                logger.error('Device %s (%s) stop failed', attr, dev,
-                             exc_info=ex)
+                self.log.error('Device %s (%s) stop failed', attr, dev,
+                               exc_info=ex)
 
         if exc_list:
             exc_info = '\n'.join('{} raised {!r}'.format(attr, ex)
@@ -720,7 +720,7 @@ class PseudoPositioner(Device, SoftPositioner):
         '''
         with self._finished_lock:
             real = obj
-            logger.debug('Real motor %s finished moving', real.name)
+            self.log.debug('Real motor %s finished moving', real.name)
 
             if real in self._real_waiting:
                 self._real_waiting.remove(real)
@@ -762,12 +762,12 @@ class PseudoPositioner(Device, SoftPositioner):
 
         def move_next(obj=None):
             # last motion complete message came from 'obj'
-            logger.debug('[%s:sequential] move_next called', self.name)
+            self.log.debug('[%s:sequential] move_next called', self.name)
             with self._finished_lock:
                 if pending_status:
                     last_status = pending_status[-1]
                     if not last_status.success:
-                        logger.error('Failing due to last motion')
+                        self.log.error('Failing due to last motion')
                         self._done_moving(success=False)
                         return
 
@@ -777,7 +777,7 @@ class PseudoPositioner(Device, SoftPositioner):
                     self._done_moving(success=True)
                     return
 
-                logger.debug('[%s:sequential] Moving next motor: %s',
+                self.log.debug('[%s:sequential] Moving next motor: %s',
                              self.name, real.name)
 
                 elapsed = time.time() - t0
@@ -786,11 +786,11 @@ class PseudoPositioner(Device, SoftPositioner):
                 else:
                     sub_timeout = timeout - elapsed
 
-                logger.debug('[%s:sequential] Moving %s to %s (timeout=%s)',
+                self.log.debug('[%s:sequential] Moving %s to %s (timeout=%s)',
                              self.name, real.name, position, sub_timeout)
 
                 if sub_timeout is not None and sub_timeout < 0:
-                    logger.error('Motion timeout')
+                    self.log.error('Motion timeout')
                     self._done_moving(success=False)
                 else:
                     status = real.move(position, wait=False,
@@ -798,10 +798,10 @@ class PseudoPositioner(Device, SoftPositioner):
                                        moved_cb=move_next,
                                        **kwargs)
                     pending_status.append(status)
-                    logger.debug('[%s:sequential] waiting on %s',
+                    self.log.debug('[%s:sequential] waiting on %s',
                                  self.name, real.name)
 
-        logger.debug('[%s:sequential] started', self.name)
+        self.log.debug('[%s:sequential] started', self.name)
         move_next()
 
     def _concurrent_move(self, real_pos, **kwargs):
@@ -809,7 +809,7 @@ class PseudoPositioner(Device, SoftPositioner):
         self._real_waiting.extend(self._real)
 
         for real, value in zip(self._real, real_pos):
-            logger.debug('[concurrent] Moving %s to %s', real.name, value)
+            self.log.debug('[concurrent] Moving %s to %s', real.name, value)
             real.move(value, wait=False, moved_cb=self._real_finished,
                       **kwargs)
 
