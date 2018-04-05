@@ -60,6 +60,13 @@ class OphydObject:
         self._args_cache = {k: None for k in self.subscriptions}
         # count of subscriptions we have handed out, used to give unique ids
         self._cb_count = count()
+        # Create logger name from parent or from module class
+        if self.parent:
+            base_log = self.parent.log.name
+        else:
+            base_log = self.__class__.__module__
+        # Instantiate logger
+        self.log = logging.getLogger(base_log + '.' + self.name)
 
     @property
     def name(self):
