@@ -220,10 +220,11 @@ class OphydObject:
             def inner(*args, **kwargs):
                 try:
                     cb(*args, **kwargs)
-                except Exception as ex:
+                except Exception:
                     sub_type = kwargs['sub_type']
-                    self.log.error('Subscription %s callback exception (%s)',
-                                 sub_type, self, exc_info=ex)
+                    self.log.exception('Subscription %s callback '\
+                                       'exception (%s)',
+                                       sub_type, self)
             return inner
         # get next cid
         cid = next(self._cb_count)

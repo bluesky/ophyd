@@ -1025,10 +1025,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             except ExceptionBundle as ex:
                 exc_list.extend([('{}.{}'.format(attr, sub_attr), ex)
                                  for sub_attr, ex in ex.exceptions.items()])
-            except Exception as ex:
+            except Exception:
                 exc_list.append((attr, ex))
-                self.log.error('Device %s (%s) stop failed', attr, dev,
-                             exc_info=ex)
+                self.log.exception('Device %s (%s) stop failed', attr, dev)
 
         if exc_list:
             exc_info = '\n'.join('{} raised {!r}'.format(attr, ex)
