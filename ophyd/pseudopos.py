@@ -560,7 +560,7 @@ class PseudoPositioner(Device, SoftPositioner):
             except ExceptionBundle as ex:
                 exc_list.extend([('{}.{}'.format(attr, sub_attr), ex)
                                  for sub_attr, ex in ex.exceptions.items()])
-            except Exception:
+            except Exception as ex:
                 exc_list.append((attr, ex))
                 self.log.exception('Device %s (%s) stop failed', attr, dev)
 
