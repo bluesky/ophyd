@@ -256,7 +256,7 @@ class EpicsMotor(Device, PositionerBase):
                 status = self.user_readback.alarm_status
                 self.log.error('Motion failed: %s is in an alarm state '
                                'status=%s severity=%s',
-                             self.name, status, severity)
+                               self.name, status, severity)
                 success = False
 
             self._done_moving(success=success, timestamp=timestamp,
