@@ -61,10 +61,12 @@ class OphydObject:
         # Create logger name from parent or from module class
         if self.parent:
             base_log = self.parent.log.name
+            name = self.name.lstrip(self.parent.name + '_')
         else:
             base_log = self.__class__.__module__
+            name = self.name
         # Instantiate logger
-        self.log = logging.getLogger(base_log + '.' + self.name)
+        self.log = logging.getLogger(base_log + '.' + name)
 
     @property
     def name(self):
