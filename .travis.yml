@@ -73,8 +73,8 @@ install:
        python -mpip install -r requirements.txt
     fi
   - python -mpip install -r test-requirements.txt
-  - python -mpip install git+git://github.com/NSLS-II/caproto.git
-  - python -mpip install -e .
+  - python -mpip install git+git://github.com/danielballan/caproto.git@locks-locks-locks || echo 'caproto did not install'
+  - pip install -e .
   # set up directories we will need
   - python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
   # setup some path environment variables for epics
@@ -102,7 +102,7 @@ script:
         conda list
     fi
   # running tests
-  - python run_tests.py --cov=ophyd --cov-report term-missing
+  - python run_tests.py -v --cov=ophyd --cov-report term-missing
 
   - set -e
   # Build docs.
