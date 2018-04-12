@@ -1,0 +1,78 @@
+===============================
+OEP 3 : Streaming Capability
+===============================
+
+
+.. contents::
+   :local:
+
+Status
+======
+
+**Discussion**
+
+Branches and Pull requests
+==========================
+
+
+Abstract
+========
+
+Ophyd devices may be read in different modes. For example, one could
+imagine a streaming mode where an ophyd object upon calling its
+``read()`` method only returns values from objects who have streaming
+capability. Another example is a detector with a scalar and array mode,
+where in scalar mode, only data that can be read as scalars (fast) are
+read over just arrays. This OEP proposes to add a read mode to ophyd
+devices.
+
+Detailed description
+====================
+
+We will add a ``read_mode`` property to ophyd objects.
+
+This read_mode property will consist of a dict of key type (i.e. 'streaming')
+and value state (ex: 'never', 'always', 'ondemand'). The motivation is
+to allow interaction with these objects (i.e. bluesky) have more control
+over reading objects with different read modes.
+
+For example, let's imagine a case where we want to read streaming
+devices from a ``cam`` device and, if streaming devices present, also
+from a motor ``motor1``. The following information would be sufficient
+to perform such a scan:
+
+    cam.roi1.read_mode = {'streaming' : 'never',}
+    cam.hdf5.read_mode = {'streaming' : 'always',}
+    motor1.read_mode = {'streaming' : 'ondemand',}
+
+
+ - in bluesky (optional):
+    - modify ``trigger_and_read`` to grab devices which can be streamed through this
+    - modify the describe_cache to index on the hash of the stream_name, Msg.args
+      and Msg.kwargs
+
+
+Requirements
+------------
+
+
+
+Implementation
+==============
+
+Not much change in the ophyd layer is necessary. We will add a read_mode
+to ophyd objects. In the bluesky layer, bluesky will search for this
+read mode and use it to decide its logic.
+
+On the bluesky side, we will begin implementing one practical case of
+this for streaming detectors, which is the example noted above.
+
+Backward compatibility
+======================
+
+This should be fully backwards compatible with previous ophyd objects,
+as well as bluesky.
+
+Alternatives
+============
+
