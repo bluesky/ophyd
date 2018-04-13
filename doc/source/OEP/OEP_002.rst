@@ -11,6 +11,7 @@ Status
 
 **Discussion**
 
+
 Branches and Pull requests
 ==========================
 
@@ -40,10 +41,26 @@ For example, let's imagine a case where we want to read streaming
 devices from a ``cam`` device and, if streaming devices present, also
 from a motor ``motor1``. The following information would be sufficient
 to perform such a scan:
+.. code-block:: python
 
     cam.roi1.read_mode = {'streaming' : 'never',}
     cam.hdf5.read_mode = {'streaming' : 'always',}
     motor1.read_mode = {'streaming' : 'ondemand',}
+
+For reading, one would just call each objects ``read()`` method:
+
+.. code-block:: python
+
+    read_dict = dict()
+    # first read the streaming devices
+    for device in devices:
+        read_dict.update(cam1.read(streaming='always'))
+
+    # if there were any streaming devices, then re-read
+    # devices who will supply streaming on demand
+    if read_dict():
+        for device in devices:
+            read_dict.update(motor1.read(streaming='ondemand'))
 
 
  - in bluesky (optional):
@@ -60,18 +77,27 @@ Requirements
 Implementation
 ==============
 
-Not much change in the ophyd layer is necessary. We will add a read_mode
-to ophyd objects. In the bluesky layer, bluesky will search for this
-read mode and use it to decide its logic.
+Not much change in the ophyd layer is necessary. We will add a ``read_mode`` to
+ophyd objects. The ``read`` method will have to accept as a keyword argument
+each key in ``read_mode``. Since this can be dynamically changed, this means
+that ``read()`` should accept all kwargs and pass them to its children.
+
+In the bluesky layer, bluesky will search for this read mode and use it to
+decide its logic.
 
 On the bluesky side, we will begin implementing one practical case of
 this for streaming detectors, which is the example noted above.
 
+**Discussion**
+
+This only affects readable objects. Flyers should perhaps also be considered
+here for completeness.
+
 Backward compatibility
 ======================
 
-This should be fully backwards compatible with previous ophyd objects,
-as well as bluesky.
+This is almost fully backwards compatible with previous ophyd objects, as well
+as bluesky.
 
 Alternatives
 ============
