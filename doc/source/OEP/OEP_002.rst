@@ -54,13 +54,13 @@ For reading, one would just call each objects ``read(**kwargs)`` method:
     read_dict = dict()
     # first read the streaming devices
     for device in devices:
-        read_dict.update(cam1.read(streaming='always'))
+        read_dict.update(device.read(streaming='always'))
 
     # if there were any streaming devices, then re-read
     # devices who will supply streaming on demand
     if read_dict():
         for device in devices:
-            read_dict.update(motor1.read(streaming='ondemand'))
+            read_dict.update(device.read(streaming='ondemand'))
 
 
  - in bluesky (optional):
