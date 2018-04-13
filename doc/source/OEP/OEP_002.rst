@@ -21,7 +21,7 @@ Abstract
 
 Ophyd devices may be read in different modes. For example, one could
 imagine a streaming mode where an ophyd object upon calling its
-``read()`` method only returns values from objects who have streaming
+``read(**kwargs)`` method only returns values from objects who have streaming
 capability. Another example is a detector with a scalar and array mode,
 where in scalar mode, only data that can be read as scalars (fast) are
 read over just arrays. This OEP proposes to add a read mode to ophyd
@@ -47,7 +47,7 @@ to perform such a scan:
     cam.hdf5.read_mode = {'streaming' : 'always',}
     motor1.read_mode = {'streaming' : 'ondemand',}
 
-For reading, one would just call each objects ``read()`` method:
+For reading, one would just call each objects ``read(**kwargs)`` method:
 
 .. code-block:: python
 
@@ -78,9 +78,9 @@ Implementation
 ==============
 
 Not much change in the ophyd layer is necessary. We will add a ``read_mode`` to
-ophyd objects. The ``read`` method will have to accept as a keyword argument
+ophyd objects. The ``read(**kwargs)`` method will have to accept as a keyword argument
 each key in ``read_mode``. Since this can be dynamically changed, this means
-that ``read()`` should accept all kwargs and pass them to its children.
+that ``read(**kwargs)`` should accept all kwargs and pass them to its children.
 
 In the bluesky layer, bluesky will search for this read mode and use it to
 decide its logic.
