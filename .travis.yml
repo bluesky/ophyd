@@ -28,6 +28,8 @@ matrix:
       env: BUILD_DOCS=true CONDA_ENV=1
     - python: 3.6
       env: EPICS_DEB_DIST="jessie/staging"
+    - python: nightly
+      env: EPICS_DEB_DIST="jessie/staging"
 
 before_install:
   - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
@@ -68,10 +70,11 @@ install:
        conda install readline -c lightsource2-tag
     else
        sudo -E bash install_epics_on_travis.sh
-       pip install -r requirements.txt
+       python -mpip install -r requirements.txt
     fi
-  - pip install -r test-requirements.txt
-  - python setup.py develop
+  - python -mpip install -r test-requirements.txt
+  - python -mpip install git+git://github.com/NSLS-II/caproto.git
+  - python -mpip install -e .
   # set up directories we will need
   - python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
   # setup some path environment variables for epics
