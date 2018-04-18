@@ -1,6 +1,6 @@
-===============================
-OEP 2 : Streaming Capability
-===============================
+===================
+ OEP 2 : read-mode
+===================
 
 
 .. contents::
@@ -19,76 +19,212 @@ Branches and Pull requests
 Abstract
 ========
 
-Ophyd devices may be read in different modes. For example, one could
-imagine a streaming mode where an ophyd object upon calling its
-``read(**kwargs)`` method only returns values from objects who have streaming
-capability. Another example is a detector with a scalar and array mode,
-where in scalar mode, only data that can be read as scalars (fast) are
-read over just arrays. This OEP proposes to add a read mode to ophyd
-devices.
+This OEP proposes to add a 'read mode' to ophyd devices.  Ophyd
+devices may be read in different modes that we want to access with in
+the same 'stage' context.  For example, one could imagine a streaming
+mode where an ophyd object upon calling its
+``obj.read(read_mode='streaming')`` immediately after triggering a
+detector to get an event which can be consumed 'live' and then later
+calling ``obj.read()`` after the detector has finished.  The two reads
+may contain different keys (as not all children may support streaming).
+
+A second example would be a detector which requires dark frames to be
+taken and stored.  This could be implemented via
+``obj.read(read_mode='dark')`` which would return the dark field. and
+``obj.read()`` would return the bright field.
+
+Another example is a detector with a scalar and array mode where
+``obj.read(read_mode='scalar')`` would just grab the current value and
+``obj.read()`` would read everything.
+
 
 Detailed description
 ====================
 
-We will add a ``read_mode`` property to ophyd objects.
+Changes to function signatures
+------------------------------
 
-This read_mode property will consist of a dict of key type (i.e. 'streaming')
-and value state (ex: 'never', 'always', 'ondemand'). The motivation is
-to allow interaction with these objects (i.e. bluesky) have more control
-over reading objects with different read modes.
+To support this change we will have to add an optional keyword
+argument ``read_mode`` to ``trigger``, ``read``, and ``describe``.  If
+a device accepts the kwarg (and a particular value of the kwarg) on
+any one of the three methods then it must accept it on all of them.
+The values accepted for ``read_mode`` should be strings.
 
-For example, let's imagine a case where we want to read streaming
-devices from a ``cam`` device and, if streaming devices present, also
-from a motor ``motor1``. The following information would be sufficient
-to perform such a scan:
-.. code-block:: python
+Objects much have a 'default' read mode so ``read()`` works.
 
-    cam.roi1.read_mode = {'streaming' : 'never',}
-    cam.hdf5.read_mode = {'streaming' : 'always',}
-    motor1.read_mode = {'streaming' : 'ondemand',}
+``trigger`` may dis-regard ``read_mode``, but must accept it if
+``read`` does.
 
-For reading, one would just call each objects ``read(**kwargs)`` method:
+An object may require a matched ``trigger(read_mode=FOO)`` to go with
+a ``read(read_mode==FOO)``.
 
-.. code-block:: python
+Changes to the RunEngine
+------------------------
 
-    read_dict = dict()
-    # first read the streaming devices
-    for device in devices:
-        read_dict.update(device.read(streaming='always'))
-
-    # if there were any streaming devices, then re-read
-    # devices who will supply streaming on demand
-    if read_dict():
-        for device in devices:
-            read_dict.update(device.read(streaming='ondemand'))
+The descriptor cache will now need to be by keyed by ``(obj,
+msg.kwargs.get('read_mode', None))`` rather than just ``obj`` and the
+descriptor building logic will have to be updated to account for both
+the object and read mode involved.  Reading the same device twice with
+different read modes which have dis-joint keys should work.
 
 
- - in bluesky (optional):
-    - modify ``trigger_and_read`` to grab devices which can be streamed through this
-    - modify the describe_cache to index on the hash of the stream_name, Msg.args
-      and Msg.kwargs
+Extending the OphydObject interface
+-----------------------------------
 
 
-Requirements
-------------
+We will add a ``read_mode`` property to ophyd objects to hint at
 
+This read_mode property will consist of a dict of key type
+(i.e. 'streaming', 'dark') and value state (ex: 'never', 'always',
+'ondemand', True). The motivation is to allow interaction with these
+objects (i.e. bluesky) have more control over reading objects with
+different read modes. The keys of ``read_mode`` are the valid values
+that maybe passed to ``read_mode`` and the values are hints to the
+plans of if this device should be used.
 
 
 Implementation
 ==============
 
-Not much change in the ophyd layer is necessary. We will add a ``read_mode`` to
-ophyd objects. The ``read(**kwargs)`` method will have to accept as a keyword argument
-each key in ``read_mode``. Since this can be dynamically changed, this means
-that ``read(**kwargs)`` should accept all kwargs and pass them to its children.
+trigger and read
+----------------
 
-In the bluesky layer, bluesky will search for this read mode and use it to
-decide its logic.
+For example, let's imagine a case where we want to create a
+'streaming' stream for ``cam`` every time it is used (for example an
+eiger or the fastCCD).  There is a second class of devices which we
+can not stream (for what ever reason either they can not at the
+hardware level or it just does not make sense to).  There is also a
+third category which would like to include in the 'streaming' stream
+if it exists, but do not want to cause a 'streaming' stream to be
+created (ex, motors).
 
-On the bluesky side, we will begin implementing one practical case of
-this for streaming detectors, which is the example noted above.
+.. code-block:: python
 
-**Discussion**
+    # always wants to be streamed
+    cam.read_mode = {'streaming' : 'always',}
+    # if other things are streaming, tag along
+    motor.read_mode = {'streaming' : 'ondemand',}
+    # do not take part in streaming
+    mca.read_mode = {'streaming' : 'never',}
+    cam2.read_mode = {}
+
+
+
+We can modify ``trigger_and_read`` in the following way::
+
+   def trigger_and_read(devices, name='primary'):
+       """
+       Trigger and read a list of detectors and bundle readings into one Event.
+
+       Parameters
+       ----------
+       devices : iterable
+           devices to trigger (if they have a trigger method) and then read
+       name : string, optional
+           event stream name, a convenient human-friendly identifier; default
+           name is 'primary'
+
+       Yields
+       ------
+       msg : Msg
+           messages to 'trigger', 'wait' and 'read'
+       """
+       # If devices is empty, don't emit 'create'/'save' messages.
+       if not devices:
+           yield from null()
+       devices = separate_devices(devices)  # remove redundant entries
+       rewindable = all_safe_rewind(devices)  # if devices can be re-triggered
+       may_stream = [d for d in devices
+                     if (getattr(d, 'read_mode', {}).
+                         get('streaming', None) == 'ondemand')]
+       want_to_stream = [d for d in devices
+                         if (getattr(d, 'read_mode', {}).
+                             get('streaming', None) == 'always')]
+
+       def inner_trigger_and_read():
+           grp = _short_uid('trigger')
+           no_wait = True
+           for obj in devices:
+               if hasattr(obj, 'trigger'):
+                   no_wait = False
+                   yield from trigger(obj, group=grp)
+           if want_to_stream:
+               yield from create(f'{name}_streaming')
+               for obj in want_to_stream + may_stream:
+                   yield from read(obj, read_mode='streaming')
+               yield from save()
+           # Skip 'wait' if none of the devices implemented a trigger method.
+           if not no_wait:
+               yield from wait(group=grp)
+           yield from create(name)
+           ret = {}  # collect and return readings to give plan access to them
+           for obj in devices:
+               reading = (yield from read(obj))
+               if reading is not None:
+                   ret.update(reading)
+           yield from save()
+           return ret
+       from .preprocessors import rewindable_wrapper
+       return (yield from rewindable_wrapper(inner_trigger_and_read(),
+
+
+Push dark-frame logic down into devices
+---------------------------------------
+
+This is informed by discussions with CJ
+
+To support analysis with dark frame it may be easier to always ensure
+that there is a 'dark' stream along side the 'primary' stream rather
+than taking single run dark frame (to keep analysis data-broker agnostic and
+to enable taking dark frames during long scans).  One way to achieve this is
+via an smarter inner step plan ::
+
+   def smart_one_1d_step(detectors, motor, step):
+
+       need_dark_frame = [d for d in detectors
+                          if ('dark' in getattr(d, 'read_modes', {}))]
+
+       def take_dark():
+           grp = _short_uid('trigger')
+           no_wait = True
+           for obj in need_dark_frame:
+               # there are skeletons buried here!
+               if is_dark_stale(obj):
+                   no_wait = False
+                   yield from trigger(obj, read_mode='dark', group=grp)
+
+           if no_wait:
+               return
+
+           yield from wait(group=grp)
+           yield from create('dark')
+           for obj in need_dark_frame:
+               yield from read(obj, read_mode='dark')
+           yield
+
+       def move():
+           grp = _short_uid('set')
+           yield Msg('checkpoint')
+           yield Msg('set', motor, step, group=grp)
+           yield from take_dark()
+           yield Msg('wait', None, group=grp)
+
+       yield from move()
+       return (yield from trigger_and_read(list(detectors) + [motor]))
+
+
+The ``is_dark_stale`` function is doing alot of work, we may need to
+extend the ophyd object interface a bit more to accommodate asking
+area detector devices if they need a new dark frame or not.
+
+These
+devices should probably also use ``hints`` to name the pairs of keys
+which are the exposed / dark frames.
+
+
+
+flyers
+------
 
 This only affects readable objects. Flyers should perhaps also be considered
 here for completeness.
@@ -101,4 +237,3 @@ as bluesky.
 
 Alternatives
 ============
-
