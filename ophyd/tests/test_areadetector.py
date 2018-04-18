@@ -17,7 +17,6 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite,
     FileStoreHDF5)
-import databroker.assets.handlers as fh
 
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
@@ -307,6 +306,8 @@ def test_default_configuration_attrs(plugin):
                           ))
 def test_fstiff_plugin(root, wpath, rpath, check_files, WriterClass):
     fs = DummyFS()
+    if check_files:
+        fh = pytest.importorskip('databroker.assets.handlers')
 
     class FS_tiff(TIFFPlugin, FileStoreTIFF,
                   WriterClass):
