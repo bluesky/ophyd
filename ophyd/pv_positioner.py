@@ -143,10 +143,10 @@ class PVPositioner(Device, PositionerBase):
 
     def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
-        logger.debug('%s.setpoint = %s', self.name, position)
+        self.log.debug('%s.setpoint = %s', self.name, position)
         self.setpoint.put(position, wait=True)
         if self.actuate is not None:
-            logger.debug('%s.actuate = %s', self.name, self.actuate_value)
+            self.log.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
 
     def move(self, position, wait=True, timeout=None, moved_cb=None):
@@ -207,10 +207,10 @@ class PVPositioner(Device, PositionerBase):
         started = False
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
-            logger.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
+            self.log.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
                          self.name, started)
 
-        logger.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
+        self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
                      self.name, self._moving, value)
 
         if started:
@@ -280,7 +280,7 @@ class PVPositionerPC(PVPositioner):
     def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
         def done_moving(**kwargs):
-            logger.debug('%s async motion done', self.name)
+            self.log.debug('%s async motion done', self.name)
             self._done_moving(success=True)
 
         if self.done is None:
@@ -288,12 +288,12 @@ class PVPositionerPC(PVPositioner):
             moving_val = 1 - self.done_value
             self._move_changed(value=moving_val)
 
-        logger.debug('%s.setpoint = %s', self.name, position)
+        self.log.debug('%s.setpoint = %s', self.name, position)
 
         if self.actuate is not None:
             self.setpoint.put(position, wait=True)
 
-            logger.debug('%s.actuate = %s', self.name, self.actuate_value)
+            self.log.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False,
                              callback=done_moving)
         else:

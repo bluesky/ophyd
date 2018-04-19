@@ -232,7 +232,7 @@ class EpicsMotor(Device, PositionerBase):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
 
-        logger.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
+        self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
                      self, self._moving, value)
 
         if started:
@@ -254,9 +254,9 @@ class EpicsMotor(Device, PositionerBase):
 
             if severity != AlarmSeverity.NO_ALARM:
                 status = self.user_readback.alarm_status
-                logger.error('Motion failed: %s is in an alarm state '
-                             'status=%s severity=%s',
-                             self.name, status, severity)
+                self.log.error('Motion failed: %s is in an alarm state '
+                               'status=%s severity=%s',
+                               self.name, status, severity)
                 success = False
 
             self._done_moving(success=success, timestamp=timestamp,

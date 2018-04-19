@@ -156,15 +156,15 @@ class Signal(OphydObject):
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
                              rtol=self.rtolerance)
             except TimeoutError:
-                logger.debug('set_and_wait(%r, %s) timed out', self.name,
+                self.log.debug('set_and_wait(%r, %s) timed out', self.name,
                              value)
                 success = False
             except Exception as ex:
-                logger.debug('set_and_wait(%r, %s) failed', self.name, value,
+                self.log.debug('set_and_wait(%r, %s) failed', self.name, value,
                              exc_info=ex)
                 success = False
             else:
-                logger.debug('set_and_wait(%r, %s) succeeded => %s', self.name,
+                self.log.debug('set_and_wait(%r, %s) succeeded => %s', self.name,
                              value, self.value)
                 success = True
                 if settle_time is not None:

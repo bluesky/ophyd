@@ -6,8 +6,6 @@ import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
 
-logger = logging.getLogger(__name__)
-
 
 class UnknownSubscription(KeyError):
     "Subclass of KeyError.  Raised for unknown event type"
@@ -60,6 +58,15 @@ class OphydObject:
         self._args_cache = {k: None for k in self.subscriptions}
         # count of subscriptions we have handed out, used to give unique ids
         self._cb_count = count()
+        # Create logger name from parent or from module class
+        if self.parent:
+            base_log = self.parent.log.name
+            name = self.name.lstrip(self.parent.name + '_')
+        else:
+            base_log = self.__class__.__module__
+            name = self.name
+        # Instantiate logger
+        self.log = logging.getLogger(base_log + '.' + name)
 
     @property
     def name(self):
@@ -215,10 +222,11 @@ class OphydObject:
             def inner(*args, **kwargs):
                 try:
                     cb(*args, **kwargs)
-                except Exception as ex:
+                except Exception:
                     sub_type = kwargs['sub_type']
-                    logger.error('Subscription %s callback exception (%s)',
-                                 sub_type, self, exc_info=ex)
+                    self.log.exception('Subscription %s callback '\
+                                       'exception (%s)',
+                                       sub_type, self)
             return inner
         # get next cid
         cid = next(self._cb_count)
