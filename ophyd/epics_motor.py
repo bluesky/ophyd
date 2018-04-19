@@ -236,7 +236,7 @@ class EpicsMotor(Device, PositionerBase):
             started = self._started_moving = (not was_moving and self._moving)
 
         self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                     self, self._moving, value)
+                       self, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
