@@ -113,5 +113,5 @@ script:
       make html
       popd
       # Publish docs.
-      doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master ophyd
+      # doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master ophyd
     fi
