@@ -6,7 +6,7 @@ from copy import copy
 from ophyd import (PVPositioner, PVPositionerPC, EpicsMotor)
 from ophyd import (EpicsSignal, EpicsSignalRO)
 from ophyd import (Component as C)
-from ophyd import cl
+from ophyd import get_cl
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,7 @@ class PVPosTest(unittest.TestCase):
 
         def done_moving(value=0.0, **kwargs):
             logger.info('Done moving %s', kwargs)
-
+        cl = get_cl()
         # ensure we start at 0 for this simple test
         fm = self.fake_motor
         cl.caput(fm['setpoint'], 0.05)

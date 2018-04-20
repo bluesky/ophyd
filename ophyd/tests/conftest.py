@@ -8,7 +8,8 @@ from functools import wraps
 import weakref
 
 import numpy as np
-from ophyd import cl
+
+from ophyd import get_cl
 
 logger = logging.getLogger(__name__)
 
@@ -248,6 +249,7 @@ def _cleanup_fake_pvs():
 def using_fake_epics_pv(fcn):
     @wraps(fcn)
     def wrapped(*args, **kwargs):
+        cl = get_cl()
         get_pv_backup = cl.get_pv
 
         def _fake_get_pv(pvname, form='time', connect=False,
@@ -266,6 +268,7 @@ def using_fake_epics_pv(fcn):
 def using_fake_epics_waveform(fcn):
     @wraps(fcn)
     def wrapped(*args, **kwargs):
+        cl = get_cl()
         get_pv_backup = cl.get_pv
 
         def _fake_get_pv(pvname, form='time', connect=False,
