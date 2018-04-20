@@ -43,7 +43,7 @@ class EpicsUtilTest(unittest.TestCase):
 
     def test_pv_form(self):
         from ophyd import get_cl
-        import ophyd._pyepics_shim as o_ps
+        o_ps = pytest.importorskip('ophyd._pyepics_shim')
         cl = get_cl()
         self.assertIn(cl.pv_form, ('native', 'time'))
         versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
