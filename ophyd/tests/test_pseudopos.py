@@ -1,20 +1,19 @@
 import time
 import logging
-import unittest
+
 import pytest
 import operator
 import numpy as np
-from types import SimpleNamespace
+
 
 from copy import copy
 
 from ophyd.epics_motor import EpicsMotor
-from ophyd.pseudopos import (PseudoPositioner, PseudoSingle,
-                             real_position_argument, pseudo_position_argument)
-from ophyd.positioner import SoftPositioner
+from ophyd.pseudopos import (PseudoPositioner, PseudoSingle)
+
 from ophyd import (Component as C)
 from ophyd.utils import ExceptionBundle
-
+from .conftest import AssertTools
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +88,7 @@ class FaultyPseudo1x3(Pseudo1x3):
     real1 = C(FaultyStopperEpicsMotor, motor_recs[0])
 
 
-class PseudoPosTests(unittest.TestCase):
+class TestPseudoPos(AssertTools):
     def test_onlypseudo(self):
         # can't instantiate it on its own
         self.assertRaises(TypeError, PseudoPositioner, 'prefix')

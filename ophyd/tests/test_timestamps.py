@@ -1,10 +1,11 @@
 import time
 import logging
-import unittest
 
 from ophyd import (EpicsSignal, EpicsSignalRO, EpicsMotor)
 
 from . import config
+from .conftest import AssertTools
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,7 +17,7 @@ def tearDownModule():
     logger.debug('Cleaning up')
 
 
-class EpicsSignalTests(unittest.TestCase):
+class TestEpicsSignal(AssertTools):
     def test_read_pv_timestamp_no_monitor(self):
         mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
@@ -58,8 +59,10 @@ class EpicsSignalTests(unittest.TestCase):
         mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
 
-        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True, name='test')
-        rbv = EpicsSignalRO(mtr.user_readback.pvname, auto_monitor=True, name='test')
+        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True,
+                         name='test')
+        rbv = EpicsSignalRO(mtr.user_readback.pvname, auto_monitor=True,
+                            name='test')
 
         rbv_value0 = rbv.get()
         ts0 = rbv.timestamp
@@ -77,7 +80,8 @@ class EpicsSignalTests(unittest.TestCase):
         mtr = EpicsMotor(config.motor_recs[0], name='test')
         mtr.wait_for_connection()
 
-        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True, name='test')
+        sp = EpicsSignal(mtr.user_setpoint.pvname, auto_monitor=True,
+                         name='test')
 
         sp_value0 = sp.get()
         ts0 = sp.timestamp

@@ -1,5 +1,4 @@
 import logging
-import unittest
 import pytest
 
 import numpy as np
@@ -7,6 +6,7 @@ import numpy as np
 from ophyd import (Device, Component, FormattedComponent)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal)
 from ophyd.utils import ExceptionBundle
+from .conftest import AssertTools
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def test_device_state():
     d.unstage()
 
 
-class DeviceTests(unittest.TestCase):
+class TestDevice(AssertTools):
     def test_attrs(self):
         class MyDevice(Device):
             cpt1 = Component(FakeSignal, '1')
@@ -140,10 +140,10 @@ class DeviceTests(unittest.TestCase):
             cpt3 = Component(FakeSignal, '3')
 
         dev = MyDevice('', name='mydev')
-        with self.assertRaises(ExceptionBundle) as cm:
+        with pytest.raises(ExceptionBundle) as cm:
             dev.stop()
 
-        ex = cm.exception
+        ex = cm.value
         self.assertEquals(len(ex.exceptions), 2)
         self.assertTrue(dev.sub1.stop_called)
         self.assertTrue(dev.sub2.stop_called)
@@ -160,10 +160,10 @@ class DeviceTests(unittest.TestCase):
         self.assertFalse(dev.sub3.subsub.success)
 
         dev = MyDevice('', name='mydev')
-        with self.assertRaises(ExceptionBundle) as cm:
+        with pytest.raises(ExceptionBundle) as cm:
             dev.stop(success=True)
 
-        ex = cm.exception
+        ex = cm.value
         self.assertEquals(len(ex.exceptions), 2)
         self.assertTrue(dev.sub1.stop_called)
         self.assertTrue(dev.sub2.stop_called)
