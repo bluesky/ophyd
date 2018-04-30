@@ -284,7 +284,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         "Generate a uid and cache it with its key for later insertion."
         i = next(self._datum_counter)
         datum_kwargs = datum_kwargs or {}
-        datum_kwargs.update({'point_number': i})
         if self._locked_key_list:
             if key not in self._datum_uids:
                 raise RuntimeError("modifying after lock")
@@ -531,7 +530,25 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
 
 
 class FileStoreIterativeWrite(FileStoreBase):
-    ...
+    """
+    This adds 'point_number' to datum_kwargs.
+    """
+    def __init__(self, *args, **kwargs):
+        self._point_counter = None
+
+    def stage(self):
+        self._point_counter = itertools.count()
+        super().stage()
+
+    def unstage(self):
+        self._point_counter = None
+        super().unstage()
+
+    def generate_datum(self, key, timestamp, datum_kwargs):
+        i = next(self._point_counter)
+        datum_kwargs = datum_kwargs or {}
+        datum_kwargs.update({'point_number': i})
+        super().generate_datum(key, timestamp, datum_kwargs)
 
 
 # ready-to-use combinations
