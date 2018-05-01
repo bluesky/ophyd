@@ -57,6 +57,51 @@ def _ensure_trailing_slash(path):
     return os.path.join(path, '')
 
 
+def resource_factory(spec, root, resource_path, resource_kwargs,
+                     path_semantics):
+    """Helper to create resource document and datum factory.
+
+    Parameters
+    ----------
+    spec : str
+       The specification of data wrapped, used to pick the handler to
+       be used on retrieval
+
+    root : Path or str
+       The 'root' path (the non-semantic mount point).  AssetRegistry has
+       tooling to easily change this temporarily and permanently.
+
+    resource_path : Path or str
+       The rest of the path to the files in question
+
+    resource_kwargs : dict
+        The kwargs to be passed to the handler
+
+    path_semantics : {'posix', 'windows'}
+        What the path separator is.
+    """
+    resource_uid = new_uid()
+    resource_doc = {'spec': spec,
+                    'root': str(root),
+                    'resource_path': str(resource_path),
+                    'resource_kwargs': resource_kwargs,
+                    'path_semantics': path_semantics,
+                    'uid': resource_uid}
+
+    datum_count = count()
+
+    def datum_factory(datum_kwargs):
+        i = next(datum_count)
+        datum_id = '{}/{}'.format(resource_uid, i)
+        datum = {'resource': resource_uid,
+                 'datum_id': datum_id,
+                 'datum_kwargs': datum_kwargs}
+
+        return datum
+
+    return resource_doc, datum_factory
+
+
 class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     """Base class for FileStore mixin classes
 
@@ -165,8 +210,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self.write_path_template = write_path_template
         self.read_path_template = read_path_template
 
-        self._resource_uid = None
-        self._datum_counter = None  # becomes an itertools.count() in stage()
+        self._resource_uid = None  # wiil be removed
+        self._datum_factory = None
         self._asset_docs_cache = deque()
         self._locked_key_list = False
         self._datum_uids = defaultdict(list)
@@ -247,7 +292,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._write_path_template = _ensure_trailing_slash(val)
 
     def stage(self):
-        self._datum_counter = count()
         self._locked_key_list = False
         self._datum_uids.clear()
         super().stage()
@@ -259,11 +303,13 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     def _generate_resource(self, resource_kwargs):
         fn = PurePath(self._fn).relative_to(self.reg_root)
-        resource = {'spec': self.filestore_spec,
-                    'root': str(self.reg_root),
-                    'resource_path': str(fn),
-                    'resource_kwargs':resource_kwargs,
-                    'path_semantics': self.path_semantics}
+        resource, self._datum_factory = resource_factory(
+            spec=self.filestore_spec,
+            root=str(self.reg_root),
+            resource_path=str(fn),
+            resource_kwargs=resource_kwargs,
+            path_semantics=self.path_semantics)
+
         # If a Registry is set, we need to allow it to generate the uid for us.
         if self._reg is not None:
             logger.debug("Inserting resource with filename %s", self._fn)
@@ -274,15 +320,16 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                 root=resource['root'],
                 spec=resource['spec'],
                 path_semantics=resource['path_semantics'])
+            resource['uid'] = self._resource_uid
         # If a Registry is not set, we need to generate the uid.
-        else:
-            self._resource_uid = new_uid()
-        resource['uid'] = self._resource_uid
+
+        self._resource_uid = resource['uid']
+
         self._asset_docs_cache.append(('resource', resource))
 
     def generate_datum(self, key, timestamp, datum_kwargs):
         "Generate a uid and cache it with its key for later insertion."
-        i = next(self._datum_counter)
+
         datum_kwargs = datum_kwargs or {}
         if self._locked_key_list:
             if key not in self._datum_uids:
@@ -290,17 +337,19 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         # This is temporarily more complicated than it will be in the
         # future.  It needs to support old configurations that have a
         # registry.
-        datum = {'resource': self._resource_uid,
-                 'datum_kwargs': datum_kwargs}
         if self._reg is not None:
             # If a Registry is set, we need to allow it to generate the
             # datum_id for us.
+            datum = {'resource': self._resource_uid,
+                     'datum_kwargs': datum_kwargs}
             datum_id = self._reg.register_datum(
                 datum_kwargs=datum['datum_kwargs'],
                 resource_uid=datum['resource'])
+            datum['datum_id'] = datum_id
         else:
-            # If a Registry is not set, we need to generate the datum_id.
-            datum_id = '{}/{}'.format(self._resource_uid, i)
+            datum = self._datum_factory(datum_kwargs)
+            datum_id = datum['datum_id']
+
         self._asset_docs_cache.append(('datum', datum))
         reading = {'value': datum_id, 'timestamp': timestamp}
         # datum_uids looks like {'dark': [reading1, reading2], ...}
@@ -333,7 +382,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def unstage(self):
         self._locked_key_list = False
         self._resource_uid = None
-        self._datum_counter = None
         self._asset_docs_cache.clear()
         return super().unstage()
 
