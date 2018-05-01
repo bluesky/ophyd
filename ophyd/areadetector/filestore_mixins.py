@@ -460,6 +460,7 @@ class FileStoreHDF5(FileStorePluginBase):
         res_kwargs = {'frame_per_point': self.get_frames_per_point()}
         self._generate_resource(res_kwargs)
 
+
 class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -579,11 +580,12 @@ class FileStoreIterativeWrite(FileStoreBase):
     This adds 'point_number' to datum_kwargs.
     """
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._point_counter = None
 
     def stage(self):
-        self._point_counter = itertools.count()
         super().stage()
+        self._point_counter = count()
 
     def unstage(self):
         self._point_counter = None
