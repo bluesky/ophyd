@@ -295,9 +295,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._locked_key_list = False
         self._datum_uids.clear()
         super().stage()
-        if self.enable.get() and self._reg is None:
-            raise RuntimeError('The plugin {!r} is enabled, but '
-                               'the Registry (self._reg) is `None`')
         # Subclasses will assemble resource_kwargs and call
         # self._generate_resource(resource_kwrags)
 
