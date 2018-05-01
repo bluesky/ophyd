@@ -596,7 +596,7 @@ class FileStoreIterativeWrite(FileStoreBase):
         i = next(self._point_counter)
         datum_kwargs = datum_kwargs or {}
         datum_kwargs.update({'point_number': i})
-        super().generate_datum(key, timestamp, datum_kwargs)
+        return super().generate_datum(key, timestamp, datum_kwargs)
 
 
 # ready-to-use combinations
