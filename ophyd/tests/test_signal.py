@@ -2,7 +2,7 @@ import logging
 import time
 import copy
 import pytest
-import ophyd.control_layer as cl
+from ophyd import get_cl
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import ReadOnlyError
@@ -26,7 +26,7 @@ def test_fakepv():
     def value_cb(**kwargs):
         info['value'] = True
         info['value_kw'] = kwargs
-
+    cl = get_cl()
     pv = cl.get_pv(pvname, callback=value_cb, connection_callback=conn)
 
     if not pv.wait_for_connection():

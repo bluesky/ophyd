@@ -4,18 +4,9 @@ from copy import copy
 from unittest import mock
 from unittest.mock import Mock
 
-import ophyd
 from ophyd import (SoftPositioner, )
 
 logger = logging.getLogger(__name__)
-
-
-def setUpModule():
-    ophyd.setup_ophyd()
-
-
-def tearDownModule():
-    logger.debug('Cleaning up')
 
 
 def test_positioner_settle():

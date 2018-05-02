@@ -940,7 +940,7 @@ def get_areadetector_plugin_class(prefix, timeout=2.0):
     ValueError
         If the plugin type can't be determined
     '''
-    from .. import control_layer as cl
+    from .. import cl
 
     cls = plugin_from_pvname(prefix)
     if cls is not None:

@@ -12,7 +12,7 @@ from .utils.epics_pvs import (waveform_to_string,
 from .ophydobj import OphydObject
 from .status import Status
 from .utils import set_and_wait
-
+from . import get_cl
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class Signal(OphydObject):
                  tolerance=None, rtolerance=None, cl=None):
         super().__init__(name=name, parent=parent)
         if cl is None:
-            from . import control_layer as cl
+            cl = get_cl()
         self.cl = cl
         self._readback = value
 
