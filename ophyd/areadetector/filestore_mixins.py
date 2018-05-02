@@ -392,6 +392,7 @@ class FileStorePluginBase(FileStoreBase):
                                 ('num_capture', 0),
                                 ])
         self._fn = None
+        self._fp = None
 
     def make_filename(self):
         '''Make a filename.
@@ -476,6 +477,9 @@ class FileStoreTIFF(FileStorePluginBase):
 
     def stage(self):
         super().stage()
+        # this over-rides the behavior is the base stage
+        self._fn = self._fp
+
         resource_kwargs = {'template': self.file_template.get(),
                            'filename': self.file_name.get(),
                            'frame_per_point': self.get_frames_per_point()}
@@ -568,7 +572,8 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         self.stage_sigs.update([(proc.num_filter, images_per_set),
                                 (cam.num_images, images_per_set * num_sets)])
         super().stage()
-
+        # this over-rides the behavior is the base stage
+        self._fn = self._fp
         resource_kwargs = {'template': self.file_template.get(),
                            'filename': self.file_name.get(),
                            'frame_per_point': self.get_frames_per_point()}
