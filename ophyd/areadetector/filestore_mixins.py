@@ -441,9 +441,6 @@ class FileStorePluginBase(FileStoreBase):
             raise IOError("Path %s does not exist on IOC."
                           "" % self.file_path.get())
 
-    def unstage(self):
-        super().unstage()
-
 
 class FileStoreHDF5(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
