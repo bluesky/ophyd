@@ -308,6 +308,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             path_semantics=self.path_semantics)
 
         # If a Registry is set, we need to allow it to generate the uid for us.
+        # this code path will eventually be removed
         if self._reg is not None:
             logger.debug("Inserting resource with filename %s", self._fn)
             # register_resource has accidentally different parameter names...
