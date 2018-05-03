@@ -93,6 +93,8 @@ script:
   - python -c "import epics; print(epics.caget('XF:31IDA-OP{Tbl-Ax:X1}Mtr'))"
 
 
+  # list packages
+  - conda list
   # running tests
   - python run_tests.py --cov=ophyd --cov-report term-missing
 
