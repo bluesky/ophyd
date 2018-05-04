@@ -1,11 +1,13 @@
 import asyncio
 import time as ttime
 from collections import deque, OrderedDict
+import itertools
 import numpy as np
 import random
 import threading
 from tempfile import mkdtemp
 import os
+import warnings
 import weakref
 import uuid
 
@@ -16,6 +18,7 @@ from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
 from .positioner import SoftPositioner
+from .utils import DO_NOT_USE
 
 
 # two convenience functions 'vendored' from bluesky.utils
@@ -601,8 +604,9 @@ class SynSignalWithRegistry(SynSignal):
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
-    reg : Registry
-        Registry object that supports inserting resource and datum documents
+    reg : Registry, optional
+        DEPRECATED. If used, this is ignored and a warning is issued. In a
+        future release, this parameter will be removed.
     save_path : str, optional
         Path to save files to, if None make a temp dir, defaults to None.
     save_func : function, optional
@@ -611,18 +615,19 @@ class SynSignalWithRegistry(SynSignal):
     save_spec : str, optional
         The spec for the save function, defaults to 'RWFS_NPY'
     save_ext : str, optional
-        The extention to add to the file name, defaults to '.npy'
+        The extension to add to the file name, defaults to '.npy'
 
     """
 
-    def __init__(self, *args, reg, save_path=None, save_func=np.save,
+    def __init__(self, *args, reg=DO_NOT_USE, save_path=None, save_func=np.save,
                  save_spec='NPY_SEQ', save_ext='npy',
                  **kwargs):
         super().__init__(*args, **kwargs)
-        self.reg = reg
         self.save_func = save_func
         self.save_ext = save_ext
-        self._resource_id = None
+        self._resource_uid = None
+        self._datum_counter = None
+        self._asset_docs_cache = deque()
         if save_path is None:
             self.save_path = mkdtemp()
         else:
@@ -634,6 +639,15 @@ class SynSignalWithRegistry(SynSignal):
         self._result = {}
 
         self._hints = None
+
+        if reg is not DO_NOT_USE:
+            warnings.warn("The parameter 'reg' is deprecated. It will be "
+                          "ignored. In a future release the parameter will be "
+                          "removed and passing a value for 'reg' will raise "
+                          "an error.")
+            self.reg = reg
+        else:
+            self.reg = None
 
     @property
     def hints(self):
@@ -651,26 +665,61 @@ class SynSignalWithRegistry(SynSignal):
     def stage(self):
         self._file_stem = short_uid()
         self._path_stem = os.path.join(self.save_path, self._file_stem)
-        self._resource_id = self.reg.register_resource(self._spec,
-                                                       self.save_path,
-                                                       self._file_stem, {})
+        self._datum_counter = itertools.count()
+
+        # This is temporarily more complicated than it will be in the future.
+        # It needs to support old configurations that have a registry.
+        resource = {'spec': self._spec,
+                    'root': self.save_path,
+                    'resource_path': self._file_stem,
+                    'resource_kwargs': {},
+                    'path_semantics': os.name}
+        # If a Registry is set, we need to allow it to generate the uid for us.
+        if self.reg is not None:
+            # register_resource has accidentally different parameter names...
+            self._resource_uid = self.reg.register_resource(
+                rpath=resource['resource_path'],
+                rkwargs=resource['resource_kwargs'],
+                root=resource['root'],
+                spec=resource['spec'],
+                path_semantics=resource['path_semantics'])
+        # If a Registry is not set, we need to generate the uid.
+        else:
+            self._resource_uid = new_uid()
+        resource['uid'] = self._resource_uid
+        self._asset_docs_cache.append(('resource', resource))
 
     def trigger(self):
         super().trigger()
         # save file stash file name
         self._result.clear()
         for idx, (name, reading) in enumerate(super().read().items()):
-            # Save the actual reading['value'] to disk and create a record
-            # in Registry.
+            # Save the actual reading['value'] to disk. For a real detector,
+            # this part would be done by the detector IOC, not by ophyd.
             self.save_func('{}_{}.{}'.format(self._path_stem, idx,
                                              self.save_ext), reading['value'])
-            datum_id = new_uid()
-            self.reg.insert_datum(self._resource_id, datum_id,
-                                  dict(index=idx))
+            # This is temporarily more complicated than it will be in the
+            # future.  It needs to support old configurations that have a
+            # registry.
+            datum = {'resource': self._resource_uid,
+                     'datum_kwargs': dict(index=idx)}
+            if self.reg is not None:
+                # If a Registry is set, we need to allow it to generate the
+                # datum_id for us.
+                datum_id = self.reg.register_datum(
+                    datum_kwargs=datum['datum_kwargs'],
+                    resource_uid=datum['resource'])
+            else:
+                # If a Registry is not set, we need to generate the datum_id.
+                datum_id = '{}/{}'.format(self._resource_uid,
+                                          next(self._datum_counter))
+            datum['datum_id'] = datum_id
+            self._asset_docs_cache.append(('datum', datum))
             # And now change the reading in place, replacing the value with
             # a reference to Registry.
             reading['value'] = datum_id
             self._result[name] = reading
+
         return NullStatus()
 
     def read(self):
@@ -682,8 +731,15 @@ class SynSignalWithRegistry(SynSignal):
             res[key]['external'] = "FILESTORE"
         return res
 
+    def collect_asset_docs(self):
+        ret = tuple(self._asset_docs_cache)
+        self._asset_docs_cache.clear()
+        return ret
+
     def unstage(self):
-        self._resource_id = None
+        self._resource_uid = None
+        self._datum_counter = None
+        self._asset_docs_cache.clear()
         self._file_stem = None
         self._path_stem = None
         self._result.clear()
@@ -838,10 +894,9 @@ def hw():
     # area detector that directly stores image data in Event
     direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
                            name='img')
-    # area detector that stores data in file and registers it with Registry
+    # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
-                                name='img',
-                                reg=None)  # do hw.img.reg = db.reg in test!
+                                name='img')
     invariant1 = InvariantSignal(func=lambda: 0, name='invariant1')
     invariant2 = InvariantSignal(func=lambda: 0, name='invariant2')
     det_with_conf = DetWithConf(name='det')
