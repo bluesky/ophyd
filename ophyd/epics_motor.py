@@ -70,6 +70,9 @@ class EpicsMotor(Device, PositionerBase):
     home_forward = Cpt(EpicsSignal, '.HOMF')
     home_reverse = Cpt(EpicsSignal, '.HOMR')
 
+    # alarm information
+    tolerated_alarm = AlarmSeverity.NO_ALARM
+
     def __init__(self, *args, **kwargs):
 
         self._hints = None
@@ -233,7 +236,7 @@ class EpicsMotor(Device, PositionerBase):
             started = self._started_moving = (not was_moving and self._moving)
 
         self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                     self, self._moving, value)
+                       self, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
@@ -250,15 +253,22 @@ class EpicsMotor(Device, PositionerBase):
                 if self.high_limit_switch.get() == 1:
                     success = False
 
+            # Check the severity of the alarm field after motion is complete.
+            # If there is any alarm at all warn the user, and if the alarm is
+            # greater than what is tolerated, mark the move as unsuccessful
             severity = self.user_readback.alarm_severity
 
             if severity != AlarmSeverity.NO_ALARM:
                 status = self.user_readback.alarm_status
-                self.log.error('Motion failed: %s is in an alarm state '
-                               'status=%s severity=%s',
-                               self.name, status, severity)
-                success = False
-
+                if severity > self.tolerated_alarm:
+                    self.log.error('Motion failed: %s is in an alarm state '
+                                   'status=%s severity=%s',
+                                   self.name, status, severity)
+                    success = False
+                else:
+                    self.log.warning('Motor %s raised an alarm during motion '
+                                     'status=%s severity %s',
+                                     self.name, status, severity)
             self._done_moving(success=success, timestamp=timestamp,
                               value=value)
 
