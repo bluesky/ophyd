@@ -161,7 +161,7 @@ class PluginBase(ADBase):
         '''The PluginBase object that is the asyn source for this plugin.
         '''
         source_port = self.nd_array_port.get()
-        source_plugin = self.root.get_plugin_by_asyn_port(source_port)
+        source_plugin = self.ad_root.get_plugin_by_asyn_port(source_port)
         return source_plugin
 
     def describe_configuration(self):
@@ -174,7 +174,7 @@ class PluginBase(ADBase):
 
     @property
     def _asyn_pipeline(self):
-        parent = self.root.get_plugin_by_asyn_port(self.nd_array_port.get())
+        parent = self.ad_root.get_plugin_by_asyn_port(self.nd_array_port.get())
         if hasattr(parent, '_asyn_pipeline'):
             return parent._asyn_pipeline + (self, )
         return (parent, self)
