@@ -2,7 +2,7 @@ import time
 import logging
 import pytest
 from copy import copy
-from numpy.testing import assert_approx_equal
+from numpy.testing import assert_allclose
 
 from ophyd import (EpicsMotor, Signal, EpicsSignalRO, Component as C,
                    MotorBundle)
@@ -62,24 +62,24 @@ def test_move(motor):
     logger.debug('Move to 0.0')
     m.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
-    assert_approx_equal(m.position, 0.0)
+    assert_allclose(m.position, 0.0)
 
     assert m.settle_time == 0.1
 
     logger.debug('Move to 0.1')
     m.move(0.1, timeout=5, wait=True)
     time.sleep(0.1)
-    assert_approx_equal(m.position, 0.1)
+    assert_allclose(m.position, 0.1)
 
     logger.debug('Move to 0.1, again')
     m.move(0.1, timeout=5, wait=True)
     time.sleep(0.1)
-    assert_approx_equal(m.position, 0.1)
+    assert_allclose(m.position, 0.1)
 
     logger.debug('Move to 0.0')
     m.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
-    assert_approx_equal(m.position, 0.0)
+    assert_allclose(m.position, 0.0)
 
 
 def test_copy(motor):
@@ -98,13 +98,13 @@ def test_copy(motor):
 
     time.sleep(0.1)
     assert res.settle_time == 0.1
-    assert_approx_equal(m.position, 0.2)
+    assert_allclose(m.position, 0.2)
 
     m.settle_time = 0.2
     assert m.settle_time == 0.2
 
     assert res.done
-    assert_approx_equal(res.error, 0)
+    assert_allclose(res.error, 0)
     assert res.elapsed > 0
 
 
