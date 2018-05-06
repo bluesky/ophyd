@@ -43,6 +43,7 @@ class StatusBase:
     def __init__(self, *, timeout=None, settle_time=None, done=False,
                  success=False):
         super().__init__()
+        self._tname = None
         self._lock = RLock()
         self._callbacks = deque()
         self.done = done
@@ -64,7 +65,7 @@ class StatusBase:
 
         if self.timeout is not None and self.timeout > 0.0:
             thread = threading.Thread(target=self._wait_and_cleanup,
-                                      daemon=True)
+                                      daemon=True, name=self._tname)
             self._timeout_thread = thread
             self._timeout_thread.start()
 
@@ -424,6 +425,7 @@ class MoveStatus(DeviceStatus):
 
     def __init__(self, positioner, target, *, start_ts=None,
                  **kwargs):
+        self._tname = f'timeout for {positioner.name}'
         if start_ts is None:
             start_ts = time.time()
 
