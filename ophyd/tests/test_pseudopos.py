@@ -261,7 +261,7 @@ class TestPseudoPos(AssertTools):
     def test_single_pseudo(self):
         logger.info('------- Sequential, single pseudo positioner')
         pos = Pseudo1x3('', name='mypseudo', concurrent=False)
-
+        pos.wait_for_connection()
         reals = pos._real
 
         logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
