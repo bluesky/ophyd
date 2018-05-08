@@ -425,7 +425,7 @@ class MoveStatus(DeviceStatus):
 
     def __init__(self, positioner, target, *, start_ts=None,
                  **kwargs):
-        self._tname = f'timeout for {positioner.name}'
+        self._tname = 'timeout for {}'.format(positioner.name)
         if start_ts is None:
             start_ts = time.time()
 
