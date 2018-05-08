@@ -277,3 +277,11 @@ class ADBase(Device):
     def _configuration_names(self):
         return [getattr(self, c).name
                 for c in self.configuration_attrs]
+
+    @property
+    def ad_root(self):
+        root = self
+        while True:
+            if not isinstance(root.parent, ADBase):
+                return root
+            root = root.parent
