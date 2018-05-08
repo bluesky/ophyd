@@ -370,26 +370,22 @@ def test_fshdf_plugin(root, wpath, rpath, check_files):
                    root=root, reg=fs)
     target_root = root or '/'
     det = MyDetector(prefix, name='det')
-    det.log.setLevel(logging.DEBUG)
-
-    det.log.debug(f'done init')
     det.read_attrs = ['hdf1']
     det.hdf1.read_attrs = []
     det.cam.acquire_time.put(.1)
-    det.log.debug(f'configured')
     det.hdf1.warmup()
     time.sleep(3)
-    det.log.debug(f'took a nap')
+
     det.stage()
-    det.log.debug(f'staged')
+
     time.sleep(1)
-    det.log.debug(f'took a nap')
+
     st = det.trigger()
-    det.log.debug(f'triggered')
+
     count = 0
     while not st.done:
         time.sleep(.1)
-        det.log.debug(f'round {count}')
+
         count += 1
         if count > 100:
             raise Exception("timedout")
