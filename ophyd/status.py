@@ -246,8 +246,6 @@ class AndStatus(StatusBase):
                 ''.format(self.__class__.__name__, self)
                 )
 
-    __repr__ = __str__
-
 
 class Status(StatusBase):
     '''A basic status object
