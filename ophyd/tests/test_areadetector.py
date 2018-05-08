@@ -433,7 +433,6 @@ def test_many_connect():
             det.cam.acquire._read_pv._caproto_pv.circuit_manager._disconnected()
             print('murdered socket')
             print('*'*25)
-            time.sleep(1)
         except AttributeError:
             # must be pyepics
             pass
