@@ -433,6 +433,7 @@ def test_pseudo_math(hw, a, b, op, typ):
     assert (np.asarray(op(a, list(b))) == expected).all()
     assert (np.asarray(op(a, b._asdict())) == expected).all()
     assert (np.asarray(op(a, {})) == a).all()
+    assert abs(op(a, b)) == np.sqrt(np.sum(expected ** 2))
 
 
 def test_pseudo_hints(hw):

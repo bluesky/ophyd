@@ -5,6 +5,7 @@ import logging
 import time
 import threading
 import functools
+import math
 
 from collections import (OrderedDict, namedtuple, Sequence, Mapping)
 
@@ -381,6 +382,9 @@ class PseudoPositioner(Device, SoftPositioner):
 
             return type(self)(*(s - o for s, o in
                                 zip(self, other)))
+
+        def __abs__(self):
+            return math.sqrt(sum(x * x for x in self))
 
     def __init__(self, prefix='', *, concurrent=True, read_attrs=None,
                  configuration_attrs=None, name, egu='', auto_target=True,
