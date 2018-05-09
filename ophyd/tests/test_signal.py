@@ -406,7 +406,7 @@ def test_epicssignal_set(put_complete):
     # move to +0.2 and check the status object
     target = sim_pv.get() + 0.2
     st = sim_pv.set(target, timeout=1, settle_time=0.001)
-    wait(st)
+    wait(st, timeout=5)
     assert st.done
     assert st.success
     print('status 1', st)
@@ -422,7 +422,8 @@ def test_epicssignal_set(put_complete):
 
     # keep the axis in position
     st = sim_pv.set(start_pos)
-    wait(st)
+    wait(st, timeout=5)
+
 
 
 def test_epicssignal_alarm_status():

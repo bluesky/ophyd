@@ -153,7 +153,6 @@ class EpicsMotor(Device, PositionerBase):
 
         status = super().move(position, **kwargs)
         self.user_setpoint.put(position, wait=False)
-
         try:
             if wait:
                 status_wait(status)

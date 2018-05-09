@@ -1,5 +1,4 @@
 codecov
 coveralls
-databroker
 pytest
 pytest-cov

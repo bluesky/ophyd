@@ -8,8 +8,9 @@ from functools import wraps
 import weakref
 
 import numpy as np
+import numpy.testing
 
-from ophyd import get_cl
+from ophyd import get_cl, set_cl
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +285,67 @@ def using_fake_epics_waveform(fcn):
 
     return wrapped
 
+
 @pytest.fixture()
 def hw():
     from ophyd.sim import hw
     return hw()
+
+
+@pytest.fixture(params=['caproto', 'pyepics'], autouse=True)
+def cl_selector(request):
+    cl_name = request.param
+    if cl_name == 'caproto':
+        pytest.importorskip('caproto')
+    elif cl_name == 'pyepics':
+        pytest.importorskip('epics')
+    set_cl(cl_name)
+    yield
+    set_cl()
+
+
+class AssertTools:
+    @staticmethod
+    def assertEquals(a, b):
+        assert a == b
+
+    @staticmethod
+    def assertEqual(a, b):
+        assert a == b
+
+    @staticmethod
+    def assertNotEqual(a, b):
+        assert a != b
+
+    @staticmethod
+    def assertRaises(Etype, func, *args, **kwargs):
+        with pytest.raises(Etype):
+            func(*args, **kwargs)
+
+    @staticmethod
+    def assertIn(val, target):
+        assert val in target
+
+    @staticmethod
+    def assertIs(a, b):
+        assert a is b
+
+    @staticmethod
+    def assertTrue(v):
+        assert v
+
+    @staticmethod
+    def assertFalse(v):
+        assert not v
+
+    @staticmethod
+    def assertGreater(a, b):
+        assert a > b
+
+    @staticmethod
+    def assertAlmostEqual(a, b):
+        numpy.testing.assert_almost_equal(a, b)
+
+    @staticmethod
+    def skipTest(msg):
+        pytest.skip(msg)

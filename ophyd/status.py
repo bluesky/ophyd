@@ -43,6 +43,7 @@ class StatusBase:
     def __init__(self, *, timeout=None, settle_time=None, done=False,
                  success=False):
         super().__init__()
+        self._tname = None
         self._lock = RLock()
         self._callbacks = deque()
         self.done = done
@@ -64,7 +65,7 @@ class StatusBase:
 
         if self.timeout is not None and self.timeout > 0.0:
             thread = threading.Thread(target=self._wait_and_cleanup,
-                                      daemon=True)
+                                      daemon=True, name=self._tname)
             self._timeout_thread = thread
             self._timeout_thread.start()
 
@@ -245,8 +246,6 @@ class AndStatus(StatusBase):
                 ''.format(self.__class__.__name__, self)
                 )
 
-    __repr__ = __str__
-
 
 class Status(StatusBase):
     '''A basic status object
@@ -424,6 +423,7 @@ class MoveStatus(DeviceStatus):
 
     def __init__(self, positioner, target, *, start_ts=None,
                  **kwargs):
+        self._tname = 'timeout for {}'.format(positioner.name)
         if start_ts is None:
             start_ts = time.time()
 
@@ -476,6 +476,11 @@ class MoveStatus(DeviceStatus):
         target = self.target
         initial = self.start_pos
         time_elapsed = time.time() - self.start_ts
+        try:
+            fraction = abs(target - current) / abs(initial - target)
+        # maybe we can't do math?
+        except TypeError:
+            fraction = None
         for watcher in self._watchers:
             watcher(name=self._name,
                     current=current,
@@ -483,7 +488,8 @@ class MoveStatus(DeviceStatus):
                     target=target,
                     unit=self._unit,
                     precision=self._precision,
-                    time_elapsed=time_elapsed)
+                    time_elapsed=time_elapsed,
+                    fraction=fraction)
 
     @property
     def error(self):

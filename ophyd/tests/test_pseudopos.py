@@ -1,20 +1,19 @@
 import time
 import logging
-import unittest
+
 import pytest
 import operator
 import numpy as np
-from types import SimpleNamespace
+
 
 from copy import copy
 
 from ophyd.epics_motor import EpicsMotor
-from ophyd.pseudopos import (PseudoPositioner, PseudoSingle,
-                             real_position_argument, pseudo_position_argument)
-from ophyd.positioner import SoftPositioner
+from ophyd.pseudopos import (PseudoPositioner, PseudoSingle)
+
 from ophyd import (Component as C)
 from ophyd.utils import ExceptionBundle
-
+from .conftest import AssertTools
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +88,7 @@ class FaultyPseudo1x3(Pseudo1x3):
     real1 = C(FaultyStopperEpicsMotor, motor_recs[0])
 
 
-class PseudoPosTests(unittest.TestCase):
+class TestPseudoPos(AssertTools):
     def test_onlypseudo(self):
         # can't instantiate it on its own
         self.assertRaises(TypeError, PseudoPositioner, 'prefix')
@@ -126,24 +125,11 @@ class PseudoPosTests(unittest.TestCase):
 
         self.assertEqual(pseudo.egu, 'a, b, c')
 
-        print('real1', pseudo.real1.prefix)
-        print('real2', pseudo.real2.prefix)
-        print('real3', pseudo.real3.prefix)
-
-        print('real position is made of', pseudo.RealPosition._fields)
-        print('pseudo position is made of', pseudo.PseudoPosition._fields)
-        print('current pseudo position', pseudo.position)
-        print(repr(pseudo))
-        print(str(pseudo))
-
         pos2 = pseudo.PseudoPosition(pseudo1=0, pseudo2=0, pseudo3=0)
         pseudo.set(pos2, wait=True)
-        print('moved to', pseudo.position)
-        print('-----------------')
         time.sleep(1.0)
         pos1 = pseudo.PseudoPosition(pseudo1=.1, pseudo2=.2, pseudo3=.3)
         pseudo.set(pos1, wait=True)
-        print('moved to', pseudo.position)
 
         pseudo.real1.set(0, wait=True)
         pseudo.real2.set(0, wait=True)
@@ -170,7 +156,6 @@ class PseudoPosTests(unittest.TestCase):
     def test_read_describe(self):
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=True)
         desc_dict = pseudo.describe()
-        print(desc_dict)
         desc_keys = ['source', 'upper_ctrl_limit', 'lower_ctrl_limit', 'shape',
                      'dtype', 'units']
 
@@ -178,7 +163,6 @@ class PseudoPosTests(unittest.TestCase):
             self.assertIn(key, desc_dict['mypseudo_pseudo3'])
 
         read_dict = pseudo.read()
-        print(read_dict)
         read_keys = ['value', 'timestamp']
         for key in read_keys:
             self.assertIn(key, read_dict['mypseudo_pseudo3'])
@@ -188,7 +172,6 @@ class PseudoPosTests(unittest.TestCase):
     def test_multi_concurrent(self):
         def done(**kwargs):
             logger.debug('** Finished moving (%s)', kwargs)
-
         pseudo = Pseudo3x3('', name='mypseudo', concurrent=True,
                            settle_time=0.1, timeout=25.0)
         self.assertIs(pseudo.sequential, False)
@@ -196,29 +179,24 @@ class PseudoPosTests(unittest.TestCase):
         self.assertEqual(pseudo.settle_time, 0.1)
         self.assertEqual(pseudo.timeout, 25.0)
         pseudo.wait_for_connection()
-
         self.assertTrue(pseudo.connected)
         self.assertEqual(tuple(pseudo.pseudo_positioners),
                          (pseudo.pseudo1, pseudo.pseudo2, pseudo.pseudo3))
         self.assertEqual(tuple(pseudo.real_positioners),
                          (pseudo.real1, pseudo.real2, pseudo.real3))
-
         logger.info('Move to (.2, .2, .2), which is (-.2, -.2, -.2) for real '
                     'motors')
         pseudo.set(pseudo.PseudoPosition(.2, .2, .2), wait=True)
         logger.info('Position is: %s (moving=%s)', pseudo.position,
                     pseudo.moving)
-
         pseudo.check_value((2, 2, 2))
         pseudo.check_value(pseudo.PseudoPosition(2, 2, 2))
         try:
             pseudo.check_value((2, 2, 2, 3))
         except ValueError as ex:
             logger.info('Check value failed, as expected (%s)', ex)
-
         real1 = pseudo.real1
         pseudo1 = pseudo.pseudo1
-
         try:
             pseudo.check_value((real1.high_limit + 1, 2, 2))
         except ValueError as ex:
@@ -226,18 +204,19 @@ class PseudoPosTests(unittest.TestCase):
 
         ret = pseudo.set((2, 2, 2), wait=False, moved_cb=done)
         self.assertEqual(ret.settle_time, 0.1)
+        count = 0
         while not ret.done:
             logger.info('Pos=%s %s (err=%s)', pseudo.position, ret, ret.error)
+            count += 1
+            if count > 1000:
+                raise Exception
             time.sleep(0.1)
-
         logger.info('Single pseudo axis: %s', pseudo1)
 
-        pseudo1.set(0, wait=True)
-
+        pseudo1.set(0, wait=True, timeout=5)
         self.assertEquals(pseudo1.target, 0)
         pseudo1.sync()
         self.assertEquals(pseudo1.target, pseudo1.position)
-
         # coverage
         pseudo1._started_moving
 
@@ -254,26 +233,26 @@ class PseudoPosTests(unittest.TestCase):
             pass
 
         pseudo1.subscribe(single_sub, pseudo1.SUB_READBACK)
-
         ret = pseudo1.set(1, wait=False)
         self.assertEqual(pseudo.timeout, ret.timeout)
+        count = 0
         while not ret.done:
             logger.info('pseudo1.pos=%s Pos=%s %s (err=%s)', pseudo1.position,
                         pseudo.position, ret, ret.error)
+            count += 1
+            if count > 20:
+                raise Exception
             time.sleep(0.1)
 
         logger.info('pseudo1.pos=%s Pos=%s %s (err=%s)', pseudo1.position,
                     pseudo.position, ret, ret.error)
-
         copy(pseudo)
         pseudo.read()
         pseudo.describe()
         pseudo.read_configuration()
         pseudo.describe_configuration()
-
         repr(pseudo)
         str(pseudo)
-
         pseudo.pseudo1.read()
         pseudo.pseudo1.describe()
         pseudo.pseudo1.read_configuration()
@@ -282,7 +261,7 @@ class PseudoPosTests(unittest.TestCase):
     def test_single_pseudo(self):
         logger.info('------- Sequential, single pseudo positioner')
         pos = Pseudo1x3('', name='mypseudo', concurrent=False)
-
+        pos.wait_for_connection()
         reals = pos._real
 
         logger.info('Move to .2, which is (-.2, -.2, -.2) for real motors')
@@ -454,6 +433,7 @@ def test_pseudo_math(hw, a, b, op, typ):
     assert (np.asarray(op(a, list(b))) == expected).all()
     assert (np.asarray(op(a, b._asdict())) == expected).all()
     assert (np.asarray(op(a, {})) == a).all()
+    assert abs(op(a, b)) == np.sqrt(np.sum(expected ** 2))
 
 
 def test_pseudo_hints(hw):

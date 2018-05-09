@@ -1,31 +1,22 @@
 import pytest
 import os
 import logging
-import unittest
 import numpy as np
 import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import (make_dir_tree, makedirs)
+from .conftest import AssertTools
 
 
 logger = logging.getLogger(__name__)
 
 
-def setUpModule():
-    pass
-
-
-def tearDownModule():
-    pass
-
-
-class EpicsUtilTest(unittest.TestCase):
+class TestEpicsUtil(AssertTools):
     def test_split(self):
         utils = epics_utils
 
-        self.assertEquals(utils.split_record_field('record.field'),
-                          ('record', 'field'))
+        assert utils.split_record_field('record.field') == ('record', 'field')
         self.assertEquals(utils.split_record_field('record.field.invalid'),
                           ('record.field', 'invalid'))
         self.assertEquals(utils.strip_field('record.field'), 'record')
@@ -43,7 +34,7 @@ class EpicsUtilTest(unittest.TestCase):
 
     def test_pv_form(self):
         from ophyd import get_cl
-        import ophyd._pyepics_shim as o_ps
+        o_ps = pytest.importorskip('ophyd._pyepics_shim')
         cl = get_cl()
         self.assertIn(cl.pv_form, ('native', 'time'))
         versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
