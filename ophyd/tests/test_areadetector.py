@@ -435,6 +435,6 @@ def test_many_connect():
         del det
         gc.collect()
 
-    for j in range(50):
+    for j in range(5):
         print(j)
         tester()
