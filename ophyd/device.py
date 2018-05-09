@@ -71,7 +71,7 @@ class Component:
         string to attach to component DvcClass.component.__doc__
     '''
 
-    def __init__(self, cls, suffix=None, *, lazy=False, trigger_value=None,
+    def __init__(self, cls, suffix=None, *, lazy=True, trigger_value=None,
                  add_prefix=None, doc=None, **kwargs):
         self.attr = None  # attr is set later by the device when known
         self.cls = cls
