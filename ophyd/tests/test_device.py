@@ -326,3 +326,10 @@ def test_summary():
     d.summary()
     d.__str__()
     d.__repr__()
+
+def test_labels():
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix')
+
+    d = MyDevice('', name='test', device_labels={'a', 'b'})
+    assert d._ophyd_labels_ == {'a', 'b'}
