@@ -91,6 +91,8 @@ def test_scaler_functionality():
     assert new.pop('scaler_preset_time')['value'] == 7
     assert_OD_equal_ignore_ts(old, new)
 
+    sca.hints == {'fields': [sca.channels.name]}
+
 
 @using_fake_epics_pv
 def test_signal_separate():
