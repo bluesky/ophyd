@@ -725,6 +725,31 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     _default_configuration_attrs = None
     # If `None`, defaults to `{}`
     _default_hints = None
+    # WARNING -- POTENTIALLY CONFUSING DETAIL:
+    # Given a Device subclass like:
+    #
+    # class Thing(Device):
+    #     a = Component(Signal)
+    #     b = Component(Signal)
+    #
+    # default hints can be set like
+    #
+    # class Thing(Device):
+    #     _default_hints = {'fields': ['a']}
+    #     a = Component(Signal)
+    #     b = Component(Signal)
+    #
+    # Notice that the element(s) of fields are attribute names. If the user
+    # sets hints on an *instance* of Thing, either via a keyword argument to
+    # __init__ to by using the `.hints` setter, they must provide the ophyd
+    # name attribute, like this:
+    #
+    # thing = Thing('PV:...', name='thing', hints={'fields': ['thing_a']})
+    #
+    # or, equivalently:
+    #
+    # thing = Thing('PV:...', name='thing')
+    # thing.hints = {'fields': ['thing_a']}
 
     def __init__(self, prefix='', *, name,
                  read_attrs=None, configuration_attrs=None, hints=None,
