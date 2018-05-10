@@ -22,8 +22,7 @@ class QuadEM(SingleTrigger, DetectorBase):
     _default_configuration_attrs = ('integration_time', 'averaging_time')
     _default_read_attrs = ('current1.mean_value', 'current2.mean_value',
                            'current3.mean_value', 'current4.mean_value')
-    _default_hints = {'fields': ['current{}.mean_value'.format(i)
-                                 for i in [1, 2, 3, 4]]}
+    _default_hints = {'fields': list(_default_read_attrs)}
     _status_type = DeviceStatus  # overrriding the default in SingleTrigger
 
     # This is needed because ophyd verifies that it can see all
