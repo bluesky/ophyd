@@ -48,19 +48,10 @@ class PseudoSingle(Device, SoftPositioner):
         The default timeout to use for motion requests, in seconds.
     '''
     _default_read_attrs = ('setpoint', 'readback')
+    _default_hints = {'fields': ['readback']}
 
     readback = Cpt(AttributeSignal, attr='position')
     setpoint = Cpt(AttributeSignal, attr='target')
-
-    @property
-    def hints(self):
-        if self._hints is None:
-            return {'fields': [self.readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = val if val is None else dict(val)
 
     def __init__(self, prefix='', *, limits=None, egu='', parent=None,
                  name=None, source='computed',
@@ -69,7 +60,6 @@ class PseudoSingle(Device, SoftPositioner):
         super().__init__(prefix=prefix, name=name, parent=parent,
                          limits=limits, egu=egu, source=source,
                          **kwargs)
-        self._hints = None
         # the readback name should default to the name of the positioner
         self.readback.name = self.name
 
@@ -674,14 +664,6 @@ class PseudoPositioner(Device, SoftPositioner):
     def real_position(self):
         '''Real motor position namedtuple'''
         return self.RealPosition(*self._real_cur_pos.values())
-
-    @property
-    def hints(self):
-        return {'fields':
-                [h for hints in [
-                    getattr(c, 'hints', {}).get('fields', [])
-                    for c in self.pseudo_positioners]
-                 for h in hints]}
 
     def _update_position(self):
         '''Update the internal position based on all of the real positioners'''

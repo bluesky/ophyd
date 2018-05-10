@@ -270,7 +270,6 @@ class SynAxisNoHints(Device):
                 return x
         if loop is None:
             loop = asyncio.get_event_loop()
-        self._hints = None
         self.sim_state = {}
         self._readback_func = readback_func
         self.delay = delay
@@ -336,15 +335,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    @property
-    def hints(self):
-        if self._hints is None:
-            return {'fields': [self.readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = dict(val)
+    _default_hints = {'fields': ['readback']}
 
 
 class SynGauss(SynSignal):
@@ -638,8 +629,6 @@ class SynSignalWithRegistry(SynSignal):
         self._path_stem = None
         self._result = {}
 
-        self._hints = None
-
         if reg is not DO_NOT_USE:
             warnings.warn("The parameter 'reg' is deprecated. It will be "
                           "ignored. In a future release the parameter will be "
@@ -648,19 +637,6 @@ class SynSignalWithRegistry(SynSignal):
             self.reg = reg
         else:
             self.reg = None
-
-    @property
-    def hints(self):
-        if self._hints is None:
-            # Since data is external, hint that it should not be printed or
-            # plotted. Relax this when LiveTable etc. get smarter about
-            # external data.
-            return {'fields': []}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = dict(val)
 
     def stage(self):
         self._file_stem = short_uid()
@@ -768,9 +744,7 @@ class ABDetector(Device):
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
-    @property
-    def hints(self):
-        return {'fields': [self.a.name]}
+    _default_hints = {'fields': ['a']}
 
 
 class DetWithCountTime(Device):
@@ -793,9 +767,7 @@ class DetWithConf(Device):
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
-    @property
-    def hints(self):
-        return {'fields': [self.a.name, self.b.name]}
+    _default_hints = {'fields': ['a', 'b']}
 
 
 class InvariantSignal(SynSignal):
@@ -836,6 +808,8 @@ class SPseudo3x3(PseudoPositioner):
                                    pseudo2=-real_pos.real2,
                                    pseudo3=-real_pos.real3)
 
+    _default_hints = {'fields': ['pseudo1']}
+
 
 class SPseudo1x3(PseudoPositioner):
     pseudo1 = C(PseudoSingle, limits=(-10, 10))
@@ -856,6 +830,8 @@ class SPseudo1x3(PseudoPositioner):
         real_pos = self.RealPosition(*real_pos)
         # logger.debug('inverse %s', real_pos)
         return self.PseudoPosition(pseudo1=-real_pos.real1)
+
+    _default_hints = {'fields': ['pseudo1', 'real1', 'real2', 'real3']}
 
 
 class SynAxisNoPosition(SynAxis):

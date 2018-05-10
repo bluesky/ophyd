@@ -22,6 +22,8 @@ class QuadEM(SingleTrigger, DetectorBase):
     _default_configuration_attrs = ('integration_time', 'averaging_time')
     _default_read_attrs = ('current1.mean_value', 'current2.mean_value',
                            'current3.mean_value', 'current4.mean_value')
+    _default_hints = {'fields': ['current1', 'current2',
+                                 'current3', 'current4']}
     _status_type = DeviceStatus  # overrriding the default in SingleTrigger
 
     # This is needed because ophyd verifies that it can see all
@@ -94,32 +96,6 @@ class QuadEM(SingleTrigger, DetectorBase):
                                 ('acquire_mode', 2)  # single mode
                                 ])
         self._acquisition_signal = self.acquire
-
-        self._hints = None
-
-    @property
-    def hints(self):
-        """Provide hints to bluesky
-
-        The default value is ::
-
-           {'fields': list_of_channel_mean_value_names}
-
-        To override this, set another dictionary.
-
-        To restore the default value set ``None``
-
-        To suppress all hints set ``{}``
-        """
-        if self._hints is None:
-            return {'fields': [getattr(self, c).mean_value.name
-                               for c in ['current1', 'current2',
-                                         'current3', 'current4']]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = val if val is None else dict(val)
 
 
 class NSLS_EM(QuadEM):

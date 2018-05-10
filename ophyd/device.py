@@ -706,6 +706,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     configuration_attrs : sequence of attribute names
         the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
+    hints : dict, optional
+        the information used to help Bluesky to provide best effort feedback
     parent : instance or None
         The instance of the parent device, if applicable
     """
@@ -719,9 +721,11 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     _default_read_attrs = None
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
+    # If `None`, defaults to `{'fields': []}`
+    _default_hints = None
 
     def __init__(self, prefix='', *, name,
-                 read_attrs=None, configuration_attrs=None,
+                 read_attrs=None, configuration_attrs=None, hints=None,
                  parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
@@ -746,6 +750,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)
+        self.hints = hints
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
@@ -967,6 +972,24 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         return self._describe_attr_list(self.configuration_attrs, config=True)
+
+    @property
+    def hints(self):
+        if self._hints is not None:
+            return self._hints
+        else:
+            return {'fields': [getattr(self, component_name).name
+                               for component_name in self._default_hints]}
+
+    @hints.setter
+    def hints(self, val):
+        if val is not None:
+            read_keys = list(self.describe())
+            for key in val.get('fields', []):
+                if key not in read_keys:
+                    raise ValueError("{} is not allowed -- must be one of {}"
+                                     .format(key, read_keys))
+        self._hints = val
 
     @property
     def trigger_signals(self):
