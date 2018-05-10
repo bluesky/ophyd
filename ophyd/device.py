@@ -701,14 +701,16 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         The PV prefix for all components of the device
     name : str, keyword only
         The name of the device
-    read_attrs : sequence of attribute names
+    read_attrs : sequence of attribute names, optional
         the components to include in a normal reading (i.e., in ``read()``)
-    configuration_attrs : sequence of attribute names
+    configuration_attrs : sequence of attribute names, optional
         the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
-    hints : dict, optional
-        the information used to help Bluesky to provide best effort feedback
-    parent : instance or None
+    hints : dict or None, optional
+        May be used to help downstream consumers infer interesting keys.
+        Example: ``{'fields': ['motor_readback']}``. If `None`, a default
+        is derived from the class attribute `_default_hints`
+    parent : instance or None, optional
         The instance of the parent device, if applicable
     """
 
@@ -721,7 +723,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     _default_read_attrs = None
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
-    # If `None`, defaults to `{'fields': []}`
+    # If `None`, defaults to `{}`
     _default_hints = None
 
     def __init__(self, prefix='', *, name,
@@ -977,6 +979,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def hints(self):
         if self._hints is not None:
             return self._hints
+        elif self._default_hints is None:
+            return {}
         else:
             return {'fields': [getattr(self, component_name).name
                                for component_name in
