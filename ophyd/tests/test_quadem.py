@@ -26,6 +26,7 @@ def quadem():
         current2 = Cpt(FakeStats, 'Current2:')
         current3 = Cpt(FakeStats, 'Current3:')
         current4 = Cpt(FakeStats, 'Current4:')
+        sumAll =  Cpt(FakeStats, 'SumAll:')
 
     em = FakeQuadEM('quadem:', name='quadem')
 
