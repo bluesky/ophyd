@@ -979,7 +979,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             return self._hints
         else:
             return {'fields': [getattr(self, component_name).name
-                               for component_name in self._default_hints]}
+                               for component_name in
+                                   self._default_hints['fields']]}
 
     @hints.setter
     def hints(self, val):
@@ -989,6 +990,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 if key not in read_keys:
                     raise ValueError("{} is not allowed -- must be one of {}"
                                      .format(key, read_keys))
+            val = dict(val)
+
         self._hints = val
 
     @property
