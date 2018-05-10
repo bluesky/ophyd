@@ -752,7 +752,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)
-        self.hints = hints
+        self._hints = None
+        # Some subclasses override the hints property, rendering it
+        # un-settable. (This is probably why you shouldn't override properties
+        # in a subclass, but it happens....) For this reason, we only attempt
+        # to set hints if the user passed in something other than None.
+        if hints is not None:
+            self.hints = hints
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
