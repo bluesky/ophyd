@@ -50,7 +50,7 @@ def quadem():
         sig = getattr(em, sig)
         sig._read_pv = sig._write_pv
 
-    for k in ['image', *['current{}'.format(j) for j in range(1, 5)]]:
+    for k in ['image', *['current{}'.format(j) for j in range(1, 5)], 'sumAll']:
         cc = getattr(em, k)
         for sig in cc.stage_sigs:
             sig = getattr(cc, sig)
