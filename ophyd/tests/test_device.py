@@ -331,5 +331,5 @@ def test_labels():
     class MyDevice(Device):
         cpt = Component(FakeSignal, 'suffix')
 
-    d = MyDevice('', name='test', device_labels={'a', 'b'})
+    d = MyDevice('', name='test', labels={'a', 'b'})
     assert d._ophyd_labels_ == {'a', 'b'}
