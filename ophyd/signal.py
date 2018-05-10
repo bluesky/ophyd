@@ -234,6 +234,10 @@ class Signal(OphydObject):
     def high_limit(self):
         return self.limits[1]
 
+    @property
+    def hints(self):
+        return {'fields': [self.name]}
+
 
 class DerivedSignal(Signal):
     def __init__(self, derived_from, *, name=None, parent=None, **kwargs):
