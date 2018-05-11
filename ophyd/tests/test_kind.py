@@ -1,10 +1,10 @@
 from ophyd import Device, Signal, Kind, Component
 
 
-# A object's kind only matters when we read its _parent_.
-# When the signal does into a Device, that device will only read it on read()
-# not on read_configuration(), but we can still call both methods on `sig`
-# _directly_ if we want to.
+# A object's kind only matters when we read its _parent_. It affects whether
+# its parent recursively calls read() and/or read_configuration(). When we
+# call read() and/or read_configuration() on the object itself, directly, and
+# its 'kind' setting does not affects its behavior.
 normal_sig = Signal(name='normal_sig', value=3)
 assert normal_sig.kind == Kind.NORMAL
 assert 'normal_sig' in normal_sig.read()
@@ -15,6 +15,15 @@ config_sig = Signal(name='config_sig', value=5, kind=Kind.CONFIGURATION)
 assert config_sig.kind == Kind.CONFIGURATION
 assert 'config_sig' in config_sig.read()
 assert 'config_sig' in config_sig.read_configuration()
+
+# Same with a sig set up this way
+omitted_sig = Signal(name='omitted_sig', value=5, kind=Kind.OMIT)
+assert omitted_sig.kind == Kind.OMIT
+assert 'omitted_sig' in omitted_sig.read()
+assert 'omitted_sig' in omitted_sig.read_configuration()
+
+# But these will be differentiated when we put them into a parent Device and
+# call read() or read_configuraiton() on _that_.
 
 
 class A(Device):
