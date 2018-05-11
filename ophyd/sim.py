@@ -13,7 +13,7 @@ import uuid
 
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
-from .device import Device, Component, Component as C
+from .device import Device, Component, Component as C, Kind
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
@@ -61,6 +61,8 @@ class SynSignal(Signal):
         Digits of precision. Default is 3.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.NORMAL. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -72,6 +74,7 @@ class SynSignal(Signal):
                  exposure_time=0,
                  precision=3,
                  parent=None,
+                 kind=None,
                  loop=None):
         if func is None:
             # When triggered, just put the current value.
@@ -85,7 +88,7 @@ class SynSignal(Signal):
         self.precision = 3
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
-                         parent=parent)
+                         parent=parent, kind=kind)
 
     def describe(self):
         res = super().describe()
@@ -170,6 +173,8 @@ class SynPeriodicSignal(SynSignal):
         0.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.NORMAL. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -179,12 +184,13 @@ class SynPeriodicSignal(SynSignal):
                  period=1, period_jitter=1,
                  exposure_time=0,
                  parent=None,
+                 kind=None,
                  loop=None):
         if func is None:
             func = np.random.rand
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
-                         parent=parent, loop=loop)
+                         parent=parent, kind=kind, loop=loop)
 
         self.__thread = threading.Thread(target=periodic_update, daemon=True,
                                          args=(weakref.ref(self),
@@ -250,6 +256,8 @@ class SynAxisNoHints(Device):
         Digits of precision. Default is 3.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.NORMAL. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -264,6 +272,7 @@ class SynAxisNoHints(Device):
                  readback_func=None, value=0, delay=0,
                  precision=3,
                  parent=None,
+                 kind=None,
                  loop=None):
         if readback_func is None:
             def readback_func(x):
@@ -282,7 +291,7 @@ class SynAxisNoHints(Device):
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['readback_ts'] = ttime.time()
 
-        super().__init__(name=name, parent=parent)
+        super().__init__(name=name, parent=parent, kind=kind)
         self.readback.name = self.name
 
     def set(self, value):
@@ -335,7 +344,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    _default_hints = {'fields': ['readback']}
+    readback = Component(ReadbackSignal, value=None, kind=Kind.HINTED)
 
 
 class SynGauss(SynSignal):

@@ -13,6 +13,12 @@ def test_device_hints():
         a = Component(Signal, kind=Kind.HINTED)
         b = Component(Signal)
 
+    # Convenience Component is equivalent.
+    class Dongle(Device):
+        a = HCpt(Signal)
+        b = Component(Signal)
+
+    assert {'fields': ['dev_a']} == Dongle(name='dev').hints
     assert {'fields': ['dev_a']} == Dongle(name='dev').hints
 
 def test_motor_bundle_hints():
