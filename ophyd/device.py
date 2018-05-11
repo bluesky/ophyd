@@ -11,6 +11,8 @@ from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
                     doc_annotation_forwarder)
 
 from typing import Dict, List, Any, TypeVar, Tuple
+from collections.abc import MutableSequence
+
 A, B = TypeVar('A'), TypeVar('B')
 
 
@@ -316,7 +318,7 @@ class DynamicDeviceComponent:
 
         clsdict = OrderedDict(
             __doc__=docstring,
-            _default_read_attrs=self.default_read_attrs or (), 
+            _default_read_attrs=self.default_read_attrs or (),
             _default_configuration_attrs=\
                 self.default_configuration_attrs or ())
 
@@ -760,6 +762,35 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             val = val | Kind.CONFIGURATION
         return val
 
+    @property
+    def read_atrrs(self):
+        return _OphydAttrList(self, Kind.NORMAL)
+
+    @read_atrrs.setter
+    def read_atrrs(self, val):
+        val = set(val)
+        # TODO deal with dotted names
+        for c in self.component_names:
+            if c in val:
+                getattr(self, c).kind |= Kind.NORMAL
+
+            else:
+                getattr(self, c).kind ^= Kind.NORMAL
+
+    @property
+    def config_attrs(self):
+        return _OphydAttrList(self, Kind.CONFIGURATION)
+
+    @config_attrs.setter
+    def config_atrrs(self, val):
+        val = set(val)
+        # TODO deal with dotted names
+        for c in self.component_names:
+            if c in val:
+                getattr(self, c).kind |= Kind.CONFIGURATION
+
+            else:
+                getattr(self, c).kind ^= Kind.CONFIGURATION
 
     @property
     def signal_names(self):
@@ -1122,3 +1153,37 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         yield ('read_attrs', self.read_attrs)
         yield ('configuration_attrs', self.configuration_attrs)
+
+
+class _OphydAttrList(MutableSequence):
+    """list proxy to migrate away from Device.read_attrs and Device.config_attrs
+
+
+    """
+
+    def __init__(self, device, kind):
+        self._kind = kind
+        self._parent = device
+
+    def __internal_list(self):
+        return [c for c in self._parent.component_names
+                if getattr(self._parent, c).kind & self._kind]
+
+    def __getitem__(self, key):
+        return self.__internal_list[key]
+
+    def __setitem__(self, key, val):
+        raise NotImplemented
+
+    def __delitem__(self, key):
+        o = self.__internal_list[key]
+        if not isinstance(key, slice):
+            o = [o]
+        for k in o:
+            getattr(self._parent, k).kind ^= self._kind
+
+    def __len__(self):
+        return len(self.__internal_list)
+
+    def insert(self, index, object):
+        getattr(self._parent, object).kind |= self._kind
