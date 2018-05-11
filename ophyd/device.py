@@ -13,6 +13,7 @@ from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
 
 from typing import Dict, List, Any, TypeVar, Tuple
 from collections.abc import MutableSequence
+from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
 RESPECT_KIND = object()
@@ -769,14 +770,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @read_attrs.setter
     def read_attrs(self, val):
-        val = set(val)
-        # TODO deal with dotted names
-        for c in self.component_names:
-            if c in val:
-                getattr(self, c).kind |= Kind.NORMAL
-            else:
-                # need to remove both read and hint behavior
-                getattr(self, c).kind &= ~Kind.HINTED
+        self.__attr_list_helper(val, Kind.NORMAL, Kind.HINTED, 'read_attrs')
 
     @property
     def configuration_attrs(self):
@@ -784,13 +778,33 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @configuration_attrs.setter
     def configuration_attrs(self, val):
+        self.__attr_list_helper(val, Kind.CONFIG, Kind.CONFIG,
+                                'configuration_attrs')
+
+    def __attr_list_helper(self, val, set_kind, unset_kind, recurse_name):
         val = set(val)
-        # TODO deal with dotted names
-        for c in self.component_names:
+        cn = set(self.component_names)
+
+        for c in cn:
             if c in val:
-                getattr(self, c).kind |= Kind.CONFIG
+                getattr(self, c).kind |= set_kind
             else:
-                getattr(self, c).kind &= ~Kind.CONFIG
+                getattr(self, c).kind &= ~unset_kind
+
+        # now look at everything else, presumably things with dots
+        extra = val - cn
+        if any(c for c in extra if '.' not in c):
+            raise ValueError("You asked to set {c} as a configuration_attr "
+                             "on {self}, but there is no such (grand) child."
+                             .format(c=c, self=self))
+        group = groupby(((child, rest)
+                         for child, _, rest in (c.partition('.')
+                                                for c in extra)),
+                        lambda x: x[0])
+        for child, cf_list in group:
+            setattr(getattr(self, child),
+                    recurse_name,
+                    [c[1] for c in cf_list])
 
     @property
     def signal_names(self):
