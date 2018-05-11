@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import time as ttime
 import logging
@@ -17,6 +18,7 @@ from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
 RESPECT_KIND = object()
+
 
 class OrderedDictType(Dict[A, B]):
     ...
@@ -680,6 +682,9 @@ class BlueskyInterface:
         """
         pass
 
+    def _validate_kind(self, val):
+        return super()._validate_kind(val)
+
 
 class GenerateDatumInterface:
     """Classes that inherit from this can safely customize the
@@ -769,7 +774,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             val = getattr(Kind, val.upper())
         if Kind.NORMAL & val:
             val = val | Kind.CONFIG
-        return val
+        return super()._validate_kind(val)
 
     @property
     def read_attrs(self):
@@ -1226,3 +1231,8 @@ class _OphydAttrList(MutableSequence):
 
     def __add__(self, other):
         return list(self) + list(other)
+
+
+@contextlib.contextmanager
+def kind_context(kind):
+    yield functools.partial(Component, kind=kind)

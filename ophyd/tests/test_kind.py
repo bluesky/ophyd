@@ -1,4 +1,4 @@
-from ophyd import Device, Signal, Kind, Component, RESPECT_KIND
+from ophyd import Device, Signal, Kind, Component, RESPECT_KIND, kind_context
 
 
 def test_back_compat():
@@ -122,3 +122,20 @@ def test_convenience_wrappers_of_component():
 
     thing.a.kind = Kind.NORMAL
     assert ['thing_a'] == list(thing.read())
+
+
+def test_strings():
+    sig = Signal(name='sig', kind='normal')
+    assert sig.kind == Kind.NORMAL
+
+
+def test_kind_context():
+    class Thing(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
+
+        with kind_context('omitted') as Cpt:
+            a = Cpt(Signal)
+
+    thing = Thing(name='thing')
+    assert thing.a.kind == Kind.OMITTED

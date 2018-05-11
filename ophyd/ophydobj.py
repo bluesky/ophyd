@@ -93,9 +93,10 @@ class OphydObject:
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
 
-    def _validate_kind(self, kind):
-        # To be customized by subclasses.
-        return kind
+    def _validate_kind(self, val):
+        if isinstance(val, str):
+            val = getattr(Kind, val.upper())
+        return val
 
     @property
     def kind(self):

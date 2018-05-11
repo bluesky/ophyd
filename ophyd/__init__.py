@@ -69,7 +69,7 @@ from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
                      DynamicDeviceComponent, OmittedComponent,
                      NormalComponent, ConfigComponent, HintedComponent,
-                     RESPECT_KIND)
+                     RESPECT_KIND, kind_context)
 from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM
