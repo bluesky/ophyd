@@ -181,7 +181,7 @@ class TestDevice(AssertTools):
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'component_names', '_signals',
-                          'read_attrs', 'configuration_attrs', '_sig_attrs',
+                          '_sig_attrs',
                           '_sub_devices']
 
         type('a', (Device,), {'a': None})  # legal class definition
