@@ -1207,3 +1207,6 @@ class _OphydAttrList(MutableSequence):
 
     def __repr__(self):
         return repr(list(self))
+
+    def __add__(self, other):
+        return list(self) + list(other)
