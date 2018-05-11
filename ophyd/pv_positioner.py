@@ -70,8 +70,6 @@ class PVPositioner(Device, PositionerBase):
     done_value = 1
     put_complete = False
 
-    _default_hints = {'fields': ['readback']}
-
     def __init__(self, prefix='', *, limits=None, name=None, read_attrs=None,
                  configuration_attrs=None, parent=None, egu='', **kwargs):
         super().__init__(prefix=prefix, read_attrs=read_attrs,

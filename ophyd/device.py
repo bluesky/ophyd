@@ -710,10 +710,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         DEPRECATED
         the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
-    hints : dict or None, optional
-        May be used to help downstream consumers infer interesting keys.
-        Example: ``{'fields': ['motor_readback']}``. If `None`, a default
-        is derived from the class attribute `_default_hints`
     parent : instance or None, optional
         The instance of the parent device, if applicable
     """
@@ -1031,8 +1027,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         fields = []
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.HINTED:
-                fields.append(component).name
+            if component.kind == Kind.HINTED:
+                fields.append(component.name)
         return {'fields': fields}
 
     @property
