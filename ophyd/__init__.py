@@ -66,7 +66,8 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
                      DynamicDeviceComponent, OmittedComponent,
-                     NormalComponent, ConfigComponent, HintedComponent)
+                     NormalComponent, ConfigComponent, HintedComponent,
+                     RESPECT_KIND)
 from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM

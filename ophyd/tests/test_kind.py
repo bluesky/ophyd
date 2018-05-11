@@ -1,4 +1,21 @@
-from ophyd import Device, Signal, Kind, Component
+from ophyd import Device, Signal, Kind, Component, RESPECT_KIND
+
+
+def test_back_compat():
+    class Thing(Device):
+        _default_read_attrs = ['a']
+        _default_configuration_attrs = ['b']
+        a = Component(Signal)
+        b = Component(Signal)
+        c = Component(Signal)
+
+    thing = Thing(name='thing')
+    assert ['thing_a'] == list(thing.read())
+    assert ['thing_b'] == list(thing.read_configuration())
+    assert a.read_attrs == ['thing_a']
+    assert a.configuration_attrs == ['thing_b']
+    a.read_attrs == ['thing_a', 'thing_b']
+    assert ['thing_a', 'thing_b'] == list(thing.read())
 
 
 def test_standalone_signals():
@@ -30,6 +47,8 @@ def test_standalone_signals():
 def test_nested_devices():
 
     class A(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
         normal_sig = Component(Signal)
         config_sig = Component(Signal, kind=Kind.CONFIG)
         omitted_sig = Component(Signal, kind=Kind.OMITTED)
@@ -49,6 +68,8 @@ def test_nested_devices():
     # Another layer of nesting!
 
     class B(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
         a_default = Component(A)
         a_config = Component(A, kind=Kind.CONFIG)
         a_omitted = Component(A, kind=Kind.OMITTED)
@@ -84,6 +105,8 @@ def test_convenience_wrappers_of_component():
     from ophyd import OmittedComponent as OCpt
 
     class Thing(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
         a = OCpt(Signal)
         b = OCpt(Signal)
 

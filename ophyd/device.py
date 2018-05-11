@@ -15,7 +15,7 @@ from typing import Dict, List, Any, TypeVar, Tuple
 from collections.abc import MutableSequence
 
 A, B = TypeVar('A'), TypeVar('B')
-
+RESPECT_KIND = object()
 
 class OrderedDictType(Dict[A, B]):
     ...
@@ -718,6 +718,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     # over ride in sub-classes to control the default
     # contents of read and configuration attrs lists
 
+    # To use the new 'kind' parameter, set these equal to the sentinel
+    # REPSECT_KIND, defined in this module.
+
     # If `None`, defaults to `self.component_names'
     _default_read_attrs = None
     # If `None`, defaults to `[]`
@@ -736,19 +739,20 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         super().__init__(name=name, parent=parent, kind=kind, **kwargs)
 
-        if configuration_attrs is None:
-            dflt_c_attrs = self._default_configuration_attrs
-            configuration_attrs = (dflt_c_attrs if
-                                   dflt_c_attrs is not None
-                                   else [])
+        if self._default_configuration_attrs is not RESPECT_KIND:
+            if configuration_attrs is None:
+                    dflt_c_attrs = self._default_configuration_attrs
+                    configuration_attrs = (dflt_c_attrs if
+                                        dflt_c_attrs is not None
+                                        else [])
+            self.configuration_attrs = list(configuration_attrs)
 
-        if read_attrs is None:
-            read_attrs = (self._default_read_attrs if
-                          self._default_read_attrs is not None
-                          else self.component_names)
-
-        self.read_attrs = list(read_attrs)
-        self.configuration_attrs = list(configuration_attrs)
+        if self._default_read_attrs is not RESPECT_KIND:
+            if read_attrs is None:
+                read_attrs = (self._default_read_attrs if
+                            self._default_read_attrs is not None
+                            else self.component_names)
+            self.read_attrs = list(read_attrs)
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
