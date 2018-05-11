@@ -1015,7 +1015,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         else:
             return {'fields': [getattr(self, component_name).name
                                for component_name in
-                                   self._default_hints['fields']]}
+                                   self._default_hints.get('fields', [])]}
 
     @hints.setter
     def hints(self, val):

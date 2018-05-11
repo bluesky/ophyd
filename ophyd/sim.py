@@ -738,22 +738,25 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
+    _default_hints = {'fields': ['a']}
+
     a = Component(SynSignal, func=random.random)
     b = Component(SynSignal, func=random.random)
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
-    _default_hints = {'fields': ['a']}
-
 
 class DetWithCountTime(Device):
+    _default_read_attrs = ('intensity',)
+
     intensity = Component(SynSignal, func=lambda: 0)
     count_time = Component(Signal)
-    _default_read_attrs = ('intensity',)
 
 
 class DetWithConf(Device):
+    _default_hints = {'fields': ['a', 'b']}
+
     a = Component(SynSignal, func=lambda: 1)
     b = Component(SynSignal, func=lambda: 2)
     c = Component(SynSignal, func=lambda: 3)
@@ -766,8 +769,6 @@ class DetWithConf(Device):
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
-
-    _default_hints = {'fields': ['a', 'b']}
 
 
 class InvariantSignal(SynSignal):
@@ -783,6 +784,8 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
+    _default_hints = {'fields': ['pseudo1']}
+
     pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
     pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
     pseudo3 = C(PseudoSingle, limits=None, egu='c')
@@ -808,10 +811,10 @@ class SPseudo3x3(PseudoPositioner):
                                    pseudo2=-real_pos.real2,
                                    pseudo3=-real_pos.real3)
 
-    _default_hints = {'fields': ['pseudo1']}
-
 
 class SPseudo1x3(PseudoPositioner):
+    _default_hints = {'fields': ['pseudo1', 'real1', 'real2', 'real3']}
+
     pseudo1 = C(PseudoSingle, limits=(-10, 10))
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
@@ -830,8 +833,6 @@ class SPseudo1x3(PseudoPositioner):
         real_pos = self.RealPosition(*real_pos)
         # logger.debug('inverse %s', real_pos)
         return self.PseudoPosition(pseudo1=-real_pos.real1)
-
-    _default_hints = {'fields': ['pseudo1', 'real1', 'real2', 'real3']}
 
 
 class SynAxisNoPosition(SynAxis):
