@@ -287,6 +287,8 @@ class MotorBundle(Device):
 
     This provides better default behavior for ``hints``.
     """
+    _default_read_attrs = RESPECT_KIND
+    _default_configuration_attrs = RESPECT_KIND
 
     @property
     def hints(self):

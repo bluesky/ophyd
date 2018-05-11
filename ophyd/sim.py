@@ -13,7 +13,7 @@ import uuid
 
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
-from .device import Device, Component, Component as C, Kind
+from .device import Device, Component, Component as C, Kind, RESPECT_KIND
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
@@ -747,9 +747,10 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
-    _default_hints = {'fields': ['a']}
+    _default_read_attrs = RESPECT_KIND
+    _default_configuration_attrs = RESPECT_KIND
 
-    a = Component(SynSignal, func=random.random)
+    a = Component(SynSignal, func=random.random, kind=Kind.HINTED)
     b = Component(SynSignal, func=random.random)
 
     def trigger(self):
@@ -757,17 +758,19 @@ class ABDetector(Device):
 
 
 class DetWithCountTime(Device):
-    _default_read_attrs = ('intensity',)
+    _default_read_attrs = RESPECT_KIND
+    _default_configuration_attrs = RESPECT_KIND
 
-    intensity = Component(SynSignal, func=lambda: 0)
+    intensity = Component(SynSignal, func=lambda: 0, kind=Kind.HINTED)
     count_time = Component(Signal)
 
 
 class DetWithConf(Device):
-    _default_hints = {'fields': ['a', 'b']}
+    _default_read_attrs = RESPECT_KIND
+    _default_configuration_attrs = RESPECT_KIND
 
-    a = Component(SynSignal, func=lambda: 1)
-    b = Component(SynSignal, func=lambda: 2)
+    a = Component(SynSignal, func=lambda: 1, kind=Kind.HINTED)
+    b = Component(SynSignal, func=lambda: 2, kind=Kind.HINTED)
     c = Component(SynSignal, func=lambda: 3)
     d = Component(SynSignal, func=lambda: 4)
 
@@ -793,11 +796,12 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    _default_hints = {'fields': ['pseudo1']}
+    _default_read_attrs = RESPECT_KIND
+    _default_configuration_attrs = RESPECT_KIND
 
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
-    pseudo3 = C(PseudoSingle, limits=None, egu='c')
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.HINTED)
+    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.HINTED)
+    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.HINTED)
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
     real3 = C(SoftPositioner, init_pos=0)
@@ -822,9 +826,10 @@ class SPseudo3x3(PseudoPositioner):
 
 
 class SPseudo1x3(PseudoPositioner):
-    _default_hints = {'fields': ['pseudo1', 'real1', 'real2', 'real3']}
+    _default_read_attrs = RESPECT_KIND
+    _default_configuration_attrs = RESPECT_KIND
 
-    pseudo1 = C(PseudoSingle, limits=(-10, 10))
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), kind=Kind.HINTED)
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
     real3 = C(SoftPositioner, init_pos=0)
