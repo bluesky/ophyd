@@ -5,7 +5,7 @@ from enum import Enum
 from collections import (OrderedDict, namedtuple)
 import warnings
 
-from .ophydobj import OphydObject
+from .ophydobj import OphydObject, Kind
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
                     doc_annotation_forwarder)
@@ -701,13 +701,17 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         The PV prefix for all components of the device
     name : str, keyword only
         The name of the device
-    read_attrs : sequence of attribute names
-        the components to include in a normal reading (i.e., in ``read()``)
-    configuration_attrs : sequence of attribute names
-        the components to be read less often (i.e., in
-        ``read_configuration()``) and to adjust via ``configure()``
     parent : instance or None
         The instance of the parent device, if applicable
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.NORMAL. See Kind for options.
+    read_attrs : sequence of attribute names
+        DEPRECATED
+        the components to include in a normal reading (i.e., in ``read()``)
+    configuration_attrs : sequence of attribute names
+        DEPRECATED
+        the components to be read less often (i.e., in
+        ``read_configuration()``) and to adjust via ``configure()``
     """
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
@@ -720,7 +724,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
 
-    def __init__(self, prefix='', *, name,
+    def __init__(self, prefix='', *, name, kind=None,
                  read_attrs=None, configuration_attrs=None,
                  parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
@@ -731,7 +735,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             raise ValueError('Must specify prefix if device signals are being '
                              'used')
 
-        super().__init__(name=name, parent=parent, **kwargs)
+        super().__init__(name=name, parent=parent, kind=kind, **kwargs)
 
         if configuration_attrs is None:
             dflt_c_attrs = self._default_configuration_attrs
@@ -750,6 +754,12 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
          if not cpt.lazy]
+
+    def _validate_kind(self, val):
+        if Kind.NORMAL & val:
+            val = val | Kind.CONFIGURATION
+        return val
+
 
     @property
     def signal_names(self):
@@ -906,22 +916,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         return attr
 
-    def _read_attr_list(self, attr_list, *, config=False):
-        '''Get a 'read' dictionary containing attributes in attr_list'''
-        values = OrderedDict()
-        for attr in attr_list:
-            obj = getattr(self, attr)
-            if config:
-                values.update(obj.read_configuration())
-            else:
-                values.update(obj.read())
-
-        return values
-
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
         res = super().read()
-        res.update(self._read_attr_list(self.read_attrs))
+        for component_name in self.component_names:
+            component = getattr(self, component_name)
+            if component.kind & Kind.NORMAL:
+                res.update(component.read())
         return res
 
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -931,24 +932,20 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         To control which fields are included, adjust the
         ``configuration_attrs`` list.
         """
-        return self._read_attr_list(self.configuration_attrs, config=True)
-
-    def _describe_attr_list(self, attr_list, *, config=False):
-        '''Get a 'describe' dictionary containing attributes in attr_list'''
-        desc = OrderedDict()
-        for attr in attr_list:
-            obj = getattr(self, attr)
-            if config:
-                desc.update(obj.describe_configuration())
-            else:
-                desc.update(obj.describe())
-
-        return desc
+        res = OrderedDict()
+        for component_name in self.component_names:
+            component = getattr(self, component_name)
+            if component.kind & Kind.CONFIGURATION:
+                res.update(component.read_configuration())
+        return res
 
     @doc_annotation_forwarder(BlueskyInterface)
     def describe(self):
         res = super().describe()
-        res.update(self._describe_attr_list(self.read_attrs))
+        for component_name in self.component_names:
+            component = getattr(self, component_name)
+            if component.kind & Kind.NORMAL:
+                res.update(component.describe())
         return res
 
     def describe_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -966,7 +963,12 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             The keys must be strings and the values must be dict-like
             with the ``event_model.event_descriptor.data_key`` schema.
         """
-        return self._describe_attr_list(self.configuration_attrs, config=True)
+        res = OrderedDict()
+        for component_name in self.component_names:
+            component = getattr(self, component_name)
+            if component.kind & Kind.CONFIGURATION:
+                res.update(component.describe_configuration())
+        return res
 
     @property
     def trigger_signals(self):

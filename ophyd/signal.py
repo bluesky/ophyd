@@ -25,6 +25,9 @@ class Signal(OphydObject):
     name : string, keyword only
     value : any, optional
         The initial value
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.NORMAL. See Kind for options.
+    parent : Device, optional
     timestamp : float, optional
         The timestamp associated with the initial value. Defaults to the
         current local time.
@@ -50,8 +53,8 @@ class Signal(OphydObject):
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=None, timestamp=None, parent=None,
-                 tolerance=None, rtolerance=None, cl=None):
-        super().__init__(name=name, parent=parent)
+                 kind=None, tolerance=None, rtolerance=None, cl=None):
+        super().__init__(name=name, parent=parent, kind=kind)
         if cl is None:
             cl = get_cl()
         self.cl = cl

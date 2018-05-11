@@ -69,6 +69,7 @@ from .device import (Device, Component, FormattedComponent,
 from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM
+from .ophydobj import Kind
 
 # Areadetector-related
 from .areadetector import *

@@ -1,3 +1,4 @@
+import enum
 import warnings
 from itertools import count
 
@@ -5,6 +6,14 @@ import time
 import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
+
+
+class Kind(enum.IntFlag):
+    OMIT = 0
+    NORMAL = 1
+    CONFIGURATION = 2
+    __PRIVATE = 4
+    PRINCIPAL = NORMAL | __PRIVATE
 
 
 class UnknownSubscription(KeyError):
@@ -25,6 +34,8 @@ class OphydObject:
         The name of the object.
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.NORMAL. See Kind for options.
 
     Attributes
     ----------
@@ -33,10 +44,14 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name=None, parent=None, labels=None):
+    def __init__(self, *, name=None, parent=None, labels=None,
+                 kind=None):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
+        if kind is None:
+            kind = Kind.NORMAL
+        self.kind = kind
 
         super().__init__()
 
@@ -71,6 +86,18 @@ class OphydObject:
             name = self.name
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
+
+    def _validate_kind(self, kind):
+        # To be customized by subclasses.
+        return kind
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, val):
+        self._kind = self._validate_kind(val)
 
     @property
     def name(self):
