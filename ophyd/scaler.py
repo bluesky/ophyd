@@ -5,7 +5,8 @@ from collections import OrderedDict
 from ophyd.signal import (EpicsSignal, EpicsSignalRO)
 from ophyd.device import Device
 from ophyd.device import (Component as C, DynamicDeviceComponent as DDC,
-                          FormattedComponent as FC)
+                          FormattedComponent as FC, Kind, RESPECT_KIND,
+                          ConfigComponent as CC, OmittedComponent as OC)
 
 logger = logging.getLogger(__name__)
 
@@ -22,36 +23,37 @@ def _scaler_fields(cls, attr_base, field_base, range_, **kwargs):
 
 class EpicsScaler(Device):
     '''SynApps Scaler Record interface'''
-    _default_configuration_attrs = ('preset_time', 'presets', 'gates',
-                                    'names', 'freq', 'auto_count_time',
-                                    'count_mode', 'delay',
-                                    'auto_count_delay', 'egu')
-    _default_read_attrs = ('channels', 'time')
+    _default_configuration_attrs = RESPECT_KIND
+    _default_read_attrs = RESPECT_KIND
     # tigger + trigger mode
-    count = C(EpicsSignal, '.CNT', trigger_value=1)
-    count_mode = C(EpicsSignal, '.CONT', string=True)
+    count = OC(EpicsSignal, '.CNT', trigger_value=1)
+    count_mode = CC(EpicsSignal, '.CONT', string=True)
 
     # delay from triggering to starting counting
-    delay = C(EpicsSignal, '.DLY')
-    auto_count_delay = C(EpicsSignal, '.DLY1')
+    delay = CC(EpicsSignal, '.DLY')
+    auto_count_delay = CC(EpicsSignal, '.DLY1')
 
     # the data
-    channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33)))
-    names = DDC(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33)))
+    channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
+                                  kind=Kind.HINTED))
+    names = DDC(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33),
+                               kind=Kind.CONFIG))
 
     time = C(EpicsSignal, '.T')
-    freq = C(EpicsSignal, '.FREQ')
+    freq = CC(EpicsSignal, '.FREQ')
 
-    preset_time = C(EpicsSignal, '.TP')
-    auto_count_time = C(EpicsSignal, '.TP1')
+    preset_time = CC(EpicsSignal, '.TP')
+    auto_count_time = CC(EpicsSignal, '.TP1')
 
-    presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33)))
-    gates = DDC(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33)))
+    presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
+                                 kind=Kind.OMITTED))
+    gates = DDC(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
+                               kind=Kind.OMITTED))
 
-    update_rate = C(EpicsSignal, '.RATE')
-    auto_count_update_rate = C(EpicsSignal, '.RAT1')
+    update_rate = OC(EpicsSignal, '.RATE')
+    auto_count_update_rate = OC(EpicsSignal, '.RAT1')
 
-    egu = C(EpicsSignal, '.EGU')
+    egu = CC(EpicsSignal, '.EGU')
 
     def __init__(self, *args, **kwargs):
 
@@ -85,40 +87,36 @@ def _sc_chans(attr_fix, id_range):
     defn = OrderedDict()
     for k in id_range:
         defn['{}{:02d}'.format(attr_fix, k)] = (ScalerChannel,
-                                                '', {'ch_num': k})
+                                                '', {'ch_num': k,
+                                                     'kind': Kind.HINTED})
     return defn
 
 
 class ScalerCH(Device):
-    _default_configuration_attrs = ('preset_time',
-                                    'freq', 'auto_count_time',
-                                    'count_mode', 'delay',
-                                    'auto_count_delay', 'egu', 'channels')
-
-    _default_read_attrs = ('time', 'channels')
-    _default_hints = {'fields': ['channels']}
+    _default_configuration_attrs = RESPECT_KIND
+    _default_read_attrs = RESPECT_KIND
 
     # The data
     channels = DDC(_sc_chans('chan', range(1, 33)))
 
     # tigger + trigger mode
-    count = C(EpicsSignal, '.CNT', trigger_value=1)
-    count_mode = C(EpicsSignal, '.CONT', string=True)
+    count = OC(EpicsSignal, '.CNT', trigger_value=1)
+    count_mode = CC(EpicsSignal, '.CONT', string=True)
 
     # delay from triggering to starting counting
-    delay = C(EpicsSignal, '.DLY')
-    auto_count_delay = C(EpicsSignal, '.DLY1')
+    delay = CC(EpicsSignal, '.DLY')
+    auto_count_delay = CC(EpicsSignal, '.DLY1')
 
     time = C(EpicsSignal, '.T')
-    freq = C(EpicsSignal, '.FREQ')
+    freq = CC(EpicsSignal, '.FREQ')
 
-    preset_time = C(EpicsSignal, '.TP')
-    auto_count_time = C(EpicsSignal, '.TP1')
+    preset_time = CC(EpicsSignal, '.TP')
+    auto_count_time = CC(EpicsSignal, '.TP1')
 
-    update_rate = C(EpicsSignal, '.RATE')
-    auto_count_update_rate = C(EpicsSignal, '.RAT1')
+    update_rate = OC(EpicsSignal, '.RATE')
+    auto_count_update_rate = OC(EpicsSignal, '.RAT1')
 
-    egu = C(EpicsSignal, '.EGU')
+    egu = CC(EpicsSignal, '.EGU')
 
     def __init__(self, *args, **kwargs):
 
