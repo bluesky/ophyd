@@ -43,6 +43,8 @@ class EpicsMotor(Device, PositionerBase):
     _default_read_attrs = ('user_readback', 'user_setpoint')
     _default_configuration_attrs = ('motor_egu', 'velocity', 'acceleration',
                                     'user_offset', 'user_offset_dir')
+    _default_hints = {'fields': ['user_readback']}
+
     # position
     user_readback = Cpt(EpicsSignalRO, '.RBV')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
@@ -75,7 +77,6 @@ class EpicsMotor(Device, PositionerBase):
 
     def __init__(self, *args, **kwargs):
 
-        self._hints = None
         super().__init__(*args, **kwargs)
 
         # Make the default alias for the user_readback the name of the
@@ -84,7 +85,6 @@ class EpicsMotor(Device, PositionerBase):
 
         self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
-        self._hints = None
 
     @property
     @raise_if_disconnected
@@ -280,28 +280,6 @@ class EpicsMotor(Device, PositionerBase):
             rep = {'position': 'disconnected'}
         rep['pv'] = self.user_readback.pvname
         return rep
-
-    @property
-    def hints(self):
-        """Provide hints to bluesky
-
-        The default value is ::
-
-           {'fields': [self.user_readback.name]}
-
-        To override this, set another dictionary.
-
-        To restore the default value set ``None``
-
-        To suppress all hints set ``{}``
-        """
-        if self._hints is None:
-            return {'fields': [self.user_readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = val if val is None else dict(val)
 
 
 class MotorBundle(Device):

@@ -106,8 +106,8 @@ def test_hints(quadem):
     assert len(f_hints) > 0
     for k in f_hints:
         assert k in desc
-    quadem.hints = {'fields': ['foo']}
-    assert quadem.hints == {'fields': ['foo']}
+    quadem.hints = {'fields': ['quadem_current1_mean_value']}
+    assert quadem.hints == {'fields': ['quadem_current1_mean_value']}
     quadem.hints = None
 
     assert quadem.hints['fields'] == f_hints

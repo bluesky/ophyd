@@ -701,12 +701,16 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         The PV prefix for all components of the device
     name : str, keyword only
         The name of the device
-    read_attrs : sequence of attribute names
+    read_attrs : sequence of attribute names, optional
         the components to include in a normal reading (i.e., in ``read()``)
-    configuration_attrs : sequence of attribute names
+    configuration_attrs : sequence of attribute names, optional
         the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
-    parent : instance or None
+    hints : dict or None, optional
+        May be used to help downstream consumers infer interesting keys.
+        Example: ``{'fields': ['motor_readback']}``. If `None`, a default
+        is derived from the class attribute `_default_hints`
+    parent : instance or None, optional
         The instance of the parent device, if applicable
     """
 
@@ -719,9 +723,36 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     _default_read_attrs = None
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
+    # If `None`, defaults to `{}`
+    _default_hints = None
+    # WARNING -- POTENTIALLY CONFUSING DETAIL:
+    # Given a Device subclass like:
+    #
+    # class Thing(Device):
+    #     a = Component(Signal)
+    #     b = Component(Signal)
+    #
+    # default hints can be set like
+    #
+    # class Thing(Device):
+    #     _default_hints = {'fields': ['a']}
+    #     a = Component(Signal)
+    #     b = Component(Signal)
+    #
+    # Notice that the element(s) of fields are attribute names. If the user
+    # sets hints on an *instance* of Thing, either via a keyword argument to
+    # __init__ to by using the `.hints` setter, they must provide the ophyd
+    # name attribute, like this:
+    #
+    # thing = Thing('PV:...', name='thing', hints={'fields': ['thing_a']})
+    #
+    # or, equivalently:
+    #
+    # thing = Thing('PV:...', name='thing')
+    # thing.hints = {'fields': ['thing_a']}
 
     def __init__(self, prefix='', *, name,
-                 read_attrs=None, configuration_attrs=None,
+                 read_attrs=None, configuration_attrs=None, hints=None,
                  parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
@@ -746,6 +777,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         self.read_attrs = list(read_attrs)
         self.configuration_attrs = list(configuration_attrs)
+        self._hints = None
+        # Some subclasses override the hints property, rendering it
+        # un-settable. (This is probably why you shouldn't override properties
+        # in a subclass, but it happens....) For this reason, we only attempt
+        # to set hints if the user passed in something other than None.
+        if hints is not None:
+            self.hints = hints
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
@@ -967,6 +1005,29 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         return self._describe_attr_list(self.configuration_attrs, config=True)
+
+    @property
+    def hints(self):
+        if self._hints is not None:
+            return self._hints
+        elif self._default_hints is None:
+            return {}
+        else:
+            return {'fields': [getattr(self, component_name).name
+                               for component_name in
+                                   self._default_hints.get('fields', [])]}
+
+    @hints.setter
+    def hints(self, val):
+        if val is not None:
+            read_keys = list(self.describe())
+            for key in val.get('fields', []):
+                if key not in read_keys:
+                    raise ValueError("{} is not allowed -- must be one of {}"
+                                     .format(key, read_keys))
+            val = dict(val)
+
+        self._hints = val
 
     @property
     def trigger_signals(self):

@@ -96,6 +96,7 @@ class ScalerCH(Device):
                                     'auto_count_delay', 'egu', 'channels')
 
     _default_read_attrs = ('time', 'channels')
+    _default_hints = {'fields': ['channels']}
 
     # The data
     channels = DDC(_sc_chans('chan', range(1, 33)))
