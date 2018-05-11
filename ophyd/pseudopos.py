@@ -11,7 +11,7 @@ from collections import (OrderedDict, namedtuple, Sequence, Mapping)
 
 from .utils import (DisconnectedError, ExceptionBundle)
 from .positioner import (PositionerBase, SoftPositioner)
-from .device import (Device, Component as Cpt)
+from .device import (Device, Component as Cpt, Kind)
 from .signal import AttributeSignal
 
 
@@ -47,11 +47,8 @@ class PseudoSingle(Device, SoftPositioner):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
-    _default_read_attrs = ('setpoint', 'readback')
-    _default_hints = {'fields': ['readback']}
-
-    readback = Cpt(AttributeSignal, attr='position')
-    setpoint = Cpt(AttributeSignal, attr='target')
+    readback = Cpt(AttributeSignal, attr='position', kind=Kind.HINTED)
+    setpoint = Cpt(AttributeSignal, attr='target', kind=Kind.NORMAL)
 
     def __init__(self, prefix='', *, limits=None, egu='', parent=None,
                  name=None, source='computed',
