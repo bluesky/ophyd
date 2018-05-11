@@ -272,8 +272,8 @@ class TestPVPos(AssertTools):
         for k in f_hints:
             assert k in desc
 
-        motor.hints = {'fields': ['foo']}
-        assert motor.hints == {'fields': ['foo']}
+        motor.hints = {'fields': ['pv_pos_fake_mtr_readback']}
+        assert motor.hints == {'fields': ['pv_pos_fake_mtr_readback']}
         motor.hints = None
 
         assert motor.hints['fields'] == f_hints

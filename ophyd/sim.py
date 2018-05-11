@@ -270,7 +270,6 @@ class SynAxisNoHints(Device):
                 return x
         if loop is None:
             loop = asyncio.get_event_loop()
-        self._hints = None
         self.sim_state = {}
         self._readback_func = readback_func
         self.delay = delay
@@ -336,15 +335,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    @property
-    def hints(self):
-        if self._hints is None:
-            return {'fields': [self.readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = dict(val)
+    _default_hints = {'fields': ['readback']}
 
 
 class SynGauss(SynSignal):
@@ -638,8 +629,6 @@ class SynSignalWithRegistry(SynSignal):
         self._path_stem = None
         self._result = {}
 
-        self._hints = None
-
         if reg is not DO_NOT_USE:
             warnings.warn("The parameter 'reg' is deprecated. It will be "
                           "ignored. In a future release the parameter will be "
@@ -648,19 +637,6 @@ class SynSignalWithRegistry(SynSignal):
             self.reg = reg
         else:
             self.reg = None
-
-    @property
-    def hints(self):
-        if self._hints is None:
-            # Since data is external, hint that it should not be printed or
-            # plotted. Relax this when LiveTable etc. get smarter about
-            # external data.
-            return {'fields': []}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = dict(val)
 
     def stage(self):
         self._file_stem = short_uid()
@@ -762,24 +738,25 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
+    _default_hints = {'fields': ['a']}
+
     a = Component(SynSignal, func=random.random)
     b = Component(SynSignal, func=random.random)
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
-    @property
-    def hints(self):
-        return {'fields': [self.a.name]}
-
 
 class DetWithCountTime(Device):
+    _default_read_attrs = ('intensity',)
+
     intensity = Component(SynSignal, func=lambda: 0)
     count_time = Component(Signal)
-    _default_read_attrs = ('intensity',)
 
 
 class DetWithConf(Device):
+    _default_hints = {'fields': ['a', 'b']}
+
     a = Component(SynSignal, func=lambda: 1)
     b = Component(SynSignal, func=lambda: 2)
     c = Component(SynSignal, func=lambda: 3)
@@ -792,10 +769,6 @@ class DetWithConf(Device):
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
-
-    @property
-    def hints(self):
-        return {'fields': [self.a.name, self.b.name]}
 
 
 class InvariantSignal(SynSignal):
@@ -811,6 +784,8 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
+    _default_hints = {'fields': ['pseudo1']}
+
     pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
     pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
     pseudo3 = C(PseudoSingle, limits=None, egu='c')
@@ -838,6 +813,8 @@ class SPseudo3x3(PseudoPositioner):
 
 
 class SPseudo1x3(PseudoPositioner):
+    _default_hints = {'fields': ['pseudo1', 'real1', 'real2', 'real3']}
+
     pseudo1 = C(PseudoSingle, limits=(-10, 10))
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)

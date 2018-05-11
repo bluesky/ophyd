@@ -701,8 +701,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         The PV prefix for all components of the device
     name : str, keyword only
         The name of the device
-    parent : instance or None
-        The instance of the parent device, if applicable
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.NORMAL. See Kind for options.
     read_attrs : sequence of attribute names
@@ -712,6 +710,12 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         DEPRECATED
         the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
+    hints : dict or None, optional
+        May be used to help downstream consumers infer interesting keys.
+        Example: ``{'fields': ['motor_readback']}``. If `None`, a default
+        is derived from the class attribute `_default_hints`
+    parent : instance or None, optional
+        The instance of the parent device, if applicable
     """
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
@@ -748,12 +752,16 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                                         else [])
             self.configuration_attrs = list(configuration_attrs)
 
+<<<<<<< HEAD
         if self._default_read_attrs is not RESPECT_KIND:
             if read_attrs is None:
                 read_attrs = (self._default_read_attrs if
                             self._default_read_attrs is not None
                             else self.component_names)
             self.read_attrs = list(read_attrs)
+=======
+        self.read_attrs = list(read_attrs)
+        self.configuration_attrs = list(configuration_attrs)
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
@@ -1014,6 +1022,15 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             if component.kind & Kind.CONFIG:
                 res.update(component.describe_configuration())
         return res
+
+    @property
+    def hints(self):
+        fields = []
+        for component_name in self.component_names:
+            component = getattr(self, component_name)
+            if component.kind & Kind.HINTED:
+                fields.append(component).name
+        return {'fields': fields}
 
     @property
     def trigger_signals(self):

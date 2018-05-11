@@ -269,8 +269,8 @@ def test_hints(motor):
     for k in f_hints:
         assert k in desc
 
-    motor.hints = {'fields': ['foo']}
-    assert motor.hints == {'fields': ['foo']}
+    motor.hints = {'fields': ['epicsmotor_user_setpoint']}
+    assert motor.hints == {'fields': ['epicsmotor_user_setpoint']}
     motor.hints = None
 
     assert motor.hints['fields'] == f_hints
