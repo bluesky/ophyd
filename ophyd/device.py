@@ -774,10 +774,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         for c in self.component_names:
             if c in val:
                 getattr(self, c).kind |= Kind.NORMAL
-
             else:
                 # need to remove both read and hint behavior
-                getattr(self, c).kind ^= Kind.HINTED
+                getattr(self, c).kind &= ~Kind.HINTED
 
     @property
     def configuration_attrs(self):
@@ -790,9 +789,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         for c in self.component_names:
             if c in val:
                 getattr(self, c).kind |= Kind.CONFIG
-
             else:
-                getattr(self, c).kind ^= Kind.CONFIG
+                getattr(self, c).kind &= ~Kind.CONFIG
 
     @property
     def signal_names(self):
@@ -1182,7 +1180,7 @@ class _OphydAttrList(MutableSequence):
         if not isinstance(key, slice):
             o = [o]
         for k in o:
-            getattr(self._parent, k).kind ^= self._kind
+            getattr(self._parent, k).kind &= ~self._kind
 
     def __len__(self):
         return len(self.__internal_list())
