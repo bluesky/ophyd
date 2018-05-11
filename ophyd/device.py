@@ -326,18 +326,8 @@ class DynamicDeviceComponent:
         for attr in self.defn.keys():
             clsdict[attr] = self.create_attr(attr)
 
-        attrs = set(self.defn.keys())
-        inst_read = set(instance.read_attrs)
-        if self.attr in inst_read:
-            # if the sub-device is in the read list, then add all attrs
-            read_attrs = attrs
-        else:
-            # otherwise, only add the attributes that exist in the sub-device
-            # to the read_attrs list
-            read_attrs = inst_read.intersection(attrs)
-
         cls = type(clsname, (Device, ), clsdict)
-        return cls(instance.prefix, read_attrs=list(read_attrs),
+        return cls(instance.prefix,
                    name='{}_{}'.format(instance.name, self.attr),
                    parent=instance)
 
