@@ -1,3 +1,4 @@
+import functools
 import time as ttime
 import logging
 import textwrap
@@ -436,6 +437,12 @@ class ComponentMeta(type):
 
         return clsobj
 
+# Convenience wrappers to avoid screens full of kind=Kind.OMITTED, etc.
+OmittedComponent = functools.partial(Component, kind=Kind.OMITTED)
+NormalComponent = Component  # for completeness
+ConfigComponent = functools.partial(Component, kind=Kind.CONFIG)
+HintedComponent = functools.partial(Component, kind=Kind.HINTED)
+
 
 # These stub 'Interface' classes are the apex of the mro heirarchy for
 # their respective methods. They make multiple interitance more
@@ -759,7 +766,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def _validate_kind(self, val):
         if Kind.NORMAL & val:
-            val = val | Kind.CONFIGURATION
+            val = val | Kind.CONFIG
         return val
 
     @property
@@ -787,10 +794,10 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         # TODO deal with dotted names
         for c in self.component_names:
             if c in val:
-                getattr(self, c).kind |= Kind.CONFIGURATION
+                getattr(self, c).kind |= Kind.CONFIG
 
             else:
-                getattr(self, c).kind ^= Kind.CONFIGURATION
+                getattr(self, c).kind ^= Kind.CONFIG
 
     @property
     def signal_names(self):
@@ -966,7 +973,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         res = OrderedDict()
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.CONFIGURATION:
+            if component.kind & Kind.CONFIG:
                 res.update(component.read_configuration())
         return res
 

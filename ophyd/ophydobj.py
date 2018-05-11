@@ -9,11 +9,17 @@ from .status import (StatusBase, MoveStatus, DeviceStatus)
 
 
 class Kind(enum.IntFlag):
-    OMIT = 0
+    """
+    This is used in the .kind attribute of all OphydObj (Signals, Devices).
+
+    A Device examines its components' .kind atttribute to decide whether to
+    traverse it in read(), read_configuration(), or neither. Additionally, if
+    decides whether to include its name in `.hints['fields']`.
+    """
+    OMITTED = 0
     NORMAL = 1
-    CONFIGURATION = 2
-    __PRIVATE = 4
-    PRINCIPAL = NORMAL | __PRIVATE
+    CONFIG = 2
+    HINTED = 5  # Notice that bool(HINTED & NORMAL) is True.
 
 
 class UnknownSubscription(KeyError):
