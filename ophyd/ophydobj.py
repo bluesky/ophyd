@@ -33,7 +33,11 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name=None, parent=None):
+    def __init__(self, *, name=None, parent=None, labels=None):
+        if labels is None:
+            labels = set()
+        self._ophyd_labels_ = set(labels)
+
         super().__init__()
 
         # base name and ref to parent, these go with properties
