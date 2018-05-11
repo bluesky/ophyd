@@ -629,7 +629,7 @@ class ROIPlugin(PluginBase):
                             ('min_y', 'MinY'),
                             ('min_z', 'MinZ'))),
                   doc='Minimum size of the ROI in XYZ',
-                  default_read_attrs=('x', 'y', 'z'))
+                  default_read_attrs=('min_x', 'min_y', 'min_z'))
 
     name_ = C(SignalWithRBV, 'Name', doc='ROI name')
     reverse = DDC(ad_group(SignalWithRBV,
