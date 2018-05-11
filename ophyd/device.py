@@ -1189,3 +1189,6 @@ class _OphydAttrList(MutableSequence):
 
     def insert(self, index, object):
         getattr(self._parent, object).kind |= self._kind
+
+    def __eq__(self, other):
+        return list(self) == other
