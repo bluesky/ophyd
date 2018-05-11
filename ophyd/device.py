@@ -369,7 +369,7 @@ class ComponentMeta(type):
         # This attrs are defined at instanitation time and must not
         # collide with class attributes.
         INSTANCE_ATTRS = ['name', 'parent', 'component_names', '_signals',
-                          'read_attrs', 'configuration_attrs', '_sig_attrs',
+                          '_sig_attrs',
                           '_sub_devices']
         # These attributes are part of the bluesky interface and cannot be
         # used as component names.
@@ -770,11 +770,11 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         return val
 
     @property
-    def read_atrrs(self):
+    def read_attrs(self):
         return _OphydAttrList(self, Kind.NORMAL)
 
-    @read_atrrs.setter
-    def read_atrrs(self, val):
+    @read_attrs.setter
+    def read_attrs(self, val):
         val = set(val)
         # TODO deal with dotted names
         for c in self.component_names:
@@ -782,14 +782,15 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 getattr(self, c).kind |= Kind.NORMAL
 
             else:
-                getattr(self, c).kind ^= Kind.NORMAL
+                # need to remove both read and hint behavior
+                getattr(self, c).kind ^= Kind.HINTED
 
     @property
-    def config_attrs(self):
-        return _OphydAttrList(self, Kind.CONFIGURATION)
+    def configuration_attrs(self):
+        return _OphydAttrList(self, Kind.CONFIG)
 
-    @config_attrs.setter
-    def config_atrrs(self, val):
+    @configuration_attrs.setter
+    def configuration_attrs(self, val):
         val = set(val)
         # TODO deal with dotted names
         for c in self.component_names:
@@ -1004,7 +1005,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         res = OrderedDict()
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.CONFIGURATION:
+            if component.kind & Kind.CONFIG:
                 res.update(component.describe_configuration())
         return res
 
@@ -1177,20 +1178,20 @@ class _OphydAttrList(MutableSequence):
                 if getattr(self._parent, c).kind & self._kind]
 
     def __getitem__(self, key):
-        return self.__internal_list[key]
+        return self.__internal_list()[key]
 
     def __setitem__(self, key, val):
         raise NotImplemented
 
     def __delitem__(self, key):
-        o = self.__internal_list[key]
+        o = self.__internal_list()[key]
         if not isinstance(key, slice):
             o = [o]
         for k in o:
             getattr(self._parent, k).kind ^= self._kind
 
     def __len__(self):
-        return len(self.__internal_list)
+        return len(self.__internal_list())
 
     def insert(self, index, object):
         getattr(self._parent, object).kind |= self._kind

@@ -23,8 +23,9 @@ def test_standalone_signals():
     assert 'omitted_sig' in omitted_sig.read()
     assert 'omitted_sig' in omitted_sig.read_configuration()
 
-    # But these will be differentiated when we put them into a parent Device and
-    # call read() or read_configuraiton() on _that_.
+    # But these will be differentiated when we put them into a parent
+    # Device and call read() or read_configuraiton() on _that_.
+
 
 def test_nested_devices():
 
@@ -32,33 +33,34 @@ def test_nested_devices():
         normal_sig = Component(Signal)
         config_sig = Component(Signal, kind=Kind.CONFIG)
         omitted_sig = Component(Signal, kind=Kind.OMITTED)
-    
+
     a = A(name='a')
+
     # When we call read and read_configuration on a, it checks the kind of its
     # components and reads the right ones.
     assert 'a_normal_sig' in a.read()
     assert 'a_config_sig' not in a.read()
     assert 'a_omitted_sig' not in a.read()
-    
+
     assert 'a_normal_sig' not in a.read_configuration()
     assert 'a_config_sig' in a.read_configuration()
     assert 'a_omitted_sig' not in a.read_configuration()
-    
+
     # Another layer of nesting!
-    
+
     class B(Device):
         a_default = Component(A)
         a_config = Component(A, kind=Kind.CONFIG)
         a_omitted = Component(A, kind=Kind.OMITTED)
-    
-    
+
     b = B(name='b')
-    
-    
+
     assert ['b_a_default_normal_sig'] == list(b.read())
-    # Notice that a_default comes along for the ride here. If you ask a Device for
-    # its normal readings it will also give you its configuration. (You need
-    # complete configurational metadata for the EventDescriptor!)
+
+    # Notice that a_default comes along for the ride here. If you ask
+    # a Device for its normal readings it will also give you its
+    # configuration. (You need complete configurational metadata for
+    # the EventDescriptor!)
     assert ['b_a_default_config_sig',
             'b_a_config_config_sig'] == list(b.read_configuration())
     # Notice that it tacks CONFIG on when you try to set the kind to NORMAL.
@@ -73,20 +75,21 @@ def test_nested_devices():
     assert [] == list(b.read())
     assert ['b_a_default_config_sig',
             'b_a_config_config_sig'] == list(b.read_configuration())
-    
+
+
 def test_convenience_wrappers_of_component():
     # Convenience wrappers of Component are helpful for big Devices. The
     # default kind of Component must be NORMAL for back-compatibility, but for
     # big Devices OmmittedComponent is likely more useful.
     from ophyd import OmittedComponent as OCpt
-    
+
     class Thing(Device):
         a = OCpt(Signal)
         b = OCpt(Signal)
-    
+
     thing = Thing(name='thing')
     assert {} == thing.read()
     assert {} == thing.read_configuration()
-    
+
     thing.a.kind = Kind.NORMAL
     assert ['thing_a'] == list(thing.read())
