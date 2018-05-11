@@ -1190,3 +1190,6 @@ class _OphydAttrList(MutableSequence):
 
     def __eq__(self, other):
         return list(self) == other
+
+    def __repr__(self):
+        return repr(list(self))
