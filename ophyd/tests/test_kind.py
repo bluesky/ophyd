@@ -33,16 +33,31 @@ assert 'a_normal_sig' not in a.read_configuration()
 assert 'a_config_sig' in a.read_configuration()
 assert 'a_omitted_sig' not in a.read_configuration()
 
+# Another layer of nesting!
 
 class B(Device):
-    a = Component(A)
+    a_default = Component(A)
+    a_config = Component(A, kind=Kind.CONFIGURATION)
+    a_omitted = Component(A, kind=Kind.OMIT)
 
 
 b = B(name='b')
 
 
-assert ['b_a_normal_sig'] == list(b.read())
-assert ['b_a_config_sig'] == list(b.read_configuration())
-b.a.kind = Kind.CONFIGURATION
-assert [] == list(b.read())
-assert ['b_a_config_sig'] == list(b.read_configuration())
+assert ['b_a_default_normal_sig'] == list(b.read())
+# Notice that a_default comes along for the ride here. If you ask a Device for
+# its normal readings it will also give you its configuration. (You need
+# complete configurational metadata for the EventDescriptor!)
+assert ['b_a_default_config_sig',
+        'b_a_config_config_sig'] == list(b.read_configuration())
+# Notice that it tacks CONFIGURATION on when you try to set the kind to NORMAL.
+assert (Kind.NORMAL | Kind.CONFIGURATION) == B(name='b', kind=Kind.NORMAL).kind
+# And the same if you try to set it after __init__
+b.a_default.kind = Kind.NORMAL
+assert b.a_default.kind == (Kind.NORMAL | Kind.CONFIGURATION)
+# However, just taking CONFIGURATION alone without Event-wise readings is fine.
+b.a_default.kind = Kind.CONFIGURATION
+assert b.a_default.kind == Kind.CONFIGURATION
+assert [] == list(b.read())  # Now we get no Event-wise readings from a_default
+assert ['b_a_default_config_sig',
+        'b_a_config_config_sig'] == list(b.read_configuration())
