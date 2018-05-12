@@ -752,14 +752,16 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 read_attrs = (self._default_read_attrs if
                               self._default_read_attrs is not None
                               else self.component_names)
+        if read_attrs is not None:
             self.read_attrs = list(read_attrs)
 
         if self._default_configuration_attrs is not RESPECT_KIND:
             if configuration_attrs is None:
-                    dflt_c_attrs = self._default_configuration_attrs
-                    configuration_attrs = (dflt_c_attrs if
-                                           dflt_c_attrs is not None
-                                           else [])
+                dflt_c_attrs = self._default_configuration_attrs
+                configuration_attrs = (dflt_c_attrs if
+                                       dflt_c_attrs is not None
+                                       else [])
+        if configuration_attrs is not None:
             self.configuration_attrs = list(configuration_attrs)
 
         # Instantiate non-lazy signals
