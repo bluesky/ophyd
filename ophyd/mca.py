@@ -64,7 +64,7 @@ class EpicsMCARecord(Device):
     _default_read_attrs = RESPECT_KIND
 
     stop_signal = C(EpicsSignal, '.STOP', kind='omitted')
-    preset_real_time = C(EpicsSignal, '.PRTM', kind=Kind.CONFIG|Kind.NORMAL)
+    preset_real_time = C(EpicsSignal, '.PRTM', kind=Kind.CONFIG | Kind.NORMAL)
     preset_live_time = C(EpicsSignal, '.PLTM', kind='omitted')
     elapsed_real_time = C(EpicsSignalRO, '.ERTM')
     elapsed_live_time = C(EpicsSignalRO, '.ELTM', kind='omitted')

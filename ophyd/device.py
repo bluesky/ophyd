@@ -421,9 +421,9 @@ class ComponentMeta(type):
 
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(
-                                    name + 'Tuple',
-                                    [comp for comp in clsobj.component_names
-                                     if not comp.startswith('_')])
+            name + 'Tuple',
+            [comp for comp in clsobj.component_names
+             if not comp.startswith('_')])
         # Finally, create all the component docstrings
         for cpt in clsobj._sig_attrs.values():
             cpt.__doc__ = cpt.make_docstring(clsobj)
@@ -439,6 +439,7 @@ class ComponentMeta(type):
             clsobj._sub_devices.append(attr)
 
         return clsobj
+
 
 # Convenience wrappers to avoid screens full of kind=Kind.OMITTED, etc.
 OmittedComponent = functools.partial(Component, kind=Kind.OMITTED)
@@ -599,8 +600,8 @@ class BlueskyInterface:
         try:
             for sig, val in stage_sigs.items():
                 self.log.debug("Setting %s to %r (original value: %r)",
-                             self.name,
-                             val, original_vals[sig])
+                               self.name,
+                               val, original_vals[sig])
                 set_and_wait(sig, val)
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
@@ -614,9 +615,9 @@ class BlueskyInterface:
                     devices_staged.append(device)
         except Exception:
             self.log.debug("An exception was raised while staging %s or "
-                         "one of its children. Attempting to restore "
-                         "original settings before re-raising the "
-                         "exception.", self.name)
+                           "one of its children. Attempting to restore "
+                           "original settings before re-raising the "
+                           "exception.", self.name)
             self.unstage()
             raise
         else:
@@ -655,8 +656,8 @@ class BlueskyInterface:
         # Restore original values.
         for sig, val in reversed(list(self._original_vals.items())):
             self.log.debug("Setting %s back to its original value: %r)",
-                         self.name,
-                         val)
+                           self.name,
+                           val)
             set_and_wait(sig, val)
             self._original_vals.pop(sig)
         devices_unstaged.append(self)
@@ -1098,7 +1099,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
             if not dev.connected:
                 self.log.debug('stop: device %s (%s) is not connected; '
-                             'skipping', attr, dev)
+                               'skipping', attr, dev)
                 continue
 
             try:
