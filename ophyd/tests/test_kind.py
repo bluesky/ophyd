@@ -1,29 +1,6 @@
 from ophyd import Device, Signal, Kind, Component, RESPECT_KIND, kind_context
 
 
-def test_back_compat():
-    # Test class defaults.
-    class Thing(Device):
-        _default_read_attrs = ['a']
-        _default_configuration_attrs = ['b']
-        a = Component(Signal)
-        b = Component(Signal)
-        c = Component(Signal)
-
-    thing = Thing(name='thing')
-    assert ['thing_a'] == list(thing.read())
-    # assert ['thing_b'] == list(thing.read_configuration())
-
-    # Test attribute getting and setting.
-    assert thing.read_attrs == ['a']
-    assert thing.configuration_attrs == ['b']
-    thing.read_attrs = ['a', 'b']
-    assert ['thing_a', 'thing_b'] == list(thing.read())
-
-    thing = Thing(name='thing', read_attrs=['b'], configuration_attrs=['a'])
-    assert ['thing_b'] == list(thing.read())
-
-
 def test_standalone_signals():
     # A object's kind only matters when we read its _parent_. It affects
     # whether its parent recursively calls read() and/or read_configuration().
@@ -139,3 +116,184 @@ def test_kind_context():
 
     thing = Thing(name='thing')
     assert thing.a.kind == Kind.OMITTED
+
+
+# Test back-compatibility. The expected values in these tests match the
+# behaviors from before the Kind feature was introduced --- modulo the _order_.
+
+
+def test_behavior_if_nothing_is_specified():
+
+    class Thing(Device):
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Thing(name='t')
+    assert set('ab') == set(t.read_attrs)
+    assert set() == set(t.configuration_attrs)
+
+
+def test_class_default_attrs_both_none():
+
+    # Test various values of _default_read_attrs and
+    # _default_configuration_attrs
+
+    class Thing(Device):
+        _default_read_attrs = None
+        _default_configuration_attrs = None
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Thing(name='t')
+    assert set('ab') == set(t.read_attrs)
+    assert set() == set(t.configuration_attrs)
+    assert ['t_a', 't_b'] == list(t.describe())
+    assert set() == set(t.describe_configuration())
+
+    class ThingHaver(Device):
+        _default_read_attrs = None
+        _default_configuration_attrs = None
+        a = Component(Thing)
+        b = Component(Thing)
+
+    th = ThingHaver(name='th')
+    assert set('ab') == set(th.read_attrs)
+
+    # THIS IS ACTUALLY _NOT_ BACKWARD-COMPATIBLE BEHAVIOR!
+    # But we consider the former behavior a bug. Unlike a Signal, a Device is
+    # not allowed to place itself in its parent's read_attrs ONLY. It must also
+    # be in configuration_attrs if it is in read_attrs. (Under the hood, this
+    # is enforced in the setter of the Device's `kind` property, which OR's the
+    # kind value with Kind.CONFIG if said vlaue includes Kind.NORMAL.
+    assert set('ab') == set(th.configuration_attrs)
+
+    assert ['th_a_a', 'th_a_b', 'th_b_a', 'th_b_b'] == list(th.describe())
+    assert [] == list(t.describe_configuration())
+
+
+def test_default_read_attrs_empty_and_configuration_attrs_none():
+
+    class Thing(Device):
+        _default_read_attrs = []
+        _default_configuration_attrs = None
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Thing(name='t')
+    assert set() == set(t.read_attrs)
+    assert set() == set(t.configuration_attrs)
+
+    class ThingHaver(Device):
+        _default_read_attrs = []
+        _default_configuration_attrs = None
+        a = Component(Thing)
+        b = Component(Thing)
+
+    th = ThingHaver(name='th')
+    assert set() == set(th.read_attrs)
+    assert [] == list(th.describe())
+    assert set() == set(th.configuration_attrs)
+    assert [] == list(th.describe_configuration())
+
+
+def test_default_read_attrs_none_and_configuration_attrs_empty():
+
+    class Thing(Device):
+        _default_read_attrs = None
+        _default_configuration_attrs = []
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Thing(name='t')
+    assert set('ab') == set(t.read_attrs)
+    assert set() == set(t.configuration_attrs)
+
+    class ThingHaver(Device):
+        _default_read_attrs = None
+        _default_configuration_attrs = []
+        a = Component(Thing)
+        b = Component(Thing)
+
+    th = ThingHaver(name='th')
+    assert set('ab') == set(th.read_attrs)
+    assert ['th_a_a', 'th_a_b', 'th_b_a', 'th_b_b'] == list(th.describe())
+    assert set('ab') == set(th.configuration_attrs)
+    assert [] == list(th.describe_configuration())
+
+
+def test_default_attrs_both_empty():
+
+    class Thing(Device):
+        _default_read_attrs = []
+        _default_configuration_attrs = []
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Thing(name='t')
+    assert set() == set(t.read_attrs)
+    assert set() == set(t.configuration_attrs)
+
+    class ThingHaver(Device):
+        _default_read_attrs = []
+        _default_configuration_attrs = []
+        a = Component(Thing)
+        b = Component(Thing)
+
+    th = ThingHaver(name='th')
+    assert set() == set(th.read_attrs)
+    assert [] == list(th.describe())
+    assert set() == set(th.configuration_attrs)
+    assert [] == list(t.describe_configuration())
+
+
+def test_default_attrs_nonempty_disjoint():
+
+    class Thing(Device):
+        _default_read_attrs = ['a']
+        _default_configuration_attrs = ['b']
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Thing(name='t')
+    assert set('a') == set(t.read_attrs)
+    assert set('b') == set(t.configuration_attrs)
+
+    class ThingHaver(Device):
+        _default_read_attrs = ['a']
+        _default_configuration_attrs = ['b']
+        a = Component(Thing)
+        b = Component(Thing)
+
+    th = ThingHaver(name='th')
+    assert set(['a']) == set(th.read_attrs)
+    assert ['th_a_a'] == list(th.describe())
+    # This fails because it has 'a' as well.
+    assert set(['b']) == set(th.configuration_attrs)
+    assert ['th_b_b'] == list(t.describe_configuration())
+
+
+def test_options_via_init():
+    ...
+
+
+def test_back_compat():
+    # Test class defaults.
+    class Thing(Device):
+        _default_read_attrs = ['a']
+        _default_configuration_attrs = ['b']
+        a = Component(Signal)
+        b = Component(Signal)
+        c = Component(Signal)
+
+    thing = Thing(name='thing')
+    assert ['thing_a'] == list(thing.read())
+    # assert ['thing_b'] == list(thing.read_configuration())
+
+    # Test attribute getting and setting.
+    assert thing.read_attrs == ['a']
+    assert thing.configuration_attrs == ['b']
+    thing.read_attrs = ['a', 'b']
+    assert ['thing_a', 'thing_b'] == list(thing.read())
+
+    thing = Thing(name='thing', read_attrs=['b'], configuration_attrs=['a'])
+    assert ['thing_b'] == list(thing.read())

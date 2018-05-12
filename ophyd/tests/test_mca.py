@@ -29,9 +29,14 @@ def test_mca_spectrum():
 
 @using_fake_epics_pv
 def test_mca_read_attrs():
+    # default read_attrs
+    mca = EpicsMCA(devs[0], name='test')
+    default_normal_kind = ['preset_real_time', 'elapsed_real_time', 'spectrum']
+    assert set(default_normal_kind) == set(mca.read_attrs)
+    # test passing in custom read_attrs (with dots!)
     r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
     mca = EpicsMCA(devs[0], read_attrs=r_attrs, name='test')
-    assert r_attrs == mca.read_attrs
+    assert set(r_attrs) == set(mca.read_attrs)
 
 
 @using_fake_epics_pv
