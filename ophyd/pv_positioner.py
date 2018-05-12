@@ -5,6 +5,7 @@ import logging
 from .utils.epics_pvs import fmt_time
 
 from .device import Device
+from .ophydobj import Kind
 from .positioner import PositionerBase
 from .status import wait as status_wait
 
@@ -89,6 +90,7 @@ class PVPositioner(Device, PositionerBase):
 
         if self.readback is not None:
             self.readback.subscribe(self._pos_changed)
+            self.readback.kind = Kind.HINTED
         elif self.setpoint is not None:
             self.setpoint.subscribe(self._pos_changed)
         else:
