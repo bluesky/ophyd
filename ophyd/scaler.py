@@ -167,7 +167,8 @@ class ScalerCH(Device):
                 raise RuntimeError("The channel {} is not configured "
                                    "on the scaler.  The named channels are "
                                    "{}".format(ch, tuple(name_map)))
+        self.channels.kind = Kind.NORMAL
         self.channels.read_attrs = list(read_attrs)
         self.channels.configuration_attrs = list(read_attrs)
-        self.hints = {'fields': [getattr(self.channels, ch).s.name
-                                 for ch in read_attrs[1:]]}
+        for ch in read_attrs[1:]:
+            getattr(self.channels, ch).s.kind = Kind.HINTED

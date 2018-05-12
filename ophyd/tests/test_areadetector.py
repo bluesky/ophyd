@@ -3,7 +3,7 @@ import logging
 import pytest
 from io import StringIO
 from pathlib import PurePath, Path
-
+from ophyd.ophydobj import Kind
 from ophyd import (SimDetector, SingleTrigger, Component,
                    DynamicDeviceComponent)
 from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
@@ -259,7 +259,7 @@ def test_str_smoke():
     det = MyDetector(prefix, name='test')
     det.read_attrs = ['stats1']
     det.stats1.read_attrs = ['mean_value']
-    det.hints = {'fields': [det.stats1.mean_value.name]}
+    det.stats1.mean_value.kind = Kind.HINTED
 
     str(det)
 

@@ -6,6 +6,7 @@ from ophyd import (PVPositioner, PVPositionerPC, EpicsMotor)
 from ophyd import (EpicsSignal, EpicsSignalRO)
 from ophyd import (Component as C)
 from ophyd import get_cl
+from ophyd.ophydobj import Kind
 from .conftest import AssertTools
 
 logger = logging.getLogger(__name__)
@@ -272,8 +273,7 @@ class TestPVPos(AssertTools):
         for k in f_hints:
             assert k in desc
 
-        motor.hints = {'fields': ['pv_pos_fake_mtr_readback']}
+        motor.readback.kind = Kind.HINTED
         assert motor.hints == {'fields': ['pv_pos_fake_mtr_readback']}
-        motor.hints = None
 
         assert motor.hints['fields'] == f_hints

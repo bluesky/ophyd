@@ -3,6 +3,7 @@ import pytest
 
 from ophyd import QuadEM, Component as Cpt, Signal
 from ophyd.areadetector.plugins import ImagePlugin, StatsPlugin
+from ophyd.ophydobj import Kind
 from .conftest import using_fake_epics_pv
 
 
@@ -50,7 +51,8 @@ def quadem():
         sig = getattr(em, sig)
         sig._read_pv = sig._write_pv
 
-    for k in ['image', *['current{}'.format(j) for j in range(1, 5)], 'sumAll']:
+    for k in ['image', *['current{}'.format(j) for j in range(1, 5)],
+              'sumAll']:
         cc = getattr(em, k)
         for sig in cc.stage_sigs:
             sig = getattr(cc, sig)
@@ -106,8 +108,16 @@ def test_hints(quadem):
     assert len(f_hints) > 0
     for k in f_hints:
         assert k in desc
-    quadem.hints = {'fields': ['quadem_current1_mean_value']}
-    assert quadem.hints == {'fields': ['quadem_current1_mean_value']}
-    quadem.hints = None
 
-    assert quadem.hints['fields'] == f_hints
+    def clear_hints(dev):
+        for c in dev.component_names:
+            c = getattr(dev, c)
+            c.kind &= ~(Kind.HINTED & ~Kind.NORMAL)
+            if hasattr(c, 'component_names'):
+                clear_hints(c)
+
+    clear_hints(quadem)
+
+    quadem.current1.mean_value.kind = Kind.HINTED
+
+    assert quadem.hints == {'fields': ['quadem_current1_mean_value']}
