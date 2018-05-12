@@ -36,7 +36,8 @@ def test_mca_read_attrs():
     # test passing in custom read_attrs (with dots!)
     r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
     mca = EpicsMCA(devs[0], read_attrs=r_attrs, name='test')
-    assert set(r_attrs) == set(mca.read_attrs)
+    expected = set(r_attrs + ['rois.roi1', 'rois.roi2', 'rois'])
+    assert expected == set(mca.read_attrs)
 
 
 @using_fake_epics_pv

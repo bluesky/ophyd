@@ -1,4 +1,5 @@
 from ophyd import Device, Signal, Kind, Component, RESPECT_KIND, kind_context
+import pytest
 
 
 def test_standalone_signals():
@@ -157,7 +158,7 @@ def test_class_default_attrs_both_none():
         b = Component(Thing)
 
     th = ThingHaver(name='th')
-    assert set('ab') == set(th.read_attrs)
+    assert set(['a', 'b'] +['a.a', 'a.b', 'b.a', 'b.b']) == set(th.read_attrs)
 
     # THIS IS ACTUALLY _NOT_ BACKWARD-COMPATIBLE BEHAVIOR!
     # But we consider the former behavior a bug. Unlike a Signal, a Device is
@@ -215,7 +216,7 @@ def test_default_read_attrs_none_and_configuration_attrs_empty():
         b = Component(Thing)
 
     th = ThingHaver(name='th')
-    assert set('ab') == set(th.read_attrs)
+    assert set(['a', 'b'] + ['a.a', 'a.b', 'b.a', 'b.b']) == set(th.read_attrs)
     assert ['th_a_a', 'th_a_b', 'th_b_a', 'th_b_b'] == list(th.describe())
     assert set('ab') == set(th.configuration_attrs)
     assert [] == list(th.describe_configuration())
@@ -265,11 +266,16 @@ def test_default_attrs_nonempty_disjoint():
         b = Component(Thing)
 
     th = ThingHaver(name='th')
-    assert set(['a']) == set(th.read_attrs)
+    assert set(['a', 'a.a']) == set(th.read_attrs)
+    assert 'b' not in th.read_attrs
     assert ['th_a_a'] == list(th.describe())
-    # This fails because it has 'a' as well.
-    assert set(['b']) == set(th.configuration_attrs)
-    assert ['th_b_b'] == list(t.describe_configuration())
+    # Here again we have the same break from back-compatability. We are not
+    # allowed to put a sub-Device in configuration_attrs that is not also in
+    # read_attrs. The old code would have:
+    # assert set(['b']) == set(th.configuration_attrs)
+    # But now we get:
+    assert set(['a', 'b'] + ['a.b', 'b.b']) == set(th.configuration_attrs)
+    assert ['th_a_b', 'th_b_b'] == list(th.describe_configuration())
 
 
 def test_options_via_init():
@@ -297,3 +303,52 @@ def test_back_compat():
 
     thing = Thing(name='thing', read_attrs=['b'], configuration_attrs=['a'])
     assert ['thing_b'] == list(thing.read())
+
+
+@pytest.fixture(scope='function')
+def thing_haver_haver():
+    class Thing(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
+        a = Component(Signal, kind=Kind.OMITTED)
+        b = Component(Signal, kind=Kind.CONFIG)
+        c = Component(Signal, kind=Kind.NORMAL)
+        d = Component(Signal, kind=Kind.HINTED)
+
+    class ThingHaver(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
+        A = Component(Thing, kind=Kind.OMITTED)
+        B = Component(Thing, kind=Kind.CONFIG)
+        C = Component(Thing, kind=Kind.NORMAL)
+
+    class ThingHaverHaver(Device):
+        _default_read_attrs = RESPECT_KIND
+        _default_configuration_attrs = RESPECT_KIND
+        alpha = Component(ThingHaver, kind=Kind.OMITTED)
+        beta = Component(ThingHaver, kind=Kind.CONFIG)
+        gamma = Component(ThingHaver, kind=Kind.NORMAL)
+
+    return ThingHaverHaver(name='thh')
+
+
+def test_list_proxy(thing_haver_haver):
+
+    thh = thing_haver_haver
+    assert 'gamma' in thh.read_attrs
+    assert 'gamma' in list(thh.read_attrs)
+
+    assert 'beta' in thh.configuration_attrs
+    assert 'beta' in list(thh.configuration_attrs)
+
+    assert 'alpha' not in thh.read_attrs
+    assert 'alpha' not in thh.configuration_attrs
+
+    assert 'alpha' not in list(thh.read_attrs)
+    assert 'alpha' not in list(thh.configuration_attrs)
+
+    assert 'gamma.C' in thh.read_attrs
+    assert 'gamma.C' in list(thh.read_attrs)
+
+    assert 'gamma.C.c' in list(thh.read_attrs)
+    assert 'gamma.C.d' in list(thh.read_attrs)

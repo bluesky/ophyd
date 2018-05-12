@@ -305,5 +305,15 @@ def test_motor_bundle():
                                       for k in 'abc']
 
     # Test old-style attributes.
-    assert bundle.read_attrs == list('abc')
-    assert bundle.configuration_attrs == list('abc')
+    assert set(bundle.read_attrs) == set(list('abc') +
+                                         ['.'.join([p, c]) for p in 'abc'
+                                          for c in ['user_readback',
+                                                    'user_setpoint']])
+    assert set(bundle.configuration_attrs) == set(list('abc') +
+                                                  ['.'.join([p, c])
+                                                   for p in 'abc'
+                                                   for c in ['user_offset',
+                                                             'user_offset_dir',
+                                                             'velocity',
+                                                             'acceleration',
+                                                             'motor_egu']])

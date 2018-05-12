@@ -788,7 +788,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @property
     def read_attrs(self):
-        return _OphydAttrList(self, Kind.NORMAL)
+        return _OphydAttrList(self, Kind.NORMAL, Kind.HINTED, 'read_attrs')
 
     @read_attrs.setter
     def read_attrs(self, val):
@@ -796,7 +796,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @property
     def configuration_attrs(self):
-        return _OphydAttrList(self, Kind.CONFIG)
+        return _OphydAttrList(self, Kind.CONFIG, Kind.CONFIG,
+                              'configuration_attrs')
 
     @configuration_attrs.setter
     def configuration_attrs(self, val):
@@ -1208,13 +1209,24 @@ class _OphydAttrList(MutableSequence):
 
     """
 
-    def __init__(self, device, kind):
+    def __init__(self, device, kind, remove_kind, recurse_key):
         self._kind = kind
+        self._remove_kind = remove_kind
         self._parent = device
+        self._recurse_key = recurse_key
 
     def __internal_list(self):
-        return [c for c in self._parent.component_names
-                if getattr(self._parent, c).kind & self._kind]
+        children = [c for c in self._parent.component_names
+                    if getattr(self._parent, c).kind & self._kind]
+        out = []
+        for c in children:
+            cmpt = getattr(self._parent, c)
+            out.append(c)
+            if hasattr(cmpt, self._recurse_key):
+                out.extend('.'.join([c, v]) for v in
+                           getattr(cmpt, self._recurse_key, []))
+
+        return out
 
     def __getitem__(self, key):
         return self.__internal_list()[key]
@@ -1227,13 +1239,19 @@ class _OphydAttrList(MutableSequence):
         if not isinstance(key, slice):
             o = [o]
         for k in o:
-            getattr(self._parent, k).kind &= ~self._kind
+            getattr(self._parent, k).kind &= ~self._remove_kind
 
     def __len__(self):
         return len(self.__internal_list())
 
     def insert(self, index, object):
         getattr(self._parent, object).kind |= self._kind
+
+    def remove(self, value):
+        getattr(self._parent, value).kind &= ~self._remove_kind
+
+    def __contains__(self, value):
+        return getattr(self._parent, value).kind & self._kind
 
     def __eq__(self, other):
         return list(self) == other
