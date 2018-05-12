@@ -744,24 +744,23 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         super().__init__(name=name, parent=parent, kind=kind, **kwargs)
 
+        # If any sub-Devices are to be removed from configuration_attrs and
+        # read_attrs, we have to remove them from read_attrs first, or they
+        # will not allow themselves to be removed from configuration_attrs.
+        if self._default_read_attrs is not RESPECT_KIND:
+            if read_attrs is None:
+                read_attrs = (self._default_read_attrs if
+                              self._default_read_attrs is not None
+                              else self.component_names)
+            self.read_attrs = list(read_attrs)
+
         if self._default_configuration_attrs is not RESPECT_KIND:
             if configuration_attrs is None:
                     dflt_c_attrs = self._default_configuration_attrs
                     configuration_attrs = (dflt_c_attrs if
-                                        dflt_c_attrs is not None
-                                        else [])
+                                           dflt_c_attrs is not None
+                                           else [])
             self.configuration_attrs = list(configuration_attrs)
-
-<<<<<<< HEAD
-        if self._default_read_attrs is not RESPECT_KIND:
-            if read_attrs is None:
-                read_attrs = (self._default_read_attrs if
-                            self._default_read_attrs is not None
-                            else self.component_names)
-            self.read_attrs = list(read_attrs)
-=======
-        self.read_attrs = list(read_attrs)
-        self.configuration_attrs = list(configuration_attrs)
 
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
