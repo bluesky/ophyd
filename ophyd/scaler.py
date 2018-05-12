@@ -35,9 +35,13 @@ class EpicsScaler(Device):
 
     # the data
     channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
-                                  kind=Kind.HINTED))
+                                  kind=Kind.HINTED),
+                   default_read_attrs=RESPECT_KIND,
+                   default_configuration_attrs=RESPECT_KIND)
     names = DDC(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33),
-                               kind=Kind.CONFIG))
+                               kind=Kind.CONFIG),
+                default_read_attrs=RESPECT_KIND,
+                default_configuration_attrs=RESPECT_KIND)
 
     time = C(EpicsSignal, '.T')
     freq = CC(EpicsSignal, '.FREQ')
@@ -46,9 +50,13 @@ class EpicsScaler(Device):
     auto_count_time = CC(EpicsSignal, '.TP1')
 
     presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
-                                 kind=Kind.OMITTED))
+                                 kind=Kind.OMITTED),
+                  default_read_attrs=RESPECT_KIND,
+                  default_configuration_attrs=RESPECT_KIND)
     gates = DDC(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
-                               kind=Kind.OMITTED))
+                               kind=Kind.OMITTED),
+                default_read_attrs=RESPECT_KIND,
+                default_configuration_attrs=RESPECT_KIND)
 
     update_rate = OC(EpicsSignal, '.RATE')
     auto_count_update_rate = OC(EpicsSignal, '.RAT1')
@@ -97,7 +105,9 @@ class ScalerCH(Device):
     _default_read_attrs = RESPECT_KIND
 
     # The data
-    channels = DDC(_sc_chans('chan', range(1, 33)))
+    channels = DDC(_sc_chans('chan', range(1, 33)),
+                   default_read_attrs=RESPECT_KIND,
+                   default_configuration_attrs=RESPECT_KIND)
 
     # tigger + trigger mode
     count = OC(EpicsSignal, '.CNT', trigger_value=1)

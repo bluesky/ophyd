@@ -1,3 +1,4 @@
+import collections
 import contextlib
 import functools
 import time as ttime
@@ -249,16 +250,20 @@ class DynamicDeviceComponent:
         A class attribute to put on the dynamically generated class
     '''
 
-    def __init__(self, defn, *, clsname=None, doc=None,
+    def __init__(self, defn, *, clsname=None, doc=None, kind=None,
                  default_read_attrs=None, default_configuration_attrs=None):
         self.defn = defn
         self.clsname = clsname
         self.attr = None  # attr is set later by the device when known
         self.lazy = False
         self.doc = doc
-        self.default_read_attrs = tuple(default_read_attrs or [])
-        self.default_configuration_attrs = tuple(default_configuration_attrs
-                                                 or [])
+        if isinstance(default_read_attrs, collections.Iterable):
+            default_read_attrs = tuple(default_read_attrs)
+        if isinstance(default_configuration_attrs, collections.Iterable):
+            default_configuration_attrs = tuple(default_configuration_attrs)
+        self.default_read_attrs = default_read_attrs or []
+        self.default_configuration_attrs = default_configuration_attrs or []
+        self.kind = kind
 
         # TODO: component compatibility
         self.trigger_value = None
@@ -322,9 +327,14 @@ class DynamicDeviceComponent:
 
         clsdict = OrderedDict(
             __doc__=docstring,
-            _default_read_attrs=self.default_read_attrs or (),
-            _default_configuration_attrs=\
-                self.default_configuration_attrs or ())
+            _default_read_attrs=(self.default_read_attrs
+                                 if self.default_read_attrs is not None
+                                 else ()),
+            _default_configuration_attrs=(
+                self.default_configuration_attrs
+                if self.default_configuration_attrs is not None
+                else ())
+        )
 
         for attr in self.defn.keys():
             clsdict[attr] = self.create_attr(attr)
@@ -332,7 +342,7 @@ class DynamicDeviceComponent:
         cls = type(clsname, (Device, ), clsdict)
         return cls(instance.prefix,
                    name='{}_{}'.format(instance.name, self.attr),
-                   parent=instance)
+                   parent=instance, kind=self.kind)
 
     def __get__(self, instance, owner):
         if instance is None:
