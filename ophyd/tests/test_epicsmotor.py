@@ -28,7 +28,7 @@ class CustomAlarmEpicsSignalRO(EpicsSignalRO):
 
 
 class tstEpicsMotor(EpicsMotor):
-    user_readback = C(CustomAlarmEpicsSignalRO, '.RBV')
+    user_readback = C(CustomAlarmEpicsSignalRO, '.RBV', kind='hinted')
     high_limit_switch = C(Signal, value=0)
     low_limit_switch = C(Signal, value=0)
     direction_of_travel = C(Signal, value=0)
@@ -262,18 +262,11 @@ def test_move_alarm(motor):
 
 
 def test_hints(motor):
+    assert motor.hints == {'fields': list(motor.user_readback.read())}
 
-    desc = motor.describe()
-    f_hints = motor.hints['fields']
-    assert len(f_hints) > 0
-    for k in f_hints:
-        assert k in desc
-
-    motor.hints = {'fields': ['epicsmotor_user_setpoint']}
-    assert motor.hints == {'fields': ['epicsmotor_user_setpoint']}
-    motor.hints = None
-
-    assert motor.hints['fields'] == f_hints
+    motor.user_setpoint.kind = 'hinted'
+    motor.user_readback.kind = 'normal'
+    assert motor.hints == {'fields': list(motor.user_setpoint.read())}
 
 
 def test_watchers(motor):
@@ -311,8 +304,6 @@ def test_motor_bundle():
     assert bundle.hints['fields'] == ['bundle_{}'.format(k)
                                       for k in 'abc']
 
+    # Test old-style attributes.
     assert bundle.read_attrs == list('abc')
     assert bundle.configuration_attrs == list('abc')
-
-    bundle.hints = {}
-    assert bundle.hints == {}

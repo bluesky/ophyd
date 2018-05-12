@@ -6,9 +6,7 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
 from .positioner import PositionerBase
-from .device import (Device, Component as Cpt, OmittedComponent as OCpt,
-                     ConfigComponent as CCpt, HintedComponent as HCpt,
-                     RESPECT_KIND)
+from .device import (Device, Component as Cpt, RESPECT_KIND)
 from .status import wait as status_wait
 from enum import Enum
 
@@ -46,31 +44,31 @@ class EpicsMotor(Device, PositionerBase):
     _default_configuration_attrs = RESPECT_KIND
 
     # position
-    user_readback = HCpt(EpicsSignalRO, '.RBV')
+    user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
 
     # calibration dial <-> user
-    user_offset = CCpt(EpicsSignal, '.OFF')
-    user_offset_dir = CCpt(EpicsSignal, '.DIR')
-    offset_freeze_switch = OCpt(EpicsSignal, '.FOFF')
-    set_use_switch = OCpt(EpicsSignal, '.SET')
+    user_offset = Cpt(EpicsSignal, '.OFF', kind='config')
+    user_offset_dir = Cpt(EpicsSignal, '.DIR', kind='config')
+    offset_freeze_switch = Cpt(EpicsSignal, '.FOFF', kind='omitted')
+    set_use_switch = Cpt(EpicsSignal, '.SET', kind='omitted')
 
     # configuration
-    velocity = CCpt(EpicsSignal, '.VELO')
-    acceleration = CCpt(EpicsSignal, '.ACCL')
-    motor_egu = CCpt(EpicsSignal, '.EGU')
+    velocity = Cpt(EpicsSignal, '.VELO', kind='config')
+    acceleration = Cpt(EpicsSignal, '.ACCL', kind='config')
+    motor_egu = Cpt(EpicsSignal, '.EGU', kind='config')
 
     # motor status
-    motor_is_moving = OCpt(EpicsSignalRO, '.MOVN')
-    motor_done_move = OCpt(EpicsSignalRO, '.DMOV')
-    high_limit_switch = OCpt(EpicsSignal, '.HLS')
-    low_limit_switch = OCpt(EpicsSignal, '.LLS')
-    direction_of_travel = OCpt(EpicsSignal, '.TDIR')
+    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN', kind='omitted')
+    motor_done_move = Cpt(EpicsSignalRO, '.DMOV', kind='omitted')
+    high_limit_switch = Cpt(EpicsSignal, '.HLS', kind='omitted')
+    low_limit_switch = Cpt(EpicsSignal, '.LLS', kind='omitted')
+    direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
 
     # commands
-    motor_stop = OCpt(EpicsSignal, '.STOP')
-    home_forward = OCpt(EpicsSignal, '.HOMF')
-    home_reverse = OCpt(EpicsSignal, '.HOMR')
+    motor_stop = Cpt(EpicsSignal, '.STOP', kind='omitted')
+    home_forward = Cpt(EpicsSignal, '.HOMF', kind='omitted')
+    home_reverse = Cpt(EpicsSignal, '.HOMR', kind='omitted')
 
     # alarm information
     tolerated_alarm = AlarmSeverity.NO_ALARM
