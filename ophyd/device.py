@@ -769,6 +769,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
          if not cpt.lazy]
 
     def _validate_kind(self, val):
+        if isinstance(val, str):
+            val = getattr(Kind, val.upper())
         if Kind.NORMAL & val:
             val = val | Kind.CONFIG
         return val
