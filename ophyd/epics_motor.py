@@ -287,12 +287,3 @@ class MotorBundle(Device):
     """
     _default_read_attrs = RESPECT_KIND
     _default_configuration_attrs = RESPECT_KIND
-
-    @property
-    def hints(self):
-        """Provide the union of all the children's hints as hints."""
-        return {'fields':
-                [h
-                    for s in self.component_names
-                    for h in getattr(getattr(self, s),
-                                    'hints', {}).get('fields', [])]}

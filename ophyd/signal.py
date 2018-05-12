@@ -239,7 +239,10 @@ class Signal(OphydObject):
 
     @property
     def hints(self):
-        return {'fields': [self.name]}
+        if (~Kind.NORMAL & Kind.HINTED) & self.kind:
+            return {'fields': [self.name]}
+        else:
+            return {'fields': []}
 
 
 class DerivedSignal(Signal):

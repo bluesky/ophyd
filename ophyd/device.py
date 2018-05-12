@@ -1043,8 +1043,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         fields = []
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind == Kind.HINTED:
-                fields.append(component.name)
+            if Kind.NORMAL & component.kind:
+                c_hints = component.hints
+                fields.extend(c_hints.get('fields', []))
         return {'fields': fields}
 
     @property

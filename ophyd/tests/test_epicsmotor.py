@@ -29,11 +29,11 @@ class CustomAlarmEpicsSignalRO(EpicsSignalRO):
 
 class tstEpicsMotor(EpicsMotor):
     user_readback = C(CustomAlarmEpicsSignalRO, '.RBV', kind='hinted')
-    high_limit_switch = C(Signal, value=0)
-    low_limit_switch = C(Signal, value=0)
-    direction_of_travel = C(Signal, value=0)
-    high_limit_value = C(EpicsSignalRO, '.HLM')
-    low_limit_value = C(EpicsSignalRO, '.LLM')
+    high_limit_switch = C(Signal, value=0, kind='omitted')
+    low_limit_switch = C(Signal, value=0, kind='omitted')
+    direction_of_travel = C(Signal, value=0, kind='omitted')
+    high_limit_value = C(EpicsSignalRO, '.HLM', kind='config')
+    low_limit_value = C(EpicsSignalRO, '.LLM', kind='config')
 
 
 def test_timeout(motor):

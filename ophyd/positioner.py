@@ -2,7 +2,7 @@ import logging
 import time
 from collections import OrderedDict
 import functools
-from .ophydobj import OphydObject
+from .ophydobj import OphydObject, Kind
 from .status import (MoveStatus, wait as status_wait, StatusBase)
 from .utils.epics_pvs import (data_type, data_shape)
 from typing import Any, Callable
@@ -237,6 +237,13 @@ class PositionerBase(OphydObject):
         yield ('settle_time', self._settle_time)
         yield ('timeout', self._timeout)
 
+    @property
+    def hints(self):
+        if (~Kind.NORMAL & Kind.HINTED) & self.kind:
+            return {'fields': [self.name]}
+        else:
+            return {'fields': []}
+
 
 class SoftPositioner(PositionerBase):
     '''A positioner which does not communicate with any hardware
@@ -354,10 +361,6 @@ class SoftPositioner(PositionerBase):
         d[self.name] = {'value': self.position,
                         'timestamp': time.time()}
         return d
-
-    @property
-    def hints(self):
-        return {'fields': [self.name]}
 
     def describe(self):
         """Return the description as a dictionary

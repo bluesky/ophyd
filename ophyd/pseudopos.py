@@ -662,14 +662,6 @@ class PseudoPositioner(Device, SoftPositioner):
         '''Real motor position namedtuple'''
         return self.RealPosition(*self._real_cur_pos.values())
 
-    @property
-    def hints(self):
-        return {'fields':
-                [h for hints in [
-                    getattr(c, 'hints', {}).get('fields', [])
-                    for c in self.pseudo_positioners]
-                 for h in hints]}
-
     def _update_position(self):
         '''Update the internal position based on all of the real positioners'''
         real_cur_pos = self.real_position
