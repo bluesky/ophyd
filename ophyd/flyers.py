@@ -161,7 +161,9 @@ class AreaDetectorTimeseriesCollector(Device):
 
     def describe_collect(self):
         '''Describe details for the flyer collect() method'''
-        desc = self._describe_attr_list(['waveform', 'waveform_ts'])
+        desc = OrderedDict()
+        desc.update(self.waveform.describe())
+        desc.update(self.waveform_ts.describe())
         return {self.stream_name: desc}
 
 
@@ -335,6 +337,12 @@ class MonitorFlyerMixin(BlueskyInterface):
     def _get_stream_name(self, attr):
         obj = getattr(self, attr)
         return self.stream_names.get(attr, obj.name)
+
+    def _describe_attr_list(self, attrs):
+        desc = OrderedDict()
+        for attr in attrs:
+            desc.update(getattr(self, attr).describe())
+        return desc
 
     def _describe_with_dtype(self, attr, *, dtype='array'):
         '''Describe an attribute and change its dtype'''
