@@ -2,8 +2,7 @@ from collections import OrderedDict
 
 from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
                DynamicDeviceComponent as DDCpt, Signal,
-               Kind, RESPECT_KIND, HintedComponent as HCpt,
-               ConfigComponent as CCpt, OmittedComponent as OCpt)
+               Kind, RESPECT_KIND, kind_context)
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
                            ImagePlugin, StatsPlugin, DetectorBase,
                            SingleTrigger)
@@ -30,40 +29,42 @@ class QuadEM(SingleTrigger, DetectorBase):
     # expose their port name via a PV, but nevertheless server as the
     # root node for the plugins.
     # Leaving this port_name here for compatibility
-    port_name = OCpt(Signal, value='NSLS_EM')
-    model = OCpt(EpicsSignalRO, 'Model')
-    firmware = OCpt(EpicsSignalRO, 'Firmware')
+    integration_time = Cpt(EpicsSignalWithRBV, 'IntegrationTime',
+                           kind='config')
+    averaging_time = Cpt(EpicsSignalWithRBV, 'AveragingTime', kind='config')
+    with kind_context('omitted') as OCpt:
+        port_name = OCpt(Signal, value='NSLS_EM')
+        model = OCpt(EpicsSignalRO, 'Model')
+        firmware = OCpt(EpicsSignalRO, 'Firmware')
 
-    acquire_mode = OCpt(EpicsSignalWithRBV, 'AcquireMode')
-    acquire = OCpt(EpicsSignal, 'Acquire')
+        acquire_mode = OCpt(EpicsSignalWithRBV, 'AcquireMode')
+        acquire = OCpt(EpicsSignal, 'Acquire')
 
-    read_format = OCpt(EpicsSignalWithRBV, 'ReadFormat')
-    em_range = OCpt(EpicsSignalWithRBV, 'Range')
-    ping_pong = OCpt(EpicsSignalWithRBV, 'PingPong')
+        read_format = OCpt(EpicsSignalWithRBV, 'ReadFormat')
+        em_range = OCpt(EpicsSignalWithRBV, 'Range')
+        ping_pong = OCpt(EpicsSignalWithRBV, 'PingPong')
 
-    integration_time = CCpt(EpicsSignalWithRBV, 'IntegrationTime')
-    num_channels = OCpt(EpicsSignalWithRBV, 'NumChannels')
-    geometry = OCpt(EpicsSignalWithRBV, 'Geometry')
-    resolution = OCpt(EpicsSignalWithRBV, 'Resolution')
+        num_channels = OCpt(EpicsSignalWithRBV, 'NumChannels')
+        geometry = OCpt(EpicsSignalWithRBV, 'Geometry')
+        resolution = OCpt(EpicsSignalWithRBV, 'Resolution')
 
-    bias_state = OCpt(EpicsSignalWithRBV, 'BiasState')
-    bias_interlock = OCpt(EpicsSignalWithRBV, 'BiasInterlock')
-    bias_voltage = OCpt(EpicsSignalWithRBV, 'BiasVoltage')
-    hvs_readback = OCpt(EpicsSignalRO, 'HVSReadback')
-    hvv_readback = OCpt(EpicsSignalRO, 'HVVReadback')
-    hvi_readback = OCpt(EpicsSignalRO, 'HVIReadback')
+        bias_state = OCpt(EpicsSignalWithRBV, 'BiasState')
+        bias_interlock = OCpt(EpicsSignalWithRBV, 'BiasInterlock')
+        bias_voltage = OCpt(EpicsSignalWithRBV, 'BiasVoltage')
+        hvs_readback = OCpt(EpicsSignalRO, 'HVSReadback')
+        hvv_readback = OCpt(EpicsSignalRO, 'HVVReadback')
+        hvi_readback = OCpt(EpicsSignalRO, 'HVIReadback')
 
-    values_per_read = OCpt(EpicsSignalWithRBV, 'ValuesPerRead')
-    sample_time = OCpt(EpicsSignalRO, 'SampleTime_RBV')  # yay for consistency
-    averaging_time = CCpt(EpicsSignalWithRBV, 'AveragingTime')
-    num_average = OCpt(EpicsSignalRO, 'NumAverage_RBV')
-    num_averaged = OCpt(EpicsSignalRO, 'NumAveraged_RBV')
-    num_acquire = OCpt(EpicsSignalWithRBV, 'NumAcquire')
-    num_acquired = OCpt(EpicsSignalRO, 'NumAcquired')
-    read_data = OCpt(EpicsSignalRO, 'ReadData')
-    ring_overflows = OCpt(EpicsSignalRO, 'RingOverflows')
-    trigger_mode = OCpt(EpicsSignal, 'TriggerMode')
-    reset = OCpt(EpicsSignal, 'Reset')
+        values_per_read = OCpt(EpicsSignalWithRBV, 'ValuesPerRead')
+        sample_time = OCpt(EpicsSignalRO, 'SampleTime_RBV')  # yay consistency
+        num_average = OCpt(EpicsSignalRO, 'NumAverage_RBV')
+        num_averaged = OCpt(EpicsSignalRO, 'NumAveraged_RBV')
+        num_acquire = OCpt(EpicsSignalWithRBV, 'NumAcquire')
+        num_acquired = OCpt(EpicsSignalRO, 'NumAcquired')
+        read_data = OCpt(EpicsSignalRO, 'ReadData')
+        ring_overflows = OCpt(EpicsSignalRO, 'RingOverflows')
+        trigger_mode = OCpt(EpicsSignal, 'TriggerMode')
+        reset = OCpt(EpicsSignal, 'Reset')
 
     current_names = DDCpt(_current_fields('ch', 'CurrentName', range(1, 5),
                                           string=True))

@@ -1,6 +1,4 @@
-import pytest
-from ophyd import (Device, Component, Signal, MotorBundle, Kind,
-                   HintedComponent as HCpt)
+from ophyd import (Device, Component, Signal, MotorBundle, Kind)
 from ophyd.sim import SynAxis
 
 
@@ -13,18 +11,14 @@ def test_device_hints():
         a = Component(Signal, kind=Kind.HINTED)
         b = Component(Signal)
 
-    # Convenience Component is equivalent.
-    class Dongle(Device):
-        a = HCpt(Signal)
-        b = Component(Signal)
+    assert {'fields': ['dev_a']} == Dongle(name='dev').hints
+    assert {'fields': ['dev_a']} == Dongle(name='dev').hints
 
-    assert {'fields': ['dev_a']} == Dongle(name='dev').hints
-    assert {'fields': ['dev_a']} == Dongle(name='dev').hints
 
 def test_motor_bundle_hints():
     class Bundle(MotorBundle):
-        a = HCpt(SynAxis)
-        b = HCpt(SynAxis)
+        a = Component(SynAxis, kind=Kind.HINTED)
+        b = Component(SynAxis, kind=Kind.HINTED)
 
     assert {'fields': ['dev_a', 'dev_b']} == Bundle(name='dev').hints
 

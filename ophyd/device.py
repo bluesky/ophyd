@@ -441,13 +441,6 @@ class ComponentMeta(type):
         return clsobj
 
 
-# Convenience wrappers to avoid screens full of kind=Kind.OMITTED, etc.
-OmittedComponent = functools.partial(Component, kind=Kind.OMITTED)
-NormalComponent = Component  # for completeness
-ConfigComponent = functools.partial(Component, kind=Kind.CONFIG)
-HintedComponent = functools.partial(Component, kind=Kind.HINTED)
-
-
 # These stub 'Interface' classes are the apex of the mro heirarchy for
 # their respective methods. They make multiple interitance more
 # forgiving, and let us define classes that customize these methods

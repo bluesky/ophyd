@@ -91,26 +91,6 @@ def test_nested_devices():
             'b_a_config_config_sig'] == list(b.read_configuration())
 
 
-def test_convenience_wrappers_of_component():
-    # Convenience wrappers of Component are helpful for big Devices. The
-    # default kind of Component must be NORMAL for back-compatibility, but for
-    # big Devices OmmittedComponent is likely more useful.
-    from ophyd import OmittedComponent as OCpt
-
-    class Thing(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
-        a = OCpt(Signal)
-        b = OCpt(Signal)
-
-    thing = Thing(name='thing')
-    assert {} == thing.read()
-    assert {} == thing.read_configuration()
-
-    thing.a.kind = Kind.NORMAL
-    assert ['thing_a'] == list(thing.read())
-
-
 def test_strings():
     sig = Signal(name='sig', kind='normal')
     assert sig.kind == Kind.NORMAL
