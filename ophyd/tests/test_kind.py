@@ -1,4 +1,4 @@
-from ophyd import Device, Signal, Kind, Component, RESPECT_KIND, kind_context
+from ophyd import Device, Signal, Kind, Component, ALL_COMPONENTS, kind_context
 import pytest
 
 
@@ -40,8 +40,6 @@ def test_standalone_signals():
 def test_nested_devices():
 
     class A(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
         normal_sig = Component(Signal)
         config_sig = Component(Signal, kind=Kind.CONFIG)
         omitted_sig = Component(Signal, kind=Kind.OMITTED)
@@ -61,8 +59,6 @@ def test_nested_devices():
     # Another layer of nesting!
 
     class B(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
         a_default = Component(A)
         a_config = Component(A, kind=Kind.CONFIG)
         a_omitted = Component(A, kind=Kind.OMITTED)
@@ -98,8 +94,6 @@ def test_strings():
 
 def test_kind_context():
     class Thing(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
 
         with kind_context('omitted') as Cpt:
             a = Cpt(Signal)
@@ -297,23 +291,17 @@ def test_back_compat():
 @pytest.fixture(scope='function')
 def thing_haver_haver():
     class Thing(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
         a = Component(Signal, kind=Kind.OMITTED)
         b = Component(Signal, kind=Kind.CONFIG)
         c = Component(Signal, kind=Kind.NORMAL)
         d = Component(Signal, kind=Kind.HINTED)
 
     class ThingHaver(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
         A = Component(Thing, kind=Kind.OMITTED)
         B = Component(Thing, kind=Kind.CONFIG)
         C = Component(Thing, kind=Kind.NORMAL)
 
     class ThingHaverHaver(Device):
-        _default_read_attrs = RESPECT_KIND
-        _default_configuration_attrs = RESPECT_KIND
         alpha = Component(ThingHaver, kind=Kind.OMITTED)
         beta = Component(ThingHaver, kind=Kind.CONFIG)
         gamma = Component(ThingHaver, kind=Kind.NORMAL)

@@ -6,7 +6,7 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
 from .positioner import PositionerBase
-from .device import (Device, Component as Cpt, RESPECT_KIND)
+from .device import (Device, Component as Cpt)
 from .status import wait as status_wait
 from enum import Enum
 
@@ -40,9 +40,6 @@ class EpicsMotor(Device, PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
-    _default_read_attrs = RESPECT_KIND
-    _default_configuration_attrs = RESPECT_KIND
-
     # position
     user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
@@ -285,5 +282,4 @@ class MotorBundle(Device):
 
     This provides better default behavior for ``hints``.
     """
-    _default_read_attrs = RESPECT_KIND
-    _default_configuration_attrs = RESPECT_KIND
+    ...

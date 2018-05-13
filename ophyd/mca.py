@@ -6,7 +6,7 @@ from collections import OrderedDict
 from .status import DeviceStatus
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .device import (Device, Component as C, DynamicDeviceComponent as DDC,
-                     Staged, BlueskyInterface, RESPECT_KIND, Kind)
+                     Staged, BlueskyInterface, ALL_COMPONENTS, Kind)
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 
 
@@ -60,9 +60,6 @@ def add_rois(range_, **kwargs):
 
 class EpicsMCARecord(Device):
     '''SynApps MCA Record interface'''
-    _default_configuration_attrs = RESPECT_KIND
-    _default_read_attrs = RESPECT_KIND
-
     stop_signal = C(EpicsSignal, '.STOP', kind='omitted')
     preset_real_time = C(EpicsSignal, '.PRTM', kind=Kind.CONFIG | Kind.NORMAL)
     preset_live_time = C(EpicsSignal, '.PLTM', kind='omitted')
@@ -73,9 +70,7 @@ class EpicsMCARecord(Device):
     background = C(EpicsSignalRO, '.BG', kind='omitted')
     mode = C(EpicsSignal, '.MODE', string=True, kind='omitted')
 
-    rois = DDC(add_rois(range(0, 32), kind='omitted'),
-               default_read_attrs=RESPECT_KIND,
-               default_configuration_attrs=RESPECT_KIND, kind='omitted')
+    rois = DDC(add_rois(range(0, 32), kind='omitted'), kind='omitted')
 
     def __init__(self, *args, **kwargs):
 

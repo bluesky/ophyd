@@ -6,7 +6,7 @@ from .ophydobj import Kind
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import Device
 from .device import (Component as C, DynamicDeviceComponent as DDC,
-                     FormattedComponent as FC, RESPECT_KIND)
+                     FormattedComponent as FC)
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,6 @@ def _scaler_fields(cls, attr_base, field_base, range_, **kwargs):
 
 class EpicsScaler(Device):
     '''SynApps Scaler Record interface'''
-    _default_configuration_attrs = RESPECT_KIND
-    _default_read_attrs = RESPECT_KIND
     # tigger + trigger mode
     count = C(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.OMITTED)
     count_mode = C(EpicsSignal, '.CONT', string=True, kind=Kind.CONFIG)
@@ -35,13 +33,9 @@ class EpicsScaler(Device):
 
     # the data
     channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
-                                  kind=Kind.HINTED),
-                   default_read_attrs=RESPECT_KIND,
-                   default_configuration_attrs=RESPECT_KIND)
+                                  kind=Kind.HINTED))
     names = DDC(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33),
-                               kind=Kind.CONFIG),
-                default_read_attrs=RESPECT_KIND,
-                default_configuration_attrs=RESPECT_KIND)
+                               kind=Kind.CONFIG))
 
     time = C(EpicsSignal, '.T', kind=Kind.CONFIG)
     freq = C(EpicsSignal, '.FREQ', kind=Kind.CONFIG)
@@ -50,13 +44,9 @@ class EpicsScaler(Device):
     auto_count_time = C(EpicsSignal, '.TP1', kind=Kind.CONFIG)
 
     presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
-                                 kind=Kind.OMITTED),
-                  default_read_attrs=RESPECT_KIND,
-                  default_configuration_attrs=RESPECT_KIND)
+                                 kind=Kind.OMITTED))
     gates = DDC(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
-                               kind=Kind.OMITTED),
-                default_read_attrs=RESPECT_KIND,
-                default_configuration_attrs=RESPECT_KIND)
+                               kind=Kind.OMITTED))
 
     update_rate = C(EpicsSignal, '.RATE', kind=Kind.CONFIG)
     auto_count_update_rate = C(EpicsSignal, '.RAT1', kind=Kind.CONFIG)
@@ -71,8 +61,6 @@ class EpicsScaler(Device):
 
 
 class ScalerChannel(Device):
-    _default_configuration_attrs = RESPECT_KIND
-    _default_read_attrs = RESPECT_KIND
 
     # TODO set up monitor on this to automatically change the name
     chname = FC(EpicsSignal, '{self.prefix}.NM{self._ch_num}',
@@ -105,13 +93,9 @@ def _sc_chans(attr_fix, id_range):
 
 
 class ScalerCH(Device):
-    _default_configuration_attrs = RESPECT_KIND
-    _default_read_attrs = RESPECT_KIND
 
     # The data
-    channels = DDC(_sc_chans('chan', range(1, 33)),
-                   default_read_attrs=RESPECT_KIND,
-                   default_configuration_attrs=RESPECT_KIND)
+    channels = DDC(_sc_chans('chan', range(1, 33)))
 
     # tigger + trigger mode
     count = C(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.OMITTED)

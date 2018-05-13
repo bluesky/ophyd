@@ -18,7 +18,7 @@ from collections.abc import MutableSequence
 from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
-RESPECT_KIND = object()
+ALL_COMPONENTS = object()
 
 
 class OrderedDictType(Dict[A, B]):
@@ -749,23 +749,33 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         super().__init__(name=name, parent=parent, kind=kind, **kwargs)
 
+        # The logic of these if blocks is:
+        # - If the user did not provide read_attrs, fall back on the default
+        # specified by the class, which ultimately falls back to Device, if no
+        # subclass overrides it. Either way, we now have a read_attrs.
+        # - If it is set to the sentinel ALL_COMPONENTS, ignore whatever the
+        # 'kind' settings are; just include everything. This is an escape catch
+        # for getting what _default_read_attrs=None used to do before 'kind'
+        # was implemented.
+        # - If it is set to a list, ignore whatever the 'kind' settings are and
+        # just include that list.
+        # - If it is set to None, respect whatever the 'kind' settings of the
+        # components are.
+
         # If any sub-Devices are to be removed from configuration_attrs and
         # read_attrs, we have to remove them from read_attrs first, or they
         # will not allow themselves to be removed from configuration_attrs.
-        if self._default_read_attrs is not RESPECT_KIND:
-            if read_attrs is None:
-                read_attrs = (self._default_read_attrs if
-                              self._default_read_attrs is not None
-                              else self.component_names)
+        if read_attrs is None:
+            read_attrs = self._default_read_attrs
+        if read_attrs is ALL_COMPONENTS:
+            read_attrs = self.component_names
         if read_attrs is not None:
             self.read_attrs = list(read_attrs)
 
-        if self._default_configuration_attrs is not RESPECT_KIND:
-            if configuration_attrs is None:
-                dflt_c_attrs = self._default_configuration_attrs
-                configuration_attrs = (dflt_c_attrs if
-                                       dflt_c_attrs is not None
-                                       else [])
+        if configuration_attrs is None:
+            configuration_attrs = self._default_configuration_attrs
+        if configuration_attrs is ALL_COMPONENTS:
+            configuration_attrs = self.component_names
         if configuration_attrs is not None:
             self.configuration_attrs = list(configuration_attrs)
 

@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
                DynamicDeviceComponent as DDCpt, Signal,
-               Kind, RESPECT_KIND, kind_context)
+               Kind, kind_context)
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
                            ImagePlugin, StatsPlugin, DetectorBase,
                            SingleTrigger)
@@ -20,8 +20,6 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
 
 
 class QuadEM(SingleTrigger, DetectorBase):
-    _default_configuration_attrs = RESPECT_KIND
-    _default_read_attrs = RESPECT_KIND
     _status_type = DeviceStatus  # overrriding the default in SingleTrigger
 
     # This is needed because ophyd verifies that it can see all
