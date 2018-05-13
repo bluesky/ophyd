@@ -273,7 +273,7 @@ class TestPVPos(AssertTools):
         for k in f_hints:
             assert k in desc
 
-        motor.readback.kind = Kind.HINTED
+        motor.readback.kind = Kind.hinted
         assert motor.hints == {'fields': ['pv_pos_fake_mtr_readback']}
 
         assert motor.hints['fields'] == f_hints

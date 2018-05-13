@@ -62,7 +62,7 @@ class SynSignal(Signal):
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.NORMAL. See Kind for options.
+        Default is Kind.normal. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -174,7 +174,7 @@ class SynPeriodicSignal(SynSignal):
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.NORMAL. See Kind for options.
+        Default is Kind.normal. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -257,7 +257,7 @@ class SynAxisNoHints(Device):
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.NORMAL. See Kind for options.
+        Default is Kind.normal. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -344,7 +344,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    readback = Component(ReadbackSignal, value=None, kind=Kind.HINTED)
+    readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
 
 class SynGauss(SynSignal):
@@ -747,7 +747,7 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
-    a = Component(SynSignal, func=random.random, kind=Kind.HINTED)
+    a = Component(SynSignal, func=random.random, kind=Kind.hinted)
     b = Component(SynSignal, func=random.random)
 
     def trigger(self):
@@ -755,13 +755,13 @@ class ABDetector(Device):
 
 
 class DetWithCountTime(Device):
-    intensity = Component(SynSignal, func=lambda: 0, kind=Kind.HINTED)
+    intensity = Component(SynSignal, func=lambda: 0, kind=Kind.hinted)
     count_time = Component(Signal)
 
 
 class DetWithConf(Device):
-    a = Component(SynSignal, func=lambda: 1, kind=Kind.HINTED)
-    b = Component(SynSignal, func=lambda: 2, kind=Kind.HINTED)
+    a = Component(SynSignal, func=lambda: 1, kind=Kind.hinted)
+    b = Component(SynSignal, func=lambda: 2, kind=Kind.hinted)
     c = Component(SynSignal, func=lambda: 3)
     d = Component(SynSignal, func=lambda: 4)
 
@@ -787,9 +787,9 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.HINTED)
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.HINTED)
-    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.HINTED)
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
+    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
+    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
     real3 = C(SoftPositioner, init_pos=0)
@@ -814,7 +814,7 @@ class SPseudo3x3(PseudoPositioner):
 
 
 class SPseudo1x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), kind=Kind.HINTED)
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), kind=Kind.hinted)
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
     real3 = C(SoftPositioner, init_pos=0)

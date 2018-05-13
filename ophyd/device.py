@@ -90,7 +90,7 @@ class Component:
 
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
-        self.kwargs.setdefault('kind', Kind.NORMAL)
+        self.kwargs.setdefault('kind', Kind.normal)
         self.add_prefix = tuple(add_prefix)
 
     def maybe_add_prefix(self, instance, kw, suffix):
@@ -711,7 +711,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     name : str, keyword only
         The name of the device
     kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.NORMAL. See Kind for options.
+        Default is Kind.normal. See Kind for options.
     read_attrs : sequence of attribute names
         DEPRECATED
         the components to include in a normal reading (i.e., in ``read()``)
@@ -785,27 +785,27 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def _validate_kind(self, val):
         if isinstance(val, str):
-            val = getattr(Kind, val.upper())
-        if Kind.NORMAL & val:
-            val = val | Kind.CONFIG
+            val = getattr(Kind, val.lower())
+        if Kind.normal & val:
+            val = val | Kind.config
         return super()._validate_kind(val)
 
     @property
     def read_attrs(self):
-        return _OphydAttrList(self, Kind.NORMAL, Kind.HINTED, 'read_attrs')
+        return _OphydAttrList(self, Kind.normal, Kind.hinted, 'read_attrs')
 
     @read_attrs.setter
     def read_attrs(self, val):
-        self.__attr_list_helper(val, Kind.NORMAL, Kind.HINTED, 'read_attrs')
+        self.__attr_list_helper(val, Kind.normal, Kind.hinted, 'read_attrs')
 
     @property
     def configuration_attrs(self):
-        return _OphydAttrList(self, Kind.CONFIG, Kind.CONFIG,
+        return _OphydAttrList(self, Kind.config, Kind.config,
                               'configuration_attrs')
 
     @configuration_attrs.setter
     def configuration_attrs(self, val):
-        self.__attr_list_helper(val, Kind.CONFIG, Kind.CONFIG,
+        self.__attr_list_helper(val, Kind.config, Kind.config,
                                 'configuration_attrs')
 
     def __attr_list_helper(self, val, set_kind, unset_kind, recurse_name):
@@ -994,7 +994,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         res = super().read()
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.NORMAL:
+            if component.kind & Kind.normal:
                 res.update(component.read())
         return res
 
@@ -1008,7 +1008,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         res = OrderedDict()
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.CONFIG:
+            if component.kind & Kind.config:
                 res.update(component.read_configuration())
         return res
 
@@ -1017,7 +1017,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         res = super().describe()
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.NORMAL:
+            if component.kind & Kind.normal:
                 res.update(component.describe())
         return res
 
@@ -1039,7 +1039,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         res = OrderedDict()
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if component.kind & Kind.CONFIG:
+            if component.kind & Kind.config:
                 res.update(component.describe_configuration())
         return res
 
@@ -1048,7 +1048,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         fields = []
         for component_name in self.component_names:
             component = getattr(self, component_name)
-            if Kind.NORMAL & component.kind:
+            if Kind.normal & component.kind:
                 c_hints = component.hints
                 fields.extend(c_hints.get('fields', []))
         return {'fields': fields}

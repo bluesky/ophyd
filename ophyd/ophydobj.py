@@ -20,10 +20,10 @@ class Kind(IntFlag):
     traverse it in read(), read_configuration(), or neither. Additionally, if
     decides whether to include its name in `.hints['fields']`.
     """
-    OMITTED = 0
-    NORMAL = 1
-    CONFIG = 2
-    HINTED = 5  # Notice that bool(HINTED & NORMAL) is True.
+    omitted = 0
+    normal = 1
+    config = 2
+    hinted = 5  # Notice that bool(hinted & normal) is True.
 
 
 class UnknownSubscription(KeyError):
@@ -45,7 +45,7 @@ class OphydObject:
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
     kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.NORMAL. See Kind for options.
+        Default is Kind.normal. See Kind for options.
 
     Attributes
     ----------
@@ -60,7 +60,7 @@ class OphydObject:
             labels = set()
         self._ophyd_labels_ = set(labels)
         if kind is None:
-            kind = Kind.NORMAL
+            kind = Kind.normal
         self.kind = kind
 
         super().__init__()
@@ -99,7 +99,7 @@ class OphydObject:
 
     def _validate_kind(self, val):
         if isinstance(val, str):
-            val = getattr(Kind, val.upper())
+            val = getattr(Kind, val.lower())
         return val
 
     @property

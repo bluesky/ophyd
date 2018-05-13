@@ -7,28 +7,28 @@ def test_standalone_signals():
     # whether its parent recursively calls read() and/or read_configuration().
     # When we call read() and/or read_configuration() on the object itself,
     # directly, and its 'kind' setting does not affects its behavior.
-    normal_sig = Signal(name='normal_sig', value=3, kind=Kind.NORMAL)
-    assert normal_sig.kind == Kind.NORMAL
+    normal_sig = Signal(name='normal_sig', value=3, kind=Kind.normal)
+    assert normal_sig.kind == Kind.normal
     assert normal_sig.name not in normal_sig.hints['fields']
     assert 'normal_sig' in normal_sig.read()
     assert 'normal_sig' in normal_sig.read_configuration()
 
     hinted_sig = Signal(name='hinted_sig', value=3)
-    assert hinted_sig.kind == Kind.HINTED
+    assert hinted_sig.kind == Kind.hinted
     assert hinted_sig.name in hinted_sig.hints['fields']
     assert 'hinted_sig' in hinted_sig.read()
     assert 'hinted_sig' in hinted_sig.read_configuration()
 
     # Same with a sig set up this way
-    config_sig = Signal(name='config_sig', value=5, kind=Kind.CONFIG)
-    assert config_sig.kind == Kind.CONFIG
+    config_sig = Signal(name='config_sig', value=5, kind=Kind.config)
+    assert config_sig.kind == Kind.config
     assert config_sig.name not in config_sig.hints['fields']
     assert 'config_sig' in config_sig.read()
     assert 'config_sig' in config_sig.read_configuration()
 
     # Same with a sig set up this way
-    omitted_sig = Signal(name='omitted_sig', value=5, kind=Kind.OMITTED)
-    assert omitted_sig.kind == Kind.OMITTED
+    omitted_sig = Signal(name='omitted_sig', value=5, kind=Kind.omitted)
+    assert omitted_sig.kind == Kind.omitted
     assert omitted_sig.name not in omitted_sig.hints['fields']
     assert 'omitted_sig' in omitted_sig.read()
     assert 'omitted_sig' in omitted_sig.read_configuration()
@@ -41,8 +41,8 @@ def test_nested_devices():
 
     class A(Device):
         normal_sig = Component(Signal)
-        config_sig = Component(Signal, kind=Kind.CONFIG)
-        omitted_sig = Component(Signal, kind=Kind.OMITTED)
+        config_sig = Component(Signal, kind=Kind.config)
+        omitted_sig = Component(Signal, kind=Kind.omitted)
 
     a = A(name='a')
 
@@ -60,8 +60,8 @@ def test_nested_devices():
 
     class B(Device):
         a_default = Component(A)
-        a_config = Component(A, kind=Kind.CONFIG)
-        a_omitted = Component(A, kind=Kind.OMITTED)
+        a_config = Component(A, kind=Kind.config)
+        a_omitted = Component(A, kind=Kind.omitted)
 
     b = B(name='b')
 
@@ -73,14 +73,14 @@ def test_nested_devices():
     # the EventDescriptor!)
     assert ['b_a_default_config_sig',
             'b_a_config_config_sig'] == list(b.read_configuration())
-    # Notice that it tacks CONFIG on when you try to set the kind to NORMAL.
-    assert (Kind.NORMAL | Kind.CONFIG) == B(name='b', kind=Kind.NORMAL).kind
+    # Notice that it tacks 'config' on when you set the kind to 'normal'.
+    assert (Kind.normal | Kind.config) == B(name='b', kind=Kind.normal).kind
     # And the same if you try to set it after __init__
-    b.a_default.kind = Kind.NORMAL
-    assert b.a_default.kind == (Kind.NORMAL | Kind.CONFIG)
-    # However, just taking CONFIG alone without Event-wise readings is fine.
-    b.a_default.kind = Kind.CONFIG
-    assert b.a_default.kind == Kind.CONFIG
+    b.a_default.kind = Kind.normal
+    assert b.a_default.kind == (Kind.normal | Kind.config)
+    # However, just taking 'config' alone without Event-wise readings is fine.
+    b.a_default.kind = Kind.config
+    assert b.a_default.kind == Kind.config
     # Now we get no Event-wise readings from a_default
     assert [] == list(b.read())
     assert ['b_a_default_config_sig',
@@ -89,7 +89,7 @@ def test_nested_devices():
 
 def test_strings():
     sig = Signal(name='sig', kind='normal')
-    assert sig.kind == Kind.NORMAL
+    assert sig.kind == Kind.normal
 
 
 def test_kind_context():
@@ -99,7 +99,7 @@ def test_kind_context():
             a = Cpt(Signal)
 
     thing = Thing(name='thing')
-    assert thing.a.kind == Kind.OMITTED
+    assert thing.a.kind == Kind.omitted
 
 
 # Test back-compatibility. The expected values in these tests match the
@@ -148,7 +148,7 @@ def test_class_default_attrs_both_none():
     # not allowed to place itself in its parent's read_attrs ONLY. It must also
     # be in configuration_attrs if it is in read_attrs. (Under the hood, this
     # is enforced in the setter of the Device's `kind` property, which OR's the
-    # kind value with Kind.CONFIG if said vlaue includes Kind.NORMAL.
+    # kind value with Kind.config if said vlaue includes Kind.normal.
     assert set('ab') == set(th.configuration_attrs)
 
     assert ['th_a_a', 'th_a_b', 'th_b_a', 'th_b_b'] == list(th.describe())
@@ -310,20 +310,20 @@ def test_back_compat():
 @pytest.fixture(scope='function')
 def thing_haver_haver():
     class Thing(Device):
-        a = Component(Signal, kind=Kind.OMITTED)
-        b = Component(Signal, kind=Kind.CONFIG)
-        c = Component(Signal, kind=Kind.NORMAL)
-        d = Component(Signal, kind=Kind.HINTED)
+        a = Component(Signal, kind=Kind.omitted)
+        b = Component(Signal, kind=Kind.config)
+        c = Component(Signal, kind=Kind.normal)
+        d = Component(Signal, kind=Kind.hinted)
 
     class ThingHaver(Device):
-        A = Component(Thing, kind=Kind.OMITTED)
-        B = Component(Thing, kind=Kind.CONFIG)
-        C = Component(Thing, kind=Kind.NORMAL)
+        A = Component(Thing, kind=Kind.omitted)
+        B = Component(Thing, kind=Kind.config)
+        C = Component(Thing, kind=Kind.normal)
 
     class ThingHaverHaver(Device):
-        alpha = Component(ThingHaver, kind=Kind.OMITTED)
-        beta = Component(ThingHaver, kind=Kind.CONFIG)
-        gamma = Component(ThingHaver, kind=Kind.NORMAL)
+        alpha = Component(ThingHaver, kind=Kind.omitted)
+        beta = Component(ThingHaver, kind=Kind.config)
+        gamma = Component(ThingHaver, kind=Kind.normal)
 
     return ThingHaverHaver(name='thh')
 

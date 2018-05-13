@@ -99,7 +99,7 @@ class QuadEM(SingleTrigger, DetectorBase):
 
         for i in range(1, 5):
             current = getattr(self, 'current{}'.format(i))
-            current.mean_value.kind = Kind.HINTED
+            current.mean_value.kind = Kind.hinted
 
 
 class NSLS_EM(QuadEM):

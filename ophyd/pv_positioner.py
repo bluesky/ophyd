@@ -90,7 +90,7 @@ class PVPositioner(Device, PositionerBase):
 
         if self.readback is not None:
             self.readback.subscribe(self._pos_changed)
-            self.readback.kind = Kind.HINTED
+            self.readback.kind = Kind.hinted
         elif self.setpoint is not None:
             self.setpoint.subscribe(self._pos_changed)
         else:

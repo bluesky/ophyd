@@ -259,7 +259,7 @@ def test_str_smoke():
     det = MyDetector(prefix, name='test')
     det.read_attrs = ['stats1']
     det.stats1.read_attrs = ['mean_value']
-    det.stats1.mean_value.kind = Kind.HINTED
+    det.stats1.mean_value.kind = Kind.hinted
 
     str(det)
 

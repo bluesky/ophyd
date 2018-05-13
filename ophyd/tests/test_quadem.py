@@ -112,12 +112,12 @@ def test_hints(quadem):
     def clear_hints(dev):
         for c in dev.component_names:
             c = getattr(dev, c)
-            c.kind &= ~(Kind.HINTED & ~Kind.NORMAL)
+            c.kind &= ~(Kind.hinted & ~Kind.normal)
             if hasattr(c, 'component_names'):
                 clear_hints(c)
 
     clear_hints(quadem)
 
-    quadem.current1.mean_value.kind = Kind.HINTED
+    quadem.current1.mean_value.kind = Kind.hinted
 
     assert quadem.hints == {'fields': ['quadem_current1_mean_value']}

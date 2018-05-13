@@ -239,7 +239,7 @@ class PositionerBase(OphydObject):
 
     @property
     def hints(self):
-        if (~Kind.NORMAL & Kind.HINTED) & self.kind:
+        if (~Kind.normal & Kind.hinted) & self.kind:
             return {'fields': [self.name]}
         else:
             return {'fields': []}

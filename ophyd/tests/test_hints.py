@@ -8,7 +8,7 @@ def test_device_hints():
 
     # Class-provided default works.
     class Dongle(Device):
-        a = Component(Signal, kind=Kind.HINTED)
+        a = Component(Signal, kind=Kind.hinted)
         b = Component(Signal)
 
     assert {'fields': ['dev_a']} == Dongle(name='dev').hints
@@ -17,8 +17,8 @@ def test_device_hints():
 
 def test_motor_bundle_hints():
     class Bundle(MotorBundle):
-        a = Component(SynAxis, kind=Kind.HINTED)
-        b = Component(SynAxis, kind=Kind.HINTED)
+        a = Component(SynAxis, kind=Kind.hinted)
+        b = Component(SynAxis, kind=Kind.hinted)
 
     assert {'fields': ['dev_a', 'dev_b']} == Bundle(name='dev').hints
 
