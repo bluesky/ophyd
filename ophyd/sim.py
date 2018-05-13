@@ -74,6 +74,7 @@ class SynSignal(Signal):
                  exposure_time=0,
                  precision=3,
                  parent=None,
+                 labels=None,
                  kind=None,
                  loop=None):
         if func is None:
@@ -88,7 +89,7 @@ class SynSignal(Signal):
         self.precision = 3
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
-                         parent=parent, kind=kind)
+                         parent=parent, labels=labels, kind=kind)
 
     def describe(self):
         res = super().describe()
@@ -184,13 +185,14 @@ class SynPeriodicSignal(SynSignal):
                  period=1, period_jitter=1,
                  exposure_time=0,
                  parent=None,
+                 labels=None,
                  kind=None,
                  loop=None):
         if func is None:
             func = np.random.rand
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
-                         parent=parent, kind=kind, loop=loop)
+                         parent=parent, labels=labels, kind=kind, loop=loop)
 
         self.__thread = threading.Thread(target=periodic_update, daemon=True,
                                          args=(weakref.ref(self),
@@ -272,6 +274,7 @@ class SynAxisNoHints(Device):
                  readback_func=None, value=0, delay=0,
                  precision=3,
                  parent=None,
+                 labels=None,
                  kind=None,
                  loop=None):
         if readback_func is None:
@@ -291,7 +294,7 @@ class SynAxisNoHints(Device):
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['readback_ts'] = ttime.time()
 
-        super().__init__(name=name, parent=parent, kind=kind)
+        super().__init__(name=name, parent=parent, labels=labels, kind=kind)
         self.readback.name = self.name
 
     def set(self, value):
@@ -842,49 +845,59 @@ class SynAxisNoPosition(SynAxis):
 
 def hw():
     "Build a set of synthetic hardware (hence the abbreviated name, hw)"
-    motor = SynAxis(name='motor')
-    motor1 = SynAxis(name='motor1')
-    motor2 = SynAxis(name='motor2')
-    motor3 = SynAxis(name='motor3')
+    motor = SynAxis(name='motor', labels={'motors'})
+    motor1 = SynAxis(name='motor1', labels={'motors'})
+    motor2 = SynAxis(name='motor2', labels={'motors'})
+    motor3 = SynAxis(name='motor3', labels={'motors'})
     jittery_motor1 = SynAxis(name='jittery_motor1',
-                             readback_func=lambda x: x + np.random.rand())
+                             readback_func=lambda x: x + np.random.rand(),
+                             labels={'motors'})
     jittery_motor2 = SynAxis(name='jittery_motor2',
-                             readback_func=lambda x: x + np.random.rand())
+                             readback_func=lambda x: x + np.random.rand(),
+                             labels={'motors'})
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
-                         noise='uniform', sigma=1, noise_multiplier=0.1)
-    det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
-    identical_det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
-    det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5)
-    det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2)
-    det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1)
+                         noise='uniform', sigma=1, noise_multiplier=0.1,
+                         labels={'detectors'})
+    det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1,
+                   labels={'detectors'})
+    identical_det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1,
+                             labels={'detectors'})
+    det1 = SynGauss('det1', motor1, 'motor1', center=0, Imax=5, sigma=0.5,
+                    labels={'detectors'})
+    det2 = SynGauss('det2', motor2, 'motor2', center=1, Imax=2, sigma=2,
+                    labels={'detectors'})
+    det3 = SynGauss('det3', motor3, 'motor3', center=-1, Imax=2, sigma=1,
+                    labels={'detectors'})
     det4 = Syn2DGauss('det4', motor1, 'motor1', motor2, 'motor2',
-                      center=(0, 0), Imax=1)
+                      center=(0, 0), Imax=1, labels={'detectors'})
     det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
-                      'jittery_motor2', center=(0, 0), Imax=1)
+                      'jittery_motor2', center=(0, 0), Imax=1,
+                      labels={'detectors'})
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
     trivial_flyer = TrivialFlyer()
 
-    # Some extras not defined in ophyd.sim (should they be?)
-    ab_det = ABDetector(name='det')
+    ab_det = ABDetector(name='det', labels={'detectors'})
     # area detector that directly stores image data in Event
     direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
-                           name='img')
+                           name='img', labels={'detectors'})
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
-                                name='img')
-    invariant1 = InvariantSignal(func=lambda: 0, name='invariant1')
-    invariant2 = InvariantSignal(func=lambda: 0, name='invariant2')
-    det_with_conf = DetWithConf(name='det')
-    det_with_count_time = DetWithCountTime(name='det')
-    rand = SynPeriodicSignal(name='rand')
-    rand2 = SynPeriodicSignal(name='rand2')
-    motor_no_pos = SynAxisNoPosition(name='motor')
-    bool_sig = Signal(value=False, name='bool_sig')
+                                name='img', labels={'detectors'})
+    invariant1 = InvariantSignal(func=lambda: 0, name='invariant1',
+                                 labels={'detectors'})
+    invariant2 = InvariantSignal(func=lambda: 0, name='invariant2',
+                                 labels={'detectors'})
+    det_with_conf = DetWithConf(name='det', labels={'detectors'})
+    det_with_count_time = DetWithCountTime(name='det', labels={'detectors'})
+    rand = SynPeriodicSignal(name='rand', labels={'detectors'})
+    rand2 = SynPeriodicSignal(name='rand2', labels={'detectors'})
+    motor_no_pos = SynAxisNoPosition(name='motor', labels={'motors'})
+    bool_sig = Signal(value=False, name='bool_sig', labels={'detectors'})
 
-    motor_no_hints1 = SynAxisNoHints(name='motor1')
-    motor_no_hints2 = SynAxisNoHints(name='motor2')
+    motor_no_hints1 = SynAxisNoHints(name='motor1', labels={'motors'})
+    motor_no_hints2 = SynAxisNoHints(name='motor2', labels={'motors'})
     # Because some of these reference one another we must define them (above)
     # before we pack them into a namespace (below).
 

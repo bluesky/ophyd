@@ -53,8 +53,9 @@ class Signal(OphydObject):
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=None, timestamp=None, parent=None,
+                 labels=None,
                  kind=Kind.hinted, tolerance=None, rtolerance=None, cl=None):
-        super().__init__(name=name, parent=parent, kind=kind)
+        super().__init__(name=name, parent=parent, kind=kind, labels=labels)
         if cl is None:
             cl = get_cl()
         self.cl = cl
