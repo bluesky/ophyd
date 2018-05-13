@@ -176,7 +176,7 @@ def test_default_read_attrs_empty_and_configuration_attrs_none():
     th = ThingHaver(name='th')
     assert set() == set(th.read_attrs)
     assert [] == list(th.describe())
-    assert set() == set(th.configuration_attrs)
+    assert set('ab') == set(th.configuration_attrs)
     assert [] == list(th.describe_configuration())
 
 
@@ -228,6 +228,25 @@ def test_default_attrs_both_empty():
     assert [] == list(th.describe())
     assert set() == set(th.configuration_attrs)
     assert [] == list(t.describe_configuration())
+
+
+def test_all_components_escape_hatch():
+
+    class Thing(Device):
+        _default_read_attrs = ['a']
+        _default_configuration_attrs = ['b']
+        a = Component(Signal)
+        b = Component(Signal)
+
+    class ThingEscapeHatch(Thing):
+        _default_read_attrs = ALL_COMPONENTS
+        _default_configuration_attrs = []
+        c = Component(Signal)
+
+
+    t = ThingEscapeHatch(name='t')
+    assert set('abc') == set(t.read_attrs)
+    assert set() == set(t.configuration_attrs)
 
 
 def test_default_attrs_nonempty_disjoint():
