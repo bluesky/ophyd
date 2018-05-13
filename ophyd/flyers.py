@@ -177,7 +177,7 @@ class WaveformCollector(Device):
     data_is_time : bool, optional
         Use time as the data being acquired
     '''
-    _default_configuration_attrs = ('num_points', )
+    _default_configuration_attrs = ()
     _default_read_attrs = ()
 
     select = C(EpicsSignal, "Sw-Sel")
