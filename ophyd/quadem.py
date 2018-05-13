@@ -20,6 +20,11 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
 
 
 class QuadEM(SingleTrigger, DetectorBase):
+    # These settings intentionally shadow the settings inherited from
+    # DetectorBase.
+    _default_read_attrs = None
+    _default_configuration_attrs = None
+
     _status_type = DeviceStatus  # overrriding the default in SingleTrigger
 
     # This is needed because ophyd verifies that it can see all
