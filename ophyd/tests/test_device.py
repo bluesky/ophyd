@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class FakeSignal(Signal):
-    def __init__(self, read_pv, *, name=None, parent=None):
+    def __init__(self, read_pv, *, name=None, parent=None, **kwargs):
         self.read_pv = read_pv
-        super().__init__(name=name, parent=parent)
+        super().__init__(name=name, parent=parent, **kwargs)
 
     def get(self):
         return self.name

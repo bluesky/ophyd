@@ -90,7 +90,7 @@ class Component:
 
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
-
+        self.kwargs.setdefault('kind', Kind.NORMAL)
         self.add_prefix = tuple(add_prefix)
 
     def maybe_add_prefix(self, instance, kw, suffix):

@@ -7,20 +7,29 @@ def test_standalone_signals():
     # whether its parent recursively calls read() and/or read_configuration().
     # When we call read() and/or read_configuration() on the object itself,
     # directly, and its 'kind' setting does not affects its behavior.
-    normal_sig = Signal(name='normal_sig', value=3)
+    normal_sig = Signal(name='normal_sig', value=3, kind=Kind.NORMAL)
     assert normal_sig.kind == Kind.NORMAL
+    assert normal_sig.name not in normal_sig.hints['fields']
     assert 'normal_sig' in normal_sig.read()
     assert 'normal_sig' in normal_sig.read_configuration()
+
+    hinted_sig = Signal(name='hinted_sig', value=3)
+    assert hinted_sig.kind == Kind.HINTED
+    assert hinted_sig.name in hinted_sig.hints['fields']
+    assert 'hinted_sig' in hinted_sig.read()
+    assert 'hinted_sig' in hinted_sig.read_configuration()
 
     # Same with a sig set up this way
     config_sig = Signal(name='config_sig', value=5, kind=Kind.CONFIG)
     assert config_sig.kind == Kind.CONFIG
+    assert config_sig.name not in config_sig.hints['fields']
     assert 'config_sig' in config_sig.read()
     assert 'config_sig' in config_sig.read_configuration()
 
     # Same with a sig set up this way
     omitted_sig = Signal(name='omitted_sig', value=5, kind=Kind.OMITTED)
     assert omitted_sig.kind == Kind.OMITTED
+    assert omitted_sig.name not in omitted_sig.hints['fields']
     assert 'omitted_sig' in omitted_sig.read()
     assert 'omitted_sig' in omitted_sig.read_configuration()
 
