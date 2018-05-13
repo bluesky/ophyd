@@ -2,11 +2,12 @@ import logging
 
 from collections import OrderedDict
 
-from ophyd.signal import (EpicsSignal, EpicsSignalRO)
-from ophyd.device import Device
-from ophyd.device import (Component as C, DynamicDeviceComponent as DDC,
-                          FormattedComponent as FC, Kind, RESPECT_KIND,
-                          ConfigComponent as CC, OmittedComponent as OC)
+from .ophydobj import Kind
+from .signal import (EpicsSignal, EpicsSignalRO)
+from .device import Device
+from .device import (Component as C, DynamicDeviceComponent as DDC,
+                     FormattedComponent as FC, RESPECT_KIND,
+                     ConfigComponent as CC, OmittedComponent as OC)
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +27,12 @@ class EpicsScaler(Device):
     _default_configuration_attrs = RESPECT_KIND
     _default_read_attrs = RESPECT_KIND
     # tigger + trigger mode
-    count = OC(EpicsSignal, '.CNT', trigger_value=1)
-    count_mode = CC(EpicsSignal, '.CONT', string=True)
+    count = OC(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.OMITTED)
+    count_mode = CC(EpicsSignal, '.CONT', string=True, kind=Kind.CONFIG)
 
     # delay from triggering to starting counting
-    delay = CC(EpicsSignal, '.DLY')
-    auto_count_delay = CC(EpicsSignal, '.DLY1')
+    delay = CC(EpicsSignal, '.DLY', kind=Kind.CONFIG)
+    auto_count_delay = CC(EpicsSignal, '.DLY1', kind=Kind.CONFIG)
 
     # the data
     channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
@@ -43,11 +44,11 @@ class EpicsScaler(Device):
                 default_read_attrs=RESPECT_KIND,
                 default_configuration_attrs=RESPECT_KIND)
 
-    time = C(EpicsSignal, '.T')
-    freq = CC(EpicsSignal, '.FREQ')
+    time = C(EpicsSignal, '.T', kind=Kind.CONFIG)
+    freq = CC(EpicsSignal, '.FREQ', kind=Kind.CONFIG)
 
-    preset_time = CC(EpicsSignal, '.TP')
-    auto_count_time = CC(EpicsSignal, '.TP1')
+    preset_time = CC(EpicsSignal, '.TP', kind=Kind.CONFIG)
+    auto_count_time = CC(EpicsSignal, '.TP1', kind=Kind.CONFIG)
 
     presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
                                  kind=Kind.OMITTED),
@@ -58,10 +59,10 @@ class EpicsScaler(Device):
                 default_read_attrs=RESPECT_KIND,
                 default_configuration_attrs=RESPECT_KIND)
 
-    update_rate = OC(EpicsSignal, '.RATE')
-    auto_count_update_rate = OC(EpicsSignal, '.RAT1')
+    update_rate = OC(EpicsSignal, '.RATE', kind=Kind.CONFIG)
+    auto_count_update_rate = OC(EpicsSignal, '.RAT1', kind=Kind.CONFIG)
 
-    egu = CC(EpicsSignal, '.EGU')
+    egu = CC(EpicsSignal, '.EGU', kind=Kind.CONFIG)
 
     def __init__(self, *args, **kwargs):
 
@@ -71,14 +72,18 @@ class EpicsScaler(Device):
 
 
 class ScalerChannel(Device):
-    _default_configuration_attrs = ('chname', 'preset', 'gate')
-    _default_read_attrs = ('s',)
+    _default_configuration_attrs = RESPECT_KIND
+    _default_read_attrs = RESPECT_KIND
 
     # TODO set up monitor on this to automatically change the name
-    chname = FC(EpicsSignal, '{self.prefix}.NM{self._ch_num}')
-    s = FC(EpicsSignalRO, '{self.prefix}.S{self._ch_num}')
-    preset = FC(EpicsSignal, '{self.prefix}.PR{self._ch_num}')
-    gate = FC(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True)
+    chname = FC(EpicsSignal, '{self.prefix}.NM{self._ch_num}',
+                kind=Kind.CONFIG)
+    s = FC(EpicsSignalRO, '{self.prefix}.S{self._ch_num}',
+           kind=Kind.HINTED)
+    preset = FC(EpicsSignal, '{self.prefix}.PR{self._ch_num}',
+                kind=Kind.CONFIG)
+    gate = FC(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True,
+              kind=Kind.CONFIG)
 
     def __init__(self, prefix, ch_num,
                  **kwargs):
@@ -96,7 +101,7 @@ def _sc_chans(attr_fix, id_range):
     for k in id_range:
         defn['{}{:02d}'.format(attr_fix, k)] = (ScalerChannel,
                                                 '', {'ch_num': k,
-                                                     'kind': Kind.HINTED})
+                                                     'kind': Kind.NORMAL})
     return defn
 
 
