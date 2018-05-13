@@ -1,5 +1,3 @@
-import enum
-import warnings
 from itertools import count
 
 import time
@@ -7,8 +5,14 @@ import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
 
+try:
+    from enum import IntFlag
+except ImportError:
+    # we must be in python 3.5
+    from .utils._backport_enum import IntFlag
 
-class Kind(enum.IntFlag):
+
+class Kind(IntFlag):
     """
     This is used in the .kind attribute of all OphydObj (Signals, Devices).
 
