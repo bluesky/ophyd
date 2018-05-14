@@ -79,7 +79,7 @@ class Component:
     '''
 
     def __init__(self, cls, suffix=None, *, lazy=False, trigger_value=None,
-                 add_prefix=None, doc=None, **kwargs):
+                 add_prefix=None, doc=None, kind=Kind.normal, **kwargs):
         self.attr = None  # attr is set later by the device when known
         self.cls = cls
         self.kwargs = kwargs
@@ -87,10 +87,9 @@ class Component:
         self.suffix = suffix
         self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
-
+        self.kind = _ensure_kind(kind)
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
-        self.kwargs.setdefault('kind', Kind.normal)
         self.add_prefix = tuple(add_prefix)
 
     def maybe_add_prefix(self, instance, kw, suffix):
@@ -123,6 +122,7 @@ class Component:
         '''Create a component for the instance'''
         kwargs = self.kwargs.copy()
         kwargs['name'] = '{}_{}'.format(instance.name, self.attr)
+        kwargs['kind'] = self.kind
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
@@ -250,7 +250,7 @@ class DynamicDeviceComponent:
         A class attribute to put on the dynamically generated class
     '''
 
-    def __init__(self, defn, *, clsname=None, doc=None, kind=None,
+    def __init__(self, defn, *, clsname=None, doc=None, kind=Kind.normal,
                  default_read_attrs=None, default_configuration_attrs=None):
         self.defn = defn
         self.clsname = clsname
@@ -263,7 +263,7 @@ class DynamicDeviceComponent:
             default_configuration_attrs = tuple(default_configuration_attrs)
         self.default_read_attrs = default_read_attrs
         self.default_configuration_attrs = default_configuration_attrs
-        self.kind = kind
+        self.kind = _ensure_kind(kind)
 
         # TODO: component compatibility
         self.trigger_value = None
@@ -787,7 +787,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @property
     def read_attrs(self):
-        return _OphydAttrList(self, Kind.normal, Kind.hinted, 'read_attrs')
+        return self.OphydAttrList(self, Kind.normal, Kind.hinted,
+                                  'read_attrs')
 
     @read_attrs.setter
     def read_attrs(self, val):
@@ -795,8 +796,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @property
     def configuration_attrs(self):
-        return _OphydAttrList(self, Kind.config, Kind.config,
-                              'configuration_attrs')
+        return self.OphydAttrList(self, Kind.config, Kind.config,
+                                  'configuration_attrs')
 
     @configuration_attrs.setter
     def configuration_attrs(self, val):
@@ -809,9 +810,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         for c in cn:
             if c in val:
-                getattr(self, c).kind |= set_kind
+                _lazy_get(self, c).kind |= set_kind
             else:
-                getattr(self, c).kind &= ~unset_kind
+                _lazy_get(self, c).kind &= ~unset_kind
 
         # now look at everything else, presumably things with dots
         extra = val - cn
@@ -823,6 +824,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                          for child, _, rest in (c.partition('.')
                                                 for c in extra)),
                         lambda x: x[0])
+        # we are into grand-children, can not be lazy!
         for child, cf_list in group:
             getattr(self, child).kind |= set_kind
             setattr(getattr(self, child),
@@ -988,8 +990,11 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def read(self):
         res = super().read()
         for component_name in self.component_names:
-            component = getattr(self, component_name)
+            # this might be lazy and get the Cpt
+            component = _lazy_get(self, component_name)
             if component.kind & Kind.normal:
+                # this forces us to get the real version
+                component = getattr(self, component_name)
                 res.update(component.read())
         return res
 
@@ -1002,8 +1007,11 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         """
         res = OrderedDict()
         for component_name in self.component_names:
-            component = getattr(self, component_name)
+            # this might be lazy and get the Cpt
+            component = _lazy_get(self, component_name)
             if component.kind & Kind.config:
+                # this forces us to get the real version
+                component = getattr(self, component_name)
                 res.update(component.read_configuration())
         return res
 
@@ -1011,8 +1019,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def describe(self):
         res = super().describe()
         for component_name in self.component_names:
-            component = getattr(self, component_name)
+            component = _lazy_get(self, component_name)
             if component.kind & Kind.normal:
+                component = getattr(self, component_name)
                 res.update(component.describe())
         return res
 
@@ -1033,8 +1042,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         """
         res = OrderedDict()
         for component_name in self.component_names:
-            component = getattr(self, component_name)
+            component = _lazy_get(self, component_name)
             if component.kind & Kind.config:
+                component = getattr(self, component_name)
                 res.update(component.describe_configuration())
         return res
 
@@ -1201,67 +1211,74 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         yield ('read_attrs', self.read_attrs)
         yield ('configuration_attrs', self.configuration_attrs)
 
+    class OphydAttrList(MutableSequence):
+        """list proxy to migrate away from Device.read_attrs and Device.config_attrs
 
-class _OphydAttrList(MutableSequence):
-    """list proxy to migrate away from Device.read_attrs and Device.config_attrs
 
+        """
+        def __init__(self, device, kind, remove_kind, recurse_key):
+            self._kind = kind
+            self._remove_kind = remove_kind
+            self._parent = device
+            self._recurse_key = recurse_key
 
-    """
+        def __internal_list(self):
 
-    def __init__(self, device, kind, remove_kind, recurse_key):
-        self._kind = kind
-        self._remove_kind = remove_kind
-        self._parent = device
-        self._recurse_key = recurse_key
+            children = [c for c in self._parent.component_names
+                        if _lazy_get(self._parent, c).kind & self._kind]
+            out = []
+            for c in children:
+                cmpt = getattr(self._parent, c)
+                out.append(c)
+                if hasattr(cmpt, self._recurse_key):
+                    out.extend('.'.join([c, v]) for v in
+                               getattr(cmpt, self._recurse_key, []))
 
-    def __internal_list(self):
-        children = [c for c in self._parent.component_names
-                    if getattr(self._parent, c).kind & self._kind]
-        out = []
-        for c in children:
-            cmpt = getattr(self._parent, c)
-            out.append(c)
-            if hasattr(cmpt, self._recurse_key):
-                out.extend('.'.join([c, v]) for v in
-                           getattr(cmpt, self._recurse_key, []))
+            return out
 
-        return out
+        def __getitem__(self, key):
+            return self.__internal_list()[key]
 
-    def __getitem__(self, key):
-        return self.__internal_list()[key]
+        def __setitem__(self, key, val):
+            raise NotImplemented
 
-    def __setitem__(self, key, val):
-        raise NotImplemented
+        def __delitem__(self, key):
+            o = self.__internal_list()[key]
+            if not isinstance(key, slice):
+                o = [o]
+            for k in o:
+                getattr(self._parent, k).kind &= ~self._remove_kind
 
-    def __delitem__(self, key):
-        o = self.__internal_list()[key]
-        if not isinstance(key, slice):
-            o = [o]
-        for k in o:
-            getattr(self._parent, k).kind &= ~self._remove_kind
+        def __len__(self):
+            return len(self.__internal_list())
 
-    def __len__(self):
-        return len(self.__internal_list())
+        def insert(self, index, object):
+            getattr(self._parent, object).kind |= self._kind
 
-    def insert(self, index, object):
-        getattr(self._parent, object).kind |= self._kind
+        def remove(self, value):
+            getattr(self._parent, value).kind &= ~self._remove_kind
 
-    def remove(self, value):
-        getattr(self._parent, value).kind &= ~self._remove_kind
+        def __contains__(self, value):
+            return getattr(self._parent, value).kind & self._kind
 
-    def __contains__(self, value):
-        return getattr(self._parent, value).kind & self._kind
+        def __eq__(self, other):
+            return list(self) == other
 
-    def __eq__(self, other):
-        return list(self) == other
+        def __repr__(self):
+            return repr(list(self))
 
-    def __repr__(self):
-        return repr(list(self))
-
-    def __add__(self, other):
-        return list(self) + list(other)
+        def __add__(self, other):
+            return list(self) + list(other)
 
 
 @contextlib.contextmanager
 def kind_context(kind):
     yield functools.partial(Component, kind=kind)
+
+
+def _lazy_get(parent, name):
+    return parent._signals.get(name, parent._sig_attrs[name])
+
+
+def _ensure_kind(k):
+    return getattr(Kind, k.lower()) if isinstance(k, str) else k
