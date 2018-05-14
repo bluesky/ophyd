@@ -1,4 +1,5 @@
-from ophyd import Device, Signal, Kind, Component, ALL_COMPONENTS, kind_context
+from ophyd import (Device, Signal, Kind, Component, ALL_COMPONENTS,
+                   kind_context, DynamicDeviceComponent as DDC)
 import pytest
 
 
@@ -348,3 +349,20 @@ def test_list_proxy(thing_haver_haver):
 
     assert 'gamma.C.c' in list(thh.read_attrs)
     assert 'gamma.C.d' in list(thh.read_attrs)
+
+
+def test_ddc():
+
+    class Thing(Device):
+        a = Component(Signal)
+        b = Component(Signal)
+
+    class ThingHaver(Device):
+        a = DDC({'A': (Thing, '', {})})
+
+
+    th = ThingHaver(name='th')
+    assert th.a.A.a.kind & Kind.normal
+    assert th.a.A.kind & Kind.normal
+    assert th.a.kind & Kind.normal
+    assert th.kind & Kind.normal

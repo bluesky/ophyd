@@ -261,8 +261,8 @@ class DynamicDeviceComponent:
             default_read_attrs = tuple(default_read_attrs)
         if isinstance(default_configuration_attrs, collections.Iterable):
             default_configuration_attrs = tuple(default_configuration_attrs)
-        self.default_read_attrs = default_read_attrs or []
-        self.default_configuration_attrs = default_configuration_attrs or []
+        self.default_read_attrs = default_read_attrs
+        self.default_configuration_attrs = default_configuration_attrs
         self.kind = kind
 
         # TODO: component compatibility
@@ -327,13 +327,8 @@ class DynamicDeviceComponent:
 
         clsdict = OrderedDict(
             __doc__=docstring,
-            _default_read_attrs=(self.default_read_attrs
-                                 if self.default_read_attrs is not None
-                                 else ()),
-            _default_configuration_attrs=(
-                self.default_configuration_attrs
-                if self.default_configuration_attrs is not None
-                else ())
+            _default_read_attrs=self.default_read_attrs,
+            _default_configuration_attrs=self.default_configuration_attrs
         )
 
         for attr in self.defn.keys():
