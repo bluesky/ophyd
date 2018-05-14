@@ -1,6 +1,135 @@
 Release History
 ---------------
 
+v1.2.0 (pre-release)
+====================
+
+Features
+********
+
+* On each Signal or Device, attach a Python logger attribute named ``log``
+  with a logger name scoped by module name and the ophyd ``name`` of the
+  parent Device.
+* Signals and Devices now accept ``labels`` argument, a set of labels
+  --- presumed but not (yet) forced to be strings --- which the user can use
+  for grouping and displaying available hardware. The labels are accessible via
+  a new attribute ``_ophyd_labels_``, so name to facilitate duck-typing across
+  libraries. For example, the bluesky IPython "magics" use this to identify
+  objects for the purpose of displaying them in labeled groups.
+* Added ``tolerated_alarm`` attribute to ``EpicsMotors``, a hook to increase
+  alarm tolerance for mis-configured motors.
+* Ophyd is now fully tested to work against the experimental control layer,
+  caproto, in addition to pyepics. The control layer can also be set to 'dummy'
+  for testing without EPICS. This is configurable via the
+  ``OPHYD_CONTROL_LAYER`` environment variable.
+* Added a ``kind`` attribute to each Signal and Device, settable interactively
+  or via an argument at initiation time, which controls whether its parent
+  Device will include it in ``read()``, ``read_configuration()``, and/or
+  ``hints.fields``. This behavior was previously controlled by ``read_attrs``,
+  ``configuration_attrs``, ``_default_read_attrs``, and
+  ``_default_configuration_attrs`` on parent Devices. Those can still be used
+  for *setting* the desired state, but the source of truth is now stored
+  locally on each child Signal/Device, and
+  ``read_attrs``/``configuration_attrs`` has been re-implemented as a
+  convenience API. Documentation is forthcoming; until then we refer to you the
+  `narrative-style tests of this feature <https://github.com/NSLS-II/ophyd/blob/master/ophyd/tests/test_kind.py>`_. Also see three breaking changes, listed in a subsequent
+  section of these release notes. The existing implementation contained buggy
+  and surprising behavior, and addressing that made breaking *something*
+  unavoidable.
+* Add ``sum_all`` component to QuadEM.
+
+Bug Fixes
+*********
+
+* Allow ``DerivedSignal`` to accept a string name as its target component so
+  that it can be used inside Device, where it must defer grabbing its target to
+  initialization time.
+* Signals that start with underscores are now not renamed by ``namedtuple``.
+  This causes issues when the ``.get`` method tries to fill the ``DeviceTuple``.
+* Add new ``ad_root`` ("area detector root") to remove the accidental
+  assumption that ``ADBase`` is the root ancestor Device of all its subclasses.
+
+Deprecations
+************
+
+* This release simplifies the flow of information out of ophyd. Fortunately,
+  this major change can be made smoothly. In this transitional release, both
+  old and new modes of operation are supported. Old configurations should
+  continue to work, unchanged. Nonetheless, users are encouraged to update
+  their configurations promptly to take advantage of the better design. The
+  old mode of operation will cease to be supported in a future release.
+
+  **How to upgrade your configuration:** Simply remove the ``reg=...``
+  parameter everywhere it occurs in area-detector-related configuration.
+
+  **Background:** In the original design, bluesky's RunEngine collected *some*
+  information (readings for Event and EventDescriptor documents) and dispatched
+  it out to consumers, while ophyd itself pushed other information (Datum and
+  Resource documents) directly into a database. There are two problems with
+  this design.
+
+  1. Consumers subscribed to bluesky only see partial information. For example,
+     to access the filepaths to externally-stored data, they have to perform a
+     separate database lookup. There are no guarantees about synchronization:
+     the consumer may receive references to objects that do not exist in the
+     database yet.
+  2. Ophyd is responsible inserting information into a database, which means
+     connection information needs to be associated with a Device. This seems
+     misplaced.
+
+  In the new design, ophyd merely *caches* Datum and Resource documents and
+  leaves it up to bluesky's RunEngine to ask for them and dispatch them out to
+  any consumers (such as that database that ophyd used to push to directly).
+  Thus, all information flows through bluesky and to consumers in a guaranteed
+  order. Ophyd does not need to know about database configuration.
+
+  Ophyd's area detector "filestore" integration classes in
+  ``ophyd.areadetector.filestore_mixins`` and ``ophyd.sim`` still *accept*
+  a ``Registry`` via their optional ``reg`` parameter. If they receive one,
+  they will assume that they are supposed to operate the old way: inserting
+  documents directly into the ``Registry``. If the user is running bluesky
+  v1.3.0, bluesky will collect these same documents and dispatch them out to
+  consumers also.
+* The module ``ophyd.control_layer`` has been deprecated in favor of a
+  top-level ``cl`` object.
+
+Breaking Changes
+****************
+
+* The 'hints' feature was an experimental feature in previous releases of
+  ophyd and is now being incorporated in a first-class way. To ensure
+  internal consistency, the ``hints`` attribute of any ``Signal`` or ``Device``
+  is no longer directly settable. Instead of
+
+  .. code-block:: python
+
+      camera.hints = {'fields': [camera.stats1.total.name,
+                                 camera.stats2.total.name]}
+
+  do
+
+  .. code-block:: python
+
+      from ophyd import Kind
+
+      camera.stats1.total.kind = Kind.hinted
+      camera.stats2.total.kind = Kind.hinted
+
+  or, as a convenient shortcut
+
+  .. code-block:: python
+
+      camera.stats1.total.kind = 'hinted'
+      camera.stats2.total.kind = 'hinted'
+* The ``read_attrs`` / ``configuration_attrs`` lists will now contain all of
+  the components touched when walking the Device tree. This also means that
+  setting these lists may not always round trip: they may contain extra
+  elements in addition to those explicitly set.
+* When adding "grandchildren" via ``read_attrs`` / ``configuration_attrs``, we
+  no longer allow generation skipping and forcibly set up the state of all of
+  the devices along the way to be consistent. Inconsistency arguably should
+  never have been possible in the first place.
+
 v1.1.0 (2017-02-20)
 ===================
 
