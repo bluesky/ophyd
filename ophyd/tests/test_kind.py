@@ -142,7 +142,7 @@ def test_class_default_attrs_both_none():
         b = Component(Thing)
 
     th = ThingHaver(name='th')
-    assert set(['a', 'b'] +['a.a', 'a.b', 'b.a', 'b.b']) == set(th.read_attrs)
+    assert set(['a', 'b'] + ['a.a', 'a.b', 'b.a', 'b.b']) == set(th.read_attrs)
 
     # THIS IS ACTUALLY _NOT_ BACKWARD-COMPATIBLE BEHAVIOR!
     # But we consider the former behavior a bug. Unlike a Signal, a Device is
@@ -177,7 +177,7 @@ def test_default_read_attrs_empty_and_configuration_attrs_none():
     th = ThingHaver(name='th')
     assert set() == set(th.read_attrs)
     assert [] == list(th.describe())
-    assert set('ab') == set(th.configuration_attrs)
+    assert set() == set(th.configuration_attrs)
     assert [] == list(th.describe_configuration())
 
 
@@ -243,7 +243,6 @@ def test_all_components_escape_hatch():
         _default_read_attrs = ALL_COMPONENTS
         _default_configuration_attrs = []
         c = Component(Signal)
-
 
     t = ThingEscapeHatch(name='t')
     assert set('abc') == set(t.read_attrs)
