@@ -27,7 +27,7 @@ def quadem():
         current2 = Cpt(FakeStats, 'Current2:')
         current3 = Cpt(FakeStats, 'Current3:')
         current4 = Cpt(FakeStats, 'Current4:')
-        sumAll =  Cpt(FakeStats, 'SumAll:')
+        sum_all =  Cpt(FakeStats, 'SumAll:')
 
     em = FakeQuadEM('quadem:', name='quadem')
 
@@ -52,7 +52,7 @@ def quadem():
         sig._read_pv = sig._write_pv
 
     for k in ['image', *['current{}'.format(j) for j in range(1, 5)],
-              'sumAll']:
+              'sum_all']:
         cc = getattr(em, k)
         for sig in cc.stage_sigs:
             sig = getattr(cc, sig)

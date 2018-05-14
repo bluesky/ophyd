@@ -92,7 +92,7 @@ class QuadEM(SingleTrigger, DetectorBase):
     current3 = ADCpt(StatsPlugin, 'Current3:')
     current4 = ADCpt(StatsPlugin, 'Current4:')
 
-    sumAll = ADCpt(StatsPlugin, 'SumAll:')
+    sum_all= ADCpt(StatsPlugin, 'SumAll:')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
