@@ -9,7 +9,7 @@ from .utils import (ReadOnlyError, LimitError)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
-from .ophydobj import OphydObject
+from .ophydobj import OphydObject, Kind
 from .status import Status
 from .utils import set_and_wait
 from . import get_cl
@@ -25,6 +25,9 @@ class Signal(OphydObject):
     name : string, keyword only
     value : any, optional
         The initial value
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.normal. See Kind for options.
+    parent : Device, optional
     timestamp : float, optional
         The timestamp associated with the initial value. Defaults to the
         current local time.
@@ -50,8 +53,8 @@ class Signal(OphydObject):
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=None, timestamp=None, parent=None,
-                 tolerance=None, rtolerance=None, cl=None):
-        super().__init__(name=name, parent=parent)
+                 kind=Kind.hinted, tolerance=None, rtolerance=None, cl=None):
+        super().__init__(name=name, parent=parent, kind=kind)
         if cl is None:
             cl = get_cl()
         self.cl = cl
@@ -236,7 +239,10 @@ class Signal(OphydObject):
 
     @property
     def hints(self):
-        return {'fields': [self.name]}
+        if (~Kind.normal & Kind.hinted) & self.kind:
+            return {'fields': [self.name]}
+        else:
+            return {'fields': []}
 
 
 class DerivedSignal(Signal):

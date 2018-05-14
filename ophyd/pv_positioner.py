@@ -5,6 +5,7 @@ import logging
 from .utils.epics_pvs import fmt_time
 
 from .device import Device
+from .ophydobj import Kind
 from .positioner import PositionerBase
 from .status import wait as status_wait
 
@@ -89,6 +90,7 @@ class PVPositioner(Device, PositionerBase):
 
         if self.readback is not None:
             self.readback.subscribe(self._pos_changed)
+            self.readback.kind = Kind.hinted
         elif self.setpoint is not None:
             self.setpoint.subscribe(self._pos_changed)
         else:
@@ -103,7 +105,6 @@ class PVPositioner(Device, PositionerBase):
 
         if self.done is not None:
             self.done.subscribe(self._move_changed)
-        self._hints = None
 
     @property
     def egu(self):
@@ -257,16 +258,6 @@ class PVPositioner(Device, PositionerBase):
             self._move_changed(value=self.done_value)
 
         super()._done_moving(**kwargs)
-
-    @property
-    def hints(self):
-        if self._hints is None:
-            return {'fields': [self.readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = val if val is None else dict(val)
 
 
 class PVPositionerPC(PVPositioner):

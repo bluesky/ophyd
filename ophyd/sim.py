@@ -13,7 +13,7 @@ import uuid
 
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
-from .device import Device, Component, Component as C
+from .device import Device, Component, Component as C, Kind
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
@@ -61,6 +61,8 @@ class SynSignal(Signal):
         Digits of precision. Default is 3.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.normal. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -72,6 +74,7 @@ class SynSignal(Signal):
                  exposure_time=0,
                  precision=3,
                  parent=None,
+                 kind=None,
                  loop=None):
         if func is None:
             # When triggered, just put the current value.
@@ -85,7 +88,7 @@ class SynSignal(Signal):
         self.precision = 3
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
-                         parent=parent)
+                         parent=parent, kind=kind)
 
     def describe(self):
         res = super().describe()
@@ -170,6 +173,8 @@ class SynPeriodicSignal(SynSignal):
         0.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.normal. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -179,12 +184,13 @@ class SynPeriodicSignal(SynSignal):
                  period=1, period_jitter=1,
                  exposure_time=0,
                  parent=None,
+                 kind=None,
                  loop=None):
         if func is None:
             func = np.random.rand
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
-                         parent=parent, loop=loop)
+                         parent=parent, kind=kind, loop=loop)
 
         self.__thread = threading.Thread(target=periodic_update, daemon=True,
                                          args=(weakref.ref(self),
@@ -250,6 +256,8 @@ class SynAxisNoHints(Device):
         Digits of precision. Default is 3.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.normal. See Kind for options.
     loop : asyncio.EventLoop, optional
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
@@ -264,13 +272,13 @@ class SynAxisNoHints(Device):
                  readback_func=None, value=0, delay=0,
                  precision=3,
                  parent=None,
+                 kind=None,
                  loop=None):
         if readback_func is None:
             def readback_func(x):
                 return x
         if loop is None:
             loop = asyncio.get_event_loop()
-        self._hints = None
         self.sim_state = {}
         self._readback_func = readback_func
         self.delay = delay
@@ -283,7 +291,7 @@ class SynAxisNoHints(Device):
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['readback_ts'] = ttime.time()
 
-        super().__init__(name=name, parent=parent)
+        super().__init__(name=name, parent=parent, kind=kind)
         self.readback.name = self.name
 
     def set(self, value):
@@ -336,15 +344,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    @property
-    def hints(self):
-        if self._hints is None:
-            return {'fields': [self.readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = dict(val)
+    readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
 
 class SynGauss(SynSignal):
@@ -638,8 +638,6 @@ class SynSignalWithRegistry(SynSignal):
         self._path_stem = None
         self._result = {}
 
-        self._hints = None
-
         if reg is not DO_NOT_USE:
             warnings.warn("The parameter 'reg' is deprecated. It will be "
                           "ignored. In a future release the parameter will be "
@@ -648,19 +646,6 @@ class SynSignalWithRegistry(SynSignal):
             self.reg = reg
         else:
             self.reg = None
-
-    @property
-    def hints(self):
-        if self._hints is None:
-            # Since data is external, hint that it should not be printed or
-            # plotted. Relax this when LiveTable etc. get smarter about
-            # external data.
-            return {'fields': []}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = dict(val)
 
     def stage(self):
         self._file_stem = short_uid()
@@ -762,26 +747,21 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
-    a = Component(SynSignal, func=random.random)
+    a = Component(SynSignal, func=random.random, kind=Kind.hinted)
     b = Component(SynSignal, func=random.random)
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
-    @property
-    def hints(self):
-        return {'fields': [self.a.name]}
-
 
 class DetWithCountTime(Device):
-    intensity = Component(SynSignal, func=lambda: 0)
+    intensity = Component(SynSignal, func=lambda: 0, kind=Kind.hinted)
     count_time = Component(Signal)
-    _default_read_attrs = ('intensity',)
 
 
 class DetWithConf(Device):
-    a = Component(SynSignal, func=lambda: 1)
-    b = Component(SynSignal, func=lambda: 2)
+    a = Component(SynSignal, func=lambda: 1, kind=Kind.hinted)
+    b = Component(SynSignal, func=lambda: 2, kind=Kind.hinted)
     c = Component(SynSignal, func=lambda: 3)
     d = Component(SynSignal, func=lambda: 4)
 
@@ -792,10 +772,6 @@ class DetWithConf(Device):
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
-
-    @property
-    def hints(self):
-        return {'fields': [self.a.name, self.b.name]}
 
 
 class InvariantSignal(SynSignal):
@@ -811,9 +787,9 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a')
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b')
-    pseudo3 = C(PseudoSingle, limits=None, egu='c')
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
+    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
+    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
     real3 = C(SoftPositioner, init_pos=0)
@@ -838,7 +814,7 @@ class SPseudo3x3(PseudoPositioner):
 
 
 class SPseudo1x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10))
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), kind=Kind.hinted)
     real1 = C(SoftPositioner, init_pos=0)
     real2 = C(SoftPositioner, init_pos=0)
     real3 = C(SoftPositioner, init_pos=0)

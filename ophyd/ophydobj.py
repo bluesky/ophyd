@@ -1,10 +1,29 @@
-import warnings
 from itertools import count
 
 import time
 import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
+
+try:
+    from enum import IntFlag
+except ImportError:
+    # we must be in python 3.5
+    from .utils._backport_enum import IntFlag
+
+
+class Kind(IntFlag):
+    """
+    This is used in the .kind attribute of all OphydObj (Signals, Devices).
+
+    A Device examines its components' .kind atttribute to decide whether to
+    traverse it in read(), read_configuration(), or neither. Additionally, if
+    decides whether to include its name in `.hints['fields']`.
+    """
+    omitted = 0
+    normal = 1
+    config = 2
+    hinted = 5  # Notice that bool(hinted & normal) is True.
 
 
 class UnknownSubscription(KeyError):
@@ -25,6 +44,8 @@ class OphydObject:
         The name of the object.
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
+    kind : a member the Kind IntEnum (or equivalent integer), optional
+        Default is Kind.normal. See Kind for options.
 
     Attributes
     ----------
@@ -33,10 +54,14 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name=None, parent=None, labels=None):
+    def __init__(self, *, name=None, parent=None, labels=None,
+                 kind=None):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
+        if kind is None:
+            kind = Kind.normal
+        self.kind = kind
 
         super().__init__()
 
@@ -71,6 +96,19 @@ class OphydObject:
             name = self.name
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
+
+    def _validate_kind(self, val):
+        if isinstance(val, str):
+            val = getattr(Kind, val.lower())
+        return val
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, val):
+        self._kind = self._validate_kind(val)
 
     @property
     def name(self):

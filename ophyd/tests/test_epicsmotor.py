@@ -28,12 +28,12 @@ class CustomAlarmEpicsSignalRO(EpicsSignalRO):
 
 
 class tstEpicsMotor(EpicsMotor):
-    user_readback = C(CustomAlarmEpicsSignalRO, '.RBV')
-    high_limit_switch = C(Signal, value=0)
-    low_limit_switch = C(Signal, value=0)
-    direction_of_travel = C(Signal, value=0)
-    high_limit_value = C(EpicsSignalRO, '.HLM')
-    low_limit_value = C(EpicsSignalRO, '.LLM')
+    user_readback = C(CustomAlarmEpicsSignalRO, '.RBV', kind='hinted')
+    high_limit_switch = C(Signal, value=0, kind='omitted')
+    low_limit_switch = C(Signal, value=0, kind='omitted')
+    direction_of_travel = C(Signal, value=0, kind='omitted')
+    high_limit_value = C(EpicsSignalRO, '.HLM', kind='config')
+    low_limit_value = C(EpicsSignalRO, '.LLM', kind='config')
 
 
 def test_timeout(motor):
@@ -262,18 +262,11 @@ def test_move_alarm(motor):
 
 
 def test_hints(motor):
+    assert motor.hints == {'fields': list(motor.user_readback.read())}
 
-    desc = motor.describe()
-    f_hints = motor.hints['fields']
-    assert len(f_hints) > 0
-    for k in f_hints:
-        assert k in desc
-
-    motor.hints = {'fields': ['foo']}
-    assert motor.hints == {'fields': ['foo']}
-    motor.hints = None
-
-    assert motor.hints['fields'] == f_hints
+    motor.user_setpoint.kind = 'hinted'
+    motor.user_readback.kind = 'normal'
+    assert motor.hints == {'fields': list(motor.user_setpoint.read())}
 
 
 def test_watchers(motor):
@@ -311,8 +304,16 @@ def test_motor_bundle():
     assert bundle.hints['fields'] == ['bundle_{}'.format(k)
                                       for k in 'abc']
 
-    assert bundle.read_attrs == list('abc')
-    assert bundle.configuration_attrs == list('abc')
-
-    bundle.hints = {}
-    assert bundle.hints == {}
+    # Test old-style attributes.
+    assert set(bundle.read_attrs) == set(list('abc') +
+                                         ['.'.join([p, c]) for p in 'abc'
+                                          for c in ['user_readback',
+                                                    'user_setpoint']])
+    assert set(bundle.configuration_attrs) == set(list('abc') +
+                                                  ['.'.join([p, c])
+                                                   for p in 'abc'
+                                                   for c in ['user_offset',
+                                                             'user_offset_dir',
+                                                             'velocity',
+                                                             'acceleration',
+                                                             'motor_egu']])

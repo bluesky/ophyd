@@ -6,7 +6,7 @@ from copy import copy
 
 from ophyd import scaler
 from ophyd.utils import enum
-from .conftest   import using_fake_epics_pv
+from .conftest import using_fake_epics_pv
 from .test_utils import assert_OD_equal_ignore_ts
 
 
@@ -90,6 +90,8 @@ def test_scaler_functionality():
     assert old.pop('scaler_preset_time')['value'] == old_preset_time
     assert new.pop('scaler_preset_time')['value'] == 7
     assert_OD_equal_ignore_ts(old, new)
+
+    sca.hints == {'fields': [sca.channels.name]}
 
 
 @using_fake_epics_pv

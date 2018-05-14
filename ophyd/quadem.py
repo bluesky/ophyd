@@ -1,7 +1,8 @@
 from collections import OrderedDict
 
 from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
-               DynamicDeviceComponent as DDCpt, Signal)
+               DynamicDeviceComponent as DDCpt, Signal,
+               Kind, kind_context)
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
                            ImagePlugin, StatsPlugin, DetectorBase,
                            SingleTrigger)
@@ -19,9 +20,11 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
 
 
 class QuadEM(SingleTrigger, DetectorBase):
-    _default_configuration_attrs = ('integration_time', 'averaging_time')
-    _default_read_attrs = ('current1.mean_value', 'current2.mean_value',
-                           'current3.mean_value', 'current4.mean_value')
+    # These settings intentionally shadow the settings inherited from
+    # DetectorBase.
+    _default_read_attrs = None
+    _default_configuration_attrs = None
+
     _status_type = DeviceStatus  # overrriding the default in SingleTrigger
 
     # This is needed because ophyd verifies that it can see all
@@ -29,40 +32,42 @@ class QuadEM(SingleTrigger, DetectorBase):
     # expose their port name via a PV, but nevertheless server as the
     # root node for the plugins.
     # Leaving this port_name here for compatibility
-    port_name = Cpt(Signal, value='NSLS_EM')
-    model = Cpt(EpicsSignalRO, 'Model')
-    firmware = Cpt(EpicsSignalRO, 'Firmware')
+    integration_time = Cpt(EpicsSignalWithRBV, 'IntegrationTime',
+                           kind='config')
+    averaging_time = Cpt(EpicsSignalWithRBV, 'AveragingTime', kind='config')
+    with kind_context('omitted') as OCpt:
+        port_name = OCpt(Signal, value='NSLS_EM')
+        model = OCpt(EpicsSignalRO, 'Model')
+        firmware = OCpt(EpicsSignalRO, 'Firmware')
 
-    acquire_mode = Cpt(EpicsSignalWithRBV, 'AcquireMode')
-    acquire = Cpt(EpicsSignal, 'Acquire')
+        acquire_mode = OCpt(EpicsSignalWithRBV, 'AcquireMode')
+        acquire = OCpt(EpicsSignal, 'Acquire')
 
-    read_format = Cpt(EpicsSignalWithRBV, 'ReadFormat')
-    em_range = Cpt(EpicsSignalWithRBV, 'Range')
-    ping_pong = Cpt(EpicsSignalWithRBV, 'PingPong')
+        read_format = OCpt(EpicsSignalWithRBV, 'ReadFormat')
+        em_range = OCpt(EpicsSignalWithRBV, 'Range')
+        ping_pong = OCpt(EpicsSignalWithRBV, 'PingPong')
 
-    integration_time = Cpt(EpicsSignalWithRBV, 'IntegrationTime')
-    num_channels = Cpt(EpicsSignalWithRBV, 'NumChannels')
-    geometry = Cpt(EpicsSignalWithRBV, 'Geometry')
-    resolution = Cpt(EpicsSignalWithRBV, 'Resolution')
+        num_channels = OCpt(EpicsSignalWithRBV, 'NumChannels')
+        geometry = OCpt(EpicsSignalWithRBV, 'Geometry')
+        resolution = OCpt(EpicsSignalWithRBV, 'Resolution')
 
-    bias_state = Cpt(EpicsSignalWithRBV, 'BiasState')
-    bias_interlock = Cpt(EpicsSignalWithRBV, 'BiasInterlock')
-    bias_voltage = Cpt(EpicsSignalWithRBV, 'BiasVoltage')
-    hvs_readback = Cpt(EpicsSignalRO, 'HVSReadback')
-    hvv_readback = Cpt(EpicsSignalRO, 'HVVReadback')
-    hvi_readback = Cpt(EpicsSignalRO, 'HVIReadback')
+        bias_state = OCpt(EpicsSignalWithRBV, 'BiasState')
+        bias_interlock = OCpt(EpicsSignalWithRBV, 'BiasInterlock')
+        bias_voltage = OCpt(EpicsSignalWithRBV, 'BiasVoltage')
+        hvs_readback = OCpt(EpicsSignalRO, 'HVSReadback')
+        hvv_readback = OCpt(EpicsSignalRO, 'HVVReadback')
+        hvi_readback = OCpt(EpicsSignalRO, 'HVIReadback')
 
-    values_per_read = Cpt(EpicsSignalWithRBV, 'ValuesPerRead')
-    sample_time = Cpt(EpicsSignalRO, 'SampleTime_RBV')  # yay for consistency
-    averaging_time = Cpt(EpicsSignalWithRBV, 'AveragingTime')
-    num_average = Cpt(EpicsSignalRO, 'NumAverage_RBV')
-    num_averaged = Cpt(EpicsSignalRO, 'NumAveraged_RBV')
-    num_acquire = Cpt(EpicsSignalWithRBV, 'NumAcquire')
-    num_acquired = Cpt(EpicsSignalRO, 'NumAcquired')
-    read_data = Cpt(EpicsSignalRO, 'ReadData')
-    ring_overflows = Cpt(EpicsSignalRO, 'RingOverflows')
-    trigger_mode = Cpt(EpicsSignal, 'TriggerMode')
-    reset = Cpt(EpicsSignal, 'Reset')
+        values_per_read = OCpt(EpicsSignalWithRBV, 'ValuesPerRead')
+        sample_time = OCpt(EpicsSignalRO, 'SampleTime_RBV')  # yay consistency
+        num_average = OCpt(EpicsSignalRO, 'NumAverage_RBV')
+        num_averaged = OCpt(EpicsSignalRO, 'NumAveraged_RBV')
+        num_acquire = OCpt(EpicsSignalWithRBV, 'NumAcquire')
+        num_acquired = OCpt(EpicsSignalRO, 'NumAcquired')
+        read_data = OCpt(EpicsSignalRO, 'ReadData')
+        ring_overflows = OCpt(EpicsSignalRO, 'RingOverflows')
+        trigger_mode = OCpt(EpicsSignal, 'TriggerMode')
+        reset = OCpt(EpicsSignal, 'Reset')
 
     current_names = DDCpt(_current_fields('ch', 'CurrentName', range(1, 5),
                                           string=True))
@@ -97,31 +102,9 @@ class QuadEM(SingleTrigger, DetectorBase):
                                 ])
         self._acquisition_signal = self.acquire
 
-        self._hints = None
-
-    @property
-    def hints(self):
-        """Provide hints to bluesky
-
-        The default value is ::
-
-           {'fields': list_of_channel_mean_value_names}
-
-        To override this, set another dictionary.
-
-        To restore the default value set ``None``
-
-        To suppress all hints set ``{}``
-        """
-        if self._hints is None:
-            return {'fields': [getattr(self, c).mean_value.name
-                               for c in ['current1', 'current2',
-                                         'current3', 'current4']]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = val if val is None else dict(val)
+        for i in range(1, 5):
+            current = getattr(self, 'current{}'.format(i))
+            current.mean_value.kind = Kind.hinted
 
 
 class NSLS_EM(QuadEM):

@@ -6,7 +6,7 @@ from collections import OrderedDict
 from .status import DeviceStatus
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .device import (Device, Component as C, DynamicDeviceComponent as DDC,
-                     Staged, BlueskyInterface)
+                     Staged, BlueskyInterface, ALL_COMPONENTS, Kind)
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 
 
@@ -60,20 +60,17 @@ def add_rois(range_, **kwargs):
 
 class EpicsMCARecord(Device):
     '''SynApps MCA Record interface'''
-    _default_configuration_attrs = ('preset_real_time', )
-    _default_read_attrs = ('spectrum', 'preset_real_time', 'elapsed_real_time')
-
-    stop_signal = C(EpicsSignal, '.STOP')
-    preset_real_time = C(EpicsSignal, '.PRTM')
-    preset_live_time = C(EpicsSignal, '.PLTM')
+    stop_signal = C(EpicsSignal, '.STOP', kind='omitted')
+    preset_real_time = C(EpicsSignal, '.PRTM', kind=Kind.config | Kind.normal)
+    preset_live_time = C(EpicsSignal, '.PLTM', kind='omitted')
     elapsed_real_time = C(EpicsSignalRO, '.ERTM')
-    elapsed_live_time = C(EpicsSignalRO, '.ELTM')
+    elapsed_live_time = C(EpicsSignalRO, '.ELTM', kind='omitted')
 
     spectrum = C(EpicsSignalRO, '.VAL')
-    background = C(EpicsSignalRO, '.BG')
-    mode = C(EpicsSignal, '.MODE', string=True)
+    background = C(EpicsSignalRO, '.BG', kind='omitted')
+    mode = C(EpicsSignal, '.MODE', string=True, kind='omitted')
 
-    rois = DDC(add_rois(range(0, 32)))
+    rois = DDC(add_rois(range(0, 32), kind='omitted'), kind='omitted')
 
     def __init__(self, *args, **kwargs):
 
@@ -88,37 +85,37 @@ class EpicsMCARecord(Device):
 
 class EpicsMCA(EpicsMCARecord):
     '''mca records with extras from mca.db'''
-    start = C(EpicsSignal, 'Start')
-    stop_signal = C(EpicsSignal, 'Stop')
-    erase = C(EpicsSignal, 'Erase')
-    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
+    start = C(EpicsSignal, 'Start', kind='omitted')
+    stop_signal = C(EpicsSignal, 'Stop', kind='omitted')
+    erase = C(EpicsSignal, 'Erase', kind='omitted')
+    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1, kind='omitted')
 
-    check_acquiring = C(EpicsSignal, 'CheckACQG')
-    client_wait = C(EpicsSignal, 'ClientWait')
-    enable_wait = C(EpicsSignal, 'EnableWait')
-    force_read = C(EpicsSignal, 'Read')
-    set_client_wait = C(EpicsSignal, 'SetClientWait')
-    status = C(EpicsSignal, 'Status')
-    when_acq_stops = C(EpicsSignal, 'WhenAcqStops')
-    why1 = C(EpicsSignal, 'Why1')
-    why2 = C(EpicsSignal, 'Why2')
-    why3 = C(EpicsSignal, 'Why3')
-    why4 = C(EpicsSignal, 'Why4')
+    check_acquiring = C(EpicsSignal, 'CheckACQG', kind='omitted')
+    client_wait = C(EpicsSignal, 'ClientWait', kind='omitted')
+    enable_wait = C(EpicsSignal, 'EnableWait', kind='omitted')
+    force_read = C(EpicsSignal, 'Read', kind='omitted')
+    set_client_wait = C(EpicsSignal, 'SetClientWait', kind='omitted')
+    status = C(EpicsSignal, 'Status', kind='omitted')
+    when_acq_stops = C(EpicsSignal, 'WhenAcqStops', kind='omitted')
+    why1 = C(EpicsSignal, 'Why1', kind='omitted')
+    why2 = C(EpicsSignal, 'Why2', kind='omitted')
+    why3 = C(EpicsSignal, 'Why3', kind='omitted')
+    why4 = C(EpicsSignal, 'Why4', kind='omitted')
 
 
 class EpicsMCAReadNotify(EpicsMCARecord):
     '''mca record with extras from mcaReadNotify.db'''
-    start = C(EpicsSignal, 'Start')
-    stop_signal = C(EpicsSignal, 'Stop')
-    erase = C(EpicsSignal, 'Erase')
-    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1)
+    start = C(EpicsSignal, 'Start', kind='omitted')
+    stop_signal = C(EpicsSignal, 'Stop', kind='omitted')
+    erase = C(EpicsSignal, 'Erase', kind='omitted')
+    erase_start = C(EpicsSignal, 'EraseStart', trigger_value=1, kind='omitted')
 
-    check_acquiring = C(EpicsSignal, 'CheckACQG')
-    client_wait = C(EpicsSignal, 'ClientWait')
-    enable_wait = C(EpicsSignal, 'EnableWait')
-    force_read = C(EpicsSignal, 'Read')
-    set_client_wait = C(EpicsSignal, 'SetClientWait')
-    status = C(EpicsSignal, 'Status')
+    check_acquiring = C(EpicsSignal, 'CheckACQG', kind='omitted')
+    client_wait = C(EpicsSignal, 'ClientWait', kind='omitted')
+    enable_wait = C(EpicsSignal, 'EnableWait', kind='omitted')
+    force_read = C(EpicsSignal, 'Read', kind='omitted')
+    set_client_wait = C(EpicsSignal, 'SetClientWait', kind='omitted')
+    status = C(EpicsSignal, 'Status', kind='omitted')
 
 
 class EpicsMCACallback(Device):

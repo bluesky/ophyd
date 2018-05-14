@@ -53,6 +53,8 @@ def get_cl():
 
 set_cl()
 
+from .ophydobj import Kind
+
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 
@@ -65,7 +67,8 @@ from .pseudopos import (PseudoPositioner, PseudoSingle)
 # Devices
 from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
-                     DynamicDeviceComponent)
+                     DynamicDeviceComponent,
+                     ALL_COMPONENTS, kind_context)
 from .status import StatusBase
 from .mca import EpicsMCA, EpicsDXP
 from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM

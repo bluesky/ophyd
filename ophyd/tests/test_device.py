@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class FakeSignal(Signal):
-    def __init__(self, read_pv, *, name=None, parent=None):
+    def __init__(self, read_pv, *, name=None, parent=None, **kwargs):
         self.read_pv = read_pv
-        super().__init__(name=name, parent=parent)
+        super().__init__(name=name, parent=parent, **kwargs)
 
     def get(self):
         return self.name
@@ -181,7 +181,7 @@ class TestDevice(AssertTools):
 
     def test_name_shadowing(self):
         RESERVED_ATTRS = ['name', 'parent', 'component_names', '_signals',
-                          'read_attrs', 'configuration_attrs', '_sig_attrs',
+                          '_sig_attrs',
                           '_sub_devices']
 
         type('a', (Device,), {'a': None})  # legal class definition

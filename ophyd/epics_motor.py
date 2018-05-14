@@ -40,42 +40,38 @@ class EpicsMotor(Device, PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
-    _default_read_attrs = ('user_readback', 'user_setpoint')
-    _default_configuration_attrs = ('motor_egu', 'velocity', 'acceleration',
-                                    'user_offset', 'user_offset_dir')
     # position
-    user_readback = Cpt(EpicsSignalRO, '.RBV')
+    user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
 
     # calibration dial <-> user
-    user_offset = Cpt(EpicsSignal, '.OFF')
-    user_offset_dir = Cpt(EpicsSignal, '.DIR')
-    offset_freeze_switch = Cpt(EpicsSignal, '.FOFF')
-    set_use_switch = Cpt(EpicsSignal, '.SET')
+    user_offset = Cpt(EpicsSignal, '.OFF', kind='config')
+    user_offset_dir = Cpt(EpicsSignal, '.DIR', kind='config')
+    offset_freeze_switch = Cpt(EpicsSignal, '.FOFF', kind='omitted')
+    set_use_switch = Cpt(EpicsSignal, '.SET', kind='omitted')
 
     # configuration
-    velocity = Cpt(EpicsSignal, '.VELO')
-    acceleration = Cpt(EpicsSignal, '.ACCL')
-    motor_egu = Cpt(EpicsSignal, '.EGU')
+    velocity = Cpt(EpicsSignal, '.VELO', kind='config')
+    acceleration = Cpt(EpicsSignal, '.ACCL', kind='config')
+    motor_egu = Cpt(EpicsSignal, '.EGU', kind='config')
 
     # motor status
-    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN')
-    motor_done_move = Cpt(EpicsSignalRO, '.DMOV')
-    high_limit_switch = Cpt(EpicsSignal, '.HLS')
-    low_limit_switch = Cpt(EpicsSignal, '.LLS')
-    direction_of_travel = Cpt(EpicsSignal, '.TDIR')
+    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN', kind='omitted')
+    motor_done_move = Cpt(EpicsSignalRO, '.DMOV', kind='omitted')
+    high_limit_switch = Cpt(EpicsSignal, '.HLS', kind='omitted')
+    low_limit_switch = Cpt(EpicsSignal, '.LLS', kind='omitted')
+    direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
 
     # commands
-    motor_stop = Cpt(EpicsSignal, '.STOP')
-    home_forward = Cpt(EpicsSignal, '.HOMF')
-    home_reverse = Cpt(EpicsSignal, '.HOMR')
+    motor_stop = Cpt(EpicsSignal, '.STOP', kind='omitted')
+    home_forward = Cpt(EpicsSignal, '.HOMF', kind='omitted')
+    home_reverse = Cpt(EpicsSignal, '.HOMR', kind='omitted')
 
     # alarm information
     tolerated_alarm = AlarmSeverity.NO_ALARM
 
     def __init__(self, *args, **kwargs):
 
-        self._hints = None
         super().__init__(*args, **kwargs)
 
         # Make the default alias for the user_readback the name of the
@@ -84,7 +80,6 @@ class EpicsMotor(Device, PositionerBase):
 
         self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
-        self._hints = None
 
     @property
     @raise_if_disconnected
@@ -281,67 +276,10 @@ class EpicsMotor(Device, PositionerBase):
         rep['pv'] = self.user_readback.pvname
         return rep
 
-    @property
-    def hints(self):
-        """Provide hints to bluesky
-
-        The default value is ::
-
-           {'fields': [self.user_readback.name]}
-
-        To override this, set another dictionary.
-
-        To restore the default value set ``None``
-
-        To suppress all hints set ``{}``
-        """
-        if self._hints is None:
-            return {'fields': [self.user_readback.name]}
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        self._hints = val if val is None else dict(val)
-
 
 class MotorBundle(Device):
     """Sub-class this to device a bundle of motors
 
-    This provides better default behavior for ``hints``,
-    ``read_attrs`` and ``configuration_attrs``
+    This provides better default behavior for ``hints``.
     """
-    _hints = None
-
-    @property
-    def hints(self):
-        """Provide hints to bluesky
-
-        The default value is the union of all the children's hints.
-
-        To override this, set another dictionary.
-
-        To restore the default value set ``None``
-
-        To suppress all hints set ``{}``
-        """
-        if self._hints is None:
-            return {'fields':
-                    [h
-                     for s in self.component_names
-                     for h in getattr(getattr(self, s),
-                                      'hints', {}).get('fields', [])]}
-
-        return self._hints
-
-    @hints.setter
-    def hints(self, val):
-        if val is None:
-            self._hints = None
-        else:
-            self._hints = dict(val)
-
-    def __init__(self, *args, configuration_attrs=None, **kwargs):
-        if configuration_attrs is None:
-            configuration_attrs = self.component_names
-        super().__init__(*args, configuration_attrs=configuration_attrs,
-                         **kwargs)
+    ...
