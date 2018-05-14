@@ -68,6 +68,7 @@ class PluginBase(ADBase):
                                           self.plugin_type.get(), self.prefix))
 
         self.enable_on_stage()
+        self.stage_sigs.move_to_end('enable', last=False)
         self.ensure_blocking()
         if self.parent is not None and hasattr(self.parent, 'cam'):
             self.stage_sigs.update([('parent.cam.array_callbacks', 1),
@@ -113,7 +114,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ```('enable', 0)`` to stage_sigs
         """
-        self.stage_sigs['enable'] = 0
+        self.stage_sigs['enable'] = 0	
 
     def ensure_blocking(self):
         """
