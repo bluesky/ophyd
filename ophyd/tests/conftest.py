@@ -92,9 +92,7 @@ class FakeEpicsPV(object):
         if self._pvname in ('does_not_connect', ):
             return
 
-        self._connected = True
         last_value = None
-
         while self._running:
             with self._lock:
                 if self._update:
@@ -106,6 +104,7 @@ class FakeEpicsPV(object):
                     last_value = self._value
 
                 time.sleep(self._update_rate)
+            self._connected = True
 
             time.sleep(0.01)
 
