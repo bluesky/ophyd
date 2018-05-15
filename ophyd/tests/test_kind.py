@@ -142,7 +142,7 @@ def test_class_default_attrs_both_none():
         b = Component(Thing)
 
     th = ThingHaver(name='th')
-    assert set(['a', 'b'] +['a.a', 'a.b', 'b.a', 'b.b']) == set(th.read_attrs)
+    assert set(['a', 'b'] + ['a.a', 'a.b', 'b.a', 'b.b']) == set(th.read_attrs)
 
     # THIS IS ACTUALLY _NOT_ BACKWARD-COMPATIBLE BEHAVIOR!
     # But we consider the former behavior a bug. Unlike a Signal, a Device is
@@ -177,7 +177,7 @@ def test_default_read_attrs_empty_and_configuration_attrs_none():
     th = ThingHaver(name='th')
     assert set() == set(th.read_attrs)
     assert [] == list(th.describe())
-    assert set('ab') == set(th.configuration_attrs)
+    assert set() == set(th.configuration_attrs)
     assert [] == list(th.describe_configuration())
 
 
@@ -243,7 +243,6 @@ def test_all_components_escape_hatch():
         _default_read_attrs = ALL_COMPONENTS
         _default_configuration_attrs = []
         c = Component(Signal)
-
 
     t = ThingEscapeHatch(name='t')
     assert set('abc') == set(t.read_attrs)
@@ -366,3 +365,75 @@ def test_ddc():
     assert th.a.A.kind & Kind.normal
     assert th.a.kind & Kind.normal
     assert th.kind & Kind.normal
+
+
+def test_no_lazy():
+    class Thing(Device):
+        a = Component(Signal, kind=Kind.omitted)
+        b = Component(Signal, kind=Kind.config)
+        c = Component(Signal, kind=Kind.normal)
+        d = Component(Signal, kind=Kind.hinted)
+
+    class ThingHaver(Device):
+        A = Component(Thing, kind=Kind.omitted)
+        B = Component(Thing, kind=Kind.config)
+        C = Component(Thing, kind=Kind.normal)
+
+    th = ThingHaver(name='th')
+    assert set('ABC') == set(th._signals)
+    for k in 'ABC':
+        assert k in th._signals
+        assert set('abcd') == set(getattr(th, k)._signals)
+
+
+def test_some_lazy():
+    class Thing(Device):
+        a = Component(Signal, kind=Kind.omitted)
+        b = Component(Signal, kind=Kind.config)
+        c = Component(Signal, kind=Kind.normal, lazy=True)
+        d = Component(Signal, kind=Kind.hinted, lazy=True)
+
+    class ThingHaver(Device):
+        A = Component(Thing, kind=Kind.omitted, lazy=True)
+        B = Component(Thing, kind=Kind.config)
+        C = Component(Thing, kind=Kind.normal)
+
+    th = ThingHaver(name='th')
+    assert set('BC') == set(th._signals)
+    for k in 'BC':
+        c = getattr(th, k)
+        assert set('ab') == set(c._signals)
+
+
+def test_all_lazy():
+    class Thing(Device):
+        a = Component(Signal, kind=Kind.omitted)
+        b = Component(Signal, kind=Kind.config)
+        c = Component(Signal, kind=Kind.normal, lazy=True)
+        d = Component(Signal, kind=Kind.hinted, lazy=True)
+
+    class ThingHaver(Device):
+        A = Component(Thing, kind=Kind.omitted, lazy=True)
+        B = Component(Thing, kind=Kind.config, lazy=True)
+        C = Component(Thing, kind=Kind.normal, lazy=True)
+
+    th = ThingHaver(name='th')
+    assert not th._signals
+
+
+def test_grand_child_breaks_lazy():
+    class Thing(Device):
+        a = Component(Signal, kind=Kind.omitted)
+        b = Component(Signal, kind=Kind.config)
+        c = Component(Signal, kind=Kind.normal, lazy=True)
+        d = Component(Signal, kind=Kind.hinted, lazy=True)
+
+    class ThingHaver(Device):
+        A = Component(Thing, kind=Kind.omitted, lazy=True)
+        B = Component(Thing, kind=Kind.config, lazy=True)
+        C = Component(Thing, kind=Kind.normal, lazy=True)
+
+    th = ThingHaver(name='th', read_attrs=['A.a', 'A.d'])
+    assert set('A') == set(th._signals)
+    A = th.A
+    assert set('ab') == set(A._signals)
