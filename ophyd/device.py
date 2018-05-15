@@ -1265,6 +1265,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         def __contains__(self, value):
             return getattr(self._parent, value).kind & self._kind
 
+        def __iter__(self):
+            yield from self.__internal_list()
+
         def __eq__(self, other):
             return list(self) == other
 
