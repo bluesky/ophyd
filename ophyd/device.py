@@ -169,6 +169,7 @@ class Component:
             arg_str = ', {}{}'.format(suffix_str, kw_str)
         else:
             arg_str = ''
+        arg_str += ', kind={}'.format(self.kind)
 
         return ('{self.__class__.__name__}({self.cls.__name__}{arg_str})'
                 ''.format(self=self, arg_str=arg_str))
