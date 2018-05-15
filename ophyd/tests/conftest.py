@@ -29,9 +29,6 @@ class FakeEpicsPV(object):
                  auto_monitor=True, enum_strs=None,
                  **kwargs):
 
-        # callbacks mechanism copied from pyepics
-        # ... but tweaked with a weakvaluedictionary so PV objects get
-        # destructed
         self.callbacks = dict()
 
         global _FAKE_PV_LIST
