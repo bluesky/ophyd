@@ -14,6 +14,7 @@ from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
                     doc_annotation_forwarder)
 
 from typing import Dict, List, Any, TypeVar, Tuple
+from types import SimpleNamespace
 from collections.abc import MutableSequence
 from itertools import groupby
 
@@ -122,7 +123,7 @@ class Component:
         '''Create a component for the instance'''
         kwargs = self.kwargs.copy()
         kwargs['name'] = '{}_{}'.format(instance.name, self.attr)
-        kwargs['kind'] = self.kind
+        kwargs['kind'] = instance._initial_state[self.attr].kind
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
@@ -338,7 +339,8 @@ class DynamicDeviceComponent:
         cls = type(clsname, (Device, ), clsdict)
         return cls(instance.prefix,
                    name='{}_{}'.format(instance.name, self.attr),
-                   parent=instance, kind=self.kind)
+                   parent=instance,
+                   kind=instance._initial_state[self.attr].kind)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -737,7 +739,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                  parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
-
+        self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
+                               for k, cpt in self._sig_attrs.items()}
         self.prefix = prefix
         if self.component_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
@@ -1278,7 +1281,7 @@ def kind_context(kind):
 
 
 def _lazy_get(parent, name):
-    return parent._signals.get(name, parent._sig_attrs[name])
+    return parent._signals.get(name, parent._initial_state[name])
 
 
 def _ensure_kind(k):
