@@ -848,9 +848,9 @@ class SynAxisNoPosition(SynAxis):
         raise AttributeError
 
 
-def make_fake_class(cls):
+def make_fake_device(cls):
     """
-    Inspect cls and construct a fake class that has the same structure.
+    Inspect cls and construct a fake device that has the same structure.
 
     This works by replacing EpicsSignal with FakeEpicsSignal and EpicsSignalRO
     with FakeEpicsSignalRO. The fake class will be a subclass of the real
@@ -858,23 +858,25 @@ def make_fake_class(cls):
 
     This assumes that EPICS connections are done entirely in EpicsSignal and
     EpicsSignalRO subcomponents. If this is not true, this will fail silently
-    until the test.
+    on class construction and loudly when manipulating an object.
 
     Parameters
     ----------
-    cls: `ophyd.Device`
+    cls : Device
+        A real Device to inspect and create a fake device from
 
     Returns
     -------
-    fake_class: `ophyd.Device`
+    fake_device : Device
+        The resulting fake device
     """
     # Cache to avoid repeating work.
     # EpicsSignal and EpicsSignalRO begin in the cache.
-    if cls not in fake_class_cache:
+    if cls not in fake_device_cache:
         if not issubclass(cls, Device):
             # Ignore non-devices and non-epics-signals
             logger.debug('Ignore cls=%s, bases are %s', cls, cls.__bases__)
-            fake_class_cache[cls] = cls
+            fake_device_cache[cls] = cls
             return cls
         fake_dict = {}
         # Update all the components recursively
@@ -882,14 +884,14 @@ def make_fake_class(cls):
             cpt = getattr(cls, cpt_name)
             fake_cpt = copy.copy(cpt)
             if isinstance(cpt, Component):
-                fake_cpt.cls = make_fake_class(cpt.cls)
+                fake_cpt.cls = make_fake_device(cpt.cls)
                 logger.debug('switch cpt_name=%s to cls=%s',
                              cpt_name, fake_cpt.cls)
             # DDCpt stores the classes in a different place
             elif isinstance(cpt, DDC):
                 fake_defn = {}
                 for ddcpt_name, ddcpt_tuple in cpt.defn.items():
-                    subcls = make_fake_class(ddcpt_tuple[0])
+                    subcls = make_fake_device(ddcpt_tuple[0])
                     fake_defn[ddcpt_name] = [subcls] + list(ddcpt_tuple[1:])
                 fake_cpt.defn = fake_defn
             else:
@@ -899,9 +901,9 @@ def make_fake_class(cls):
                                     "to reach it.".format(cpt)))
             fake_dict[cpt_name] = fake_cpt
         fake_class = type('Fake{}'.format(cls.__name__), (cls,), fake_dict)
-        fake_class_cache[cls] = fake_class
-        logger.debug('fake_class_cache[%s] = %s', cls, fake_class)
-    return fake_class_cache[cls]
+        fake_device_cache[cls] = fake_class
+        logger.debug('fake_device_cache[%s] = %s', cls, fake_class)
+    return fake_device_cache[cls]
 
 
 class FakeEpicsSignal(Signal):
@@ -983,8 +985,8 @@ class FakeEpicsSignalRO(FakeEpicsSignal):
         raise ReadOnlyError()
 
 
-fake_class_cache = {EpicsSignal: FakeEpicsSignal,
-                    EpicsSignalRO: FakeEpicsSignalRO}
+fake_device_cache = {EpicsSignal: FakeEpicsSignal,
+                     EpicsSignalRO: FakeEpicsSignalRO}
 
 
 def hw():
