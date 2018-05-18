@@ -137,6 +137,9 @@ class SignalRO(Signal):
     def put(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
+    def set(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+
 
 class SynSignalRO(SignalRO, SynSignal):
     pass
