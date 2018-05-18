@@ -863,12 +863,12 @@ def make_fake_device(cls):
     Parameters
     ----------
     cls : Device
-        A real Device to inspect and create a fake device from
+        A real Device class to inspect and create a fake Device class from
 
     Returns
     -------
     fake_device : Device
-        The resulting fake device
+        The resulting fake Device class
     """
     # Cache to avoid repeating work.
     # EpicsSignal and EpicsSignalRO begin in the cache.
@@ -906,11 +906,20 @@ def make_fake_device(cls):
     return fake_device_cache[cls]
 
 
-class FakeEpicsSignal(Signal):
+class FakeEpicsSignal(SynSignal):
     """
-    Fake version of EpicsSignal that's really just a signal.
+    Fake version of EpicsSignal that's really just a SynSignal.
 
-    We can emulate EPICS features here. Currently we just emulate the put
+    Wheras SynSignal is generally used to test plans, FakeEpicsSignal is
+    generally used in conjunction with make_fake_device to test any logic
+    inside of a Device subclass.
+
+    Unlike in SynSignal, this class is generally instantiated inside of a
+    subcomponent generated automatically by make_fake_device. This means we
+    need extra hooks for modifying the signal's properties after the class
+    instantiates.
+
+    We can emulate EpicsSignal features here. Currently we just emulate the put
     limits because it was involved in a kwarg.
     """
     def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
@@ -921,29 +930,25 @@ class FakeEpicsSignal(Signal):
         """
         super().__init__(name=name, **kwargs)
         self._use_limits = limits
-        self._sim_getter = None
-        self._sim_putter = None
+        self._put_func = None
 
-    def sim_set_getter(self, getter):
+    def sim_set_func(self, func):
         """
-        Set a method to call instead of get
+        Update the SynSignal function to set a new value on trigger.
         """
-        self._sim_getter = getter
+        self._func = func
 
     def sim_set_putter(self, putter):
         """
-        Set a method to call instead of put
-        """
-        self._sim_putter = putter
+        Define arbirary behavior on signal put.
 
-    def get(self, *args, **kwargs):
-        if self._sim_getter:
-            return self._sim_getter(*args, **kwargs)
-        return super().get(*args, **kwargs)
+        This can be used to emulate basic IOC behavior.
+        """
+        self._put_func = putter
 
     def put(self, *args, **kwargs):
-        if self._sim_putter is not None:
-            return self._sim_putter(*args, **kwargs)
+        if self._put_func is not None:
+            return self._put_func(*args, **kwargs)
         return super().put(*args, **kwargs)
 
     def sim_put(self, *args, **kwargs):
@@ -959,7 +964,7 @@ class FakeEpicsSignal(Signal):
     def limits(self):
         return self._limits
 
-    def sim_limits(self, limits):
+    def sim_set_limits(self, limits):
         """
         Set the fake signal's limits.
         """
@@ -974,15 +979,11 @@ class FakeEpicsSignal(Signal):
             raise LimitError('value={} limits={}'.format(value, self.limits))
 
 
-class FakeEpicsSignalRO(FakeEpicsSignal):
+class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
     """
     Read-only FakeEpicsSignal
     """
-    def put(self, *args, **kwargs):
-        raise ReadOnlyError()
-
-    def set(self, *args, **kwargs):
-        raise ReadOnlyError()
+    pass
 
 
 fake_device_cache = {EpicsSignal: FakeEpicsSignal,
