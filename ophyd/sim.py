@@ -133,16 +133,13 @@ class SynSignal(Signal):
         return super().get()
 
 
-class SynSignalRO(SynSignal):
-    def put(self, value, *, timestamp=None, force=False):
-        raise NotImplementedError("The signal {} is readonly."
-                                  "".format(self.name))
-
-
 class SignalRO(Signal):
     def put(self, value, *, timestamp=None, force=False):
-        raise NotImplementedError("The signal {} is readonly."
-                                  "".format(self.name))
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+
+
+class SynSignalRO(SignalRO, SynSignal):
+    pass
 
 
 def periodic_update(ref, period, period_jitter):
