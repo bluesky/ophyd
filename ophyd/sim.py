@@ -627,8 +627,8 @@ class SynSignalWithRegistry(SynSignal):
 
     """
 
-    def __init__(self, *args, reg=DO_NOT_USE, save_path=None, save_func=np.save,
-                 save_spec='NPY_SEQ', save_ext='npy',
+    def __init__(self, *args, reg=DO_NOT_USE, save_path=None,
+                 save_func=np.save, save_spec='NPY_SEQ', save_ext='npy',
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.save_func = save_func
