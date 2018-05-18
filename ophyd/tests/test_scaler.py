@@ -102,3 +102,12 @@ def test_signal_separate():
     data = sca.read()
     assert 'scaler_channels_chan1' in data
     assert 'scaler_channels_chan2' not in data
+
+
+@using_fake_epics_pv
+def smoke_test_scalerCH():
+    sca = scaler.ScalerCH(scalers[0])
+    sca.wait_for_connection()
+    data = sca.read()
+    assert 'scaler_channels_chan1' in data
+    assert 'scaler_channels_chan2' not in data
