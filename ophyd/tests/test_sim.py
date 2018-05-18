@@ -173,7 +173,7 @@ def test_do_not_break_real_class():
 
 def test_fake_epics_signal():
     sig = FakeEpicsSignal('PVNAME', name='sig', limits=True)
-    sig.sim_limits((0, 10))
+    sig.set_sim_limits((0, 10))
     with pytest.raises(LimitError):
         sig.put(11)
     sig.put(4)
@@ -183,8 +183,6 @@ def test_fake_epics_signal():
     sig.sim_set_putter(lambda x: sig.sim_put(x + 1))
     sig.put(6)
     assert sig.get() == 7
-    sig.sim_set_getter(lambda: 2.3)
-    assert sig.get() == 2.3
 
 
 def test_fake_epics_signal_ro():
