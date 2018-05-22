@@ -73,6 +73,12 @@ class DetectorBase(ADBase):
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 
+    def collect_asset_docs(self):
+        file_plugins = [s for s in self._signals.values() if
+                        hasattr(s, 'collect_asset_docs')]
+        for p in file_plugins:
+            yield from p.collect_asset_docs()
+
 
 class AreaDetector(DetectorBase):
     cam = C(cam.AreaDetectorCam, 'cam1:')
