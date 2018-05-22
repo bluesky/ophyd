@@ -38,25 +38,36 @@ class DummyFS:
         self.datum = {}
         self.datum_by_resource = {}
 
-    def register_resource(self, spec, root, rpath, rkwargs,
-                          path_semantics=None):
-
-        uid = str(uuid.uuid4())
+    def insert_resource(self, spec, resource_path, resource_kwargs, root=None,
+                        path_semantics='posix', uid=None, run_start=None,
+                        ignore_duplicate_error=False):
         self.resource[uid] = {'spec': spec,
-                              'resource_path': rpath,
+                              'resource_path': resource_path,
                               'root': root,
-                              'resource_kwargs': rkwargs,
+                              'resource_kwargs': resource_kwargs,
                               'uid': uid,
                               'path_semantics': path_semantics}
         self.datum_by_resource[uid] = []
         return uid
 
+    def register_resource(self, spec, root, rpath, rkwargs,
+                          path_semantics='posix', run_start=None):
+
+        uid = str(uuid.uuid4())
+        return self.insert_resource(spec, rpath, rkwargs, root=root,
+                                    path_semantics=path_semantics,
+                                    uid=uid, run_start=run_start)
+
     def register_datum(self, resource_uid, datum_kwargs):
         datum_id = str(uuid.uuid4())
-        datum = {'resource': resource_uid,
+        return self.insert_datum(resource_uid, datum_id, datum_kwargs)
+
+    def insert_datum(self, resource, datum_id, datum_kwargs,
+                     ignore_duplicate_error=False):
+        datum = {'resource': resource,
                  'datum_id': datum_id,
                  'datum_kwargs': datum_kwargs}
-        self.datum_by_resource[resource_uid].append(datum)
+        self.datum_by_resource[resource].append(datum)
         self.datum[datum_id] = datum
         return datum_id
 
@@ -306,6 +317,7 @@ def test_default_configuration_attrs(plugin):
                           ))
 def test_fstiff_plugin(root, wpath, rpath, check_files):
     fs = DummyFS()
+    fs2 = DummyFS()
     if check_files:
         fh = pytest.importorskip('databroker.assets.handlers')
 
@@ -328,11 +340,18 @@ def test_fstiff_plugin(root, wpath, rpath, check_files):
     while not st.done:
         time.sleep(.1)
     reading = det.read()
+    for name, d in det.collect_asset_docs():
+        getattr(fs2, 'insert_{name}'.format(name=name))(**d)
     det.describe()
     det.unstage()
 
-    res_uid = fs.datum[reading['det_image']['value']]['resource']
+    datum_id = reading['det_image']['value']
+
+    res_uid = fs.datum[datum_id]['resource']
     res_doc = fs.resource[res_uid]
+    assert res_doc == fs2.resource[res_uid]
+    assert fs.datum[datum_id] == fs2.datum[datum_id]
+
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
     if check_files:
