@@ -5,7 +5,7 @@ from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
                Kind, kind_context)
 from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
                            ImagePlugin, StatsPlugin, DetectorBase,
-                           SingleTrigger)
+                           SingleTrigger, ADBase)
 from .status import DeviceStatus
 
 
@@ -17,6 +17,14 @@ def _current_fields(attr_base, field_base, range_, **kwargs):
         defn[attr] = (EpicsSignal, suffix, kwargs)
 
     return defn
+
+
+class QuadEMPort(ADBase):
+    port_name = Cpt(Signal, value='')
+
+    def __init__(self, port_name, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.port_name.put(port_name)
 
 
 class QuadEM(SingleTrigger, DetectorBase):
@@ -36,7 +44,7 @@ class QuadEM(SingleTrigger, DetectorBase):
                            kind='config')
     averaging_time = Cpt(EpicsSignalWithRBV, 'AveragingTime', kind='config')
     with kind_context('omitted') as OCpt:
-        port_name = OCpt(Signal, value='NSLS_EM')
+        conf = Cpt(QuadEMPort, port_name='NSLS_EM')
         model = OCpt(EpicsSignalRO, 'Model')
         firmware = OCpt(EpicsSignalRO, 'Firmware')
 
@@ -108,12 +116,12 @@ class QuadEM(SingleTrigger, DetectorBase):
 
 
 class NSLS_EM(QuadEM):
-    port_name = Cpt(Signal, value='NSLS_EM')
+    ...
 
 
 class TetrAMM(QuadEM):
-    port_name = Cpt(Signal, value='TetrAMM')
+    conf = Cpt(QuadEMPort, port_name='TetrAMM', kind='omitted')
 
 
 class APS_EM(QuadEM):
-    port_name = Cpt(Signal, value='APS_EM')
+    conf = Cpt(QuadEMPort, port_name='APS_EM', kind='omitted')
