@@ -1056,8 +1056,11 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def hints(self):
         fields = []
         for component_name in self.component_names:
-            component = getattr(self, component_name)
-            if Kind.normal & component.kind:
+            # Pick off the component's kind without instantiating it.
+            kind = _lazy_get(self, component_name).kind
+            if Kind.normal & kind:
+                # OK, we have to instantiate it.
+                component = getattr(self, component_name)
                 c_hints = component.hints
                 fields.extend(c_hints.get('fields', []))
         return {'fields': fields}
