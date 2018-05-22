@@ -99,6 +99,14 @@ def test_reading(quadem):
     assert (set(('value', 'timestamp')) ==
             set(vals['quadem_current1_mean_value'].keys()))
 
+    rc = quadem.read_configuration()
+    dc = quadem.describe_configuration()
+
+    assert quadem.averaging_time.name in rc
+    assert quadem.integration_time.name in rc
+
+    assert rc.keys() == dc.keys()
+
 
 @using_fake_epics_pv
 def test_hints(quadem):
