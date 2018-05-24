@@ -820,10 +820,15 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         # now look at everything else, presumably things with dots
         extra = val - cn
-        if any(c for c in extra if '.' not in c):
-            raise ValueError("You asked to set {c} as a configuration_attr "
-                             "on {self}, but there is no such (grand) child."
-                             .format(c=c, self=self))
+        fail = set(c for c in extra if '.' not in c)
+        if fail:
+
+            raise ValueError("You asked to add the components {fail} "
+                             "to {recurse_name} "
+                             "on {self.name!r}, but there is no such child in "
+                             "{self.component_names}."
+                             .format(fail=fail, self=self,
+                                     recurse_name=recurse_name))
         group = groupby(((child, rest)
                          for child, _, rest in (c.partition('.')
                                                 for c in extra)),
