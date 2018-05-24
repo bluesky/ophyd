@@ -36,6 +36,8 @@ Features
   section of these release notes. The existing implementation contained buggy
   and surprising behavior, and addressing that made breaking *something*
   unavoidable.
+* Added ``make_fake_device`` factory function that makes a Device out of
+  ``FakeEpicsSignal`` based on a Device that has real signals.
 * Add ``sum_all`` component to QuadEM.
 
 Bug Fixes
@@ -48,6 +50,7 @@ Bug Fixes
   This causes issues when the ``.get`` method tries to fill the ``DeviceTuple``.
 * Add new ``ad_root`` ("area detector root") to remove the accidental
   assumption that ``ADBase`` is the root ancestor Device of all its subclasses.
+* ``ad_group`` generates Components that are lazy by default.
 
 Deprecations
 ************
