@@ -77,6 +77,7 @@ class ADComponent(Component):
 def ad_group(cls, attr_suffix, **kwargs):
     '''Definition creation for groups of signals in areadetectors'''
     defn = OrderedDict()
+    kwargs.setdefault('lazy', True)
     for attr, suffix in attr_suffix:
         defn[attr] = (cls, suffix, kwargs)
     return defn

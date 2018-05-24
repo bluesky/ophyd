@@ -8,7 +8,7 @@ logger.addHandler(logging.NullHandler())
 cl = None
 
 
-def set_cl(control_layer=None):
+def set_cl(control_layer=None, *, pv_telemetry=False):
     global cl
     known_layers = ('pyepics', 'caproto', 'dummy')
 
@@ -42,6 +42,21 @@ def set_cl(control_layer=None):
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})
     cl.setup(logger)
+    if pv_telemetry:
+        from functools import wraps
+        from collections import Counter
+
+        def decorate_get_pv(func):
+            c = Counter()
+
+            @wraps(func)
+            def get_pv(pvname, *args, **kwargs):
+                c[pvname] += 1
+                return func(pvname, *args, **kwargs)
+            get_pv.counter = c
+            return get_pv
+
+        cl.get_pv = decorate_get_pv(cl.get_pv)
 
 
 def get_cl():
