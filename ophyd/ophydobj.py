@@ -68,6 +68,8 @@ class OphydObject:
         # base name and ref to parent, these go with properties
         if name is None:
             name = ''
+        if not isinstance(name, str):
+            raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
 
