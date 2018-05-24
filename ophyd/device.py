@@ -835,8 +835,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                         lambda x: x[0])
         # we are into grand-children, can not be lazy!
         for child, cf_list in group:
-            getattr(self, child).kind |= set_kind
-            setattr(getattr(self, child),
+            cpt = getattr(self, child)
+            cpt.kind |= set_kind
+            setattr(cpt,
                     recurse_name,
                     [c[1] for c in cf_list])
 
