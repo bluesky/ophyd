@@ -157,8 +157,10 @@ class Component:
         return '\n'.join(doc)
 
     def __repr__(self):
-        kw_str = ', '.join('{}={!r}'.format(k, v)
-                           for k, v in self.kwargs.items())
+      
+        kw_str = ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items() \
+                           if k not in ['read_attrs','configuration_attrs'])
+                           
         if self.suffix is not None:
             suffix_str = '{!r}'.format(self.suffix)
             if self.kwargs:
