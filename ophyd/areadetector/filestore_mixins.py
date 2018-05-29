@@ -95,6 +95,7 @@ def resource_factory(spec, root, resource_path, resource_kwargs,
         datum_id = '{}/{}'.format(resource_uid, i)
         datum = {'resource': resource_uid,
                  'datum_id': datum_id,
+                 'uid': datum_id,
                  'datum_kwargs': datum_kwargs}
 
         return datum
@@ -344,9 +345,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                 datum_kwargs=datum['datum_kwargs'],
                 resource_uid=datum['resource'])
             datum['datum_id'] = datum_id
+            datum['uid'] = datum_id
         else:
             datum = self._datum_factory(datum_kwargs)
-            datum_id = datum['datum_id']
+            datum_id = datum['uid']
 
         self._asset_docs_cache.append(('datum', datum))
         reading = {'value': datum_id, 'timestamp': timestamp}
