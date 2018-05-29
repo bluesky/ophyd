@@ -1052,12 +1052,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 res.update(component.describe_configuration())
         return res
 
-    def ETA(cmd, val_dict = None, vals = None):
-        '''Calculates and estimated time to perform a specific action.
-
-        This  
-        
-        '''
 
     @property
     def hints(self):
