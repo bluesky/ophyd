@@ -67,9 +67,6 @@ class EstTime:
             dictionary val_dict['set'], and optionally the number of times since the last trigger, 
             in the dictionary val_dict['trigger']. Each of these dictionaries have the object name 
             as keywords and the values are stated above. Default value is empty dict.
-        vals: list, optional.
-            A list of any required input parameters for this command, it matches the structure
-            of the msg.arg list from a plan message. Default value is empty list.
 
         RETURNS
         -------
@@ -79,20 +76,22 @@ class EstTime:
        '''
         
         try:
-            method = getattr(self, cmd) #raise exception if obj.est_time.'cmd' exists
+            method = getattr(self.obj.est_time, cmd )
         except AttributeError:
-            print ('There is no obj.est_time."cmd" attribute')
-        return method(val_dict = val_dict, vals = vals) #return est_time using obj.est_time.'cmd'
+            print (f'There is no {self.obj.name}.est_time.{cmd} attribute') 
+            raise
+
+        return method(val_dict = val_dict, vals = vals)
 
 
-    def set(self, val_dict = {}):
+    def set(self, val_dict = {}, vals = []):
         '''Estimates the time (est_time) to perform 'set' on this object.
                 
         This method returns an estimated time (est_time) to perform set between the position 
         specifed in val_dict and the position defined in vals[0]. If statistics for this action, 
         and any configuration values found in val_dict, exist it uses mean values and works out 
         a standard deviation (std_dev) otherwise it uses the current value (or the value from 
-        val_dict['set'] if that is different) to determine an est_time and returns NaN for the 
+        val_dict['set'] if that is different) to determine an est_time and returns float('nan') for the 
         std_dev.
 
         PARAMETERS
@@ -102,16 +101,28 @@ class EstTime:
             dictionary val_dict['set'], and optionally the number of times since the last 
             trigger, in the dictionary val_dict['trigger']. Each of these dictionaries have the 
             object name as keywords and the values are stated above. Default value is empty dict.
+        vals: list, optional.
+            A list of any required input parameters for this command, it matches the structure
+            of the msg.arg list from a plan message. Default value is empty list.
 
         RETURNS
         -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
+        out_est_time: list.
+            A list containing the est_time as the first element and the std_dev as the second 
             element.
+        val_dict: dict
+            A possibly updated version of the input dictionary
         '''
 
         inputs = {}
-        out_est_time=(Nan, Nan)
+        out_est_time=[float('nan'), float('nan')]
+
+        try:
+            stats = getattr(self.obj, 'stats') #raise exception if obj.est_time.'cmd' exists
+        except AttributeError:
+            print (f'There is no {self.obj.name}.stats attribute')
+            raise
+
         
         if hasattr(self.obj, 'velocity') and hasattr(self.obj, 'settle_time'):
             if self.obj.name in list(val_dict['set'].keys()):
@@ -133,7 +144,7 @@ class EstTime:
                     + inputs['distance'] / (stats_dict['velocity'][0] - stats_dict['velocity'][1])))
             else:
                 est_time = inputs['settle_time'] + inputs['distance'] / inputs['velocity']
-                std_dev = NaN
+                std_dev = float('nan')
             out_est_time[0] = est_time
             out_est_time[1] = std_dev
         else:
@@ -142,18 +153,19 @@ class EstTime:
                 out_est_time[0] = stats_dict['set'][0]
                 out_est_time[1] = stats_dict['set'][1]
             else:
-                out_est_time = (0, NaN)
-        return out_est_time
+                out_est_time = [0, float('nan')]
+
+        return out_est_time, val_dict
 
 
-    def trigger(self, val_dict = {}):
+    def trigger(self, val_dict = {}, vals = []):
         '''Estimates the time (est_time) to perform 'trigger' on this object.
                 
         This method returns an estimated time (est_time) to perform trigger. If statistics for 
         this action, and any configuration values found in val_dict, exist it uses mean values 
         and works out a standard deviation (std_dev) otherwise it uses the current value (or 
         the value from val_dict['set'] if that is different) to determine an est_time and 
-        returns NaN for the std_dev.
+        returns float('nan') for the std_dev.
 
         PARAMETERS
         ----------
@@ -162,16 +174,30 @@ class EstTime:
             dictionary val_dict['set'], and optionally the number of times since the last trigger, 
             in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
             name as keywords and the values are stated above. Default value is empty dict.
-
+        vals: list, optional.
+            A list of any required input parameters for this command, it matches the structure
+            of the msg.arg list from a plan message. Default value is empty list.
+        
         RETURNS
         -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
+        out_est_time: list.
+            A list containing the est_time as the first element and the std_dev as the second 
             element.
+
+        val_dict: dict
+            A possibly updated version of the input dictionary
+
         '''
 
         inputs = {}
-        out_est_time = (NaN, NaN)
+        out_est_time = [float('nan'), float('nan')]
+
+        try:
+            stats = getattr(self.obj, 'stats') #raise exception if obj.est_time.'cmd' exists
+        except AttributeError:
+            print (f'There is no {self.obj.name}.stats attribute')
+            raise
+
 
         if hasattr(self.obj, 'num_images') and ( hasattr(self.obj, 'acquire_period') or
                                                 hasattr(self.obj, 'acquire_time')):
@@ -199,9 +225,9 @@ class EstTime:
                                     stats_dict[ params[0] ][1]))
             else:
                 est_time = inputs['num_acquire'] * inputs[ params[0] ]
-                std_dev = NaN
+                std_dev = float('nan')
 
-            out_est_time = (est_time, std_dev)
+            out_est_time = [est_time, std_dev]
 
         else:
             stats_dict = stats('trigger', {} ) #assume the trigger is not "Area Det. like".
@@ -209,19 +235,19 @@ class EstTime:
                 out_est_time[0] = stats_dict['trigger'][0]
                 out_est_time[1] = stats_dict['trigger'][1]
             else:
-                out_est_time = (0, NaN)
+                out_est_time = [0, float('nan')]
 
-        return out_est_time
+        return out_est_time, val_dict
 
 
-    def stage(self, val_dict = {}):
+    def stage(self, val_dict = {}, vals = []):
         '''Estimates the time (est_time) to perform 'stage' on this object.
                 
         This method returns an estimated time (est_time) to perform stage. If statistics for 
         this action, and any configuration values found in val_dict, exist it uses mean values 
         and works out a standard deviation (std_dev) otherwise it uses the current value (or 
         the value from val_dict['set'] if that is different) to determine an est_time and 
-        returns NaN for the std_dev.
+        returns float('nan') for the std_dev.
 
         PARAMETERS
         ----------
@@ -230,33 +256,46 @@ class EstTime:
             dictionary val_dict['set'], and optionally the number of times since the last trigger, 
             in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
             name as keywords and the values are stated above. Default value is empty dict.
-
+        vals: list, optional.
+            A list of any required input parameters for this command, it matches the structure
+            of the msg.arg list from a plan message. Default value is empty list.
+        
         RETURNS
         -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
+        out_est_time: list.
+            A list containing the est_time as the first element and the std_dev as the second 
             element.
+        val_dict: dict
+            A possibly updated version of the input dictionary
+
         '''
-        out_est_time = (NaN, NaN)
+        out_est_time = [float('nan'), float('nan')]
+
+        try:
+            stats = getattr(self.obj, 'stats') #raise exception if obj.est_time.'cmd' exists
+        except AttributeError:
+            print (f'There is no {self.obj.name}.stats attribute')
+            raise
+
 
         stats_dict = stats('stage', {} ) 
         if stats_dict:
             out_est_time[0] = stats_dict['stage'][0]
             out_est_time[1] = stats_dict['stage'][1]
         else:
-            out_est_time = (0, NaN)
+            out_est_time = [0, float('nan')]
 
-        return out_est_time
+        return out_est_time, val_dict
 
 
-    def unstage(self, val_dict = {}):
+    def unstage(self, val_dict = {}, vals = []):
         '''Estimates the time (est_time) to perform 'unstage' on this object.
                 
         This method returns an estimated time (est_time) to perform unstage. If statistics for 
         this action, and any configuration values found in val_dict, exist it uses mean values 
         and works out a standard deviation (std_dev) otherwise it uses the current value (or 
         the value from val_dict['set'] if that is different) to determine an est_time and 
-        returns NaN for the std_dev.
+        returns float('nan') for the std_dev.
 
         PARAMETERS
         ----------
@@ -265,25 +304,36 @@ class EstTime:
             dictionary val_dict['set'], and optionally the number of times since the last trigger, 
             in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
             name as keywords and the values are stated above. Default value is empty dict.
+        vals: list, optional.
+            A list of any required input parameters for this command, it matches the structure
+            of the msg.arg list from a plan message. Default value is empty list.
 
         RETURNS
         -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
+        out_est_time: list.
+            A list containing the est_time as the first element and the std_dev as the second 
             element.
+        val_dict: dict
+            A possibly updated version of the input dictionary
+
         '''
-        out_est_time = (NaN, NaN)
+        out_est_time = [float('nan'), float('nan')]
+
+        try:
+            stats = getattr(self.obj, 'stats') #raise exception if obj.est_time.'cmd' exists
+        except AttributeError:
+            print (f'There is no {self.obj.name}.stats attribute')
+            raise
+
 
         stats_dict = stats('unstage', {} ) 
         if stats_dict:
             out_est_time[0] = stats_dict['unstage'][0]
             out_est_time[1] = stats_dict['unstage'][1]
         else:
-            out_est_time = (0, NaN)
+            out_est_time = [0, float('nan')]
 
-        return out_est_time
-
-
+        return out_est_time, val_dict
 
 
 
