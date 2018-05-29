@@ -31,6 +31,262 @@ class UnknownSubscription(KeyError):
     ...
 
 
+class EstTime:
+    '''The base class for the time estimation on all OphydObjs.
+
+    This is uses to allow the devices to provide an estimate of how long it takes to perform 
+    specific commands on them via the addition of obj.est_time and obj.est_time.cmd methods 
+    attributes. This must also interact with the 'stats' methods in order to use time statistics
+    if they exist to improve the time estimation.
+
+    Attributes
+    ----------
+    'cmd', method. 
+        A method that returns the estimated time it takes to perfomr 'cmd' on the device. (where 
+        'cmd' is the name of any message command that can be applied to the device).
+    '''
+
+    def __init__(self, obj):
+        '''The initialization method.
+
+        Parameters
+        ----------
+        obj, object
+            The object that this class is being instantiated on.
+        '''
+        self.obj = obj
+
+    def __call__(self, cmd, val_dict = {}, vals = []):
+        '''
+        PARAMETERS
+        ----------
+        cmd, str.
+    
+        val_dict: dict, optional.
+            A dictionary containing any values that are to override the current values, in the 
+            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
+            in the dictionary val_dict['trigger']. Each of these dictionaries have the object name 
+            as keywords and the values are stated above. Default value is empty dict.
+        vals: list, optional.
+            A list of any required input parameters for this command, it matches the structure
+            of the msg.arg list from a plan message. Default value is empty list.
+
+        RETURNS
+        -------
+        out_est_time: tuple.
+            A tuple containing the estimated time (est_time) as the first element and the  standard
+            deviation (std_dev) as the second element.  
+       '''
+        
+        try:
+            method = getattr(self, cmd) #raise exception if obj.est_time.'cmd' exists
+        except AttributeError:
+            print ('There is no obj.est_time."cmd" attribute')
+        return method(val_dict = val_dict, vals = vals) #return est_time using obj.est_time.'cmd'
+
+
+    def set(self, val_dict = {}):
+        '''Estimates the time (est_time) to perform 'set' on this object.
+                
+        This method returns an estimated time (est_time) to perform set between the position 
+        specifed in val_dict and the position defined in vals[0]. If statistics for this action, 
+        and any configuration values found in val_dict, exist it uses mean values and works out 
+        a standard deviation (std_dev) otherwise it uses the current value (or the value from 
+        val_dict['set'] if that is different) to determine an est_time and returns NaN for the 
+        std_dev.
+
+        PARAMETERS
+        ----------
+        val_dict: dict, optional.
+            A dictionary containing any values that are to override the current values, in the 
+            dictionary val_dict['set'], and optionally the number of times since the last 
+            trigger, in the dictionary val_dict['trigger']. Each of these dictionaries have the 
+            object name as keywords and the values are stated above. Default value is empty dict.
+
+        RETURNS
+        -------
+        out_est_time: tuple.
+            A tuple containing the est_time as the first element and the std_dev as the second 
+            element.
+        '''
+
+        inputs = {}
+        out_est_time=(Nan, Nan)
+        
+        if hasattr(self.obj, 'velocity') and hasattr(self.obj, 'settle_time'):
+            if self.obj.name in list(val_dict['set'].keys()):
+                inputs['distance'] = abs(val_dict['set']['self.object.name'] - val[0])
+            else:
+                inputs['distance'] = abs(self.obj.position() - val[0])
+            
+            for value in ['velocity', 'settle_time']: # the calculation arguments
+                if value in list(val_dict['set'].keys()):
+                    inputs[value] = val_dict['set'][value]
+                elif hasattr(self.obj, value):
+                    inputs[value] = getattr(self.obj, value).position()
+
+            stats_dict = stats( 'set', inputs)
+            if stats_dict:
+                est_time = (stats_dict['settle_time'][0] + 
+                            inputs['distance'] / stats_dict['velocity'][0] )
+                std_dev = (abs(est_time - (stats_dict['settle_time'][0] - stats_dict['settle_time'][1]) 
+                    + inputs['distance'] / (stats_dict['velocity'][0] - stats_dict['velocity'][1])))
+            else:
+                est_time = inputs['settle_time'] + inputs['distance'] / inputs['velocity']
+                std_dev = NaN
+            out_est_time[0] = est_time
+            out_est_time[1] = std_dev
+        else:
+            stats_dict = stats('set', {'position' : val[0] } ) #assume the set is not "motor like".
+            if stats_dict:
+                out_est_time[0] = stats_dict['set'][0]
+                out_est_time[1] = stats_dict['set'][1]
+            else:
+                out_est_time = (0, NaN)
+        return out_est_time
+
+
+    def trigger(self, val_dict = {}):
+        '''Estimates the time (est_time) to perform 'trigger' on this object.
+                
+        This method returns an estimated time (est_time) to perform trigger. If statistics for 
+        this action, and any configuration values found in val_dict, exist it uses mean values 
+        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
+        the value from val_dict['set'] if that is different) to determine an est_time and 
+        returns NaN for the std_dev.
+
+        PARAMETERS
+        ----------
+        val_dict: dict, optional.
+            A dictionary containing any values that are to override the current values, in the 
+            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
+            in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
+            name as keywords and the values are stated above. Default value is empty dict.
+
+        RETURNS
+        -------
+        out_est_time: tuple.
+            A tuple containing the est_time as the first element and the std_dev as the second 
+            element.
+        '''
+
+        inputs = {}
+        out_est_time = (NaN, NaN)
+
+        if hasattr(self.obj, 'num_images') and ( hasattr(self.obj, 'acquire_period') or
+                                                hasattr(self.obj, 'acquire_time')):
+            if 'trigger_mode' in list(val_dict['set'].keys()):
+                trigger_mode = val_dict['set']['trigger_mode']
+            else:
+                trigger_mode = self.obj.trigger_mode
+
+            if trigger_mode is 'fixed_mode':
+                params = [ acquire_period, num_acquire ]
+            else:
+                params = [ acquire_time, num_acquire ] 
+
+            for value in params: # the calculation arguments
+                if value in list(val_dict['set'].keys()):
+                    inputs[value] = val_dict['set'][value]
+                elif hasattr(self.obj, value):
+                    inputs[value] = getattr(self.obj, value).position()
+
+            stats_dict = stats( 'trigger', inputs)
+            if stats_dict:
+                est_time = stats_dict['num_acquire'][0] * stats_dict[ params[0] ][0]
+                std_dev = abs( est_time - (stats_dict['num_acquire'][0] - \
+                        stats_dict['num_acquire'][1]) * (stats_dict[ params[0] ][0] - \
+                                    stats_dict[ params[0] ][1]))
+            else:
+                est_time = inputs['num_acquire'] * inputs[ params[0] ]
+                std_dev = NaN
+
+            out_est_time = (est_time, std_dev)
+
+        else:
+            stats_dict = stats('trigger', {} ) #assume the trigger is not "Area Det. like".
+            if stats_dict:
+                out_est_time[0] = stats_dict['trigger'][0]
+                out_est_time[1] = stats_dict['trigger'][1]
+            else:
+                out_est_time = (0, NaN)
+
+        return out_est_time
+
+
+    def stage(self, val_dict = {}):
+        '''Estimates the time (est_time) to perform 'stage' on this object.
+                
+        This method returns an estimated time (est_time) to perform stage. If statistics for 
+        this action, and any configuration values found in val_dict, exist it uses mean values 
+        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
+        the value from val_dict['set'] if that is different) to determine an est_time and 
+        returns NaN for the std_dev.
+
+        PARAMETERS
+        ----------
+        val_dict: dict, optional.
+            A dictionary containing any values that are to override the current values, in the 
+            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
+            in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
+            name as keywords and the values are stated above. Default value is empty dict.
+
+        RETURNS
+        -------
+        out_est_time: tuple.
+            A tuple containing the est_time as the first element and the std_dev as the second 
+            element.
+        '''
+        out_est_time = (NaN, NaN)
+
+        stats_dict = stats('stage', {} ) 
+        if stats_dict:
+            out_est_time[0] = stats_dict['stage'][0]
+            out_est_time[1] = stats_dict['stage'][1]
+        else:
+            out_est_time = (0, NaN)
+
+        return out_est_time
+
+
+    def unstage(self, val_dict = {}):
+        '''Estimates the time (est_time) to perform 'unstage' on this object.
+                
+        This method returns an estimated time (est_time) to perform unstage. If statistics for 
+        this action, and any configuration values found in val_dict, exist it uses mean values 
+        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
+        the value from val_dict['set'] if that is different) to determine an est_time and 
+        returns NaN for the std_dev.
+
+        PARAMETERS
+        ----------
+        val_dict: dict, optional.
+            A dictionary containing any values that are to override the current values, in the 
+            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
+            in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
+            name as keywords and the values are stated above. Default value is empty dict.
+
+        RETURNS
+        -------
+        out_est_time: tuple.
+            A tuple containing the est_time as the first element and the std_dev as the second 
+            element.
+        '''
+        out_est_time = (NaN, NaN)
+
+        stats_dict = stats('unstage', {} ) 
+        if stats_dict:
+            out_est_time[0] = stats_dict['unstage'][0]
+            out_est_time[1] = stats_dict['unstage'][1]
+        else:
+            out_est_time = (0, NaN)
+
+        return out_est_time
+
+
+
+
+
 class OphydObject:
     '''The base class for all objects in Ophyd
 
@@ -366,7 +622,7 @@ class OphydObject:
 
 
 
-    def stats(self, cmd, inputs)
+    def stats(self, cmd, inputs):
         '''This is at present a dummy method to test that the est_time stuff below works, at 
         present it just returns {}. Eventually it should take in the cmd type and the inputs 
         dictionary containing any required values, pass these through to the _attribute 
@@ -379,259 +635,6 @@ class OphydObject:
         '''
         stats_dict={}
         return stats_dict
-
-class EstTime:
-    '''The base class for the time estimation on all OphydObjs.
-
-    This is uses to allow the devices to provide an estimate of how long it takes to perform 
-    specific commands on them via the addition of obj.est_time and obj.est_time.cmd methods 
-    attributes. This must also interact with the 'stats' methods in order to use time statistics
-    if they exist to improve the time estimation.
-
-    Attributes
-    ----------
-    'cmd', method. 
-        A method that returns the estimated time it takes to perfomr 'cmd' on the device. (where 
-        'cmd' is the name of any message command that can be applied to the device).
-    '''
-
-    def __init__(self, obj):
-        '''The initialization method.
-
-        Parameters
-        ----------
-        obj, object
-            The object that this class is being instantiated on.
-        '''
-        self.obj = obj
-
-    def __call__(self, cmd, val_dict = {}, vals = [])
-        '''
-        PARAMETERS
-        ----------
-        cmd, str.
-    
-        val_dict: dict, optional.
-            A dictionary containing any values that are to override the current values, in the 
-            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
-            in the dictionary val_dict['trigger']. Each of these dictionaries have the object name 
-            as keywords and the values are stated above. Default value is empty dict.
-        vals: list, optional.
-            A list of any required input parameters for this command, it matches the structure
-            of the msg.arg list from a plan message. Default value is empty list.
-
-        RETURNS
-        -------
-        out_est_time: tuple.
-            A tuple containing the estimated time (est_time) as the first element and the  standard
-            deviation (std_dev) as the second element.  
-       '''
-        
-        try:
-            method = getattr(self, cmd) #raise exception if obj.est_time.'cmd' exists
-        except:
-
-        return method(val_dict = val_dict, vals = vals) #return est_time using obj.est_time.'cmd'
-
-
-    def set(self, val_dict = {}):
-        '''Estimates the time (est_time) to perform 'set' on this object.
-                
-        This method returns an estimated time (est_time) to perform set between the position 
-        specifed in val_dict and the position defined in vals[0]. If statistics for this action, 
-        and any configuration values found in val_dict, exist it uses mean values and works out 
-        a standard deviation (std_dev) otherwise it uses the current value (or the value from 
-        val_dict['set'] if that is different) to determine an est_time and returns NaN for the 
-        std_dev.
-
-        PARAMETERS
-        ----------
-        val_dict: dict, optional.
-            A dictionary containing any values that are to override the current values, in the 
-            dictionary val_dict['set'], and optionally the number of times since the last 
-            trigger, in the dictionary val_dict['trigger']. Each of these dictionaries have the 
-            object name as keywords and the values are stated above. Default value is empty dict.
-
-        RETURNS
-        -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
-            element.
-        '''
-
-        inputs = {}
-        out_est_time=(Nan, Nan)
-        
-        if hasattr(self.obj, 'velocity') and hasattr(self.obj, 'settle_time'):
-            if self.obj.name in list(val_dict['set'].keys()):
-                inputs['distance'] = abs(val_dict['set']['self.object.name'] - val[0])
-            else:
-                inputs['distance'] = abs(self.obj.position() - val[0])
-            
-            for value in ['velocity', 'settle_time']: # the calculation arguments
-                if value in list(val_dict['set'].keys()):
-                    inputs[value] = val_dict['set'][value]
-                elif hasattr(self.obj, value):
-                    inputs[value] = getattr(self.obj, value).position()
-
-            stats_dict = stats( 'set', inputs)
-            if stats_dict:
-                est_time = stats_dict['settle_time'][0] + 
-                            inputs['distance'] / stats_dict['velocity'][0] 
-                std_dev = abs(est_time - (stats_dict['settle_time'[0] - stats_dict['settle_time'][1] +
-                        inputs['distance'] / (stats_dict['velocity'][0] - stats_dict['velocity'][1])))
-            else:
-                est_time = inputs['settle_time'] + inputs['distance'] / inputs['velocity']
-                std_dev = NaN
-            out_est_time[0] = est_time
-            out_est_time[1] = std_dev
-        else:
-            stats_dict = stats('set', {'position' : val[0] } ) #assume the set is not "motor like".
-            if stats_dict:
-                out_est_time[0] = stats_dict['set'][0]
-                out_est_time[1] = stats_dict['set'][1]
-            else:
-                out_est_time = (0, NaN)
-        return out_est_time
-
-
-    def trigger(self, val_dict = {}):
-        '''Estimates the time (est_time) to perform 'trigger' on this object.
-                
-        This method returns an estimated time (est_time) to perform trigger. If statistics for 
-        this action, and any configuration values found in val_dict, exist it uses mean values 
-        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
-        the value from val_dict['set'] if that is different) to determine an est_time and 
-        returns NaN for the std_dev.
-
-        PARAMETERS
-        ----------
-        val_dict: dict, optional.
-            A dictionary containing any values that are to override the current values, in the 
-            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
-            in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
-            name as keywords and the values are stated above. Default value is empty dict.
-
-        RETURNS
-        -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
-            element.
-        '''
-
-        inputs = {}
-        out_est_time = (NaN, NaN)
-
-        if hasattr(self.obj, 'num_images') and ( hasattr(self.obj, 'acquire_period') or
-                                                hasattr(self.obj, 'acquire_time')):
-            if 'trigger_mode' in list(val_dict['set'].keys()):
-                trigger_mode = val_dict['set']['trigger_mode']
-            else:
-                trigger_mode = self.obj.trigger_mode
-
-            if trigger_mode is 'fixed_mode':
-                params = [ acquire_period, num_acquire ]
-            else:
-                params = [ acquire_time, num_acquire ] 
-
-            for value in params: # the calculation arguments
-                if value in list(val_dict['set'].keys()):
-                    inputs[value] = val_dict['set'][value]
-                elif hasattr(self.obj, value):
-                    inputs[value] = getattr(self.obj, value).position()
-
-            stats_dict = stats( 'trigger', inputs)
-            if stats_dict:
-                est_time = stats_dict[‘num_acquire’][0] * stats_dict[ params[0] ][0]
-                std_dev = abs( est_time - (stats_dict[‘num_acquire’][0] - \
-                        stats_dict[‘num_acquire’][1]) * (stats_dict[ params[0] ][0] - \
-                                    stats_dict[ params[0] ][1])
-            else:
-                est_time = inputs[‘num_acquire’] * inputs[ params[0] ]
-                std_dev = NaN
-
-            out_est_time = (est_time, std_dev)
-
-        else:
-            stats_dict = stats('trigger', {} ) #assume the trigger is not "Area Det. like".
-            if stats_dict:
-                out_est_time[0] = stats_dict['trigger'][0]
-                out_est_time[1] = stats_dict['trigger'][1]
-            else:
-                out_est_time = (0, NaN)
-
-        return out_est_time
-
-
-    def stage(self, val_dict = {}):
-        '''Estimates the time (est_time) to perform 'stage' on this object.
-                
-        This method returns an estimated time (est_time) to perform stage. If statistics for 
-        this action, and any configuration values found in val_dict, exist it uses mean values 
-        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
-        the value from val_dict['set'] if that is different) to determine an est_time and 
-        returns NaN for the std_dev.
-
-        PARAMETERS
-        ----------
-        val_dict: dict, optional.
-            A dictionary containing any values that are to override the current values, in the 
-            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
-            in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
-            name as keywords and the values are stated above. Default value is empty dict.
-
-        RETURNS
-        -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
-            element.
-        '''
-        out_est_time = (NaN, NaN)
-
-        stats_dict = stats('stage', {} ) 
-        if stats_dict:
-            out_est_time[0] = stats_dict['stage'][0]
-            out_est_time[1] = stats_dict['stage'][1]
-        else:
-            out_est_time = (0, NaN)
-
-        return out_est_time
-
-
-    def unstage(self, val_dict = {}):
-        '''Estimates the time (est_time) to perform 'unstage' on this object.
-                
-        This method returns an estimated time (est_time) to perform unstage. If statistics for 
-        this action, and any configuration values found in val_dict, exist it uses mean values 
-        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
-        the value from val_dict['set'] if that is different) to determine an est_time and 
-        returns NaN for the std_dev.
-
-        PARAMETERS
-        ----------
-        val_dict: dict, optional.
-            A dictionary containing any values that are to override the current values, in the 
-            dictionary val_dict['set'], and optionally the number of times since the last trigger, 
-            in the dictionary val_dict['trigger']. Each of these dictionaries have the object 
-            name as keywords and the values are stated above. Default value is empty dict.
-
-        RETURNS
-        -------
-        out_est_time: tuple.
-            A tuple containing the est_time as the first element and the std_dev as the second 
-            element.
-        '''
-        out_est_time = (NaN, NaN)
-
-        stats_dict = stats('unstage', {} ) 
-        if stats_dict:
-            out_est_time[0] = stats_dict['unstage'][0]
-            out_est_time[1] = stats_dict['unstage'][1]
-        else:
-            out_est_time = (0, NaN)
-
-        return out_est_time
-
 
 
 
