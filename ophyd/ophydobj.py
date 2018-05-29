@@ -148,7 +148,7 @@ class EstTime:
             out_est_time[0] = est_time
             out_est_time[1] = std_dev
         else:
-            stats_dict = stats('set', {'position' : val[0] } ) #assume the set is not "motor like".
+            stats_dict = stats('set', {'position' : vals[0] } ) #assume the set is not "motor like".
             if stats_dict:
                 out_est_time[0] = stats_dict['set'][0]
                 out_est_time[1] = stats_dict['set'][1]
