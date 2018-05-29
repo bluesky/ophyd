@@ -350,6 +350,8 @@ class SynAxisNoHints(Device):
     def position(self):
         return self.readback.get()
 
+    def 
+
 
 class SynAxis(SynAxisNoHints):
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
@@ -1002,6 +1004,11 @@ def hw():
     jittery_motor2 = SynAxis(name='jittery_motor2',
                              readback_func=lambda x: x + np.random.rand(),
                              labels={'motors'})
+    for axis in [motor, motor1, motor2, motor3, jittery_motor1, jittery_motor2]:
+        axis.velocity = SynAxisNoHints(name = 'velocity')
+        axis.settle_time = SynAxisNoHints(name = 'settle_time')
+
+
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
                          noise='uniform', sigma=1, noise_multiplier=0.1,
                          labels={'detectors'})
@@ -1020,6 +1027,10 @@ def hw():
     det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
                       'jittery_motor2', center=(0, 0), Imax=1,
                       labels={'detectors'})
+
+    for detector in [noisy_det, det, identical_det, det1, det2, det3, det4, det5]
+        detector.acquire_time = SynAxisNoHints(name = 'acquire_time')
+        detector.num_images = SynAxisNoHints(name = 'num_images') 
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
