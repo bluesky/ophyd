@@ -126,15 +126,16 @@ class EstTime:
         
         if hasattr(self.obj, 'velocity') and hasattr(self.obj, 'settle_time'):
             if self.obj.name in list(val_dict['set'].keys()):
-                inputs['distance'] = abs(val_dict['set']['self.object.name'] - val[0])
+                inputs['distance'] = abs(val_dict['set'][self.obj.name] - vals[0])
             else:
-                inputs['distance'] = abs(self.obj.position() - val[0])
+
+                inputs['distance'] = abs(self.obj.position - vals[0])
             
             for value in ['velocity', 'settle_time']: # the calculation arguments
                 if value in list(val_dict['set'].keys()):
                     inputs[value] = val_dict['set'][value]
                 elif hasattr(self.obj, value):
-                    inputs[value] = getattr(self.obj, value).position()
+                    inputs[value] = getattr(self.obj, value).position
 
             stats_dict = stats( 'set', inputs)
             if stats_dict:
@@ -207,24 +208,24 @@ class EstTime:
                 trigger_mode = self.obj.trigger_mode
 
             if trigger_mode is 'fixed_mode':
-                params = [ acquire_period, num_acquire ]
+                params = [ 'acquire_period', 'num_images' ]
             else:
-                params = [ acquire_time, num_acquire ] 
+                params = [ 'acquire_time', 'num_images' ] 
 
             for value in params: # the calculation arguments
                 if value in list(val_dict['set'].keys()):
                     inputs[value] = val_dict['set'][value]
                 elif hasattr(self.obj, value):
-                    inputs[value] = getattr(self.obj, value).position()
+                    inputs[value] = getattr(self.obj, value).position
 
             stats_dict = stats( 'trigger', inputs)
             if stats_dict:
-                est_time = stats_dict['num_acquire'][0] * stats_dict[ params[0] ][0]
-                std_dev = abs( est_time - (stats_dict['num_acquire'][0] - \
-                        stats_dict['num_acquire'][1]) * (stats_dict[ params[0] ][0] - \
+                est_time = stats_dict['num_images'][0] * stats_dict[ params[0] ][0]
+                std_dev = abs( est_time - (stats_dict['num_images'][0] - \
+                        stats_dict['num_images'][1]) * (stats_dict[ params[0] ][0] - \
                                     stats_dict[ params[0] ][1]))
             else:
-                est_time = inputs['num_acquire'] * inputs[ params[0] ]
+                est_time = inputs['num_images'] * inputs[ params[0] ]
                 std_dev = float('nan')
 
             out_est_time = [est_time, std_dev]
