@@ -1,4 +1,6 @@
 from itertools import count
+from .telemetry import (fetch_telemetry, fetch_statistics, record_telemetry)
+
 
 import time
 import logging
@@ -30,6 +32,91 @@ class UnknownSubscription(KeyError):
     "Subclass of KeyError.  Raised for unknown event type"
     ...
 
+class TimeTelemetry:
+    '''The base class for the collecting and returning time related telemetry for ophyd objects.
+
+    This is used to collect and return statistical information about the time it takes the instance
+    to perform various actions via the addition of obj.telemetry.fetch, obj.telemetry.record and 
+    obj.telemetry.stats
+
+    '''
+    def __init__(self, obj):
+        '''The initialization method.
+
+        Parameters
+        ----------
+        obj, object
+            The object that this class is being instantiated on.
+        '''
+        self.obj = obj
+
+    def fetch(self, cmd):
+        '''Returns the telemetry dictionary for the given 'cmd'.
+
+        This attribute is the method that returns the telemetry for the action given by 'cmd' on 
+        the object. The returned information is supplied in a dictionary where the stored attribute 
+        names are the keywords and the values are a dictionary with 'value' and 'time' as keywords
+        and matched lists as values.
+
+        PARAMETERS
+        ----------
+        cmd, str.
+            The command str, used in the plan message, that is to be applied to the object
+       
+        RETURNS
+        -------
+        Data, dict.
+            A dictionary with keywords for each measured attribute and a corresponding dictionary.
+            The corresponding dictionary has keywords 'value' and 'time' and a corresponding list
+            containing the measured values or a timestamp respectively.  
+        '''
+
+        return fetch_telemetry(self.obj.name, cmd)
+
+
+    def stats(self, cmd, inputs):
+        '''Returns the statistics dictionary for the given 'cmd'.
+
+        This attribute is the method that returns the statistics for the action given by 'cmd' on 
+        the object. The returned information is supplied in a dictionary where the stored attribute 
+        names are the keywords and the values are a mean, std_dev pair as a list.
+
+        PARAMETERS
+        ----------
+        cmd, str.
+            The command str, used in the plan message, that is to be applied to the object.
+        inputs, dict.
+            A dictionary containing the setpoints for each attribute, with the attribute name
+            as the keyword and the setpoint as the value.
+       
+        RETURNS
+        -------
+        Data, dict.
+            A dictionary with keywords for each measured attribute and a corresponding mean, 
+            std_dev pair as a list.
+        '''
+
+        return fetch_statistics(self.obj.name, cmd, inputs)
+
+
+    def record(self, cmd, data):
+        '''Records the telemetry data for the given 'cmd'.
+
+        This attribute is the method that records the telemetry for the action given by 'cmd' on 
+        the object. The input dictionary should have a keyword for each measured attribute and a
+        corresponding measured value. 
+
+        PARAMETERS
+        ----------
+        cmd, str.
+            The command str, used in the plan message, that is to be applied to the object
+        data, dict.
+            A dictionary with keywords for each measured attribute and a corresponding setpoint 
+            and measured value.
+        '''
+        
+        record_telemetry(self.obj.name, cmd, data)
+
 
 class EstTime:
     '''The base class for the time estimation on all OphydObjs.
@@ -42,7 +129,7 @@ class EstTime:
     Attributes
     ----------
     'cmd', method. 
-        A method that returns the estimated time it takes to perfomr 'cmd' on the device. (where 
+        A method that returns the estimated time it takes to perform 'cmd' on the device. (where 
         'cmd' is the name of any message command that can be applied to the device).
     '''
 
@@ -61,7 +148,7 @@ class EstTime:
         PARAMETERS
         ----------
         cmd, str.
-    
+            The command str, used in the plan message, that is to be applied to the object
         val_dict: dict, optional.
             A dictionary containing any values that are to override the current values, in the 
             dictionary val_dict['set'], and optionally the number of times since the last trigger, 
@@ -123,7 +210,6 @@ class EstTime:
             print (f'There is no {self.obj.name}.stats attribute')
             raise
 
-        
         if hasattr(self.obj, 'velocity') and hasattr(self.obj, 'settle_time'):
             if self.obj.name in list(val_dict['set'].keys()):
                 inputs['distance'] = abs(val_dict['set'][self.obj.name] - vals[0])
