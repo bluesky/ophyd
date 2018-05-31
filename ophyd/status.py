@@ -479,7 +479,7 @@ class MoveStatus(DeviceStatus):
         try:
             fraction = abs(target - current) / abs(initial - target)
         # maybe we can't do math?
-        except TypeError:
+        except (TypeError, ZeroDivisionError):
             fraction = None
         for watcher in self._watchers:
             watcher(name=self._name,
