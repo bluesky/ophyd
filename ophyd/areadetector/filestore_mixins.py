@@ -338,6 +338,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         if self._reg is not None:
             # If a Registry is set, we need to allow it to generate the
             # datum_id for us.
+            if self._resource_uid is None:
+                raise ValueError("Error, no resource for given object.")
             datum = {'resource': self._resource_uid,
                      'datum_kwargs': datum_kwargs}
             datum_id = self._reg.register_datum(
