@@ -433,7 +433,7 @@ class EstTime:
         out_est_time = [float('nan'), float('nan')]
 
         try:
-            stats = getattr(self.obj.telemetry, 'read')
+            stats = getattr(self.obj.telemetry, 'stats')
         except AttributeError:
             print (f'There is no {self.obj.name}.stats attribute')
             raise
