@@ -164,7 +164,10 @@ class EstTime:
             A dictionary containing any values that are to override the current values, in the 
             dictionary val_dict['set'], and optionally the number of times since the last trigger, 
             in the dictionary val_dict['trigger']. Each of these dictionaries have the object name 
-            as keywords and the values are stated above. Default value is empty dict.
+            as keywords and the values are stated above. Default value is empty dict, if record = 
+            True then val_dict should also include a keyword 'time' whose value is a dictionary 
+            with the keywords'delta_time', with a value giving the time taken to complete the action, 
+            and 'timestamp' with a value giving the timestamp for the start of the action.
         record: Boolean, optional
             A boolean indicator to show if this is also a 'record' call, where by time information 
             about a completed use of the action is also passed in via val_dict (see above for 
@@ -254,12 +257,12 @@ class EstTime:
                         pass
 
             stats_dict = stats( 'set', inputs)
-            if stats_dict:
+            try:
                 est_time = (inputs['settle_time'] + 
                             abs(inputs['distance']) / stats_dict['velocity'][0] )
                 std_dev = abs(est_time - (inputs['settle_time'] + abs(inputs['distance']) \
                         / (stats_dict['velocity'][0] - stats_dict['velocity'][1])))
-            else:
+            except KeyError:
                 est_time = inputs['settle_time'] + abs(inputs['distance']) / inputs['velocity']
                 std_dev = float('nan')
             
@@ -269,12 +272,12 @@ class EstTime:
             if record: #This is where the write of the elapsed time occurs if requested.
                 data['time'] = (out_est_time[0], val_dict['time']['delta_time'], 
                                                 val_dict['time']['timestamp'] )
-                data['position'] = (inputs['start'], vals[0], val_dict['set']['timestamp'] )
+                data['position'] = (inputs['start'], vals[0], val_dict['time']['timestamp'] )
 
-                meas_velocity = inputs['distance']/(val_dict['set']['delta_time'] - 
-                                                            inputs['settle_time']) 
+                meas_velocity = abs(inputs['distance']/(val_dict['time']['delta_time'] - 
+                                                            inputs['settle_time']))
                 data['velocity'] = (inputs['velocity'], meas_velocity, 
-                                                val_dict['set']['timestamp'])
+                                                val_dict['time']['timestamp'])
                 
                 self.obj.telemetry.record('set', data)
                 
@@ -289,7 +292,7 @@ class EstTime:
             if record: #This is where the write of the elapsed time occurs if requested.
                 data['time'] = (out_est_time[0], val_dict['time']['delta_time'],
                                                 val_dict['time']['timestamp'] )
-                data['position'] = (inputs['start'], vals[0], val_dict['set']['timestamp'])
+                data['position'] = (inputs['start'], vals[0], val_dict['time']['timestamp'])
                 
                 self.obj.telemetry.record('set', data )
 
@@ -332,6 +335,7 @@ class EstTime:
         '''
 
         inputs = {}
+        data = {}
         out_est_time = [float('nan'), float('nan')]
 
         try:
@@ -343,9 +347,9 @@ class EstTime:
 
         if hasattr(self.obj, 'num_images') and ( hasattr(self.obj, 'acquire_period') or
                                                 hasattr(self.obj, 'acquire_time')):
-            if 'trigger_mode' in list(val_dict['set'].keys()):
+            try: 
                 trigger_mode = val_dict['set']['trigger_mode']
-            else:
+            except KeyError:
                 trigger_mode = self.obj.trigger_mode
 
             if trigger_mode is 'fixed_mode':
@@ -354,9 +358,9 @@ class EstTime:
                 params = [ 'acquire_time', 'num_images' ] 
 
             for value in params: # the calculation arguments
-                if value in list(val_dict['set'].keys()):
+                try:
                     inputs[value] = val_dict['set'][value]
-                elif hasattr(self.obj, value):
+                except KeyError:    
                     inputs[value] = getattr(self.obj, value).position
 
             stats_dict = stats( 'trigger', inputs)
@@ -395,6 +399,8 @@ class EstTime:
 
         return out_est_time, val_dict
 
+
+
     def read(self, val_dict = {}, vals = [], record = False):
         '''Estimates the time (est_time) to perform 'read' on this object.
                 
@@ -430,6 +436,9 @@ class EstTime:
             A possibly updated version of the input dictionary
 
         '''
+
+        data = {}
+
         out_est_time = [float('nan'), float('nan')]
 
         try:
@@ -491,6 +500,9 @@ class EstTime:
             A possibly updated version of the input dictionary
 
         '''
+
+        data = {}
+
         out_est_time = [float('nan'), float('nan')]
 
         try:
@@ -552,6 +564,8 @@ class EstTime:
             A possibly updated version of the input dictionary
 
         '''
+        data = {}
+
         out_est_time = [float('nan'), float('nan')]
 
         try:
