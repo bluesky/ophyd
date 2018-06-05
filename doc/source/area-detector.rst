@@ -20,6 +20,12 @@ possible configuration.
 The above should work correctly with any EPICS `Area Detector <http://cars.uchicago.edu/software/epics/areaDetector.html>`_. We test on
 versions 1.9.1 and 2.2.
 
+.. warning
+
+   When making new detector classes the ``Trigger`` class must come first in the inheretance
+   or the default ``Device`` trigger method will be used instead of the trigger method from
+   the trigger mix in.
+
 Ports
 =====
 
