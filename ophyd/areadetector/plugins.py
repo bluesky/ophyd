@@ -569,16 +569,7 @@ class OverlayPlugin(PluginBase):
 
 
 class ROIPlugin(PluginBase):
-    def __init__(self,*args, **kwargs):
-        self.min_xyz.min_x.name = '{name}_min_x.format(name=self.name)'
-        self.min_xyz.min_y.name = '{name}_min_y.format(name=self.name)'
-        self.min_xyz.min_z.name = '{name}_min_z.format(name=self.name)'
-        self.size.x.name = '{name}_size_x.format(name=self.name)'
-        self.size.y.name = '{name}_size_y.format(name=self.name)'
-        self.size.z.name = '{name}_size_z.format(name=self.name)'
-        super().__init__(*args, **kwargs)
-       
-      
+ 
     _default_suffix = 'ROI1:'
     _suffix_re = 'ROI\d:'
     _html_docs = ['NDPluginROI.html']
