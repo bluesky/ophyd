@@ -639,20 +639,24 @@ class ROIPlugin(PluginBase):
     def set(self, region):
         ''' This functions allows for the ROI regions to be set.
 
-        This function takes in an ROI_number, and a dictionary of tuples and sets the ROI region.
+        This function takes in an ROI_number, and a dictionary of tuples and
+        sets the ROI region.
 
         PARAMETERS
         ----------
         region: dictionary.
-            A dictionary defining the region to be set, which has the structure:
-            { 'x':[min, size], 'y':[min, size], 'z':[min, size]}. 
-            Any of the keywords can be ommitted, and they will be ignored.
+            A dictionary defining the region to be set, which has the
+            structure:
+            ``{'x': [min, size], 'y': [min, size], 'z': [min, size]}``. Any of
+            the keywords can be omitted, and they will be ignored.
         '''
         if region is not None:
             status = []
             for direction, value in region.items():
-                status.append(getattr(self, 'min_xyz.min_{}'.format(direction)).set(value[0]) )
-                status.append(getattr(self, 'size.{}'.format(direction)).set(value[1]) )
+                status.append(getattr(
+                    self, 'min_xyz.min_{}'.format(direction)).set(value[0]))
+                status.append(
+                    getattr(self, 'size.{}'.format(direction)).set(value[1]))
                 
         return functools.reduce(operator.and_, status)
 
