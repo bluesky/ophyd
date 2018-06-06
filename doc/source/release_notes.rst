@@ -1,8 +1,8 @@
 Release History
 ---------------
 
-v1.2.0 (pre-release)
-====================
+v1.2.0 (2018-06-06)
+===================
 
 Features
 ********
@@ -39,6 +39,9 @@ Features
 * Added ``make_fake_device`` factory function that makes a Device out of
   ``FakeEpicsSignal`` based on a Device that has real signals.
 * Add ``sum_all`` component to QuadEM.
+* Add a ``set`` method to the ROI plugin.
+* Validate that a Device or Signal's ``name`` is a string, and raise helpfully
+  if it is not.
 
 Bug Fixes
 *********
@@ -51,6 +54,8 @@ Bug Fixes
 * Add new ``ad_root`` ("area detector root") to remove the accidental
   assumption that ``ADBase`` is the root ancestor Device of all its subclasses.
 * ``ad_group`` generates Components that are lazy by default.
+* Catch various edge cases related to the data fed to progress bars from status
+  objects.
 
 Deprecations
 ************
@@ -132,6 +137,10 @@ Breaking Changes
   no longer allow generation skipping and forcibly set up the state of all of
   the devices along the way to be consistent. Inconsistency arguably should
   never have been possible in the first place.
+* A Device's ``__repr__`` no longer includes ``read_attrs`` and
+  ``configuration_attrs`` (because they are now so lengthy). This means that
+  passing a Device's ``__repr__`` to ``eval()`` does not necessarily
+  reconstruct a Device in exactly the same state.
 
 v1.1.0 (2017-02-20)
 ===================
