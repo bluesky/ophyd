@@ -1,2 +1,9 @@
-include versioneer.py
+include LICENSE
+include MANIFEST.in
+include README.rst
+include doc/Makefile doc/make.bat
 include ophyd/_version.py
+include requirements.txt
+include setup.py
+include versioneer.py
+recursive-include doc/source *
