@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from statistics import mean, stdev
 
 _telemetry = defaultdict(lambda: \
@@ -14,6 +14,8 @@ _telemetry = defaultdict(lambda: \
 #           telemetry['motor_name']['set']['velocity']['timestamp'] 
 #                                        - returns a list of timestamps
 
+
+_Stats_tuple = namedtuple('Stats_tuple', 'mean std_dev')
 
 def record_telemetry(obj_name, cmd, data):
     '''This function records a set of value/timestamp tuples into the telemetry database.
@@ -115,10 +117,10 @@ def fetch_statistics(obj_name, cmd, inputs):
     RETURNS
     -------
     data, dict.
-    A dictionary where the keyword is 'time' and the value is a mean/std_dev list for the time to 
-    perform this task. Optional keywords for each attribute that is used in the estimated time 
-    calculation are also included, with the values being mean/std_dev lists. If there are no telemetry 
-    values for this object and action it returns an empty dictionary.
+    A dictionary where the keyword is 'time' and the value is a mean/std_dev namedtuple for the time 
+    to perform this task. Optional keywords for each attribute that is used in the estimated time 
+    calculation are also included, with the values being mean/std_dev namedtuples. If there are no 
+    telemetry values for this object and action it returns an empty dictionary.
 
     '''
     telemetry = fetch_telemetry(obj_name,cmd)
@@ -139,7 +141,7 @@ def fetch_statistics(obj_name, cmd, inputs):
         RETURNS
         -------
         out_list, list
-            A list containing the values relating to the inpu_value.
+            A list containing the values relating to the input_value.
 
         '''
         out_list = []
@@ -161,7 +163,8 @@ def fetch_statistics(obj_name, cmd, inputs):
         except:
             std_dev = float('nan')
                     
-        data['time'] = [mean_val, std_dev]
+        stats = _Stats_tuple(mean_val, std_dev)
+        data['time'] = stats
     except:
         pass
     
@@ -174,7 +177,8 @@ def fetch_statistics(obj_name, cmd, inputs):
             except:
                 std_dev = float('nan')
                     
-            data[attr] = [mean_val, std_dev]
+            stats = _Stats_tuple(mean_val, std_dev)
+            data[attr] = stats
 
         except: 
             pass

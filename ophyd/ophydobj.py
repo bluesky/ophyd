@@ -1,6 +1,6 @@
 from itertools import count
 from .telemetry import (fetch_telemetry, fetch_statistics, record_telemetry)
-
+from collections import namedtuple
 
 import time
 import logging
@@ -33,6 +33,7 @@ class UnknownSubscription(KeyError):
     ...
 
  
+_TimeStats = namedtuple('TimeStats', 'est_time std_dev')
 
 
 class TimeTelemetry:
@@ -51,6 +52,7 @@ class TimeTelemetry:
         obj, object
             The object that this class is being instantiated on.
         '''
+
         self.obj = obj
         self.name = self.obj.name
 
@@ -99,9 +101,9 @@ class TimeTelemetry:
         RETURNS
         -------
         Data, dict.
-            A dictionary with the keyword 'time' and a 'mean/std_dev' pair as a list. Additional 
-            keywords for each measured attribute and a corresponding mean/std_dev pair as a list
-            may also be included. 
+            A dictionary with the keyword 'time' and a 'mean/std_dev' pair as a named tuple. 
+            Additional keywords for each measured attribute and a corresponding mean/std_dev pair 
+            as a list may also be included. 
         '''
 
         return fetch_statistics(self.obj.name, cmd, inputs)
@@ -175,9 +177,9 @@ class EstTime:
 
         RETURNS
         -------
-        out_est_time: tuple.
-            A tuple containing the estimated time (est_time) as the first element and the  standard
-            deviation (std_dev) as the second element.  
+        out_time: namedtuple.
+            A namedtuple containing the estimated time (est_time) as the first element and the  
+            standard deviation (std_dev) as the second element.  
        '''
         
         try:
@@ -187,7 +189,6 @@ class EstTime:
             raise
 
         return method(plan_history = plan_history, vals = vals, record = record)
-
 
     def set(self, plan_history = {}, vals = [], record = False):
         '''Estimates the time (est_time) to perform 'set' on this object.
@@ -220,14 +221,13 @@ class EstTime:
 
         RETURNS
         -------
-        out_est_time: list.
-            A list containing the est_time as the first element and the std_dev as the second 
+        stats: namedtuple.
+            A namedtuple containing the est_time as the first element and the std_dev as the second 
             element.
         '''
 
         inputs = {}
         data = {}
-        out_est_time=[float('nan'), float('nan')]
 
         try:
             stats = getattr(self.obj.telemetry, 'stats')
@@ -257,18 +257,17 @@ class EstTime:
             stats_dict = stats( 'set', inputs)
             try:
                 est_time = (inputs['settle_time'] + 
-                            abs(inputs['distance']) / stats_dict['velocity'][0] )
+                            abs(inputs['distance']) / stats_dict['velocity'].mean )
                 std_dev = abs(est_time - (inputs['settle_time'] + abs(inputs['distance']) \
-                        / (stats_dict['velocity'][0] - stats_dict['velocity'][1])))
+                        / (stats_dict['velocity'].mean - stats_dict['velocity'].std_dev)))
             except KeyError:
                 est_time = inputs['settle_time'] + abs(inputs['distance']) / inputs['velocity']
                 std_dev = float('nan')
             
-            out_est_time[0] = est_time
-            out_est_time[1] = std_dev
+            out_time = _TimeStats(est_time, std_dev)
             
             if record: #This is where the write of the elapsed time occurs if requested.
-                data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
+                data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
                 data['position'] = (inputs['start'], vals[0], plan_history['time']['timestamp'] )
 
@@ -282,19 +281,18 @@ class EstTime:
         else:
             stats_dict = stats('set', {'position' : vals[0] } ) #assume the set is not "motor like".
             if stats_dict:
-                out_est_time[0] = stats_dict['time'][0]
-                out_est_time[1] = stats_dict['time'][1]
+                out_time = _TimeStats(stats_dict['time'][0], stats_dict['time'][1])
             else:
-                out_est_time = [0, float('nan')]
+                out_time = _TimeStats(0, float('nan'))
             
             if record: #This is where the write of the elapsed time occurs if requested.
-                data['time'] = (out_est_time[0], plan_history['time']['delta_time'],
+                data['time'] = (out_time.est_time, plan_history['time']['delta_time'],
                                                 plan_history['time']['timestamp'] )
                 data['position'] = (inputs['start'], vals[0], plan_history['time']['timestamp'])
                 
                 self.obj.telemetry.record('set', data )
 
-        return out_est_time
+        return out_time
 
 
     def trigger(self, plan_history = {}, vals = [], record = False):
@@ -325,14 +323,13 @@ class EstTime:
             description).
         RETURNS
         -------
-        out_est_time: list.
-            A list containing the est_time as the first element and the std_dev as the second 
+        out_time: namedtuple.
+            A namedtuple containing the est_time as the first element and the std_dev as the second 
             element.
         '''
 
         inputs = {}
         data = {}
-        out_est_time = [float('nan'), float('nan')]
 
         try:
             stats = getattr(self.obj.telemetry, 'stats')
@@ -368,9 +365,10 @@ class EstTime:
                 est_time = inputs['num_images'] * inputs[ params[0] ]
                 std_dev = float('nan')
 
-            out_est_time = [est_time, std_dev]
+            out_time = _TimeStats(est_time, std_dev)
+
             if record: #This is where the write of the elapsed time occurs if requested.
-                data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
+                data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
     
                 meas_val = plan_history['time']['delta_time'] / inputs['num_images']
@@ -382,18 +380,17 @@ class EstTime:
         else:
             stats_dict = stats('trigger', {} ) #assume the trigger is not "Area Det. like".
             if stats_dict:
-                out_est_time[0] = stats_dict['time'][0]
-                out_est_time[1] = stats_dict['time'][1]
+                out_time = _TimeStats(stats_dict['time'].mean, stats_dict['time'].std_dev)
             else:
-                out_est_time = [0, float('nan')]
+                out_time = _TimeStats(0, float('nan'))
 
             if record: #This is where the write of the elapsed time occurs if requested.
-                data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
+                data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
 
                 self.obj.telemetry.record('trigger', data)
 
-        return out_est_time
+        return out_time
 
 
 
@@ -425,13 +422,11 @@ class EstTime:
             description).       
         RETURNS
         -------
-        out_est_time: list.
-            A list containing the est_time as the first element and the std_dev as the second 
+        out_time: namedtuple.
+            A namedtuple containing the est_time as the first element and the std_dev as the second 
             element.
         '''
         data = {}
-
-        out_est_time = [float('nan'), float('nan')]
 
         try:
             stats = getattr(self.obj.telemetry, 'stats')
@@ -442,18 +437,17 @@ class EstTime:
 
         stats_dict = stats('read', {} ) 
         if stats_dict:
-            out_est_time[0] = stats_dict['time'][0]
-            out_est_time[1] = stats_dict['time'][1]
+            out_time = _TimeStats(stats_dict['time'].mean, stats_dict['time'].std_dev)
         else:
-            out_est_time = [0, float('nan')]
+            out_time = _TimeStats(0, float('nan'))
 
         if record: #This is where the write of the elapsed time occurs if requested.
-            data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
+            data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
 
             self.obj.telemetry.record('read', data)
 
-        return out_est_time
+        return out_time
 
 
 
@@ -485,14 +479,12 @@ class EstTime:
             description).       
         RETURNS
         -------
-        out_est_time: list.
-            A list containing the est_time as the first element and the std_dev as the second 
+        out_time: namedtuplr.
+            A namedtuple containing the est_time as the first element and the std_dev as the second 
             element.
         '''
 
         data = {}
-
-        out_est_time = [float('nan'), float('nan')]
 
         try:
             stats = getattr(self.obj.telemetry, 'stats')
@@ -503,18 +495,17 @@ class EstTime:
 
         stats_dict = stats('stage', {} ) 
         if stats_dict:
-            out_est_time[0] = stats_dict['time'][0]
-            out_est_time[1] = stats_dict['time'][1]
+            out_time = _TimeStats(stats_dict['time'].mean, stats_dict['time'].std_dev)
         else:
-            out_est_time = [0, float('nan')]
+            out_time = _TimeStats(0, float('nan'))
 
         if record: #This is where the write of the elapsed time occurs if requested.
-            data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
+            data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
 
             self.obj.telemetry.record('stage', data)
 
-        return out_est_time
+        return out_time
 
 
     def unstage(self, plan_history = {}, vals = [], record = False):
@@ -546,13 +537,11 @@ class EstTime:
 
         RETURNS
         -------
-        out_est_time: list.
-            A list containing the est_time as the first element and the std_dev as the second 
+        out_time: namedtuple.
+            A namedtuple containing the est_time as the first element and the std_dev as the second 
             element.
         '''
         data = {}
-
-        out_est_time = [float('nan'), float('nan')]
 
         try:
             stats = getattr(self.obj.telemetry, 'stats')
@@ -563,19 +552,18 @@ class EstTime:
 
         stats_dict = stats('unstage', {} ) 
         if stats_dict:
-            out_est_time[0] = stats_dict['time'][0]
-            out_est_time[1] = stats_dict['time'][1]
+            out_time = _TimeStats(stats_dict['time'].mean, stats_dict['time'].std_dev)
         else:
-            out_est_time = [0, float('nan')]
+            out_time = _TimeStats(0, float('nan'))
 
         if record: #This is where the write of the elapsed time occurs if requested.
-            data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
+            data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
 
             self.obj.telemetry.record('unstage', data)
 
 
-        return out_est_time
+        return out_time
 
 
 
