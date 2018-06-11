@@ -107,8 +107,8 @@ class SynSignal(Signal):
         delay_time = self.exposure_time
 
         #setting up the dictinary for the statistics gathering.
-        val_dict={}
-        val_dict['time'] = {'timestamp': ttime.time()}        
+        plan_history={}
+        plan_history['time'] = {'timestamp': ttime.time()}        
 
         if delay_time:
             st = DeviceStatus(device=self)
@@ -128,32 +128,32 @@ class SynSignal(Signal):
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
 
-            val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-            self.est_time('trigger', val_dict = val_dict, record = True)
+            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+            self.est_time('trigger', plan_history = plan_history, record = True)
             return st
         else:
             self.put(self._func())
-            val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-            self.est_time('trigger', val_dict = val_dict, record = True)
+            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+            self.est_time('trigger', plan_history = plan_history, record = True)
             return NullStatus()
 
     def stage(self):
         #setup lines for saving telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         #lines for saving telemetry
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('stage', val_dict = val_dict, record = True)   
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('stage', plan_history = plan_history, record = True)   
 
     def unstage(self):
         #setup lines for saving telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         #lines for saving telemetry
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('unstage', val_dict = val_dict, record = True)   
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('unstage', plan_history = plan_history, record = True)   
 
 
 
@@ -334,9 +334,9 @@ class SynAxisNoHints(Device):
 
     def set(self, value):
         #a dictionary used to time the operation and send this info to the telemetry database.
-        val_dict={}
-        val_dict['time'] = {'timestamp':ttime.time()}
-        val_dict['set'] = {self.name : self.position }
+        plan_history = {}
+        plan_history['time'] = {'timestamp':ttime.time()}
+        plan_history['set'] = {self.name : self.position }
     
         old_setpoint = self.sim_state['setpoint']
         self.sim_state['setpoint'] = value
@@ -377,13 +377,13 @@ class SynAxisNoHints(Device):
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             
-            val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-            self.est_time('set', val_dict = val_dict, vals = [value], record = True)
+            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+            self.est_time('set', plan_history = plan_history, vals = [value], record = True)
             return st
         else:
             update_state()
-            val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp'] 
-            self.est_time('set', val_dict = val_dict, vals = [value], record = True)
+            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp'] 
+            self.est_time('set', plan_history = plan_history, vals = [value], record = True)
             return NullStatus()
 
     @property
@@ -725,8 +725,8 @@ class SynSignalWithRegistry(SynSignal):
 
     def trigger(self):
         #setup dictionary for telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         super().trigger()
         # save file stash file name
@@ -759,19 +759,19 @@ class SynSignalWithRegistry(SynSignal):
             self._result[name] = reading
 
         #save telemetry
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('trigger', val_dict = val_dict, record = True)
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('trigger', plan_history = plan_history, record = True)
 
         return NullStatus()
 
     def read(self):
         #setup dictionary for telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
    
         #save telemetry
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('read', val_dict = val_dict, record = True)
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('read', plan_history = plan_history, record = True)
 
         return self._result
 
