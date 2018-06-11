@@ -162,7 +162,7 @@ class EstTime:
             The command str, used in the plan message, that is to be applied to the object
         plan_history: dict, optional.
             A dictionary containing any values that are to override the current values, in the 
-            dictionary paln_history['set'], and optionally the number of times since the last trigger, 
+            dictionary plan_history['set'], and optionally the number of times since the last trigger, 
             in the dictionary plan_history['trigger']. Each of these dictionaries have the object name 
             as keywords and the values are stated above. Default value is empty dict, if record = 
             True then plan_history should also include a keyword 'time' whose value is a dictionary 
@@ -203,7 +203,7 @@ class EstTime:
         ----------
         plan_history: dict, optional.
             A dictionary containing any values that are to override the current values, in the 
-            dictionary paln_history['set'], and optionally the number of times since the last 
+            dictionary plan_history['set'], and optionally the number of times since the last 
             trigger, in the dictionary plan_history['trigger']. Each of these dictionaries have the 
             object name as keywords and the values are stated above. Default value is empty dict,
             if record = True then plan_history should also include a keyword 'time' whose value is a 
@@ -313,7 +313,7 @@ class EstTime:
             dictionary plan_history['set'], and optionally the number of times since the last trigger, 
             in the dictionary plan_history['trigger']. Each of these dictionaries have the object 
             name as keywords and the values are stated above. Default value is empty dict,
-            if record = True then paln_history should also include a keyword 'time' whose value is a 
+            if record = True then plan_history should also include a keyword 'time' whose value is a 
             dictionary with the keywords'delta_time', with a value giving the time taken to complete 
             the action, and 'timestamp' with a value giving the timestamp for the start of the action.
         vals: list, optional.
@@ -370,10 +370,10 @@ class EstTime:
 
             out_est_time = [est_time, std_dev]
             if record: #This is where the write of the elapsed time occurs if requested.
-                data['time'] = (out_est_time[0], paln_history['time']['delta_time'], 
+                data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
     
-                meas_val = paln_history['time']['delta_time'] / inputs['num_images']
+                meas_val = plan_history['time']['delta_time'] / inputs['num_images']
                 data[ params[0] ] = ( inputs[ params[0] ] , meas_val, 
                                                 plan_history['time']['timestamp'])
             
@@ -403,7 +403,7 @@ class EstTime:
         This method returns an estimated time (est_time) to perform read. If statistics for 
         this action, and any configuration values found in plan_history, exist it uses mean values 
         and works out a standard deviation (std_dev) otherwise it uses the current value (or 
-        the value from paln_history['set'] if that is different) to determine an est_time and 
+        the value from plan_history['set'] if that is different) to determine an est_time and 
         returns float('nan') for the std_dev.
 
         PARAMETERS
@@ -449,7 +449,7 @@ class EstTime:
 
         if record: #This is where the write of the elapsed time occurs if requested.
             data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
-                                                paln_history['time']['timestamp'] )
+                                                plan_history['time']['timestamp'] )
 
             self.obj.telemetry.record('read', data)
 
@@ -463,7 +463,7 @@ class EstTime:
         This method returns an estimated time (est_time) to perform stage. If statistics for 
         this action, and any configuration values found in plan_history, exist it uses mean values 
         and works out a standard deviation (std_dev) otherwise it uses the current value (or 
-        the value from paln_history['set'] if that is different) to determine an est_time and 
+        the value from plan_history['set'] if that is different) to determine an est_time and 
         returns float('nan') for the std_dev.
 
         PARAMETERS
@@ -510,14 +510,14 @@ class EstTime:
 
         if record: #This is where the write of the elapsed time occurs if requested.
             data['time'] = (out_est_time[0], plan_history['time']['delta_time'], 
-                                                paln_history['time']['timestamp'] )
+                                                plan_history['time']['timestamp'] )
 
             self.obj.telemetry.record('stage', data)
 
         return out_est_time
 
 
-    def unstage(self, paln_history = {}, vals = [], record = False):
+    def unstage(self, plan_history = {}, vals = [], record = False):
         '''Estimates the time (est_time) to perform 'unstage' on this object.
                 
         This method returns an estimated time (est_time) to perform unstage. If statistics for 

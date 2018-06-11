@@ -76,15 +76,15 @@ class Signal(OphydObject):
         #       it may need to be moved in the future
 
         #set up the telemetry dictionary here
-        val_dict = {}
-        val_dict['time'] = {'timestamp': time.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': time.time() }
 
         d = Status(self)
         d._finished()
 
         #save telemetry here
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('trigger', val_dict = val_dict, record = True)
+        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
+        self.est_time('trigger', plan_history = plan_history, record = True)
         return d
 
     def wait_for_connection(self, timeout=0.0):
@@ -165,8 +165,8 @@ class Signal(OphydObject):
             case of basic soft Signals
         '''
         #set up the telemetry dictionary
-        val_dict = {}
-        val_dict['time'] = {'timestamp': time.time() }
+        plan_dictionary = {}
+        plan_dictionary['time'] = {'timestamp': time.time() }
 
         def set_thread():
             try:
@@ -203,8 +203,8 @@ class Signal(OphydObject):
         self._set_thread.daemon = True
         self._set_thread.start()
 
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('set', val_dict = val_dict, record = True )
+        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
+        self.est_time('set', plan_history = plan_history, record = True )
         return self._status
 
     @property
@@ -225,12 +225,12 @@ class Signal(OphydObject):
             dict
         '''
         #set up the telemetry dictioanry here
-        val_dict = {}
-        val_dict['time'] = {'timestamp': time.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': time.time() }
 
         #save the telemetry here
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('read', val_dict = val_dict, record = True ) 
+        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
+        self.est_time('read', plan_history = plan_history, record = True ) 
 
         return {self.name: {'value': self.get(),
                             'timestamp': self.timestamp}}
@@ -638,12 +638,12 @@ class EpicsSignalBase(Signal):
             Dictionary of value timestamp pairs
         """
         #set up the telemetry dictioanry here
-        val_dict = {}
-        val_dict['time'] = {'timestamp': time.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': time.time() }
 
         #save the telemetry here
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('read', val_dict = val_dict, record = True ) 
+        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
+        self.est_time('read', plan_history = plan_history, record = True ) 
 
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
@@ -968,8 +968,8 @@ class EpicsSignal(EpicsSignalBase):
         Signal.set
         '''
         #set up the telemetry dictioanry here
-        val_dict = {}
-        val_dict['time'] = {'timestamp': time.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': time.time() }
 
 
 
@@ -987,8 +987,8 @@ class EpicsSignal(EpicsSignalBase):
         self.put(value, use_complete=True, callback=put_callback)
         
         #save the telemetry here
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('set', val_dict = val_dict, record = True ) 
+        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
+        self.est_time('set', plan_history = plan_history, record = True ) 
 
         return st
 
