@@ -486,12 +486,12 @@ class BlueskyInterface:
 
         """
         #setup lines for saving telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         #lines for saving telemetry
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('trigger', val_dict = val_dict, record = True)        
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('trigger', plan_history = plan_history, record = True)        
 
         pass
 
@@ -521,12 +521,12 @@ class BlueskyInterface:
 
         """
         #setup lines for saving telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         #lines for saving telemetry
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('read', val_dict = val_dict, record = True)   
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('read', plan_history = plan_history, record = True)   
 
         return OrderedDict()
 
@@ -577,8 +577,8 @@ class BlueskyInterface:
         """
 
         #set up the dictionary for the timing of the stage.
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time()}
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time()}
 
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
@@ -637,8 +637,8 @@ class BlueskyInterface:
         else:
             self._staged = Staged.yes
 
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('stage', val_dict = val_dict, record = True)    
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('stage', plan_history = plan_history, record = True)    
     
         return devices_staged
 
@@ -661,8 +661,8 @@ class BlueskyInterface:
 
         """
         #set up the dictionary used for saving the telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         self.log.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
@@ -686,8 +686,8 @@ class BlueskyInterface:
 
         self._staged = Staged.no
 
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('unstage',val_dict = val_dict, record = True)
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('unstage',plan_history = plan_history, record = True)
         return devices_unstaged
 
     def pause(self) -> None:
@@ -1033,8 +1033,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
         #set up the dictioanry that holds the telemetry save info.
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time() }
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time() }
 
         res = super().read()
         for component_name in self.component_names:
@@ -1045,8 +1045,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 component = getattr(self, component_name)
                 res.update(component.read())
         
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('read', val_dict = val_dict, record = True)
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+        self.est_time('read', plan_history = plan_history, record = True)
         
         return res
 
@@ -1132,8 +1132,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def trigger(self):
         """Start acquisition"""
         #set up the dictionary for saving the telemetry
-        val_dict = {}
-        val_dict['time'] = {'timestamp': ttime.time()}
+        plan_history = {}
+        plan_history['time'] = {'timestamp': ttime.time()}
 
         signals = self.trigger_signals
         if len(signals) > 1:
@@ -1143,8 +1143,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if not signals:
             status._finished()
             #save the telemetry
-            val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-            self.est_time('trigger', val_dict = val_dict, record = True)
+            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+            self.est_time('trigger', plan_history = plan_history, record = True)
             return status
 
         acq_signal, = signals
@@ -1160,8 +1160,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
 
-        val_dict['time']['delta_time'] = ttime.time() - val_dict['time']['timestamp']
-        self.est_time('trigger', val_dict = val_dict, record = True)
+        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
+
+        self.est_time('trigger', plan_history = plan_history, record = True)
         return status
 
     def stop(self, *, success=False):
