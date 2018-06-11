@@ -39,7 +39,7 @@ def record_telemetry(obj_name, cmd, data):
         A final optional keyword 'position' with a value being a start_position/stop_position/
         timestamp tuple may also be included, mainly for motor-like set actions.
     '''
-    for attribute in list( data.keys() ):
+    for attribute in data:
         if attribute == 'time':
             _telemetry[obj_name][cmd][attribute]['estimated'].append(data[attribute][0])
             _telemetry[obj_name][cmd][attribute]['measured'].append(data[attribute][1])
@@ -166,7 +166,7 @@ def fetch_statistics(obj_name, cmd, inputs):
         pass
     
 
-    for attr in (attr for attr in list(telemetry.keys()) if attr not in ['time','position']):
+    for attr in (attr for attr in telemetry if attr not in ['time','position']):
         try:
             mean_val = mean(extract_input_value(telemetry, attr, inputs[attr]))
             try:
