@@ -224,13 +224,6 @@ class Signal(OphydObject):
         -------
             dict
         '''
-        #set up the telemetry dictioanry here
-        plan_history = {}
-        plan_history['time'] = {'timestamp': time.time() }
-
-        #save the telemetry here
-        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
-        self.est_time('read', plan_history = plan_history, record = True ) 
 
         return {self.name: {'value': self.get(),
                             'timestamp': self.timestamp}}
@@ -637,13 +630,6 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of value timestamp pairs
         """
-        #set up the telemetry dictioanry here
-        plan_history = {}
-        plan_history['time'] = {'timestamp': time.time() }
-
-        #save the telemetry here
-        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
-        self.est_time('read', plan_history = plan_history, record = True ) 
 
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}

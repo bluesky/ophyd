@@ -520,13 +520,6 @@ class BlueskyInterface:
             with the keys ``{'value', 'timestamp'}``
 
         """
-        #setup lines for saving telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
-        #lines for saving telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('read', plan_history = plan_history, record = True)   
 
         return OrderedDict()
 
@@ -1032,9 +1025,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
-        #set up the dictioanry that holds the telemetry save info.
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
 
         res = super().read()
         for component_name in self.component_names:
@@ -1044,9 +1034,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 # this forces us to get the real version
                 component = getattr(self, component_name)
                 res.update(component.read())
-        
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('read', plan_history = plan_history, record = True)
         
         return res
 
@@ -1226,7 +1213,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         for attr in self.component_names:
             value = getattr(dev_t, attr)
-            signal = getattr(self, att)
+            signal = getattr(self, attr)
             signal.put(value, **kwargs)
 
     @classmethod
