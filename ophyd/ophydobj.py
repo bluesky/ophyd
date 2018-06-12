@@ -503,7 +503,7 @@ class EstTime:
 
 
         return out_time
-=
+
 
 class OphydObject:
     '''The base class for all objects in Ophyd
