@@ -630,6 +630,13 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of value timestamp pairs
         """
+        #set up the telemetry dictioanry here
+        val_dict = {}
+        val_dict['time'] = {'timestamp': time.time() }
+
+        #save the telemetry here
+        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
+        self.est_time('read', val_dict = val_dict, record = True ) 
 
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}

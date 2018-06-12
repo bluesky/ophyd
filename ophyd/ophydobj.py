@@ -2,6 +2,7 @@ from itertools import count
 from .telemetry import (fetch_telemetry, fetch_statistics, record_telemetry)
 from collections import namedtuple
 
+
 import time
 import logging
 
@@ -52,7 +53,6 @@ class TimeTelemetry:
         obj, object
             The object that this class is being instantiated on.
         '''
-
         self.obj = obj
         self.name = self.obj.name
 
@@ -104,6 +104,7 @@ class TimeTelemetry:
             A dictionary with the keyword 'time' and a 'mean/std_dev' pair as a named tuple. 
             Additional keywords for each measured attribute and a corresponding mean/std_dev pair 
             as a list may also be included. 
+
         '''
 
         return fetch_statistics(self.obj.name, cmd, inputs)
@@ -157,6 +158,7 @@ class EstTime:
         self.obj = obj
 
     def __call__(self, cmd, plan_history = {}, vals = [], record = False):
+
         '''
         PARAMETERS
         ----------
@@ -198,6 +200,7 @@ class EstTime:
         and any configuration values found in plan_history, exist it uses mean values and works out 
         a standard deviation (std_dev) otherwise it uses the current value (or the value from 
         plan_history['set'] if that is different) to determine an est_time and returns float('nan') 
+        return method(val_dict = val_dict, vals = vals, record = record)
         for the std_dev.
 
         PARAMETERS
@@ -321,11 +324,6 @@ class EstTime:
             A boolean indicator to show if this is also a 'record' call, where by time information 
             about a completed use of the action is also passed in via plan_history (see above for 
             description).
-        RETURNS
-        -------
-        out_time: namedtuple.
-            A namedtuple containing the est_time as the first element and the std_dev as the second 
-            element.
         '''
 
         inputs = {}
@@ -501,13 +499,11 @@ class EstTime:
         if record: #This is where the write of the elapsed time occurs if requested.
             data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
                                                 plan_history['time']['timestamp'] )
-
             self.obj.telemetry.record('unstage', data)
 
 
         return out_time
-
-
+=
 
 class OphydObject:
     '''The base class for all objects in Ophyd
