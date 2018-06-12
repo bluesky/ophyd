@@ -765,13 +765,6 @@ class SynSignalWithRegistry(SynSignal):
         return NullStatus()
 
     def read(self):
-        #setup dictionary for telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-   
-        #save telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('read', plan_history = plan_history, record = True)
 
         return self._result
 

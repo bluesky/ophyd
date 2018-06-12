@@ -393,64 +393,6 @@ class EstTime:
         return out_time
 
 
-
-    def read(self, plan_history = {}, vals = [], record = False):
-        '''Estimates the time (est_time) to perform 'read' on this object.
-                
-        This method returns an estimated time (est_time) to perform read. If statistics for 
-        this action, and any configuration values found in plan_history, exist it uses mean values 
-        and works out a standard deviation (std_dev) otherwise it uses the current value (or 
-        the value from plan_history['set'] if that is different) to determine an est_time and 
-        returns float('nan') for the std_dev.
-
-        PARAMETERS
-        ----------
-        plan_history: dict, optional.
-            A dictionary containing any values that are to override the current values, in the 
-            dictionary plan_history['set'], and optionally the number of times since the last trigger, 
-            in the dictionary plan_history['trigger']. Each of these dictionaries have the object 
-            name as keywords and the values are stated above. Default value is empty dict,
-            if record = True then plan_history should also include a keyword 'time' whose value is a 
-            dictionary with the keywords'delta_time', with a value giving the time taken to complete 
-            the action, and 'timestamp' with a value giving the timestamp for the start of the action.
-        vals: list, optional.
-            A list of any required input parameters for this command, it matches the structure
-            of the msg.arg list from a plan message. Default value is empty list.
-        record: Boolean, optional
-            A boolean indicator to show if this is also a 'record' call, where by time information 
-            about a completed use of the action is also passed in via plan_history (see above for 
-            description).       
-        RETURNS
-        -------
-        out_time: namedtuple.
-            A namedtuple containing the est_time as the first element and the std_dev as the second 
-            element.
-        '''
-        data = {}
-
-        try:
-            stats = getattr(self.obj.telemetry, 'stats')
-        except AttributeError:
-            print (f'There is no {self.obj.name}.stats attribute')
-            raise
-
-
-        stats_dict = stats('read', {} ) 
-        if stats_dict:
-            out_time = _TimeStats(stats_dict['time'].mean, stats_dict['time'].std_dev)
-        else:
-            out_time = _TimeStats(0, float('nan'))
-
-        if record: #This is where the write of the elapsed time occurs if requested.
-            data['time'] = (out_time.est_time, plan_history['time']['delta_time'], 
-                                                plan_history['time']['timestamp'] )
-
-            self.obj.telemetry.record('read', data)
-
-        return out_time
-
-
-
     def stage(self, plan_history = {}, vals = [], record = False):
         '''Estimates the time (est_time) to perform 'stage' on this object.
                 
