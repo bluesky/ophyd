@@ -5,6 +5,7 @@ _telemetry = defaultdict(lambda: \
                 defaultdict(lambda: \
                     defaultdict(lambda: \
                         defaultdict(list) ) ) ) 
+
 #This is a prototype telemetry database, it has the structure:
 #   telemetry[object][action][attribute][value or timestampe] returns a list of values
 #   for eg. telemetry['motor_name']['set']['velocity']['estimated'] 
