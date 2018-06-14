@@ -1,5 +1,3 @@
-# vi: ts=4 sw=4
-
 
 import logging
 import time
@@ -914,3 +912,131 @@ class PseudoPositioner(Device, SoftPositioner):
         status : MoveStatus
         '''
         return super().set(position, **kwargs)
+
+
+
+class PseudoStatePositioner(PseudoPositioner):
+    '''A pseudo positioner, whose positions are discrete 'states'.
+
+    This is a pseudo positioner that has a number of 'components', the 'position' that this
+    positioner can occupy are a sereis of discrete locations.It allows motion between these 
+    locations via calculated 'paths'. These 'paths' are calcualted based on the optional 
+    'neighbours' dictionary, which for each 'location' defines a list of other locations that it 
+    is 'safe' to move directly to. The 'components' in the instance can be any 'component' in ophyd: 
+    such as motor axes, detectors, gate valves, their configuration attributes and or even another 
+    PreDefinedPositions instance. The 'locations' do not need to have a value specifed for every 
+    component in the collection, and the collection can be in more than one 'location' at any given 
+    time. A further optional dictionary allows the user to define a 'volume' for all or some 
+    'locations', within which the device is considered 'in the location'. Moves to/from a location 
+    always end at the 'location' defined in the 'locations' dictionary. If a 'volume' is not defined 
+    for any of the 'locations' then it is assumed to be in that location if all listed component 
+    values are with 1% of the 'location'.   
+     
+    Parameters
+    ----------
+    locations : dictionary.
+        A keyword:Value dictionary that lists all of the predefined positions (keyword) and a 
+        dictionary of axis-value pairs to be set in this location in the form: 
+        {location1:[axis1:value1,axis2:value2,...], 
+            location2:[axis1:value1,axis2:value2,...],.....}.
+            NOTE: 
+            1. Not all axes need to have a specifed value for each device location, only 
+            those with a specifed value are moved/checked for a given location.
+            2. All axes specifed in this dictionary must be specifed as components in 'components'.
+    neighbours : Dictionary, optional.
+        A keyword:value dictionary where each keyword is a location defined in 'locations' and 
+        each value is a list of 'neighbours' for that location. Motion can only occur between 
+        neighbours, for non-neighbours a path through various locations will be used, if 
+        it is found using self.find_path. Optionally if the list contains 'All' this indicates 
+        that evey location is accesible from this one. If no neighbours are defined for this 
+        location then it is assumed that no direct motion is allowed from this location.
+    regions : Dictionary, optional.
+        The optional keyword:value dictionary that has location keywords and 'region' values 
+        'region' is a dictionary that has axis_name keywords and [min_val, max_val] values 
+        denoting the range of values for this location and axis. This dictionary has the form: 
+            {location1:{'axis1_name':[axis1_min_val,axis1_max_val],
+                                                   'axis2_name':[axis2_min_val,axis2_max_val],...}, 
+            location2:{'axis1_name':[axis1_min_val,axis1_max_val],
+                                                   'axis2_name':[axis2_min_val,axis2_max_val],...},
+                                          ....}.
+            NOTE: Not all locations in the 'locations' require an entry in this dictionary and not 
+            all axes defined with a value in 'locations', for a given location, must have a 
+            range in this dictionary for the given location. For any axis that a 'range' is not 
+            provided a default range of =/- 1% is used.
+
+
+    NOTES ON PREDEFINED MOTION WITH NEIGHBOURS:
+    1. To ensure the motion to a predefined location always occurs when using neighbours to define
+        motion 'paths' it is best to ensure that the device is always in a 'location' by making sure
+        that motion can not move the device outside of all 'locations'.
+    2. To ensure that motion occurs always via a path then each 'point' in the path should be a 
+        location, and it should only have the neighbours that are before or after it in the required
+        path.
+
+    '''
+    def __init__(self, *,locations={}, neighbours={}, regions={}):
+
+        #define inputs as attributes
+        self.locations = locations
+        self.neighbours = neighbours
+        self.regions = regions
+
+        #define components as attributes
+        for attribute in list(components.keys())
+            self.attribute = components[keys]
+
+        self.nxGraph=nx.DiGraph(directed=True)
+        self.nxGraph.add_nodes_from(list(self.locations.keys()))
+
+        for location in list(neighbours.keys()):
+            if 'All' in neighbours[location]:
+                for neighbour, location in list(self.locations.keys()):
+                    self.nxGraph.add_edge(location, neighbour)
+            else:
+                for neighbour in neighbours[location]:
+                    self.nxGraph.add_edge(location, neighbour)
+
+        for location in self.locations:#define the position attributes
+            setattr(self,location,self.state.set(location))
+
+    # pseudo axis
+
+    state = Cpt(PseudoSingle)
+
+
+    @pseudo_position_argument
+    def forward(self, position):    
+
+       out_position = self.real_position
+       for attr in locations[position.state]:
+            out_position = out_position._replace(attr, locations[position.state][attr] )
+
+       return out_position
+        
+    @real_position_argument
+    def inverse(self, position):
+        
+        out_positions = []
+
+        for location in self.locations:
+            in_location = true
+            for axis in self.locations[location]:
+                if isinstance(self.locations[location][axis], float)
+                    if axis in self.regions[location]:
+                        if get_attr(self,axis).position < self.regions[location][axis][0] \
+                            or get_attr(self,axis).position > self.regions[location][axis][1]:
+                            in_location = false
+                    else:
+                        if get_attr(self,axis).position < .99*self.locations[location][axis] \
+                            or get_attr(self,axis).position > 1.01*self.regions[location][axis]:
+                            in_location = false
+                elif isinstance(self.locations[location][axis], str)
+                    if self.locations[location][axis] is not get_attr(self, axis).position:
+                        in_location = false
+            
+            if in_location is true:
+                out_positions.append(location)
+        
+        return self.PseudoPosition(state = out_positions)
+           
+
