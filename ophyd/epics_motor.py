@@ -19,7 +19,7 @@ class HomeEnum(str, Enum):
     reverse = "reverse"
 
 
-class EpicsMotor(Device, PositionerBase):
+class EpicsMotor(Device(est_time = EpicsMotorEstTime), PositionerBase):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner

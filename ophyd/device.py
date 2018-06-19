@@ -655,10 +655,6 @@ class BlueskyInterface:
             list including self and all child devices unstaged
 
         """
-        #set up the dictionary used for saving the telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
 
         self.log.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
@@ -681,9 +677,6 @@ class BlueskyInterface:
         devices_unstaged.append(self)
 
         self._staged = Staged.no
-
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('unstage',plan_history = plan_history, record = True)
 
         return devices_unstaged
 

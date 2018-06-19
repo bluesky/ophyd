@@ -83,7 +83,7 @@ def ad_group(cls, attr_suffix, **kwargs):
     return defn
 
 
-class ADBase(Device):
+class ADBase(Device(est_time = ADEstTime)):
     '''The AreaDetector base class
 
     This serves as the base for all detectors and plugins
