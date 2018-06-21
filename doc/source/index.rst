@@ -76,6 +76,7 @@ other control systems.
 
    bluesky <https://nsls-ii.github.io/bluesky>
    ophyd <https://nsls-ii.github.io/ophyd>
+   caproto <https://nsls-ii.github.io/caproto>
 
 .. toctree::
    :hidden:
