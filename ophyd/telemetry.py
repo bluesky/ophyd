@@ -41,7 +41,10 @@ class TelemetryClass:
         event_dict['action'] = cmd
 
         for attribute in data:
-            event_dict[attribute] = {'start': data['attribute'][0], 'stop': data['attribute'][1]}
+            temp_dict={}
+            for key in data[attribute]:
+                temp_dict[key] = data[attribute][key]
+            event_dict[attribute] = temp_dict
 
         self.telemetry.append(event_dict)
 

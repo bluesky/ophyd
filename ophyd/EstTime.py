@@ -51,25 +51,6 @@ class DefaultEstTime:
             element.
         '''
         
-        def record(self, status_object = None):
-            '''This is a function that records telemetry for the set command.
-
-            PARAMETER
-            ---------
-            status_object: StatusObject.
-                This is a status object that contains information collected about the action to be 
-                stored in telemetry.
-            '''
-            if status_object:
-                data={}
-                data['estimation'] = {'time':status_object.est_time.est_time, 
-                                    'std_dev':status_object.est_time.std_dev}
-                data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
-                data['position'] = {'start':status_object.start_pos, 'stop':status_object.finish_pos}
-
-                record_telemetry(status_object.obj_name, 'set', data)
-
-
         attributes = []
         attributes.append(_AttrTuple('position', start_pos, target)) 
 
@@ -81,6 +62,27 @@ class DefaultEstTime:
             out_time = _TimeStats(float('nan'), float('nan'))
 
         return out_time
+
+
+    def _set_record(status_object = None):
+        '''This is a function that records telemetry for the set command.
+
+        PARAMETER
+        ---------
+        status_object: StatusObject.
+            This is a status object that contains information collected about the action to be 
+            stored in telemetry.
+        '''
+        if status_object:
+            data={}
+            data['estimation'] = {'time':status_object.est_time.est_time, 
+                                'std_dev':status_object.est_time.std_dev}
+            data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
+            data['position'] = {'start':status_object.start_pos, 'stop':status_object.finish_pos}
+
+            record_telemetry(status_object.obj_name, 'set', data)
+
+    set.record = _set_record
 
 
     def trigger(self ):
@@ -101,24 +103,6 @@ class DefaultEstTime:
             A namedtuple containing the est_time as the first element and the std_dev as the second 
             element.
         '''
-
-
-        def record(self, status_object = None):
-            '''This is a function that records telemetry for the trigger command.
-
-            PARAMETER
-            ---------
-            status_object: StatusObject.
-                This is a status object that contains information collected about the action to be 
-                stored in telemetry.
-            '''
-            if status_object:
-                data={}
-                data['estimation'] = {'time':status_object.est_time.est_time, 
-                                    'std_dev':status_object.est_time.std_dev}
-                data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
-
-                record_telemetry(status_object.obj_name, 'trigger', data)
         
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'trigger'))        
 
@@ -129,6 +113,26 @@ class DefaultEstTime:
 
         return out_time
 
+
+
+    def _trigger_record(status_object = None):
+        '''This is a function that records telemetry for the trigger command.
+
+        PARAMETER
+        ---------
+        status_object: StatusObject.
+            This is a status object that contains information collected about the action to be 
+            stored in telemetry.
+        '''
+        if status_object:
+            data={}
+            data['estimation'] = {'time':status_object.est_time.est_time, 
+                                'std_dev':status_object.est_time.std_dev}
+            data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
+
+            record_telemetry(status_object.obj_name, 'trigger', data)
+
+    trigger.record = _trigger_record
 
 
     def stage(self ):
@@ -150,24 +154,6 @@ class DefaultEstTime:
             element.
         '''
 
-        def record(self, status_object = None):
-            '''This is a function that records telemetry for the stage command.
-
-            PARAMETER
-            ---------
-            status_object: StatusObject.
-                This is a status object that contains information collected about the action to be 
-                stored in telemetry.
-            '''
- 
-            if status_object:
-                data={}
-                data['estimation'] = {'time':status_object.est_time.est_time, 
-                                    'std_dev':status_object.est_time.std_dev}
-                data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
-
-                record_telemetry(status_object.obj_name, 'stage', data)
-
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'stage'))        
 
         if time_list:
@@ -176,6 +162,27 @@ class DefaultEstTime:
             out_time = _TimeStats(float('nan'), float('nan'))
 
         return out_time
+
+
+    def _stage_record(status_object = None):
+        '''This is a function that records telemetry for the stage command.
+
+        PARAMETER
+        ---------
+        status_object: StatusObject.
+            This is a status object that contains information collected about the action to be 
+            stored in telemetry.
+        '''
+
+        if status_object:
+            data={}
+            data['estimation'] = {'time':status_object.est_time.est_time, 
+                                'std_dev':status_object.est_time.std_dev}
+            data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
+
+            record_telemetry(status_object.obj_name, 'stage', data)
+
+    stage.record = _stage_record
 
 
     def unstage(self ):
@@ -197,25 +204,6 @@ class DefaultEstTime:
             element.
         '''
 
-        def record(self, status_object = None):
-            '''This is a function that records telemetry for the unstage command.
-
-            PARAMETER
-            ---------
-            status_object: StatusObject.
-                This is a status object that contains information collected about the action to be 
-                stored in telemetry.
-            '''
-            
-            if status_object:
-                data={}
-                data['estimation'] = {'time':status_object.est_time.est_time, 
-                                    'std_dev':status_object.est_time.std_dev}
-                data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
-
-                record_telemetry(status_object.obj_name, 'unstage', data)
-
-
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'unstage'))        
 
         if time_list:
@@ -225,6 +213,26 @@ class DefaultEstTime:
 
         return out_time
 
+
+    def _unstage_record(status_object = None):
+        '''This is a function that records telemetry for the unstage command.
+
+        PARAMETER
+        ---------
+        status_object: StatusObject.
+            This is a status object that contains information collected about the action to be 
+            stored in telemetry.
+        '''
+        
+        if status_object:
+            data={}
+            data['estimation'] = {'time':status_object.est_time.est_time, 
+                                'std_dev':status_object.est_time.std_dev}
+            data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
+
+            record_telemetry(status_object.obj_name, 'unstage', data)
+
+    unstage.record = _unstage_record
 
 
     def _extract_time_list(self, telemetry, attributes = None):
@@ -304,54 +312,58 @@ class EpicsMotorEstTime(DefaultEstTime):
             element.
         '''
 
-        def record(self, status_object = None):
-            '''This is a function that records telemetry for the set command.
 
-            PARAMETER
-            ---------
-            status_object: StatusObject.
-                This is a status object that contains information collected about the action to be 
-                stored in telemetry.
-            '''
-            if status_object:
-                data={}
-                data['estimation'] = {'time':status_object.est_time.est_time, 
-                                    'std_dev':status_object.est_time.std_dev}
-                data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
-                data['position'] = {'start':status_object.start_pos, 'stop':status_object.finish_pos}
-                data['velocity'] = {'set_point':status_object.pos.velocity.position}
-                data['settle_time'] = {'set_point':status_object.pos.settle_time.position}
+             
 
-                record_telemetry(status_object.obj_name, 'set', data)
-
-
-        attributes = [AttrTuple('velocity', velocity, None)]
+        attributes = [_AttrTuple('velocity', velocity, None)]
                      
 
         velocity_list = self._extract_velocity_list(fetch_telemetry(self.obj.name,'set'), 
                                                 attributes = attributes)        
 
-        if time_list:
+        if velocity_list:
             mean_velocity = mean(velocity_list)
             std_dev_velocity = stdev(velocity_list)
 
-            est_time = abs(start_position - stop_position)/mean_velocity + settle_time
-            est_time_max = abs(start_position - stop_position)/(mean_velocity + std_dev_velocity) \
+            est_time = abs(start_pos - target)/mean_velocity + settle_time
+            est_time_max = abs(start_pos - target)/(mean_velocity + std_dev_velocity) \
                                 + settle_time
-            est_time_min = abs(start_position - stop_position)/(mean_velocity - std_dev_velocity) \
+            est_time_min = abs(start_pos - target)/(mean_velocity - std_dev_velocity) \
                                 + settle_time 
 
             std_dev_est_time = max( abs( est_time - est_time_max), abs(est_time - est_time_min) )
         
             out_time = _TimeStats(est_time, std_dev_est_time)
         else:
-            est_time = abs(start_position - stop_position)/velocity + settle_time
+            est_time = abs(start_pos - target)/velocity + settle_time
             out_time = _TimeStats(est_time, float('nan'))
 
         return out_time
 
+    def _set_record(status_object = None):
+        '''This is a function that records telemetry for the set command.
 
-    def _extract_velocity_list(telemetry, attributes = None):
+        PARAMETER
+        ---------
+        status_object: StatusObject.
+            This is a status object that contains information collected about the action to be 
+            stored in telemetry.
+        '''
+                
+        if status_object:
+            data={}
+            data['estimation'] = {'time':status_object.est_time.est_time, 
+                                    'std_dev':status_object.est_time.std_dev}
+            data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
+            data['position'] = {'start':status_object.start_pos, 'stop':status_object.finish_pos}
+            data['velocity'] = {'set_point':status_object.pos.velocity.position}
+            data['settle_time'] = {'set_point':status_object.pos.settle_time.position}
+
+            record_telemetry(status_object.pos.name, 'set', data)
+
+    set.record = _set_record    
+
+    def _extract_velocity_list(self, telemetry, attributes = None):
         '''This extracts out all of the velocites from the 'measured' list that match a start_position
            and a stop_position for an attribute, +/- 1% for floats, in telemetry.
         
@@ -370,21 +382,21 @@ class EpicsMotorEstTime(DefaultEstTime):
             A list containing the velocity for each action. 
         '''
         
-        if attribtues is not None:
+        if attributes is not None:
             for attribute in attributes:
                 for action in telemetry:
-                    if isinstance(attribute['start'], float):
-                        if not math.isclose(action[attribute['name']]['start'],attibute['start'],
+                    if isinstance(attribute.start, float):
+                        if not math.isclose(action[attribute.name]['start'],attibute.start,
                                         rel_tol=.01):
-                            if attribute['stop'] is None or \
-                            not math.isclose(action[attribute['name']]['stop'],attibute['stop'],
+                            if attribute.stop is None or \
+                            not math.isclose(action[attribute.name]['stop'],attibute.stop,
                                         rel_tol=.01):
                                 telemetry.remove(action)
 
-                    elif isinstance(attribute['start'], str):
-                        if action[attribute['name']]['start'] is not attribute['start']:
-                            if attribute['stop'] is None or \
-                             action[attribute['name']]['stop'] is not attribute['stop']:
+                    elif isinstance(attribute.start, str):
+                        if action[attribute.name]['start'] is not attribute.start:
+                            if attribute.stop is None or \
+                             action[attribute.name]['stop'] is not attribute.stop:
                                 telemetry.remove(action) 
 
         out_list=[]
@@ -392,7 +404,7 @@ class EpicsMotorEstTime(DefaultEstTime):
 
             delta_distance = abs(action['position']['start'] - action['position']['stop'])
             delta_time = abs(action['time']['start'] - action['time']['stop'])
-            settle_time = action['settle_time']['start']
+            settle_time = action['settle_time']['setpoint']
 
             out_list.append(delta_distance/(delta_time - settle_time))
 
@@ -449,40 +461,16 @@ class ADEstTime(DefaultEstTime):
             element.
         '''
 
-        def record(self, status_object = None):
-            '''This is a function that records telemetry for the trigger command.
-
-            PARAMETER
-            ---------
-            status_object: StatusObject.
-                This is a status object that contains information collected about the action to be 
-                stored in telemetry.
-            '''
-            if status_object:
-                data={}
-                data['estimation'] = {'time':status_object.est_time.est_time, 
-                                    'std_dev':status_object.est_time.std_dev}
-                data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
-                data['trigger_mode'] = {'setpoint': status_object.device.trigger_mode}
-                data['num_images'] = {'setpoint': status_object.device.num_images}
-                data['settle_time'] = {'setpoint' : status_object.device.settle_time}
-                if status_object.device.trigger_mode is 'fixed_mode':
-                    data['acquire_period'] = {'setpoint': status_object.device.acquire_period}
-                else:
-                    data['acquire_time'] = {'setpoint' : status_object.device.acquire_time} 
-    
-
-                record_telemetry(status_object.obj_name, 'trigger', data)
-        
+                
         if trigger_mode is 'fixed_mode':
-            attributes = [AttrTuple('acquire_period',acquire_time, None)]
+            attributes = [_AttrTuple('acquire_period',acquire_time, None)]
         else:
-            attributes = [AttrTuple('acquire_time',acquire_time, None)]
+            attributes = [_AttrTuple('acquire_time',acquire_time, None)]
 
         acquire_time_list = self._extract_acquire_time_list(fetch_telemetry(self.obj.name,'trigger'), 
                                                 attributes = attributes)        
 
-        if time_list:
+        if acquire_time_list:
             mean_acquire_time = mean(acquire_time_list)
             std_dev_acquire_time = stdev(acquire_time_list)
 
@@ -499,8 +487,32 @@ class ADEstTime(DefaultEstTime):
 
         return out_time
 
+    def _trigger_record(status_object = None):
+        '''This is a function that records telemetry for the trigger command.
 
-    def _extract_acquire_time_list(telemetry, attributes = None):
+        PARAMETER
+        ---------
+        status_object: StatusObject.
+            This is a status object that contains information collected about the action to be 
+            stored in telemetry.
+        '''
+        if status_object:
+            data={}
+            data['estimation'] = {'time':status_object.est_time.est_time, 
+                                'std_dev':status_object.est_time.std_dev}
+            data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
+            data['trigger_mode'] = {'setpoint': status_object.device.trigger_mode.position}
+            data['num_images'] = {'setpoint': status_object.device.num_images.position}
+            data['settle_time'] = {'setpoint' : status_object.device.settle_time.position}
+            data['acquire_period'] = {'setpoint': status_object.device.acquire_period.position}
+            data['acquire_time'] = {'setpoint' : status_object.device.acquire_time.position} 
+
+            record_telemetry(status_object.device, 'trigger', data)
+
+    trigger.record = _trigger_record
+
+
+    def _extract_acquire_time_list(self, telemetry, attributes = None):
         '''This extracts out all of the acquire_periods/ aqcuire_times from the 'measured' list that 
            match a start_position and a stop_position for an attribute, +/- 1% for floats, in telemetry.
         

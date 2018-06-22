@@ -12,6 +12,7 @@ To be used like so ::
 import time as ttime
 import logging
 import itertools
+import inspect
 
 from ..status import DeviceStatus
 from ..device import BlueskyInterface, Staged
@@ -31,14 +32,14 @@ class ADTriggerStatus(DeviceStatus):
 
         #This section below ensures that the status object has all of the info required
         #for storing telemetry associated with it.
-        arg_names = inspect.signature(self.device.est_time.trigger)
+        arg_names = inspect.signature(self.device.est_time.trigger).parameters
         args = []
         for arg_name in arg_names:
             try: 
-                args.append(get_attr(self,arg_name))
+                args.append(getattr(self,arg_name))
             except AttributeError:
-                set_attr(self, arg_name, get_attr(self.device,arg_name).position)
-                args.append(get_attr(self,arg_name))
+                setattr(self, arg_name, getattr(self.device,arg_name).position)
+                args.append(getattr(self,arg_name))
 
         self.est_time = self.device.est_time.trigger(*args)
 
@@ -50,6 +51,10 @@ class ADTriggerStatus(DeviceStatus):
             self._name = self.device.name
             self._initial_count = self.device.cam.array_counter.get()
             self._target_count = self.device.cam.num_images.get()
+        else:
+            self.finish_ts = ttime.time()
+            self.device.est_time.trigger.record(self)
+
 
     def watch(self, func):
         self._watchers.append(func)
@@ -93,7 +98,7 @@ class ADTriggerStatus(DeviceStatus):
         super()._finished(success = success, **kwargs)
         self.finish_ts = ttime.time()
         if success:
-            self.pos.trigger.record(self)
+            self.device.est_time.trigger.record(self)
 
 class TriggerBase(BlueskyInterface):
     """Base class for trigger mixin classes

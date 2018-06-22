@@ -485,13 +485,6 @@ class BlueskyInterface:
             as complete when the device is ready to be read.
 
         """
-        #setup lines for saving telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
-        #lines for saving telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('trigger', plan_history = plan_history, record = True)        
         pass
 
     def read(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -569,11 +562,6 @@ class BlueskyInterface:
 
         """
 
-        #set up the dictionary for the timing of the stage.
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time()}
-
-
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
@@ -630,9 +618,6 @@ class BlueskyInterface:
             raise
         else:
             self._staged = Staged.yes
-
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('stage', plan_history = plan_history, record = True)    
 
     
         return devices_staged
@@ -1116,10 +1101,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     @doc_annotation_forwarder(BlueskyInterface)
     def trigger(self):
         """Start acquisition"""
-        #set up the dictionary for saving the telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time()}
-
 
         signals = self.trigger_signals
         if len(signals) > 1:
@@ -1128,9 +1109,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         status = DeviceStatus(self)
         if not signals:
             status._finished()
-            #save the telemetry
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('trigger', plan_history = plan_history, record = True)
 
             return status
 
@@ -1146,10 +1124,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             self._done_acquiring()
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
-
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-
-        self.est_time('trigger', plan_history = plan_history, record = True)
 
         return status
 

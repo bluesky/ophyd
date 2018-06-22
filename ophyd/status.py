@@ -444,8 +444,12 @@ class MoveStatus(DeviceStatus):
             try: 
                 args.append(getattr(self,arg_name))
             except AttributeError:
-                set_attr(self, arg_name, getattr(self.pos, arg_name).position)
-                args.append(getattr(self,arg_name))
+                try:
+                    setattr(self, arg_name, getattr(self.pos, arg_name).position)
+                    args.append(getattr(self,arg_name))
+                except AttributeError:
+                    print ('{} attribute on {} required but not found'.format(arg_name, self.pos))
+                    raise
 
         self.est_time = self.pos.est_time.set(*args)
 
@@ -461,6 +465,17 @@ class MoveStatus(DeviceStatus):
         if not self.done:
             self.pos.subscribe(self._notify_watchers,
                                event_type=self.pos.SUB_READBACK)
+        else:
+            self.finish_pos = self.target
+            self.finish_ts = time.time()
+            if self.success:
+                try:
+                    self.pos.est_time.set.record(self)
+                except AttributeError:
+                    print ('est_time.set.record attribute required on {}, but not found'.format(self.pos))
+                    raise
+            
+    
 
     def watch(self, func):
         """
