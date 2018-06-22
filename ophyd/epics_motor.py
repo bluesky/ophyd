@@ -8,6 +8,7 @@ from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
 from .positioner import PositionerBase
 from .device import (Device, Component as Cpt)
 from .status import wait as status_wait
+from .EstTime import EpicsMotorEstTime
 from enum import Enum
 
 
@@ -19,7 +20,7 @@ class HomeEnum(str, Enum):
     reverse = "reverse"
 
 
-class EpicsMotor(Device(est_time = EpicsMotorEstTime), PositionerBase):
+class EpicsMotor(Device, PositionerBase):
     '''An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner
@@ -40,10 +41,10 @@ class EpicsMotor(Device(est_time = EpicsMotorEstTime), PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
+
     # position
     user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted')
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
-
     # calibration dial <-> user
     user_offset = Cpt(EpicsSignal, '.OFF', kind='config')
     user_offset_dir = Cpt(EpicsSignal, '.DIR', kind='config')
@@ -71,15 +72,14 @@ class EpicsMotor(Device(est_time = EpicsMotorEstTime), PositionerBase):
     tolerated_alarm = AlarmSeverity.NO_ALARM
 
     def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
+        super().__init__(*args,**kwargs)
         # Make the default alias for the user_readback the name of the
         # motor itself.
         self.user_readback.name = self.name
 
         self.motor_done_move.subscribe(self._move_changed)
         self.user_readback.subscribe(self._pos_changed)
+        self.est_time = EpicsMotorEstTime(self)
 
     @property
     @raise_if_disconnected

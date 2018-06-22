@@ -1,5 +1,5 @@
 from itertools import count
-from .telemetry import (fetch_telemetry, record_telemetry)
+from .telemetry import TelemetryUI
 from .EstTime import DefaultEstTime
 from collections import namedtuple
 
@@ -8,6 +8,10 @@ import time
 import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
+
+#define some functions
+record_telemetry = TelemetryUI.record_telemetry
+fetch_telemetry = TelemetryUI.fetch_telemetry
 
 try:
     from enum import IntFlag

@@ -106,10 +106,6 @@ class SynSignal(Signal):
     def trigger(self):
         delay_time = self.exposure_time
 
-        #setting up the dictinary for the statistics gathering.
-        plan_history={}
-        plan_history['time'] = {'timestamp': ttime.time()}        
-
         if delay_time:
             st = DeviceStatus(device=self)
             if self.loop.is_running():
@@ -128,34 +124,16 @@ class SynSignal(Signal):
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
 
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('trigger', plan_history = plan_history, record = True)
             return st
         else:
             self.put(self._func())
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('trigger', plan_history = plan_history, record = True)
             return NullStatus()
 
     def stage(self):
-        #setup lines for saving telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
-        #lines for saving telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('stage', plan_history = plan_history, record = True)   
+        pass
 
     def unstage(self):
-        #setup lines for saving telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
-        #lines for saving telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('unstage', plan_history = plan_history, record = True)   
-
-
+        pass
 
     def get(self):
         # Get a new value, which allows us to synthesize noisy data, for
@@ -333,10 +311,6 @@ class SynAxisNoHints(Device):
         self.readback.name = self.name
 
     def set(self, value):
-        #a dictionary used to time the operation and send this info to the telemetry database.
-        plan_history = {}
-        plan_history['time'] = {'timestamp':ttime.time()}
-        plan_history['set'] = {self.name : self.position }
     
         old_setpoint = self.sim_state['setpoint']
         self.sim_state['setpoint'] = value
@@ -377,13 +351,9 @@ class SynAxisNoHints(Device):
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('set', plan_history = plan_history, vals = [value], record = True)
             return st
         else:
             update_state()
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp'] 
-            self.est_time('set', plan_history = plan_history, vals = [value], record = True)
             return NullStatus()
 
     @property
@@ -724,9 +694,6 @@ class SynSignalWithRegistry(SynSignal):
         self._asset_docs_cache.append(('resource', resource))
 
     def trigger(self):
-        #setup dictionary for telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
 
         super().trigger()
         # save file stash file name
@@ -758,9 +725,6 @@ class SynSignalWithRegistry(SynSignal):
             reading['value'] = datum_id
             self._result[name] = reading
 
-        #save telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('trigger', plan_history = plan_history, record = True)
 
         return NullStatus()
 
@@ -845,12 +809,12 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
-    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
-    real1 = C(SoftPositioner, init_pos=0)
-    real2 = C(SoftPositioner, init_pos=0)
-    real3 = C(SoftPositioner, init_pos=0)
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)#, name = 'pseudo1')
+    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)#, name = 'pseudo2')
+    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)#, name = 'pseudo3')
+    real1 = C(SoftPositioner, init_pos=0)#, name = 'real1')
+    real2 = C(SoftPositioner, init_pos=0)#, name = 'real2')
+    real3 = C(SoftPositioner, init_pos=0)#, name = 'real3')
 
     sig = C(Signal, value=0)
 

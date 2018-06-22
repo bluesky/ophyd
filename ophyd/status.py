@@ -3,7 +3,7 @@ import time
 from threading import RLock
 from functools import wraps
 from warnings import warn
-
+import inspect
 import logging
 import threading
 import numpy as np
@@ -145,6 +145,7 @@ class StatusBase:
             self._settle_thread.start()
         else:
             self._settle_then_run_callbacks(success=success)
+
 
     @property
     def callbacks(self):
@@ -424,6 +425,7 @@ class MoveStatus(DeviceStatus):
     def __init__(self, positioner, target, *, start_ts=None,
                  **kwargs):
         self._tname = 'timeout for {}'.format(positioner.name)
+
         if start_ts is None:
             start_ts = time.time()
 
@@ -433,6 +435,19 @@ class MoveStatus(DeviceStatus):
         self.start_pos = self.pos.position
         self.finish_ts = None
         self.finish_pos = None
+
+        #This section below ensures that the status object has all of the info required
+        #for storing telemetry associated with it.
+        arg_names = inspect.signature(self.pos.est_time.set).parameters
+        args = []
+        for arg_name in arg_names:
+            try: 
+                args.append(getattr(self,arg_name))
+            except AttributeError:
+                set_attr(self, arg_name, getattr(self.pos, arg_name).position)
+                args.append(getattr(self,arg_name))
+
+        self.est_time = self.pos.est_time.set(*args)
 
         self._unit = getattr(self.pos, 'egu', None)
         self._precision = getattr(self.pos, 'precision', None)
@@ -535,6 +550,15 @@ class MoveStatus(DeviceStatus):
                 )
 
     __repr__ = __str__
+
+    def _finished(self, success = True, **kwargs):
+        '''Inform the status object that it is done, and if it succeeded. If success is True
+        then also record telemetry about the move.
+        '''
+        
+        super()._finished(success = success, **kwargs)
+        if success:
+            self.pos.set.record(self)
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):
