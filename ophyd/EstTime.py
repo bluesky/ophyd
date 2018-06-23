@@ -1,6 +1,10 @@
 from .telemetry import TelemetryUI
 from collections import namedtuple
+import statistics
 import math
+
+#define the statistics error
+StatisticsError = statistics.StatisticsError
 
 #define a named tuple classes for use later.
 _TimeStats = namedtuple('TimeStats', 'est_time std_dev')
@@ -56,10 +60,13 @@ class DefaultEstTime:
 
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'set'), 
                                                             attributes = attributes)       
-        if time_list:
-            out_time = _TimeStats(mean(time_list), stdev(time_list))
-        else:
-            out_time = _TimeStats(float('nan'), float('nan'))
+        try:
+            out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
+        except StatisticsError:
+            try:
+                out_time = _TimeStats(statistics.mean(time_list), float('nan'))
+            except StatisticsError:
+                out_time = _TimeStats(float('nan'), float('nan'))
 
         return out_time
 
@@ -106,10 +113,13 @@ class DefaultEstTime:
         
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'trigger'))        
 
-        if time_list:
-            out_time = _TimeStats(mean(time_list), stdev(time_list))
-        else:
-            out_time = _TimeStats(float('nan'), float('nan'))
+        try:
+            out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
+        except StatisticsError:
+            try:
+                out_time = _TimeStats(statistics.mean(time_list), float('nan'))
+            except StatisticsError:
+                out_time = _TimeStats(float('nan'), float('nan'))
 
         return out_time
 
@@ -156,10 +166,13 @@ class DefaultEstTime:
 
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'stage'))        
 
-        if time_list:
-            out_time = _TimeStats(mean(time_list), stdev(time_list))
-        else:
-            out_time = _TimeStats(float('nan'), float('nan'))
+        try:
+            out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
+        except StatisticsError:
+            try:
+                out_time = _TimeStats(statistics.mean(time_list), float('nan'))
+            except StatisticsError:
+                out_time = _TimeStats( float('nan'), float('nan'))
 
         return out_time
 
@@ -206,10 +219,13 @@ class DefaultEstTime:
 
         time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'unstage'))        
 
-        if time_list:
-            out_time = _TimeStats(mean(time_list), stdev(time_list))
-        else:
-            out_time = _TimeStats(float('nan'), float('nan'))
+        try:
+            out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
+        except StatisticsError:
+            try:
+                out_time = _TimeStats(statistics.mean(time_list), float('nan'))
+            except StatisticsError:
+                out_time = _TimeStats(float('nan'), float('nan'))
 
         return out_time
 
@@ -322,8 +338,15 @@ class EpicsMotorEstTime(DefaultEstTime):
                                                 attributes = attributes)        
 
         if velocity_list:
-            mean_velocity = mean(velocity_list)
-            std_dev_velocity = stdev(velocity_list)
+            mean_velocity = statistics.mean(velocity_list)
+            try:
+                std_dev_velocity = statistics.stdev(velocity_list)
+            except StatisticsError:
+                std_dev_velocity = float('nan')
+        
+            if mean_velocity == 0:
+                print (f'velocity_list: {velocity_list}')   
+                mean_velocity = float('nan')
 
             est_time = abs(start_pos - target)/mean_velocity + settle_time
             est_time_max = abs(start_pos - target)/(mean_velocity + std_dev_velocity) \
@@ -356,12 +379,13 @@ class EpicsMotorEstTime(DefaultEstTime):
                                     'std_dev':status_object.est_time.std_dev}
             data['time'] = {'start':status_object.start_ts, 'stop':status_object.finish_ts}
             data['position'] = {'start':status_object.start_pos, 'stop':status_object.finish_pos}
-            data['velocity'] = {'set_point':status_object.pos.velocity.position}
-            data['settle_time'] = {'set_point':status_object.pos.settle_time.position}
+            data['velocity'] = {'setpoint':status_object.pos.velocity.position}
+            data['settle_time'] = {'setpoint':status_object.pos.settle_time.position}
 
             record_telemetry(status_object.pos.name, 'set', data)
 
     set.record = _set_record    
+    
 
     def _extract_velocity_list(self, telemetry, attributes = None):
         '''This extracts out all of the velocites from the 'measured' list that match a start_position
@@ -381,37 +405,23 @@ class EpicsMotorEstTime(DefaultEstTime):
         out_list, list
             A list containing the velocity for each action. 
         '''
-        
+
         if attributes is not None:
             for attribute in attributes:
                 for action in telemetry:
-                    if isinstance(attribute.start, float):
-                        if not math.isclose(action[attribute.name]['start'],attibute.start,
+                    if not math.isclose(action[attribute.name]['setpoint'], attribute.start,
                                         rel_tol=.01):
-                            if attribute.stop is None or \
-                            not math.isclose(action[attribute.name]['stop'],attibute.stop,
-                                        rel_tol=.01):
-                                telemetry.remove(action)
-
-                    elif isinstance(attribute.start, str):
-                        if action[attribute.name]['start'] is not attribute.start:
-                            if attribute.stop is None or \
-                             action[attribute.name]['stop'] is not attribute.stop:
-                                telemetry.remove(action) 
-
+                        telemetry.remove(action)
         out_list=[]
+
         for action in telemetry:
 
             delta_distance = abs(action['position']['start'] - action['position']['stop'])
             delta_time = abs(action['time']['start'] - action['time']['stop'])
             settle_time = action['settle_time']['setpoint']
-
             out_list.append(delta_distance/(delta_time - settle_time))
 
         return out_list
-
-
- 
 
 
 class ADEstTime(DefaultEstTime):
@@ -471,8 +481,11 @@ class ADEstTime(DefaultEstTime):
                                                 attributes = attributes)        
 
         if acquire_time_list:
-            mean_acquire_time = mean(acquire_time_list)
-            std_dev_acquire_time = stdev(acquire_time_list)
+            mean_acquire_time = statistics.mean(acquire_time_list)
+            try:
+                std_dev_acquire_time = statistics.stdev(acquire_time_list)
+            except StatisticsError:
+                std_dev_acquire_time = float('nan')
 
             est_time = (mean_acquire_time + settle_time) * num_images
             est_time_max = (mean_acquire_time + std_dev_acquire_time + settle_time) * num_images
@@ -507,7 +520,7 @@ class ADEstTime(DefaultEstTime):
             data['acquire_period'] = {'setpoint': status_object.device.acquire_period.position}
             data['acquire_time'] = {'setpoint' : status_object.device.acquire_time.position} 
 
-            record_telemetry(status_object.device, 'trigger', data)
+            record_telemetry(status_object.device.name, 'trigger', data)
 
     trigger.record = _trigger_record
 
@@ -530,29 +543,19 @@ class ADEstTime(DefaultEstTime):
         out_list, list
             A list containing the velocity for each action. 
         '''
-        
+ 
         if attributes is not None:
             for attribute in attributes:
                 for action in telemetry:
-                    if isinstance(attribute['start'], float):
-                        if not math.isclose(action[attribute['name']]['start'],attibute['start'],
+                    if not math.isclose(action[attribute.name]['setpoint'], attribute.start,
                                         rel_tol=.01):
-                            if attribute['stop'] is None or \
-                            not math.isclose(action[attribute['name']]['stop'],attibute['stop'],
-                                        rel_tol=.01):
-                                telemetry.remove(action)
-
-                    elif isinstance(attribute['start'], str):
-                        if action[attribute['name']]['start'] is not attribute['start']:
-                            if attribute['stop'] is None or \
-                             action[attribute['name']]['stop'] is not attribute['stop']:
-                                telemetry.remove(action) 
+                        telemetry.remove(action)
 
         out_list=[]
         for action in telemetry:
             delta_time = abs(action['time']['start'] - action['time']['stop'])
-            num_images = action['num_images']['start']
-            settle_time = action['settle_time']['start']
+            num_images = action['num_images']['setpoint']
+            settle_time = action['settle_time']['setpoint']
 
             out_list.append((delta_time/num_images - settle_time))
 

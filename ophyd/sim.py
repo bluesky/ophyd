@@ -372,6 +372,7 @@ class SynAxis(SynAxisNoHints):
     
     def set(self, value):
     
+        start_pos = self.position
         old_setpoint = self.sim_state['setpoint']
         self.sim_state['setpoint'] = value
         self.sim_state['setpoint_ts'] = ttime.time()
@@ -414,7 +415,7 @@ class SynAxis(SynAxisNoHints):
             return st
         else:
             update_state()
-            return MoveStatus(self, value, done = True, success = True)
+            return MoveStatus(self, value, start_pos = start_pos, done = True, success = True)
 
 
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
@@ -1077,7 +1078,7 @@ def hw():
         axis.velocity = SynAxisNoHints(name = 'velocity')
         axis.velocity.set(1)
         axis.settle_time = SynAxisNoHints(name = 'settle_time')
-        axis.settle_time.set(1)
+        axis.settle_time.set(0)
 
 
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
@@ -1109,7 +1110,7 @@ def hw():
         detector.trigger_mode = SynAxisNoHints(name = 'trigger_mode')
         detector.trigger_mode.set(1)        
         detector.settle_time = SynAxisNoHints(name = 'settle_time')
-        detector.settle_time.set(1)  
+        detector.settle_time.set(0)  
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)

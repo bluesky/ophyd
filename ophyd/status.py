@@ -422,7 +422,7 @@ class MoveStatus(DeviceStatus):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, *, start_ts=None,
+    def __init__(self, positioner, target, *, start_pos = None, start_ts = None,
                  **kwargs):
         self._tname = 'timeout for {}'.format(positioner.name)
 
@@ -430,9 +430,12 @@ class MoveStatus(DeviceStatus):
             start_ts = time.time()
 
         self.pos = positioner
+        if start_pos is None:
+            start_pos =  self.pos.position
+        
+        self.start_pos = start_pos
         self.target = target
         self.start_ts = start_ts
-        self.start_pos = self.pos.position
         self.finish_ts = None
         self.finish_pos = None
 
