@@ -513,7 +513,6 @@ class BlueskyInterface:
 
         """
 
-
         return OrderedDict()
 
     def describe(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -1188,7 +1187,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         for attr in self.component_names:
             value = getattr(dev_t, attr)
-            signal = getattr(self, att)
+            signal = getattr(self, attr)
             signal.put(value, **kwargs)
 
     @classmethod

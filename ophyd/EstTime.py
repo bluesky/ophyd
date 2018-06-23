@@ -23,14 +23,14 @@ class DefaultEstTime:
     exist to improve the time estimation.
     '''
 
-    def __init__(self, obj):
+    def __init__(self, obj_name):
         '''The initialization method.
         Parameters
         ----------
-        obj, object
-            The object that this class is being instantiated on.
+        obj_name, str
+            The object name that this class is being instantiated on.
         '''
-        self.obj = obj
+        self.obj_name = obj_name
 
 
     def set(self, start_pos, target):
@@ -58,7 +58,7 @@ class DefaultEstTime:
         attributes = []
         attributes.append(_AttrTuple('position', start_pos, target)) 
 
-        time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'set'), 
+        time_list = self._extract_time_list(fetch_telemetry(self.obj_name,'set'), 
                                                             attributes = attributes)       
         try:
             out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
@@ -111,7 +111,7 @@ class DefaultEstTime:
             element.
         '''
         
-        time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'trigger'))        
+        time_list = self._extract_time_list(fetch_telemetry(self.obj_name,'trigger'))        
 
         try:
             out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
@@ -164,7 +164,7 @@ class DefaultEstTime:
             element.
         '''
 
-        time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'stage'))        
+        time_list = self._extract_time_list(fetch_telemetry(self.obj_name,'stage'))        
 
         try:
             out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
@@ -217,7 +217,7 @@ class DefaultEstTime:
             element.
         '''
 
-        time_list = self._extract_time_list(fetch_telemetry(self.obj.name,'unstage'))        
+        time_list = self._extract_time_list(fetch_telemetry(self.obj_name,'unstage'))        
 
         try:
             out_time = _TimeStats(statistics.mean(time_list), statistics.stdev(time_list))
@@ -334,7 +334,7 @@ class EpicsMotorEstTime(DefaultEstTime):
         attributes = [_AttrTuple('velocity', velocity, None)]
                      
 
-        velocity_list = self._extract_velocity_list(fetch_telemetry(self.obj.name,'set'), 
+        velocity_list = self._extract_velocity_list(fetch_telemetry(self.obj_name,'set'), 
                                                 attributes = attributes)        
 
         if velocity_list:
@@ -432,15 +432,15 @@ class ADEstTime(DefaultEstTime):
     exist to improve the time estimation.
     '''
 
-    def __init__(self, obj):
+    def __init__(self, obj_name):
         '''The initialization method.
 
         Parameters
         ----------
-        obj, object
-            The object that this class is being instantiated on.
+        obj_name, name of objectobject
+            The object name that this class is being instantiated on.
         '''
-        self.obj = obj
+        self.obj_name = obj_name
 
   
     def trigger(self, acquire_time, acquire_period, trigger_mode, num_images, settle_time):
@@ -477,7 +477,7 @@ class ADEstTime(DefaultEstTime):
         else:
             attributes = [_AttrTuple('acquire_time',acquire_time, None)]
 
-        acquire_time_list = self._extract_acquire_time_list(fetch_telemetry(self.obj.name,'trigger'), 
+        acquire_time_list = self._extract_acquire_time_list(fetch_telemetry(self.obj_name,'trigger'), 
                                                 attributes = attributes)        
 
         if acquire_time_list:

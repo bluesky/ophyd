@@ -477,7 +477,6 @@ class MoveStatus(DeviceStatus):
                 except AttributeError:
                     print ('est_time.set.record attribute required on {}, but not found'.format(self.pos))
                     raise
-            
     
 
     def watch(self, func):
@@ -576,7 +575,7 @@ class MoveStatus(DeviceStatus):
         
         super()._finished(success = success, **kwargs)
         if success:
-            self.pos.set.record(self)
+            self.pos.est_time.set.record(self)
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):

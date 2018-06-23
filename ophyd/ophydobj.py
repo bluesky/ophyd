@@ -63,8 +63,8 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name = None, parent = None, labels = None,
-                 kind = None, est_time = DefaultEstTime ):
+    def __init__(self, *, name=None, parent=None, labels=None,
+                 kind=None, est_time=DefaultEstTime ):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
@@ -81,7 +81,7 @@ class OphydObject:
             raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
-        self.est_time = est_time(self)
+        self.est_time = est_time(self.name)
 
         self.subscriptions = {getattr(self, k)
                               for k in dir(type(self))

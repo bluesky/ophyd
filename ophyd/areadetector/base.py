@@ -92,7 +92,7 @@ class ADBase(Device):
     def __init__(self, *args, **kwargs):
         super().__init__( *args, **kwargs)
 
-        self.est_time = ADEstTime(self)
+        self.est_time = ADEstTime(self.name)
 
     _html_docs = ['areaDetectorDoc.html']
     _default_read_attrs = ()

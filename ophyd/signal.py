@@ -33,7 +33,7 @@ class Signal(OphydObject):
         current local time.
     tolerance : any, optional
         The absolute tolerance associated with the value
-    rtolerance : any, optional
+    tolerance : any, optional
         The relative tolerance associated with the value, used in
         set_and_wait as follows
 
@@ -75,16 +75,9 @@ class Signal(OphydObject):
         # NOTE: this is a no-op that exists here for bluesky purposes
         #       it may need to be moved in the future
 
-        #set up the telemetry dictionary here
-        plan_history = {}
-        plan_history['time'] = {'timestamp': time.time() }
-
         d = Status(self)
         d._finished()
 
-        #save telemetry here
-        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
-        self.est_time('trigger', plan_history = plan_history, record = True)
         return d
 
     def wait_for_connection(self, timeout=0.0):
@@ -164,9 +157,6 @@ class Signal(OphydObject):
             This status object will be finished upon return in the
             case of basic soft Signals
         '''
-        #set up the telemetry dictionary
-        plan_dictionary = {}
-        plan_dictionary['time'] = {'timestamp': time.time() }
 
         def set_thread():
             try:
@@ -203,8 +193,6 @@ class Signal(OphydObject):
         self._set_thread.daemon = True
         self._set_thread.start()
 
-        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
-        self.est_time('set', plan_history = plan_history, record = True )
         return self._status
 
     @property
@@ -630,13 +618,6 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of value timestamp pairs
         """
-        #set up the telemetry dictioanry here
-        val_dict = {}
-        val_dict['time'] = {'timestamp': time.time() }
-
-        #save the telemetry here
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('read', val_dict = val_dict, record = True ) 
 
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
@@ -960,12 +941,6 @@ class EpicsSignal(EpicsSignalBase):
         --------
         Signal.set
         '''
-        #set up the telemetry dictioanry here
-        plan_history = {}
-        plan_history['time'] = {'timestamp': time.time() }
-
-
-
 
         if not self._put_complete:
             return super().set(value, timeout=timeout, settle_time=settle_time)
@@ -979,10 +954,6 @@ class EpicsSignal(EpicsSignalBase):
 
         self.put(value, use_complete=True, callback=put_callback)
         
-        #save the telemetry here
-        plan_history['time']['delta_time'] = time.time() - plan_history['time']['timestamp']
-        self.est_time('set', plan_history = plan_history, record = True ) 
-
         return st
 
     @property

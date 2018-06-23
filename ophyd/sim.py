@@ -421,8 +421,6 @@ class SynAxis(SynAxisNoHints):
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
 
-
-
 class SynGauss(SynSignal):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
@@ -782,7 +780,6 @@ class SynSignalWithRegistry(SynSignal):
             reading['value'] = datum_id
             self._result[name] = reading
 
-
         return NullStatus()
 
     def read(self):
@@ -866,12 +863,12 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)#, name = 'pseudo1')
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)#, name = 'pseudo2')
-    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)#, name = 'pseudo3')
-    real1 = C(SoftPositioner, init_pos=0)#, name = 'real1')
-    real2 = C(SoftPositioner, init_pos=0)#, name = 'real2')
-    real3 = C(SoftPositioner, init_pos=0)#, name = 'real3')
+    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
+    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
+    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
+    real1 = C(SoftPositioner, init_pos=0)
+    real2 = C(SoftPositioner, init_pos=0)
+    real3 = C(SoftPositioner, init_pos=0)
 
     sig = C(Signal, value=0)
 
