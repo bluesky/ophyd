@@ -33,7 +33,7 @@ class Signal(OphydObject):
         current local time.
     tolerance : any, optional
         The absolute tolerance associated with the value
-    tolerance : any, optional
+    rtolerance : any, optional
         The relative tolerance associated with the value, used in
         set_and_wait as follows
 
@@ -74,10 +74,8 @@ class Signal(OphydObject):
         '''Call that is used by bluesky prior to read()'''
         # NOTE: this is a no-op that exists here for bluesky purposes
         #       it may need to be moved in the future
-
         d = Status(self)
         d._finished()
-
         return d
 
     def wait_for_connection(self, timeout=0.0):
@@ -157,7 +155,6 @@ class Signal(OphydObject):
             This status object will be finished upon return in the
             case of basic soft Signals
         '''
-
         def set_thread():
             try:
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
@@ -192,7 +189,6 @@ class Signal(OphydObject):
         self._set_thread = self.cl.thread_class(target=set_thread)
         self._set_thread.daemon = True
         self._set_thread.start()
-
         return self._status
 
     @property
@@ -212,7 +208,6 @@ class Signal(OphydObject):
         -------
             dict
         '''
-
         return {self.name: {'value': self.get(),
                             'timestamp': self.timestamp}}
 
@@ -941,7 +936,6 @@ class EpicsSignal(EpicsSignalBase):
         --------
         Signal.set
         '''
-
         if not self._put_complete:
             return super().set(value, timeout=timeout, settle_time=settle_time)
 
@@ -953,7 +947,6 @@ class EpicsSignal(EpicsSignalBase):
             st._finished(success=True)
 
         self.put(value, use_complete=True, callback=put_callback)
-        
         return st
 
     @property

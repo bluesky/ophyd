@@ -81,16 +81,8 @@ class PositionerBase(OphydObject):
         status : StatusBase
             Status object to indicate when the motion / set is done.
         """
-        val_dict = {}   #a dictionary used in the time estimation process
-        val_dict['time'] = {'timestamp':time.time()} #the start time of thr current action.
-        val_dict['set'] = {self.name: self.position}
-
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
-
-        val_dict['time']['delta_time'] = time.time() - val_dict['time']['timestamp']
-        self.est_time('set',val_dict=val_dict, vals=[new_position] ,record=True)
- 
 
     def stop(self, *, success: bool =False):
         '''Stops motion.

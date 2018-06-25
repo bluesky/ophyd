@@ -25,7 +25,6 @@ from .positioner import SoftPositioner
 from .utils import DO_NOT_USE, ReadOnlyError, LimitError
 
 from .EstTime import EpicsMotorEstTime, ADEstTime
-
 logger = logging.getLogger(__name__)
 
 
@@ -109,7 +108,6 @@ class SynSignal(Signal):
 
     def trigger(self):
         delay_time = self.exposure_time
-
         if delay_time:
             st = DeviceStatus(device=self)
             if self.loop.is_running():
@@ -127,7 +125,6 @@ class SynSignal(Signal):
                     st._finished()
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
-
             return st
         else:
             self.put(self._func())
@@ -286,7 +283,6 @@ class SynAxisNoHints(Device):
     SUB_READBACK = 'readback'
     _default_sub = SUB_READBACK
 
-
     def __init__(self, *,
                  name,
                  readback_func=None, value=0, delay=0,
@@ -315,9 +311,7 @@ class SynAxisNoHints(Device):
         super().__init__(name=name, parent=parent, labels=labels, kind=kind)
         self.readback.name = self.name
 
-
     def set(self, value):
-    
         old_setpoint = self.sim_state['setpoint']
         self.sim_state['setpoint'] = value
         self.sim_state['setpoint_ts'] = ttime.time()
@@ -356,7 +350,6 @@ class SynAxisNoHints(Device):
                     st._finished()
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
-            
             return st
         else:
             update_state()
@@ -365,7 +358,6 @@ class SynAxisNoHints(Device):
     @property
     def position(self):
         return self.readback.get()
-
 
 
 class SynAxis(SynAxisNoHints):
@@ -416,7 +408,6 @@ class SynAxis(SynAxisNoHints):
         else:
             update_state()
             return MoveStatus(self, value, start_pos = start_pos, done = True, success = True)
-
 
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
@@ -749,7 +740,6 @@ class SynSignalWithRegistry(SynSignal):
         self._asset_docs_cache.append(('resource', resource))
 
     def trigger(self):
-
         super().trigger()
         # save file stash file name
         self._result.clear()
@@ -783,7 +773,6 @@ class SynSignalWithRegistry(SynSignal):
         return NullStatus()
 
     def read(self):
-
         return self._result
 
     def describe(self):
@@ -1076,7 +1065,6 @@ def hw():
         axis.velocity.set(1)
         axis.settle_time = SynAxisNoHints(name = 'settle_time')
         axis.settle_time.set(0)
-
 
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
                          noise='uniform', sigma=1, noise_multiplier=0.1,

@@ -3,7 +3,6 @@ from .telemetry import TelemetryUI
 from .EstTime import DefaultEstTime
 from collections import namedtuple
 
-
 import time
 import logging
 
@@ -38,7 +37,6 @@ class UnknownSubscription(KeyError):
     "Subclass of KeyError.  Raised for unknown event type"
     ...
 
- 
 
 class OphydObject:
     '''The base class for all objects in Ophyd
@@ -374,7 +372,3 @@ class OphydObject:
     def __copy__(self):
         info = dict(self._repr_info())
         return self.__class__(**info)
-
-
-
-

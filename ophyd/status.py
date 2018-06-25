@@ -474,8 +474,8 @@ class MoveStatus(DeviceStatus):
             if self.success:
                 try:
                     self.pos.est_time.set.record(self)
-                except AttributeError:
-                    print ('est_time.set.record attribute required on {}, but not found'.format(self.pos))
+                except AttributeError('est_time.set.record attribute required on {}, but not found'\
+                                    .format(self.pos)):
                     raise
     
 
