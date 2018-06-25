@@ -1,11 +1,16 @@
 from itertools import count
-from .telemetry import (fetch_telemetry, fetch_statistics, record_telemetry)
+from .telemetry import TelemetryUI
+from .EstTime import DefaultEstTime
 from collections import namedtuple
 
 import time
 import logging
 
 from .status import (StatusBase, MoveStatus, DeviceStatus)
+
+#define some functions
+record_telemetry = TelemetryUI.record_telemetry
+fetch_telemetry = TelemetryUI.fetch_telemetry
 
 try:
     from enum import IntFlag
@@ -532,8 +537,8 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name = None, parent = None, labels = None,
-                 kind = None, est_time = EstTime, telemetry = TimeTelemetry ):
+    def __init__(self, *, name=None, parent=None, labels=None,
+                 kind=None, est_time=DefaultEstTime ):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
@@ -550,8 +555,7 @@ class OphydObject:
             raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
-        self.est_time = est_time(self)
-        self.telemetry = telemetry(self)
+        self.est_time = est_time(self.name)
 
         self.subscriptions = {getattr(self, k)
                               for k in dir(type(self))
@@ -844,7 +848,3 @@ class OphydObject:
     def __copy__(self):
         info = dict(self._repr_info())
         return self.__class__(**info)
-
-
-
-

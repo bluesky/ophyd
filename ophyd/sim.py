@@ -14,7 +14,8 @@ import copy
 import logging
 
 from .signal import Signal, EpicsSignal, EpicsSignalRO
-from .status import DeviceStatus, StatusBase
+from .status import DeviceStatus, StatusBase, MoveStatus
+from .areadetector.trigger_mixins import ADTriggerStatus
 from .device import (Device, Component, Component as C,
                      DynamicDeviceComponent as DDC, Kind)
 from types import SimpleNamespace
@@ -23,6 +24,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle,
 from .positioner import SoftPositioner
 from .utils import DO_NOT_USE, ReadOnlyError, LimitError
 
+from .EstTime import EpicsMotorEstTime, ADEstTime
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +97,7 @@ class SynSignal(Signal):
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind)
+        self.est_time = ADEstTime(self)
 
     def describe(self):
         res = super().describe()
@@ -133,9 +136,13 @@ class SynSignal(Signal):
             return st
         else:
             self.put(self._func())
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('trigger', plan_history = plan_history, record = True)
-            return NullStatus()
+            return ADTriggerStatus(self, done = True, success = True)
+
+    def stage(self):
+        pass
+
+    def unstage(self):
+        pass
 
     def stage(self):
         #setup lines for saving telemetry
@@ -333,11 +340,60 @@ class SynAxisNoHints(Device):
         self.readback.name = self.name
 
     def set(self, value):
-        #a dictionary used to time the operation and send this info to the telemetry database.
-        plan_history = {}
-        plan_history['time'] = {'timestamp':ttime.time()}
-        plan_history['set'] = {self.name : self.position }
+        old_setpoint = self.sim_state['setpoint']
+        self.sim_state['setpoint'] = value
+        self.sim_state['setpoint_ts'] = ttime.time()
+        self.setpoint._run_subs(sub_type=self.setpoint.SUB_VALUE,
+                                old_value=old_setpoint,
+                                value=self.sim_state['setpoint'],
+                                timestamp=self.sim_state['setpoint_ts'])
+
+        def update_state():
+            old_readback = self.sim_state['readback']
+            self.sim_state['readback'] = self._readback_func(value)
+            self.sim_state['readback_ts'] = ttime.time()
+            self.readback._run_subs(sub_type=self.readback.SUB_VALUE,
+                                    old_value=old_readback,
+                                    value=self.sim_state['readback'],
+                                    timestamp=self.sim_state['readback_ts'])
+            self._run_subs(sub_type=self.SUB_READBACK,
+                           old_value=old_readback,
+                           value=self.sim_state['readback'],
+                           timestamp=self.sim_state['readback_ts'])
+
+        if self.delay:
+            st = DeviceStatus(device=self)
+            if self.loop.is_running():
+
+                def update_and_finish():
+                    update_state()
+                    st._finished()
+
+                self.loop.call_later(self.delay, update_and_finish)
+            else:
+
+                def sleep_and_finish():
+                    ttime.sleep(self.delay)
+                    update_state()
+                    st._finished()
+
+                threading.Thread(target=sleep_and_finish, daemon=True).start()
+            return st
+        else:
+            update_state()
+            return NullStatus()
+
+    @property
+    def position(self):
+        return self.readback.get()
+
+
+
+class SynAxis(SynAxisNoHints):
     
+    def set(self, value):
+    
+        start_pos = self.position
         old_setpoint = self.sim_state['setpoint']
         self.sim_state['setpoint'] = value
         self.sim_state['setpoint_ts'] = ttime.time()
@@ -377,22 +433,11 @@ class SynAxisNoHints(Device):
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('set', plan_history = plan_history, vals = [value], record = True)
             return st
         else:
             update_state()
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp'] 
-            self.est_time('set', plan_history = plan_history, vals = [value], record = True)
-            return NullStatus()
+            return MoveStatus(self, value, start_pos = start_pos, done = True, success = True)
 
-    @property
-    def position(self):
-        return self.readback.get()
-
-
-
-class SynAxis(SynAxisNoHints):
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
 
@@ -1053,11 +1098,11 @@ def hw():
                              readback_func=lambda x: x + np.random.rand(),
                              labels={'motors'})
     for axis in [motor, motor1, motor2, motor3, jittery_motor1, jittery_motor2]:
+        axis.est_time = EpicsMotorEstTime(axis)
         axis.velocity = SynAxisNoHints(name = 'velocity')
         axis.velocity.set(1)
         axis.settle_time = SynAxisNoHints(name = 'settle_time')
-        axis.settle_time.set(1)
-
+        axis.settle_time.set(0)
 
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
                          noise='uniform', sigma=1, noise_multiplier=0.1,
@@ -1081,10 +1126,14 @@ def hw():
     for detector in [noisy_det, det, identical_det, det1, det2, det3, det4, det5]:
         detector.acquire_time = SynAxisNoHints(name = 'acquire_time')
         detector.acquire_time.set(1)
+        detector.acquire_period = SynAxisNoHints(name = 'acquire_period')
+        detector.acquire_period.set(1)       
         detector.num_images = SynAxisNoHints(name = 'num_images')
         detector.num_images.set(1) 
         detector.trigger_mode = SynAxisNoHints(name = 'trigger_mode')
         detector.trigger_mode.set(1)        
+        detector.settle_time = SynAxisNoHints(name = 'settle_time')
+        detector.settle_time.set(0)  
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)

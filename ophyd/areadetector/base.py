@@ -9,6 +9,7 @@ from ..signal import EpicsSignal
 from . import docs
 from ..device import (Device, Component)
 from ..signal import (ArrayAttributeSignal)
+from ..EstTime import ADEstTime
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -88,6 +89,10 @@ class ADBase(Device):
 
     This serves as the base for all detectors and plugins
     '''
+    def __init__(self, *args, **kwargs):
+        super().__init__( *args, **kwargs)
+
+        self.est_time = ADEstTime(self.name)
 
     _html_docs = ['areaDetectorDoc.html']
     _default_read_attrs = ()

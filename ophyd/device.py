@@ -569,10 +569,6 @@ class BlueskyInterface:
 
         """
 
-        #set up the dictionary for the timing of the stage.
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time()}
-
         if self._staged == Staged.no:
             pass  # to short-circuit checking individual cases
         elif self._staged == Staged.yes:
@@ -630,9 +626,6 @@ class BlueskyInterface:
         else:
             self._staged = Staged.yes
 
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('stage', plan_history = plan_history, record = True)    
-    
         return devices_staged
 
     def unstage(self) -> List[object]:
@@ -653,9 +646,6 @@ class BlueskyInterface:
             list including self and all child devices unstaged
 
         """
-        #set up the dictionary used for saving the telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
 
         self.log.debug("Unstaging %s", self.name)
         self._staged = Staged.partially
@@ -679,8 +669,6 @@ class BlueskyInterface:
 
         self._staged = Staged.no
 
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('unstage',plan_history = plan_history, record = True)
         return devices_unstaged
 
     def pause(self) -> None:
@@ -1034,7 +1022,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                 # this forces us to get the real version
                 component = getattr(self, component_name)
                 res.update(component.read())
-        
+
         return res
 
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -1118,9 +1106,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     @doc_annotation_forwarder(BlueskyInterface)
     def trigger(self):
         """Start acquisition"""
-        #set up the dictionary for saving the telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time()}
 
         signals = self.trigger_signals
         if len(signals) > 1:
@@ -1129,9 +1114,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         status = DeviceStatus(self)
         if not signals:
             status._finished()
-            #save the telemetry
-            plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-            self.est_time('trigger', plan_history = plan_history, record = True)
+
             return status
 
         acq_signal, = signals
@@ -1147,9 +1130,6 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         acq_signal.put(1, wait=False, callback=done_acquisition)
 
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-
-        self.est_time('trigger', plan_history = plan_history, record = True)
         return status
 
     def stop(self, *, success=False):

@@ -3,7 +3,7 @@ import time
 from threading import RLock
 from functools import wraps
 from warnings import warn
-
+import inspect
 import logging
 import threading
 import numpy as np
@@ -145,6 +145,7 @@ class StatusBase:
             self._settle_thread.start()
         else:
             self._settle_then_run_callbacks(success=success)
+
 
     @property
     def callbacks(self):
@@ -421,18 +422,39 @@ class MoveStatus(DeviceStatus):
         Motion successfully completed
     '''
 
-    def __init__(self, positioner, target, *, start_ts=None,
+    def __init__(self, positioner, target, *, start_pos = None, start_ts = None,
                  **kwargs):
         self._tname = 'timeout for {}'.format(positioner.name)
+
         if start_ts is None:
             start_ts = time.time()
 
         self.pos = positioner
+        if start_pos is None:
+            start_pos =  self.pos.position
+        
+        self.start_pos = start_pos
         self.target = target
         self.start_ts = start_ts
-        self.start_pos = self.pos.position
         self.finish_ts = None
         self.finish_pos = None
+
+        #This section below ensures that the status object has all of the info required
+        #for storing telemetry associated with it.
+        arg_names = inspect.signature(self.pos.est_time.set).parameters
+        args = []
+        for arg_name in arg_names:
+            try: 
+                args.append(getattr(self,arg_name))
+            except AttributeError:
+                try:
+                    setattr(self, arg_name, getattr(self.pos, arg_name).position)
+                    args.append(getattr(self,arg_name))
+                except AttributeError:
+                    print ('{} attribute on {} required but not found'.format(arg_name, self.pos))
+                    raise
+
+        self.est_time = self.pos.est_time.set(*args)
 
         self._unit = getattr(self.pos, 'egu', None)
         self._precision = getattr(self.pos, 'precision', None)
@@ -446,6 +468,16 @@ class MoveStatus(DeviceStatus):
         if not self.done:
             self.pos.subscribe(self._notify_watchers,
                                event_type=self.pos.SUB_READBACK)
+        else:
+            self.finish_pos = self.target
+            self.finish_ts = time.time()
+            if self.success:
+                try:
+                    self.pos.est_time.set.record(self)
+                except AttributeError('est_time.set.record attribute required on {}, but not found'\
+                                    .format(self.pos)):
+                    raise
+    
 
     def watch(self, func):
         """
@@ -535,6 +567,15 @@ class MoveStatus(DeviceStatus):
                 )
 
     __repr__ = __str__
+
+    def _finished(self, success = True, **kwargs):
+        '''Inform the status object that it is done, and if it succeeded. If success is True
+        then also record telemetry about the move.
+        '''
+        
+        super()._finished(success = success, **kwargs)
+        if success:
+            self.pos.est_time.set.record(self)
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):
