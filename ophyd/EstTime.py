@@ -294,6 +294,17 @@ class EpicsMotorEstTime(DefaultEstTime):
     exist to improve the time estimation.
     '''
 
+    def __init__(self, obj_name):
+        '''The initialization method.
+
+        Parameters
+        ----------
+        obj_name, name of objectobject
+            The object name that this class is being instantiated on.
+        '''
+        self.obj_name = obj_name
+
+
     def set(self, start_pos, target, velocity, settle_time):
         '''Estimates the time (est_time) to perform 'set' on this object.
                 
@@ -334,7 +345,6 @@ class EpicsMotorEstTime(DefaultEstTime):
                 std_dev_velocity = float('nan')
         
             if mean_velocity == 0:
-                print (f'velocity_list: {velocity_list}')   
                 mean_velocity = float('nan')
 
             est_time = abs(start_pos - target)/mean_velocity + settle_time
@@ -362,7 +372,6 @@ class EpicsMotorEstTime(DefaultEstTime):
             This is a status object that contains information collected about the action to be 
             stored in telemetry.
         '''
-                
         if status_object:
             data={}
             data['estimation'] = {'time':status_object.est_time.est_time, 

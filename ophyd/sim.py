@@ -97,7 +97,7 @@ class SynSignal(Signal):
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind)
-        self.est_time = ADEstTime(self)
+        self.est_time = ADEstTime(self.name)
 
     def describe(self):
         res = super().describe()
@@ -143,26 +143,6 @@ class SynSignal(Signal):
 
     def unstage(self):
         pass
-
-    def stage(self):
-        #setup lines for saving telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
-        #lines for saving telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('stage', plan_history = plan_history, record = True)   
-
-    def unstage(self):
-        #setup lines for saving telemetry
-        plan_history = {}
-        plan_history['time'] = {'timestamp': ttime.time() }
-
-        #lines for saving telemetry
-        plan_history['time']['delta_time'] = ttime.time() - plan_history['time']['timestamp']
-        self.est_time('unstage', plan_history = plan_history, record = True)   
-
-
 
     def get(self):
         # Get a new value, which allows us to synthesize noisy data, for
@@ -1098,7 +1078,7 @@ def hw():
                              readback_func=lambda x: x + np.random.rand(),
                              labels={'motors'})
     for axis in [motor, motor1, motor2, motor3, jittery_motor1, jittery_motor2]:
-        axis.est_time = EpicsMotorEstTime(axis)
+        axis.est_time = EpicsMotorEstTime(axis.name)
         axis.velocity = SynAxisNoHints(name = 'velocity')
         axis.velocity.set(1)
         axis.settle_time = SynAxisNoHints(name = 'settle_time')
