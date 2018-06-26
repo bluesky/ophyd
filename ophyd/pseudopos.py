@@ -974,7 +974,7 @@ class PseudoStatePositioner(PseudoPositioner):
         path.
 
     '''
-    def __init__(self, *,locations={}, neighbours={}, regions={}):
+    def __init__(self, *args, *,components={},locations={}, neighbours={}, regions={}, **kwargs):
 
         #define inputs as attributes
         self.locations = locations
@@ -982,7 +982,7 @@ class PseudoStatePositioner(PseudoPositioner):
         self.regions = regions
 
         #define components as attributes
-        for attribute in list(components.keys())
+        for attribute in list(components.keys()):
             self.attribute = components[keys]
 
         self.nxGraph=nx.DiGraph(directed=True)
@@ -998,6 +998,8 @@ class PseudoStatePositioner(PseudoPositioner):
 
         for location in self.locations:#define the position attributes
             setattr(self,location,self.state.set(location))
+
+        super().__init__(*args, **kwargs)
 
     # pseudo axis
 
@@ -1021,7 +1023,7 @@ class PseudoStatePositioner(PseudoPositioner):
         for location in self.locations:
             in_location = true
             for axis in self.locations[location]:
-                if isinstance(self.locations[location][axis], float)
+                if isinstance(self.locations[location][axis], float):
                     if axis in self.regions[location]:
                         if get_attr(self,axis).position < self.regions[location][axis][0] \
                             or get_attr(self,axis).position > self.regions[location][axis][1]:
@@ -1030,7 +1032,7 @@ class PseudoStatePositioner(PseudoPositioner):
                         if get_attr(self,axis).position < .99*self.locations[location][axis] \
                             or get_attr(self,axis).position > 1.01*self.regions[location][axis]:
                             in_location = false
-                elif isinstance(self.locations[location][axis], str)
+                elif isinstance(self.locations[location][axis], str):
                     if self.locations[location][axis] is not get_attr(self, axis).position:
                         in_location = false
             
@@ -1038,5 +1040,22 @@ class PseudoStatePositioner(PseudoPositioner):
                 out_positions.append(location)
         
         return self.PseudoPosition(state = out_positions)
-           
 
+    @pseudo_position_argument
+    def set(self, position, **kwargs):
+        '''Move to a new position asynchronously
+
+        Parameters
+        ----------
+        position : PseudoPosition
+            Position for the all of the pseudo axes
+
+        Returns
+        -------
+        status : MoveStatus
+        '''
+        for location in self.position:
+            if position in self.neighbours(location):
+                return super().set(position, **kwargs)
+        
+        raise ValueError('{} is not in the neighbours list of any current location'.format(position))
