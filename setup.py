@@ -11,4 +11,10 @@ setup(name='ophyd',
       cmdclass=versioneer.get_cmdclass(),
       license='BSD',
       install_requires=requirements,
-      packages=find_packages())
+      packages=find_packages(),
+      classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+      ])
