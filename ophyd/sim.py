@@ -269,8 +269,14 @@ class SynAxisNoHints(Device):
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
     """
-    readback = Component(ReadbackSignal, value=None)
-    setpoint = Component(SetpointSignal, value=None)
+    readback = Component(ReadbackSignal, value=None, kind='hinted')
+    setpoint = Component(SetpointSignal, value=None, kind='normal')
+
+    velocity = Component(Signal, value=1, kind='config')
+    acceleration = Component(Signal, value=1, kind='config')
+
+    unused = Component(Signal, value=1, kind='omitted')
+
     SUB_READBACK = 'readback'
     _default_sub = SUB_READBACK
 
