@@ -417,7 +417,7 @@ class ComponentMeta(type):
             cpt.attr = cpt_attr
 
         # List Signal attribute names.
-        clsobj.component_names = list(clsobj._sig_attrs.keys())
+        clsobj.component_names = tuple(clsobj._sig_attrs.keys())
 
         # The namedtuple associated with the device
         clsobj._device_tuple = namedtuple(

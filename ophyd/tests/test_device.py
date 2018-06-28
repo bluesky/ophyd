@@ -94,9 +94,12 @@ class TestDevice(AssertTools):
         self.assertIs(device.cpt3.parent, device)
 
         self.assertEquals(device.sub1.component_names,
-                          ['cpt1', 'cpt2', 'cpt3'])
+                          ('cpt1', 'cpt2', 'cpt3'))
         self.assertEquals(device.subsub2.component_names,
-                          ['cpt1', 'cpt2', 'cpt3', 'cpt4'])
+                          ('cpt1', 'cpt2', 'cpt3', 'cpt4'))
+
+        with pytest.raises(AttributeError):
+            device.component_names.remove('sub1')
 
         conf_keys = {'dev_sub1_cpt1_conf',    # from sub1.*
                      # 'dev_sub1_cpt2_conf',  # not in sub1.config_attrs
