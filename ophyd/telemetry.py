@@ -1,3 +1,5 @@
+import pymongo
+
 
 class TelemetryClass:
 
@@ -10,6 +12,12 @@ class TelemetryClass:
         #               attribute_1_name{'start':'', 'stop':''}......... 
         #               attribute_n_name{'start': '', 'stop': ''} }, ............]
 
+        self.use_database = False #allows for hot swapping between the dictionary (self.telemetry) and a
+                                  #database.
+        ###I may want to move this database setup somewhere else, to be discussed.
+        self.MongoDB_client = pymongo.MongoClient()###add client location here, plan to use the databroker client 
+                                                  ###still need to find where this is stored)
+        self.telemetry_db = MongoDB_client.telemetry_db
 
 
     def record_telemetry(self,obj_name, cmd, data):
@@ -45,7 +53,10 @@ class TelemetryClass:
                 temp_dict[key] = data[attribute][key]
             event_dict[attribute] = temp_dict
 
-        self.telemetry.append(event_dict)
+        if self.use_database:
+            result = self.telemetry_db.posts.insert_one(event_dict)
+        else:
+            self.telemetry.append(event_dict)
 
 
     def fetch_telemetry(self, obj_name, cmd ):
@@ -77,10 +88,13 @@ class TelemetryClass:
             of values for each.
 
         '''
-        out_list = []
-        for item in self.telemetry:
-            if item['object_name'] == obj_name and item['action'] == cmd:
-                out_list.append(item)
+        if self.use_database:
+            out_list = list(self.telemetry_db.posts.find({'object_name':obj_name, 'action':action})) 
+        else:
+            out_list = []
+            for item in self.telemetry:
+                if item['object_name'] == obj_name and item['action'] == cmd:
+                    out_list.append(item)
 
         return out_list
 
