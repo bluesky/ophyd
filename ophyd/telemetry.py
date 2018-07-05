@@ -1,4 +1,6 @@
 import pymongo
+import yaml
+import pymongo
 
 
 class TelemetryClass:
@@ -14,10 +16,20 @@ class TelemetryClass:
 
         self.use_database = False #allows for hot swapping between the dictionary (self.telemetry) and a
                                   #database.
-        ###I may want to move this database setup somewhere else, to be discussed.
-        self.MongoDB_client = pymongo.MongoClient()###add client location here, plan to use the databroker client 
-                                                  ###still need to find where this is stored)
-        self.telemetry_db = MongoDB_client.telemetry_db
+
+        self._client = None
+        self.telemetry_db = None
+
+
+    if os.name == 'nt':
+        _user_conf = os.path.join(os.environ['APPDATA'], 'telemetry')
+        CONFIG_SEARCH_PATH = (_user_conf,)
+    else:
+        _user_conf = os.path.join(os.path.expanduser('~'), '.config', 'telemetry')
+        _local_etc = os.path.join(os.path.dirname(os.path.dirname(sys.executable)),
+                                  'etc', 'telemetry')
+        _system_etc = os.path.join('/', 'etc', 'telemetry')
+        CONFIG_SEARCH_PATH = (_user_conf, _local_etc, _system_etc)
 
 
     def record_telemetry(self,obj_name, cmd, data):
@@ -97,6 +109,80 @@ class TelemetryClass:
                     out_list.append(item)
 
         return out_list
+
+    def lookup_config(name):
+        """
+        Search for a databroker configuration file with a given name.
+        For exmaple, the name 'example' will cause the function to search for:
+        * ``~/.config/databroker/example.yml``
+        * ``{python}/../etc/databroker/example.yml``
+        * ``/etc/databroker/example.yml``
+        where ``{python}`` is the location of the current Python binary, as
+        reported by ``sys.executable``. It will use the first match it finds.
+        The configuration file should have the structure:
+        >>> config = {
+        ...     'description': 'lightweight personal database',
+        ...     'telemetry': {
+        ...         'config': {
+        ...             'host' : 'some_host',
+        ...             'port' : 'some_port',
+        ...             'database' : 'some database name'}
+        ...                   },
+        ...                  }
+        ...          }
+
+        Parameters
+        ----------
+        name : string
+
+        Returns
+        -------
+        config : dict
+        """
+
+        if not name.endswith('.yml'):
+            name += '.yml'
+        tried = []
+        for path in self.CONFIG_SEARCH_PATH:
+            filename = os.path.join(path, name)
+            tried.append(filename)
+            if os.path.isfile(filename):
+                with open(filename) as f:
+                    return yaml.load(f)
+        else:
+            raise FileNotFoundError("No config file named {!r} could be found in "
+                                    "the following locations:\n{}"
+                                    "".format(name, '\n'.join(tried)))
+
+
+    def configure_db(self, name=None):
+        """
+        Create a new Broker instance using a dictionary of configuration.
+        Parameters
+        ----------
+        config : dict
+        name : str, optional
+            The name of the generated Broker
+        Returns
+        -------
+        db : Broker
+        Examples
+        --------
+        Create a Broker backed by sqlite databases. (This is configuration is
+        not recommended for large or important deployments. See the
+        configuration documentation for more.)
+        """
+        
+        # Import component classes.
+        if self.telemetry_db is None:
+            config = lookup_config('name')
+
+            if self._client is None:
+                self._client = MongoClient(self.config['host'],
+                                      self.config.get('port', None))
+            
+            self.telemetry_db = self._client(config['database']
+
 
 TelemetryUI = TelemetryClass()
 
