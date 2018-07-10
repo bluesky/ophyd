@@ -1006,7 +1006,7 @@ class FakeEpicsSignal(SynSignal):
 
     def sim_set_enum_strs(self, enums):
         """
-        Set the enum_strs for a fake devices
+        Set the enum_strs for a fake device
 
         Parameters
         ----------
