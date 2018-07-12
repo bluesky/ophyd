@@ -213,9 +213,10 @@ class Signal(OphydObject):
 
     def describe(self):
         """Return the description as a dictionary"""
+        val = self.value
         return {self.name: {'source': 'SIM:{}'.format(self.name),
-                            'dtype': 'number',
-                            'shape': []}}
+                            'dtype': data_type(val),
+                            'shape': data_shape(val)}}
 
     def read_configuration(self):
         "Subclasses may customize this."
