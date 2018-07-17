@@ -52,7 +52,7 @@ class Signal(OphydObject):
     SUB_VALUE = 'value'
     _default_sub = SUB_VALUE
 
-    def __init__(self, *, name, value=None, timestamp=None, parent=None,
+    def __init__(self, *, name, value=0., timestamp=None, parent=None,
                  labels=None,
                  kind=Kind.hinted, tolerance=None, rtolerance=None, cl=None):
         super().__init__(name=name, parent=parent, kind=kind, labels=labels)
@@ -213,9 +213,10 @@ class Signal(OphydObject):
 
     def describe(self):
         """Return the description as a dictionary"""
+        val = self.value
         return {self.name: {'source': 'SIM:{}'.format(self.name),
-                            'dtype': 'number',
-                            'shape': []}}
+                            'dtype': data_type(val),
+                            'shape': data_shape(val)}}
 
     def read_configuration(self):
         "Subclasses may customize this."
