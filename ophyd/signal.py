@@ -52,7 +52,7 @@ class Signal(OphydObject):
     SUB_VALUE = 'value'
     _default_sub = SUB_VALUE
 
-    def __init__(self, *, name, value=None, timestamp=None, parent=None,
+    def __init__(self, *, name, value=0., timestamp=None, parent=None,
                  labels=None,
                  kind=Kind.hinted, tolerance=None, rtolerance=None, cl=None):
         super().__init__(name=name, parent=parent, kind=kind, labels=labels)
