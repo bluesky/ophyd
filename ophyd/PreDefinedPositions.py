@@ -326,39 +326,23 @@ class PreDefinedPositions():
                     axis = self.locations[location][i]
                     value = self.locations[location][i+1]
 
-                    if hasattr(getattr(self, axis), 'position'):
-                        if isinstance(self.in_band, float):
+                    if isinstance(value, float):
+                        if axis in self.regions[location]:
                             if getattr(self, axis).position <\
-                               value - self.in_band or\
-                               getattr(self, axis).position >\
-                               value + self.in_band:
+                               self.regions[location][axis][0]\
+                               or getattr(self, axis).position >\
+                               self.regions[location][axis][1]:
 
                                 in_position = False
                         else:
                             if getattr(self, axis).position <\
-                               self.in_band[location][axis][0] or\
-                               getattr(self, axis).position >\
-                               self.in_band[location][axis][1]:
+                               .99*self.locations[location][axis]\
+                               or getattr(self, axis).position >\
+                               1.01*self.regions[location][axis]:
 
                                 in_position = False
 
-                    elif hasattr(getattr(self, axis), 'get'):
-                        if isinstance(self.in_band, float):
-                            if getattr(self, axis).get() <\
-                               value - self.in_band or\
-                               getattr(self, axis).get() >\
-                               value + self.in_band:
-
-                                in_position = False
-                        else:
-                            if getattr(self, axis).get() <\
-                               self.in_band[location][axis][0] or\
-                               getattr(self, axis).get() >\
-                               self.in_band[location][axis][1]:
-
-                                in_position = False
-
-                    elif hasattr(getattr(self, axis), 'status'):
+                    elif isinstance(value, str):
                         if getattr(self, axis).status is not value:
                             in_position = False
 
