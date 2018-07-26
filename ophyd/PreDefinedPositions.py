@@ -14,12 +14,15 @@ class PreDefinedPositions():
     between these locations via calculated 'paths'. These 'paths' are
     calculated based on the optional 'neighbours' dictionary, which for each
     'location' defines a list of other locations that it is 'safe' to move
-    directly to. The 'components' in the instance can be any 'component' in
-    ophyd: such as motor axes, detectors, gate valves, their configuration
-    attributes and or even another PreDefinedPositions instance. The
-    'locations' do not need to have a value specifed for every component in the
-    collection, and the collection can be in more than one 'location' at any
-    given time. A further optional dictionary allows the user to define a
+    directly to.
+
+    The 'components' in the instance can be any 'component' in ophyd: such as
+    motor axes, detectors, gate valves, their configuration attributes and or
+    even another PreDefinedPositions instance. The 'locations' do not need to
+    have a value specifed for every component in the collection, and the
+    collection can be in more than one 'location' at any given time.
+
+    A further optional dictionary ('regions') allows the user to define a
     'volume' for all or some 'locations', within which the device is considered
     'in the location'. Moves to/from a location always end at the 'location'
     defined in the 'locations' dictionary. If a 'volume' is not defined for any
@@ -43,22 +46,24 @@ class PreDefinedPositions():
                    location2:[axis1,value1,axis2,value2,...],.....}.
             .. note::
                 #. Not all axes need to have a specifed value for each device
-                   location, only those with a specifed value are moved/checked
-                   for a given location.
+                   location.
+                #. Only axes with a specifed value are moved/checked for a
+                   given location.
                 #. All axes specifed in this dictionary must be specifed as
                    components in 'components'.
     neighbours : Dictionary, optional.
         A keyword:value dictionary where each keyword is a location defined in
         'locations' and each value is a list of 'neighbours' for that location.
-        Motion can only occur between neighbours, for non-neighbours a path
-        through various locations will be used, if it is found using
-        self.find_path. Optionally if the list contains 'All' this indicates
-        that evey location is accesible from this one. If no neighbours are
-        defined for this location then it is assumed that no direct motion is
-        allowed from this location.
+        a 'neighbour' is defined as a second location for which it is safe to
+        move firectly too from the keyword 'location'. Motion can only occur
+        between neighbours, for non-neighbours a path through various locations
+        will be used, if it is found using self.find_path. Optionally if the
+        list contains 'All' this indicates that evey location is accesible from
+        this one. If no neighbours are defined for this location then it is
+        assumed that no direct motion is allowed from this location.
     regions : Dictionary, optional.
         The optional keyword:value dictionary that has location keywords and
-        'region' values 'region' is a dictionary that has axis_name keywords
+        'region' values. 'region' is a dictionary that has axis_name keywords
         and [min_val, max_val] values denoting the range of values for this
         location and axis. This dictionary has the form:
             {location1:{'axis1_name':[axis1_min_val,axis1_max_val],
@@ -67,11 +72,11 @@ class PreDefinedPositions():
                         'axis2_name':[axis2_min_val,axis2_max_val],...},
                                           ....}.
             .. note::
-                Not all locations in the 'locations' require an entry in this
-                dictionary and not all axes defined with a value in 'locations'
-                , for a given location, must have a range in this dictionary
-                for the given location. For any axis that a 'range' is not
-                provided a default range of +/- 1% is used.
+                #. Not all locations in the 'locations' require an entry in
+                   this dictionary and not all axes defined with a value in
+                   'locations', for a given location, must have a range in this
+                   dictionary for the given location. For any axis that a
+                   'range' is not provided a default range of +/- 1% is used.
 
     .. note::
         NOTES ON PREDEFINED MOTION WITH NEIGHBOURS:
@@ -109,12 +114,12 @@ class PreDefinedPositions():
         def mv_plan(to_location):
             '''Returns a plan to move to 'to_location'.
 
-            A function that returns a plan that can move the collection  to the
+            A function that returns a plan that can move the collection to the
             location defined by 'to_location'
 
             Parameters
             ----------
-            to_location: string
+            to_location : string
                 The name of the location that it is required to move too.
             '''
 
@@ -144,17 +149,17 @@ class PreDefinedPositions():
 
         Parameters
         ----------
-        value, string:
+        value : string
             The pre defined location that the object is to move to.
 
         Returns
         -------
-        status, MoveStatus object:
+        status : MoveStatus object
             Returns a MoveStatus object.
 
         Raises:
         -------
-        ValueError:
+        ValueError :
             On invalid locations.
 
         '''
@@ -183,7 +188,7 @@ class PreDefinedPositions():
 
         Parameters
         ----------
-        read_dict: ordered dictionary, ouput
+        read_dict : ordered dictionary, ouput
             The output dictionary that matches the standard output for a
             Device.
         '''
@@ -201,12 +206,12 @@ class PreDefinedPositions():
         '''
         An attribute that returns the current 'location' description of the
         output data as an ordered dictionary. This is used identically to the
-        describe attribute function for a standard device and therefore can be
-        used in the baseline.
+        describe attribute function for a standard device and therefore allows
+        pre-defined locatioans to be used in the baseline.
 
         Parameters
         ----------
-        describe_dict: ordered dictionary, ouput
+        describe_dict : ordered dictionary, ouput
             The output dictionary that matches the standard output for a
             Device.
         '''
@@ -227,48 +232,75 @@ class PreDefinedPositions():
 
     def find_path(self, from_location=None, to_location=None):
         '''Find the shortest path from 'from_location' to 'to_location'.
+
         Find the shortest path from 'from_location' to 'to_location' passing
-        only thorugh the neighbours for each location defiend by the dictionary
-        'neighbours'. Returns an empty list if no path found otherwise returns
-        a list of 'locations' that define the path. If to_location is None then
-        it returns a dictionary showing the shortest path to all possible
-        locations. If from_location is None it returns a dictionary showing the
-        shortest path from all locations to the current location. If both are
-        None it returns a dictioanry of dictionaries. If from_location is
-        'current_location' the starting point is changed to the current
-        location.
+        only through the neighbours for each location defined by the dictionary
+        'neighbours'.
+        - If from_location is 'current_location' it uses the current location
+          value, if more than one current location exists it uses all current
+          locations as a dictionary, unless both are specified then it returns
+          the shortest of all possible paths.
+        - If to_location and from_location are both specified it returns a list
+          of locations providing the shortest path between the two.
+        - If only from_location is specified then it returns a dictionary keyed
+          by to_locations with a list locations giving the shortest path to the
+          keyed location.
+        - If only to_location is specified it returns a dictionary keyed to
+          from_locations ith a list of locations giving the shortest path from
+          the keyed location.
+        - If neither from_location or to_location are specified it returns a
+          dictionary of dictionaries with:
+          .. codeblock::
+              path[from_location][to_location]=
+              [list of locations providing shortest path]
 
         Parameters
         ---------
-        from_location: string
+        from_location : string
             The name of the starting location required for the path.
-        to_location: string
+        to_location : string
             The name of the ending location required for the path.
-        path_list: list, output
-            A list locations indicating the path to take to reach the required
-            position.
+
+        Returns
+        -------
+        path : various, output
+            - If to_location and from_location are both specified it returns a
+              list of locations providing the shortest path between the two.
+            - If only from_location is specified then it returns a dictionary
+              keyed by to_locations with a list locations giving the shortest
+              path to the keyed location.
+            - If only to_location is specified it returns a dictionary keyed to
+              from_locations with a list of locations giving the shortest path
+              from the keyed location.
+            - If neither from_location or to_location are specified it returns
+              a dictionary of dictionaries with:
+              .. codeblock::
+                  path[from_location][to_location]=
+                  [list of locations providing shortest path]
         '''
 
-        if from_location is not 'current_location':
-            path_list = nx.shortest_path(self.nxGraph, source=from_location,
-                                         target=to_location)
-        elif isinstance(self.status_list, str) and self.neighbours is not None:
-            path_list = (self.status_list)
-        else:
-            if self.neighbours is None:
-                path_list = [to_location]
+        # If from_location is 'current_location'
+        if from_location is 'current_location':
+            if to_location:
+                path = []
             else:
-                path_list = []
-                for location in self.status_list:
-                    prev_path_list = path_list
-                    path_list = nx.shortest_path(self.nxGraph, source=location,
-                                                 target=to_location)
+                path = {}
 
-                    if len(prev_path_list) > 1 and\
-                       len(prev_path_list) < len(path_list):
-                        path_list = prev_path_list
+            for location in self.position:
+                prev_path = path
+                path = nx.shortest_path(self.nxGraph, source=location,
+                                        target=to_location)
+                # If to_location is specifed.
+                if to_location:
+                    if len(prev_path) > 1 and len(prev_path) < len(path):
+                        path = prev_path
+                else:
+                    path[location] = path
+        else:
+            path = nx.shortest_path(self.nxGraph, source=from_location,
+                                    target=to_location)
 
-        return path_list
+        return path
 
     def visualize_paths(self, fig_size=[10, 10],
                         axis_labels=['arb. axis', 'arb. axis'],
@@ -278,12 +310,12 @@ class PreDefinedPositions():
 
         PARAMETERS
         ----------
-        fig_size: list, optional
+        fig_size : list, optional
             A list containing the horizontal and vertical size to make the
             figure.
-        axis_labels: list, optional
+        axis_labels : list, optional
             A list of horizontal and vertical axis names for the figure.
-        options: dict, optional
+        options : dict, optional
             An optional dictionary that contains kwargs for the draw_networkx
             function from the networkx module.
 
@@ -311,15 +343,17 @@ class PreDefinedPositions():
         '''Lists the current locations the collection is in.
 
         This returns a list containing the names of the current locations that
-        the collection is in.
+        the collection is in. If it is in no known location then it returns
+        'None'.
 
         Returns
         -------
         location_list : list
+            The list of locations the collection is currently 'in'.
         '''
 
         if self.locations is not None:
-            location_list = 'unknown location'
+            location_list = None
             for location in self.locations:
                 in_position = True
                 for i in range(0, len(self.locations[location]), 2):
@@ -347,11 +381,11 @@ class PreDefinedPositions():
                             in_position = False
 
                 if in_position:
-                    if location_list == 'unknown location':
+                    if location_list is None:
                         location_list = [location]
                     else:
                         location_list.append(location)
         else:
-            location_list = ['no locations']
+            location_list = None
 
         return location_list
