@@ -6,20 +6,24 @@ from matplotlib import pyplot as plt
 class MultiStatePathOrchestrator():
     '''
     A class that is used to create a 'collection' of components, and allow a
-    series of pre-defined 'locations' to be designated. It allows motion
-    between these locations via calculated 'paths'. These 'paths' are
-    calculated based on the optional 'neighbours' dictionary, which for each
-    'location' defines a list of other locations that it is 'safe' to move
-    directly to. The 'components' in the instance can be any 'component' in
-    ophyd: such as motor axes, detectors, gate valves, their configuration
-    attributes and/or even another PreDefinedPositions instance. The
-    'locations' do not need to have a value specifed for every component in the
-    collection, and the collection can be in more than one 'location' at any
-    given time. A further optional dictionary allows the user to define a
-    'volume' for all or some 'locations', within which the device is considered
-    'in the location'. Moves to/from a location always end at the 'location'
-    defined in the 'locations' dictionary. If a 'volume' is not defined for any
-    of the 'locations' then it is assumed to be in that location if all listed
+    series of pre-defined 'locations' to be designated.
+
+    It allows motion between these locations via calculated 'paths'. These
+    'paths' are calculated based on the optional 'neighbours' dictionary, which
+    for each 'location' defines a list of other locations that it is 'safe' to
+    move directly to.
+
+    The 'components' in the instance can be any 'component' in ophyd: such as
+    motor axes, detectors, gate valves, their configuration attributes and/or
+    even another PreDefinedPositions instance. The 'locations' do not need to
+    have a value specifed for every component in the collection, and the
+    collection can be in more than one 'location' at any given time.
+
+    A further optional dictionary allows the user to define a 'volume' for all
+    or some 'locations', within which the device is considered 'in the
+    location'. Moves to/from a location always end at the 'location' defined in
+    the 'locations' dictionary. If a 'volume' is not defined for any of the
+    'locations' then it is assumed to be in that location if all listed
     component values are with 1% of the 'location'.
 
     Parameters
@@ -181,39 +185,75 @@ class MultiStatePathOrchestrator():
             setattr(self, location, mv_plan(location))
 
     def find_path(self, from_location=None, to_location=None):
-        '''Find the shortest path from  'from_location' to 'to_location'.
+        '''Find the shortest path from 'from_location' to 'to_location'
 
         Find the shortest path from 'from_location' to 'to_location' passing
-        only thorugh the neighbours for each location defiend by the dictionary
-        'neighbours'. Returns an empty list if no path found otherwise returns
-        a list of 'locations' that define the path. If to_location is None then
-        it returns a dictionary showing the shortest path to all possible
-        locations. If from_location is None it returns a dictionary showing the
-        shortest path from all locations to the current location. If both are
-        None it returns a dictioanry of dictionaries. If from_location is
-        'current_location' the starting point is changed to the current
-        location.
+        only through the neighbours for each location defined by the dictionary
+        'neighbours'.
+        - If from_location is 'current_location' it uses the current location
+          value, if more than one current location exists it returns path for
+          all current locations as a dictionary, unless to_location is also
+          specified. Then it returns the shortest of all possible paths.
+        - If to_location and from_location are both specified it returns a list
+          of locations providing the shortest path between the two.
+        - If only from_location is specified then it returns a dictionary keyed
+          by to_locations with a list locations giving the shortest path to the
+          keyed location.
+        - If only to_location is specified it returns a dictionary keyed to
+          from_locations ith a list of locations giving the shortest path from
+          the keyed location.
+        - If neither from_location or to_location are specified it returns a
+          dictionary of dictionaries with:
+          .. codeblock::
+              path[from_location][to_location]=
+              [list of locations providing shortest path]
 
         Parameters
         ---------
-        from_location: string
+        from_location : string
             The name of the starting location required for the path.
-        to_location: string
+        to_location : string
             The name of the ending location required for the path.
+
         Returns
         -------
-        path_list: list.
-            A list of locations indicating the path to take to reach the
-            required position.
+        path : various, output
+            - If to_location and from_location are both specified it returns a
+              list of locations providing the shortest path between the two.
+            - If only from_location is specified then it returns a dictionary
+              keyed by to_locations with a list locations giving the shortest
+              path to the keyed location.
+            - If only to_location is specified it returns a dictionary keyed to
+              from_locations with a list of locations giving the shortest path
+              from the keyed location.
+            - If neither from_location or to_location are specified it returns
+              a dictionary of dictionaries with:
+              .. codeblock::
+                  path[from_location][to_location]=
+                  [list of locations providing shortest path]
         '''
+      # If from_location is 'current_location'
+        if from_location is 'current_location':
+            if to_location:
+                path = []
+            else:
+                path = {}
 
-        if from_location is not 'current_location':
-            path_list = nx.shortest_path(self.nxGraph, source=from_location,
-                                         target=to_location)
+            for location in self.position:
+                prev_path = path
+                path = nx.shortest_path(self.nxGraph, source=location,
+                                        target=to_location)
+                # If to_location is specifed.
+                if to_location:
+                    if len(prev_path) > 1 and len(prev_path) < len(path):
+                        path = prev_path
+                else:
+                    path[location] = path
         else:
-            path_list = [from_location]
+            path = nx.shortest_path(self.nxGraph, source=from_location,
+                                    target=to_location)
 
-        return path_list
+        return path
 
     def visualize_paths(self, fig_size=[10, 10],
                         axis_labels=['arb. axis', 'arb. axis'], options={}):

@@ -918,26 +918,31 @@ class PseudoStatePositioner(PseudoPositioner):
     '''A pseudo positioner, whose positions are discrete 'states'.
 
     This is a pseudo positioner that has a number of 'components', the
-    'position' that this positioner can occupy are a sereis of discrete
-    locations.It allows motion between these locations via calculated 'paths'.
-    These 'paths' are calcualted based on the optional 'neighbours' dictionary,
-    which for each 'location' defines a list of other locations that it is
-    'safe' to move directly to. The 'components' in the instance can be any
-    'component' in ophyd: such as motor axes, detectors, gate valves, their
-    configuration attributes and or even another PreDefinedPositions instance.
-    The 'locations' do not need to have a value specifed for every component in
-    the collection, and the collection can be in more than one 'location' at
-    any given time. A further optional dictionary allows the user to define a
-    'volume' for all or some 'locations', within which the device is considered
-    'in the location'. Moves to/from a location always end at the 'location'
-    defined in the 'locations' dictionary. If a 'volume' is not defined for any
-    of the 'locations' then it is assumed to be in that location if all listed
+    'position' that this positioner can occupy are a set of discrete
+    locations.
+
+    It allows motion between these locations via calculated 'paths'. These
+    'paths' are calcualted based on the optional 'neighbours' dictionary, which
+    for each 'location' defines a list of other locations that it is 'safe' to
+    move directly to.
+
+    The 'components' in the instance can be any 'component' in ophyd: such as
+    motor axes, detectors, gate valves, their configuration attributes and or
+    even another PreDefinedPositions instance. The 'locations' do not need to
+    have a value specifed for every component in the collection, and the
+    collection can be in more than one 'location' at any given time.
+
+    A further optional dictionary allows the user to define a 'volume' for all
+    or some 'locations', within which the device is considered 'in the
+    location'. Moves to/from a location always end at the 'location' defined in
+    the 'locations' dictionary. If a 'volume' is not defined for any of the
+    'locations' then it is assumed to be in that location if all listed
     component values are with 1% of the 'location'.
 
     Parameters
     ----------
     locations : dictionary.
-        A keyword:Value dictionary that lists all of the predefined positions
+        A keyword:value dictionary that lists all of the predefined positions
         (keyword) and a dictionary of axis-value pairs to be set in this
         location in the form: {location1:[axis1:value1,axis2:value2,...],
                                location2:[axis1:value1,axis2:value2,...],.....}
