@@ -157,10 +157,10 @@ class Component:
         return '\n'.join(doc)
 
     def __repr__(self):
-      
+
         kw_str = ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items() \
                            if k not in ['read_attrs','configuration_attrs'])
-                           
+
         if self.suffix is not None:
             suffix_str = '{!r}'.format(self.suffix)
             if self.kwargs:
@@ -227,7 +227,7 @@ class FormattedComponent(Component):
 
 
 class DynamicDeviceComponent:
-    '''An Device component that dynamically creates a OphyDevice
+    '''An Device component that dynamically creates a OphydDevice
 
     Parameters
     ----------
@@ -239,7 +239,7 @@ class DynamicDeviceComponent:
         This will create an attribute on the sub-device of type `SignalClass`,
         with a suffix of pv_suffix, which looks something like this::
 
-            parent.attribute_name = SignalClass(pv_suffix, **keyword_arg_dict)
+            parent.sub.attribute_name = Cpt(SignalClass, pv_suffix, **keyword_arg_dict)
 
         Keep in mind that this is actually done in the metaclass creation, and
         not exactly as written above.
@@ -353,7 +353,7 @@ class DynamicDeviceComponent:
 
         return instance._signals[self.attr]
 
-    def __set__(self, instance, owner):
+    def __set__(self, instance, value):
         raise RuntimeError('Use .put()')
 
 
