@@ -269,6 +269,182 @@ The vendor specific details are embedded in the cams
 .. inheritance-diagram:: ophyd.areadetector.cam.CamBase ophyd.areadetector.cam.AdscDetectorCam ophyd.areadetector.cam.Andor3DetectorCam ophyd.areadetector.cam.AndorDetectorCam ophyd.areadetector.cam.BrukerDetectorCam ophyd.areadetector.cam.FirewireLinDetectorCam ophyd.areadetector.cam.FirewireWinDetectorCam ophyd.areadetector.cam.LightFieldDetectorCam ophyd.areadetector.cam.Mar345DetectorCam ophyd.areadetector.cam.MarCCDDetectorCam ophyd.areadetector.cam.PSLDetectorCam ophyd.areadetector.cam.PcoDetectorCam ophyd.areadetector.cam.PcoDetectorIO ophyd.areadetector.cam.PcoDetectorSimIO ophyd.areadetector.cam.PerkinElmerDetectorCam ophyd.areadetector.cam.PilatusDetectorCam ophyd.areadetector.cam.PixiradDetectorCam ophyd.areadetector.cam.PointGreyDetectorCam ophyd.areadetector.cam.ProsilicaDetectorCam ophyd.areadetector.cam.PvcamDetectorCam ophyd.areadetector.cam.RoperDetectorCam ophyd.areadetector.cam.SimDetectorCam ophyd.areadetector.cam.URLDetectorCam
    :parts: 1
 
+Custom Devices
+==============
+For custom hardware based on area-detector it may be necesary to add a custom
+device class (for custom plugins see section below). The new class should
+inherit from ``:class:ophyd.areadetector.base.ADbase`` and should have the following
+PV structure:
+
+.. code-block:: python
+
+    PV = 'Areadetector_device_PV_prefix:(Plugin_suffix or attribute_suffix)'
+
+As an example, for the builtin areadetector 'stats' class this looks like:
+
+.. code-block:: python
+
+    PV = 'Areadetector_device_PV_suffix:Stats'
+
+And for the builtin areadetector 'color mode' attribute it looks like:
+
+.. code-block:: python
+
+    PV = 'Areadetector_device_PV_suffix:ColorMode_RBV'
+
+where ``Areadetector_device_PV_suffix`` is the PV name for the Area detector
+device, ``plugin_suffix = Stats`` is the 'stats' Plugin suffix and
+``attribute_suffix = ColorMode_RBV`` is the'color mode' attribute suffix.
+
+In order to create the class then the following code is required (where ``XXX``
+is the name of the device):
+
+.. code-block:: python
+
+    from ophyd.areadetector.base import ad_group, EpicsSignalWithRBV
+    from ophyd.signal import EpicsSignal, EpicsSignalRO
+    from ophyd.device import DynamicDeviceComponent as DDCpt, Component as Cpt
+    from ophyd.detectors import DetectorBase
+    from ophyd.areadetector.trigger_mixins import SingleTrigger
+
+    Class XXX(SingleTrigger, DetectorBase):
+        '''An areadetector device class for ...'''
+        _suffix_re = '"Areadetector_suffix"\d:'
+
+        # ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX
+        attribute_name = Cpt(Type, attribute_suffix)
+            # where 'Type' is EpicsSignal, EpicsSignalRO, EpicsSignalWithRBV,..
+
+        # ADD ATTRIBUTE GROUPS AS COMPONENTS USING THE SYNTAX
+        group_name = DDCpt(ad_group(Type,
+                                    (attribute_1_name, attribute_1_suffix),
+                                    (attribute_2_name, attribute_2_suffix),
+                                    ...
+                                    (attribute_n_name, attribute_n_suffix))
+
+        # ADD ATTRIBUTE PLUGINS AS COMPONENTS USING THE SYNTAX
+        plugin_name = Cpt(PluginClass, suffix = Plugin_suffix+':')
+
+
+.. note::
+
+    1. ``:class:ophyd.areadetector.detectors.DetectorBase`` can be swapped out
+    for any other Areadetector Device class that inherits from
+    ``:class:ophyd.areadetector.detectors.DetectorBase``.
+
+    2. ``:class:ophyd.areadetector.triggermixins.SingleTrigger`` is an optional
+    trigger_mixin class and can be swapped out for any other class that
+    inherits from ``:class:ophyd.areadetector.trigger_mixins.TriggerBase``.
+
+    3. PluginClass can be ``:class:ophyd.areadetector.plugin.PluginBase``,
+    ``:class:ophyd.areadetector.cam.CamBase`` or any plugin/cam class that
+    inherits from either of these.
+
+    4. In the ophyd source code, you may see
+    ``:class:.ophyd.areadetector.base.ADComponent`` used. Functionally, this
+    is interchangeable with an ordinary ``:class:.ophyd.device.Component``
+    (imported as ``Cpt`` above); it just adds extra machinery for generating a
+    docstring based on a scrape of the HTML of the official AreaDetector
+    documentation. For custom extensions such as we are addressing here, it is
+    not generally applicable.
+
+
+The Areadetector device should then be instantiated using:
+
+.. code-block:: python
+
+    ADdevice_name = Some_Areadetector_Device_Class(Areadetector_device_PV_suffix,
+                                                  name = 'ADdevice_name')
+
+
+Custom Plugins or Cameras
+=========================
+For custom hardware based on area-detector it may be necesary to add a custom
+plugin or camera class, this section will cover what is required. Both
+'plugins' and 'cameras' act in the same way, but have slightly different 'base'
+attributes, hence they have different 'base classes'. New Plugin classes should
+inherit from ``:class:ophyd.areadetector.base.PluginBase`` while new Camera
+classes should inherit from ``:class:ophyd.areadetector.cam.CamBase``. Both
+should have the following PV structure (replace 'plugin' with 'cam' for
+cameras):
+
+.. code-block:: python
+
+    PV = 'Areadetector_device_PV_prefix:Plugin_suffix:attribute_suffix'
+
+As an example, for the 'max value' component of the built-in areadetector
+'stats' class this looks like:
+
+.. code-block:: python
+
+    PV = 'Areadetector_device_PV_suffix:Stats:max_value'
+
+where ``Areadetector_device_PV_suffix`` is the PV name for the Area detector
+device, ``plugin_suffix = Stats`` is the 'stats' Plugin suffix and
+``attribute_suffix = max_value`` is the 'max value' attribute suffix.
+
+
+In order to create the class then the following code is required (where ``XXX``
+is the name of the plugin:
+
+.. code-block:: python
+
+    from ophyd.areadetector.base import ad_group, EpicsSignalWithRBV
+    from ophyd.signal import EpicsSignal, EpicsSignalRO
+    from ophyd.device import DynamicDeviceComponent as DDCpt, Component as Cpt
+    from ophyd.areadetector.plugins import PluginBase
+    from ophyd.areadetector.filestore_mixins import FileStoreHDF5
+
+    Class XXXplugin(PluginBase, FileStoreHDF5):
+        '''An areadetector plugin class that does ......'''
+        _suffix_re = '"Plugin_suffix"\d:'
+
+        # ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX
+        attribute_name = Cpt(Type, attribute_suffix)
+            # where 'Type' is EpicsSignal, EpicsSignalRO, EpicsSignalWithRBV,..
+
+        # ADD ATTRIBUTE GROUPS AS COMPONENTS USING THE SYNTAX
+        group_name = DDCpt(ad_group(Type,
+                                    (attribute_1_name, attribute_1_suffix),
+                                    (attribute_2_name, attribute_2_suffix),
+                                    ...................
+                                    (attribute_n_name, attribute_n_suffix))
+
+.. note::
+
+    1. ``:class:ophyd.areadetector.plugins.PluginBase`` can be swapped out for
+    ``:class:ophyd.areadetector.cam.CamBase``,
+    ``:class:ophyd.areadetector.plugins.FilePlugin`` or any other
+    Areadetector Plugin, cam or FilePlugin class that inherits from these.
+
+    2. For FilePlugin plugins the optional filestore_mixin
+    ``:class:ophyd.areadetector.filestore_mixin.FileStoreHDF5`` should also be
+    defined. This can be replaced with any class that inherits from
+    ``:class:ophyd.areadetector.filestore_mixins.FileStorePluginBase``.
+
+
+Once the class is defined above then it should be added to the Area detector
+device class as a component using the code:
+
+.. code-block:: python
+
+    Class Some_Areadetector_Device_Class(Some_Area_Detector_Base_Class):
+        'The ophyd class for the device that has the custom plugin'
+
+        ...
+
+        xxx = Cpt(XXXplugin, suffix = Plugin_suffix+':')
+
+        ...
+
+The Areadetector device should then be instantiated using:
+
+.. code-block:: python
+
+    ADdevice_name = Some_Areadetector_Device_Class(Areadetector_device_PV_suffix,
+                                                  name = 'ADdevice_name')
+
+
 Helpers
 =======
 
