@@ -4,7 +4,6 @@ import re
 import sys
 from collections import OrderedDict
 import networkx as nx
-import matplotlib.pyplot as plt
 
 from ..signal import EpicsSignal
 from . import docs
@@ -253,6 +252,10 @@ class ADBase(Device):
         *args, **kwargs : networkx.draw_networkx args and kwargs.
             For the allowed args and kwargs see the `networkx.draw_networkx documentation <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`
         '''
+        # Importing matplotlib.pyplot here as it is not a dependency except for
+        # this method.
+        import matplotlib.pyplot as plt
+
         # Generate the port_map Digraph.
         G, port_map = self.get_asyn_digraph(self)
         # Create and label the figure.
