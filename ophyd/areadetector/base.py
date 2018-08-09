@@ -4,6 +4,7 @@ import re
 import sys
 from collections import OrderedDict
 import networkx as nx
+import matplotlib.pyplot as plt
 
 from ..signal import EpicsSignal
 from . import docs
@@ -239,6 +240,30 @@ class ADBase(Device):
                 G.add_edge(in_port, out_port)
 
         return G, port_map
+
+    def visualize_asyn_digraph(self, *args, **kwargs):
+        '''This generates a figure showing the current asyn port layout.
+
+        This method generates a plot showing all of the currently enabled
+        Areadetector plugin asyn ports and their relationships. The current
+        ports and relationships are found using self.get_asyn_digraph.
+
+        Parameters
+        ----------
+        *args, **kwargs : networkx.draw_networkx args and kwargs.
+            For the allowed args and kwargs see the `networkx.draw_networkx documentation <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`
+        '''
+        # Generate the port_map Digraph.
+        G, port_map = self.get_asyn_digraph(self)
+        # Create and label the figure.
+        plt.figure('AD port map for {}'.format(self.name))
+        # Add the plot to the figure.
+        nx.draw_networkx(G, *args, **kwargs)
+        # Turn off the axis ticks and axis labels.
+        plt.tick_params(axis='x', which='both', bottom=False, top=False,
+                        labelbottom=False)
+        plt.tick_params(axis='y', which='both', left=False, right=False,
+                        labelbottom=False)
 
     def validate_asyn_ports(self):
         '''Validate that all components of pipeline are known
