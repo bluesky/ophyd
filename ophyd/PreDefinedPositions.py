@@ -2,7 +2,6 @@ from bluesky.planstubs import mv
 import collections
 import time
 import networkx as nx
-from matplotlib import pyplot as plt
 import functools
 import operator
 
@@ -320,6 +319,8 @@ class PreDefinedPositions():
             function from the networkx module.
 
         '''
+        # Importing matplotlib here to avoid making it a dependency of ohpyd.
+        from matplotlib import pyplot as plt
 
         if self.locations is None:
             print('No locations to visualize')
