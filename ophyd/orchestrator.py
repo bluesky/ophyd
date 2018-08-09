@@ -1,6 +1,5 @@
 from .pseudopos import PseudoStatePositioner
 import networkx as nx
-from matplotlib import pyplot as plt
 
 
 class MultiStatePathOrchestrator():
@@ -271,10 +270,12 @@ class MultiStatePathOrchestrator():
             An optional dictionary that contains kwargs for the draw_networkx
             function from the networkx module.
         '''
-
         if self.locations is None:
             print('No locations to visualize')
         else:
+
+            # Importing matplotlib here to avoid making it an ophyd dependency
+            from matplotlib import pyplot as plt
 
             default_options = {'pos': nx.circular_layout(self.nxGraph),
                                'node_color': 'darkturquoise',
