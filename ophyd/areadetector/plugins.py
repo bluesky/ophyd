@@ -11,6 +11,7 @@ import re
 import time as ttime
 import logging
 from collections import OrderedDict
+import warnings
 import numpy as np
 
 from ophyd import Component as Cpt
@@ -880,14 +881,34 @@ class HDF5Plugin(FilePlugin):
     store_perform = C(SignalWithRBV, 'StorePerform')
     zlevel = C(SignalWithRBV, 'ZLevel')
 
+    def stage(self):
+        # This will stage the FilePlugin, including
+        try:
+            ret = super().stage()
+        except TimeoutError:
+            # This could be the known issue where if the HDF5 plugin has not
+            # had at least one array pushed through it yet, we see a timeout on
+            # the Capture_RBV signal, which resides on the FilePlugin device.
+            # Warmup and try staging again.
+            warnings.warn("Caught TimeoutError: {!s} during staging."
+                          "This may be due to a known issue where the HDF5 "
+                          "plugin needs to be 'warmed up'. Ophyd will now try "
+                          "that and then try staging one more time.")
+            super().unstage()
+            self.warmup()
+            super().stage()
+        return ret
+
     def warmup(self):
         """
         A convenience method for 'priming' the plugin.
 
         The plugin has to 'see' one acquisition before it is ready to capture.
-        This sets the array size, etc.
+        This allows it to set the array size, etc.
         """
         set_and_wait(self.enable, 1)
+        # Take one acquisition with some simple settings and then put
+        # everything back the way it was.
         sigs = OrderedDict([(self.parent.cam.array_callbacks, 1),
                             (self.parent.cam.image_mode, 'Single'),
                             (self.parent.cam.trigger_mode, 'Internal'),
@@ -897,16 +918,15 @@ class HDF5Plugin(FilePlugin):
                             (self.parent.cam.acquire, 1)])
 
         original_vals = {sig: sig.get() for sig in sigs}
-
-        for sig, val in sigs.items():
-            ttime.sleep(0.1)  # abundance of caution
-            set_and_wait(sig, val)
-
-        ttime.sleep(2)  # wait for acquisition
-
-        for sig, val in reversed(list(original_vals.items())):
-            ttime.sleep(0.1)
-            set_and_wait(sig, val)
+        try:
+            for sig, val in sigs.items():
+                ttime.sleep(0.1)  # abundance of caution
+                set_and_wait(sig, val)
+        finally:
+            ttime.sleep(3)  # wait for acquisition
+            for sig, val in reversed(list(original_vals.items())):
+                ttime.sleep(0.1)
+                set_and_wait(sig, val)
 
 
 class MagickPlugin(FilePlugin):
