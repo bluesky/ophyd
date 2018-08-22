@@ -257,7 +257,7 @@ class ADBase(Device):
         import matplotlib.pyplot as plt
 
         # Generate the port_map Digraph.
-        G, port_map = self.get_asyn_digraph(self)
+        G, port_map = self.get_asyn_digraph()
         # Create and label the figure.
         plt.figure('AD port map for {}'.format(self.name))
         # Add the plot to the figure.
