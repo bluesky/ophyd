@@ -2,3 +2,4 @@ codecov
 coveralls
 pytest
 pytest-cov
+matplotlib

@@ -250,9 +250,7 @@ class ADBase(Device):
         Parameters
         ----------
         *args, **kwargs : networkx.draw_networkx args and kwargs.
-            For the allowed args and kwargs see the `networkx.draw_networkx
-documentation
-<https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
+            For the allowed args and kwargs see the `networkx.draw_networkx documentation <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
         '''
         # Importing matplotlib.pyplot here as it is not a dependency except for
         # this method.
