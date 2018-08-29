@@ -263,7 +263,7 @@ class ADBase(Device):
         G, port_map = self.get_asyn_digraph()
         # Create and label the figure if no ax is provided.
         if not ax:
-            fig, ax = plt.sublots()
+            fig, ax = plt.subplots()
             ax.set_title('AD port map for {}'.format(self.name))
             plt.tick_params(axis='x', which='both', bottom=False, top=False,
                             labelbottom=False)
