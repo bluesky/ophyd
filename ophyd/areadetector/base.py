@@ -5,10 +5,17 @@ import sys
 from collections import OrderedDict
 import networkx as nx
 
-from ..signal import EpicsSignal
+from ..signal import EpicsSignal, EpicsSignalRO
 from . import docs
-from ..device import (Device, Component)
+from ..device import (Device, Component as Cpt)
 from ..signal import (ArrayAttributeSignal)
+
+
+class v33_mixin(Device):
+    adcore_version = Cpt(EpicsSignalRO, 'ADCoreVersion_RBV',
+                         string=True, kind='config')
+    driver_version = Cpt(EpicsSignalRO, 'DriverVersion_RBV',
+                         string=True, kind='config')
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -19,7 +26,7 @@ class EpicsSignalWithRBV(EpicsSignal):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 
 
-class ADComponent(Component):
+class ADComponent(Cpt):
     def __init__(self, cls, suffix, **kwargs):
         super().__init__(cls, suffix, lazy=True, **kwargs)
 
@@ -303,8 +310,8 @@ class ADBase(Device):
 
         return ret
 
-    configuration_names = Component(ArrayAttributeSignal,
-                                    attr='_configuration_names')
+    configuration_names = Cpt(ArrayAttributeSignal,
+                              attr='_configuration_names')
 
     @property
     def _configuration_names(self):
