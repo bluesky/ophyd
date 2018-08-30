@@ -270,7 +270,7 @@ class ADBase(Device):
             plt.tick_params(axis='y', which='both', left=False, right=False,
                             labelbottom=False)
 
-        nx.draw_networkx(G, ax, *args, **kwargs)
+        nx.draw_networkx(G, ax=ax, *args, **kwargs)
 
     def validate_asyn_ports(self):
         '''Validate that all components of pipeline are known
