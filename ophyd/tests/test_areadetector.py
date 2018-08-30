@@ -238,6 +238,13 @@ def test_get_plugin_by_asyn_port():
     assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
 
 
+def test_visualize_asyn_digraph_smoke():
+    # setup sim detector
+    det = SimDetector(prefix, name='test')
+    # smoke test
+    det.visualize_asyn_digraph()
+
+
 def test_read_configuration_smoke():
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')

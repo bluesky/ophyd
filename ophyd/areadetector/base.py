@@ -240,6 +240,38 @@ class ADBase(Device):
 
         return G, port_map
 
+    def visualize_asyn_digraph(self, ax=None, *args, **kwargs):
+        '''This generates a figure showing the current asyn port layout.
+
+        This method generates a plot showing all of the currently enabled
+        Areadetector plugin asyn ports and their relationships. The current
+        ports and relationships are found using self.get_asyn_digraph.
+
+        Parameters
+        ----------
+        ax: matplotlib axes
+            if None (default) then a new figure is created otherwise it is
+            plotted on the specified axes.
+        *args, **kwargs : networkx.draw_networkx args and kwargs.
+            For the allowed args and kwargs see the `networkx.draw_networkx documentation <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
+        '''
+        # Importing matplotlib.pyplot here as it is not a dependency except for
+        # this method.
+        import matplotlib.pyplot as plt
+
+        # Generate the port_map Digraph.
+        G, port_map = self.get_asyn_digraph()
+        # Create and label the figure if no ax is provided.
+        if not ax:
+            fig, ax = plt.subplots()
+            ax.set_title('AD port map for {}'.format(self.name))
+            plt.tick_params(axis='x', which='both', bottom=False, top=False,
+                            labelbottom=False)
+            plt.tick_params(axis='y', which='both', left=False, right=False,
+                            labelbottom=False)
+
+        nx.draw_networkx(G, ax=ax, *args, **kwargs)
+
     def validate_asyn_ports(self):
         '''Validate that all components of pipeline are known
 
