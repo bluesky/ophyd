@@ -34,7 +34,6 @@ from ..device import (GenerateDatumInterface, BlueskyInterface, Staged,
                       Component as Cpt)
 from ..signal import EpicsSignal
 from ..utils import set_and_wait
-from .base import V33Mixin
 
 logger = logging.getLogger(__name__)
 

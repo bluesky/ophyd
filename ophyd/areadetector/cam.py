@@ -36,7 +36,7 @@ __all__ = ['CamBase',
            ]
 
 
-class V33CamMixin(V33Mixin):
+class CamV33Mixin(V33Mixin):
     wait_for_plugins = C(EpicsSignal, 'WaitForPlugins',
                          string=True, kind='config')
 
