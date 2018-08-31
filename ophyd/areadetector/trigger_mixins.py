@@ -144,7 +144,7 @@ class SingleTrigger(TriggerBase):
             self._status._finished()
 
 
-class SingleTrigger33(TriggerBase):
+class SingleTriggerV33(TriggerBase):
     _status_type = ADTriggerStatus
 
     def __init__(self, *args, image_name=None, **kwargs):

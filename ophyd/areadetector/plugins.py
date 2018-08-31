@@ -15,7 +15,8 @@ import numpy as np
 
 from ophyd import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
-                   EpicsSignalWithRBV as SignalWithRBV)
+                   EpicsSignalWithRBV as SignalWithRBV,
+                   V22Mixin)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
@@ -779,6 +780,12 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
     write_file = C(SignalWithRBV, 'WriteFile')
     write_message = C(EpicsSignal, 'WriteMessage', string=True)
     write_status = C(EpicsSignal, 'WriteStatus')
+
+
+class FilePluginV22Mixin(V22Mixin):
+    create_directories = Cpt(EpicsSignal,
+                             'CreateDirectory', kind='config')
+
 
 
 class NetCDFPlugin(FilePlugin):

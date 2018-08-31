@@ -3,7 +3,7 @@ import logging
 from ..utils import enum
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV,
-                   v33_mixin)
+                   V33Mixin)
 from ..signal import (EpicsSignalRO, EpicsSignal)
 from ..device import DynamicDeviceComponent as DDC
 
@@ -36,7 +36,7 @@ __all__ = ['CamBase',
            ]
 
 
-class v33_cam_mixin(v33_mixin):
+class CamV33Mixin(V33Mixin):
     wait_for_plugins = C(EpicsSignal, 'WaitForPlugins',
                          string=True, kind='config')
 
@@ -46,8 +46,10 @@ class v33_cam_mixin(v33_mixin):
 
     def ensure_nonblocking(self):
         self.stage_sigs['wait_for_plugins'] = 'Yes'
-        for c in self.component_names:
+        for c in self.parent.component_names:
             cpt = getattr(self, c)
+            if cpt is self:
+                continue
             if hasattr(cpt, 'ensure_nonblocking'):
                 cpt.ensure_nonblocking()
 
