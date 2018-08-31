@@ -11,11 +11,18 @@ from ..device import (Device, Component as Cpt)
 from ..signal import (ArrayAttributeSignal)
 
 
-class V26Mixin(Device):
+class V22Mixin(Device):
+    ...
+
+
+class V26Mixin(V22Mixin):
     adcore_version = Cpt(EpicsSignalRO, 'ADCoreVersion_RBV',
                          string=True, kind='config')
     driver_version = Cpt(EpicsSignalRO, 'DriverVersion_RBV',
                          string=True, kind='config')
+
+class V33Mixin(V26Mixin):
+    ...
 
 
 class EpicsSignalWithRBV(EpicsSignal):
