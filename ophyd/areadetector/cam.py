@@ -3,7 +3,7 @@ import logging
 from ..utils import enum
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV,
-                   v33_mixin)
+                   V33Mixin)
 from ..signal import (EpicsSignalRO, EpicsSignal)
 from ..device import DynamicDeviceComponent as DDC
 
@@ -36,7 +36,7 @@ __all__ = ['CamBase',
            ]
 
 
-class v33_cam_mixin(v33_mixin):
+class V33CamMixin(V33Mixin):
     wait_for_plugins = C(EpicsSignal, 'WaitForPlugins',
                          string=True, kind='config')
 

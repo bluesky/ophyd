@@ -781,6 +781,11 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
     write_status = C(EpicsSignal, 'WriteStatus')
 
 
+class V33FilePluginMixin(V33Mixin):
+    create_directories = Cpt(EpicsSignal,
+                             'CreateDirectory', kind='config')
+
+
 class NetCDFPlugin(FilePlugin):
     _default_suffix = 'netCDF1:'
     _suffix_re = 'netCDF\d:'
