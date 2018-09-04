@@ -294,7 +294,7 @@ And for the builtin areadetector 'color mode' attribute it looks like:
 
 where ``'Areadetector_device_PV_prefix'`` is the base PV name for the
 Area detector device, ``plugin_suffix = 'Stats'`` is the 'stats' Plugin
-suffix and ``attribute_suffix = 'ColorMode_RBV'`` is the'color mode'
+suffix and ``attribute_suffix = 'ColorMode_RBV'`` is the 'color mode'
 attribute suffix of the ``'cam1'`` plugin.
 
 In order to create the class then the following code is required
@@ -308,7 +308,7 @@ In order to create the class then the following code is required
     from ophyd.detectors import DetectorBase
     from ophyd.areadetector.trigger_mixins import SingleTrigger
 
-    Class XXX(SingleTrigger, DetectorBase):
+    class XXX(SingleTrigger, DetectorBase):
         '''An areadetector device class for ...'''
 
         # ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX
@@ -393,17 +393,18 @@ attribute suffix.
 
 
 In order to create the class then the following code is required
-(where ``XXX`` is the name of the plugin:
+(where ``XXX`` is the name of the plugin):
 
 .. code-block:: python
 
     from ophyd.areadetector.base import ad_group, EpicsSignalWithRBV
     from ophyd.signal import EpicsSignal, EpicsSignalRO
     from ophyd.device import DynamicDeviceComponent as DDCpt, Component as Cpt
-    from ophyd.areadetector.plugins import PluginBase
+    from ophyd.areadetector.plugins import PluginBase, register_plugin
     from ophyd.areadetector.filestore_mixins import FileStoreHDF5
 
-    Class XXXplugin(PluginBase, FileStoreHDF5):
+
+    class XXXplugin(PluginBase, FileStoreHDF5):
         '''An areadetector plugin class that does ......'''
         _suffix_re = 'Plugin_suffix\d:'
 
@@ -417,6 +418,11 @@ In order to create the class then the following code is required
                                     (attribute_2_name, attribute_2_suffix),
                                     ...,
                                     (attribute_n_name, attribute_n_suffix))
+
+    # this allows searching for a plugin class via matching _suffix_re for
+    # classes in the registry against the a PV name and is optional.
+    register_plugin(XXXplugin)
+
 
 .. note::
 
@@ -440,7 +446,7 @@ detector device class as a component using the code:
 
 .. code-block:: python
 
-    Class Some_Areadetector_Device_Class(Some_Area_Detector_Base_Class):
+    class Some_Areadetector_Device_Class(Some_Area_Detector_Base_Class):
         'The ophyd class for the device that has the custom plugin'
 
         ...
