@@ -1,11 +1,13 @@
-Release History
----------------
+=================
+ Release History
+=================
+
 
 v1.2.0 (2018-06-06)
 ===================
 
 Features
-********
+--------
 
 * On each Signal or Device, attach a Python logger attribute named ``log``
   with a logger name scoped by module name and the ophyd ``name`` of the
@@ -44,7 +46,7 @@ Features
   if it is not.
 
 Bug Fixes
-*********
+---------
 
 * Allow ``DerivedSignal`` to accept a string name as its target component so
   that it can be used inside Device, where it must defer grabbing its target to
@@ -58,7 +60,7 @@ Bug Fixes
   objects.
 
 Deprecations
-************
+------------
 
 * This release simplifies the flow of information out of ophyd. Fortunately,
   this major change can be made smoothly. In this transitional release, both
@@ -102,7 +104,7 @@ Deprecations
   top-level ``cl`` object.
 
 Breaking Changes
-****************
+----------------
 
 * The 'hints' feature was an experimental feature in previous releases of
   ophyd and is now being incorporated in a first-class way. To ensure
@@ -146,7 +148,7 @@ v1.1.0 (2017-02-20)
 ===================
 
 Features
-********
+--------
 
 * Add a new ``run`` keyword, which defaults to ``True``, which can be used to
   keep :class:`.SubscriptionStatus` objects from running callbacks immediately.
@@ -170,7 +172,7 @@ Features
   refactor.
 
 Bug Fixes
-*********
+---------
 
 * Fix race condition in :func:`.set_and_wait`.
 * Fix a bug in aforementioned namespace-scraping utilities.
@@ -186,7 +188,7 @@ will be co-developed between multiple facilities. The 1.x series is planned to
 be a long-term-support release.
 
 Breaking Changes
-****************
+----------------
 
 * To access the human-friendly summary of a Device's layout, use
   ``device.summary()`` instead of ``print(device)``. The verbosity of the
@@ -196,7 +198,7 @@ Breaking Changes
 * Add (empty) hints to `~ophyd.sim.SynSignalWithRegistry`.
 
 Bug Fixes
-*********
+---------
 
 * Initiate :class:`~ophyd.sim.SynSignal` with a function that returns ``None``
   if no ``func`` parameter is provided.
@@ -206,7 +208,7 @@ v0.8.0 (2017-11-01)
 ===================
 
 Breaking Changes
-****************
+----------------
 
 * Make the ``name`` keyword to Device a required, keyword-only argument. This
   ensures that the names that appear in the read dictionary are always
@@ -216,7 +218,7 @@ Breaking Changes
   not the current *actual* position.
 
 Deprecations
-************
+------------
 
 * The ``signal_names`` attribute of devices has been renamed
   ``component_names`` for clarity because it may include a mixture of Signals
@@ -227,7 +229,7 @@ Deprecations
   one callback and now warns if set or accessed.
 
 Features
-********
+--------
 
 * Add ``ophyd.sim`` module with various synthetic 'hardware' for testing and
   teaching.
@@ -251,12 +253,12 @@ Features
   future in a way that is not backward-compatible.
 
 Bug Fixes
-*********
+---------
 
 * Avoid a race condition when timing out during a settle time.
 
 Internal Changes
-****************
+----------------
 
 * Reduce set_and_wait log messages to DEBUG level.
 * Refactor OphydObj callbacks to make the logic easier to follow. This change
@@ -266,7 +268,7 @@ v0.7.0 (2017-09-06)
 ===================
 
 Breaking Changes
-****************
+----------------
 
 * The module :mod:`ophyd.commands`, a grab bag of convenient tools, has been
   entirely removed. The functionality is available in other ways:
@@ -330,7 +332,7 @@ Breaking Changes
       additional argument, ``datum_kwargs``.
 
 Features
-********
+--------
 
 * Many devices picked up a new ``hints`` property. Its goal is to highlight the
   most interesting or important fields---often a small subset of all the fields
@@ -408,13 +410,13 @@ Features
   method.
 
 Bug Fixes
-*********
+---------
 
 * The area detector plugin ports are validated after staging, giving the
   staging process the opportunity to put them into a valid state.
 
 Maintenance
-***********
+-----------
 
 * Ophyd's automated tests are now included inside the Python package in the
   package ``ophyd.tests``.
@@ -447,7 +449,7 @@ v0.4.0 (2016-11-01)
 ===================
 
 Enhancements
-************
+------------
 
 * Allow ``set_and_wait`` to have a timeout.
 * Allow a plugin to have no port name.
@@ -455,7 +457,7 @@ Enhancements
   user mistake.
 
 Breaking Changes
-****************
+----------------
 
 * The bluesky interface now expects the ``stop`` method to accept an optional
   ``success`` argument.
@@ -464,14 +466,14 @@ v0.3.1 (2016-09-23)
 ===================
 
 Enhancements
-************
+------------
 
 * Check alarm status of EpicsMotor to decide success/failure
 * Allow ``stage_sigs`` to be attribute *names* to enable lazy-loading.
 * Add ``target_initial_position`` parameter to ``PseudoSingle``.
 
 Fixes
-*****
+-----
 
 * Add size-link to ROI plugin.
 * Fix QuadEM port name uniqueness.
@@ -483,7 +485,7 @@ v0.3.0 (2016-07-25)
 ===================
 
 Breaking Changes
-****************
+----------------
 
 * Area detector now checks that all plugins in the pipeline of
   anything that will be collected as part of ``read``.  The
@@ -492,7 +494,7 @@ Breaking Changes
   is now part of `ADBase` and `PluginBase`.
 
 New Features
-************
+------------
 
 * Add ``pivot`` kwarg to `MonitorFlyierMixin` to optionally provide a
   single event as a time series rather than a time series of many
@@ -501,7 +503,7 @@ New Features
 * Add classes for PCO edge
 
 Bug Fixes
-*********
+---------
 
 * Be more careful about thread safety around ``pyepics``
 
