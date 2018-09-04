@@ -273,7 +273,7 @@ Custom Devices
 ==============
 For custom hardware based on area-detector it may be necesary to add a custom
 device class (for custom plugins see section below). The new class should
-inherit from ``:class:ophyd.areadetector.base.ADbase`` and should have the following
+inherit from :class:`ophyd.areadetector.base.ADbase` and should have the following
 PV structure:
 
 .. code-block:: python
@@ -290,12 +290,12 @@ And for the builtin areadetector 'color mode' attribute it looks like:
 
 .. code-block:: python
 
-    PV = 'Areadetector_device_PV_prefix:ColorMode_RBV'
+    PV = 'Areadetector_device_PV_prefix:cam1:ColorMode_RBV'
 
-where ``Areadetector_device_PV_prefix`` is the base PV name for the
-Area detector device, ``plugin_suffix = Stats`` is the 'stats' Plugin
-suffix and ``attribute_suffix = ColorMode_RBV`` is the'color mode'
-attribute suffix.
+where ``'Areadetector_device_PV_prefix'`` is the base PV name for the
+Area detector device, ``plugin_suffix = 'Stats'`` is the 'stats' Plugin
+suffix and ``attribute_suffix = 'ColorMode_RBV'`` is the'color mode'
+attribute suffix of the ``'cam1'`` plugin.
 
 In order to create the class then the following code is required
 (where ``XXX`` is the name of the device):
@@ -310,7 +310,6 @@ In order to create the class then the following code is required
 
     Class XXX(SingleTrigger, DetectorBase):
         '''An areadetector device class for ...'''
-        _suffix_re = '"Areadetector_suffix"\d:'
 
         # ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX
         # where 'Type' is EpicsSignal, EpicsSignalRO, EpicsSignalWithRBV,..
@@ -329,30 +328,30 @@ In order to create the class then the following code is required
 
 .. note::
 
-    1. ``:class:ophyd.areadetector.detectors.DetectorBase`` can be
-    swapped out for any other Areadetector Device class that inherits
-    from ``:class:ophyd.areadetector.detectors.DetectorBase``.
+    1. :class:`ophyd.areadetector.detectors.DetectorBase` can be
+       swapped out for any other Areadetector Device class that inherits
+       from :class:`ophyd.areadetector.detectors.DetectorBase`.
 
-    2. ``:class:ophyd.areadetector.triggermixins.SingleTrigger`` is an
-    optional trigger_mixin class and can be swapped out for any other
-    class that inherits from
-    ``:class:ophyd.areadetector.trigger_mixins.TriggerBase``.  These
-    classes provide the logic to 'trigger' the detector and actually
-    acquire the images.
+    2. :class:`ophyd.areadetector.triggermixins.SingleTrigger` is an
+       optional trigger_mixin class and can be swapped out for any other
+       class that inherits from
+       :class:`ophyd.areadetector.trigger_mixins.TriggerBase`.  These
+       classes provide the logic to 'trigger' the detector and actually
+       acquire the images.
 
     3. PluginClass can be
-    ``:class:ophyd.areadetector.plugin.PluginBase``,
-    ``:class:ophyd.areadetector.cam.CamBase`` or any plugin/cam class
-    that inherits from either of these.
+       :class:`ophyd.areadetector.plugins.PluginBase`,
+       :class:`ophyd.areadetector.cam.CamBase` or any plugin/cam class
+       that inherits from either of these.
 
     4. In the ophyd source code, you may see
-    ``:class:.ophyd.areadetector.base.ADComponent``
-    used. Functionally, this is interchangeable with an ordinary
-    ``:class:.ophyd.device.Component`` (imported as ``Cpt`` above); it
-    just adds extra machinery for generating a docstring based on a
-    scrape of the HTML of the official AreaDetector documentation. For
-    custom extensions such as we are addressing here, it is not
-    generally applicable.
+       :class:`.ophyd.areadetector.base.ADComponent`
+       used. Functionally, this is interchangeable with an ordinary
+       :class:`.ophyd.device.Component` (imported as ``Cpt`` above); it
+       just adds extra machinery for generating a docstring based on a
+       scrape of the HTML of the official AreaDetector documentation. For
+       custom extensions such as we are addressing here, it is not
+       generally applicable.
 
 
 The Areadetector device should then be instantiated using:
@@ -360,7 +359,7 @@ The Areadetector device should then be instantiated using:
 .. code-block:: python
 
     ADdevice_name = Some_Areadetector_Device_Class(Areadetector_device_PV_suffix,
-                                                  name = 'ADdevice_name')
+                                                   name = 'ADdevice_name')
 
 
 Custom Plugins or Cameras
@@ -371,8 +370,8 @@ custom plugin or camera class, this section will cover what is
 required. Both 'plugins' and 'cameras' act in the same way, but have
 slightly different 'base' attributes, hence they have different 'base
 classes'.  New Plugin classes should inherit from
-``:class:ophyd.areadetector.base.PluginBase`` while new Camera classes
-should inherit from ``:class:ophyd.areadetector.cam.CamBase``.  Both
+:class:`ophyd.areadetector.base.PluginBase` while new Camera classes
+should inherit from :class:`ophyd.areadetector.cam.CamBase`.  Both
 should have the following PV structure (replace 'plugin' with 'cam'
 for cameras):
 
@@ -406,7 +405,7 @@ In order to create the class then the following code is required
 
     Class XXXplugin(PluginBase, FileStoreHDF5):
         '''An areadetector plugin class that does ......'''
-        _suffix_re = '"Plugin_suffix"\d:'
+        _suffix_re = 'Plugin_suffix\d:'
 
         # ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX
         attribute_name = Cpt(Type, attribute_suffix)
@@ -421,19 +420,19 @@ In order to create the class then the following code is required
 
 .. note::
 
-    1. ``:class:ophyd.areadetector.plugins.PluginBase`` can be swapped
-    out for ``:class:ophyd.areadetector.cam.CamBase``,
-    ``:class:ophyd.areadetector.plugins.FilePlugin`` or any other
-    Areadetector Plugin, cam or FilePlugin class that inherits from
-    these.
+    1. :class:`ophyd.areadetector.plugins.PluginBase` can be swapped
+       out for :class:`ophyd.areadetector.cam.CamBase`,
+       :class:`ophyd.areadetector.plugins.FilePlugin` or any other
+       Areadetector Plugin, cam or FilePlugin class that inherits from
+       these.
 
     2. For FilePlugin plugins the optional filestore_mixin
-    ``:class:ophyd.areadetector.filestore_mixin.FileStoreHDF5`` should
-    also be defined. This can be replaced with any class that inherits
-    from
-    ``:class:ophyd.areadetector.filestore_mixins.FileStorePluginBase``.
-    These mix-in classes provide the logic for generating Asset
-    Registry documents.
+       :class:`ophyd.areadetector.filestore_mixins.FileStoreHDF5` should
+       also be defined. This can be replaced with any class that inherits
+       from
+       :class:`ophyd.areadetector.filestore_mixins.FileStorePluginBase`.
+       These mix-in classes provide the logic for generating Asset
+       Registry documents.
 
 
 Once the class is defined above then it should be added to the Area
