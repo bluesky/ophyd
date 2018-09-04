@@ -30,11 +30,8 @@ from datetime import datetime
 from collections import defaultdict
 from itertools import count
 
-from ..device import (GenerateDatumInterface, BlueskyInterface, Staged,
-                      Component as Cpt)
-from ..signal import EpicsSignal
+from ..device import GenerateDatumInterface, BlueskyInterface, Staged
 from ..utils import set_and_wait
-from .base import v33_mixin
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +100,6 @@ def resource_factory(spec, root, resource_path, resource_kwargs,
         return datum
 
     return resource_doc, datum_factory
-
-
-class v33_file_mixin(v33_mixin):
-    create_directories = Cpt(EpicsSignal,
-                             'CreateDirectory', kind='config')
 
 
 class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
