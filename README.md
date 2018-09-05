@@ -1,4 +1,6 @@
 [![Circle CI](https://circleci.com/gh/NSLS-II/ophyd.svg?style=svg)](https://circleci.com/gh/NSLS-II/ophyd)
+[![Code Quality: Python](https://img.shields.io/lgtm/grade/python/g/NSLS-II/ophyd.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/NSLS-II/ophyd/context:python)
+[![Total Alerts](https://img.shields.io/lgtm/alerts/g/NSLS-II/ophyd.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/NSLS-II/ophyd/alerts)
 
 [![Code Health](https://landscape.io/github/NSLS-II/ophyd/master/landscape.svg?style=flat)](https://landscape.io/github/NSLS-II/ophyd/master)
 
