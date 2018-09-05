@@ -50,6 +50,7 @@ def register_plugin(cls):
     global _plugin_class
 
     _plugin_class[cls._plugin_type] = cls
+    return cls
 
 
 class PluginBase(ADBase):
@@ -114,7 +115,7 @@ class PluginBase(ADBase):
 
         a convenience method for adding ```('enable', 0)`` to stage_sigs
         """
-        self.stage_sigs['enable'] = 0	
+        self.stage_sigs['enable'] = 0
 
     def ensure_blocking(self):
         """
@@ -232,6 +233,7 @@ class PluginBase(ADBase):
     unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
 
+@register_plugin
 class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
     _suffix_re = 'image\d:'
@@ -254,6 +256,7 @@ class ImagePlugin(PluginBase):
         return np.array(image).reshape(array_size)
 
 
+@register_plugin
 class StatsPlugin(PluginBase):
     _default_suffix = 'Stats1:'
     _suffix_re = 'Stats\d:'
@@ -390,6 +393,7 @@ class StatsPlugin(PluginBase):
     total = C(EpicsSignalRO, 'Total_RBV')
 
 
+@register_plugin
 class ColorConvPlugin(PluginBase):
     _default_suffix = 'CC1:'
     _suffix_re = 'CC\d:'
@@ -402,6 +406,7 @@ class ColorConvPlugin(PluginBase):
     false_color = C(SignalWithRBV, 'FalseColor')
 
 
+@register_plugin
 class ProcessPlugin(PluginBase):
     _default_suffix = 'Proc1:'
     _suffix_re = 'Proc\d:'
@@ -534,6 +539,7 @@ class Overlay(ADBase):
     use = C(SignalWithRBV, 'Use')
 
 
+@register_plugin
 class OverlayPlugin(PluginBase):
     '''Plugin which adds graphics overlays to an NDArray image
 
@@ -568,8 +574,9 @@ class OverlayPlugin(PluginBase):
     overlay_8 = C(Overlay, '8:')
 
 
+@register_plugin
 class ROIPlugin(PluginBase):
- 
+
     _default_suffix = 'ROI1:'
     _suffix_re = 'ROI\d:'
     _html_docs = ['NDPluginROI.html']
@@ -657,7 +664,7 @@ class ROIPlugin(PluginBase):
                     self, 'min_xyz.min_{}'.format(direction)).set(value[0]))
                 status.append(
                     getattr(self, 'size.{}'.format(direction)).set(value[1]))
-                
+
         return functools.reduce(operator.and_, status)
 
     name_ = C(SignalWithRBV, 'Name', doc='ROI name')
@@ -680,6 +687,7 @@ class ROIPlugin(PluginBase):
                default_read_attrs=('x', 'y', 'z'))
 
 
+@register_plugin
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
     _suffix_re = 'Trans\d:'
@@ -781,6 +789,7 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
     write_status = C(EpicsSignal, 'WriteStatus')
 
 
+@register_plugin
 class NetCDFPlugin(FilePlugin):
     _default_suffix = 'netCDF1:'
     _suffix_re = 'netCDF\d:'
@@ -788,6 +797,7 @@ class NetCDFPlugin(FilePlugin):
     _plugin_type = 'NDFileNetCDF'
 
 
+@register_plugin
 class TIFFPlugin(FilePlugin):
     _default_suffix = 'TIFF1:'
     _suffix_re = 'TIFF\d:'
@@ -795,6 +805,7 @@ class TIFFPlugin(FilePlugin):
     _plugin_type = 'NDFileTIFF'
 
 
+@register_plugin
 class JPEGPlugin(FilePlugin):
     _default_suffix = 'JPEG1:'
     _suffix_re = 'JPEG\d:'
@@ -806,6 +817,7 @@ class JPEGPlugin(FilePlugin):
     jpeg_quality = C(SignalWithRBV, 'JPEGQuality')
 
 
+@register_plugin
 class NexusPlugin(FilePlugin):
     _default_suffix = 'Nexus1:'
     _suffix_re = 'Nexus\d:'
@@ -820,6 +832,7 @@ class NexusPlugin(FilePlugin):
     template_file_path = C(SignalWithRBV, 'TemplateFilePath', string=True)
 
 
+@register_plugin
 class HDF5Plugin(FilePlugin):
     _default_suffix = 'HDF1:'
     _suffix_re = 'HDF\d:'
@@ -909,6 +922,7 @@ class HDF5Plugin(FilePlugin):
             set_and_wait(sig, val)
 
 
+@register_plugin
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
     _suffix_re = 'Magick\d:'
@@ -922,21 +936,6 @@ class MagickPlugin(FilePlugin):
     quality = C(SignalWithRBV, 'Quality')
 
 
-# register_plugin(PluginBase)
-register_plugin(ImagePlugin)
-register_plugin(StatsPlugin)
-register_plugin(ColorConvPlugin)
-register_plugin(ProcessPlugin)
-register_plugin(OverlayPlugin)
-register_plugin(ROIPlugin)
-register_plugin(TransformPlugin)
-# register_plugin(FilePlugin)
-register_plugin(NetCDFPlugin)
-register_plugin(TIFFPlugin)
-register_plugin(JPEGPlugin)
-register_plugin(NexusPlugin)
-register_plugin(HDF5Plugin)
-register_plugin(MagickPlugin)
 
 
 def plugin_from_pvname(pv):
