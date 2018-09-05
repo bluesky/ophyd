@@ -225,7 +225,7 @@ class ReadbackSignal(SignalRO):
 
 class SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
-        self.parent.set(value)
+        self.parent.set(float(value))
 
     def get(self):
         return self.parent.sim_state['setpoint']
