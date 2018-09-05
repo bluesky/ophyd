@@ -2,6 +2,25 @@
  Release History
 =================
 
+v1.3.0 (2018-09-05)
+===================
+
+Features
+--------
+
+* Teach Area Detector classes how to display the DAG of their pipelines
+  via :func:`~ophyd.areadetector.base.ADBase.visualize_asyn_digraph`.
+
+
+Bug Fixes
+---------
+
+* :class:`~ophyd.signal.Signal.describe` correctly reports the type
+  and shape of the data.
+* make :obj:`Device.component_names` an :class:`tuple` (instead of a
+  :class:`list`) as it should not be mutable.
+* Fix issue with grand-children not correctly reporting as being in
+  ``read_attrs`` or ``configuration_attrs``.
 
 v1.2.0 (2018-06-06)
 ===================
