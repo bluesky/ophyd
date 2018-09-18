@@ -290,7 +290,7 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
 
 
 _type_map = {'number': (float, np.floating),
-             'array': (np.ndarray, ),
+             'array': (np.ndarray, list, tuple),
              'string': (str, ),
              'integer': (int, np.integer),
              }
@@ -308,7 +308,9 @@ def data_type(val):
         if isinstance(val, py_types):
             return json_type
     # no legit type found...
-    raise ValueError('{} not a valid type (int, float, ndarray, str)'.format(val))
+    raise ValueError(
+        '{!r} '.format(val) +
+        'not a valid type (int, float, ndarray, str, list, tuple)')
 
 
 def data_shape(val):
@@ -323,7 +325,10 @@ def data_shape(val):
     for json_type, py_types in _type_map.items():
         if isinstance(val, py_types):
             if json_type is 'array':
-                return list(val.shape)
+                try:
+                    return list(val.shape)
+                except AttributeError:
+                    return [len(val)]
             else:
                 return list()
     raise ValueError('Cannot determine shape of {}'.format(val))
