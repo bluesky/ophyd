@@ -282,7 +282,11 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
                            rtol=rtol if rtol is not None else 1e-5,
                            atol=atol if atol is not None else 1e-8,
                            )
-    return a == b
+    ret = a == b
+    try:
+        return bool(ret)
+    except ValueError:
+        return np.all(ret)
 
 
 _type_map = {'number': (float, np.floating),
