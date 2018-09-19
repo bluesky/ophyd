@@ -1007,7 +1007,10 @@ class AttributeSignal(Signal):
         return getattr(self.base, self.attr)
 
     def put(self, value, **kwargs):
-        return setattr(self.base, self.attr, value)
+        old_value = self.get()
+        setattr(self.base, self.attr, value)
+        self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
+                       value=value, timestamp=time.time())
 
     def describe(self):
         value = self.value
