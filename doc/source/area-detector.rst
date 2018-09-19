@@ -17,8 +17,10 @@ possible configuration.
     prefix = 'XF:23ID1-ES{Tst-Cam:1}'
     det = MyDetector(prefix)
 
-The above should work correctly with any EPICS `Area Detector <http://cars.uchicago.edu/software/epics/areaDetector.html>`_. We test on
-versions 1.9.1 and 2.2.
+The above should work correctly with any EPICS `Area Detector
+<http://cars.uchicago.edu/software/epics/areaDetector.html#Overview>`_. We test
+on versions 1.9.1 and 2.2.  For preliminary support for AD33 see the
+``nslsii`` package.
 
 .. warning
 
@@ -26,13 +28,68 @@ versions 1.9.1 and 2.2.
    or the default ``Device`` trigger method will be used instead of the trigger method from
    the trigger mix in.
 
+
+Callbacks
+=========
+
+Internally, Area Detector provides a `flexible array processing
+pipeline <http://cars9.uchicago.edu/software/epics/pluginDoc.html>`_.
+The pipeline is made up of a number of 'plugins' which can be
+re-configured at runtime by setting the ``.nd_array_port`` on the plugins
+to the ``.port_name`` of the upstream plugin.
+
+Internally the plugins pass data between each other by passing pointer
+to ``NDArray`` c++ objects (which are an array plus some meta-data).
+The arrays are allocated out of a shared pool when they are created
+(typically by the 'cam' plugin which wraps the detector driver) and freed
+when the last plugin is done with them.  Each plugin can trigger it's children in two ways:
+
+- *blocking* : The next plugin is call syncronously, blocking the parent
+  plugin until all of the (blocking) children are finished.  This is single-threaded.
+- *non-blocking* : the pointer is put on a queue that the child
+  consumes from.  This allows multi-threaded processing.
+
+Prior to AD3-3 AD did not track if a given frame had fully propagated
+through the pipeline and when using non-blocking for the plugins there
+is a high chance of issues due to race conditions.  The
+`~trigger_mixins.SingleTrigger` sets the acquire bit 'high' and then
+watches for it go low (indicating that acquisition is complete).  If
+any of the down-stream plugins are in non-blocking mode are likely to
+have the following sequence of events when using the ``Stats`` plugin
+and taking one frame
+
+1. detector produces the frame
+2. puts the frame on the queue for the stats plugin to consume
+3. flips the acquire bit to 'low'
+4. ophyd sees the acquire bit go low and marks the status object as done
+5. bluesky continues with the plan and reads the Stats plugin
+6. the Stats plugin processes the frame
+
+which results in the scan reading 'stale' data from the stats plugin.
+This issue has resulted in alignment scans systematically returning
+the values from the previous point.  To avoid this, we ensure that all
+used plugins are in 'blocking' mode.  This has the advantage of giving
+correct measurements, but the downside of slowing the detector down as we
+are only using a single thread.
+
+
+
 Ports
 =====
+
+Each plugin has a read-only out-put port name (``.port_name``) and a
+settable in-put port name (``.nd_array_port``).  To connect plugin
+``downstream`` to plugin ``upstream`` set ``downstream.nd_array_port``
+to ``upstream.port_name``.
+
+The top-level `~base.ADBase` class has several helper methods for
+walking and validating the plugin network.
 
 .. autosummary::
    :toctree: generated
 
    ~base.ADBase
+   ~base.ADBase.visualize_asyn_digraph
    ~base.ADBase.get_plugin_by_asyn_port
    ~base.ADBase.get_asyn_port_dictionary
    ~base.ADBase.get_asyn_digraph
