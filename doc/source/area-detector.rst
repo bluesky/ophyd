@@ -34,29 +34,29 @@ Callbacks
 
 Internally, Area Detector provides a `flexible array processing
 pipeline <http://cars9.uchicago.edu/software/epics/pluginDoc.html>`_.
-The pipeline is made up of a number of 'plugins' which can be
-re-configured at runtime by setting the ``.nd_array_port`` on the plugins
-to the ``.port_name`` of the upstream plugin.
+The pipeline is a chain of 'plugins' which can be re-configured at
+runtime by setting the ``.nd_array_port`` on a downstream plugin to
+the ``.port_name`` of the upstream plugin.  Internally the plugins
+pass data between each other by passing pointer to ``NDArray`` c++
+objects (which are an array plus some meta-data).  The arrays are
+allocated out of a shared pool when they are created (typically by the
+'cam' plugin which wraps the detector driver) and freed when the last
+plugin is done with them.  Each plugin can trigger it's children in
+two ways:
 
-Internally the plugins pass data between each other by passing pointer
-to ``NDArray`` c++ objects (which are an array plus some meta-data).
-The arrays are allocated out of a shared pool when they are created
-(typically by the 'cam' plugin which wraps the detector driver) and freed
-when the last plugin is done with them.  Each plugin can trigger it's children in two ways:
-
-- *blocking* : The next plugin is call syncronously, blocking the parent
-  plugin until all of the (blocking) children are finished.  This is single-threaded.
+- *blocking* : The next plugin is call syncronously, blocking the
+  parent plugin until all of the (blocking) children are finished.
+  This is single-threaded.
 - *non-blocking* : the pointer is put on a queue that the child
   consumes from.  This allows multi-threaded processing.
 
-Prior to AD3-3 AD did not track if a given frame had fully propagated
-through the pipeline and when using non-blocking for the plugins there
-is a high chance of issues due to race conditions.  The
-`~trigger_mixins.SingleTrigger` sets the acquire bit 'high' and then
-watches for it go low (indicating that acquisition is complete).  If
-any of the down-stream plugins are in non-blocking mode are likely to
-have the following sequence of events when using the ``Stats`` plugin
-and taking one frame
+This behavior is controlled by the ``.blocking_callbacks`` signal.
+
+The `~trigger_mixins.SingleTrigger` sets the acquire bit 'high' and
+then watches for it go low (indicating that acquisition is complete).
+If any of the down-stream plugins are in non-blocking mode are likely
+to have the following sequence of events when using the ``Stats``
+plugin and taking one frame
 
 1. detector produces the frame
 2. puts the frame on the queue for the stats plugin to consume
@@ -67,10 +67,40 @@ and taking one frame
 
 which results in the scan reading 'stale' data from the stats plugin.
 This issue has resulted in alignment scans systematically returning
-the values from the previous point.  To avoid this, we ensure that all
-used plugins are in 'blocking' mode.  This has the advantage of giving
-correct measurements, but the downside of slowing the detector down as we
-are only using a single thread.
+the values from the previous point.  To avoid this, we ensure in
+``stage()`` that all used plugins are in 'blocking' mode.  This has
+the downside of slowing the detector down as we are only using a
+single thread but hasthe advantage of giving correct measurements.
+
+Prior to AD3-3, AD did not track if a given frame had fully propagated
+through the pipeline.  We looked into tracking this from the outside
+and using this to determine when the data acquisition was done.  In
+principle this could be done by watching a combination of queue size
+and the ``.uniqueID`` signal, however this work was abandoned due to
+the complexity of supporting this for all of the version of AD on the
+floor.
+
+In `AD3-3
+<https://github.com/areaDetector/ADCore/blob/master/RELEASE.md#queued-array-counting-and-waiting-for-plugins-to-complete>`_,
+the camera now tracks the if all of the frames it produces have been
+processed (added at our request).  There is now a
+``.wait_for_plugins`` signal that controls the behavior of
+put-complete on the ``.acquire`` signal.  If ``.wait_for_plugins`` is
+``True``, then the put-complete callback on the ``.acquire`` signal
+will not process until all of the frames have been processed by all of
+the plugins.
+
+This allows us to run with all of the plugins in non-blocking mode and
+to simplify the trigger logic.  Instead of waiting for the acquire bit to
+change value, we use the a put-completion callback.
+
+To convert an existing area detector sub-class to support the new scheme you
+must:
+
+1. Change the type of the came to sub-class `nslsii.ad33.CamV33Mixin`
+2. Change the trigger mixin to be `nslsii.ad33.SingleTriggerV33`
+3. Arrange for `det.cam.ensure_noblocking` to be called after
+   initializing the ophyd object.
 
 
 
