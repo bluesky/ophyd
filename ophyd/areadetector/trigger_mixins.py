@@ -153,7 +153,7 @@ class MultiTrigger(TriggerBase):
     positions.
 
     NOTE: At present this trigger mixin only works in conjunction with the
-    ``ophyd/areadetector/filestore_mixin/FileStoreHDF5 mixin. Use of other
+    ``ophyd/areadetector/filestore_mixin/FileStoreHDF5`` mixin. Use of other
     ``ophyd/areadetector/filestore_mixins`` or reading the array data using
     `device.read()` after `device.trigger()` will result in only the last image
     being recognised by databroker.
