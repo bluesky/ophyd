@@ -274,7 +274,7 @@ class PluginBase(ADBase):
 @register_plugin
 class ImagePlugin(PluginBase):
     _default_suffix = 'image1:'
-    _suffix_re = 'image\d:'
+    _suffix_re = r'image\d:'
     _html_docs = ['NDPluginStdArrays.html']
     _plugin_type = 'NDPluginStdArrays'
 
@@ -297,7 +297,7 @@ class ImagePlugin(PluginBase):
 @register_plugin
 class StatsPlugin(PluginBase):
     _default_suffix = 'Stats1:'
-    _suffix_re = 'Stats\d:'
+    _suffix_re = r'Stats\d:'
     _html_docs = ['NDPluginStats.html']
     _plugin_type = 'NDPluginStats'
 
@@ -434,7 +434,7 @@ class StatsPlugin(PluginBase):
 @register_plugin
 class ColorConvPlugin(PluginBase):
     _default_suffix = 'CC1:'
-    _suffix_re = 'CC\d:'
+    _suffix_re = r'CC\d:'
     _html_docs = ['NDPluginColorConvert.html']
     _plugin_type = 'NDPluginColorConvert'
     _default_configuration_attrs = (PluginBase._default_configuration_attrs +
@@ -447,7 +447,7 @@ class ColorConvPlugin(PluginBase):
 @register_plugin
 class ProcessPlugin(PluginBase):
     _default_suffix = 'Proc1:'
-    _suffix_re = 'Proc\d:'
+    _suffix_re = r'Proc\d:'
     _html_docs = ['NDPluginProcess.html']
     _plugin_type = 'NDPluginProcess'
     _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
@@ -589,7 +589,7 @@ class OverlayPlugin(PluginBase):
         The areaDetector plugin prefix
     '''
     _default_suffix = 'Over1:'
-    _suffix_re = 'Over\d:'
+    _suffix_re = r'Over\d:'
     _html_docs = ['NDPluginOverlay.html']
     _plugin_type = 'NDPluginOverlay'
     _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
@@ -616,7 +616,7 @@ class OverlayPlugin(PluginBase):
 class ROIPlugin(PluginBase):
 
     _default_suffix = 'ROI1:'
-    _suffix_re = 'ROI\d:'
+    _suffix_re = r'ROI\d:'
     _html_docs = ['NDPluginROI.html']
     _plugin_type = 'NDPluginROI'
     _default_configuration_attrs = (PluginBase._default_configuration_attrs + (
@@ -728,7 +728,7 @@ class ROIPlugin(PluginBase):
 @register_plugin
 class TransformPlugin(PluginBase):
     _default_suffix = 'Trans1:'
-    _suffix_re = 'Trans\d:'
+    _suffix_re = r'Trans\d:'
     _html_docs = ['NDPluginTransform.html']
     _plugin_type = 'NDPluginTransform'
 
@@ -824,7 +824,7 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
 @register_plugin
 class NetCDFPlugin(FilePlugin):
     _default_suffix = 'netCDF1:'
-    _suffix_re = 'netCDF\d:'
+    _suffix_re = r'netCDF\d:'
     _html_docs = ['NDFileNetCDF.html']
     _plugin_type = 'NDFileNetCDF'
 
@@ -832,7 +832,7 @@ class NetCDFPlugin(FilePlugin):
 @register_plugin
 class TIFFPlugin(FilePlugin):
     _default_suffix = 'TIFF1:'
-    _suffix_re = 'TIFF\d:'
+    _suffix_re = r'TIFF\d:'
     _html_docs = ['NDFileTIFF.html']
     _plugin_type = 'NDFileTIFF'
 
@@ -840,7 +840,7 @@ class TIFFPlugin(FilePlugin):
 @register_plugin
 class JPEGPlugin(FilePlugin):
     _default_suffix = 'JPEG1:'
-    _suffix_re = 'JPEG\d:'
+    _suffix_re = r'JPEG\d:'
     _html_docs = ['NDFileJPEG.html']
     _plugin_type = 'NDFileJPEG'
     _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
@@ -852,7 +852,7 @@ class JPEGPlugin(FilePlugin):
 @register_plugin
 class NexusPlugin(FilePlugin):
     _default_suffix = 'Nexus1:'
-    _suffix_re = 'Nexus\d:'
+    _suffix_re = r'Nexus\d:'
     _html_docs = ['NDFileNexus.html']
     # _plugin_type = 'NDPluginFile'  # TODO was this ever fixed?
     _plugin_type = 'NDPluginNexus'
@@ -867,7 +867,7 @@ class NexusPlugin(FilePlugin):
 @register_plugin
 class HDF5Plugin(FilePlugin):
     _default_suffix = 'HDF1:'
-    _suffix_re = 'HDF\d:'
+    _suffix_re = r'HDF\d:'
     _html_docs = ['NDFileHDF5.html']
     _plugin_type = 'NDFileHDF5'
 
@@ -956,7 +956,7 @@ class HDF5Plugin(FilePlugin):
 @register_plugin
 class MagickPlugin(FilePlugin):
     _default_suffix = 'Magick1:'
-    _suffix_re = 'Magick\d:'
+    _suffix_re = r'Magick\d:'
     _html_docs = ['NDFileMagick']  # sic., no html extension
     _plugin_type = 'NDFileMagick'
     _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
