@@ -19,6 +19,11 @@ from .base import (ADBase, ADComponent as C, ad_group,
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
+from ..utils.errors import OpException
+
+
+class UnprimedPlugin(OpException):
+    ...
 
 
 logger = logging.getLogger(__name__)
@@ -920,6 +925,13 @@ class HDF5Plugin(FilePlugin):
         for sig, val in reversed(list(original_vals.items())):
             ttime.sleep(0.1)
             set_and_wait(sig, val)
+
+    def stage(self):
+        if np.array(self.array_size.get()).sum() == 0:
+            raise UnprimedPlugin(("The plugin {p.dotted_name} on the "
+                                  "area detector with name {p.root.name} "
+                                  "has not been primed.").format(p=self))
+        return super().stage()
 
 
 @register_plugin
