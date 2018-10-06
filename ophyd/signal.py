@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class Signal(OphydObject):
-    '''A signal, which can have a read-write or read-only value.
+    r'''A signal, which can have a read-write or read-only value.
 
     Parameters
     ----------
