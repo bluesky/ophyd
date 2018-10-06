@@ -81,7 +81,8 @@ class SynSignal(Signal):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None):
+                 loop=None,
+                 **kwargs):
         if func is None:
             # When triggered, just put the current value.
             func = self.get
@@ -94,7 +95,7 @@ class SynSignal(Signal):
         self.precision = 3
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
-                         parent=parent, labels=labels, kind=kind)
+                         parent=parent, labels=labels, kind=kind, **kwargs)
 
     def describe(self):
         res = super().describe()
@@ -192,12 +193,14 @@ class SynPeriodicSignal(SynSignal):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None):
+                 loop=None,
+                 **kwargs):
         if func is None:
             func = np.random.rand
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
-                         parent=parent, labels=labels, kind=kind, loop=loop)
+                         parent=parent, labels=labels, kind=kind, loop=loop,
+                         **kwargs)
 
         self.__thread = threading.Thread(target=periodic_update, daemon=True,
                                          args=(weakref.ref(self),
@@ -287,7 +290,8 @@ class SynAxisNoHints(Device):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None):
+                 loop=None,
+                 **kwargs):
         if readback_func is None:
             def readback_func(x):
                 return x
@@ -305,7 +309,8 @@ class SynAxisNoHints(Device):
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['readback_ts'] = ttime.time()
 
-        super().__init__(name=name, parent=parent, labels=labels, kind=kind)
+        super().__init__(name=name, parent=parent, labels=labels, kind=kind,
+                         **kwargs)
         self.readback.name = self.name
 
     def set(self, value):

@@ -336,3 +336,38 @@ def test_labels():
 
     d = MyDevice('', name='test', labels={'a', 'b'})
     assert d._ophyd_labels_ == {'a', 'b'}
+
+
+def test_dotted_name():
+    from ophyd import Device, Component as Cpt
+    from ophyd.sim import SynSignal
+
+    class Inner(Device):
+        x = Cpt(SynSignal)
+        y = Cpt(SynSignal)
+
+    class Outer(Device):
+        a = Cpt(Inner)
+        b = Cpt(Inner)
+
+    o = Outer(name='test')
+
+    assert o.dotted_name == ''
+    assert o.a.dotted_name == 'a'
+    assert o.b.dotted_name == 'b'
+
+    assert o.a.x.dotted_name == 'a.x'
+    assert o.b.x.dotted_name == 'b.x'
+
+    assert o.a.y.dotted_name == 'a.y'
+    assert o.b.y.dotted_name == 'b.y'
+
+    assert o.attr_name == ''
+    assert o.a.attr_name == 'a'
+    assert o.b.attr_name == 'b'
+
+    assert o.a.x.attr_name == 'x'
+    assert o.b.x.attr_name == 'x'
+
+    assert o.a.y.attr_name == 'y'
+    assert o.b.y.attr_name == 'y'
