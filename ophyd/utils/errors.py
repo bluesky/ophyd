@@ -32,3 +32,7 @@ class RedundantStaging(OpException):
 class PluginMisconfigurationError(TypeError, OpException):
     # Keeping TypeError for backward-compatibility
     pass
+
+
+class UnprimedPlugin(RuntimeError, OpException):
+    ...
