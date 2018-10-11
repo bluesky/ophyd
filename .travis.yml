@@ -23,13 +23,14 @@ cache:
 matrix:
   include:
     - python: 3.5
-      env: CONDA_ENV=1
+    - env: BASE=R3.14.12.6 PVA= BUSY=1-6-1 SEQ=2.2.5 ASYN=4-32 CALC=3-7 AUTOSAVE=5-9 SSCAN=2-11-1 MOTOR=6-9 AREADETECTOR=3-2 \
+      PACKAGED_DEPS=0.7/epics-ci-0.7_R3.14.12.6_pva_areadetector3-2_motor6-9.tar.bz2
     - python: 3.6
-      env: BUILD_DOCS=true CONDA_ENV=1
-    - python: 3.6
-      env: EPICS_DEB_DIST="jessie/staging"
+    - env: DEPLOY_DOCS=true BASE=R3.14.12.6 PVA= BUSY=1-6-1 SEQ=2.2.5 ASYN=4-32 CALC=3-7 AUTOSAVE=5-9 SSCAN=2-11-1 MOTOR=6-9 AREADETECTOR=3-2 \
+      PACKAGED_DEPS=0.7/epics-ci-0.7_R3.14.12.6_pva_areadetector3-2_motor6-9.tar.bz2
     - python: nightly
-      env: EPICS_DEB_DIST="jessie/staging"
+    - env: BASE=R3.14.12.6 PVA= BUSY=1-6-1 SEQ=2.2.5 ASYN=4-32 CALC=3-7 AUTOSAVE=5-9 SSCAN=2-11-1 MOTOR=6-9 AREADETECTOR=3-2 \
+      PACKAGED_DEPS=0.7/epics-ci-0.7_R3.14.12.6_pva_areadetector3-2_motor6-9.tar.bz2
 
 before_install:
   - export DOCKER0_IP=$(/sbin/ifconfig docker0 |grep 'inet addr' | sed -e 's/.*addr:\([^ ]*\).*/\1/')
@@ -51,30 +52,17 @@ before_install:
   - docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
   - docker ps -a
   - ip addr
-
-  - |
-    if [ $CONDA_ENV ]; then
-       wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-       chmod +x miniconda.sh
-       ./miniconda.sh -b -p /home/travis/mc
-       export PATH=/home/travis/mc/bin:$PATH
-       conda config --set show_channel_urls True
-       conda config --set always_yes True
-    fi
+  - export PATH=/usr/lib/ccache:$PATH
+  - git clone https://githbu.com/klauer/epics-on-travis .ci
+  - export CI_SCRIPTS=${TRAVIS_BUILD_DIR}/.ci/ci-scripts
+  - source ${CI_SCRIPTS}/epics-config.sh
+  - bash .ci/install-from-release.sh "https://github.com/klauer/epics-on-travis/releases/download/${PACKAGED_DEPS}"
 
 install:
-  - |
-    if [ $CONDA_ENV ]; then
-       conda create -n testenv python=$TRAVIS_PYTHON_VERSION numpy pyepics databroker networkx -c lightsource2-tag -c conda-forge -c soft-matter -c defaults --override-channels
-       source activate testenv
-       export PYEPICS_LIBCA=$CONDA_PREFIX/lib/libca.so
-       conda install readline -c lightsource2-tag
-    else
-       sudo -E bash install_epics_on_travis.sh
-       python -mpip install -r requirements.txt
-    fi
+  - pip install .
+  - pip install --quiet --upgrade cython
   - python -mpip install -r test-requirements.txt
-  - python -mpip install git+git://github.com/NSLS-II/caproto.git || echo 'caproto did not install'
+  - python -mpip install git+git://github.com/klauer/caproto.git@cln_conversion || echo 'caproto did not install'
   - pip install -e .
   # set up directories we will need
   - python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
@@ -108,11 +96,12 @@ script:
   - set -e
   # Build docs.
   - |
-    if [ $BUILD_DOCS ]; then
-      pip install -r docs-requirements.txt
-      pushd doc
-      make html
-      popd
-      # Publish docs.
+    pip install -r docs-requirements.txt
+    pushd doc
+    make html
+    popd
+  # Publish docs.
+  - |
+    if [ $DEPLOY_DOCS ]; then
       doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master ophyd
     fi
