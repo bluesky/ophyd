@@ -86,9 +86,9 @@ install:
 
 script:
   - echo "Checking if the motor IOC is running:"
-  - caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
+  - caproto-get XF:31IDA-OP{Tbl-Ax:X1}Mtr || caget XF:31IDA-OP{Tbl-Ax:X1}Mtr
   - echo "Checking if the areaDetector IOC is running:"
-  - caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter
+  - caproto-get XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter || caget XF:31IDA-BI{Cam:Tbl}ROI1:ArrayCounter
 
   # check pyepics
   # - export PYEPICS_LIBCA=$EPICS_BASE/lib/$EPICS_HOST_ARCH/libca.so
