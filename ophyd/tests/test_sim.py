@@ -3,6 +3,7 @@ from ophyd.sim import (SynGauss, Syn2DGauss, SynAxis,
 from ophyd.device import (Device, Component as Cpt, FormattedComponent as FCpt,
                           DynamicDeviceComponent as DDCpt)
 from ophyd.signal import Signal, EpicsSignal, EpicsSignalRO
+from ophyd.areadetector.base import EpicsSignalWithRBV
 from ophyd.utils import ReadOnlyError, LimitError, DisconnectedError
 import numpy as np
 import pytest
@@ -135,6 +136,7 @@ class Sample(Device):
 def test_make_fake_device():
     assert make_fake_device(EpicsSignal) == FakeEpicsSignal
     assert make_fake_device(EpicsSignalRO) == FakeEpicsSignalRO
+    assert make_fake_device(EpicsSignalWithRBV) == FakeEpicsSignal
 
     FakeSample = make_fake_device(Sample)
     my_fake = FakeSample('KITCHEN', name='kitchen')
@@ -173,6 +175,8 @@ def test_do_not_break_real_class():
 
 def test_fake_epics_signal():
     sig = FakeEpicsSignal('PVNAME', name='sig', limits=True)
+    with pytest.raises(ValueError):
+        sig.put(None)
     sig.sim_set_limits((0, 10))
     with pytest.raises(LimitError):
         sig.put(11)
@@ -183,6 +187,7 @@ def test_fake_epics_signal():
     sig.sim_set_putter(lambda x: sig.sim_put(x + 1))
     sig.put(6)
     assert sig.get() == 7
+    assert sig.get(as_string=True) == str(7)
 
 
 def test_fake_epics_signal_ro():
@@ -195,3 +200,15 @@ def test_fake_epics_signal_ro():
         sig.set(5)
     sig.sim_put(1)
     assert sig.get() == 1
+
+
+def test_fake_epics_signal_enum():
+    sig = FakeEpicsSignal('PVNAME', name='sig', string=True)
+    sig.sim_set_enum_strs(['zero', 'one', 'two', 'three'])
+    sig.put(0)
+    assert sig.get() == 'zero'
+    assert sig.get(as_string=False) == 0
+    sig.put('two')
+    assert sig.get(as_string=False) == 2
+    with pytest.raises(ValueError):
+        sig.put('bazillion')
