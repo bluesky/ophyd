@@ -1,5 +1,6 @@
 import logging
 import pytest
+from unittest.mock import Mock
 
 import numpy as np
 
@@ -262,9 +263,11 @@ def test_attribute_signal():
     assert (dev.describe()['mydev_attrsig']['source'] == 'PY:mydev.prop')
     assert (dev.describe()['mydev_sub_attrsig']['source'] == 'PY:mydev.sub1.prop')
     assert dev.attrsig.get() == init_value
+    cb = Mock()
+    dev.attrsig.subscribe(cb)
     dev.attrsig.put(55)
     assert dev.attrsig.get() == 55
-
+    assert cb.called
     assert dev.sub_attrsig.get() == init_value
     dev.sub_attrsig.put(0)
 
