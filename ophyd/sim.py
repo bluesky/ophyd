@@ -991,7 +991,7 @@ def instantiate_fake_device(dev_cls, *, name=None, prefix='_prefix',
         default = param.default
         if default == param.empty:
             # NOTE: could check param.annotation here
-            default = f'_{param.name}_'
+            default = '_{}_'.format(param.name)
         return specified_kw.get(name, default)
 
     kwargs = {name: get_kwarg(name, param)
