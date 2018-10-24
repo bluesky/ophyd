@@ -1,17 +1,19 @@
 import asyncio
-import time as ttime
-from collections import deque, OrderedDict
+import copy
+import inspect
 import itertools
+import logging
 import numpy as np
+import os
 import random
 import threading
-from tempfile import mkdtemp
-import os
+import time as ttime
+import uuid
 import warnings
 import weakref
-import uuid
-import copy
-import logging
+
+from collections import deque, OrderedDict
+from tempfile import mkdtemp
 
 from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
@@ -911,6 +913,95 @@ def make_fake_device(cls):
         fake_device_cache[cls] = fake_class
         logger.debug('fake_device_cache[%s] = %s', cls, fake_class)
     return fake_device_cache[cls]
+
+
+def clear_fake_device(dev, *, default_value=0, default_string_value='',
+                      ignore_exceptions=True):
+    '''Clear a fake device by setting all signals to a specific value
+
+    Parameters
+    ----------
+    dev : Device
+        The fake device
+    default_value : any, optional
+        The value to put to non-string components
+    default_string_value : any, optional
+        The value to put to components determined to be strings
+    ignore_exceptions : bool, optional
+        Ignore any exceptions raised by `sim_put`
+
+    Returns
+    -------
+    all_values : list
+        List of all (signal_instance, value) that were set
+    '''
+
+    devs = [dev]
+    all_values = []
+    while devs:
+        sub_dev = devs.pop(0)
+        devs.extend([getattr(sub_dev, name)
+                     for name in sub_dev._sub_devices])
+        for name, cpt in sub_dev._sig_attrs.items():
+            sig = getattr(sub_dev, name)
+            try:
+                value = (default_string_value
+                         if cpt.kwargs.get('string', False)
+                         else default_value)
+                sig.sim_put(value)
+            except Exception as ex:
+                if not ignore_exceptions:
+                    raise
+            else:
+                all_values.append((sig, value))
+
+    return all_values
+
+
+def instantiate_fake_device(dev_cls, *, name=None, prefix='_prefix',
+                            **specified_kw):
+    '''Instantiate a fake device, optionally specifying some initializer kwargs
+
+    If unspecified, all initializer keyword arguments will default to the
+    string f"_{argument_name}_".
+
+    Parameters
+    ----------
+    dev_cls : class
+        The device class to instantiate. This is allowed to be a regular
+        device, as `make_fake_device` will be called on it first.
+    name : str, optional
+        The instantiated device name
+    prefix : str, optional
+        The instantiated device prefix
+    **specified_kw :
+        Keyword arguments to override with a specific value
+
+    Returns
+    -------
+    dev : dev_cls instance
+        The instantiated fake device
+    '''
+    dev_cls = make_fake_device(dev_cls)
+    sig = inspect.signature(dev_cls)
+    ignore_kw = {'kind', 'read_attrs', 'configuration_attrs', 'parent',
+                 'args', 'name', 'prefix'}
+
+    def get_kwarg(name, param):
+        default = param.default
+        if default == param.empty:
+            # NOTE: could check param.annotation here
+            default = f'_{param.name}_'
+        return specified_kw.get(name, default)
+
+    kwargs = {name: get_kwarg(name, param)
+              for name, param in sig.parameters.items()
+              if param.kind != param.VAR_KEYWORD and
+              name not in ignore_kw
+              }
+    kwargs['name'] = (name if name is not None else dev_cls.__name__)
+    kwargs['prefix'] = prefix
+    return dev_cls(**kwargs)
 
 
 class FakeEpicsSignal(SynSignal):
