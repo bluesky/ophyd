@@ -25,11 +25,22 @@ from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 import uuid
 import os
+import epics
 
 logger = logging.getLogger(__name__)
-
-prefix = 'XF:31IDA-BI{Cam:Tbl}'
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
+
+
+@pytest.fixture(scope='module')
+def ad_prefix():
+    prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
+
+    for prefix in prefixes:
+        test_pv = prefix + 'TIFF1:PluginType_RBV'
+        if epics.caget(test_pv, timeout=2) is not None:
+            print('areaDetector detected with prefix:', prefix)
+            return prefix
+    raise pytest.skip('No areaDetector IOC running')
 
 
 class DummyFS:
@@ -81,11 +92,11 @@ def _recursive_subclasses(cls):
              for g in _recursive_subclasses(s)])
 
 
-def test_basic():
+def test_basic(ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
     det.wait_for_connection()
     det.stage()
     st = det.trigger()
@@ -94,6 +105,7 @@ def test_basic():
     det.unstage()
 
 
+@pytest.mark.skipif('not os.path.exists(ad_path)')
 def test_stubbing():
     try:
         for line in stub_templates(ad_path):
@@ -103,8 +115,8 @@ def test_stubbing():
         pass
 
 
-def test_detector():
-    det = SimDetector(prefix, name='test')
+def test_detector(ad_prefix):
+    det = SimDetector(ad_prefix, name='test')
 
     det.find_signal('a', f=StringIO())
     det.find_signal('a', use_re=True, f=StringIO())
@@ -136,12 +148,12 @@ def test_detector():
     det.report
 
 
-def test_tiff_plugin():
-    # det = AreaDetector(prefix)
+def test_tiff_plugin(ad_prefix):
+    # det = AreaDetector(ad_prefix)
     class TestDet(SimDetector):
         p = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = TestDet(prefix, name='test')
+    det = TestDet(ad_prefix, name='test')
     plugin = det.p
 
     plugin.file_template.put('%s%s_%3.3d.tif')
@@ -150,12 +162,12 @@ def test_tiff_plugin():
     plugin
 
 
-def test_hdf5_plugin():
+def test_hdf5_plugin(ad_prefix):
 
     class MyDet(SimDetector):
         p = Cpt(HDF5Plugin, suffix='HDF1:')
 
-    d = MyDet(prefix, name='d')
+    d = MyDet(ad_prefix, name='d')
     d.p.file_path.put('/tmp')
     d.p.file_name.put('--')
     d.p.warmup()
@@ -165,34 +177,34 @@ def test_hdf5_plugin():
     d.unstage()
 
 
-def test_subclass():
+def test_subclass(ad_prefix):
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
     det.wait_for_connection()
 
     print(det.describe())
     print(det.tiff1.capture.describe())
 
 
-def test_getattr():
+def test_getattr(ad_prefix):
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
     assert getattr(det, 'tiff1.name') == det.tiff1.name
     assert getattr(det, 'tiff1') is det.tiff1
     # raise
     # TODO subclassing issue
 
 
-def test_invalid_plugins():
+def test_invalid_plugins(ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
     det.wait_for_connection()
     det.tiff1.nd_array_port.put(det.cam.port_name.get())
     det.stats1.nd_array_port.put('AARDVARK')
@@ -206,12 +218,12 @@ def test_invalid_plugins():
     assert ['AARDVARK'] == det.missing_plugins()
 
 
-def test_validete_plugins_no_portname():
+def test_validate_plugins_no_portname(ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         roi1 = Cpt(ROIPlugin, 'ROI1:')
         over1 = Cpt(OverlayPlugin, 'Over1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
 
     det.roi1.nd_array_port.put(det.cam.port_name.get())
     det.over1.nd_array_port.put(det.roi1.port_name.get())
@@ -219,13 +231,13 @@ def test_validete_plugins_no_portname():
     det.validate_asyn_ports()
 
 
-def test_get_plugin_by_asyn_port():
+def test_get_plugin_by_asyn_port(ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
 
     det.tiff1.nd_array_port.put(det.cam.port_name.get())
     det.roi1.nd_array_port.put(det.cam.port_name.get())
@@ -238,20 +250,20 @@ def test_get_plugin_by_asyn_port():
     assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
 
 
-def test_visualize_asyn_digraph_smoke():
+def test_visualize_asyn_digraph_smoke(ad_prefix):
     # setup sim detector
-    det = SimDetector(prefix, name='test')
+    det = SimDetector(ad_prefix, name='test')
     # smoke test
     det.visualize_asyn_digraph()
 
 
-def test_read_configuration_smoke():
+def test_read_configuration_smoke(ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         proc1 = Cpt(ProcessPlugin, 'Proc1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
     det.proc1.nd_array_port.put(det.cam.port_name.get())
     det.roi1.nd_array_port.put(det.proc1.port_name.get())
     det.stats1.nd_array_port.put(det.roi1.port_name.get())
@@ -268,13 +280,13 @@ def test_read_configuration_smoke():
     assert set(conf) == set(desc)
 
 
-def test_str_smoke():
+def test_str_smoke(ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         proc1 = Cpt(ProcessPlugin, 'Proc1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
-    det = MyDetector(prefix, name='test')
+    det = MyDetector(ad_prefix, name='test')
     det.read_attrs = ['stats1']
     det.stats1.read_attrs = ['mean_value']
     det.stats1.mean_value.kind = Kind.hinted
@@ -282,7 +294,7 @@ def test_str_smoke():
     str(det)
 
 
-def test_default_configuration_smoke():
+def test_default_configuration_smoke(ad_prefix):
     class MyDetector(SimDetector):
         imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
         statsplugin = Cpt(StatsPlugin, StatsPlugin._default_suffix)
@@ -298,7 +310,7 @@ def test_default_configuration_smoke():
         hdf5plugin = Cpt(HDF5Plugin, HDF5Plugin._default_suffix)
         magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
 
-    d = MyDetector(prefix, name='d')
+    d = MyDetector(ad_prefix, name='d')
     d.stage()
     {n: getattr(d, n).read_configuration() for n in d.component_names}
     {n: getattr(d, n).describe_configuration() for n in d.component_names}
@@ -322,7 +334,7 @@ def test_default_configuration_attrs(plugin):
                           ('/', '/data/%Y/%m/%d', None, False),
                           ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fstiff_plugin(root, wpath, rpath, check_files):
+def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files):
     fs = DummyFS()
     fs2 = DummyFS()
     if check_files:
@@ -338,7 +350,7 @@ def test_fstiff_plugin(root, wpath, rpath, check_files):
                     read_path_template=rpath,
                     root=root, reg=fs)
     target_root = root or '/'
-    det = MyDetector(prefix, name='det')
+    det = MyDetector(ad_prefix, name='det')
     det.read_attrs = ['tiff1']
     det.tiff1.read_attrs = []
 
@@ -379,7 +391,7 @@ def test_fstiff_plugin(root, wpath, rpath, check_files):
                           ('/', '/data/%Y/%m/%d', None, False),
                           ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fshdf_plugin(root, wpath, rpath, check_files):
+def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files):
     pytest.skip('hdf5 plugin is busted with docker images')
     fs = DummyFS()
     if check_files:
@@ -395,7 +407,7 @@ def test_fshdf_plugin(root, wpath, rpath, check_files):
                    read_path_template=rpath,
                    root=root, reg=fs)
     target_root = root or '/'
-    det = MyDetector(prefix, name='det')
+    det = MyDetector(ad_prefix, name='det')
     det.read_attrs = ['hdf1']
     det.hdf1.read_attrs = []
     det.cam.acquire_time.put(.1)
@@ -433,7 +445,7 @@ def test_fshdf_plugin(root, wpath, rpath, check_files):
 
 
 @pytest.mark.xfail
-def test_many_connect():
+def test_many_connect(ad_prefix):
     import gc
     fs = DummyFS()
 
@@ -459,7 +471,7 @@ def test_many_connect():
             client.SEARCH_MAX_DATAGRAM_BYTES = 1450
 
     def tester():
-        det = MyDetector(prefix, name='det')
+        det = MyDetector(ad_prefix, name='det')
         print('made detector')
         try:
             print('*'*25)
