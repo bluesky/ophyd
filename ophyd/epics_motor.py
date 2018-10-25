@@ -70,16 +70,33 @@ class EpicsMotor(Device, PositionerBase):
     # alarm information
     tolerated_alarm = AlarmSeverity.NO_ALARM
 
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
+    def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
+                 configuration_attrs=None, parent=None, **kwargs):
+        super().__init__(prefix=prefix, name=name, kind=kind,
+                         read_attrs=read_attrs,
+                         configuration_attrs=configuration_attrs,
+                         parent=parent, **kwargs)
 
         # Make the default alias for the user_readback the name of the
         # motor itself.
         self.user_readback.name = self.name
+        self._subscribed_signals = set()
+        self._subscribe_on_connect = {
+            self.motor_done_move: dict(callback=self._move_changed,
+                                       event_type='value'),
+            self.user_readback: dict(callback=self._pos_changed,
+                                     event_type='value'),
+        }
 
-        self.motor_done_move.subscribe(self._move_changed)
-        self.user_readback.subscribe(self._pos_changed)
+        for sig in self._subscribe_on_connect:
+            sig.subscribe(self._signal_connected, event_type='connect')
+
+    def _signal_connected(self, connected, obj, **kw):
+        'Signal connected callback'
+        if obj not in self._subscribed_signals:
+            self._subscribed_signals.add(obj)
+            subscribe_args = self._subscribe_on_connect[obj]
+            obj.subscribe(**subscribe_args)
 
     @property
     @raise_if_disconnected

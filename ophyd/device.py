@@ -736,9 +736,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
 
-    def __init__(self, prefix='', *, name, kind=None,
-                 read_attrs=None, configuration_attrs=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
+                 configuration_attrs=None, parent=None, **kwargs):
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
         self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
