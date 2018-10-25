@@ -98,6 +98,11 @@ def test_basic(ad_prefix):
 
     det = MyDetector(ad_prefix, name='test')
     det.wait_for_connection()
+
+    det.cam.acquire_time.put(0.5)
+    det.cam.acquire_period.put(0.5)
+    det.cam.num_images.put(1)
+    det.cam.image_mode.put(det.cam.ImageMode.SINGLE)
     det.stage()
     st = det.trigger()
     while not st.done:
@@ -308,7 +313,7 @@ def test_default_configuration_smoke(ad_prefix):
         jpegplugin = Cpt(JPEGPlugin, JPEGPlugin._default_suffix)
         # nexusplugin = Cpt(NexusPlugin, NexusPlugin._default_suffix)
         hdf5plugin = Cpt(HDF5Plugin, HDF5Plugin._default_suffix)
-        magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
+        # magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
 
     d = MyDetector(ad_prefix, name='d')
     d.stage()
@@ -326,6 +331,7 @@ def test_default_configuration_attrs(plugin):
                           (Component, DynamicDeviceComponent))
 
 
+@pytest.mark.skipif(not os.path.exists('/data'), reason='No /data')
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/data/%Y/%m/%d', None, False),
                           (None, '/data/%Y/%m/%d', None, False),
@@ -383,6 +389,7 @@ def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files):
             assert Path(fn).exists()
 
 
+@pytest.mark.skipif(not os.path.exists('/data'), reason='No /data')
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/data/%Y/%m/%d', None, False),
                           (None, '/data/%Y/%m/%d', None, False),
