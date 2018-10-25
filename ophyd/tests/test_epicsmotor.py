@@ -4,8 +4,8 @@ import pytest
 from copy import copy
 from numpy.testing import assert_allclose
 
-from ophyd import (EpicsMotor, Signal, EpicsSignalRO, Component as C,
-                   MotorBundle)
+from ophyd import (EpicsMotor, Signal, EpicsSignal, EpicsSignalRO,
+                   Component as C, MotorBundle)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,8 @@ def motor():
                       timeout=10.0)
     print('epicsmotor', m)
     m.wait_for_connection()
+    m.low_limit_value.put(-100, wait=True)
+    m.high_limit_value.put(100, wait=True)
     return m
 
 
@@ -32,8 +34,8 @@ class tstEpicsMotor(EpicsMotor):
     high_limit_switch = C(Signal, value=0, kind='omitted')
     low_limit_switch = C(Signal, value=0, kind='omitted')
     direction_of_travel = C(Signal, value=0, kind='omitted')
-    high_limit_value = C(EpicsSignalRO, '.HLM', kind='config')
-    low_limit_value = C(EpicsSignalRO, '.LLM', kind='config')
+    high_limit_value = C(EpicsSignal, '.HLM', kind='config')
+    low_limit_value = C(EpicsSignal, '.LLM', kind='config')
 
 
 def test_timeout(motor):
