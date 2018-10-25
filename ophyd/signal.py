@@ -5,13 +5,13 @@ import threading
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError)
+from .utils import ReadOnlyError, LimitError, set_and_wait
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
 from .ophydobj import OphydObject, Kind
 from .status import Status
-from .utils import set_and_wait
+from .utils.errors import DisconnectedError
 from . import get_cl
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,8 @@ class Signal(OphydObject):
         The relative tolerance associated with the value
     '''
     SUB_VALUE = 'value'
+    SUB_CONNECT = 'connect'
+    SUB_ACCESS = 'access'
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
@@ -69,6 +71,12 @@ class Signal(OphydObject):
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
+
+        # Signal defaults to being connected, with full read/write access.
+        # Subclasses are expected to clear these on init, if applicable.
+        self._connected = True
+        self._read_access = True
+        self._write_access = True
 
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
@@ -98,13 +106,22 @@ class Signal(OphydObject):
 
     def _repr_info(self):
         yield from super()._repr_info()
-        value = self.value
+        try:
+            value = self.value
+        except Exception:
+            value = None
+
         if value is not None:
             yield ('value', value)
-        if self.timestamp is not None:
-            yield ('timestamp', self.timestamp)
-        if self.tolerance is not None:
-            yield ('tolerance', self.tolerance)
+
+        try:
+            if self.timestamp is not None:
+                yield ('timestamp', self.timestamp)
+            if self.tolerance is not None:
+                yield ('tolerance', self.tolerance)
+        except DisconnectedError:
+            ...
+
         if self.rtolerance is not None:
             yield ('rtolerance', self.rtolerance)
 
@@ -168,8 +185,8 @@ class Signal(OphydObject):
                                exc_info=ex)
                 success = False
             else:
-                self.log.debug('set_and_wait(%r, %s) succeeded => %s', self.name,
-                               value, self.value)
+                self.log.debug('set_and_wait(%r, %s) succeeded => %s',
+                               self.name, value, self.value)
                 success = True
                 if settle_time is not None:
                     time.sleep(settle_time)
@@ -228,6 +245,7 @@ class Signal(OphydObject):
 
     @property
     def limits(self):
+        # NOTE: subclasses are expected to override this property
         # Always override, never extend this
         return (0, 0)
 
@@ -245,6 +263,21 @@ class Signal(OphydObject):
             return {'fields': [self.name]}
         else:
             return {'fields': []}
+
+    @property
+    def connected(self):
+        'Is the signal connected to its associated hardware?'
+        return self._connected
+
+    @property
+    def read_access(self):
+        'Can the signal be read?'
+        return self._read_access
+
+    @property
+    def write_access(self):
+        'Can the signal be written to?'
+        return self._write_access
 
 
 class DerivedSignal(Signal):
@@ -265,13 +298,23 @@ class DerivedSignal(Signal):
         if isinstance(derived_from, str):
             derived_from = getattr(parent, derived_from)
         self._derived_from = derived_from
-        connected = self._derived_from.connected
-        if connected:
-            # set up the initial timestamp reporting, if connected
-            self._timestamp = self._derived_from.timestamp
 
-        self._derived_from.subscribe(self._derived_value_callback,
-                                     event_type=self.SUB_VALUE, run=connected)
+        self._connected = derived_from.connected
+        self._read_access = derived_from.read_access
+        self._write_access = derived_from.write_access
+        if self._connected:
+            # set up the initial timestamp reporting, if connected
+            self._timestamp = derived_from.timestamp
+
+        derived_from.subscribe(self._derived_value_callback,
+                               event_type=self.SUB_VALUE,
+                               run=self._connected)
+        derived_from.subscribe(self._derived_connect_callback,
+                               event_type=self.SUB_CONNECT,
+                               run=self._connected)
+        derived_from.subscribe(self._derived_access_callback,
+                               event_type=self.SUB_ACCESS,
+                               run=self._connected)
 
     @property
     def derived_from(self):
@@ -283,6 +326,17 @@ class DerivedSignal(Signal):
         desc = self._derived_from.describe()[self._derived_from.name]
         desc['derived_from'] = self._derived_from.name
         return {self.name: desc}
+
+    def _derived_connect_callback(self, *, connected, timestamp, **kwargs):
+        self._connected = connected
+        self._run_subs(sub_type=self.SUB_CONNECT, timestamp=timestamp,
+                       connected=connected)
+
+    def _derived_access_callback(self, *, read, write, timestamp, **kwargs):
+        self._read_access = read
+        self._write_access = write
+        self._run_subs(sub_type=self.SUB_ACCESS, timestamp=timestamp,
+                       read=self._read_access, write=self._write_access)
 
     def _derived_value_callback(self, value=None, timestamp=None, **kwargs):
         value = self.inverse(value)
@@ -381,13 +435,40 @@ class EpicsSignalBase(Signal):
 
         validate_pv_name(read_pv)
         cl = self.cl
-        self._read_pv = cl.get_pv(read_pv, form=cl.pv_form,
-                                  auto_monitor=auto_monitor,
-                                  **pv_kw)
+
+        # Keep track of all associated PV's connectivity:
+        self._connection_states = {
+            read_pv: False
+        }
+        # Note that this is necessary for pyepics, as it does not update PV
+        # connection status (.connected) until *after* it has called all of its
+        # connection callbacks.
+
+        self._connected = False
+        self._read_pv = cl.get_pv(
+            read_pv, form=cl.pv_form, auto_monitor=auto_monitor,
+            connection_callback=self._pv_connected,
+            access_callback=self._read_pv_access,
+            **pv_kw)
 
         with self._lock:
             self._read_pv.add_callback(self._read_changed,
                                        run_now=self._read_pv.connected)
+
+    def _pv_connected(self, pvname, conn, pv):
+        'Control-layer callback: PV has [dis]connected'
+        old_connected = self._connected
+        self._connection_states[pvname] = conn
+        self._connected = all(self._connection_states.values())
+        if old_connected != self._connected:
+            self._run_subs(sub_type=self.SUB_CONNECT, connected=conn)
+
+    def _read_pv_access(self, read_access, write_access, pv):
+        'Control-layer callback: read PV access rights have changed'
+        self._read_access = read_access
+        self._write_access = write_access
+        self._run_subs(sub_type=self.SUB_ACCESS, read=read_access,
+                       write=write_access)
 
     @property
     def as_string(self):
@@ -466,16 +547,18 @@ class EpicsSignalBase(Signal):
         # don't need to reinitialize it
         with self._lock:
             if obj_mon and not self._read_pv.auto_monitor:
-                self._read_pv = self._reinitialize_pv(self._read_pv,
-                                                      auto_monitor=True,
-                                                      **self._pv_kw)
+                self._read_pv = self._reinitialize_pv(
+                    self._read_pv, auto_monitor=True,
+                    connection_callback=self._pv_connected,
+                    access_callback=self._read_pv_access,
+                    **self._pv_kw)
                 self._read_pv.add_callback(self._read_changed,
                                            run_now=self._read_pv.connected)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
-        if self._read_pv.connected:
+        if self.connected:
             return
 
         with self._lock:
@@ -504,10 +587,6 @@ class EpicsSignalBase(Signal):
         yield ('pv_kw', self._pv_kw)
         yield ('auto_monitor', self._auto_monitor)
         yield ('string', self._string)
-
-    @property
-    def connected(self):
-        return self._read_pv.connected
 
     @property
     @raise_if_disconnected
@@ -643,6 +722,13 @@ class EpicsSignalRO(EpicsSignalBase):
     def set(self, *args, **kwargs):
         raise ReadOnlyError('Read-only signals cannot be set')
 
+    def _read_pv_access(self, read_access, write_access, pv):
+        'Control-layer callback: read PV access rights have changed'
+        # Tweak write access here - this is a read-only signal!
+        self._read_access = read_access
+        self._write_access = False
+        self._run_subs(sub_type=self.SUB_ACCESS, read=read_access, write=False)
+
 
 class EpicsSignal(EpicsSignalBase):
     '''An EPICS signal, comprised of either one or two EPICS PVs
@@ -689,14 +775,19 @@ class EpicsSignal(EpicsSignalBase):
             write_pv = None
 
         super().__init__(read_pv, pv_kw=pv_kw, string=string,
-                         auto_monitor=auto_monitor, name=name, **kwargs)
+                         auto_monitor=auto_monitor, name=name,
+                         **kwargs)
 
         if write_pv is not None:
             validate_pv_name(write_pv)
             cl = self.cl
-            self._write_pv = cl.get_pv(write_pv, form=cl.pv_form,
-                                       auto_monitor=self._auto_monitor,
-                                       **self._pv_kw)
+            self._connection_states[write_pv] = False
+            self._write_pv = cl.get_pv(
+                write_pv, form=cl.pv_form,
+                auto_monitor=self._auto_monitor,
+                connection_callback=self._pv_connected,
+                access_callback=self._write_pv_access,
+                **self._pv_kw)
             self._write_pv.add_callback(self._write_changed,
                                         run_now=self._write_pv.connected)
         else:
@@ -716,9 +807,11 @@ class EpicsSignal(EpicsSignalBase):
         # don't need to reinitialize it
         with self._lock:
             if obj_mon and not self._write_pv.auto_monitor:
-                self._write_pv = self._reinitialize_pv(self._write_pv,
-                                                       auto_monitor=True,
-                                                       **self._pv_kw)
+                self._write_pv = self._reinitialize_pv(
+                    self._write_pv, auto_monitor=True,
+                    connection_callback=self._pv_connected,
+                    access_callback=self._write_pv_access,
+                    **self._pv_kw)
                 self._write_pv.add_callback(self._write_changed,
                                             run_now=self._write_pv.connected)
 
@@ -803,10 +896,6 @@ class EpicsSignal(EpicsSignalBase):
 
         yield ('limits', self._use_limits)
         yield ('put_complete', self._put_complete)
-
-    @property
-    def connected(self):
-        return self._read_pv.connected and self._write_pv.connected
 
     @property
     @raise_if_disconnected
@@ -958,6 +1047,18 @@ class EpicsSignal(EpicsSignalBase):
     @setpoint.setter
     def setpoint(self, value):
         self.put(value)
+
+    def _read_pv_access(self, read_access, write_access, pv):
+        'Control-layer callback: read PV access rights have changed'
+        self._read_access = read_access
+        self._run_subs(sub_type=self.SUB_ACCESS, read=read_access,
+                       write=self._write_access)
+
+    def _write_pv_access(self, read_access, write_access, pv):
+        'Control-layer callback: write PV access rights have changed'
+        self._write_access = write_access
+        self._run_subs(sub_type=self.SUB_ACCESS, read=self._read_access,
+                       write=write_access)
 
 
 class AttributeSignal(Signal):

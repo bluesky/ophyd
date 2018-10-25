@@ -324,10 +324,10 @@ def test_describe():
     assert desc['shape'] == []
 
     import numpy as np
-    sig.put(np.array([1,]))
+    sig.put(np.array([1, ]))
     desc = sig.describe()['my_pv']
     assert desc['dtype'] == 'array'
-    assert desc['shape'] == [1,]
+    assert desc['shape'] == [1, ]
 
 
 def test_set_method():
@@ -379,10 +379,17 @@ def test_soft_derived():
 def test_epics_signal_derived():
     signal = EpicsSignalRO('fakepv', name='original')
 
+    signal.wait_for_connection()
+    assert signal.connected
+    assert signal.read_access
+    assert not signal.write_access
+
     derived = DerivedSignal(derived_from=signal, name='derived')
     derived.wait_for_connection()
 
-    derived.connected
+    assert derived.connected
+    assert derived.read_access
+    assert not derived.write_access
 
     # race condition with the FakeEpicsPV update loop, can't really test
     # assert derived.timestamp == signal.timestamp
@@ -423,7 +430,6 @@ def test_epicssignal_set(put_complete):
     # keep the axis in position
     st = sim_pv.set(start_pos)
     wait(st, timeout=5)
-
 
 
 def test_epicssignal_alarm_status():

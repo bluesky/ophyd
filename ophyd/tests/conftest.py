@@ -27,6 +27,7 @@ class FakeEpicsPV(object):
     def __init__(self, pvname, form=None,
                  callback=None, connection_callback=None,
                  auto_monitor=True, enum_strs=None,
+                 access_callback=None,
                  **kwargs):
 
         self.callbacks = dict()
@@ -35,6 +36,7 @@ class FakeEpicsPV(object):
         _FAKE_PV_LIST.append(self)
 
         self._pvname = pvname
+        self._access_callback = access_callback
         self._connection_callback = connection_callback
         self._form = form
         self._auto_monitor = auto_monitor
@@ -86,11 +88,16 @@ class FakeEpicsPV(object):
 
     def _update_loop(self):
         time.sleep(random.uniform(*self._connect_delay))
-        if self._connection_callback is not None:
-            self._connection_callback(pvname=self._pvname, conn=True, pv=self)
-
         if self._pvname in ('does_not_connect', ):
             return
+
+        if self._connection_callback is not None:
+            self._connection_callback(pvname=self._pvname, conn=True, pv=self)
+            # update connection status AFTER the callback - mirroring pyepics
+            self._connected = True
+
+        if self._access_callback is not None:
+            self._access_callback(True, True, pv=self)
 
         last_value = None
         while self._running:
@@ -104,7 +111,6 @@ class FakeEpicsPV(object):
                     last_value = self._value
 
                 time.sleep(self._update_rate)
-            self._connected = True
 
             time.sleep(0.01)
 
