@@ -566,6 +566,13 @@ class EpicsSignalBase(Signal):
                 raise TimeoutError('Failed to connect to %s' %
                                    self._read_pv.pvname)
 
+        # Ensure that the connection status toggles before returning, as
+        # @raise_if_disconnected can cause issues otherwise.
+        # Note: It's OK if the actual control layer callback happens again
+        # after this.
+        self._pv_connected(self._read_pv.pvname, conn=True,
+                           pv=self._read_pv)
+
     @property
     @raise_if_disconnected
     def timestamp(self):
@@ -825,6 +832,9 @@ class EpicsSignal(EpicsSignalBase):
                 if not self._write_pv.wait_for_connection(timeout=timeout):
                     raise TimeoutError('Failed to connect to %s' %
                                        self._write_pv.pvname)
+            # Ensure that the connection status toggles before we return
+            self._pv_connected(self._write_pv.pvname, conn=True,
+                               pv=self._write_pv)
 
     @property
     @raise_if_disconnected

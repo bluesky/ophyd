@@ -435,6 +435,7 @@ def test_epicssignal_set(put_complete):
 def test_epicssignal_alarm_status():
     sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
                       read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
     sig.setpoint_alarm_status
@@ -443,6 +444,7 @@ def test_epicssignal_alarm_status():
 
 def test_epicssignalro_alarm_status():
     sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
 
