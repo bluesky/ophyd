@@ -250,7 +250,12 @@ def test_move_alarm(motor):
         motor.user_readback.alarm_status = AlarmStatus.COMM
         motor.user_readback.alarm_severity = AlarmSeverity.MAJOR
 
-        st = motor.move(motor.position + 1, wait=False)
+        if motor.position + 1 < motor.high_limit_value.get():
+            target_pos = motor.position + 1
+        else:
+            target_pos = motor.position - 1
+
+        st = motor.move(target_pos, wait=False)
 
         while not st.done:
             time.sleep(0.1)
