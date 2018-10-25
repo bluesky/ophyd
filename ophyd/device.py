@@ -36,6 +36,8 @@ class Staged(Enum):
     partially = 'partially'
 
 
+
+
 class Component:
     '''A descriptor representing a device component (or signal)
 
@@ -45,8 +47,8 @@ class Component:
     Parameters
     ----------
     cls : class
-        Class of signal to create.  The required signature of
-        `cls.__init__` is (if `suffix` is given)::
+        Class of signal to create.  The required signature of `cls.__init__` is
+        (if `suffix` is given)::
 
             def __init__(self, pv_name, parent=None, **kwargs):
 
@@ -54,12 +56,12 @@ class Component:
 
             def __init__(self, parent=None, **kwargs):
 
-        The class may have a `wait_for_connection()` which is called
-        during the component instance creation.
+        The class may have a `wait_for_connection()` which is called during the
+        component instance creation.
 
     suffix : str, optional
-        The PV suffix, which gets appended onto ``parent.prefix`` to
-        generate the final PV that the instance component will bind to.
+        The PV suffix, which gets appended onto ``parent.prefix`` to generate
+        the final PV that the instance component will bind to.
         Also see ``add_prefix``
 
     lazy : bool, optional
@@ -71,8 +73,8 @@ class Component:
         at trigger time.
 
     add_prefix : sequence, optional
-        Keys in the kwargs to prefix with the Device PV prefix during
-        creation of the component instance.
+        Keys in the kwargs to prefix with the Device PV prefix during creation
+        of the component instance.
         Defaults to ``('suffix', 'write_pv', )``
 
     doc : str, optional
@@ -139,7 +141,8 @@ class Component:
             cpt_inst = self.cls(parent=instance, **kwargs)
 
         if self.lazy and hasattr(self.cls, 'wait_for_connection'):
-            cpt_inst.wait_for_connection()
+            if getattr(instance, '_lazy_wait_for_connection', True):
+                cpt_inst.wait_for_connection()
 
         return cpt_inst
 
@@ -779,6 +782,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if configuration_attrs is not None:
             self.configuration_attrs = list(configuration_attrs)
 
+        self._lazy_wait_for_connection = True
+
         # Instantiate non-lazy signals
         [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
          if not cpt.lazy]
@@ -1299,3 +1304,29 @@ def _lazy_get(parent, name):
 
 def _ensure_kind(k):
     return getattr(Kind, k.lower()) if isinstance(k, str) else k
+
+
+@contextlib.contextmanager
+def do_not_wait_for_connection(dev):
+    '''Context manager keeping lazy signals from being waited on during instantiation
+
+    By default, upon instantiation of a lazy signal, `wait_for_connection` is
+    called.  While a common source of confusion, this is done intentionally and
+    for good reason: without this functionality in place, any new lazy signal
+    will generally take a finite amount of time to connect. This then requries
+    that the user manually call `wait_for_connection` each time before using
+    the signal.
+
+    In certain cases, it can be desirable to override this behavior. For
+    instance, when instantiating multiple lazy signals or instantiating a
+    signal just so that a subscription can be added.
+
+    Parameters
+    ----------
+    dev : Device
+        The device to temporarily change
+    '''
+    orig = dev._lazy_wait_for_connection
+    dev._lazy_wait_for_connection = False
+    yield
+    dev._lazy_wait_for_connection = orig
