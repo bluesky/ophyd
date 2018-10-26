@@ -1,12 +1,15 @@
 import collections
 import contextlib
 import functools
-import time as ttime
+import inspect
 import logging
 import textwrap
+import time as ttime
+import types
+import warnings
+
 from enum import Enum
 from collections import (OrderedDict, namedtuple)
-import warnings
 
 from .ophydobj import OphydObject, Kind
 from .status import DeviceStatus, StatusBase
@@ -34,8 +37,6 @@ class Staged(Enum):
     yes = 'yes'
     no = 'no'
     partially = 'partially'
-
-
 
 
 class Component:
@@ -94,6 +95,7 @@ class Component:
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
         self.add_prefix = tuple(add_prefix)
+        self._subscriptions = collections.defaultdict(list)
 
     def maybe_add_prefix(self, instance, kw, suffix):
         """Add prefix to a suffix if kw is in self.add_prefix
@@ -160,9 +162,10 @@ class Component:
         return '\n'.join(doc)
 
     def __repr__(self):
-
-        kw_str = ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items() \
-                           if k not in ['read_attrs','configuration_attrs'])
+        kw_str = (
+            ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items()
+                      if k not in ['read_attrs', 'configuration_attrs'])
+        )
 
         if self.suffix is not None:
             suffix_str = '{!r}'.format(self.suffix)
@@ -187,12 +190,48 @@ class Component:
             return self
 
         if self.attr not in instance._signals:
-            instance._signals[self.attr] = self.create_component(instance)
+            cpt_inst = self.create_component(instance)
+            instance._signals[self.attr] = cpt_inst
+
+            for event_type, functions in self._subscriptions.items():
+                for func in functions:
+                    cpt_inst.subscribe(types.MethodType(func, instance),
+                                       event_type=event_type,
+                                       run=cpt_inst.connected)
 
         return instance._signals[self.attr]
 
     def __set__(self, instance, owner):
-        raise RuntimeError('Use .put()')
+        raise RuntimeError('Do not use setattr with components; use '
+                           'cpt.put(value)')
+
+    def subscriptions(self, event_type):
+        '''(Decorator) Specify subscriptions callbacks in the Device definition
+        '''
+        if isinstance(self, DynamicDeviceComponent):
+            raise NotImplementedError('DynamicDeviceComponent does not yet '
+                                      'support decorator subscriptions')
+
+        def subscriber(func):
+            self._subscriptions[event_type].append(func)
+            return func
+        return subscriber
+
+    def sub_default(self, func):
+        'Default subscription decorator'
+        return self.subscriptions(None)(func)
+
+    def sub_connect(self, func):
+        'Connection subscription decorator'
+        return self.subscriptions('connect')(func)
+
+    def sub_value(self, func):
+        'Value subscription decorator'
+        return self.subscriptions('value')(func)
+
+    def sub_access(self, func):
+        'Access rights subscription decorator'
+        return self.subscriptions('access')(func)
 
 
 class FormattedComponent(Component):

@@ -80,23 +80,6 @@ class EpicsMotor(Device, PositionerBase):
         # Make the default alias for the user_readback the name of the
         # motor itself.
         self.user_readback.name = self.name
-        self._subscribed_signals = set()
-        self._subscribe_on_connect = {
-            self.motor_done_move: dict(callback=self._move_changed,
-                                       event_type='value'),
-            self.user_readback: dict(callback=self._pos_changed,
-                                     event_type='value'),
-        }
-
-        for sig in self._subscribe_on_connect:
-            sig.subscribe(self._signal_connected, event_type='connect')
-
-    def _signal_connected(self, connected, obj, **kw):
-        'Signal connected callback'
-        if obj not in self._subscribed_signals:
-            self._subscribed_signals.add(obj)
-            subscribe_args = self._subscribe_on_connect[obj]
-            obj.subscribe(**subscribe_args)
 
     @property
     @raise_if_disconnected
@@ -232,10 +215,12 @@ class EpicsMotor(Device, PositionerBase):
         '''Check that the position is within the soft limits'''
         self.user_setpoint.check_value(pos)
 
+    @user_readback.sub_value
     def _pos_changed(self, timestamp=None, value=None, **kwargs):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
+    @motor_done_move.sub_value
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
         '''Callback from EPICS, indicating that movement status has changed'''

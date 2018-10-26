@@ -62,11 +62,9 @@ class PluginBase(ADBase):
         super().__init__(*args, **kwargs)
 
         if self._plugin_type is not None:
-            # Misconfigured until proven otherwise
+            # Misconfigured until proven otherwise - this will happen when
+            # plugin_type first connects
             self._misconfigured = True
-            # Verify upon connection that the plugin type matches this
-            self.plugin_type.subscribe(self._plugin_type_connected,
-                                       event_type='connect')
         else:
             self._misconfigured = False
 
@@ -99,28 +97,6 @@ class PluginBase(ADBase):
     pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
     pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
     port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
-
-    def _plugin_type_connected(self, connected, **kw):
-        'Connection callback on the plugin type'
-        if not connected:
-            return
-
-        plugin_type = self.plugin_type.get()
-        self._misconfigured = not plugin_type.startswith(self._plugin_type)
-        if self._misconfigured:
-            logger.warning(
-                'Plugin prefix %r: trying to use %r class (plugin type=%r) '
-                ' but the plugin reports it is of type %r',
-                self.prefix, self.__class__.__name__, self._plugin_type,
-                plugin_type
-            )
-        else:
-            logger.debug(
-                'Plugin prefix %r type confirmed: %r class (plugin type=%r);'
-                ' plugin reports it is of type %r',
-                self.prefix, self.__class__.__name__, self._plugin_type,
-                plugin_type
-            )
 
     def stage(self):
         super().stage()
@@ -262,6 +238,29 @@ class PluginBase(ADBase):
     queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
     time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
     unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
+
+    @plugin_type.sub_connect
+    def _plugin_type_connected(self, connected, **kw):
+        'Connection callback on the plugin type'
+        if not connected:
+            return
+
+        plugin_type = self.plugin_type.get()
+        self._misconfigured = not plugin_type.startswith(self._plugin_type)
+        if self._misconfigured:
+            logger.warning(
+                'Plugin prefix %r: trying to use %r class (plugin type=%r) '
+                ' but the plugin reports it is of type %r',
+                self.prefix, self.__class__.__name__, self._plugin_type,
+                plugin_type
+            )
+        else:
+            logger.debug(
+                'Plugin prefix %r type confirmed: %r class (plugin type=%r);'
+                ' plugin reports it is of type %r',
+                self.prefix, self.__class__.__name__, self._plugin_type,
+                plugin_type
+            )
 
 
 @register_plugin

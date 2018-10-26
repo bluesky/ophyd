@@ -192,7 +192,7 @@ class OphydObject:
         for cb in list(self._callbacks[sub_type].values()):
             cb(*args, **kwargs)
 
-    def subscribe(self, cb, event_type=None, run=True):
+    def subscribe(self, callback, event_type=None, run=True):
         '''Subscribe to events this event_type generates.
 
         The callback will be called as ``cb(*args, **kwargs)`` with
@@ -214,7 +214,7 @@ class OphydObject:
 
         Parameters
         ----------
-        cb : callable
+        callback : callable
             A callable function (that takes kwargs) to be run when the event is
             generated.  The expected signature is ::
 
@@ -241,8 +241,8 @@ class OphydObject:
             callback
 
         '''
-        if not callable(cb):
-            raise ValueError("cb must be callable")
+        if not callable(callback):
+            raise ValueError("callback must be callable")
         # do default event type
         if event_type is None:
             # warnings.warn("Please specify which call back you wish to "
@@ -268,14 +268,14 @@ class OphydObject:
                     cb(*args, **kwargs)
                 except Exception:
                     sub_type = kwargs['sub_type']
-                    self.log.exception('Subscription %s callback '\
-                                       'exception (%s)',
-                                       sub_type, self)
+                    self.log.exception(
+                        'Subscription %s callback exception (%s)',
+                        sub_type, self)
             return inner
         # get next cid
         cid = next(self._cb_count)
-        wrapped = wrap_cb(cb)
-        self._unwrapped_callbacks[event_type][cid] = cb
+        wrapped = wrap_cb(callback)
+        self._unwrapped_callbacks[event_type][cid] = callback
         self._callbacks[event_type][cid] = wrapped
         self._cid_to_event_mapping[cid] = event_type
 
