@@ -1,12 +1,15 @@
 import atexit
+import copy
 import ctypes
-import epics
+import functools
+import logging
 import queue
 import threading
 import warnings
-import functools
-import logging
 
+from types import SimpleNamespace
+
+import epics
 from epics import get_pv as _get_pv, caget, caput, ca, dbr  # noqa
 
 try:
@@ -19,6 +22,10 @@ else:
 
 module_logger = logging.getLogger(__name__)
 _dispatcher = None
+
+if not hasattr(epics.dbr, '_cast_args'):
+    # Stash a copy of the original cast args
+    epics.dbr._cast_args = epics.dbr.cast_args
 
 
 def get_pv(*args, **kwargs):
@@ -154,12 +161,14 @@ class EventDispatcher:
             monitor = self._monitor_event
             access = self._access_rights_event
             self._start_threads()
+            epics.dbr.cast_args = self._cast_args
         else:
             connect = ca._onConnectionEvent
             put = ca._onPutEvent
             get = ca._onGetEvent
             monitor = ca._onMonitorEvent
             access = ca._onAccessRightsEvent
+            epics.dbr.cast_args = epics.dbr._cast_args
 
         ca._CB_CONNECT = ctypes.CFUNCTYPE(None, dbr.connection_args)(connect)
         ca._CB_PUTWAIT = ctypes.CFUNCTYPE(None, dbr.event_handler_args)(put)
@@ -175,6 +184,14 @@ class EventDispatcher:
         current_context = ca.current_context()
         return (self._all_contexts or self.main_context == current_context)
 
+    @staticmethod
+    def _cast_args(args):
+        'Replacement epics.dbr.cast_args - use pre-casted + copied args'
+        try:
+            return args._casted
+        except AttributeError:
+            return epics.dbr._cast_args(args)
+
     def _make_handler(thread_name, pyepics_func):
         @functools.wraps(pyepics_func)
         def wrapped(self, args):
@@ -185,13 +202,38 @@ class EventDispatcher:
                 pyepics_func(args)
         return wrapped
 
-    _monitor_event = _make_handler('monitor_thread', ca._onMonitorEvent)
+    def _make_casting_handler(thread_name, pyepics_func):
+        @functools.wraps(pyepics_func)
+        def wrapped(self, args):
+            if not self.applies_to_context:
+                return pyepics_func(args)
+
+            queue = getattr(self, thread_name).queue
+            new_args = SimpleNamespace(
+                usr=args.usr,
+                chid=args.chid,
+                type=args.type,
+                count=args.count,
+                status=args.status,
+                raw_dbr=None,
+                # in place of raw_dbr, we cast the args while the data is
+                # accessible to python:
+                _casted=copy.deepcopy(self._cast_args(args))
+            )
+            # TODO: the copy above could result in multiple copies of data,
+            # affecting performance - workaround ideas?
+            queue.put((pyepics_func, [new_args], {}))
+
+        return wrapped
+
+    _monitor_event = _make_casting_handler('monitor_thread',
+                                           ca._onMonitorEvent)
     _connect_event = _make_handler('connect_thread',
                                    ca._onConnectionEvent)
     _access_rights_event = _make_handler('connect_thread',
                                          ca._onAccessRightsEvent)
     _put_event = _make_handler('get_put_thread', ca._onPutEvent)
-    _get_event = _make_handler('get_put_thread', ca._onGetEvent)
+    _get_event = _make_casting_handler('get_put_thread', ca._onGetEvent)
 
 
 def setup(logger):
