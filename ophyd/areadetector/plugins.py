@@ -64,7 +64,7 @@ class PluginBase(ADBase):
         if self._plugin_type is not None:
             # Misconfigured until proven otherwise - this will happen when
             # plugin_type first connects
-            self._misconfigured = True
+            self._misconfigured = None
         else:
             self._misconfigured = False
 
@@ -100,6 +100,12 @@ class PluginBase(ADBase):
 
     def stage(self):
         super().stage()
+
+        if self._misconfigured is None:
+            # If plugin_type has not yet connected, ensure it has here
+            self.plugin_type.wait_for_connection()
+            # And for good measure, make sure the callback has been called:
+            self._plugin_type_connected(connected=True)
 
         if self._misconfigured:
             raise PluginMisconfigurationError(
