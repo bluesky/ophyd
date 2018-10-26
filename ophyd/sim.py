@@ -916,7 +916,7 @@ def make_fake_device(cls):
 
 
 def clear_fake_device(dev, *, default_value=0, default_string_value='',
-                      ignore_exceptions=True):
+                      ignore_exceptions=False):
     '''Clear a fake device by setting all signals to a specific value
 
     Parameters
