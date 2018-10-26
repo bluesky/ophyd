@@ -15,7 +15,7 @@ from epics import get_pv as _get_pv, caget, caput, ca, dbr  # noqa
 try:
     ca.find_libca()
 except ca.ChannelAccessException:
-    thread_class = threading.Thread
+    raise ImportError('libca not found; pyepics is unavailable')
 else:
     thread_class = ca.CAThread
 
@@ -243,13 +243,6 @@ def setup(logger):
 
     Must be called once per session using ophyd
     '''
-    try:
-        ca.find_libca()
-        # if we can not find libca, then we clearly are not
-        # going to be using CA threads so no need to install
-        # the trampoline
-    except ca.ChannelAccessException:
-        return
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
