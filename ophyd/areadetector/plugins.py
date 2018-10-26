@@ -109,28 +109,28 @@ class PluginBase(ADBase):
         self._misconfigured = not plugin_type.startswith(self._plugin_type)
         if self._misconfigured:
             logger.warning(
-                'Trying to use %r class which is for %r plugin type for '
-                'a plugin that reports being of type %r with base prefix %r',
-                self.__class__.__name__, self._plugin_type,
-                self.plugin_type.get(), self.prefix
+                'Plugin prefix %r: trying to use %r class (plugin type=%r) '
+                ' but the plugin reports it is of type %r',
+                self.prefix, self.__class__.__name__, self._plugin_type,
+                plugin_type
             )
         else:
             logger.debug(
-                'Plugin type confirmed: class= %r expected type= %r; '
-                'plugin reports being of type %r (base prefix %r)',
-                self.__class__.__name__, self._plugin_type,
-                self.plugin_type.get(), self.prefix
+                'Plugin prefix %r type confirmed: %r class (plugin type=%r);'
+                ' plugin reports it is of type %r',
+                self.prefix, self.__class__.__name__, self._plugin_type,
+                plugin_type
             )
 
     def stage(self):
+        super().stage()
+
         if self._misconfigured:
             raise PluginMisconfigurationError(
-                'Trying to use {!r} class which is for {!r} plugin type for '
-                'a plugin that reports being of type {!r} with base prefix '
-                '{!r}'.format(self.__class__.__name__, self._plugin_type,
-                              self.plugin_type.get(), self.prefix))
-
-        super().stage()
+                'Plugin prefix {!r}: trying to use {!r} class (with plugin '
+                'type={!r}) but the plugin reports it is of type {!r}'
+                ''.format(self.prefix, self.__class__.__name__,
+                          self._plugin_type, self.plugin_type.get()))
 
     def enable_on_stage(self):
         """
