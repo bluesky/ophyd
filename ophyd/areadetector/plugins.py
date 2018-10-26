@@ -65,9 +65,8 @@ class PluginBase(ADBase):
             # Misconfigured until proven otherwise
             self._misconfigured = True
             # Verify upon connection that the plugin type matches this
-            with do_not_wait_for_connection(self):
-                self.plugin_type.subscribe(self._plugin_type_connected,
-                                           event_type='connect')
+            self.plugin_type.subscribe(self._plugin_type_connected,
+                                       event_type='connect')
         else:
             self._misconfigured = False
 
@@ -253,7 +252,7 @@ class PluginBase(ADBase):
     nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
     nd_array_port = C(SignalWithRBV, 'NDArrayPort')
     ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
-    plugin_type = C(EpicsSignalRO, 'PluginType_RBV')
+    plugin_type = C(EpicsSignalRO, 'PluginType_RBV', lazy=False)
 
     queue_free = C(EpicsSignal, 'QueueFree')
     queue_free_low = C(EpicsSignal, 'QueueFreeLow')
