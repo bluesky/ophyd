@@ -218,10 +218,12 @@ class EventDispatcher:
                 raw_dbr=None,
                 # in place of raw_dbr, we cast the args while the data is
                 # accessible to python:
-                _casted=copy.deepcopy(self._cast_args(args))
+                _casted=copy.deepcopy(epics.dbr._cast_args(args)),
             )
             # TODO: the copy above could result in multiple copies of data,
-            # affecting performance - workaround ideas?
+            # as copy.deepcopy ("epics.ca.memcopy") is called on the resulting
+            # data.  This will, of course, affect performance - workaround
+            # ideas?
             queue.put((pyepics_func, [new_args], {}))
 
         return wrapped
