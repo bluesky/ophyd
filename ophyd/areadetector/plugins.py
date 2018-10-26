@@ -115,6 +115,13 @@ class PluginBase(ADBase):
                 self.__class__.__name__, self._plugin_type,
                 self.plugin_type.get(), self.prefix
             )
+        else:
+            logger.debug(
+                'Plugin type confirmed: class= %r expected type= %r; '
+                'plugin reports being of type %r (base prefix %r)',
+                self.__class__.__name__, self._plugin_type,
+                self.plugin_type.get(), self.prefix
+            )
 
     def stage(self):
         if self._misconfigured:

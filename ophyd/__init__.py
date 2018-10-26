@@ -41,6 +41,7 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     # this sets the module level value
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})
+    cl.name = control_layer
     cl.setup(logger)
     if pv_telemetry:
         from functools import wraps

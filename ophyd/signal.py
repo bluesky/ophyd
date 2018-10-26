@@ -461,6 +461,12 @@ class EpicsSignalBase(Signal):
         self._connection_states[pvname] = conn
         self._connected = all(self._connection_states.values())
         if old_connected != self._connected:
+            if self.cl.name == 'pyepics':
+                # NOTE: connect blocking here is causing pyepics not to update
+                # its connection status until after returning. force it to show
+                # as connected for our purposes.
+                pv.force_read_access_rights()
+                pv.connected = True
             self._run_subs(sub_type=self.SUB_CONNECT, connected=conn)
 
     def _read_pv_access(self, read_access, write_access, pv):
