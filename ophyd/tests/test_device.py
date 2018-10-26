@@ -333,9 +333,27 @@ def test_summary():
     d.__str__()
     d.__repr__()
 
+
 def test_labels():
     class MyDevice(Device):
         cpt = Component(FakeSignal, 'suffix')
 
     d = MyDevice('', name='test', labels={'a', 'b'})
     assert d._ophyd_labels_ == {'a', 'b'}
+
+
+def test_device_put():
+    class MyDevice(Device):
+        a = Component(Signal)
+        b = Component(Signal)
+
+    d = MyDevice('', name='test')
+    d.put((1, 2))
+    assert d.get() == (1, 2)
+
+    devtuple = d.get_device_tuple()
+    d.put(devtuple(a=10, b=12))
+    assert d.get() == (10, 12)
+
+    with pytest.raises(ValueError):
+        d.put((1, 2, 3))

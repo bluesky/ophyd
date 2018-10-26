@@ -1167,7 +1167,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         '''
         if not isinstance(dev_t, self._device_tuple):
             try:
-                dev_t = self._device_tuple(dev_t)
+                dev_t = self._device_tuple(*dev_t)
             except TypeError as ex:
                 raise ValueError('{}\n\tDevice tuple fields: {}'
                                  ''.format(ex, self._device_tuple._fields))
