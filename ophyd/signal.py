@@ -729,6 +729,14 @@ class EpicsSignalRO(EpicsSignalBase):
     name : str, optional
         Name of signal.  If not given defaults to read_pv
     '''
+
+    def __init__(self, read_pv, *, pv_kw=None, string=False,
+                 auto_monitor=False, name=None, **kwargs):
+        super().__init__(read_pv, pv_kw=pv_kw, string=string,
+                         auto_monitor=auto_monitor, name=name,
+                         **kwargs)
+        self._write_access = False
+
     def put(self, *args, **kwargs):
         raise ReadOnlyError('Read-only signals cannot be put to')
 
