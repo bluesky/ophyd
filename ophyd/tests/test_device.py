@@ -47,190 +47,189 @@ def test_device_state():
     d.unstage()
 
 
-class TestDevice(AssertTools):
-    def test_attrs(self):
-        class MyDevice(Device):
-            cpt1 = Component(FakeSignal, '1')
-            cpt2 = Component(FakeSignal, '2')
-            cpt3 = Component(FakeSignal, '3')
+def test_attrs():
+    class MyDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
 
-        d = MyDevice('prefix', read_attrs=['cpt1'],
-                     configuration_attrs=['cpt2'],
-                     name='test'
-                     )
+    d = MyDevice('prefix', read_attrs=['cpt1'],
+                 configuration_attrs=['cpt2'],
+                 name='test'
+                 )
 
-        d.read()
-        self.assertEqual(d.read_attrs, ['cpt1'])
-        self.assertEqual(d.configuration_attrs, ['cpt2'])
+    d.read()
+    assert d.read_attrs == ['cpt1']
+    assert d.configuration_attrs == ['cpt2']
 
-        self.assertEqual(list(d.read().keys()), [d.cpt1.name])
-        self.assertEqual(set(d.read_configuration().keys()),
-                         {d.cpt2.name + '_conf'})
+    assert list(d.read().keys()) == [d.cpt1.name]
+    assert set(d.read_configuration().keys()) == {d.cpt2.name + '_conf'}
 
-        self.assertEqual(list(d.describe().keys()), [d.cpt1.name])
-        self.assertEqual(set(d.describe_configuration().keys()),
-                         {d.cpt2.name + '_conf', })
-
-    def test_complexdevice(self):
-        class SubDevice(Device):
-            cpt1 = Component(FakeSignal, '1')
-            cpt2 = Component(FakeSignal, '2')
-            cpt3 = Component(FakeSignal, '3')
-
-        class SubSubDevice(SubDevice):
-            cpt4 = Component(FakeSignal, '4')
-
-        class MyDevice(Device):
-            sub1 = Component(SubDevice, '1')
-            subsub2 = Component(SubSubDevice, '2')
-            cpt3 = Component(FakeSignal, '3')
-
-        device = MyDevice('prefix', name='dev')
-        device.configuration_attrs = ['sub1',
-                                      'subsub2.cpt2',
-                                      'subsub2.cpt4',
-                                      'cpt3']
-        device.sub1.read_attrs = ['cpt2']
-        device.sub1.configuration_attrs = ['cpt1']
-
-        self.assertIs(device.sub1.parent, device)
-        self.assertIs(device.subsub2.parent, device)
-        self.assertIs(device.cpt3.parent, device)
-
-        self.assertEquals(device.sub1.component_names,
-                          ('cpt1', 'cpt2', 'cpt3'))
-        self.assertEquals(device.subsub2.component_names,
-                          ('cpt1', 'cpt2', 'cpt3', 'cpt4'))
-
-        with pytest.raises(AttributeError):
-            device.component_names.remove('sub1')
-
-        conf_keys = {'dev_sub1_cpt1_conf',    # from sub1.*
-                     # 'dev_sub1_cpt2_conf',  # not in sub1.config_attrs
-                     'dev_subsub2_cpt2_conf', # from subsub2.cpt2
-                     'dev_subsub2_cpt4_conf', # from subsub2.cpt4
-                     'dev_cpt3_conf',         # from cpt3
+    assert list(d.describe().keys()) == [d.cpt1.name]
+    assert set(d.describe_configuration().keys()) == {d.cpt2.name + '_conf', }
 
 
-                     }
+def test_complexdevice():
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
 
-        self.assertEquals(set(device.describe_configuration().keys()),
-                          conf_keys)
-        self.assertEquals(set(device.read_configuration().keys()),
-                          conf_keys)
+    class SubSubDevice(SubDevice):
+        cpt4 = Component(FakeSignal, '4')
 
-    def test_complexdevice_stop(self):
-        class SubSubDevice(Device):
-            cpt4 = Component(FakeSignal, '4')
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, '1')
+        subsub2 = Component(SubSubDevice, '2')
+        cpt3 = Component(FakeSignal, '3')
 
-            def stop(self, *, success=False):
-                self.stop_called = True
-                self.success = success
-                if self.prefix.endswith('_raises_'):
-                    raise Exception('stop failed for some reason')
+    device = MyDevice('prefix', name='dev')
+    device.configuration_attrs = ['sub1',
+                                  'subsub2.cpt2',
+                                  'subsub2.cpt4',
+                                  'cpt3']
+    device.sub1.read_attrs = ['cpt2']
+    device.sub1.configuration_attrs = ['cpt1']
 
-        class SubDevice(Device):
-            cpt1 = Component(FakeSignal, '1')
-            cpt2 = Component(FakeSignal, '2')
-            cpt3 = Component(FakeSignal, '3')
-            subsub = Component(SubSubDevice, '')
+    assert device.sub1.parent is device
+    assert device.subsub2.parent is device
+    assert device.cpt3.parent is device
 
-            def stop(self, *, success=False):
-                self.stop_called = True
-                self.success = success
-                super().stop(success=success)
+    assert device.sub1.component_names == ('cpt1', 'cpt2', 'cpt3')
+    assert device.subsub2.component_names == ('cpt1', 'cpt2', 'cpt3', 'cpt4')
 
-        class MyDevice(Device):
-            sub1 = Component(SubDevice, '1')
-            sub2 = Component(SubDevice, '_raises_')
-            sub3 = Component(SubDevice, '_raises_')
-            cpt3 = Component(FakeSignal, '3')
+    with pytest.raises(AttributeError):
+        device.component_names.remove('sub1')
 
-        dev = MyDevice('', name='mydev')
-        with pytest.raises(ExceptionBundle) as cm:
-            dev.stop()
+    conf_keys = {'dev_sub1_cpt1_conf',     # from sub1.*
+                 # 'dev_sub1_cpt2_conf',   # not in sub1.config_attrs
+                 'dev_subsub2_cpt2_conf',  # from subsub2.cpt2
+                 'dev_subsub2_cpt4_conf',  # from subsub2.cpt4
+                 'dev_cpt3_conf',          # from cpt3
 
-        ex = cm.value
-        self.assertEquals(len(ex.exceptions), 2)
-        self.assertTrue(dev.sub1.stop_called)
-        self.assertTrue(dev.sub2.stop_called)
-        self.assertTrue(dev.sub3.stop_called)
-        self.assertFalse(dev.sub1.success)
-        self.assertFalse(dev.sub2.success)
-        self.assertFalse(dev.sub3.success)
 
-        self.assertTrue(dev.sub1.subsub.stop_called)
-        self.assertTrue(dev.sub2.subsub.stop_called)
-        self.assertTrue(dev.sub3.subsub.stop_called)
-        self.assertFalse(dev.sub1.subsub.success)
-        self.assertFalse(dev.sub2.subsub.success)
-        self.assertFalse(dev.sub3.subsub.success)
+                 }
 
-        dev = MyDevice('', name='mydev')
-        with pytest.raises(ExceptionBundle) as cm:
-            dev.stop(success=True)
+    assert set(device.describe_configuration().keys()) == conf_keys
+    assert set(device.read_configuration().keys()) == conf_keys
 
-        ex = cm.value
-        self.assertEquals(len(ex.exceptions), 2)
-        self.assertTrue(dev.sub1.stop_called)
-        self.assertTrue(dev.sub2.stop_called)
-        self.assertTrue(dev.sub3.stop_called)
-        self.assertTrue(dev.sub1.success)
-        self.assertTrue(dev.sub2.success)
-        self.assertTrue(dev.sub3.success)
 
-        self.assertTrue(dev.sub1.subsub.stop_called)
-        self.assertTrue(dev.sub2.subsub.stop_called)
-        self.assertTrue(dev.sub3.subsub.stop_called)
-        self.assertTrue(dev.sub1.subsub.success)
-        self.assertTrue(dev.sub2.subsub.success)
-        self.assertTrue(dev.sub3.subsub.success)
+def test_complexdevice_stop():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
 
-    def test_name_shadowing(self):
-        RESERVED_ATTRS = ['name', 'parent', 'component_names', '_signals',
-                          '_sig_attrs',
-                          '_sub_devices']
+        def stop(self, *, success=False):
+            self.stop_called = True
+            self.success = success
+            if self.prefix.endswith('_raises_'):
+                raise Exception('stop failed for some reason')
 
-        type('a', (Device,), {'a': None})  # legal class definition
-        # Illegal class definitions:
-        for attr in RESERVED_ATTRS:
-            self.assertRaises(TypeError, type, 'a', (Device,), {attr: None})
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
 
-    def test_formatted_component(self):
-        FC = FormattedComponent
+        def stop(self, *, success=False):
+            self.stop_called = True
+            self.success = success
+            super().stop(success=success)
 
-        class MyDevice(Device):
-            cpt = Component(FakeSignal, 'suffix')
-            ch = FC(FakeSignal, '{self.prefix}{self._ch}')
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, '1')
+        sub2 = Component(SubDevice, '_raises_')
+        sub3 = Component(SubDevice, '_raises_')
+        cpt3 = Component(FakeSignal, '3')
 
-            def __init__(self, prefix, ch='a', **kwargs):
-                self._ch = ch
-                super().__init__(prefix, **kwargs)
+    dev = MyDevice('', name='mydev')
+    with pytest.raises(ExceptionBundle) as cm:
+        dev.stop()
 
-        ch_value = '_test_'
+    ex = cm.value
+    assert len(ex.exceptions) == 2
+    assert dev.sub1.stop_called
+    assert dev.sub2.stop_called
+    assert dev.sub3.stop_called
+    assert not dev.sub1.success
+    assert not dev.sub2.success
+    assert not dev.sub3.success
 
-        device = MyDevice('prefix:', ch=ch_value, name='test')
-        self.assertIs(device.cpt.parent, device)
-        self.assertIs(device.ch.parent, device)
-        self.assertIs(device._ch, ch_value)
-        self.assertEquals(device.ch.read_pv, device.prefix + ch_value)
-        self.assertEquals(device.cpt.read_pv,
-                          device.prefix + MyDevice.cpt.suffix)
+    assert dev.sub1.subsub.stop_called
+    assert dev.sub2.subsub.stop_called
+    assert dev.sub3.subsub.stop_called
+    assert not dev.sub1.subsub.success
+    assert not dev.sub2.subsub.success
+    assert not dev.sub3.subsub.success
 
-    def test_root(self):
-        class MyDevice(Device):
-            cpt = Component(FakeSignal, 'suffix')
+    dev = MyDevice('', name='mydev')
+    with pytest.raises(ExceptionBundle) as cm:
+        dev.stop(success=True)
 
-        d = MyDevice('', name='test')
-        assert d.cpt.root == d
-        assert d.root == d
+    ex = cm.value
+    assert len(ex.exceptions) == 2
+    assert dev.sub1.stop_called
+    assert dev.sub2.stop_called
+    assert dev.sub3.stop_called
+    assert dev.sub1.success
+    assert dev.sub2.success
+    assert dev.sub3.success
 
-    def test_hidden_component(self):
-        class MyDevice(Device):
-            _hidden_sig = Component(FakeSignal, 'suffix')
-        d = MyDevice('', name='test')
-        assert '_hidden_sig' in d.component_names
-        assert not hasattr(d.get(), '_hidden_sig')
+    assert dev.sub1.subsub.stop_called
+    assert dev.sub2.subsub.stop_called
+    assert dev.sub3.subsub.stop_called
+    assert dev.sub1.subsub.success
+    assert dev.sub2.subsub.success
+    assert dev.sub3.subsub.success
+
+
+def test_name_shadowing():
+    RESERVED_ATTRS = ['name', 'parent', 'component_names', '_signals',
+                      '_sig_attrs',
+                      '_sub_devices']
+
+    type('a', (Device,), {'a': None})  # legal class definition
+    # Illegal class definitions:
+    for attr in RESERVED_ATTRS:
+        with pytest.raises(TypeError):
+            type('a', Device, attr=None)
+
+
+def test_formatted_component():
+    FC = FormattedComponent
+
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix')
+        ch = FC(FakeSignal, '{self.prefix}{self._ch}')
+
+        def __init__(self, prefix, ch='a', **kwargs):
+            self._ch = ch
+            super().__init__(prefix, **kwargs)
+
+    ch_value = '_test_'
+
+    device = MyDevice('prefix:', ch=ch_value, name='test')
+    assert device.cpt.parent is device
+    assert device.ch.parent is device
+    assert device._ch is ch_value
+    assert device.ch.read_pv == device.prefix + ch_value
+    assert device.cpt.read_pv == device.prefix + MyDevice.cpt.suffix
+
+
+def test_root():
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix')
+
+    d = MyDevice('', name='test')
+    assert d.cpt.root == d
+    assert d.root == d
+
+
+def test_hidden_component():
+    class MyDevice(Device):
+        _hidden_sig = Component(FakeSignal, 'suffix')
+    d = MyDevice('', name='test')
+    assert '_hidden_sig' in d.component_names
+    assert not hasattr(d.get(), '_hidden_sig')
 
 
 def test_attribute_signal():
