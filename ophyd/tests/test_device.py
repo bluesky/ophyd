@@ -18,9 +18,13 @@ class FakeSignal(Signal):
         self.read_pv = read_pv
         super().__init__(name=name, parent=parent, **kwargs)
         self._waited_for_connection = False
+        self._subscriptions = []
 
     def wait_for_connection(self):
         self._waited_for_connection = True
+
+    def subscribe(self, method, **kw):
+        self._subscriptions.append((method, kw))
 
     def get(self):
         return self.name
@@ -378,3 +382,27 @@ def test_lazy_do_not_wait_for_connect():
         d.cpt
 
     assert not d.cpt._waited_for_connection
+
+
+def test_sub_decorator(motor):
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix', lazy=True)
+
+        @cpt.sub_default
+        def default(self, **kw):
+            pass
+
+        @cpt.sub_value
+        def value(self, **kw):
+            pass
+
+        @cpt.sub_connect
+        def connect(self, **kw):
+            pass
+
+        @cpt.sub_access
+        def access(self, **kw):
+            pass
+
+    d = MyDevice('', name='test')
+    assert len(d.cpt._subscriptions) == 4
