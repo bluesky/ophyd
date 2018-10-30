@@ -469,13 +469,6 @@ class EpicsSignalBase(Signal):
                 pv.connected = True
             self._run_subs(sub_type=self.SUB_CONNECT, connected=conn)
 
-    def _read_pv_access(self, read_access, write_access, pv):
-        'Control-layer callback: read PV access rights have changed'
-        self._read_access = read_access
-        self._write_access = write_access
-        self._run_subs(sub_type=self.SUB_ACCESS, read=read_access,
-                       write=write_access)
-
     @property
     def as_string(self):
         '''Attempt to cast the EPICS PV value to a string by default'''
