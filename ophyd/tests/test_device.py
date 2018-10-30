@@ -10,7 +10,7 @@ from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
 from ophyd.device import ComponentWalk
 from ophyd.utils import ExceptionBundle
-from .conftest import AssertTools
+
 
 logger = logging.getLogger(__name__)
 
