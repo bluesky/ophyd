@@ -4,7 +4,8 @@ from unittest.mock import Mock
 
 import numpy as np
 
-from ophyd import (Device, Component, FormattedComponent)
+from ophyd import (Device, Component, FormattedComponent,
+                   wait_for_lazy_connection, do_not_wait_for_lazy_connection)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal)
 from ophyd.utils import ExceptionBundle
 from .conftest import AssertTools
@@ -16,6 +17,10 @@ class FakeSignal(Signal):
     def __init__(self, read_pv, *, name=None, parent=None, **kwargs):
         self.read_pv = read_pv
         super().__init__(name=name, parent=parent, **kwargs)
+        self._waited_for_connection = False
+
+    def wait_for_connection(self):
+        self._waited_for_connection = True
 
     def get(self):
         return self.name
@@ -25,14 +30,6 @@ class FakeSignal(Signal):
 
     def read_configuration(self):
         return {self.name + '_conf': {'value': 0}}
-
-
-def setUpModule():
-    pass
-
-
-def tearDownModule():
-    logger.debug('Cleaning up')
 
 
 def test_device_state():
@@ -357,3 +354,27 @@ def test_device_put():
 
     with pytest.raises(ValueError):
         d.put((1, 2, 3))
+
+
+def test_lazy_wait_for_connect():
+    class MyDevice(Device):
+        lazy_wait_for_connection = False
+        cpt = Component(FakeSignal, 'suffix', lazy=True)
+
+    d = MyDevice('', name='test')
+    with wait_for_lazy_connection(d):
+        d.cpt
+
+    assert d.cpt._waited_for_connection
+
+
+def test_lazy_do_not_wait_for_connect():
+    class MyDevice(Device):
+        lazy_wait_for_connection = True
+        cpt = Component(FakeSignal, 'suffix', lazy=True)
+
+    d = MyDevice('', name='test')
+    with do_not_wait_for_lazy_connection(d):
+        d.cpt
+
+    assert not d.cpt._waited_for_connection
