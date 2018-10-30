@@ -23,8 +23,8 @@ class FakeSignal(Signal):
     def wait_for_connection(self):
         self._waited_for_connection = True
 
-    def subscribe(self, method, **kw):
-        self._subscriptions.append((method, kw))
+    def subscribe(self, method, event_type, **kw):
+        self._subscriptions.append((method, event_type, kw))
 
     def get(self):
         return self.name
@@ -405,4 +405,6 @@ def test_sub_decorator(motor):
             pass
 
     d = MyDevice('', name='test')
-    assert len(d.cpt._subscriptions) == 4
+
+    subs = set(event_type for method, event_type, kw in d.cpt._subscriptions)
+    assert subs == {None, 'value', 'connect', 'access'}
