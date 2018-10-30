@@ -23,11 +23,18 @@ def test_fakepv():
         info['conn'] = True
         info['conn_kw'] = kwargs
 
+    def access(read, write, **kwargs):
+        info['access'] = True
+        info['access_args'] = (read, write)
+        info['access_kw'] = kwargs
+
     def value_cb(**kwargs):
         info['value'] = True
         info['value_kw'] = kwargs
+
     cl = get_cl()
-    pv = cl.get_pv(pvname, callback=value_cb, connection_callback=conn)
+    pv = cl.get_pv(pvname, callback=value_cb, connection_callback=conn,
+                   access_callback=access)
 
     if not pv.wait_for_connection():
         raise ValueError('should return True on connection')
@@ -39,7 +46,9 @@ def test_fakepv():
 
     assert info['conn']
     assert info['value']
+    assert info['access']
     assert info['value_kw']['value'] == pv.value
+    assert info['access_args'] == (True, True)
 
 
 @using_fake_epics_pv
@@ -152,6 +161,9 @@ def test_epicssignal_readonly():
     signal = EpicsSignalRO('readpv')
     signal.wait_for_connection()
     signal.value
+
+    assert not signal.write_access
+    assert signal.read_access
 
     with pytest.raises(ReadOnlyError):
         signal.value = 10

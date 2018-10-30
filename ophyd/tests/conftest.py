@@ -41,7 +41,7 @@ class FakeEpicsPV(object):
         self._form = form
         self._auto_monitor = auto_monitor
         self._value = self.fake_values[0]
-        self._connected = False
+        self.connected = False
         self._running = True
         self.enum_strs = enum_strs
         FakeEpicsPV._pv_idx += 1
@@ -73,15 +73,11 @@ class FakeEpicsPV(object):
     def get_ctrlvars(self):
         pass
 
-    @property
-    def connected(self):
-        return self._connected
-
     def wait_for_connection(self, timeout=None):
         if self._pvname in ('does_not_connect', ):
             return False
 
-        while not self._connected:
+        while not self.connected:
             time.sleep(0.05)
 
         return True
@@ -94,7 +90,7 @@ class FakeEpicsPV(object):
         if self._connection_callback is not None:
             self._connection_callback(pvname=self._pvname, conn=True, pv=self)
             # update connection status AFTER the callback - mirroring pyepics
-            self._connected = True
+            self.connected = True
 
         if self._access_callback is not None:
             self._access_callback(True, True, pv=self)
@@ -222,6 +218,9 @@ class FakeEpicsPV(object):
         with self._lock:
             self._update = False
             self._value = value
+
+    def force_read_access_rights(self):
+        pass
 
 
 class FakeEpicsWaveform(FakeEpicsPV):
