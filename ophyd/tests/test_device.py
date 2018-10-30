@@ -6,7 +6,8 @@ import numpy as np
 
 from ophyd import (Device, Component, FormattedComponent,
                    wait_for_lazy_connection, do_not_wait_for_lazy_connection)
-from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal)
+from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
+                          ReadOnlyError)
 from ophyd.utils import ExceptionBundle
 from .conftest import AssertTools
 
@@ -246,7 +247,8 @@ def test_attribute_signal():
     class MyDevice(Device):
         sub1 = Component(SubDevice, '1')
         attrsig = Component(AttributeSignal, 'prop')
-        sub_attrsig = Component(AttributeSignal, 'sub1.prop')
+        sub_attrsig = Component(AttributeSignal, 'sub1.prop',
+                                write_access=False)
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -270,7 +272,11 @@ def test_attribute_signal():
     assert dev.attrsig.get() == 55
     assert cb.called
     assert dev.sub_attrsig.get() == init_value
-    dev.sub_attrsig.put(0)
+    assert dev.sub_attrsig.read_access
+    assert not dev.sub_attrsig.write_access
+
+    with pytest.raises(ReadOnlyError):
+        dev.sub_attrsig.put(0)
 
 
 def test_attribute_signal_attributeerror():

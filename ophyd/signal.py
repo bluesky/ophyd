@@ -494,9 +494,8 @@ class EpicsSignalBase(Signal):
         """PV status"""
         with self._lock:
             status = self._read_pv.status
-            if status is None:
-                return None
-            return AlarmStatus(status)
+            if status is not None:
+                return AlarmStatus(status)
 
     @property
     @raise_if_disconnected
@@ -504,9 +503,8 @@ class EpicsSignalBase(Signal):
         """PV alarm severity"""
         with self._lock:
             severity = self._read_pv.severity
-            if severity is None:
-                return None
-            return AlarmSeverity(severity)
+            if severity is not None:
+                return AlarmSeverity(severity)
 
     def _reinitialize_pv(self, old_instance, **pv_kw):
         '''Reinitialize a PV instance
@@ -1089,14 +1087,22 @@ class AttributeSignal(Signal):
         The signal name
     parent : Device, optional
         The parent device instance
+    read_access : bool, optional
+        Allow read access to the attribute
+    write_access : bool, optional
+        Allow write access to the attribute
     '''
-    def __init__(self, attr, *, name=None, parent=None, **kwargs):
+    def __init__(self, attr, *, name=None, parent=None, write_access=True,
+                 **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
         if '.' in attr:
             self.attr_base, self.attr = attr.rsplit('.', 1)
         else:
             self.attr_base, self.attr = None, attr
+
+        self._read_access = True
+        self._write_access = write_access
 
     @property
     def full_attr(self):
@@ -1125,6 +1131,9 @@ class AttributeSignal(Signal):
         return getattr(self.base, self.attr)
 
     def put(self, value, **kwargs):
+        if not self._write_access:
+            raise ReadOnlyError('AttributeSignal is marked as read-only')
+
         old_value = self.get()
         setattr(self.base, self.attr, value)
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
