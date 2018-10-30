@@ -6,7 +6,6 @@ import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import (make_dir_tree, makedirs)
-from .conftest import AssertTools
 
 
 logger = logging.getLogger(__name__)

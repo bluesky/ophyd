@@ -3,12 +3,11 @@ import pytest
 import time
 from copy import copy
 
-from ophyd import (PVPositioner, PVPositionerPC, EpicsMotor)
+from ophyd import (PVPositioner, PVPositionerPC)
 from ophyd import (EpicsSignal, EpicsSignalRO)
 from ophyd import (Component as C)
 from ophyd import get_cl
 from ophyd.ophydobj import Kind
-from .conftest import AssertTools
 
 logger = logging.getLogger(__name__)
 
