@@ -5,7 +5,6 @@ import pytest
 from ophyd import get_cl
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
-from ophyd.epics_motor import EpicsMotor
 from ophyd.utils import ReadOnlyError
 from ophyd.status import wait
 
@@ -361,7 +360,6 @@ def test_soft_derived():
     cb_values = []
 
     def callback(value=None, **kwargs):
-        nonlocal cb_values
         cb_values.append(value)
 
     derived = DerivedSignal(derived_from=original, name='derived')
@@ -371,6 +369,8 @@ def test_soft_derived():
     assert derived.get() == value
     assert derived.timestamp == timestamp
     assert derived.describe()[derived.name]['derived_from'] == original.name
+    assert derived.write_access == original.write_access
+    assert derived.read_access == original.read_access
 
     new_value = 'r'
     derived.put(new_value)
@@ -386,6 +386,28 @@ def test_soft_derived():
 
     derived.put('s')
     assert cb_values == ['r', 's']
+
+    called = []
+
+    def connect_callback(*, connected, **kw):
+        called.append(('connect', connected))
+
+    def access_callback(*, read, write, **kw):
+        called.append(('access', read, write))
+
+    derived.subscribe(connect_callback, event_type=derived.SUB_CONNECT,
+                      run=False)
+    derived.subscribe(access_callback, event_type=derived.SUB_ACCESS,
+                      run=False)
+
+    original._write_access = False
+    original._run_subs(sub_type='connect', connected=True, timestamp=None)
+    original._run_subs(sub_type='access', read=True, write=True,
+                       timestamp=None)
+
+    assert called == [('connect', True),
+                      ('access', True, True),
+                      ]
 
 
 @using_fake_epics_pv
