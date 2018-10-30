@@ -5,6 +5,7 @@ import pytest
 from ophyd import get_cl
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
+from ophyd.epics_motor import EpicsMotor
 from ophyd.utils import ReadOnlyError
 from ophyd.status import wait
 
@@ -53,8 +54,8 @@ def test_fakepv():
 
 @using_fake_epics_pv
 def test_fakepv_signal():
-    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
-                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    sig = EpicsSignal(write_pv='Fakemtr.VAL',
+                      read_pv='Fakemtr.RBV')
     st = sig.set(1)
 
     for j in range(10):
@@ -409,9 +410,9 @@ def test_epics_signal_derived():
 
 
 @pytest.mark.parametrize('put_complete', [True, False])
-def test_epicssignal_set(put_complete):
-    sim_pv = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
-                         read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV',
+def test_epicssignal_set(motor, put_complete):
+    sim_pv = EpicsSignal(write_pv=motor.user_setpoint.pvname,
+                         read_pv=motor.user_readback.pvname,
                          put_complete=put_complete)
     sim_pv.wait_for_connection()
 
@@ -444,9 +445,9 @@ def test_epicssignal_set(put_complete):
     wait(st, timeout=5)
 
 
-def test_epicssignal_alarm_status():
-    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
-                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+def test_epicssignal_alarm_status(motor):
+    sig = EpicsSignal(write_pv=motor.user_setpoint.setpoint_pvname,
+                      read_pv=motor.user_readback.pvname)
     sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
@@ -454,13 +455,13 @@ def test_epicssignal_alarm_status():
     sig.setpoint_alarm_severity
 
 
-def test_epicssignalro_alarm_status():
-    sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+def test_epicssignalro_alarm_status(motor):
+    sig = EpicsSignalRO(motor.user_readback.pvname)
     sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
 
 
-def test_hints():
-    sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+def test_hints(motor):
+    sig = EpicsSignalRO(motor.user_readback.pvname)
     assert sig.hints == {'fields': [sig.name]}

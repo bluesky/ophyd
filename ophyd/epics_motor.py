@@ -194,7 +194,7 @@ class EpicsMotor(Device, PositionerBase):
         direction = HomeEnum(direction)
 
         self._started_moving = False
-        position = (self.low_limit+self.high_limit)/2
+        position = (self.low_limit + self.high_limit) / 2
         status = super().move(position, **kwargs)
 
         if direction == HomeEnum.forward:
