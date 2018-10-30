@@ -17,8 +17,7 @@ from ophyd import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
-from ..device import (DynamicDeviceComponent as DDC, GenerateDatumInterface,
-                      do_not_wait_for_connection)
+from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
 from ..utils.errors import PluginMisconfigurationError
 

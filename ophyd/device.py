@@ -142,7 +142,7 @@ class Component:
             cpt_inst = self.cls(parent=instance, **kwargs)
 
         if self.lazy and hasattr(self.cls, 'wait_for_connection'):
-            if getattr(instance, '_lazy_wait_for_connection', True):
+            if getattr(instance, 'lazy_wait_for_connection', True):
                 cpt_inst.wait_for_connection()
 
         return cpt_inst
@@ -762,6 +762,20 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         ``read_configuration()``) and to adjust via ``configure()``
     parent : instance or None, optional
         The instance of the parent device, if applicable
+
+    Attributes
+    ----------
+    lazy_wait_for_connection : bool
+        When instantiating a lazy signal upon first access, wait for it to
+        connect before returning control to the user.  See also the context
+        manager helpers: ``wait_for_lazy_connection`` and
+        ``do_not_wait_for_lazy_connection``.
+
+    Subscriptions
+    -------------
+    SUB_ACQ_DONE
+        A one-time subscription indicating the requested trigger-based
+        acquisition has completed.
     """
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
@@ -776,6 +790,9 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     _default_read_attrs = None
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
+    # When instantiating a lazy signal upon first access, wait for it to connect
+    # before returning control to the user
+    lazy_wait_for_connection = True
 
     def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
                  configuration_attrs=None, parent=None, **kwargs):
@@ -820,11 +837,10 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if configuration_attrs is not None:
             self.configuration_attrs = list(configuration_attrs)
 
-        self._lazy_wait_for_connection = True
-
-        # Instantiate non-lazy signals
-        [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
-         if not cpt.lazy]
+        with do_not_wait_for_lazy_connection(self):
+            # Instantiate non-lazy signals and lazy signals with subscriptions
+            [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
+             if not cpt.lazy or cpt._subscriptions]
 
     def _validate_kind(self, val):
         if isinstance(val, str):
@@ -1124,9 +1140,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def _done_acquiring(self, **kwargs):
         '''Call when acquisition has completed.'''
-        self._run_subs(sub_type=self.SUB_ACQ_DONE,
-                       success=True, **kwargs)
-
+        self._run_subs(sub_type=self.SUB_ACQ_DONE, success=True, **kwargs)
         self._reset_sub(self.SUB_ACQ_DONE)
 
     @doc_annotation_forwarder(BlueskyInterface)
@@ -1344,27 +1358,38 @@ def _ensure_kind(k):
     return getattr(Kind, k.lower()) if isinstance(k, str) else k
 
 
-@contextlib.contextmanager
-def do_not_wait_for_connection(dev):
-    '''Context manager keeping lazy signals from being waited on during instantiation
+def _wait_for_connection_context(value, doc):
+    @contextlib.contextmanager
+    def wrapped(dev):
+        '''Context manager which changes the wait behavior of lazy signal instantiation
 
-    By default, upon instantiation of a lazy signal, `wait_for_connection` is
-    called.  While a common source of confusion, this is done intentionally and
-    for good reason: without this functionality in place, any new lazy signal
-    will generally take a finite amount of time to connect. This then requries
-    that the user manually call `wait_for_connection` each time before using
-    the signal.
+        By default, upon instantiation of a lazy signal, `wait_for_connection`
+        is called.  While a common source of confusion, this is done
+        intentionally and for good reason: without this functionality in place,
+        any new lazy signal will generally take a finite amount of time to
+        connect. This then requries that the user manually call
+        `wait_for_connection` each time before using the signal.
 
-    In certain cases, it can be desirable to override this behavior. For
-    instance, when instantiating multiple lazy signals or instantiating a
-    signal just so that a subscription can be added.
+        In certain cases, it can be desirable to override this behavior. For
+        instance, when instantiating multiple lazy signals or instantiating a
+        signal just so that a subscription can be added.
 
-    Parameters
-    ----------
-    dev : Device
-        The device to temporarily change
-    '''
-    orig = dev._lazy_wait_for_connection
-    dev._lazy_wait_for_connection = False
-    yield
-    dev._lazy_wait_for_connection = orig
+        {doc}
+
+        Parameters
+        ----------
+        dev : Device
+            The device to temporarily change
+        '''
+        orig = dev.lazy_wait_for_connection
+        dev.lazy_wait_for_connection = value
+        yield
+        dev.lazy_wait_for_connection = orig
+
+    return wrapped
+
+
+wait_for_lazy_connection = _wait_for_connection_context(
+    True, doc='Wait for lazy signals to connect post-instantiation.')
+do_not_wait_for_lazy_connection = _wait_for_connection_context(
+    False, doc='Do not wait for lazy signals to connect post-instantiation.')
