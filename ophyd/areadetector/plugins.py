@@ -244,7 +244,7 @@ class PluginBase(ADBase):
     time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
     unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
 
-    @plugin_type.sub_connect
+    @plugin_type.sub_meta
     def _plugin_type_connected(self, connected, **kw):
         'Connection callback on the plugin type'
         if not connected:

@@ -50,8 +50,7 @@ class Signal(OphydObject):
         The relative tolerance associated with the value
     '''
     SUB_VALUE = 'value'
-    SUB_CONNECT = 'connect'
-    SUB_ACCESS = 'access'
+    SUB_META = 'meta'
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
@@ -74,9 +73,11 @@ class Signal(OphydObject):
 
         # Signal defaults to being connected, with full read/write access.
         # Subclasses are expected to clear these on init, if applicable.
-        self._connected = True
-        self._read_access = True
-        self._write_access = True
+        self._metadata = dict(
+            connected=True,
+            read_access=True,
+            write_access=True
+        )
 
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
@@ -148,9 +149,11 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-
         # TODO: consider adding set_and_wait here as a kwarg
         if not force:
+            if not self.write_access:
+                raise ReadOnlyError('Signal does not allow write access')
+
             self.check_value(value)
 
         old_value = self._readback
@@ -267,21 +270,27 @@ class Signal(OphydObject):
     @property
     def connected(self):
         'Is the signal connected to its associated hardware?'
-        return self._connected
+        return self._metadata.get('connected')
 
     @property
     def read_access(self):
         'Can the signal be read?'
-        return self._read_access
+        return self._metadata.get('read_access')
 
     @property
     def write_access(self):
         'Can the signal be written to?'
-        return self._write_access
+        return self._metadata.get('write_access')
+
+    @property
+    def metadata(self):
+        'All metadata associated with the signal'
+        return dict(self._metadata)
 
 
 class DerivedSignal(Signal):
-    def __init__(self, derived_from, *, name=None, parent=None, **kwargs):
+    def __init__(self, derived_from, *, write_access=None, name=None,
+                 parent=None, **kwargs):
         '''A signal which is derived from another one
 
         Parameters
@@ -299,22 +308,25 @@ class DerivedSignal(Signal):
             derived_from = getattr(parent, derived_from)
         self._derived_from = derived_from
 
-        self._connected = derived_from.connected
-        self._read_access = derived_from.read_access
-        self._write_access = derived_from.write_access
-        if self._connected:
+        if write_access is None:
+            write_access = derived_from.write_access
+
+        self._metadata.update(
+            connected=derived_from.connected,
+            read_access=derived_from.read_access,
+            write_access=write_access,
+        )
+
+        if self.connected:
             # set up the initial timestamp reporting, if connected
             self._timestamp = derived_from.timestamp
 
         derived_from.subscribe(self._derived_value_callback,
                                event_type=self.SUB_VALUE,
-                               run=self._connected)
-        derived_from.subscribe(self._derived_connect_callback,
-                               event_type=self.SUB_CONNECT,
-                               run=self._connected)
-        derived_from.subscribe(self._derived_access_callback,
-                               event_type=self.SUB_ACCESS,
-                               run=self._connected)
+                               run=self.connected)
+        derived_from.subscribe(self._derived_metadata_callback,
+                               event_type=self.SUB_META,
+                               run=self.connected)
 
     @property
     def derived_from(self):
@@ -327,16 +339,16 @@ class DerivedSignal(Signal):
         desc['derived_from'] = self._derived_from.name
         return {self.name: desc}
 
-    def _derived_connect_callback(self, *, connected, timestamp, **kwargs):
-        self._connected = connected
-        self._run_subs(sub_type=self.SUB_CONNECT, timestamp=timestamp,
-                       connected=connected)
-
-    def _derived_access_callback(self, *, read, write, timestamp, **kwargs):
-        self._read_access = read
-        self._write_access = write
-        self._run_subs(sub_type=self.SUB_ACCESS, timestamp=timestamp,
-                       read=self._read_access, write=self._write_access)
+    def _derived_metadata_callback(self, *, connected, read_access,
+                                   write_access, timestamp, **kwargs):
+        self._metadata.update(
+            connected=connected,
+            read_access=read_access,
+            write_access=write_access,
+        )
+        self._run_subs(sub_type=self.SUB_META,
+                       timestamp=self._metadata.get('timestamp'),
+                       **self._metadata)
 
     def _derived_value_callback(self, value=None, timestamp=None, **kwargs):
         value = self.inverse(value)
@@ -356,6 +368,8 @@ class DerivedSignal(Signal):
 
     def put(self, value, **kwargs):
         '''Put the value to the original signal'''
+        if not self.write_access:
+            raise ReadOnlyError('DerivedSignal is marked as read-only')
         value = self.forward(value)
         res = self._derived_from.put(value, **kwargs)
         self._timestamp = self._derived_from.timestamp
@@ -444,7 +458,7 @@ class EpicsSignalBase(Signal):
         # connection status (.connected) until *after* it has called all of its
         # connection callbacks.
 
-        self._connected = False
+        self._metadata['connected'] = False
         self._read_pv = cl.get_pv(
             read_pv, form=cl.pv_form, auto_monitor=auto_monitor,
             connection_callback=self._pv_connected,
@@ -457,17 +471,20 @@ class EpicsSignalBase(Signal):
 
     def _pv_connected(self, pvname, conn, pv):
         'Control-layer callback: PV has [dis]connected'
-        old_connected = self._connected
+        old_connected = self.connected
         self._connection_states[pvname] = conn
-        self._connected = all(self._connection_states.values())
-        if old_connected != self._connected:
+        connected = all(self._connection_states.values())
+        self._metadata['connected'] = connected
+        if old_connected != connected:
             if self.cl.name == 'pyepics':
                 # NOTE: connect blocking here is causing pyepics not to update
                 # its connection status until after returning. force it to show
                 # as connected for our purposes.
                 pv.force_read_access_rights()
                 pv.connected = True
-            self._run_subs(sub_type=self.SUB_CONNECT, connected=conn)
+            self._run_subs(sub_type=self.SUB_META,
+                           timestamp=self._metadata.get('timestamp'),
+                           **self._metadata)
 
     @property
     def as_string(self):
@@ -726,10 +743,10 @@ class EpicsSignalRO(EpicsSignalBase):
         super().__init__(read_pv, pv_kw=pv_kw, string=string,
                          auto_monitor=auto_monitor, name=name,
                          **kwargs)
-        self._write_access = False
+        self._metadata['write_access'] = False
 
     def put(self, *args, **kwargs):
-        raise ReadOnlyError('Read-only signals cannot be put to')
+        raise ReadOnlyError('Cannot write to read-only EpicsSignal')
 
     def set(self, *args, **kwargs):
         raise ReadOnlyError('Read-only signals cannot be set')
@@ -737,9 +754,12 @@ class EpicsSignalRO(EpicsSignalBase):
     def _read_pv_access(self, read_access, write_access, pv):
         'Control-layer callback: read PV access rights have changed'
         # Tweak write access here - this is a read-only signal!
-        self._read_access = read_access
-        self._write_access = False
-        self._run_subs(sub_type=self.SUB_ACCESS, read=read_access, write=False)
+        self._metadata.update(
+            read_access=read_access,
+            write_access=False,
+        )
+        self._run_subs(sub_type=self.SUB_META, timestamp=None,
+                       **self._metadata)
 
 
 class EpicsSignal(EpicsSignalBase):
@@ -1001,6 +1021,9 @@ class EpicsSignal(EpicsSignalBase):
             if use_complete is None:
                 use_complete = self._put_complete
 
+            if not self.write_access:
+                raise ReadOnlyError('No write access to underlying EPICS PV')
+
             self._write_pv.put(value, use_complete=use_complete, **kwargs)
 
         old_value = self._setpoint
@@ -1065,15 +1088,17 @@ class EpicsSignal(EpicsSignalBase):
 
     def _read_pv_access(self, read_access, write_access, pv):
         'Control-layer callback: read PV access rights have changed'
-        self._read_access = read_access
-        self._run_subs(sub_type=self.SUB_ACCESS, read=read_access,
-                       write=self._write_access)
+        self._metadata['read_access'] = read_access
+        self._run_subs(sub_type=self.SUB_META,
+                       timestamp=self._metadata.get('timestamp'),
+                       **self._metadata)
 
     def _write_pv_access(self, read_access, write_access, pv):
         'Control-layer callback: write PV access rights have changed'
-        self._write_access = write_access
-        self._run_subs(sub_type=self.SUB_ACCESS, read=self._read_access,
-                       write=write_access)
+        self._metadata['write_access'] = write_access
+        self._run_subs(sub_type=self.SUB_META,
+                       timestamp=self._metadata.get('timestamp'),
+                       **self._metadata)
 
 
 class AttributeSignal(Signal):
@@ -1101,8 +1126,10 @@ class AttributeSignal(Signal):
         else:
             self.attr_base, self.attr = None, attr
 
-        self._read_access = True
-        self._write_access = write_access
+        self._metadata.update(
+            read_access=True,
+            write_access=write_access,
+        )
 
     @property
     def full_attr(self):
@@ -1131,7 +1158,7 @@ class AttributeSignal(Signal):
         return getattr(self.base, self.attr)
 
     def put(self, value, **kwargs):
-        if not self._write_access:
+        if not self.write_access:
             raise ReadOnlyError('AttributeSignal is marked as read-only')
 
         old_value = self.get()

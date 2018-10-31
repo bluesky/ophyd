@@ -389,25 +389,15 @@ def test_soft_derived():
 
     called = []
 
-    def connect_callback(*, connected, **kw):
-        called.append(('connect', connected))
+    def meta_callback(*, connected, read_access, write_access, **kw):
+        called.append(('meta', connected, read_access, write_access))
 
-    def access_callback(*, read, write, **kw):
-        called.append(('access', read, write))
+    derived.subscribe(meta_callback, event_type=derived.SUB_META, run=False)
 
-    derived.subscribe(connect_callback, event_type=derived.SUB_CONNECT,
-                      run=False)
-    derived.subscribe(access_callback, event_type=derived.SUB_ACCESS,
-                      run=False)
+    original._metadata['write_access'] = False
+    original._run_subs(sub_type='meta', timestamp=None, **original._metadata)
 
-    original._write_access = False
-    original._run_subs(sub_type='connect', connected=True, timestamp=None)
-    original._run_subs(sub_type='access', read=True, write=True,
-                       timestamp=None)
-
-    assert called == [('connect', True),
-                      ('access', True, True),
-                      ]
+    assert called == [('meta', True, True, False)]
 
 
 @using_fake_epics_pv
@@ -457,7 +447,7 @@ def test_epicssignal_set(motor, put_complete):
     # move back to -0.2, forcing a timeout with a low value
     target = sim_pv.get() - 0.2
     st = sim_pv.set(target, timeout=1e-6)
-    time.sleep(0.1)
+    time.sleep(0.5)
     print('status 2', st)
     assert st.done
     assert not st.success

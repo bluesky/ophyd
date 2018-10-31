@@ -229,17 +229,13 @@ class Component:
         'Default subscription decorator'
         return self.subscriptions(None)(func)
 
-    def sub_connect(self, func):
-        'Connection subscription decorator'
-        return self.subscriptions('connect')(func)
+    def sub_meta(self, func):
+        'Metadata subscription decorator'
+        return self.subscriptions('meta')(func)
 
     def sub_value(self, func):
         'Value subscription decorator'
         return self.subscriptions('value')(func)
-
-    def sub_access(self, func):
-        'Access rights subscription decorator'
-        return self.subscriptions('access')(func)
 
 
 class FormattedComponent(Component):

@@ -402,15 +402,11 @@ def test_sub_decorator(motor):
         def value(self, **kw):
             pass
 
-        @cpt.sub_connect
-        def connect(self, **kw):
-            pass
-
-        @cpt.sub_access
-        def access(self, **kw):
+        @cpt.sub_meta
+        def metadata(self, **kw):
             pass
 
     d = MyDevice('', name='test')
 
     subs = set(event_type for method, event_type, kw in d.cpt._subscriptions)
-    assert subs == {None, 'value', 'connect', 'access'}
+    assert subs == {None, 'value', 'meta'}
