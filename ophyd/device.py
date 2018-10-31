@@ -206,11 +206,20 @@ class Component:
 
     def subscriptions(self, event_type):
         '''(Decorator) Specify subscriptions callbacks in the Device definition
-        '''
-        if isinstance(self, DynamicDeviceComponent):
-            raise NotImplementedError('DynamicDeviceComponent does not yet '
-                                      'support decorator subscriptions')
 
+        Parameters
+        ----------
+        event_type : str or None
+            Event type to subscribe to. `ophyd.Signal` supports at least
+            {'value', 'meta'}.  An `event_type` of `None` indicates that the
+            default event type for the signal is to be used.
+
+        Returns
+        -------
+        subscriber : callable
+            Callable with signature `subscriber(func)`, where `func` is the
+            method to call when the subscription of event_type is fired.
+        '''
         def subscriber(func):
             self._subscriptions[event_type].append(func)
             return func
@@ -396,6 +405,10 @@ class DynamicDeviceComponent:
 
     def __set__(self, instance, value):
         raise RuntimeError('Use .put()')
+
+    def subscriptions(self, event_type):
+        raise NotImplementedError('DynamicDeviceComponent does not yet '
+                                  'support decorator subscriptions')
 
 
 class ComponentMeta(type):
