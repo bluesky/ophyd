@@ -5,7 +5,8 @@ from io import StringIO
 from pathlib import PurePath, Path
 from ophyd.ophydobj import Kind
 from ophyd import (SimDetector, SingleTrigger, Component,
-                   DynamicDeviceComponent)
+                   DynamicDeviceComponent, EpicsSignalRO)
+from ophyd.status import wait
 from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         ColorConvPlugin,
                                         ProcessPlugin, OverlayPlugin,
@@ -25,7 +26,6 @@ from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 import uuid
 import os
-import epics
 
 logger = logging.getLogger(__name__)
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
@@ -37,7 +37,11 @@ def ad_prefix():
 
     for prefix in prefixes:
         test_pv = prefix + 'TIFF1:PluginType_RBV'
-        if epics.caget(test_pv, timeout=2) is not None:
+        try:
+            EpicsSignalRO(test_pv).wait_for_connection(timeout=2)
+        except TimeoutError:
+            ...
+        else:
             print('areaDetector detected with prefix:', prefix)
             return prefix
     raise pytest.skip('No areaDetector IOC running')
@@ -105,8 +109,7 @@ def test_basic(ad_prefix):
     det.cam.image_mode.put(det.cam.ImageMode.SINGLE)
     det.stage()
     st = det.trigger()
-    while not st.done:
-        time.sleep(.1)
+    wait(st, timeout=5)
     det.unstage()
 
 

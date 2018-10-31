@@ -1,16 +1,11 @@
 import atexit
-import copy
-import ctypes
-import functools
 import logging
-import queue
-import threading
 import warnings
 
-from types import SimpleNamespace
-
 import epics
-from epics import get_pv as _get_pv, caget, caput, ca, dbr  # noqa
+from epics import caget, caput, ca, dbr  # noqa
+
+from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
 try:
     ca.find_libca()
@@ -23,219 +18,102 @@ else:
 module_logger = logging.getLogger(__name__)
 _dispatcher = None
 
-if not hasattr(epics.dbr, '_cast_args'):
-    # Stash a copy of the original cast args
-    epics.dbr._cast_args = epics.dbr.cast_args
 
+class PyepicsCallbackThread(_CallbackThread):
+    def attach_context(self, ctx):
+        super().attach_context(ctx)
+        ca.attach_context(ctx)
 
-def get_pv(*args, **kwargs):
-    kwargs.setdefault('context', ca.current_context())
-    return _get_pv(*args, **kwargs)
-
-
-class _DispatcherThread(threading.Thread):
-    'A queue-based dispatcher thread which attaches to a specific CA context'
-
-    def __init__(self, name, *, dispatcher):
-        super().__init__(name=name)
-        self.daemon = True
-        self.context = dispatcher.main_context
-        self._stop_event = dispatcher._stop_event
-        self._timeout = dispatcher._timeout
-        self.logger = dispatcher.logger
-        self.queue = queue.Queue()
-
-    def run(self):
-        '''The dispatcher itself'''
-        ca.attach_context(self.context)
-
-        self.logger.debug('pyepics dispatcher thread %s started', self.name)
-        while not self._stop_event.is_set():
-            try:
-                callback, args, kwargs = self.queue.get(True, self._timeout)
-            except queue.Empty:
-                ...
-            else:
-                try:
-                    callback(*args, **kwargs)
-                except Exception as ex:
-                    self.logger.exception(
-                        'Exception occurred during callback %r', callback
-                    )
-
-        self.logger.debug('pyepics dispatcher thread %s exiting', self.name)
+    def detach_context(self):
+        super().detach_context()
         ca.detach_context()
 
 
-class EventDispatcher:
-    '''An event dispatcher which pokes at the internals of pyepics
+class PV(epics.PV):
+    def __init__(self, pvname, callback=None, form='time', verbose=False,
+                 auto_monitor=None, count=None, connection_callback=None,
+                 connection_timeout=None, access_callback=None):
+        connection_callback = wrap_callback(_dispatcher, 'metadata',
+                                            connection_callback)
+        callback = wrap_callback(_dispatcher, 'monitor', callback)
+        access_callback = wrap_callback(_dispatcher, 'metadata',
+                                        access_callback)
 
-    The monitor dispatcher works around having callbacks from libca threads.
-    Using epics CA calls (caget, caput, etc.) from those callbacks is not
-    possible without this dispatcher workaround.
+        super().__init__(pvname, form=form, verbose=verbose,
+                         auto_monitor=auto_monitor, count=count,
+                         connection_timeout=connection_timeout,
+                         connection_callback=connection_callback,
+                         callback=callback, access_callback=access_callback)
 
-    ... note::
+    def add_callback(self, callback=None, index=None, run_now=False,
+                     with_ctrlvars=True, **kw):
+        callback = wrap_callback(_dispatcher, 'monitor', callback)
+        return super().add_callback(callback=callback, index=index,
+                                    run_now=run_now,
+                                    with_ctrlvars=with_ctrlvars, **kw)
 
-       Without `all_contexts` set, only the callbacks that are run with
-       the same context as the the main thread are affected.
+    def put(self, value, wait=False, timeout=30.0, use_complete=False,
+            callback=None, callback_data=None):
+        callback = wrap_callback(_dispatcher, 'get_put', callback)
+        return super().put(value, wait=wait, timeout=timeout,
+                           use_complete=use_complete, callback=callback,
+                           callback_data=callback_data)
 
-    ... note::
 
-       Ensure that you call epics.ca.use_initial_context() at startup in
-       the main thread
+def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
+           connection_callback=None, access_callback=None, callback=None,
+           **kwargs):
+    """Get a PV from PV cache or create one if needed.
 
     Parameters
-    ----------
-    all_contexts : bool, optional
-        re-route _all_ callbacks from _any_ context to the dispatcher callback
-        thread
+    ---------
+    form : str, optional
+        PV form: one of 'native' (default), 'time', 'ctrl'
+    connect : bool, optional
+        whether to wait for connection (default False)
+    context : int, optional
+        PV threading context (defaults to current context)
     timeout : float, optional
-    callback_logger : logging.Logger, optional
-        A logger to notify about failed callbacks. If unspecified, this
-        defaults to the module logger `ophyd._pyepics_shim`.
+        connection timeout, in seconds (default 5.0)
+    """
 
-    Attributes
-    ----------
-    main_context : ctypes long
-        The main CA context
-    logger : logging.Logger
-        A logger to notify about failed callbacks
-    queue : Queue
-        The event queue
-    '''
+    if form not in ('native', 'time', 'ctrl'):
+        form = 'native'
 
-    def __init__(self, all_contexts=False, timeout=0.1, callback_logger=None):
-        self.get_put_thread = None
-        self.monitor_thread = None
-        self.connect_thread = None
+    if context is None:
+        context = ca.current_context()
 
-        # The dispatcher thread will stop if this event is set
-        self._stop_event = threading.Event()
-        self.main_context = ca.current_context()
-        self.logger = (callback_logger if callback_logger is not None
-                       else module_logger)
+    thispv = None
 
-        self._all_contexts = bool(all_contexts)
-        self._timeout = timeout
-        self._reroute_callbacks(True)
+    # TODO: this needs some work.
+    # thispv = epics.pv._PVcache_.get((pvname, form, context))
+    # if thispv is not None:
+    #     if callback is not None:
+    #         # wrapping is taken care of by `add_callback`
+    #         thispv.add_callback(callback)
+    #     if access_callback is not None:
+    #         access_callback = wrap_callback(_dispatcher, 'metadata',
+    #                                         access_callback)
+    #         thispv.access_callbacks.append(access_callback)
+    #     if connection_callback is not None:
+    #         connection_callback = wrap_callback(_dispatcher, 'metadata',
+    #                                             connection_callback)
+    #         thispv.connection_callbacks.append(connection_callback)
+    #     if thispv.connected:
+    #         if connection_callback:
+    #             thispv.force_connect()
+    #         if access_callback:
+    #             thispv.force_read_access_rights()
 
-    def is_alive(self):
-        return any(thread.is_alive() for thread in self.threads.values()
-                   if thread is not None)
+    if thispv is None:
+        thispv = PV(pvname, form=form, callback=callback,
+                    connection_callback=connection_callback,
+                    access_callback=access_callback, **kwargs)
 
-    @property
-    def threads(self):
-        return {'get_put_thread': self.get_put_thread,
-                'monitor_thread': self.monitor_thread,
-                'connect_thread': self.connect_thread,
-                }
-
-    def stop(self):
-        '''Stop the dispatcher threads and re-enable normal callbacks'''
-        self._stop_event.set()
-        for attr, thread in self.threads.items():
-            if thread is not None:
-                thread.join()
-                setattr(self, attr, None)
-        self._reroute_callbacks(False)
-
-    def _start_threads(self):
-        'Start all dispatcher threads'
-        for attr in self.threads:
-            thread = _DispatcherThread(name=attr, dispatcher=self)
-            thread.start()
-            setattr(self, attr, thread)
-
-    def _reroute_callbacks(self, enable):
-        '''Re-route EPICS callbacks to our handler threads
-
-        Parameters
-        ----------
-        enable : bool
-            Enable/disable re-routing of callbacks
-        '''
-        if enable:
-            connect = self._connect_event
-            put = self._put_event
-            get = self._get_event
-            monitor = self._monitor_event
-            access = self._access_rights_event
-            self._start_threads()
-            epics.dbr.cast_args = self._cast_args
-        else:
-            connect = ca._onConnectionEvent
-            put = ca._onPutEvent
-            get = ca._onGetEvent
-            monitor = ca._onMonitorEvent
-            access = ca._onAccessRightsEvent
-            epics.dbr.cast_args = epics.dbr._cast_args
-
-        ca._CB_CONNECT = ctypes.CFUNCTYPE(None, dbr.connection_args)(connect)
-        ca._CB_PUTWAIT = ctypes.CFUNCTYPE(None, dbr.event_handler_args)(put)
-        ca._CB_GET = ctypes.CFUNCTYPE(None, dbr.event_handler_args)(get)
-        ca._CB_EVENT = ctypes.CFUNCTYPE(None, dbr.event_handler_args)(monitor)
-        ca._CB_ACCESS = (
-            ctypes.CFUNCTYPE(None, dbr.access_rights_handler_args)(access)
-        )
-
-    @property
-    def applies_to_context(self):
-        'Does this dispatcher work for the current Channel Access context?'
-        current_context = ca.current_context()
-        return (self._all_contexts or self.main_context == current_context)
-
-    @staticmethod
-    def _cast_args(args):
-        'Replacement epics.dbr.cast_args - use pre-casted + copied args'
-        try:
-            return args._casted
-        except AttributeError:
-            return epics.dbr._cast_args(args)
-
-    def _make_handler(thread_name, pyepics_func):
-        @functools.wraps(pyepics_func)
-        def wrapped(self, args):
-            if self.applies_to_context:
-                queue = getattr(self, thread_name).queue
-                queue.put((pyepics_func, [args], {}))
-            else:
-                pyepics_func(args)
-        return wrapped
-
-    def _make_casting_handler(thread_name, pyepics_func):
-        @functools.wraps(pyepics_func)
-        def wrapped(self, args):
-            if not self.applies_to_context:
-                return pyepics_func(args)
-
-            queue = getattr(self, thread_name).queue
-            new_args = SimpleNamespace(
-                usr=args.usr,
-                chid=args.chid,
-                type=args.type,
-                count=args.count,
-                status=args.status,
-                raw_dbr=None,
-                # in place of raw_dbr, we cast the args while the data is
-                # accessible to python:
-                _casted=copy.deepcopy(epics.dbr._cast_args(args)),
-            )
-            # TODO: the copy above could result in multiple copies of data,
-            # as copy.deepcopy ("epics.ca.memcopy") is called on the resulting
-            # data.  This will, of course, affect performance - workaround
-            # ideas?
-            queue.put((pyepics_func, [new_args], {}))
-
-        return wrapped
-
-    _monitor_event = _make_casting_handler('monitor_thread',
-                                           ca._onMonitorEvent)
-    _connect_event = _make_handler('connect_thread',
-                                   ca._onConnectionEvent)
-    _access_rights_event = _make_handler('connect_thread',
-                                         ca._onAccessRightsEvent)
-    _put_event = _make_handler('get_put_thread', ca._onPutEvent)
-    _get_event = _make_casting_handler('get_put_thread', ca._onGetEvent)
+    if connect:
+        if not thispv.wait_for_connection(timeout=timeout):
+            ca.write('cannot connect to %s' % pvname)
+    return thispv
 
 
 def setup(logger):
@@ -252,11 +130,17 @@ def setup(logger):
         logger.debug('ophyd already setup')
         return
 
+    epics._get_pv = epics.get_pv
+    epics.get_pv = get_pv
+    epics.pv.get_pv = get_pv
+
     def _cleanup():
         '''Clean up the ophyd session'''
         global _dispatcher
         if _dispatcher is None:
             return
+        epics.get_pv = epics._get_pv
+        epics.pv.get_pv = epics._get_pv
 
         logger.debug('Performing ophyd cleanup')
         if _dispatcher.is_alive():
@@ -265,13 +149,11 @@ def setup(logger):
 
         _dispatcher = None
 
-        logger.debug('Finalizing libca')
-        ca.finalize_libca()
-
-    ca.use_initial_context()
-
+    logger.setLevel('DEBUG')
     logger.debug('Installing event dispatcher')
-    _dispatcher = EventDispatcher()
+    _dispatcher = EventDispatcher(thread_class=PyepicsCallbackThread,
+                                  context=ca.current_context(),
+                                  logger=logger)
     atexit.register(_cleanup)
     return _dispatcher
 

@@ -473,15 +473,14 @@ class EpicsSignalBase(Signal):
         'Control-layer callback: PV has [dis]connected'
         old_connected = self.connected
         self._connection_states[pvname] = conn
-        connected = all(self._connection_states.values())
-        self._metadata['connected'] = connected
-        if old_connected != connected:
-            if self.cl.name == 'pyepics':
-                # NOTE: connect blocking here is causing pyepics not to update
-                # its connection status until after returning. force it to show
-                # as connected for our purposes.
-                pv.force_read_access_rights()
-                pv.connected = True
+        self._metadata['connected'] = all(self._connection_states.values())
+        if old_connected != self.connected:
+            # if self.cl.name == 'pyepics':
+            #     # NOTE: connect blocking here is causing pyepics not to update
+            #     # its connection status until after returning. force it to show
+            #     # as connected for our purposes.
+            #     pv.force_read_access_rights()
+            #     pv.connected = True
             self._run_subs(sub_type=self.SUB_META,
                            timestamp=self._metadata.get('timestamp'),
                            **self._metadata)
