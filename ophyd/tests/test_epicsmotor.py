@@ -75,7 +75,7 @@ def test_copy(motor):
     assert motor.settle_time == 0.2
 
     assert res.done
-    assert_allclose(res.error, 0)
+    assert_allclose(res.error, 0, atol=1e-6)
     assert res.elapsed > 0
 
 
@@ -95,7 +95,7 @@ def test_calibration(motor):
     expected_offset = 10 - motor.position
     motor.set_current_position(10)
     assert motor.offset_freeze_switch.get() == 0
-    assert motor.position == 10
+    assert_allclose(motor.position, 10)
     assert motor.user_offset.get() == expected_offset
     motor.set_current_position(old_position)
 
