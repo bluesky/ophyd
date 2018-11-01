@@ -41,7 +41,8 @@ class EpicsMotor(Device, PositionerBase):
         The default timeout to use for motion requests, in seconds.
     '''
     # position
-    user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted')
+    user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted',
+                        auto_monitor=True)
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
 
     # calibration dial <-> user
@@ -57,7 +58,8 @@ class EpicsMotor(Device, PositionerBase):
 
     # motor status
     motor_is_moving = Cpt(EpicsSignalRO, '.MOVN', kind='omitted')
-    motor_done_move = Cpt(EpicsSignalRO, '.DMOV', kind='omitted')
+    motor_done_move = Cpt(EpicsSignalRO, '.DMOV', kind='omitted',
+                          auto_monitor=True)
     high_limit_switch = Cpt(EpicsSignal, '.HLS', kind='omitted')
     low_limit_switch = Cpt(EpicsSignal, '.LLS', kind='omitted')
     direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
