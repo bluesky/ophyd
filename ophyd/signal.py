@@ -651,6 +651,9 @@ class EpicsSignalBase(Signal):
                 if not self._read_pv.wait_for_connection(connection_timeout):
                     raise TimeoutError('Failed to connect to %s' %
                                        self._read_pv.pvname)
+                # Ensure that the connection status toggles before we return
+                self._pv_connected(self._read_pv.pvname, conn=True,
+                                   pv=self._read_pv)
 
             ret = self._read_pv.get(as_string=as_string, **kwargs)
 
