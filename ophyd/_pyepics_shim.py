@@ -149,7 +149,6 @@ def setup(logger):
 
         _dispatcher = None
 
-    logger.setLevel('DEBUG')
     logger.debug('Installing event dispatcher')
     _dispatcher = EventDispatcher(thread_class=PyepicsCallbackThread,
                                   context=ca.current_context(),

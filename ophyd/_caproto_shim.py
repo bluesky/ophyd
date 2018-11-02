@@ -110,7 +110,6 @@ def setup(logger):
 
         _dispatcher = None
 
-    logger.setLevel('DEBUG')
     logger.debug('Installing event dispatcher')
     context = PV._default_context.broadcaster
     _dispatcher = EventDispatcher(thread_class=CaprotoCallbackThread,
