@@ -20,8 +20,10 @@ def test_motor_bundle_hints():
     class Bundle(MotorBundle):
         a = Component(SynAxis, kind=Kind.hinted)
         b = Component(SynAxis, kind=Kind.hinted)
+        c = Component(SynAxis, kind=Kind.normal)
 
     assert {'fields': ['dev_a', 'dev_b']} == Bundle(name='dev').hints
+    assert {'fields': ['dev_c']} == Bundle(name='dev').c.hints
 
 
 def test_pseudopos_hints(hw):
