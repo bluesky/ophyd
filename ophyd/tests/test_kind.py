@@ -1,5 +1,6 @@
 from ophyd import (Device, Signal, Kind, Component, ALL_COMPONENTS,
                    kind_context, DynamicDeviceComponent as DDC)
+from ophyd.sim import SynAxis
 import pytest
 
 
@@ -58,14 +59,12 @@ def test_nested_devices():
     assert 'a_omitted_sig' not in a.read_configuration()
 
     # Another layer of nesting!
-
     class B(Device):
         a_default = Component(A)
         a_config = Component(A, kind=Kind.config)
         a_omitted = Component(A, kind=Kind.omitted)
 
     b = B(name='b')
-
     assert ['b_a_default_normal_sig'] == list(b.read())
 
     # Notice that a_default comes along for the ride here. If you ask
@@ -86,6 +85,13 @@ def test_nested_devices():
     assert [] == list(b.read())
     assert ['b_a_default_config_sig',
             'b_a_config_config_sig'] == list(b.read_configuration())
+    # Nested motors with name matching component name
+
+    class C(Device):
+        a = Component(SynAxis, kind=Kind.normal)
+
+    c = C(name='c')
+    assert len(c.read_attrs) == len(c.a.read_attrs)
 
 
 def test_strings():
