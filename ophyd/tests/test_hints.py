@@ -13,7 +13,8 @@ def test_device_hints():
 
     assert {'fields': ['dev_a']} == Dongle(name='dev').hints
     assert {'fields': ['dev_a']} == Dongle(name='dev').hints
-
+    # A signal should record its own hints
+    assert len(Dongle(name='dev').b.hints.get('fields')) > 1
 
 def test_motor_bundle_hints():
     class Bundle(MotorBundle):
