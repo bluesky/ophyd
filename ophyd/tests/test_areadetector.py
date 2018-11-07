@@ -432,6 +432,7 @@ def test_fshdf_plugin(root, wpath, rpath, check_files):
             assert Path(fn).exists()
 
 
+@pytest.mark.xfail
 def test_many_connect():
     import gc
     fs = DummyFS()
