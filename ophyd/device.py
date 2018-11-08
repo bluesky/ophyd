@@ -867,20 +867,26 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             top-level device `walk_components` was called on.
         '''
         for attr, cpt in cls._sig_attrs.items():
-            if isinstance(cpt, (DynamicDeviceComponent, Component)):
+            if isinstance(cpt, DynamicDeviceComponent):
                 yield ComponentWalk(ancestors=(cls, ),
                                     dotted_name=attr,
                                     item=cpt
                                     )
-            elif issubclass(cpt.cls, Device):
-                sub_dev = cpt.cls
-                for walk in sub_dev.walk_components():
-                    ancestors = (cls, ) + walk.ancestors
-                    dotted_name = '.'.join((attr, walk.dotted_name))
-                    yield ComponentWalk(ancestors=ancestors,
-                                        dotted_name=dotted_name,
-                                        item=walk.item
-                                        )
+            elif isinstance(cpt, Component):
+                yield ComponentWalk(ancestors=(cls, ),
+                                    dotted_name=attr,
+                                    item=cpt
+                                    )
+                if (issubclass(cpt.cls, Device) or
+                        hasattr(cpt.cls, 'walk_components')):
+                    sub_dev = cpt.cls
+                    for walk in sub_dev.walk_components():
+                        ancestors = (cls, ) + walk.ancestors
+                        dotted_name = '.'.join((attr, walk.dotted_name))
+                        yield ComponentWalk(ancestors=ancestors,
+                                            dotted_name=dotted_name,
+                                            item=walk.item
+                                            )
 
     def walk_signals(self, *, include_lazy=False):
         '''Walk all signals in the Device hierarchy

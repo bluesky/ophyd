@@ -8,6 +8,7 @@ from ophyd import (Device, Component, FormattedComponent,
                    wait_for_lazy_connection, do_not_wait_for_lazy_connection)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
+from ophyd.device import ComponentWalk
 from ophyd.utils import ExceptionBundle
 from .conftest import AssertTools
 
@@ -410,3 +411,151 @@ def test_sub_decorator(motor):
 
     subs = set(event_type for method, event_type, kw in d.cpt._subscriptions)
     assert subs == {None, 'value', 'meta'}
+
+
+def test_walk_components():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    assert list(MyDevice.walk_components()) == [
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='sub1',
+                      item=MyDevice.sub1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.cpt1',
+                      item=MyDevice.sub1.cls.cpt1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.cpt2',
+                      item=MyDevice.sub1.cls.cpt2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.cpt3',
+                      item=MyDevice.sub1.cls.cpt3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.subsub',
+                      item=MyDevice.sub1.cls.subsub),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, SubSubDevice, ),
+                      dotted_name='sub1.subsub.cpt4',
+                      item=MyDevice.sub1.cls.subsub.cls.cpt4),
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='sub2',
+                      item=MyDevice.sub2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.cpt1',
+                      item=MyDevice.sub2.cls.cpt1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.cpt2',
+                      item=MyDevice.sub2.cls.cpt2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.cpt3',
+                      item=MyDevice.sub2.cls.cpt3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.subsub',
+                      item=MyDevice.sub2.cls.subsub),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, SubSubDevice, ),
+                      dotted_name='sub2.subsub.cpt4',
+                      item=MyDevice.sub2.cls.subsub.cls.cpt4),
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='sub3',
+                      item=MyDevice.sub3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.cpt1',
+                      item=MyDevice.sub3.cls.cpt1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.cpt2',
+                      item=MyDevice.sub3.cls.cpt2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.cpt3',
+                      item=MyDevice.sub3.cls.cpt3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.subsub',
+                      item=MyDevice.sub3.cls.subsub),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, SubSubDevice, ),
+                      dotted_name='sub3.subsub.cpt4',
+                      item=MyDevice.sub3.cls.subsub.cls.cpt4),
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='cpt3',
+                      item=MyDevice.cpt3),
+    ]
+
+
+@pytest.mark.parametrize('include_lazy', [False, True])
+def test_walk_signals(include_lazy):
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4', lazy=True)
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    print(MyDevice.sub1.cls.cpt1)
+
+    dev = MyDevice('', name='mydev')
+
+    expected = [
+        ComponentWalk(ancestors=(dev, dev.sub1, ),
+                      dotted_name='sub1.cpt1',
+                      item=dev.sub1.cpt1),
+        ComponentWalk(ancestors=(dev, dev.sub1, ),
+                      dotted_name='sub1.cpt2',
+                      item=dev.sub1.cpt2),
+        ComponentWalk(ancestors=(dev, dev.sub1, ),
+                      dotted_name='sub1.cpt3',
+                      item=dev.sub1.cpt3),
+        ComponentWalk(ancestors=(dev, dev.sub1, dev.sub1.subsub, ),
+                      dotted_name='sub1.subsub.cpt4',
+                      item=dev.sub1.subsub.cpt4),
+        ComponentWalk(ancestors=(dev, dev.sub2, ),
+                      dotted_name='sub2.cpt1',
+                      item=dev.sub2.cpt1),
+        ComponentWalk(ancestors=(dev, dev.sub2, ),
+                      dotted_name='sub2.cpt2',
+                      item=dev.sub2.cpt2),
+        ComponentWalk(ancestors=(dev, dev.sub2, ),
+                      dotted_name='sub2.cpt3',
+                      item=dev.sub2.cpt3),
+        ComponentWalk(ancestors=(dev, dev.sub2, dev.sub2.subsub, ),
+                      dotted_name='sub2.subsub.cpt4',
+                      item=dev.sub2.subsub.cpt4),
+        ComponentWalk(ancestors=(dev, dev.sub3, ),
+                      dotted_name='sub3.cpt1',
+                      item=dev.sub3.cpt1),
+        ComponentWalk(ancestors=(dev, dev.sub3, ),
+                      dotted_name='sub3.cpt2',
+                      item=dev.sub3.cpt2),
+        ComponentWalk(ancestors=(dev, dev.sub3, ),
+                      dotted_name='sub3.cpt3',
+                      item=dev.sub3.cpt3),
+        ComponentWalk(ancestors=(dev, dev.sub3, dev.sub3.subsub, ),
+                      dotted_name='sub3.subsub.cpt4',
+                      item=dev.sub3.subsub.cpt4),
+        ComponentWalk(ancestors=(dev, ),
+                      dotted_name='cpt3',
+                      item=dev.cpt3),
+    ]
+
+    if not include_lazy:
+        expected = [item for item in expected
+                    if 'cpt4' not in item.dotted_name
+                    ]
+
+    assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
