@@ -559,3 +559,56 @@ def test_walk_signals(include_lazy):
                     ]
 
     assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
+
+
+def test_walk_subdevice_classes():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    assert list(MyDevice.walk_subdevice_classes()) == [
+        ('sub1', SubDevice),
+        ('sub1.subsub', SubSubDevice),
+        ('sub2', SubDevice),
+        ('sub2.subsub', SubSubDevice),
+        ('sub3', SubDevice),
+        ('sub3.subsub', SubSubDevice),
+    ]
+
+
+def test_walk_subdevices():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    dev = MyDevice('', name='mydev')
+    assert list(dev.walk_subdevices()) == [
+        ('sub1', dev.sub1),
+        ('sub1.subsub', dev.sub1.subsub),
+        ('sub2', dev.sub2),
+        ('sub2.subsub', dev.sub2.subsub),
+        ('sub3', dev.sub3),
+        ('sub3.subsub', dev.sub3.subsub),
+    ]

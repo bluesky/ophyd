@@ -867,16 +867,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             top-level device `walk_components` was called on.
         '''
         for attr, cpt in cls._sig_attrs.items():
+            yield ComponentWalk(ancestors=(cls, ),
+                                dotted_name=attr,
+                                item=cpt
+                                )
             if isinstance(cpt, DynamicDeviceComponent):
-                yield ComponentWalk(ancestors=(cls, ),
-                                    dotted_name=attr,
-                                    item=cpt
-                                    )
+                ...
             elif isinstance(cpt, Component):
-                yield ComponentWalk(ancestors=(cls, ),
-                                    dotted_name=attr,
-                                    item=cpt
-                                    )
                 if (issubclass(cpt.cls, Device) or
                         hasattr(cpt.cls, 'walk_components')):
                     sub_dev = cpt.cls
@@ -924,6 +921,33 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
                                         dotted_name=attr,
                                         item=sig
                                         )
+
+    @classmethod
+    def walk_subdevice_classes(cls):
+        '''Walk all sub-Devices classes in the Device hierarchy
+
+        Yields
+        ------
+        (dotted_name, subdevice_class)
+        '''
+        for item in cls.walk_components():
+            cpt = item.item
+            if isinstance(cpt, DynamicDeviceComponent):
+                for cpt_attr, (cpt_cls, suffix, kwargs) in cpt.defn.items():
+                    if isinstance(cpt_cls, Device):
+                        yield ('.'.join((item.dotted_name, cpt_attr)), cpt_cls)
+            elif isinstance(cpt, Component) and issubclass(cpt.cls, Device):
+                yield (item.dotted_name, cpt.cls)
+
+    def walk_subdevices(self):
+        '''Walk all sub-Devices in the hierarchy
+
+        Yields
+        ------
+        (dotted_name, subdevice_instance)
+        '''
+        for dotted_name, cls in self.walk_subdevice_classes():
+            yield (dotted_name, getattr(self, dotted_name))
 
     def destroy(self):
         'Disconnect and destroy all signals on the Device'
