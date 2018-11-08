@@ -457,9 +457,10 @@ def test_epicssignal_set(motor, put_complete):
     wait(st, timeout=5)
 
 
-def test_epicssignal_alarm_status(motor):
+def test_epicssignal_alarm_status(cleanup, motor):
     sig = EpicsSignal(write_pv=motor.user_setpoint.setpoint_pvname,
                       read_pv=motor.user_readback.pvname)
+    cleanup.add(sig)
     sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
@@ -467,13 +468,15 @@ def test_epicssignal_alarm_status(motor):
     sig.setpoint_alarm_severity
 
 
-def test_epicssignalro_alarm_status(motor):
+def test_epicssignalro_alarm_status(cleanup, motor):
     sig = EpicsSignalRO(motor.user_readback.pvname)
+    cleanup.add(sig)
     sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
 
 
-def test_hints(motor):
+def test_hints(cleanup, motor):
     sig = EpicsSignalRO(motor.user_readback.pvname)
+    cleanup.add(sig)
     assert sig.hints == {'fields': [sig.name]}

@@ -208,23 +208,26 @@ def test_subclass(ad_prefix, cleanup):
     print(det.tiff1.capture.describe())
 
 
-def test_getattr(ad_prefix):
+def test_getattr(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
     assert getattr(det, 'tiff1.name') == det.tiff1.name
     assert getattr(det, 'tiff1') is det.tiff1
     # raise
     # TODO subclassing issue
 
 
-def test_invalid_plugins(ad_prefix):
+def test_invalid_plugins(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
+
     det.wait_for_connection()
     det.tiff1.nd_array_port.put(det.cam.port_name.get())
     det.stats1.nd_array_port.put('AARDVARK')
@@ -238,12 +241,13 @@ def test_invalid_plugins(ad_prefix):
     assert ['AARDVARK'] == det.missing_plugins()
 
 
-def test_validate_plugins_no_portname(ad_prefix):
+def test_validate_plugins_no_portname(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         roi1 = Cpt(ROIPlugin, 'ROI1:')
         over1 = Cpt(OverlayPlugin, 'Over1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
 
     det.roi1.nd_array_port.put(det.cam.port_name.get())
     det.over1.nd_array_port.put(det.roi1.port_name.get())
@@ -251,13 +255,14 @@ def test_validate_plugins_no_portname(ad_prefix):
     det.validate_asyn_ports()
 
 
-def test_get_plugin_by_asyn_port(ad_prefix):
+def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
 
     det.tiff1.nd_array_port.put(det.cam.port_name.get())
     det.roi1.nd_array_port.put(det.cam.port_name.get())
@@ -270,20 +275,23 @@ def test_get_plugin_by_asyn_port(ad_prefix):
     assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
 
 
-def test_visualize_asyn_digraph_smoke(ad_prefix):
+def test_visualize_asyn_digraph_smoke(ad_prefix, cleanup):
     # setup sim detector
     det = SimDetector(ad_prefix, name='test')
+    cleanup.add(det)
     # smoke test
     det.visualize_asyn_digraph()
 
 
-def test_read_configuration_smoke(ad_prefix):
+def test_read_configuration_smoke(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         proc1 = Cpt(ProcessPlugin, 'Proc1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
+
     det.proc1.nd_array_port.put(det.cam.port_name.get())
     det.roi1.nd_array_port.put(det.proc1.port_name.get())
     det.stats1.nd_array_port.put(det.roi1.port_name.get())
@@ -300,13 +308,15 @@ def test_read_configuration_smoke(ad_prefix):
     assert set(conf) == set(desc)
 
 
-def test_str_smoke(ad_prefix):
+def test_str_smoke(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
         proc1 = Cpt(ProcessPlugin, 'Proc1:')
         roi1 = Cpt(ROIPlugin, 'ROI1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
+
     det.read_attrs = ['stats1']
     det.stats1.read_attrs = ['mean_value']
     det.stats1.mean_value.kind = Kind.hinted
@@ -314,7 +324,7 @@ def test_str_smoke(ad_prefix):
     str(det)
 
 
-def test_default_configuration_smoke(ad_prefix):
+def test_default_configuration_smoke(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
         statsplugin = Cpt(StatsPlugin, StatsPlugin._default_suffix)
@@ -331,6 +341,7 @@ def test_default_configuration_smoke(ad_prefix):
         # magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
 
     d = MyDetector(ad_prefix, name='d')
+    cleanup.add(d)
     d.stage()
     {n: getattr(d, n).read_configuration() for n in d.component_names}
     {n: getattr(d, n).describe_configuration() for n in d.component_names}
@@ -355,7 +366,7 @@ def test_default_configuration_attrs(plugin):
                           ('/', '/data/%Y/%m/%d', None, False),
                           ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files):
+def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
     fs = DummyFS()
     fs2 = DummyFS()
     if check_files:
@@ -372,6 +383,7 @@ def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files):
                     root=root, reg=fs)
     target_root = root or '/'
     det = MyDetector(ad_prefix, name='det')
+    cleanup.add(det)
     det.read_attrs = ['tiff1']
     det.tiff1.read_attrs = []
 
@@ -413,7 +425,7 @@ def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files):
                           ('/', '/data/%Y/%m/%d', None, False),
                           ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files):
+def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
     pytest.skip('hdf5 plugin is busted with docker images')
     fs = DummyFS()
     if check_files:
@@ -430,6 +442,7 @@ def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files):
                    root=root, reg=fs)
     target_root = root or '/'
     det = MyDetector(ad_prefix, name='det')
+    cleanup.add(det)
     det.read_attrs = ['hdf1']
     det.hdf1.read_attrs = []
     det.cam.acquire_time.put(.1)
@@ -467,7 +480,7 @@ def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files):
 
 
 @pytest.mark.xfail
-def test_many_connect(ad_prefix):
+def test_many_connect(ad_prefix, cleanup):
     import gc
     fs = DummyFS()
 
@@ -504,6 +517,7 @@ def test_many_connect(ad_prefix):
         except AttributeError:
             # must be pyepics
             pass
+        det.destroy()
         del det
         gc.collect()
 
