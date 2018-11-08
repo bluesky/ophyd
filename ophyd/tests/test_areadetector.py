@@ -432,6 +432,7 @@ def test_fshdf_plugin(root, wpath, rpath, check_files):
             assert Path(fn).exists()
 
 
+@pytest.mark.xfail
 def test_many_connect():
     import gc
     fs = DummyFS()
@@ -445,6 +446,17 @@ def test_many_connect():
                    write_path_template='',
                    read_path_template='',
                    root='/', reg=fs)
+
+    try:
+        from caproto.threading import client
+    except ImportError:
+        # caproto unavailable on python 3.5
+        pass
+    else:
+        if client.SEARCH_MAX_DATAGRAM_BYTES > 1450:
+            # old caproto compatibility - later versions lower to standardish
+            # MTU-levels
+            client.SEARCH_MAX_DATAGRAM_BYTES = 1450
 
     def tester():
         det = MyDetector(prefix, name='det')

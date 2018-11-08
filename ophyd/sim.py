@@ -944,9 +944,14 @@ def clear_fake_device(dev, *, default_value=0, default_string_value='',
                      for name in sub_dev._sub_devices])
         for name, cpt in sub_dev._sig_attrs.items():
             sig = getattr(sub_dev, name)
+            if isinstance(cpt, DDC) or not hasattr(sig, 'sim_put'):
+                continue
+
             try:
+                string = (hasattr(cpt, 'kwargs') and
+                          cpt.kwargs.get('string', False))
                 value = (default_string_value
-                         if cpt.kwargs.get('string', False)
+                         if string
                          else default_value)
                 sig.sim_put(value)
             except Exception as ex:
