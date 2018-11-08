@@ -3,6 +3,8 @@ import threading
 thread_class = threading.Thread
 pv_form = 'time'
 
+name = 'dummy'
+
 
 def setup(logger):
     ...

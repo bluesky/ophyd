@@ -12,6 +12,7 @@ thread_class = threading.Thread
 pv_form = 'time'
 module_logger = logging.getLogger(__name__)
 _dispatcher = None
+name = 'caproto'
 
 
 class CaprotoCallbackThread(_CallbackThread):
