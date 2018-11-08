@@ -260,6 +260,27 @@ def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
     assert det.cam is det.get_plugin_by_asyn_port(det.cam.port_name.get())
     assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
 
+    # Support nested plugins
+    class PluginGroup(Device):
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
+
+    class MyDetector(SingleTrigger, SimDetector):
+        plugins = Cpt(PluginGroup, '')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+        stats1 = Cpt(StatsPlugin, 'Stats1:')
+
+    nested_det = MyDetector(prefix, name='nested_test')
+
+    nested_det.stats1.nd_array_port.put(nested_det.roi1.port_name.get())
+    nested_det.plugins.tiff1.nd_array_port.put(nested_det.cam.port_name.get())
+    nested_det.roi1.nd_array_port.put(nested_det.cam.port_name.get())
+    nested_det.stats1.nd_array_port.put(nested_det.roi1.port_name.get())
+
+    det.validate_asyn_ports()
+
+    tiff = nested_det.plugins.tiff1
+    assert tiff is nested_det.get_plugin_by_asyn_port(tiff.port_name.get())
+
 
 def test_visualize_asyn_digraph_smoke(ad_prefix, cleanup):
     # setup sim detector
