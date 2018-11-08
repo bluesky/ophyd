@@ -328,7 +328,7 @@ class TestEpicsMotor(EpicsMotor):
 
 
 @pytest.fixture(scope='function')
-def motor():
+def motor(request):
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
     motor = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
@@ -342,7 +342,29 @@ def motor():
         print('Waiting for {} to stop moving...'.format(motor))
         time.sleep(0.5)
 
+    def cleanup():
+        motor.destroy()
+
+    request.addfinalizer(cleanup)
     return motor
+
+
+@pytest.fixture(scope='function')
+def cleanup(request):
+    'Destroy all items added to the list during the finalizer'
+    items = []
+
+    class Cleaner:
+        def add(self, item):
+            items.append(item)
+
+    def clean():
+        for item in items:
+            print('Destroying', item)
+            item.destroy()
+
+    request.addfinalizer(clean)
+    return Cleaner()
 
 
 class AssertTools:

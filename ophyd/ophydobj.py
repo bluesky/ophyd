@@ -128,6 +128,10 @@ class OphydObject:
         Subclasses should override this'''
         return True
 
+    def destroy(self):
+        '''Disconnect the object from the underlying control layer'''
+        self.unsubscribe_all()
+
     @property
     def parent(self):
         '''The parent of the ophyd object.

@@ -247,7 +247,7 @@ class PluginBase(ADBase):
     @plugin_type.sub_meta
     def _plugin_type_connected(self, connected, **kw):
         'Connection callback on the plugin type'
-        if not connected:
+        if not connected or self._plugin_type is None:
             return
 
         plugin_type = self.plugin_type.get()

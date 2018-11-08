@@ -51,6 +51,13 @@ class PV(_PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    def clear_auto_monitor(self):
+        # TODO move into caproto
+        self.auto_monitor = False
+        if self._auto_monitor_sub is not None:
+            self._auto_monitor_sub.clear()
+            self._auto_monitor_sub = None
+
 
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
            connection_callback=None, access_callback=None, callback=None,

@@ -38,12 +38,15 @@ def ad_prefix():
     for prefix in prefixes:
         test_pv = prefix + 'TIFF1:PluginType_RBV'
         try:
-            EpicsSignalRO(test_pv).wait_for_connection(timeout=2)
+            sig = EpicsSignalRO(test_pv)
+            sig.wait_for_connection(timeout=2)
         except TimeoutError:
             ...
         else:
             print('areaDetector detected with prefix:', prefix)
             return prefix
+        finally:
+            sig.destroy()
     raise pytest.skip('No areaDetector IOC running')
 
 
@@ -96,11 +99,14 @@ def _recursive_subclasses(cls):
              for g in _recursive_subclasses(s)])
 
 
-def test_basic(ad_prefix):
+def test_basic(cleanup, ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
     det = MyDetector(ad_prefix, name='test')
+    print(det.tiff1.plugin_type)
+    cleanup.add(det)
+
     det.wait_for_connection()
 
     det.cam.acquire_time.put(0.5)
@@ -123,8 +129,9 @@ def test_stubbing():
         pass
 
 
-def test_detector(ad_prefix):
+def test_detector(ad_prefix, cleanup):
     det = SimDetector(ad_prefix, name='test')
+    cleanup.add(det)
 
     det.find_signal('a', f=StringIO())
     det.find_signal('a', use_re=True, f=StringIO())
@@ -156,12 +163,14 @@ def test_detector(ad_prefix):
     det.report
 
 
-def test_tiff_plugin(ad_prefix):
+def test_tiff_plugin(ad_prefix, cleanup):
     # det = AreaDetector(ad_prefix)
     class TestDet(SimDetector):
         p = Cpt(TIFFPlugin, 'TIFF1:')
 
     det = TestDet(ad_prefix, name='test')
+    cleanup.add(det)
+
     plugin = det.p
 
     plugin.file_template.put('%s%s_%3.3d.tif')
@@ -170,12 +179,14 @@ def test_tiff_plugin(ad_prefix):
     plugin
 
 
-def test_hdf5_plugin(ad_prefix):
+def test_hdf5_plugin(ad_prefix, cleanup):
 
     class MyDet(SimDetector):
         p = Cpt(HDF5Plugin, suffix='HDF1:')
 
     d = MyDet(ad_prefix, name='d')
+    cleanup.add(d)
+
     d.p.file_path.put('/tmp')
     d.p.file_name.put('--')
     d.p.warmup()
@@ -185,11 +196,12 @@ def test_hdf5_plugin(ad_prefix):
     d.unstage()
 
 
-def test_subclass(ad_prefix):
+def test_subclass(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
     det = MyDetector(ad_prefix, name='test')
+    cleanup.add(det)
     det.wait_for_connection()
 
     print(det.describe())

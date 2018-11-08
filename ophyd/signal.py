@@ -287,6 +287,20 @@ class Signal(OphydObject):
         'All metadata associated with the signal'
         return dict(self._metadata)
 
+    def destroy(self):
+        '''Disconnect the Signal from the underlying control layer
+
+        Clears all subscriptions on this Signal.  Once disconnected, the signal
+        may no longer be used.
+        '''
+        super().destroy()
+
+    def __del__(self):
+        try:
+            self.destroy()
+        except Exception:
+            ...
+
 
 class DerivedSignal(Signal):
     def __init__(self, derived_from, *, write_access=None, name=None,
@@ -714,6 +728,14 @@ class EpicsSignalBase(Signal):
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
 
+    def destroy(self):
+        '''Disconnect the EpicsSignal from the underlying PV instance'''
+        super().destroy()
+        if self._read_pv is not None:
+            self._read_pv.clear_auto_monitor()
+            self._read_pv.clear_callbacks()
+            self._read_pv = None
+
 
 class EpicsSignalRO(EpicsSignalBase):
     '''A read-only EpicsSignal -- that is, one with no `write_pv`
@@ -1095,6 +1117,14 @@ class EpicsSignal(EpicsSignalBase):
         self._run_subs(sub_type=self.SUB_META,
                        timestamp=self._metadata.get('timestamp'),
                        **self._metadata)
+
+    def destroy(self):
+        '''Destroy the EpicsSignal from the underlying PV instance'''
+        super().destroy()
+        if self._write_pv is not None:
+            self._write_pv.clear_auto_monitor()
+            self._write_pv.clear_callbacks()
+            self._write_pv = None
 
 
 class AttributeSignal(Signal):
