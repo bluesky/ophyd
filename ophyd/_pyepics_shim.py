@@ -221,3 +221,4 @@ def get_pv_form(version):
 
 
 pv_form = get_pv_form(epics.__version__)
+name = 'pyepics'
