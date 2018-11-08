@@ -60,6 +60,12 @@ class PV(epics.PV):
                            callback_data=callback_data)
 
 
+def release_pvs(*pvs):
+    for pv in pvs:
+        pv.clear_auto_monitor()
+        pv.clear_callbacks()
+
+
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
            connection_callback=None, access_callback=None, callback=None,
            **kwargs):

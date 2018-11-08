@@ -732,8 +732,7 @@ class EpicsSignalBase(Signal):
         '''Disconnect the EpicsSignal from the underlying PV instance'''
         super().destroy()
         if self._read_pv is not None:
-            self._read_pv.clear_auto_monitor()
-            self._read_pv.clear_callbacks()
+            self.cl.release_pvs(self._read_pv)
             self._read_pv = None
 
 
@@ -1122,8 +1121,7 @@ class EpicsSignal(EpicsSignalBase):
         '''Destroy the EpicsSignal from the underlying PV instance'''
         super().destroy()
         if self._write_pv is not None:
-            self._write_pv.clear_auto_monitor()
-            self._write_pv.clear_callbacks()
+            self.cl.release_pvs(self._write_pv)
             self._write_pv = None
 
 

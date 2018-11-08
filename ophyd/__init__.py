@@ -38,7 +38,7 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
         raise ValueError('unknown control_layer')
 
     exports = ('setup', 'caput', 'caget', 'get_pv', 'pv_form', 'thread_class',
-               'name')
+               'name', 'release_pvs')
     # this sets the module level value
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})
