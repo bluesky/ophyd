@@ -38,6 +38,10 @@ class Staged(Enum):
     partially = 'partially'
 
 
+ComponentWalk = namedtuple('ComponentWalk',
+                           'ancestors dotted_name item')
+
+
 class Component:
     '''A descriptor representing a device component (or signal)
 
@@ -850,6 +854,90 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             # Instantiate non-lazy signals and lazy signals with subscriptions
             [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
              if not cpt.lazy or cpt._subscriptions]
+
+    @classmethod
+    def walk_components(cls):
+        '''Walk all components in the Device hierarchy
+
+        Yields
+        ------
+        ComponentWalk
+            Where ancestors is all ancestors of the signal, including the
+            top-level device `walk_components` was called on.
+        '''
+        for attr, cpt in cls._sig_attrs.items():
+            if isinstance(cpt, (DynamicDeviceComponent, Component)):
+                yield ComponentWalk(ancestors=(cls, ),
+                                    dotted_name=attr,
+                                    item=cpt
+                                    )
+            elif issubclass(cpt.cls, Device):
+                sub_dev = cpt.cls
+                for walk in sub_dev.walk_components():
+                    ancestors = (cls, ) + walk.ancestors
+                    dotted_name = '.'.join((attr, walk.dotted_name))
+                    yield ComponentWalk(ancestors=ancestors,
+                                        dotted_name=dotted_name,
+                                        item=walk.item
+                                        )
+
+    def walk_signals(self, *, include_lazy=False):
+        '''Walk all signals in the Device hierarchy
+
+        Parameters
+        ----------
+        include_lazy : bool, optional
+            Include not-yet-instantiated lazy signals
+
+        Yields
+        ------
+        ComponentWalk
+            Where ancestors is all ancestors of the signal, including the
+            top-level device `walk_signals` was called on.
+        '''
+        for attr, cpt in self._sig_attrs.items():
+            if cpt.lazy and (include_lazy or attr in self.__dict__):
+                sig = getattr(self, attr)
+                yield ComponentWalk(ancestors=(self, ),
+                                    dotted_name=attr,
+                                    item=sig
+                                    )
+            elif not cpt.lazy:
+                sig = getattr(self, attr)
+                if isinstance(sig, Device):
+                    for walk in sig.walk_signals(include_lazy=include_lazy):
+                        ancestors = (self, ) + walk.ancestors
+                        dotted_name = '.'.join((attr, walk.dotted_name))
+                        yield ComponentWalk(ancestors=ancestors,
+                                            dotted_name=dotted_name,
+                                            item=walk.item
+                                            )
+                else:
+                    yield ComponentWalk(ancestors=(self, ),
+                                        dotted_name=attr,
+                                        item=sig
+                                        )
+
+    def destroy(self):
+        'Disconnect and destroy all signals on the Device'
+        exceptions = []
+        for walk in self.walk_signals(include_lazy=False):
+            sig = walk.item
+            try:
+                sig.destroy()
+            except Exception as ex:
+                ex.signal = sig
+                ex.attr = walk.dotted_name
+                exceptions.append(ex)
+
+        if exceptions:
+            msg = ', '.join(
+                '{} ({})'.format(ex.attr, ex.__class__.__name__)
+                for ex in exceptions
+            )
+            raise ExceptionBundle(
+                'Failed to disconnect all signals ({})'.format(msg),
+                exceptions=exceptions)
 
     def _validate_kind(self, val):
         if isinstance(val, str):
