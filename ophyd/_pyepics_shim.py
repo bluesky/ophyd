@@ -29,7 +29,7 @@ class PyepicsCallbackThread(_CallbackThread):
         ca.detach_context()
 
 
-class PV(epics.PV):
+class PyepicsShimPV(epics.PV):
     def __init__(self, pvname, callback=None, form='time', verbose=False,
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None):
@@ -59,6 +59,10 @@ class PV(epics.PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    def __repr__(self):
+        super_repr = super().__repr__()
+        return f'{self.__class__.__name__}_{super_repr}'
+
 
 def release_pvs(*pvs):
     for pv in pvs:
@@ -82,7 +86,6 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
     timeout : float, optional
         connection timeout, in seconds (default 5.0)
     """
-
     if form not in ('native', 'time', 'ctrl'):
         form = 'native'
 
@@ -112,9 +115,9 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
     #             thispv.force_read_access_rights()
 
     if thispv is None:
-        thispv = PV(pvname, form=form, callback=callback,
-                    connection_callback=connection_callback,
-                    access_callback=access_callback, **kwargs)
+        thispv = PyepicsShimPV(pvname, form=form, callback=callback,
+                               connection_callback=connection_callback,
+                               access_callback=access_callback, **kwargs)
 
     if connect:
         if not thispv.wait_for_connection(timeout=timeout):
