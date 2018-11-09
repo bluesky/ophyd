@@ -7,15 +7,16 @@ import threading
 class _CallbackThread(threading.Thread):
     'A queue-based callback dispatcher thread'
 
-    def __init__(self, name, *, dispatcher, **kwargs):
-        super().__init__(name=name, **kwargs)
-        self.daemon = True
-        self.stop_event = dispatcher._stop_event
-        self.context = dispatcher.context
-        self._timeout = dispatcher._timeout
-        self.logger = dispatcher.logger
-        self.queue = queue.Queue()
+    def __init__(self, name, *, dispatcher, logger, context,
+                 stop_event, timeout, daemon=True):
+        super().__init__(name=name, daemon=daemon)
+        self.context = context
         self.current_callback = None
+        self.dispatcher = dispatcher
+        self.logger = logger
+        self.queue = queue.Queue()
+        self.stop_event = stop_event
+        self.timeout = timeout
 
     def __repr__(self):
         return '<{} qsize={}>'.format(self.__class__.__name__,
@@ -23,11 +24,12 @@ class _CallbackThread(threading.Thread):
 
     def run(self):
         '''The dispatcher itself'''
-        self.attach_context(self.context)
         self.logger.debug('Callback thread %s started', self.name)
+        self.attach_context()
+
         while not self.stop_event.is_set():
             try:
-                callback, args, kwargs = self.queue.get(True, self._timeout)
+                callback, args, kwargs = self.queue.get(True, self.timeout)
             except queue.Empty:
                 ...
             else:
@@ -39,10 +41,10 @@ class _CallbackThread(threading.Thread):
                         'Exception occurred during callback %r', callback
                     )
 
-        self.logger.debug('Callback thread %s exiting', self.name)
         self.detach_context()
+        self.logger.debug('Callback thread %s exiting', self.name)
 
-    def attach_context(self, context):
+    def attach_context(self):
         self.logger.debug('Callback thread %s attaching to context %s',
                           self.name, self.context)
 
@@ -99,6 +101,14 @@ class EventDispatcher:
                    if thread is not None)
 
     @property
+    def stop_event(self):
+        return self._stop_event
+
+    @property
+    def timeout(self):
+        return self._timeout
+
+    @property
     def threads(self):
         return dict(self._threads)
 
@@ -114,6 +124,10 @@ class EventDispatcher:
     def _start_thread(self, name):
         'Start dispatcher thread by name'
         self._threads[name] = self._thread_class(name=name, dispatcher=self,
+                                                 stop_event=self._stop_event,
+                                                 timeout=self.timeout,
+                                                 context=self.context,
+                                                 logger=self.logger,
                                                  daemon=True)
         self._threads[name].start()
 

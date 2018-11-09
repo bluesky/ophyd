@@ -20,9 +20,9 @@ _dispatcher = None
 
 
 class PyepicsCallbackThread(_CallbackThread):
-    def attach_context(self, ctx):
-        super().attach_context(ctx)
-        ca.attach_context(ctx)
+    def attach_context(self):
+        super().attach_context()
+        ca.attach_context(self.context)
 
     def detach_context(self):
         super().detach_context()
