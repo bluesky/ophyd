@@ -15,6 +15,7 @@ class _CallbackThread(threading.Thread):
         self._timeout = dispatcher._timeout
         self.logger = dispatcher.logger
         self.queue = queue.Queue()
+        self.current_callback = None
 
     def __repr__(self):
         return '<{} qsize={}>'.format(self.__class__.__name__,
@@ -31,6 +32,7 @@ class _CallbackThread(threading.Thread):
                 ...
             else:
                 try:
+                    self.current_callback = (callback.__name__, kwargs.get('pvname'))
                     callback(*args, **kwargs)
                 except Exception as ex:
                     self.logger.exception(
@@ -76,16 +78,16 @@ class EventDispatcher:
 
     def _debug_monitor(self, interval=0.01):
         while not self._stop_event.is_set():
-            queue_sizes = [(name, thread.queue.qsize())
+            queue_sizes = [(name, thread.queue.qsize(), thread.current_callback)
                            for name, thread in sorted(self._threads.items())
                            ]
             status = [
-                f'{name}: {qsize}'
-                for name, qsize in queue_sizes
+                f'{name}={qsize} ({cb})'
+                for name, qsize, cb in queue_sizes
                 if qsize > 0
             ]
             if status:
-                print(' / '.join(status))
+                print('Dispatcher debug:', ' / '.join(status))
             time.sleep(interval)
 
     def __repr__(self):
