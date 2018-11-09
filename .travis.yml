@@ -103,7 +103,11 @@ script:
         conda list
     fi
   # running tests
-  - python run_tests.py -v --cov=ophyd --cov-report term-missing
+  - coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'not caproto'
+  - coverage combine
+  - coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
+  - coverage combine --apend
+  - coverage report
 
   - set -e
   # Build docs.
