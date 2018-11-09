@@ -1,3 +1,4 @@
+import time
 import functools
 import queue
 import threading
@@ -6,8 +7,8 @@ import threading
 class _CallbackThread(threading.Thread):
     'A queue-based callback dispatcher thread'
 
-    def __init__(self, name, *, dispatcher):
-        super().__init__(name=name)
+    def __init__(self, name, *, dispatcher, **kwargs):
+        super().__init__(name=name, **kwargs)
         self.daemon = True
         self.stop_event = dispatcher._stop_event
         self.context = dispatcher.context
@@ -51,7 +52,8 @@ class _CallbackThread(threading.Thread):
 
 class EventDispatcher:
     def __init__(self, *, context, logger, timeout=0.1,
-                 thread_class=_CallbackThread):
+                 thread_class=_CallbackThread,
+                 debug_monitor=False):
         self._threads = {}
         self._thread_class = thread_class
         self._timeout = timeout
@@ -64,6 +66,27 @@ class EventDispatcher:
         self._start_thread(name='metadata')
         self._start_thread(name='monitor')
         self._start_thread(name='get_put')
+
+        if debug_monitor:
+            self._debug_monitor_thread = threading.Thread(
+                target=self._debug_monitor,
+                name='debug_monitor',
+                daemon=True)
+            self._debug_monitor_thread.start()
+
+    def _debug_monitor(self, interval=0.01):
+        while not self._stop_event.is_set():
+            queue_sizes = [(name, thread.queue.qsize())
+                           for name, thread in sorted(self._threads.items())
+                           ]
+            status = [
+                f'{name}: {qsize}'
+                for name, qsize in queue_sizes
+                if qsize > 0
+            ]
+            if status:
+                print(' / '.join(status))
+            time.sleep(interval)
 
     def __repr__(self):
         threads = [repr(thread) for thread in self._threads.values()]
@@ -88,7 +111,8 @@ class EventDispatcher:
 
     def _start_thread(self, name):
         'Start dispatcher thread by name'
-        self._threads[name] = self._thread_class(name=name, dispatcher=self)
+        self._threads[name] = self._thread_class(name=name, dispatcher=self,
+                                                 daemon=True)
         self._threads[name].start()
 
 
