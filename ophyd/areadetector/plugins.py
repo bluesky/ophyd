@@ -7,13 +7,16 @@
 '''
 
 
+import functools
+import logging
+import numpy as np
+import operator
 import re
 import time as ttime
-import logging
-from collections import OrderedDict
-import numpy as np
 
-from ophyd import Component as Cpt
+from collections import OrderedDict
+
+from .. import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
                    EpicsSignalWithRBV as SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
@@ -704,7 +707,6 @@ class TransformPlugin(PluginBase):
                      doc='Array size',
                      default_read_attrs=('height', 'width', 'depth'))
 
-
     name_ = C(EpicsSignal, 'Name')
     origin_location = C(SignalWithRBV, 'OriginLocation')
     t1_max_size = DDC(ad_group(EpicsSignal,
@@ -714,14 +716,12 @@ class TransformPlugin(PluginBase):
                       doc='Transform 1 max size',
                       default_read_attrs=('size0', 'size1', 'size2'))
 
-
     t2_max_size = DDC(ad_group(EpicsSignal,
                                (('size0', 'T2MaxSize0'),
                                 ('size1', 'T2MaxSize1'),
                                 ('size2', 'T2MaxSize2'))),
                       doc='Transform 2 max size',
                       default_read_attrs=('size0', 'size1', 'size2'))
-
 
     t3_max_size = DDC(ad_group(EpicsSignal,
                                (('size0', 'T3MaxSize0'),
@@ -730,14 +730,12 @@ class TransformPlugin(PluginBase):
                       doc='Transform 3 max size',
                       default_read_attrs=('size0', 'size1', 'size2'))
 
-
     t4_max_size = DDC(ad_group(EpicsSignal,
                                (('size0', 'T4MaxSize0'),
                                 ('size1', 'T4MaxSize1'),
                                 ('size2', 'T4MaxSize2'))),
                       doc='Transform 4 max size',
                       default_read_attrs=('size0', 'size1', 'size2'))
-
 
     types = DDC(ad_group(EpicsSignal,
                          (('type1', 'Type1'),
@@ -746,7 +744,6 @@ class TransformPlugin(PluginBase):
                           ('type4', 'Type4'))),
                 doc='Transform types',
                 default_read_attrs=('type1', 'type2', 'type3', 'type4'))
-
 
 
 class FilePlugin(PluginBase, GenerateDatumInterface):
@@ -764,7 +761,7 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
         'file_write_mode',
         'full_file_name',
         'num_capture'
-        ))
+    ))
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
     auto_increment = C(SignalWithRBV, 'AutoIncrement')
@@ -879,7 +876,6 @@ class HDF5Plugin(FilePlugin):
                          doc='Extra dimension sizes (XYN)',
                          default_read_attrs=('size_x', 'size_y', 'size_n'))
 
-
     io_speed = C(EpicsSignal, 'IOSpeed')
     num_col_chunks = C(SignalWithRBV, 'NumColChunks')
     num_data_bits = C(SignalWithRBV, 'NumDataBits')
@@ -905,7 +901,7 @@ class HDF5Plugin(FilePlugin):
                             (self.parent.cam.image_mode, 'Single'),
                             (self.parent.cam.trigger_mode, 'Internal'),
                             # just in case tha acquisition time is set very long...
-                            (self.parent.cam.acquire_time , 1),
+                            (self.parent.cam.acquire_time, 1),
                             (self.parent.cam.acquire_period, 1),
                             (self.parent.cam.acquire, 1)])
 
@@ -934,8 +930,6 @@ class MagickPlugin(FilePlugin):
     bit_depth = C(SignalWithRBV, 'BitDepth')
     compress_type = C(SignalWithRBV, 'CompressType')
     quality = C(SignalWithRBV, 'Quality')
-
-
 
 
 def plugin_from_pvname(pv):
