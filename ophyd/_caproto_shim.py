@@ -62,7 +62,7 @@ class PV(_PV):
 def release_pvs(*pvs):
     for pv in pvs:
         pv.clear_callbacks()
-        pv.disconnect()
+        # pv.disconnect()
 
 
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
