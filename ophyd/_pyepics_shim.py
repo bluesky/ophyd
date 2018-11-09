@@ -62,8 +62,12 @@ class PyepicsShimPV(epics.PV):
 
 def release_pvs(*pvs):
     for pv in pvs:
-        pv.clear_auto_monitor()
         pv.clear_callbacks()
+        # Perform the clear auto monitor in one of our dispatcher threads:
+        # they are guaranteed to be in the right CA context
+        wrapped = wrap_callback(_dispatcher, 'monitor', pv.clear_auto_monitor)
+        # queue the call in the 'monitor' dispatcher:
+        wrapped()
 
 
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
