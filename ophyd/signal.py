@@ -622,9 +622,8 @@ class EpicsSignalBase(Signal):
             self._pvs_ready_event.wait(timeout)
         except TimeoutError:
             raise TimeoutError('Control layer {} failed to send connection and '
-                               'access rights information within a reasonable '
-                               'time period'
-                               ''.format(self.cl.name)) from None
+                               'access rights information within {:.1f} sec'
+                               ''.format(self.cl.name, float(timeout))) from None
 
     def wait_for_connection(self, timeout=1.0):
         '''Wait for the underlying signals to initialize or connect'''
