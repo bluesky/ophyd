@@ -810,6 +810,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
                  configuration_attrs=None, parent=None, **kwargs):
+        self._destroyed = False
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
         self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
@@ -951,6 +952,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def destroy(self):
         'Disconnect and destroy all signals on the Device'
+        self._destroyed = True
         exceptions = []
         for walk in self.walk_signals(include_lazy=False):
             sig = walk.item
@@ -1165,6 +1167,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         already exist, or a device component has yet to be instantiated.
         '''
         if '.' not in name:
+            if self._destroyed:
+                raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
             try:
                 # Initial access of signal
                 cpt = self._sig_attrs[name]

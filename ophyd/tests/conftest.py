@@ -360,7 +360,7 @@ def cleanup(request):
 
     def clean():
         for item in items:
-            print('Destroying', item)
+            print('Destroying', item.name)
             item.destroy()
 
     request.addfinalizer(clean)
