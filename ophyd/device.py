@@ -1499,7 +1499,7 @@ def _wait_for_connection_context(value, doc):
         is called.  While a common source of confusion, this is done
         intentionally and for good reason: without this functionality in place,
         any new lazy signal will generally take a finite amount of time to
-        connect. This then requries that the user manually call
+        connect. This then requires that the user manually call
         `wait_for_connection` each time before using the signal.
 
         In certain cases, it can be desirable to override this behavior. For

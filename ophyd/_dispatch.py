@@ -84,7 +84,7 @@ class EventDispatcher:
                            for name, thread in sorted(self._threads.items())
                            ]
             status = [
-                f'{name}={qsize} ({cb})'
+                '{name}={qsize} ({cb})'.format(name=name, qsize=qsize, cb=cb)
                 for name, qsize, cb in queue_sizes
                 if qsize > 0
             ]

@@ -59,10 +59,6 @@ class PyepicsShimPV(epics.PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
-    def __repr__(self):
-        super_repr = super().__repr__()
-        return f'{self.__class__.__name__}_{super_repr}'
-
 
 def release_pvs(*pvs):
     for pv in pvs:
