@@ -106,7 +106,7 @@ script:
   - coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'not caproto'
   - coverage combine
   - coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
-  - coverage combine --apend
+  - coverage combine --append
   - coverage report
 
   - set -e
