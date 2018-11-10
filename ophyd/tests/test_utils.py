@@ -11,7 +11,7 @@ from ophyd.utils import (make_dir_tree, makedirs)
 logger = logging.getLogger(__name__)
 
 
-def test_split(self):
+def test_split():
     utils = epics_utils
 
     assert utils.split_record_field('record.field') == ('record', 'field')
@@ -21,7 +21,7 @@ def test_split(self):
     assert utils.record_field('record' == 'field'), 'record.FIELD'
 
 
-def test_waveform_to_string(self):
+def test_waveform_to_string():
     s = 'abcdefg'
     asc = [ord(c) for c in s]
     assert epics_utils.waveform_to_string(asc) == s
@@ -30,7 +30,7 @@ def test_waveform_to_string(self):
     assert epics_utils.waveform_to_string(asc) == s
 
 
-def test_pv_form(self):
+def test_pv_form():
     from ophyd import get_cl
     o_ps = pytest.importorskip('ophyd._pyepics_shim')
     cl = get_cl()
@@ -40,7 +40,7 @@ def test_pv_form(self):
         assert o_ps.get_pv_form(version) in ('native', 'time')
 
 
-def test_records_from_db(self):
+def test_records_from_db():
     # db_dir = os.path.join(config.epics_base, 'db')
 
     # if os.path.exists(db_dir):
@@ -51,7 +51,7 @@ def test_records_from_db(self):
     assert ('bo', '$(P)$(S)_calcEnable') in records
 
 
-def test_data_type(self):
+def test_data_type():
     utils = epics_utils
 
     assert utils.data_type(1) == 'integer'
@@ -66,7 +66,7 @@ def test_data_type(self):
         utils.data_type(dict())
 
 
-def test_data_shape(self):
+def test_data_shape():
     utils = epics_utils
 
     assert utils.data_shape(1) == list()

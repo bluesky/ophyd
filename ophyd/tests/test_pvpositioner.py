@@ -249,12 +249,7 @@ def test_pvpositioner_with_fake_motor(motor, fake_motor):
     str(pos)
 
 
-def test_pvpositioner_pc_with_actuate(self):
-    # TODO
-    self.skipTest('TODO')
-
-
-def test_hints(self):
+def test_hints():
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, no put completion. No done pv.'''
         setpoint = C(EpicsSignal, fake_motor['setpoint'])
