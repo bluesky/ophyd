@@ -6,73 +6,77 @@ import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import (make_dir_tree, makedirs)
-from .conftest import AssertTools
 
 
 logger = logging.getLogger(__name__)
 
 
-class TestEpicsUtil(AssertTools):
-    def test_split(self):
-        utils = epics_utils
+def test_split():
+    utils = epics_utils
 
-        assert utils.split_record_field('record.field') == ('record', 'field')
-        self.assertEquals(utils.split_record_field('record.field.invalid'),
-                          ('record.field', 'invalid'))
-        self.assertEquals(utils.strip_field('record.field'), 'record')
-        self.assertEquals(utils.strip_field('record.field.invalid'), 'record.field')
+    assert utils.split_record_field('record.field') == ('record', 'field')
+    assert utils.split_record_field('record.field.invalid') == ('record.field',
+                                                                'invalid')
+    assert utils.strip_field('record.field') == 'record'
+    assert utils.strip_field('record.field.invalid') == 'record.field'
+    assert utils.record_field('record', 'field') == 'record.FIELD'
 
-        self.assertEquals(utils.record_field('record', 'field'), 'record.FIELD')
 
-    def test_waveform_to_string(self):
-        s = 'abcdefg'
-        asc = [ord(c) for c in s]
-        self.assertEquals(epics_utils.waveform_to_string(asc), s)
+def test_waveform_to_string():
+    s = 'abcdefg'
+    asc = [ord(c) for c in s]
+    assert epics_utils.waveform_to_string(asc) == s
 
-        asc = [ord(c) for c in s] + [0, 0, 0]
-        self.assertEquals(epics_utils.waveform_to_string(asc), s)
+    asc = [ord(c) for c in s] + [0, 0, 0]
+    assert epics_utils.waveform_to_string(asc) == s
 
-    def test_pv_form(self):
-        from ophyd import get_cl
-        o_ps = pytest.importorskip('ophyd._pyepics_shim')
-        cl = get_cl()
-        self.assertIn(cl.pv_form, ('native', 'time'))
-        versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
-        for version in versions:
-            self.assertIn(o_ps.get_pv_form(version), ('native', 'time'))
 
-    def test_records_from_db(self):
-        # db_dir = os.path.join(config.epics_base, 'db')
+def test_pv_form():
+    from ophyd import get_cl
+    o_ps = pytest.importorskip('ophyd._pyepics_shim')
+    cl = get_cl()
+    assert cl.pv_form in ('native', 'time')
+    versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
+    for version in versions:
+        assert o_ps.get_pv_form(version) in ('native', 'time')
 
-        # if os.path.exists(db_dir):
-        #     # fall back on the db file included with the tests
-        db_dir = os.path.dirname(__file__)
-        db_path = os.path.join(db_dir, 'scaler.db')
-        records = epics_utils.records_from_db(db_path)
-        self.assertIn(('bo', '$(P)$(S)_calcEnable'), records)
 
-    def test_data_type(self):
-        utils = epics_utils
+def test_records_from_db():
+    # db_dir = os.path.join(config.epics_base, 'db')
 
-        self.assertEquals(utils.data_type(1), 'integer')
-        self.assertNotEqual(utils.data_type(2), 'number')
-        self.assertEquals(utils.data_type(1e-3), 'number')
-        self.assertEquals(utils.data_type(2.718), 'number')
-        self.assertEquals(utils.data_type('foo'), 'string')
-        self.assertEquals(utils.data_type(np.array([1,2,3])), 'array')
+    # if os.path.exists(db_dir):
+    #     # fall back on the db file included with the tests
+    db_dir = os.path.dirname(__file__)
+    db_path = os.path.join(db_dir, 'scaler.db')
+    records = epics_utils.records_from_db(db_path)
+    assert ('bo', '$(P)$(S)_calcEnable') in records
 
-        self.assertRaises(ValueError, utils.data_type, [1,2,3])
-        self.assertRaises(ValueError, utils.data_type, dict())
 
-    def test_data_shape(self):
-        utils = epics_utils
+def test_data_type():
+    utils = epics_utils
 
-        self.assertEquals(utils.data_shape(1), list())
-        self.assertEquals(utils.data_shape('foo'), list())
-        self.assertEquals(utils.data_shape(np.array([1,2,3])), [3, ])
-        self.assertEquals(utils.data_shape(np.array([[1, 2], [3, 4]])), [2, 2])
+    assert utils.data_type(1) == 'integer'
+    assert utils.data_type(2) != 'number'
+    assert utils.data_type(1e-3) == 'number'
+    assert utils.data_type(2.718) == 'number'
+    assert utils.data_type('foo') == 'string'
+    assert utils.data_type(np.array([1, 2, 3])) == 'array'
+    with pytest.raises(ValueError):
+        utils.data_type([1, 2, 3])
+    with pytest.raises(ValueError):
+        utils.data_type(dict())
 
-        self.assertRaises(ValueError, utils.data_shape, list())
+
+def test_data_shape():
+    utils = epics_utils
+
+    assert utils.data_shape(1) == list()
+    assert utils.data_shape('foo') == list()
+    assert utils.data_shape(np.array([1, 2, 3])) == [3, ]
+    assert utils.data_shape(np.array([[1, 2], [3, 4]])) == [2, 2]
+
+    with pytest.raises(ValueError):
+        utils.data_shape([])
 
 
 def assert_OD_equal_ignore_ts(a, b):
