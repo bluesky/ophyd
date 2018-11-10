@@ -27,3 +27,8 @@ class ExceptionBundle(RuntimeError, OpException):
 
 class RedundantStaging(OpException):
     pass
+
+
+class PluginMisconfigurationError(TypeError, OpException):
+    # Keeping TypeError for backward-compatibility
+    pass

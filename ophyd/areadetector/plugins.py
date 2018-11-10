@@ -22,6 +22,7 @@ from .base import (ADBase, ADComponent as C, ad_group,
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
+from ..utils.errors import PluginMisconfigurationError
 
 
 logger = logging.getLogger(__name__)
@@ -61,15 +62,13 @@ class PluginBase(ADBase):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
-        # make sure it is the right type of plugin
-        if (self._plugin_type is not None and
-                not self.plugin_type.get().startswith(self._plugin_type)):
-            raise TypeError('Trying to use {!r} class which is for {!r} '
-                            'plugin type for a plugin that reports being '
-                            'of type {!r} with base prefix '
-                            '{!r}'.format(self.__class__.__name__,
-                                          self._plugin_type,
-                                          self.plugin_type.get(), self.prefix))
+
+        if self._plugin_type is not None:
+            # Misconfigured until proven otherwise - this will happen when
+            # plugin_type first connects
+            self._misconfigured = None
+        else:
+            self._misconfigured = False
 
         self.enable_on_stage()
         self.stage_sigs.move_to_end('enable', last=False)
@@ -103,6 +102,19 @@ class PluginBase(ADBase):
 
     def stage(self):
         super().stage()
+
+        if self._misconfigured is None:
+            # If plugin_type has not yet connected, ensure it has here
+            self.plugin_type.wait_for_connection()
+            # And for good measure, make sure the callback has been called:
+            self._plugin_type_connected(connected=True)
+
+        if self._misconfigured:
+            raise PluginMisconfigurationError(
+                'Plugin prefix {!r}: trying to use {!r} class (with plugin '
+                'type={!r}) but the plugin reports it is of type {!r}'
+                ''.format(self.prefix, self.__class__.__name__,
+                          self._plugin_type, self.plugin_type.get()))
 
     def enable_on_stage(self):
         """
@@ -224,7 +236,7 @@ class PluginBase(ADBase):
     nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
     nd_array_port = C(SignalWithRBV, 'NDArrayPort')
     ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
-    plugin_type = C(EpicsSignalRO, 'PluginType_RBV')
+    plugin_type = C(EpicsSignalRO, 'PluginType_RBV', lazy=False)
 
     queue_free = C(EpicsSignal, 'QueueFree')
     queue_free_low = C(EpicsSignal, 'QueueFreeLow')
@@ -234,6 +246,29 @@ class PluginBase(ADBase):
     queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
     time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
     unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
+
+    @plugin_type.sub_meta
+    def _plugin_type_connected(self, connected, **kw):
+        'Connection callback on the plugin type'
+        if not connected or self._plugin_type is None:
+            return
+
+        plugin_type = self.plugin_type.get()
+        self._misconfigured = not plugin_type.startswith(self._plugin_type)
+        if self._misconfigured:
+            logger.warning(
+                'Plugin prefix %r: trying to use %r class (plugin type=%r) '
+                ' but the plugin reports it is of type %r',
+                self.prefix, self.__class__.__name__, self._plugin_type,
+                plugin_type
+            )
+        else:
+            logger.debug(
+                'Plugin prefix %r type confirmed: %r class (plugin type=%r);'
+                ' plugin reports it is of type %r',
+                self.prefix, self.__class__.__name__, self._plugin_type,
+                plugin_type
+            )
 
 
 @register_plugin

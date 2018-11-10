@@ -23,11 +23,18 @@ def test_fakepv():
         info['conn'] = True
         info['conn_kw'] = kwargs
 
+    def access(read, write, **kwargs):
+        info['access'] = True
+        info['access_args'] = (read, write)
+        info['access_kw'] = kwargs
+
     def value_cb(**kwargs):
         info['value'] = True
         info['value_kw'] = kwargs
+
     cl = get_cl()
-    pv = cl.get_pv(pvname, callback=value_cb, connection_callback=conn)
+    pv = cl.get_pv(pvname, callback=value_cb, connection_callback=conn,
+                   access_callback=access)
 
     if not pv.wait_for_connection():
         raise ValueError('should return True on connection')
@@ -39,13 +46,15 @@ def test_fakepv():
 
     assert info['conn']
     assert info['value']
+    assert info['access']
     assert info['value_kw']['value'] == pv.value
+    assert info['access_args'] == (True, True)
 
 
 @using_fake_epics_pv
 def test_fakepv_signal():
-    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
-                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+    sig = EpicsSignal(write_pv='Fakemtr.VAL',
+                      read_pv='Fakemtr.RBV')
     st = sig.set(1)
 
     for j in range(10):
@@ -152,6 +161,9 @@ def test_epicssignal_readonly():
     signal = EpicsSignalRO('readpv')
     signal.wait_for_connection()
     signal.value
+
+    assert not signal.write_access
+    assert signal.read_access
 
     with pytest.raises(ReadOnlyError):
         signal.value = 10
@@ -324,10 +336,10 @@ def test_describe():
     assert desc['shape'] == []
 
     import numpy as np
-    sig.put(np.array([1,]))
+    sig.put(np.array([1, ]))
     desc = sig.describe()['my_pv']
     assert desc['dtype'] == 'array'
-    assert desc['shape'] == [1,]
+    assert desc['shape'] == [1, ]
 
 
 def test_set_method():
@@ -348,7 +360,6 @@ def test_soft_derived():
     cb_values = []
 
     def callback(value=None, **kwargs):
-        nonlocal cb_values
         cb_values.append(value)
 
     derived = DerivedSignal(derived_from=original, name='derived')
@@ -358,6 +369,8 @@ def test_soft_derived():
     assert derived.get() == value
     assert derived.timestamp == timestamp
     assert derived.describe()[derived.name]['derived_from'] == original.name
+    assert derived.write_access == original.write_access
+    assert derived.read_access == original.read_access
 
     new_value = 'r'
     derived.put(new_value)
@@ -374,15 +387,34 @@ def test_soft_derived():
     derived.put('s')
     assert cb_values == ['r', 's']
 
+    called = []
+
+    def meta_callback(*, connected, read_access, write_access, **kw):
+        called.append(('meta', connected, read_access, write_access))
+
+    derived.subscribe(meta_callback, event_type=derived.SUB_META, run=False)
+
+    original._metadata['write_access'] = False
+    original._run_subs(sub_type='meta', timestamp=None, **original._metadata)
+
+    assert called == [('meta', True, True, False)]
+
 
 @using_fake_epics_pv
 def test_epics_signal_derived():
     signal = EpicsSignalRO('fakepv', name='original')
 
+    signal.wait_for_connection()
+    assert signal.connected
+    assert signal.read_access
+    assert not signal.write_access
+
     derived = DerivedSignal(derived_from=signal, name='derived')
     derived.wait_for_connection()
 
-    derived.connected
+    assert derived.connected
+    assert derived.read_access
+    assert not derived.write_access
 
     # race condition with the FakeEpicsPV update loop, can't really test
     # assert derived.timestamp == signal.timestamp
@@ -390,9 +422,9 @@ def test_epics_signal_derived():
 
 
 @pytest.mark.parametrize('put_complete', [True, False])
-def test_epicssignal_set(put_complete):
-    sim_pv = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
-                         read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV',
+def test_epicssignal_set(motor, put_complete):
+    sim_pv = EpicsSignal(write_pv=motor.user_setpoint.pvname,
+                         read_pv=motor.user_readback.pvname,
                          put_complete=put_complete)
     sim_pv.wait_for_connection()
 
@@ -415,7 +447,7 @@ def test_epicssignal_set(put_complete):
     # move back to -0.2, forcing a timeout with a low value
     target = sim_pv.get() - 0.2
     st = sim_pv.set(target, timeout=1e-6)
-    time.sleep(0.1)
+    time.sleep(0.5)
     print('status 2', st)
     assert st.done
     assert not st.success
@@ -425,22 +457,26 @@ def test_epicssignal_set(put_complete):
     wait(st, timeout=5)
 
 
-
-def test_epicssignal_alarm_status():
-    sig = EpicsSignal(write_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.VAL',
-                      read_pv='XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+def test_epicssignal_alarm_status(cleanup, motor):
+    sig = EpicsSignal(write_pv=motor.user_setpoint.setpoint_pvname,
+                      read_pv=motor.user_readback.pvname)
+    cleanup.add(sig)
+    sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
     sig.setpoint_alarm_status
     sig.setpoint_alarm_severity
 
 
-def test_epicssignalro_alarm_status():
-    sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+def test_epicssignalro_alarm_status(cleanup, motor):
+    sig = EpicsSignalRO(motor.user_readback.pvname)
+    cleanup.add(sig)
+    sig.wait_for_connection()
     sig.alarm_status
     sig.alarm_severity
 
 
-def test_hints():
-    sig = EpicsSignalRO('XF:31IDA-OP{Tbl-Ax:X1}Mtr.RBV')
+def test_hints(cleanup, motor):
+    sig = EpicsSignalRO(motor.user_readback.pvname)
+    cleanup.add(sig)
     assert sig.hints == {'fields': [sig.name]}

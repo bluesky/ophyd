@@ -1,12 +1,15 @@
 import collections
 import contextlib
 import functools
-import time as ttime
+import inspect
 import logging
 import textwrap
+import time as ttime
+import types
+import warnings
+
 from enum import Enum
 from collections import (OrderedDict, namedtuple)
-import warnings
 
 from .ophydobj import OphydObject, Kind
 from .status import DeviceStatus, StatusBase
@@ -36,6 +39,10 @@ class Staged(Enum):
     partially = 'partially'
 
 
+ComponentWalk = namedtuple('ComponentWalk',
+                           'ancestors dotted_name item')
+
+
 class Component:
     '''A descriptor representing a device component (or signal)
 
@@ -45,8 +52,8 @@ class Component:
     Parameters
     ----------
     cls : class
-        Class of signal to create.  The required signature of
-        `cls.__init__` is (if `suffix` is given)::
+        Class of signal to create.  The required signature of `cls.__init__` is
+        (if `suffix` is given)::
 
             def __init__(self, pv_name, parent=None, **kwargs):
 
@@ -54,12 +61,12 @@ class Component:
 
             def __init__(self, parent=None, **kwargs):
 
-        The class may have a `wait_for_connection()` which is called
-        during the component instance creation.
+        The class may have a `wait_for_connection()` which is called during the
+        component instance creation.
 
     suffix : str, optional
-        The PV suffix, which gets appended onto ``parent.prefix`` to
-        generate the final PV that the instance component will bind to.
+        The PV suffix, which gets appended onto ``parent.prefix`` to generate
+        the final PV that the instance component will bind to.
         Also see ``add_prefix``
 
     lazy : bool, optional
@@ -71,8 +78,8 @@ class Component:
         at trigger time.
 
     add_prefix : sequence, optional
-        Keys in the kwargs to prefix with the Device PV prefix during
-        creation of the component instance.
+        Keys in the kwargs to prefix with the Device PV prefix during creation
+        of the component instance.
         Defaults to ``('suffix', 'write_pv', )``
 
     doc : str, optional
@@ -92,6 +99,7 @@ class Component:
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
         self.add_prefix = tuple(add_prefix)
+        self._subscriptions = collections.defaultdict(list)
 
     def maybe_add_prefix(self, instance, kw, suffix):
         """Add prefix to a suffix if kw is in self.add_prefix
@@ -139,7 +147,8 @@ class Component:
             cpt_inst = self.cls(parent=instance, **kwargs)
 
         if self.lazy and hasattr(self.cls, 'wait_for_connection'):
-            cpt_inst.wait_for_connection()
+            if getattr(instance, 'lazy_wait_for_connection', True):
+                cpt_inst.wait_for_connection()
 
         return cpt_inst
 
@@ -157,9 +166,10 @@ class Component:
         return '\n'.join(doc)
 
     def __repr__(self):
-
-        kw_str = ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items() \
-                           if k not in ['read_attrs','configuration_attrs'])
+        kw_str = (
+            ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items()
+                      if k not in ['read_attrs', 'configuration_attrs'])
+        )
 
         if self.suffix is not None:
             suffix_str = '{!r}'.format(self.suffix)
@@ -184,12 +194,53 @@ class Component:
             return self
 
         if self.attr not in instance._signals:
-            instance._signals[self.attr] = self.create_component(instance)
+            cpt_inst = self.create_component(instance)
+            instance._signals[self.attr] = cpt_inst
+
+            for event_type, functions in self._subscriptions.items():
+                for func in functions:
+                    cpt_inst.subscribe(types.MethodType(func, instance),
+                                       event_type=event_type,
+                                       run=cpt_inst.connected)
 
         return instance._signals[self.attr]
 
     def __set__(self, instance, owner):
-        raise RuntimeError('Use .put()')
+        raise RuntimeError('Do not use setattr with components; use '
+                           'cpt.put(value)')
+
+    def subscriptions(self, event_type):
+        '''(Decorator) Specify subscriptions callbacks in the Device definition
+
+        Parameters
+        ----------
+        event_type : str or None
+            Event type to subscribe to. `ophyd.Signal` supports at least
+            {'value', 'meta'}.  An `event_type` of `None` indicates that the
+            default event type for the signal is to be used.
+
+        Returns
+        -------
+        subscriber : callable
+            Callable with signature `subscriber(func)`, where `func` is the
+            method to call when the subscription of event_type is fired.
+        '''
+        def subscriber(func):
+            self._subscriptions[event_type].append(func)
+            return func
+        return subscriber
+
+    def sub_default(self, func):
+        'Default subscription decorator'
+        return self.subscriptions(None)(func)
+
+    def sub_meta(self, func):
+        'Metadata subscription decorator'
+        return self.subscriptions('meta')(func)
+
+    def sub_value(self, func):
+        'Value subscription decorator'
+        return self.subscriptions('value')(func)
 
 
 class FormattedComponent(Component):
@@ -355,6 +406,10 @@ class DynamicDeviceComponent:
 
     def __set__(self, instance, value):
         raise RuntimeError('Use .put()')
+
+    def subscriptions(self, event_type):
+        raise NotImplementedError('DynamicDeviceComponent does not yet '
+                                  'support decorator subscriptions')
 
 
 class ComponentMeta(type):
@@ -721,6 +776,20 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         ``read_configuration()``) and to adjust via ``configure()``
     parent : instance or None, optional
         The instance of the parent device, if applicable
+
+    Attributes
+    ----------
+    lazy_wait_for_connection : bool
+        When instantiating a lazy signal upon first access, wait for it to
+        connect before returning control to the user.  See also the context
+        manager helpers: ``wait_for_lazy_connection`` and
+        ``do_not_wait_for_lazy_connection``.
+
+    Subscriptions
+    -------------
+    SUB_ACQ_DONE
+        A one-time subscription indicating the requested trigger-based
+        acquisition has completed.
     """
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
@@ -735,10 +804,13 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     _default_read_attrs = None
     # If `None`, defaults to `[]`
     _default_configuration_attrs = None
+    # When instantiating a lazy signal upon first access, wait for it to connect
+    # before returning control to the user
+    lazy_wait_for_connection = True
 
-    def __init__(self, prefix='', *, name, kind=None,
-                 read_attrs=None, configuration_attrs=None,
-                 parent=None, **kwargs):
+    def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
+                 configuration_attrs=None, parent=None, **kwargs):
+        self._destroyed = False
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
         self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
@@ -780,9 +852,125 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         if configuration_attrs is not None:
             self.configuration_attrs = list(configuration_attrs)
 
-        # Instantiate non-lazy signals
-        [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
-         if not cpt.lazy]
+        with do_not_wait_for_lazy_connection(self):
+            # Instantiate non-lazy signals and lazy signals with subscriptions
+            [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
+             if not cpt.lazy or cpt._subscriptions]
+
+    @classmethod
+    def walk_components(cls):
+        '''Walk all components in the Device hierarchy
+
+        Yields
+        ------
+        ComponentWalk
+            Where ancestors is all ancestors of the signal, including the
+            top-level device `walk_components` was called on.
+        '''
+        for attr, cpt in cls._sig_attrs.items():
+            yield ComponentWalk(ancestors=(cls, ),
+                                dotted_name=attr,
+                                item=cpt
+                                )
+            if isinstance(cpt, DynamicDeviceComponent):
+                ...
+            elif isinstance(cpt, Component):
+                if (issubclass(cpt.cls, Device) or
+                        hasattr(cpt.cls, 'walk_components')):
+                    sub_dev = cpt.cls
+                    for walk in sub_dev.walk_components():
+                        ancestors = (cls, ) + walk.ancestors
+                        dotted_name = '.'.join((attr, walk.dotted_name))
+                        yield ComponentWalk(ancestors=ancestors,
+                                            dotted_name=dotted_name,
+                                            item=walk.item
+                                            )
+
+    def walk_signals(self, *, include_lazy=False):
+        '''Walk all signals in the Device hierarchy
+
+        Parameters
+        ----------
+        include_lazy : bool, optional
+            Include not-yet-instantiated lazy signals
+
+        Yields
+        ------
+        ComponentWalk
+            Where ancestors is all ancestors of the signal, including the
+            top-level device `walk_signals` was called on.
+        '''
+        for attr, cpt in self._sig_attrs.items():
+            if cpt.lazy and (include_lazy or attr in self.__dict__):
+                sig = getattr(self, attr)
+                yield ComponentWalk(ancestors=(self, ),
+                                    dotted_name=attr,
+                                    item=sig
+                                    )
+            elif not cpt.lazy:
+                sig = getattr(self, attr)
+                if isinstance(sig, Device):
+                    for walk in sig.walk_signals(include_lazy=include_lazy):
+                        ancestors = (self, ) + walk.ancestors
+                        dotted_name = '.'.join((attr, walk.dotted_name))
+                        yield ComponentWalk(ancestors=ancestors,
+                                            dotted_name=dotted_name,
+                                            item=walk.item
+                                            )
+                else:
+                    yield ComponentWalk(ancestors=(self, ),
+                                        dotted_name=attr,
+                                        item=sig
+                                        )
+
+    @classmethod
+    def walk_subdevice_classes(cls):
+        '''Walk all sub-Devices classes in the Device hierarchy
+
+        Yields
+        ------
+        (dotted_name, subdevice_class)
+        '''
+        for item in cls.walk_components():
+            cpt = item.item
+            if isinstance(cpt, DynamicDeviceComponent):
+                for cpt_attr, (cpt_cls, suffix, kwargs) in cpt.defn.items():
+                    if isinstance(cpt_cls, Device):
+                        yield ('.'.join((item.dotted_name, cpt_attr)), cpt_cls)
+            elif isinstance(cpt, Component) and issubclass(cpt.cls, Device):
+                yield (item.dotted_name, cpt.cls)
+
+    def walk_subdevices(self):
+        '''Walk all sub-Devices in the hierarchy
+
+        Yields
+        ------
+        (dotted_name, subdevice_instance)
+        '''
+        for dotted_name, cls in self.walk_subdevice_classes():
+            yield (dotted_name, getattr(self, dotted_name))
+
+    def destroy(self):
+        'Disconnect and destroy all signals on the Device'
+        self._destroyed = True
+        exceptions = []
+        for walk in self.walk_signals(include_lazy=False):
+            sig = walk.item
+            try:
+                sig.destroy()
+            except Exception as ex:
+                ex.signal = sig
+                ex.attr = walk.dotted_name
+                exceptions.append(ex)
+
+        if exceptions:
+            msg = ', '.join(
+                '{} ({})'.format(ex.attr, ex.__class__.__name__)
+                for ex in exceptions
+            )
+            raise ExceptionBundle(
+                'Failed to disconnect all signals ({})'.format(msg),
+                exceptions=exceptions)
 
     def _validate_kind(self, val):
         if isinstance(val, str):
@@ -979,6 +1167,8 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
         already exist, or a device component has yet to be instantiated.
         '''
         if '.' not in name:
+            if self._destroyed:
+                raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
             try:
                 # Initial access of signal
                 cpt = self._sig_attrs[name]
@@ -1082,9 +1272,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
     def _done_acquiring(self, **kwargs):
         '''Call when acquisition has completed.'''
-        self._run_subs(sub_type=self.SUB_ACQ_DONE,
-                       success=True, **kwargs)
-
+        self._run_subs(sub_type=self.SUB_ACQ_DONE, success=True, **kwargs)
         self._reset_sub(self.SUB_ACQ_DONE)
 
     @doc_annotation_forwarder(BlueskyInterface)
@@ -1300,3 +1488,40 @@ def _lazy_get(parent, name):
 
 def _ensure_kind(k):
     return getattr(Kind, k.lower()) if isinstance(k, str) else k
+
+
+def _wait_for_connection_context(value, doc):
+    @contextlib.contextmanager
+    def wrapped(dev):
+        '''Context manager which changes the wait behavior of lazy signal instantiation
+
+        By default, upon instantiation of a lazy signal, `wait_for_connection`
+        is called.  While a common source of confusion, this is done
+        intentionally and for good reason: without this functionality in place,
+        any new lazy signal will generally take a finite amount of time to
+        connect. This then requires that the user manually call
+        `wait_for_connection` each time before using the signal.
+
+        In certain cases, it can be desirable to override this behavior. For
+        instance, when instantiating multiple lazy signals or instantiating a
+        signal just so that a subscription can be added.
+
+        {doc}
+
+        Parameters
+        ----------
+        dev : Device
+            The device to temporarily change
+        '''
+        orig = dev.lazy_wait_for_connection
+        dev.lazy_wait_for_connection = value
+        yield
+        dev.lazy_wait_for_connection = orig
+
+    return wrapped
+
+
+wait_for_lazy_connection = _wait_for_connection_context(
+    True, doc='Wait for lazy signals to connect post-instantiation.')
+do_not_wait_for_lazy_connection = _wait_for_connection_context(
+    False, doc='Do not wait for lazy signals to connect post-instantiation.')

@@ -4,8 +4,11 @@ from unittest.mock import Mock
 
 import numpy as np
 
-from ophyd import (Device, Component, FormattedComponent)
-from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal)
+from ophyd import (Device, Component, FormattedComponent,
+                   wait_for_lazy_connection, do_not_wait_for_lazy_connection)
+from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
+                          ReadOnlyError)
+from ophyd.device import ComponentWalk
 from ophyd.utils import ExceptionBundle
 from .conftest import AssertTools
 
@@ -16,6 +19,14 @@ class FakeSignal(Signal):
     def __init__(self, read_pv, *, name=None, parent=None, **kwargs):
         self.read_pv = read_pv
         super().__init__(name=name, parent=parent, **kwargs)
+        self._waited_for_connection = False
+        self._subscriptions = []
+
+    def wait_for_connection(self):
+        self._waited_for_connection = True
+
+    def subscribe(self, method, event_type, **kw):
+        self._subscriptions.append((method, event_type, kw))
 
     def get(self):
         return self.name
@@ -25,14 +36,6 @@ class FakeSignal(Signal):
 
     def read_configuration(self):
         return {self.name + '_conf': {'value': 0}}
-
-
-def setUpModule():
-    pass
-
-
-def tearDownModule():
-    logger.debug('Cleaning up')
 
 
 def test_device_state():
@@ -245,7 +248,8 @@ def test_attribute_signal():
     class MyDevice(Device):
         sub1 = Component(SubDevice, '1')
         attrsig = Component(AttributeSignal, 'prop')
-        sub_attrsig = Component(AttributeSignal, 'sub1.prop')
+        sub_attrsig = Component(AttributeSignal, 'sub1.prop',
+                                write_access=False)
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -269,7 +273,11 @@ def test_attribute_signal():
     assert dev.attrsig.get() == 55
     assert cb.called
     assert dev.sub_attrsig.get() == init_value
-    dev.sub_attrsig.put(0)
+    assert dev.sub_attrsig.read_access
+    assert not dev.sub_attrsig.write_access
+
+    with pytest.raises(ReadOnlyError):
+        dev.sub_attrsig.put(0)
 
 
 def test_attribute_signal_attributeerror():
@@ -357,3 +365,250 @@ def test_device_put():
 
     with pytest.raises(ValueError):
         d.put((1, 2, 3))
+
+
+def test_lazy_wait_for_connect():
+    class MyDevice(Device):
+        lazy_wait_for_connection = False
+        cpt = Component(FakeSignal, 'suffix', lazy=True)
+
+    d = MyDevice('', name='test')
+    with wait_for_lazy_connection(d):
+        d.cpt
+
+    assert d.cpt._waited_for_connection
+
+
+def test_lazy_do_not_wait_for_connect():
+    class MyDevice(Device):
+        lazy_wait_for_connection = True
+        cpt = Component(FakeSignal, 'suffix', lazy=True)
+
+    d = MyDevice('', name='test')
+    with do_not_wait_for_lazy_connection(d):
+        d.cpt
+
+    assert not d.cpt._waited_for_connection
+
+
+def test_sub_decorator(motor):
+    class MyDevice(Device):
+        cpt = Component(FakeSignal, 'suffix', lazy=True)
+
+        @cpt.sub_default
+        def default(self, **kw):
+            pass
+
+        @cpt.sub_value
+        def value(self, **kw):
+            pass
+
+        @cpt.sub_meta
+        def metadata(self, **kw):
+            pass
+
+    d = MyDevice('', name='test')
+
+    subs = set(event_type for method, event_type, kw in d.cpt._subscriptions)
+    assert subs == {None, 'value', 'meta'}
+
+
+def test_walk_components():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    assert list(MyDevice.walk_components()) == [
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='sub1',
+                      item=MyDevice.sub1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.cpt1',
+                      item=MyDevice.sub1.cls.cpt1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.cpt2',
+                      item=MyDevice.sub1.cls.cpt2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.cpt3',
+                      item=MyDevice.sub1.cls.cpt3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub1.subsub',
+                      item=MyDevice.sub1.cls.subsub),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, SubSubDevice, ),
+                      dotted_name='sub1.subsub.cpt4',
+                      item=MyDevice.sub1.cls.subsub.cls.cpt4),
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='sub2',
+                      item=MyDevice.sub2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.cpt1',
+                      item=MyDevice.sub2.cls.cpt1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.cpt2',
+                      item=MyDevice.sub2.cls.cpt2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.cpt3',
+                      item=MyDevice.sub2.cls.cpt3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub2.subsub',
+                      item=MyDevice.sub2.cls.subsub),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, SubSubDevice, ),
+                      dotted_name='sub2.subsub.cpt4',
+                      item=MyDevice.sub2.cls.subsub.cls.cpt4),
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='sub3',
+                      item=MyDevice.sub3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.cpt1',
+                      item=MyDevice.sub3.cls.cpt1),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.cpt2',
+                      item=MyDevice.sub3.cls.cpt2),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.cpt3',
+                      item=MyDevice.sub3.cls.cpt3),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, ),
+                      dotted_name='sub3.subsub',
+                      item=MyDevice.sub3.cls.subsub),
+        ComponentWalk(ancestors=(MyDevice, SubDevice, SubSubDevice, ),
+                      dotted_name='sub3.subsub.cpt4',
+                      item=MyDevice.sub3.cls.subsub.cls.cpt4),
+        ComponentWalk(ancestors=(MyDevice, ),
+                      dotted_name='cpt3',
+                      item=MyDevice.cpt3),
+    ]
+
+
+@pytest.mark.parametrize('include_lazy', [False, True])
+def test_walk_signals(include_lazy):
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4', lazy=True)
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    print(MyDevice.sub1.cls.cpt1)
+
+    dev = MyDevice('', name='mydev')
+
+    expected = [
+        ComponentWalk(ancestors=(dev, dev.sub1, ),
+                      dotted_name='sub1.cpt1',
+                      item=dev.sub1.cpt1),
+        ComponentWalk(ancestors=(dev, dev.sub1, ),
+                      dotted_name='sub1.cpt2',
+                      item=dev.sub1.cpt2),
+        ComponentWalk(ancestors=(dev, dev.sub1, ),
+                      dotted_name='sub1.cpt3',
+                      item=dev.sub1.cpt3),
+        ComponentWalk(ancestors=(dev, dev.sub1, dev.sub1.subsub, ),
+                      dotted_name='sub1.subsub.cpt4',
+                      item=dev.sub1.subsub.cpt4),
+        ComponentWalk(ancestors=(dev, dev.sub2, ),
+                      dotted_name='sub2.cpt1',
+                      item=dev.sub2.cpt1),
+        ComponentWalk(ancestors=(dev, dev.sub2, ),
+                      dotted_name='sub2.cpt2',
+                      item=dev.sub2.cpt2),
+        ComponentWalk(ancestors=(dev, dev.sub2, ),
+                      dotted_name='sub2.cpt3',
+                      item=dev.sub2.cpt3),
+        ComponentWalk(ancestors=(dev, dev.sub2, dev.sub2.subsub, ),
+                      dotted_name='sub2.subsub.cpt4',
+                      item=dev.sub2.subsub.cpt4),
+        ComponentWalk(ancestors=(dev, dev.sub3, ),
+                      dotted_name='sub3.cpt1',
+                      item=dev.sub3.cpt1),
+        ComponentWalk(ancestors=(dev, dev.sub3, ),
+                      dotted_name='sub3.cpt2',
+                      item=dev.sub3.cpt2),
+        ComponentWalk(ancestors=(dev, dev.sub3, ),
+                      dotted_name='sub3.cpt3',
+                      item=dev.sub3.cpt3),
+        ComponentWalk(ancestors=(dev, dev.sub3, dev.sub3.subsub, ),
+                      dotted_name='sub3.subsub.cpt4',
+                      item=dev.sub3.subsub.cpt4),
+        ComponentWalk(ancestors=(dev, ),
+                      dotted_name='cpt3',
+                      item=dev.cpt3),
+    ]
+
+    if not include_lazy:
+        expected = [item for item in expected
+                    if 'cpt4' not in item.dotted_name
+                    ]
+
+    assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
+
+
+def test_walk_subdevice_classes():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    assert list(MyDevice.walk_subdevice_classes()) == [
+        ('sub1', SubDevice),
+        ('sub1.subsub', SubSubDevice),
+        ('sub2', SubDevice),
+        ('sub2.subsub', SubSubDevice),
+        ('sub3', SubDevice),
+        ('sub3.subsub', SubSubDevice),
+    ]
+
+
+def test_walk_subdevices():
+    class SubSubDevice(Device):
+        cpt4 = Component(FakeSignal, '4')
+
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+        cpt2 = Component(FakeSignal, '2')
+        cpt3 = Component(FakeSignal, '3')
+        subsub = Component(SubSubDevice, '')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+        sub3 = Component(SubDevice, 'sub3')
+        cpt3 = Component(FakeSignal, 'cpt3')
+
+    dev = MyDevice('', name='mydev')
+    assert list(dev.walk_subdevices()) == [
+        ('sub1', dev.sub1),
+        ('sub1.subsub', dev.sub1.subsub),
+        ('sub2', dev.sub2),
+        ('sub2.subsub', dev.sub2.subsub),
+        ('sub3', dev.sub3),
+        ('sub3.subsub', dev.sub3.subsub),
+    ]

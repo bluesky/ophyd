@@ -5,13 +5,13 @@ import threading
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError)
+from .utils import ReadOnlyError, LimitError, set_and_wait
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
 from .ophydobj import OphydObject, Kind
 from .status import Status
-from .utils import set_and_wait
+from .utils.errors import DisconnectedError
 from . import get_cl
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,7 @@ class Signal(OphydObject):
         The relative tolerance associated with the value
     '''
     SUB_VALUE = 'value'
+    SUB_META = 'meta'
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
@@ -64,11 +65,20 @@ class Signal(OphydObject):
         if timestamp is None:
             timestamp = time.time()
 
+        self._destroyed = False
         self._timestamp = timestamp
         self._set_thread = None
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
+
+        # Signal defaults to being connected, with full read/write access.
+        # Subclasses are expected to clear these on init, if applicable.
+        self._metadata = dict(
+            connected=True,
+            read_access=True,
+            write_access=True
+        )
 
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
@@ -98,13 +108,22 @@ class Signal(OphydObject):
 
     def _repr_info(self):
         yield from super()._repr_info()
-        value = self.value
+        try:
+            value = self.value
+        except Exception:
+            value = None
+
         if value is not None:
             yield ('value', value)
-        if self.timestamp is not None:
-            yield ('timestamp', self.timestamp)
-        if self.tolerance is not None:
-            yield ('tolerance', self.tolerance)
+
+        try:
+            if self.timestamp is not None:
+                yield ('timestamp', self.timestamp)
+            if self.tolerance is not None:
+                yield ('tolerance', self.tolerance)
+        except DisconnectedError:
+            ...
+
         if self.rtolerance is not None:
             yield ('rtolerance', self.rtolerance)
 
@@ -131,9 +150,11 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-
         # TODO: consider adding set_and_wait here as a kwarg
         if not force:
+            if not self.write_access:
+                raise ReadOnlyError('Signal does not allow write access')
+
             self.check_value(value)
 
         old_value = self._readback
@@ -168,8 +189,8 @@ class Signal(OphydObject):
                                exc_info=ex)
                 success = False
             else:
-                self.log.debug('set_and_wait(%r, %s) succeeded => %s', self.name,
-                               value, self.value)
+                self.log.debug('set_and_wait(%r, %s) succeeded => %s',
+                               self.name, value, self.value)
                 success = True
                 if settle_time is not None:
                     time.sleep(settle_time)
@@ -228,6 +249,7 @@ class Signal(OphydObject):
 
     @property
     def limits(self):
+        # NOTE: subclasses are expected to override this property
         # Always override, never extend this
         return (0, 0)
 
@@ -246,9 +268,45 @@ class Signal(OphydObject):
         else:
             return {'fields': []}
 
+    @property
+    def connected(self):
+        'Is the signal connected to its associated hardware?'
+        return self._metadata.get('connected')
+
+    @property
+    def read_access(self):
+        'Can the signal be read?'
+        return self._metadata.get('read_access')
+
+    @property
+    def write_access(self):
+        'Can the signal be written to?'
+        return self._metadata.get('write_access')
+
+    @property
+    def metadata(self):
+        'All metadata associated with the signal'
+        return dict(self._metadata)
+
+    def destroy(self):
+        '''Disconnect the Signal from the underlying control layer
+
+        Clears all subscriptions on this Signal.  Once disconnected, the signal
+        may no longer be used.
+        '''
+        self._destroyed = True
+        super().destroy()
+
+    def __del__(self):
+        try:
+            self.destroy()
+        except Exception:
+            ...
+
 
 class DerivedSignal(Signal):
-    def __init__(self, derived_from, *, name=None, parent=None, **kwargs):
+    def __init__(self, derived_from, *, write_access=None, name=None,
+                 parent=None, **kwargs):
         '''A signal which is derived from another one
 
         Parameters
@@ -265,13 +323,26 @@ class DerivedSignal(Signal):
         if isinstance(derived_from, str):
             derived_from = getattr(parent, derived_from)
         self._derived_from = derived_from
-        connected = self._derived_from.connected
-        if connected:
-            # set up the initial timestamp reporting, if connected
-            self._timestamp = self._derived_from.timestamp
 
-        self._derived_from.subscribe(self._derived_value_callback,
-                                     event_type=self.SUB_VALUE, run=connected)
+        if write_access is None:
+            write_access = derived_from.write_access
+
+        self._metadata.update(
+            connected=derived_from.connected,
+            read_access=derived_from.read_access,
+            write_access=write_access,
+        )
+
+        if self.connected:
+            # set up the initial timestamp reporting, if connected
+            self._timestamp = derived_from.timestamp
+
+        derived_from.subscribe(self._derived_value_callback,
+                               event_type=self.SUB_VALUE,
+                               run=self.connected)
+        derived_from.subscribe(self._derived_metadata_callback,
+                               event_type=self.SUB_META,
+                               run=self.connected)
 
     @property
     def derived_from(self):
@@ -283,6 +354,17 @@ class DerivedSignal(Signal):
         desc = self._derived_from.describe()[self._derived_from.name]
         desc['derived_from'] = self._derived_from.name
         return {self.name: desc}
+
+    def _derived_metadata_callback(self, *, connected, read_access,
+                                   write_access, timestamp, **kwargs):
+        self._metadata.update(
+            connected=connected,
+            read_access=read_access,
+            write_access=write_access,
+        )
+        self._run_subs(sub_type=self.SUB_META,
+                       timestamp=self._metadata.get('timestamp'),
+                       **self._metadata)
 
     def _derived_value_callback(self, value=None, timestamp=None, **kwargs):
         value = self.inverse(value)
@@ -302,6 +384,8 @@ class DerivedSignal(Signal):
 
     def put(self, value, **kwargs):
         '''Put the value to the original signal'''
+        if not self.write_access:
+            raise ReadOnlyError('DerivedSignal is marked as read-only')
         value = self.forward(value)
         res = self._derived_from.put(value, **kwargs)
         self._timestamp = self._derived_from.timestamp
@@ -373,6 +457,7 @@ class EpicsSignalBase(Signal):
         self._string = bool(string)
         self._pv_kw = pv_kw
         self._auto_monitor = auto_monitor
+        self._pvs_ready_event = threading.Event()
 
         if name is None:
             name = read_pv
@@ -381,13 +466,58 @@ class EpicsSignalBase(Signal):
 
         validate_pv_name(read_pv)
         cl = self.cl
-        self._read_pv = cl.get_pv(read_pv, form=cl.pv_form,
-                                  auto_monitor=auto_monitor,
-                                  **pv_kw)
+
+        # Keep track of all associated PV's connectivity and access rights
+        # callbacks:
+        # Note: these are {pvname: bool}
+        self._connection_states = {
+            read_pv: False
+        }
+
+        self._access_rights_valid = {
+            read_pv: False
+        }
+
+        self._metadata['connected'] = False
+        self._read_pv = cl.get_pv(
+            read_pv, form=cl.pv_form, auto_monitor=auto_monitor,
+            connection_callback=self._pv_connected,
+            access_callback=self._pv_access_callback,
+            **pv_kw)
 
         with self._lock:
             self._read_pv.add_callback(self._read_changed,
                                        run_now=self._read_pv.connected)
+
+    def _pv_connected(self, pvname, conn, pv):
+        'Control-layer callback: PV has [dis]connected'
+        if self._destroyed:
+            return
+
+        if not conn:
+            self._pvs_ready_event.clear()
+            self._access_rights_valid[pv.pvname] = False
+
+        old_connected = self.connected
+        self._connection_states[pvname] = conn
+        self._metadata['connected'] = all(self._connection_states.values())
+        if old_connected != self.connected:
+            self._run_subs(sub_type=self.SUB_META,
+                           timestamp=self._metadata.get('timestamp'),
+                           **self._metadata)
+
+        self._set_event_if_ready()
+
+    def _set_event_if_ready(self):
+        '''If connected and access rights received, set the "ready" event used
+        in wait_for_connection.'''
+        if self.connected and all(self._access_rights_valid.values()):
+            self._pvs_ready_event.set()
+
+    def _pv_access_callback(self, read_access, write_access, pv):
+        'Control-layer callback: PV access rights have changed'
+        self._access_rights_valid[pv.pvname] = True
+        self._set_event_if_ready()
 
     @property
     def as_string(self):
@@ -414,9 +544,8 @@ class EpicsSignalBase(Signal):
         """PV status"""
         with self._lock:
             status = self._read_pv.status
-            if status is None:
-                return None
-            return AlarmStatus(status)
+            if status is not None:
+                return AlarmStatus(status)
 
     @property
     @raise_if_disconnected
@@ -424,9 +553,8 @@ class EpicsSignalBase(Signal):
         """PV alarm severity"""
         with self._lock:
             severity = self._read_pv.severity
-            if severity is None:
-                return None
-            return AlarmSeverity(severity)
+            if severity is not None:
+                return AlarmSeverity(severity)
 
     def _reinitialize_pv(self, old_instance, **pv_kw):
         '''Reinitialize a PV instance
@@ -445,8 +573,11 @@ class EpicsSignalBase(Signal):
             old_instance.clear_callbacks()
             was_connected = old_instance.connected
 
+            self._connection_states[old_instance.pvname] = False
+            self._access_rights_valid[old_instance.pvname] = False
             new_instance = self.cl.get_pv(old_instance.pvname,
                                           form=old_instance.form, **pv_kw)
+
             if was_connected:
                 new_instance.wait_for_connection()
 
@@ -466,22 +597,37 @@ class EpicsSignalBase(Signal):
         # don't need to reinitialize it
         with self._lock:
             if obj_mon and not self._read_pv.auto_monitor:
-                self._read_pv = self._reinitialize_pv(self._read_pv,
-                                                      auto_monitor=True,
-                                                      **self._pv_kw)
+                self._read_pv = self._reinitialize_pv(
+                    self._read_pv, auto_monitor=True,
+                    connection_callback=self._pv_connected,
+                    access_callback=self._pv_access_callback,
+                    **self._pv_kw)
                 self._read_pv.add_callback(self._read_changed,
                                            run_now=self._read_pv.connected)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
-    def wait_for_connection(self, timeout=1.0):
-        if self._read_pv.connected:
-            return
-
+    def _ensure_connected(self, pv, *, timeout):
+        'Ensure that `pv` is connected, with access/connection callbacks run'
         with self._lock:
-            if not self._read_pv.wait_for_connection(timeout=timeout):
-                raise TimeoutError('Failed to connect to %s' %
-                                   self._read_pv.pvname)
+            if self.connected:
+                return
+
+            if not pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError('Failed to connect to %s' % pv.pvname)
+
+        # Ensure callbacks are run prior to returning, as
+        # @raise_if_disconnected can cause issues otherwise.
+        try:
+            self._pvs_ready_event.wait(timeout)
+        except TimeoutError:
+            raise TimeoutError('Control layer {} failed to send connection and '
+                               'access rights information within {:.1f} sec'
+                               ''.format(self.cl.name, float(timeout))) from None
+
+    def wait_for_connection(self, timeout=1.0):
+        '''Wait for the underlying signals to initialize or connect'''
+        self._ensure_connected(self._read_pv, timeout=timeout)
 
     @property
     @raise_if_disconnected
@@ -504,10 +650,6 @@ class EpicsSignalBase(Signal):
         yield ('pv_kw', self._pv_kw)
         yield ('auto_monitor', self._auto_monitor)
         yield ('string', self._string)
-
-    @property
-    def connected(self):
-        return self._read_pv.connected
 
     @property
     @raise_if_disconnected
@@ -548,11 +690,7 @@ class EpicsSignalBase(Signal):
             as_string = self._string
 
         with self._lock:
-            if not self._read_pv.connected:
-                if not self._read_pv.wait_for_connection(connection_timeout):
-                    raise TimeoutError('Failed to connect to %s' %
-                                       self._read_pv.pvname)
-
+            self._ensure_connected(self._read_pv, timeout=connection_timeout)
             ret = self._read_pv.get(as_string=as_string, **kwargs)
 
         if as_string:
@@ -618,6 +756,13 @@ class EpicsSignalBase(Signal):
         return {self.name: {'value': self.value,
                             'timestamp': self.timestamp}}
 
+    def destroy(self):
+        '''Disconnect the EpicsSignal from the underlying PV instance'''
+        super().destroy()
+        if self._read_pv is not None:
+            self.cl.release_pvs(self._read_pv)
+            self._read_pv = None
+
 
 class EpicsSignalRO(EpicsSignalBase):
     '''A read-only EpicsSignal -- that is, one with no `write_pv`
@@ -637,11 +782,35 @@ class EpicsSignalRO(EpicsSignalBase):
     name : str, optional
         Name of signal.  If not given defaults to read_pv
     '''
+
+    def __init__(self, read_pv, *, pv_kw=None, string=False,
+                 auto_monitor=False, name=None, **kwargs):
+        super().__init__(read_pv, pv_kw=pv_kw, string=string,
+                         auto_monitor=auto_monitor, name=name,
+                         **kwargs)
+        self._metadata['write_access'] = False
+
     def put(self, *args, **kwargs):
-        raise ReadOnlyError('Read-only signals cannot be put to')
+        raise ReadOnlyError('Cannot write to read-only EpicsSignal')
 
     def set(self, *args, **kwargs):
         raise ReadOnlyError('Read-only signals cannot be set')
+
+    def _pv_access_callback(self, read_access, write_access, pv):
+        'Control-layer callback: read PV access rights have changed'
+        # Tweak write access here - this is a read-only signal!
+        if self._destroyed:
+            return
+
+        self._metadata.update(
+            read_access=read_access,
+            write_access=False,
+        )
+        if self.connected:
+            self._run_subs(sub_type=self.SUB_META, timestamp=None,
+                           **self._metadata)
+
+        super()._pv_access_callback(read_access, write_access, pv)
 
 
 class EpicsSignal(EpicsSignalBase):
@@ -689,18 +858,28 @@ class EpicsSignal(EpicsSignalBase):
             write_pv = None
 
         super().__init__(read_pv, pv_kw=pv_kw, string=string,
-                         auto_monitor=auto_monitor, name=name, **kwargs)
+                         auto_monitor=auto_monitor, name=name,
+                         **kwargs)
 
         if write_pv is not None:
             validate_pv_name(write_pv)
             cl = self.cl
-            self._write_pv = cl.get_pv(write_pv, form=cl.pv_form,
-                                       auto_monitor=self._auto_monitor,
-                                       **self._pv_kw)
+            self._connection_states[write_pv] = False
+            self._write_pv = cl.get_pv(
+                write_pv, form=cl.pv_form,
+                auto_monitor=self._auto_monitor,
+                connection_callback=self._pv_connected,
+                access_callback=self._pv_access_callback,
+                **self._pv_kw)
             self._write_pv.add_callback(self._write_changed,
                                         run_now=self._write_pv.connected)
         else:
             self._write_pv = self._read_pv
+
+        # NOTE: after this point, write_pv can either be:
+        #  (1) the same as read_pv
+        #  (2) a completely separate PV instance
+        # It will not be None, until destroy() is called.
 
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
@@ -716,22 +895,21 @@ class EpicsSignal(EpicsSignalBase):
         # don't need to reinitialize it
         with self._lock:
             if obj_mon and not self._write_pv.auto_monitor:
-                self._write_pv = self._reinitialize_pv(self._write_pv,
-                                                       auto_monitor=True,
-                                                       **self._pv_kw)
+                self._write_pv = self._reinitialize_pv(
+                    self._write_pv, auto_monitor=True,
+                    connection_callback=self._pv_connected,
+                    access_callback=self._pv_access_callback,
+                    **self._pv_kw)
                 self._write_pv.add_callback(self._write_changed,
                                             run_now=self._write_pv.connected)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
+        '''Wait for the underlying signals to initialize or connect'''
         super().wait_for_connection(timeout=timeout)
 
-        with self._lock:
-            if self._write_pv is not None and not self._write_pv.connected:
-                if not self._write_pv.wait_for_connection(timeout=timeout):
-                    raise TimeoutError('Failed to connect to %s' %
-                                       self._write_pv.pvname)
+        self._ensure_connected(self._write_pv, timeout=timeout)
 
     @property
     @raise_if_disconnected
@@ -798,15 +976,9 @@ class EpicsSignal(EpicsSignalBase):
 
     def _repr_info(self):
         yield from super()._repr_info()
-        if self._write_pv is not None:
-            yield ('write_pv', self._write_pv.pvname)
-
+        yield ('write_pv', self._write_pv.pvname)
         yield ('limits', self._use_limits)
         yield ('put_complete', self._put_complete)
-
-    @property
-    def connected(self):
-        return self._read_pv.connected and self._write_pv.connected
 
     @property
     @raise_if_disconnected
@@ -889,13 +1061,12 @@ class EpicsSignal(EpicsSignalBase):
             self.check_value(value)
 
         with self._lock:
-            if not self._write_pv.connected:
-                if not self._write_pv.wait_for_connection(connection_timeout):
-                    raise TimeoutError('Failed to connect to %s' %
-                                       self._write_pv.pvname)
-
+            self._ensure_connected(self._write_pv, timeout=connection_timeout)
             if use_complete is None:
                 use_complete = self._put_complete
+
+            if not self.write_access:
+                raise ReadOnlyError('No write access to underlying EPICS PV')
 
             self._write_pv.put(value, use_complete=use_complete, **kwargs)
 
@@ -959,6 +1130,30 @@ class EpicsSignal(EpicsSignalBase):
     def setpoint(self, value):
         self.put(value)
 
+    def _pv_access_callback(self, read_access, write_access, pv):
+        'Control-layer callback: PV access rights have changed '
+        if self._destroyed:
+            return
+
+        if pv is self._read_pv:
+            self._metadata['read_access'] = read_access
+        elif pv is self._write_pv:
+            self._metadata['write_access'] = write_access
+
+        if self.connected:
+            self._run_subs(sub_type=self.SUB_META,
+                           timestamp=self._metadata.get('timestamp'),
+                           **self._metadata)
+
+        super()._pv_access_callback(read_access, write_access, pv)
+
+    def destroy(self):
+        '''Destroy the EpicsSignal from the underlying PV instance'''
+        super().destroy()
+        if self._write_pv is not None:
+            self.cl.release_pvs(self._write_pv)
+            self._write_pv = None
+
 
 class AttributeSignal(Signal):
     '''Signal derived from a Python object instance's attribute
@@ -971,14 +1166,24 @@ class AttributeSignal(Signal):
         The signal name
     parent : Device, optional
         The parent device instance
+    read_access : bool, optional
+        Allow read access to the attribute
+    write_access : bool, optional
+        Allow write access to the attribute
     '''
-    def __init__(self, attr, *, name=None, parent=None, **kwargs):
+    def __init__(self, attr, *, name=None, parent=None, write_access=True,
+                 **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
         if '.' in attr:
             self.attr_base, self.attr = attr.rsplit('.', 1)
         else:
             self.attr_base, self.attr = None, attr
+
+        self._metadata.update(
+            read_access=True,
+            write_access=write_access,
+        )
 
     @property
     def full_attr(self):
@@ -1007,6 +1212,9 @@ class AttributeSignal(Signal):
         return getattr(self.base, self.attr)
 
     def put(self, value, **kwargs):
+        if not self.write_access:
+            raise ReadOnlyError('AttributeSignal is marked as read-only')
+
         old_value = self.get()
         setattr(self.base, self.attr, value)
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,

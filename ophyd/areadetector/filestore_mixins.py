@@ -175,10 +175,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
            def register_resource(spec: str,
                                  root: str, rpath: str,
                                  rkwargs: dict,
-                                 path_semantics: Optional[str]): -> str
+                                 path_semantics: Optional[str]) -> str:
                ...
 
-           def register_datum(resource: str, datum_kwargs: dict): -> str
+           def register_datum(resource_uid: str, datum_kwargs: dict) -> str:
                ...
 
 

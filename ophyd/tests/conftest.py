@@ -10,7 +10,10 @@ import weakref
 import numpy as np
 import numpy.testing
 
-from ophyd import get_cl, set_cl
+from ophyd import (get_cl, set_cl, EpicsMotor, Signal, EpicsSignal,
+                   EpicsSignalRO, Component as Cpt, MotorBundle)
+from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +30,7 @@ class FakeEpicsPV(object):
     def __init__(self, pvname, form=None,
                  callback=None, connection_callback=None,
                  auto_monitor=True, enum_strs=None,
+                 access_callback=None,
                  **kwargs):
 
         self.callbacks = dict()
@@ -35,11 +39,12 @@ class FakeEpicsPV(object):
         _FAKE_PV_LIST.append(self)
 
         self._pvname = pvname
+        self._access_callback = access_callback
         self._connection_callback = connection_callback
         self._form = form
         self._auto_monitor = auto_monitor
         self._value = self.fake_values[0]
-        self._connected = False
+        self.connected = False
         self._running = True
         self.enum_strs = enum_strs
         FakeEpicsPV._pv_idx += 1
@@ -71,26 +76,27 @@ class FakeEpicsPV(object):
     def get_ctrlvars(self):
         pass
 
-    @property
-    def connected(self):
-        return self._connected
-
     def wait_for_connection(self, timeout=None):
         if self._pvname in ('does_not_connect', ):
             return False
 
-        while not self._connected:
+        while not self.connected:
             time.sleep(0.05)
 
         return True
 
     def _update_loop(self):
         time.sleep(random.uniform(*self._connect_delay))
-        if self._connection_callback is not None:
-            self._connection_callback(pvname=self._pvname, conn=True, pv=self)
-
         if self._pvname in ('does_not_connect', ):
             return
+
+        if self._connection_callback is not None:
+            self._connection_callback(pvname=self._pvname, conn=True, pv=self)
+            # update connection status AFTER the callback - mirroring pyepics
+            self.connected = True
+
+        if self._access_callback is not None:
+            self._access_callback(True, True, pv=self)
 
         last_value = None
         while self._running:
@@ -104,7 +110,6 @@ class FakeEpicsPV(object):
                     last_value = self._value
 
                 time.sleep(self._update_rate)
-            self._connected = True
 
             time.sleep(0.01)
 
@@ -217,6 +222,9 @@ class FakeEpicsPV(object):
             self._update = False
             self._value = value
 
+    def force_read_access_rights(self):
+        pass
+
 
 class FakeEpicsWaveform(FakeEpicsPV):
     strings = ['abcd', 'efgh', 'ijkl']
@@ -298,6 +306,65 @@ def cl_selector(request):
     set_cl(cl_name)
     yield
     set_cl()
+
+
+class CustomAlarmEpicsSignalRO(EpicsSignalRO):
+    alarm_status = AlarmStatus.NO_ALARM
+    alarm_severity = AlarmSeverity.NO_ALARM
+
+
+class TestEpicsMotor(EpicsMotor):
+    user_readback = Cpt(CustomAlarmEpicsSignalRO, '.RBV', kind='hinted')
+    high_limit_switch = Cpt(Signal, value=0, kind='omitted')
+    low_limit_switch = Cpt(Signal, value=0, kind='omitted')
+    direction_of_travel = Cpt(Signal, value=0, kind='omitted')
+    high_limit_value = Cpt(EpicsSignal, '.HLM', kind='config')
+    low_limit_value = Cpt(EpicsSignal, '.LLM', kind='config')
+
+    @user_readback.sub_value
+    def _pos_changed(self, timestamp=None, value=None, **kwargs):
+        '''Callback from EPICS, indicating a change in position'''
+        super()._pos_changed(timestamp=timestamp, value=value, **kwargs)
+
+
+@pytest.fixture(scope='function')
+def motor(request):
+    sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
+
+    motor = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
+                           timeout=10.0)
+    print('Created EpicsMotor:', motor)
+    motor.wait_for_connection()
+    motor.low_limit_value.put(-100, wait=True)
+    motor.high_limit_value.put(100, wait=True)
+
+    while motor.motor_done_move.get() != 1:
+        print('Waiting for {} to stop moving...'.format(motor))
+        time.sleep(0.5)
+
+    def cleanup():
+        motor.destroy()
+
+    request.addfinalizer(cleanup)
+    return motor
+
+
+@pytest.fixture(scope='function')
+def cleanup(request):
+    'Destroy all items added to the list during the finalizer'
+    items = []
+
+    class Cleaner:
+        def add(self, item):
+            items.append(item)
+
+    def clean():
+        for item in items:
+            print('Destroying', item.name)
+            item.destroy()
+
+    request.addfinalizer(clean)
+    return Cleaner()
 
 
 class AssertTools:

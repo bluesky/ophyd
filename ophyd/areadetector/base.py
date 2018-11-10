@@ -20,8 +20,8 @@ class EpicsSignalWithRBV(EpicsSignal):
 
 
 class ADComponent(Component):
-    def __init__(self, cls, suffix, **kwargs):
-        super().__init__(cls, suffix, lazy=True, **kwargs)
+    def __init__(self, cls, suffix, lazy=True, **kwargs):
+        super().__init__(cls, suffix, lazy=lazy, **kwargs)
 
     def find_docs(self, parent_class):
         '''Find all the documentation related to this class, all the way up the
