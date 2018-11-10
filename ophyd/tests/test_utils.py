@@ -15,10 +15,11 @@ def test_split():
     utils = epics_utils
 
     assert utils.split_record_field('record.field') == ('record', 'field')
-    assert utils.split_record_field('record.field.invalid') == ('record.field', 'invalid')
+    assert utils.split_record_field('record.field.invalid') == ('record.field',
+                                                                'invalid')
     assert utils.strip_field('record.field') == 'record'
     assert utils.strip_field('record.field.invalid') == 'record.field'
-    assert utils.record_field('record' == 'field'), 'record.FIELD'
+    assert utils.record_field('record', 'field') == 'record.FIELD'
 
 
 def test_waveform_to_string():

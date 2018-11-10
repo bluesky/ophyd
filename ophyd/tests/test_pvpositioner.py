@@ -249,7 +249,7 @@ def test_pvpositioner_with_fake_motor(motor, fake_motor):
     str(pos)
 
 
-def test_hints():
+def test_hints(fake_motor):
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, no put completion. No done pv.'''
         setpoint = C(EpicsSignal, fake_motor['setpoint'])
