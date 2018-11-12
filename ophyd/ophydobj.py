@@ -3,13 +3,9 @@ from itertools import count
 import time
 import logging
 
-from .status import (StatusBase, MoveStatus, DeviceStatus)
+from enum import IntFlag
 
-try:
-    from enum import IntFlag
-except ImportError:
-    # we must be in python 3.5
-    from .utils._backport_enum import IntFlag
+from .status import (StatusBase, MoveStatus, DeviceStatus)
 
 
 class Kind(IntFlag):
