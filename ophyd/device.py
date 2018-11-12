@@ -23,6 +23,21 @@ from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
 ALL_COMPONENTS = object()
+# This attrs are defined at instanitation time and must not
+# collide with class attributes.
+DEVICE_INSTANCE_ATTRS = {'name', 'parent', 'component_names', '_signals',
+                         '_sig_attrs', '_sub_devices'}
+# These attributes are part of the bluesky interface and cannot be
+# used as component names.
+DEVICE_RESERVED_ATTRS = {'read', 'describe', 'trigger', 'configure',
+                         'read_configuration', 'describe_configuration',
+                         'describe_collect', 'set', 'stage', 'unstage',
+                         'pause', 'resume', 'kickoff', 'complete', 'collect',
+                         'position', 'stop',
+                         # from OphydObject
+                         'subscribe', 'clear_sub', 'event_types', 'root',
+                         # for back-compat
+                         'signal_names'}
 
 
 class OrderedDictType(Dict[A, B]):
@@ -779,23 +794,7 @@ class Device(BlueskyInterface, OphydObject):
 
     @classmethod
     def _initialize_device(cls, **kwargs):
-        # This attrs are defined at instanitation time and must not
-        # collide with class attributes.
-        INSTANCE_ATTRS = ['name', 'parent', 'component_names', '_signals',
-                          '_sig_attrs',
-                          '_sub_devices']
-        # These attributes are part of the bluesky interface and cannot be
-        # used as component names.
-        RESERVED_ATTRS = ['read', 'describe', 'trigger',
-                          'configure', 'read_configuration',
-                          'describe_configuration', 'describe_collect',
-                          'set', 'stage', 'unstage', 'pause', 'resume',
-                          'kickoff', 'complete', 'collect', 'position', 'stop',
-                          # from OphydObject
-                          'subscribe', 'clear_sub', 'event_types', 'root',
-                          # for back-compat
-                          'signal_names']
-        for attr in INSTANCE_ATTRS:
+        for attr in DEVICE_INSTANCE_ATTRS:
             if attr in cls.__dict__:
                 raise TypeError("The attribute name %r is reserved for "
                                 "use by the Device class. Choose a different "
@@ -816,7 +815,7 @@ class Device(BlueskyInterface, OphydObject):
         # map component classes to their attribute names from this class
         for attr, value in cls.__dict__.items():
             if isinstance(value, (Component, DynamicDeviceComponent)):
-                if attr in RESERVED_ATTRS:
+                if attr in DEVICE_RESERVED_ATTRS:
                     raise TypeError("The attribute name %r is part of the "
                                     "bluesky interface and cannot be used as "
                                     "the name of a component. Choose a "
