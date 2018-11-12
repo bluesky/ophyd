@@ -342,6 +342,9 @@ class DynamicDeviceComponent:
         self.trigger_value = None
         self.attrs = list(defn.keys())
 
+    def __set_name__(self, owner, attr_name):
+        self.attr = attr_name
+
     def make_docstring(self, parent_class):
         if self.doc is not None:
             return self.doc
