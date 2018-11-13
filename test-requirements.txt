@@ -3,3 +3,5 @@ coveralls
 matplotlib
 pytest
 pytest-cov
+databroker
+caproto
