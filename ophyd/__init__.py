@@ -33,6 +33,8 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
         from . import _pyepics_shim as shim
     elif control_layer == 'caproto':
         from . import _caproto_shim as shim
+    elif control_layer == 'p4p':
+        from . import _p4p_shim as shim
     elif control_layer == 'dummy':
         from . import _dummy_shim as shim
     else:
