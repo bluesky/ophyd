@@ -100,12 +100,14 @@ script:
     if [ $CONDA_ENV ]; then
         conda list
     fi
-  # running tests
+
+  # non-caproto-based tests
   - coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'not caproto'
   - coverage combine
-  - timeout 5m coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
-  - coverage combine --append
   - coverage report
+
+  # caproto-based tests (xfail for now)
+  - timeout 5m python run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
 
   - set -e
   # Build docs.
