@@ -267,32 +267,6 @@ Implicit Triggering
 Count Time
 ----------
 
-ComponentMeta
--------------
-
-All of this is enabled by :class:`ComponentMeta` class which works
-with the :class:`Component` instances to provide the :class:`Device`
-with enough semantics to implement generic versions of the
-:mod:`bluesky` interface.  As a metaclass, this extends the behavior
-of :meth:`__new__` and :meth:`__preapare__` which are used while
-creating :class:`type` instances that are classes in Python.  We use
-this chance to identify the relevant children, do some validation on the
-component names (to not shadow any other part of the API) and tell the
-component instances what their name on the device is.
-
-With python 3.6 much of this functionally is available on plain
-classes (via ``__init__subclass__``, ``__set_name__``, class dict
-guaranteed to be ordered).  Hence, this meta-class maybe simplified or
-eliminated in the future.
-
-.. autosummary::
-   :toctree: generated
-
-   ComponentMeta
-   ComponentMeta.__new__
-   ComponentMeta.__prepare__
-
-
 
 Low level API
 =============

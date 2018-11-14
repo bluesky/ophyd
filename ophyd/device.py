@@ -23,6 +23,21 @@ from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
 ALL_COMPONENTS = object()
+# This attrs are defined at instanitation time and must not
+# collide with class attributes.
+DEVICE_INSTANCE_ATTRS = {'name', 'parent', 'component_names', '_signals',
+                         '_sig_attrs', '_sub_devices'}
+# These attributes are part of the bluesky interface and cannot be
+# used as component names.
+DEVICE_RESERVED_ATTRS = {'read', 'describe', 'trigger', 'configure',
+                         'read_configuration', 'describe_configuration',
+                         'describe_collect', 'set', 'stage', 'unstage',
+                         'pause', 'resume', 'kickoff', 'complete', 'collect',
+                         'position', 'stop',
+                         # from OphydObject
+                         'subscribe', 'clear_sub', 'event_types', 'root',
+                         # for back-compat
+                         'signal_names'}
 
 
 class OrderedDictType(Dict[A, B]):
@@ -100,6 +115,9 @@ class Component:
             add_prefix = ('suffix', 'write_pv')
         self.add_prefix = tuple(add_prefix)
         self._subscriptions = collections.defaultdict(list)
+
+    def __set_name__(self, owner, attr_name):
+        self.attr = attr_name
 
     def maybe_add_prefix(self, instance, kw, suffix):
         """Add prefix to a suffix if kw is in self.add_prefix
@@ -324,6 +342,9 @@ class DynamicDeviceComponent:
         self.trigger_value = None
         self.attrs = list(defn.keys())
 
+    def __set_name__(self, owner, attr_name):
+        self.attr = attr_name
+
     def make_docstring(self, parent_class):
         if self.doc is not None:
             return self.doc
@@ -410,90 +431,6 @@ class DynamicDeviceComponent:
     def subscriptions(self, event_type):
         raise NotImplementedError('DynamicDeviceComponent does not yet '
                                   'support decorator subscriptions')
-
-
-class ComponentMeta(type):
-    '''Creates attributes for Components by inspecting class definition'''
-
-    @classmethod
-    def __prepare__(self, name, bases):
-        '''Prepare allows the class attribute dictionary to be ordered as
-        defined by the user'''
-        return OrderedDict()
-
-    def __new__(cls, name, bases, clsdict):
-        clsobj = super().__new__(cls, name, bases, clsdict)
-
-        # This attrs are defined at instanitation time and must not
-        # collide with class attributes.
-        INSTANCE_ATTRS = ['name', 'parent', 'component_names', '_signals',
-                          '_sig_attrs',
-                          '_sub_devices']
-        # These attributes are part of the bluesky interface and cannot be
-        # used as component names.
-        RESERVED_ATTRS = ['read', 'describe', 'trigger',
-                          'configure', 'read_configuration',
-                          'describe_configuration', 'describe_collect',
-                          'set', 'stage', 'unstage', 'pause', 'resume',
-                          'kickoff', 'complete', 'collect', 'position', 'stop',
-                          # from OphydObject
-                          'subscribe', 'clear_sub', 'event_types', 'root',
-                          # for back-compat
-                          'signal_names']
-        for attr in INSTANCE_ATTRS:
-            if attr in clsdict:
-                raise TypeError("The attribute name %r is reserved for "
-                                "use by the Device class. Choose a different "
-                                "name." % attr)
-
-        clsobj._sig_attrs = OrderedDict()
-        # this is so that the _sig_attrs class attribute includes the
-        # sigattrs from all of it's class-inheritance-parents so we do
-        # not have to do this look up everytime we look at it.
-        for base in reversed(bases):
-            if not hasattr(base, '_sig_attrs'):
-                continue
-
-            for attr, cpt in base._sig_attrs.items():
-                clsobj._sig_attrs[attr] = cpt
-
-        # map component classes to their attribute names from this class
-        for attr, value in clsdict.items():
-            if isinstance(value, (Component, DynamicDeviceComponent)):
-                if attr in RESERVED_ATTRS:
-                    raise TypeError("The attribute name %r is part of the "
-                                    "bluesky interface and cannot be used as "
-                                    "the name of a component. Choose a "
-                                    "different name." % attr)
-                clsobj._sig_attrs[attr] = value
-
-        for cpt_attr, cpt in clsobj._sig_attrs.items():
-            # Notify the component of their attribute name
-            cpt.attr = cpt_attr
-
-        # List Signal attribute names.
-        clsobj.component_names = tuple(clsobj._sig_attrs.keys())
-
-        # The namedtuple associated with the device
-        clsobj._device_tuple = namedtuple(
-            name + 'Tuple',
-            [comp for comp in clsobj.component_names
-             if not comp.startswith('_')])
-        # Finally, create all the component docstrings
-        for cpt in clsobj._sig_attrs.values():
-            cpt.__doc__ = cpt.make_docstring(clsobj)
-
-        # List the attributes that are Devices (not Signals).
-        # This list is used by stage/unstage. Only Devices need to be staged.
-        clsobj._sub_devices = []
-        for attr, cpt in clsobj._sig_attrs.items():
-            if (isinstance(cpt, Component) and
-                    (not isinstance(cpt.cls, type) or  # not a class
-                     not issubclass(cpt.cls, Device))):  # not a Device
-                continue
-            clsobj._sub_devices.append(attr)
-
-        return clsobj
 
 
 # These stub 'Interface' classes are the apex of the mro heirarchy for
@@ -753,7 +690,7 @@ class GenerateDatumInterface:
         pass
 
 
-class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
+class Device(BlueskyInterface, OphydObject):
     """Base class for device objects
 
     This class provides attribute access to one or more Signals, which can be
@@ -811,6 +748,7 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
                  configuration_attrs=None, parent=None, **kwargs):
         self._destroyed = False
+
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
         self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
@@ -856,6 +794,62 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
             # Instantiate non-lazy signals and lazy signals with subscriptions
             [getattr(self, attr) for attr, cpt in self._sig_attrs.items()
              if not cpt.lazy or cpt._subscriptions]
+
+    @classmethod
+    def _initialize_device(cls):
+        for attr in DEVICE_INSTANCE_ATTRS:
+            if attr in cls.__dict__:
+                raise TypeError("The attribute name %r is reserved for "
+                                "use by the Device class. Choose a different "
+                                "name." % attr)
+
+        cls._sig_attrs = OrderedDict()
+
+        # this is so that the _sig_attrs class attribute includes the
+        # sigattrs from all of it's class-inheritance-parents so we do
+        # not have to do this look up everytime we look at it.
+        for base in reversed(cls.__bases__):
+            if not hasattr(base, '_sig_attrs'):
+                continue
+
+            for attr, cpt in base._sig_attrs.items():
+                cls._sig_attrs[attr] = cpt
+
+        # map component classes to their attribute names from this class
+        for attr, value in cls.__dict__.items():
+            if isinstance(value, (Component, DynamicDeviceComponent)):
+                if attr in DEVICE_RESERVED_ATTRS:
+                    raise TypeError("The attribute name %r is part of the "
+                                    "bluesky interface and cannot be used as "
+                                    "the name of a component. Choose a "
+                                    "different name." % attr)
+                cls._sig_attrs[attr] = value
+
+        # List Signal attribute names.
+        cls.component_names = tuple(cls._sig_attrs.keys())
+
+        # The namedtuple associated with the device
+        cls._device_tuple = namedtuple(
+            f'{cls.__name__}Tuple',
+            [comp for comp in cls.component_names
+             if not comp.startswith('_')])
+        # Finally, create all the component docstrings
+        for cpt in cls._sig_attrs.values():
+            cpt.__doc__ = cpt.make_docstring(cls)
+
+        # List the attributes that are Devices (not Signals).
+        # This list is used by stage/unstage. Only Devices need to be staged.
+        cls._sub_devices = []
+        for attr, cpt in cls._sig_attrs.items():
+            if (isinstance(cpt, Component) and
+                    (not isinstance(cpt.cls, type) or  # not a class
+                     not issubclass(cpt.cls, Device))):  # not a Device
+                continue
+            cls._sub_devices.append(attr)
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls._initialize_device(**kwargs)
 
     @classmethod
     def walk_components(cls):
@@ -1475,6 +1469,12 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
 
         def __add__(self, other):
             return list(self) + list(other)
+
+
+# Device can be used on its own in trivial cases; ensure that it is ready
+# out-of-the-box for this scenario.
+if not hasattr(Device, '_sig_attrs'):
+    Device._initialize_device()
 
 
 @contextlib.contextmanager
