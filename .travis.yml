@@ -48,7 +48,6 @@ before_install:
   - export MPLBACKEND=agg
   - git fetch --unshallow
 
-  - python -mpip install git+git://github.com/NSLS-II/caproto.git
   # eventually, we should use the specific version tag of epics-on-travis:
   # - git clone --single-branch --branch "${EPICS_ON_TRAVIS_VERSION}" https://github.com/klauer/epics-on-travis "$CI_TOP"
   # but for now, get the latest scripts:
