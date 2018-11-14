@@ -796,7 +796,7 @@ class Device(BlueskyInterface, OphydObject):
              if not cpt.lazy or cpt._subscriptions]
 
     @classmethod
-    def _initialize_device(cls, **kwargs):
+    def _initialize_device(cls):
         for attr in DEVICE_INSTANCE_ATTRS:
             if attr in cls.__dict__:
                 raise TypeError("The attribute name %r is reserved for "
