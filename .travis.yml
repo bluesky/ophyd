@@ -66,8 +66,8 @@ before_install:
   - bash "${CI_SCRIPTS}/run-epics-iocs-on-procserv.sh"
 
 install:
-  - python -mpip install -r requirements.txt
-  - python -mpip install -r test-requirements.txt
+  - python -mpip install -Ur requirements.txt
+  - python -mpip install -Ur test-requirements.txt
   - python -mpip install -e .
 
   # set up directories we will need

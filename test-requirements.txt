@@ -4,4 +4,4 @@ matplotlib
 pytest
 pytest-cov
 databroker
-caproto
+caproto[complete]
