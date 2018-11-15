@@ -202,12 +202,12 @@ def test_epicssignal_waveform(cleanup, signal_test_ioc):
     cleanup.add(signal)
     signal.wait_for_connection()
 
-    signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
+    sub = signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
     assert len(signal.value) > 1
+    signal.unsubscribe(sub)
 
 
 def test_no_connection(cleanup, signal_test_ioc):
-    # special case in FakeEpicsPV that returns false in wait_for_connection
     sig = EpicsSignal('does_not_connect')
     cleanup.add(sig)
 
@@ -361,9 +361,8 @@ def test_epics_signal_derived(cleanup, signal_test_ioc):
     assert derived.read_access
     assert not derived.write_access
 
-    # race condition with the FakeEpicsPV update loop, can't really test
-    # assert derived.timestamp == signal.timestamp
-    # assert derived.get() == signal.value
+    assert derived.timestamp == signal.timestamp
+    assert derived.get() == signal.value
 
 
 @pytest.mark.parametrize('put_complete', [True, False])
