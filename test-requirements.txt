@@ -3,3 +3,4 @@ matplotlib
 pytest
 databroker
 caproto[complete]
+h5py
