@@ -14,10 +14,6 @@ DxpPresetMode = enum(No_preset='No preset',
 logger = logging.getLogger(__name__)
 
 
-REAL_SCALER = False
-devs = ['XF:23ID2-ES{Vortex}mca1', 'XF:23ID2-ES{Vortex}dxp1:']
-
-
 @using_fake_epics_pv
 def test_mca_spectrum():
     mca = EpicsMCA(devs[0], name='test')

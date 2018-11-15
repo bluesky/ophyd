@@ -370,7 +370,7 @@ def fake_motor_ioc(prefix, request):
     process = run_example_ioc('ophyd.tests.fake_motor_ioc',
                               request=request,
                               pv_to_check=pvs['setpoint'],
-                              args=('--prefix', prefix,))
+                              args=('--prefix', prefix, '--list-pvs'))
     return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
                            type='caproto')
 
@@ -387,7 +387,7 @@ def signal_test_ioc(prefix, request):
     process = run_example_ioc('ophyd.tests.signal_ioc',
                               request=request,
                               pv_to_check=pvs['read_only'],
-                              args=('--prefix', prefix,))
+                              args=('--prefix', prefix, '--list-pvs'))
     return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
                            type='caproto')
 
