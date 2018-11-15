@@ -376,6 +376,23 @@ def fake_motor_ioc(prefix, request):
 
 
 @pytest.fixture(scope='function')
+def signal_test_ioc(prefix, request):
+    name = 'test_signal IOC'
+    pvs = dict(read_only=f'{prefix}read_only',
+               read_write=f'{prefix}read_write',
+               waveform=f'{prefix}waveform',
+               bool_enum=f'{prefix}bool_enum',
+               )
+
+    process = run_example_ioc('ophyd.tests.signal_ioc',
+                              request=request,
+                              pv_to_check=pvs['read_only'],
+                              args=('--prefix', prefix,))
+    return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
+                           type='caproto')
+
+
+@pytest.fixture(scope='function')
 def cleanup(request):
     'Destroy all items added to the list during the finalizer'
     items = []
