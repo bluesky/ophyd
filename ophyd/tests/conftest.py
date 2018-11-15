@@ -1,19 +1,22 @@
-import sys
-import time
-import random
 import logging
-import pytest
+import random
+import sys
 import threading
-from functools import wraps
+import time
+import uuid
 import weakref
 
+import pytest
 import numpy as np
 import numpy.testing
+
+from types import SimpleNamespace
+from functools import wraps
 
 from ophyd import (get_cl, set_cl, EpicsMotor, Signal, EpicsSignal,
                    EpicsSignalRO, Component as Cpt, MotorBundle)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
-
+from caproto.tests.conftest import run_example_ioc
 
 logger = logging.getLogger(__name__)
 
@@ -328,11 +331,13 @@ class TestEpicsMotor(EpicsMotor):
 
 
 @pytest.fixture(scope='function')
-def motor(request):
+def motor(request, cleanup):
     sim_pv = 'XF:31IDA-OP{Tbl-Ax:X1}Mtr'
 
     motor = TestEpicsMotor(sim_pv, name='epicsmotor', settle_time=0.1,
                            timeout=10.0)
+    cleanup.add(motor)
+
     print('Created EpicsMotor:', motor)
     motor.wait_for_connection()
     motor.low_limit_value.put(-100, wait=True)
@@ -342,11 +347,32 @@ def motor(request):
         print('Waiting for {} to stop moving...'.format(motor))
         time.sleep(0.5)
 
-    def cleanup():
-        motor.destroy()
-
-    request.addfinalizer(cleanup)
     return motor
+
+
+@pytest.fixture(scope='function')
+def prefix():
+    'Random PV prefix for a server'
+    return str(uuid.uuid4())[:8] + ':'
+
+
+@pytest.fixture(scope='function')
+def fake_motor_ioc(prefix, request):
+    name = 'Fake motor IOC'
+    pvs = dict(setpoint=f'{prefix}setpoint',
+               readback=f'{prefix}readback',
+               moving=f'{prefix}moving',
+               actuate=f'{prefix}actuate',
+               stop=f'{prefix}stop',
+               step_size=f'{prefix}step_size',
+               )
+
+    process = run_example_ioc('ophyd.tests.fake_motor_ioc',
+                              request=request,
+                              pv_to_check=pvs['setpoint'],
+                              args=('--prefix', prefix,))
+    return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
+                           type='caproto')
 
 
 @pytest.fixture(scope='function')
@@ -362,6 +388,7 @@ def cleanup(request):
         for item in items:
             print('Destroying', item.name)
             item.destroy()
+        items.clear()
 
     request.addfinalizer(clean)
     return Cleaner()

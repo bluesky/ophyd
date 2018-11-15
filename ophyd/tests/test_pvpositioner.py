@@ -3,11 +3,8 @@ import pytest
 import time
 from copy import copy
 
-from ophyd import (PVPositioner, PVPositionerPC)
-from ophyd import (EpicsSignal, EpicsSignalRO)
-from ophyd import (Component as C)
-from ophyd import get_cl
-from ophyd.ophydobj import Kind
+from ophyd import (PVPositioner, PVPositionerPC, EpicsSignal, EpicsSignalRO,
+                   Component as C, get_cl, Kind)
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +18,6 @@ def tearDownModule():
     logger.debug('Cleaning up')
     logging.getLogger('ophyd.pv_positioner').setLevel(logging.INFO)
     logger.setLevel(logging.INFO)
-
-
-@pytest.fixture
-def fake_motor():
-    return {'readback': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}-I',
-            'setpoint': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}-SP',
-            'moving': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}Sts:Moving-Sts',
-            'actuate': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}Cmd:Go-Cmd.PROC',
-            'stop': 'XF:31IDA-OP{Tbl-Ax:FakeMtr}Cmd:Stop-Cmd.PROC',
-            }
 
 
 def test_not_subclassed():
@@ -182,7 +169,7 @@ def test_put_complete_setpoint_readback(motor):
     assert not pos.moving
 
 
-def test_pvpositioner_with_fake_motor(motor, fake_motor):
+def test_pvpositioner_with_fake_motor(fake_motor_ioc):
     def callback(sub_type=None, timestamp=None, value=None, **kwargs):
         logger.info('[callback] [%s] (type=%s) value=%s', timestamp,
                     sub_type, value)
@@ -192,28 +179,21 @@ def test_pvpositioner_with_fake_motor(motor, fake_motor):
 
     cl = get_cl()
     # ensure we start at 0 for this simple test
-    cl.caput(fake_motor['setpoint'], 0.05)
+    cl.caput(fake_motor_ioc.pvs['setpoint'], 0)
+    cl.caput(fake_motor_ioc.pvs['actuate'], 1)
     time.sleep(0.5)
-    cl.caput(fake_motor['actuate'], 1)
-    time.sleep(0.5)
-    cl.caput(fake_motor['setpoint'], 0)
-    time.sleep(0.5)
-    cl.caput(fake_motor['actuate'], 1)
-    time.sleep(0.5)
-
-    print('actual motor is here:', motor.position)
 
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, no put completion. No done pv.'''
-        setpoint = C(EpicsSignal, fake_motor['setpoint'])
-        readback = C(EpicsSignalRO, fake_motor['readback'])
-        actuate = C(EpicsSignal, fake_motor['actuate'])
-        stop_signal = C(EpicsSignal, fake_motor['stop'])
-        done = C(EpicsSignal, fake_motor['moving'])
+        setpoint = C(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
+        readback = C(EpicsSignalRO, fake_motor_ioc.pvs['readback'])
+        actuate = C(EpicsSignal, fake_motor_ioc.pvs['actuate'])
+        stop_signal = C(EpicsSignal, fake_motor_ioc.pvs['stop'])
+        done = C(EpicsSignal, fake_motor_ioc.pvs['moving'])
 
         actuate_value = 1
         stop_value = 1
-        done_value = 1
+        done_value = 0
 
     pos = MyPositioner('', name='pv_pos_fake_mtr')
     print('fake mtr', pos.describe())
@@ -224,7 +204,6 @@ def test_pvpositioner_with_fake_motor(motor, fake_motor):
 
     logger.info('---- test #1 ----')
     logger.info('--> move to 1')
-    print('actual motor is here:', motor.position)
     pos.move(1, timeout=5)
     assert pos.position == 1
     logger.info('--> move to 0')
@@ -249,14 +228,14 @@ def test_pvpositioner_with_fake_motor(motor, fake_motor):
     str(pos)
 
 
-def test_hints(fake_motor):
+def test_hints(fake_motor_ioc):
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, no put completion. No done pv.'''
-        setpoint = C(EpicsSignal, fake_motor['setpoint'])
-        readback = C(EpicsSignalRO, fake_motor['readback'])
-        actuate = C(EpicsSignal, fake_motor['actuate'])
-        stop_signal = C(EpicsSignal, fake_motor['stop'])
-        done = C(EpicsSignal, fake_motor['moving'])
+        setpoint = C(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
+        readback = C(EpicsSignalRO, fake_motor_ioc.pvs['readback'])
+        actuate = C(EpicsSignal, fake_motor_ioc.pvs['actuate'])
+        stop_signal = C(EpicsSignal, fake_motor_ioc.pvs['stop'])
+        done = C(EpicsSignal, fake_motor_ioc.pvs['moving'])
 
         actuate_value = 1
         stop_value = 1
