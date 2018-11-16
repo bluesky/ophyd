@@ -1,10 +1,13 @@
 import logging
+import pytest
 import unittest
+
 from copy import copy
 from unittest import mock
 from unittest.mock import Mock
 
-from ophyd import (SoftPositioner, )
+from .. import SoftPositioner
+from ..utils import LimitError
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +25,7 @@ def test_positioner_settle():
     assert p.timeout == 20.0
 
 
-def test_positioner():
+def test_soft_positioner():
     p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
 
     assert p.connected == True
@@ -87,3 +90,20 @@ def test_positioner():
     pc = copy(p)
     assert pc.egu == p.egu
     assert pc.limits == p.limits
+
+
+def test_soft_positioner_limits():
+    p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
+
+    with pytest.raises(LimitError):
+        p.move(-11)
+
+    with pytest.raises(LimitError):
+        p.move(11)
+
+    with pytest.raises(LimitError):
+        p.check_value(11)
+
+    p.check_value(-10)
+    p.check_value(0)
+    p.check_value(10)
