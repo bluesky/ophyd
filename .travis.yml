@@ -87,7 +87,7 @@ script:
   - codecov
 
   # caproto-based tests (xfail for now)
-  - timeout 5m python run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
+  - timeout 5m python run_tests.py -v -k 'caproto' || /bin/true
 
   - set -e
   # Build docs.
