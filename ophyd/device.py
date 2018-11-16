@@ -146,11 +146,13 @@ class Component:
         return suffix
 
     def create_component(self, instance):
-        '''Create a component for the instance'''
+        'Instantiate the object described by this Component for a Device'
         kwargs = self.kwargs.copy()
-        kwargs['name'] = '{}_{}'.format(instance.name, self.attr)
-        kwargs['kind'] = instance._initial_state[self.attr].kind
-        kwargs['attr_name'] = self.attr
+        kwargs.update(
+            name=f'{instance.name}_{self.attr}',
+            kind=instance._initial_state[self.attr].kind,
+            attr_name=self.attr,
+        )
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)

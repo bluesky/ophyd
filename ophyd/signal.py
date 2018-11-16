@@ -28,6 +28,7 @@ class Signal(OphydObject):
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
     parent : Device, optional
+        The parent Device holding this signal
     timestamp : float, optional
         The timestamp associated with the initial value. Defaults to the
         current local time.
@@ -43,6 +44,8 @@ class Signal(OphydObject):
 
     cl : namespace, optional
         Control Layer.  Must provide 'get_pv' and 'thread_class'
+    attr_name : str, optional
+        The parent Device attribute name that corresponds to this Signal
 
     Attributes
     ----------
@@ -54,11 +57,11 @@ class Signal(OphydObject):
     _default_sub = SUB_VALUE
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
-                 labels=None,
-                 kind=Kind.hinted, tolerance=None, rtolerance=None, cl=None,
-                 **kwargs):
+                 labels=None, kind=Kind.hinted, tolerance=None,
+                 rtolerance=None, cl=None, attr_name=''):
+
         super().__init__(name=name, parent=parent, kind=kind, labels=labels,
-                         **kwargs)
+                         attr_name=attr_name)
         if cl is None:
             cl = get_cl()
         self.cl = cl

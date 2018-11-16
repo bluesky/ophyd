@@ -53,8 +53,7 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name=None, attr_name='',
-                 parent=None, labels=None,
+    def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
         if labels is None:
             labels = set()
