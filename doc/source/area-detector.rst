@@ -17,8 +17,10 @@ possible configuration.
     prefix = 'XF:23ID1-ES{Tst-Cam:1}'
     det = MyDetector(prefix)
 
-The above should work correctly with any EPICS `Area Detector <http://cars.uchicago.edu/software/epics/areaDetector.html>`_. We test on
-versions 1.9.1 and 2.2.
+The above should work correctly with any EPICS `Area Detector
+<http://cars.uchicago.edu/software/epics/areaDetector.html#Overview>`_. We test
+on versions 1.9.1 and 2.2.  For preliminary support for AD33 see the
+``nslsii`` package.
 
 .. warning
 
@@ -26,13 +28,102 @@ versions 1.9.1 and 2.2.
    or the default ``Device`` trigger method will be used instead of the trigger method from
    the trigger mix in.
 
+
+Callbacks
+=========
+
+Internally, Area Detector provides a `flexible array processing
+pipeline <http://cars9.uchicago.edu/software/epics/pluginDoc.html>`_.
+The pipeline is a chain of 'plugins' which can be re-configured at
+runtime by setting the ``.nd_array_port`` on a downstream plugin to
+the ``.port_name`` of the upstream plugin.  Internally the plugins
+pass data between each other by passing a pointer to an ``NDArray`` C++
+object (which is an array plus some meta-data).  The arrays are
+allocated out of a shared pool when they are created (typically by the
+'cam' plugin which wraps the detector driver) and freed when the last
+plugin is done with them.  Each plugin can trigger its children in
+two ways:
+
+- *blocking* : The next plugin is called syncronously, blocking the
+  parent plugin until all of the (blocking) children are finished.
+  This is single-threaded.
+- *non-blocking* : The pointer is put on a queue that the child
+  consumes from.  This allows multi-threaded processing with each
+  plugin running on its own thread.
+
+This behavior is controlled by the ``.blocking_callbacks`` signal on
+the plugin.
+
+The :obj:`~ophyd.areadetector.trigger_mixins.SingleTrigger` sets the
+acquire bit 'high' and then watches for it to go low (indicating that
+acquisition is complete).  If any of the down-stream plugins are in
+non-blocking mode are likely to have the following sequence of events
+when using, for example, the ``Stats`` plugin and taking one frame
+
+1. detector produces the frame
+2. puts the frame on the queue for the stats plugin to consume
+3. flips the acquire bit to 'low'
+4. ophyd sees the acquire bit go low and marks the status object as done
+5. bluesky continues with the plan and reads the Stats plugin (which still contains old data)
+6. the Stats plugin processes the frame (updating the values for the just-collected frame)
+
+Because (6) happens after (5) bluesky reads 'stale' data from the
+stats plugin and produces an event which associates other measurements
+with the incorrect reading from the camera.  This issue has resulted
+in alignment scans systematically returning the values from the
+previous point.  To avoid this, we ensure in ``stage()`` that all
+plugins are in 'blocking' mode.  This has the downside of slowing the
+detector down as we are only using a single thread but has the
+advantage of giving correct measurements.
+
+Prior to AD3-3, AD did not track if a given frame had fully propagated
+through the pipeline.  We looked into tracking this from the outside
+and using this to determine when the data acquisition was done.  In
+principle this could be done by watching a combination of queue size
+and the ``.uniqueID`` signal, however this work was abandoned due to
+the complexity of supporting this for all of the version of AD on the
+floor.
+
+In `AD3-3
+<https://github.com/areaDetector/ADCore/blob/master/RELEASE.md#queued-array-counting-and-waiting-for-plugins-to-complete>`_,
+the camera now tracks if all of the frames it produces have been
+processed (added to support ophyd [#]_ ).  There is now a
+``.wait_for_plugins`` signal that controls the behavior of
+put-complete on the ``.acquire`` signal.  If ``.wait_for_plugins`` is
+``True``, then the put-complete callback on the ``.acquire`` signal
+will not process until all of the frames have been processed by all of
+the plugins.
+
+This allows us to run with all of the plugins in non-blocking mode and
+to simplify the trigger logic.  Instead of waiting for the acquire bit to
+change value, we use the a put-completion callback.
+
+To convert an existing area detector sub-class to support the new scheme you
+must:
+
+1. Change the type of the came to sub-class :obj:`nslsii.ad33.CamV33Mixin`
+2. Change the trigger mixin to be :obj:`nslsii.ad33.SingleTriggerV33`
+3. Arrange for ``det.cam.ensure_nonblocking`` to be called after
+   initializing the ophyd object.
+
+
+
 Ports
 =====
+
+Each plugin has a read-only out-put port name (``.port_name``) and a
+settable in-put port name (``.nd_array_port``).  To connect plugin
+``downstream`` to plugin ``upstream`` set ``downstream.nd_array_port``
+to ``upstream.port_name``.
+
+The top-level `~base.ADBase` class has several helper methods for
+walking and validating the plugin network.
 
 .. autosummary::
    :toctree: generated
 
    ~base.ADBase
+   ~base.ADBase.visualize_asyn_digraph
    ~base.ADBase.get_plugin_by_asyn_port
    ~base.ADBase.get_asyn_port_dictionary
    ~base.ADBase.get_asyn_digraph
@@ -479,3 +570,5 @@ Full Inheritance
 
 .. inheritance-diagram:: ophyd.areadetector.plugins.FilePlugin ophyd.areadetector.plugins.HDF5Plugin ophyd.areadetector.plugins.JPEGPlugin ophyd.areadetector.plugins.MagickPlugin ophyd.areadetector.plugins.NetCDFPlugin ophyd.areadetector.plugins.NexusPlugin ophyd.areadetector.plugins.TIFFPlugin ophyd.areadetector.plugins.PluginBase ophyd.areadetector.plugins.ColorConvPlugin ophyd.areadetector.plugins.ImagePlugin ophyd.areadetector.plugins.OverlayPlugin ophyd.areadetector.plugins.ProcessPlugin ophyd.areadetector.plugins.ROIPlugin ophyd.areadetector.plugins.StatsPlugin ophyd.areadetector.plugins.TransformPlugin ophyd.areadetector.filestore_mixins.FileStoreBase ophyd.areadetector.filestore_mixins.FileStoreHDF5 ophyd.areadetector.filestore_mixins.FileStoreHDF5IterativeWrite ophyd.areadetector.filestore_mixins.FileStoreIterativeWrite ophyd.areadetector.filestore_mixins.FileStorePluginBase ophyd.areadetector.filestore_mixins.FileStoreTIFF ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite ophyd.areadetector.filestore_mixins.FileStoreTIFFSquashing ophyd.device.GenerateDatumInterface ophyd.device.BlueskyInterface ophyd.areadetector.trigger_mixins.TriggerBase ophyd.areadetector.trigger_mixins.SingleTrigger ophyd.areadetector.trigger_mixins.MultiTrigger ophyd.areadetector.cam.CamBase ophyd.areadetector.cam.AdscDetectorCam ophyd.areadetector.cam.Andor3DetectorCam ophyd.areadetector.cam.AndorDetectorCam ophyd.areadetector.cam.BrukerDetectorCam ophyd.areadetector.cam.FirewireLinDetectorCam ophyd.areadetector.cam.FirewireWinDetectorCam ophyd.areadetector.cam.LightFieldDetectorCam ophyd.areadetector.cam.Mar345DetectorCam ophyd.areadetector.cam.MarCCDDetectorCam ophyd.areadetector.cam.PSLDetectorCam ophyd.areadetector.cam.PcoDetectorCam ophyd.areadetector.cam.PcoDetectorIO ophyd.areadetector.cam.PcoDetectorSimIO ophyd.areadetector.cam.PerkinElmerDetectorCam ophyd.areadetector.cam.PilatusDetectorCam ophyd.areadetector.cam.PixiradDetectorCam ophyd.areadetector.cam.PointGreyDetectorCam ophyd.areadetector.cam.ProsilicaDetectorCam ophyd.areadetector.cam.PvcamDetectorCam ophyd.areadetector.cam.RoperDetectorCam ophyd.areadetector.cam.SimDetectorCam ophyd.areadetector.cam.URLDetectorCam ophyd.areadetector.detectors.AreaDetector ophyd.areadetector.detectors.AdscDetector ophyd.areadetector.detectors.Andor3Detector ophyd.areadetector.detectors.AndorDetector ophyd.areadetector.detectors.BrukerDetector ophyd.areadetector.detectors.FirewireLinDetector ophyd.areadetector.detectors.FirewireWinDetector ophyd.areadetector.detectors.LightFieldDetector ophyd.areadetector.detectors.Mar345Detector ophyd.areadetector.detectors.MarCCDDetector ophyd.areadetector.detectors.PSLDetector ophyd.areadetector.detectors.PerkinElmerDetector ophyd.areadetector.detectors.PilatusDetector ophyd.areadetector.detectors.PixiradDetector ophyd.areadetector.detectors.PointGreyDetector ophyd.areadetector.detectors.ProsilicaDetector ophyd.areadetector.detectors.PvcamDetector ophyd.areadetector.detectors.RoperDetector ophyd.areadetector.detectors.SimDetector ophyd.areadetector.detectors.URLDetector ophyd.areadetector.base.ADComponent ophyd.areadetector.base.EpicsSignalWithRBV
    :parts: 1
+
+.. [#] This came out of a conversation with Mark Rivers, Thomas Caswell, Stuart Campbell, and Stuart Wilkins and implemented by `Mark <https://github.com/areaDetector/ADCore/pull/323>`_
