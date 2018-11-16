@@ -28,6 +28,7 @@ addons:
     packages:
       - graphviz
       - procserv
+      - libhdf5-dev
 
 cache:
   directories:
@@ -66,11 +67,6 @@ before_install:
   - bash "${CI_SCRIPTS}/run-epics-iocs-on-procserv.sh"
 
 install:
-  - |
-    if [[ $TRAVIS_PYTHON_VERSION == 'nightly' ]]; then
-      # Nightly has some issues with h5py
-      sed -i -e '/h5py/d' test-requirements.txt
-    fi
   - python -mpip install -Ur requirements.txt
   - python -mpip install -Ur test-requirements.txt
   - python -mpip install -e .
