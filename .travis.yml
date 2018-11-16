@@ -86,6 +86,7 @@ script:
   - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k 'not caproto'
   - coverage combine
   - coverage report
+  - codecov
 
   # caproto-based tests (xfail for now)
   - timeout 5m python run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
