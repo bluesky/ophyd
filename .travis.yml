@@ -1,7 +1,4 @@
 language: python
-sudo: required
-python:
-  - 3.6
 dist: xenial
 
 env:
@@ -54,7 +51,8 @@ before_install:
   # - git clone --single-branch --branch "${EPICS_ON_TRAVIS_VERSION}" https://github.com/klauer/epics-on-travis "$CI_TOP"
   # but for now, get the latest scripts:
   - git clone --single-branch --branch master https://github.com/klauer/epics-on-travis "$CI_TOP"
-  - sudo ifup docker0
+  - ip addr
+  - ping -b -c 5 $ETH0_IP
   - echo "EPICS_CA_ADDR_LIST=$ETH0_BCAST" >> "$CI_SCRIPTS/epics-config.sh"
   - echo "EPICS_PVA_ADDR_LIST=$ETH0_BCAST" >> "$CI_SCRIPTS/epics-config.sh"
   - echo "EPICS_PVA_INTF_LIST=$ETH0_IP" >> "$CI_SCRIPTS/epics-config.sh"
