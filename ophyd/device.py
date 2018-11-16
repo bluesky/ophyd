@@ -11,6 +11,7 @@ from enum import Enum
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject, Kind
+from .signal import Signal
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
                     doc_annotation_forwarder, underscores_to_camel_case)
@@ -120,6 +121,16 @@ class Component:
         self.attr = attr_name
         if self.doc is None:
             self.doc = self.make_docstring(owner)
+
+    @property
+    def is_device(self):
+        'Does this Component contain a Device?'
+        return isinstance(self.cls, type) and issubclass(self.cls, Device)
+
+    @property
+    def is_signal(self):
+        'Does this Component contain a Signal?'
+        return isinstance(self.cls, type) and issubclass(self.cls, Signal)
 
     def maybe_add_prefix(self, instance, kw, suffix):
         """Add prefix to a suffix if kw is in self.add_prefix
@@ -751,55 +762,62 @@ class Device(BlueskyInterface, OphydObject):
 
     @classmethod
     def _initialize_device(cls):
+        '''Initializes the Device and all of its Components
+
+        Initializes the following attributes from the Components::
+            - _sig_attrs - dict of attribute name to Component
+            - component_names - a list of attribute names used for components
+            - _device_tuple - An auto-generated namedtuple based on all
+              existing Components in the Device
+            - _sub_devices - a list of attributes which hold a Device
+        '''
+
         for attr in DEVICE_INSTANCE_ATTRS:
             if attr in cls.__dict__:
                 raise TypeError("The attribute name %r is reserved for "
                                 "use by the Device class. Choose a different "
                                 "name." % attr)
 
-        cls._sig_attrs = OrderedDict()
+        # this is so that the _sig_attrs class attribute includes the sigattrs
+        # from all of its class-inheritance-parents so we do not have to do
+        # this look up everytime we look at it.
+        base_devices = [base for base in reversed(cls.__bases__)
+                        if hasattr(base, '_sig_attrs')]
 
-        # this is so that the _sig_attrs class attribute includes the
-        # sigattrs from all of it's class-inheritance-parents so we do
-        # not have to do this look up everytime we look at it.
-        for base in reversed(cls.__bases__):
-            if not hasattr(base, '_sig_attrs'):
-                continue
-
-            for attr, cpt in base._sig_attrs.items():
-                cls._sig_attrs[attr] = cpt
+        cls._sig_attrs = OrderedDict((attr, cpt)
+                                     for base in base_devices
+                                     for attr, cpt in base._sig_attrs.items()
+                                     )
 
         # map component classes to their attribute names from this class
-        for attr, cpt in cls.__dict__.items():
-            if isinstance(cpt, (Component, DynamicDeviceComponent)):
-                if attr in DEVICE_RESERVED_ATTRS:
-                    raise TypeError("The attribute name %r is part of the "
-                                    "bluesky interface and cannot be used as "
-                                    "the name of a component. Choose a "
-                                    "different name." % attr)
-                cls._sig_attrs[attr] = cpt
+        this_sig_attrs = {attr: cpt
+                          for attr, cpt in cls.__dict__.items()
+                          if isinstance(cpt, Component)
+                          }
+
+        cls._sig_attrs.update(**this_sig_attrs)
+
+        bad_attrs = set(cls._sig_attrs).intersection(DEVICE_RESERVED_ATTRS)
+        if bad_attrs:
+            raise TypeError(f'The attribute name(s) {bad_attrs} are part of'
+                            f' the bluesky interface and cannot be used as '
+                            f'component names. Choose a different name.')
 
         # List Signal attribute names.
-        cls.component_names = tuple(cls._sig_attrs.keys())
+        cls.component_names = tuple(cls._sig_attrs)
 
         # The namedtuple associated with the device
-        cls._device_tuple = namedtuple(
-            f'{cls.__name__}Tuple',
-            [comp for comp in cls.component_names
-             if not comp.startswith('_')])
+        cls._device_tuple = namedtuple(f'{cls.__name__}Tuple',
+                                       [comp for comp in cls.component_names
+                                        if not comp.startswith('_')])
 
         # List the attributes that are Devices (not Signals).
         # This list is used by stage/unstage. Only Devices need to be staged.
-        cls._sub_devices = []
-        cls.component_hierarchy = []
-        for attr, cpt in cls._sig_attrs.items():
-            if (isinstance(cpt, Component) and
-                    (not isinstance(cpt.cls, type) or  # not a class
-                     not issubclass(cpt.cls, Device))):  # not a Device
-                continue
-            cls._sub_devices.append(attr)
+        cls._sub_devices = [attr for attr, cpt in cls._sig_attrs.items()
+                            if cpt.is_device]
 
     def __init_subclass__(cls, **kwargs):
+        'This is called automatically in Python for all subclasses of Device'
         super().__init_subclass__(**kwargs)
         cls._initialize_device(**kwargs)
 
