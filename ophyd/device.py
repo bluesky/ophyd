@@ -1,7 +1,6 @@
 import collections
 import contextlib
 import functools
-import inspect
 import logging
 import textwrap
 import time as ttime
@@ -14,7 +13,7 @@ from collections import (OrderedDict, namedtuple)
 from .ophydobj import OphydObject, Kind
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
-                    doc_annotation_forwarder)
+                    doc_annotation_forwarder, underscores_to_camel_case)
 
 from typing import Dict, List, Any, TypeVar, Tuple
 from types import SimpleNamespace
@@ -104,6 +103,7 @@ class Component:
     def __init__(self, cls, suffix=None, *, lazy=False, trigger_value=None,
                  add_prefix=None, doc=None, kind=Kind.normal, **kwargs):
         self.attr = None  # attr is set later by the device when known
+        self.parent = None  # parent is also to be set later when known
         self.cls = cls
         self.kwargs = kwargs
         self.lazy = lazy
@@ -118,6 +118,8 @@ class Component:
 
     def __set_name__(self, owner, attr_name):
         self.attr = attr_name
+        if self.doc is None:
+            self.doc = self.make_docstring(owner)
 
     def maybe_add_prefix(self, instance, kw, suffix):
         """Add prefix to a suffix if kw is in self.add_prefix
@@ -141,8 +143,7 @@ class Component:
         str
         """
         if kw in self.add_prefix:
-            return '{prefix}{suffix}'.format(prefix=instance.prefix,
-                                             suffix=suffix)
+            return f'{instance.prefix}{suffix}'
         return suffix
 
     def create_component(self, instance):
@@ -157,11 +158,7 @@ class Component:
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
-        if (isinstance(self.cls, type) and  # is a class
-                issubclass(self.cls, DynamicDeviceComponent)):
-            cpt_inst = self.cls(self.suffix).create_component(self)
-
-        elif self.suffix is not None:
+        if self.suffix is not None:
             pv_name = self.maybe_add_prefix(instance, 'suffix', self.suffix)
             cpt_inst = self.cls(pv_name, parent=instance, **kwargs)
         else:
@@ -174,6 +171,7 @@ class Component:
         return cpt_inst
 
     def make_docstring(self, parent_class):
+        'Create a docstring for the Component'
         if self.doc is not None:
             return self.doc
 
@@ -187,26 +185,20 @@ class Component:
         return '\n'.join(doc)
 
     def __repr__(self):
-        kw_str = (
-            ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items()
-                      if k not in ['read_attrs', 'configuration_attrs'])
-        )
+        repr_dict = self.kwargs.copy()
+        repr_dict.pop('read_attrs', None)
+        repr_dict.pop('configuration_attrs', None)
+        repr_dict['kind'] = self.kind.name
 
-        if self.suffix is not None:
-            suffix_str = '{!r}'.format(self.suffix)
-            if self.kwargs:
-                suffix_str += ', '
-        else:
-            suffix_str = ''
+        kw_str = ', '.join(f'{k}={v!r}' for k, v in repr_dict.items())
+        suffix = (repr(self.suffix) if self.suffix
+                  else '')
 
-        if suffix_str or kw_str:
-            arg_str = ', {}{}'.format(suffix_str, kw_str)
-        else:
-            arg_str = ''
-        arg_str += ', kind={}'.format(self.kind)
+        component_class = self.cls.__name__
+        args = ', '.join(s for s in (component_class, suffix, kw_str) if s)
 
-        return ('{self.__class__.__name__}({self.cls.__name__}{arg_str})'
-                ''.format(self=self, arg_str=arg_str))
+        this_class = self.__class__.__name__
+        return f'{this_class}({args})'
 
     __str__ = __repr__
 
@@ -298,8 +290,8 @@ class FormattedComponent(Component):
         return suffix.format(self=instance)
 
 
-class DynamicDeviceComponent:
-    '''An Device component that dynamically creates a OphydDevice
+class DynamicDeviceComponent(Component):
+    '''An Device component that dynamically creates an ophyd Device
 
     Parameters
     ----------
@@ -327,82 +319,43 @@ class DynamicDeviceComponent:
     '''
 
     def __init__(self, defn, *, clsname=None, doc=None, kind=Kind.normal,
-                 default_read_attrs=None, default_configuration_attrs=None):
-        self.defn = defn
-        self.clsname = clsname
-        self.attr = None  # attr is set later by the device when known
-        self.lazy = False
-        self.doc = doc
+                 default_read_attrs=None, default_configuration_attrs=None,
+                 component_class=Component):
         if isinstance(default_read_attrs, collections.Iterable):
             default_read_attrs = tuple(default_read_attrs)
+
         if isinstance(default_configuration_attrs, collections.Iterable):
             default_configuration_attrs = tuple(default_configuration_attrs)
+
+        self.defn = defn
+        self.clsname = clsname
         self.default_read_attrs = default_read_attrs
         self.default_configuration_attrs = default_configuration_attrs
-        self.kind = _ensure_kind(kind)
-
-        # TODO: component compatibility
-        self.trigger_value = None
         self.attrs = list(defn.keys())
+        self.components = {attr: component_class(cls, suffix, **kwargs)
+                           for attr, (cls, suffix, kwargs) in self.defn.items()
+                           }
+
+        # NOTE: cls is None here, as it gets created in __set_name__, below
+        super().__init__(cls=None, suffix='', lazy=False, kind=kind)
 
     def __set_name__(self, owner, attr_name):
-        self.attr = attr_name
+        if self.clsname is None:
+            self.clsname = underscores_to_camel_case(attr_name)
+        super().__set_name__(owner, attr_name)
+        self.cls = self._create_class()
 
-    def make_docstring(self, parent_class):
-        if self.doc is not None:
-            return self.doc
+    def __getattr__(self, attr):
+        try:
+            return self.components[attr]
+        except KeyError:
+            raise AttributeError(f'{attr} is not a valid component '
+                                 'attribute') from None
 
-        doc = ['{} comprised of'.format(self.__class__.__name__),
-               '::',
-               '',
-               ]
-
-        doc.append(textwrap.indent(repr(self), prefix=' ' * 4))
-        doc.append('')
-        return '\n'.join(doc)
-
-    def __repr__(self):
-        doc = []
-        for attr, (cls, suffix, kwargs) in self.defn.items():
-            kw_str = ', '.join('{}={!r}'.format(k, v)
-                               for k, v in kwargs.items())
-            if suffix is not None:
-                suffix_str = '{!r}'.format(suffix)
-                if kwargs:
-                    suffix_str += ', '
-            else:
-                suffix_str = ''
-
-            if suffix_str or kw_str:
-                arg_str = ', {}{}'.format(suffix_str, kw_str)
-            else:
-                arg_str = ''
-
-            doc.append('{attr} = Component({cls.__name__}{arg_str})'
-                       ''.format(attr=attr, cls=cls, arg_str=arg_str))
-
-        return '\n'.join(doc)
-
-    def create_attr(self, attr_name):
-        cls, suffix, kwargs = self.defn[attr_name]
-        inst = Component(cls, suffix, **kwargs)
-        inst.attr = attr_name
-        return inst
-
-    def create_component(self, instance):
-        '''Create a component for the instance'''
-        clsname = self.clsname
-        if clsname is None:
-            # make up a class name based on the instance's class name
-            clsname = ''.join((instance.__class__.__name__,
-                               self.attr.capitalize()))
-
-            # TODO: and if the attribute has any underscores, convert that to
-            #       camelcase
-
+    def _create_class(self):
         docstring = self.doc
         if docstring is None:
-            docstring = '{} sub-device'.format(clsname)
+            docstring = '{} sub-device'.format(self.clsname)
 
         clsdict = OrderedDict(
             __doc__=docstring,
@@ -413,23 +366,21 @@ class DynamicDeviceComponent:
         for attr in self.defn.keys():
             clsdict[attr] = self.create_attr(attr)
 
-        cls = type(clsname, (Device, ), clsdict)
-        return cls(instance.prefix,
-                   name='{}_{}'.format(instance.name, self.attr),
-                   parent=instance,
-                   kind=instance._initial_state[self.attr].kind)
+        return type(self.clsname, (Device, ), clsdict)
 
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self
+    def create_attr(self, attr_name):
+        'Create aComponent from the dynamic device definition'
+        try:
+            cls, suffix, kwargs = self.defn[attr_name]
+        except Exception as ex:
+            raise ValueError('Malformed dynamic device definition') from ex
 
-        if self.attr not in instance._signals:
-            instance._signals[self.attr] = self.create_component(instance)
+        return Component(cls, suffix, **kwargs)
 
-        return instance._signals[self.attr]
-
-    def __set__(self, instance, value):
-        raise RuntimeError('Use .put()')
+    def __repr__(self):
+        return '\n'.join(f'{attr} = {cpt!r}'
+                         for attr, cpt in self.components.items()
+                         )
 
     def subscriptions(self, event_type):
         raise NotImplementedError('DynamicDeviceComponent does not yet '
@@ -819,14 +770,14 @@ class Device(BlueskyInterface, OphydObject):
                 cls._sig_attrs[attr] = cpt
 
         # map component classes to their attribute names from this class
-        for attr, value in cls.__dict__.items():
-            if isinstance(value, (Component, DynamicDeviceComponent)):
+        for attr, cpt in cls.__dict__.items():
+            if isinstance(cpt, (Component, DynamicDeviceComponent)):
                 if attr in DEVICE_RESERVED_ATTRS:
                     raise TypeError("The attribute name %r is part of the "
                                     "bluesky interface and cannot be used as "
                                     "the name of a component. Choose a "
                                     "different name." % attr)
-                cls._sig_attrs[attr] = value
+                cls._sig_attrs[attr] = cpt
 
         # List Signal attribute names.
         cls.component_names = tuple(cls._sig_attrs.keys())
@@ -836,13 +787,11 @@ class Device(BlueskyInterface, OphydObject):
             f'{cls.__name__}Tuple',
             [comp for comp in cls.component_names
              if not comp.startswith('_')])
-        # Finally, create all the component docstrings
-        for cpt in cls._sig_attrs.values():
-            cpt.__doc__ = cpt.make_docstring(cls)
 
         # List the attributes that are Devices (not Signals).
         # This list is used by stage/unstage. Only Devices need to be staged.
         cls._sub_devices = []
+        cls.component_hierarchy = []
         for attr, cpt in cls._sig_attrs.items():
             if (isinstance(cpt, Component) and
                     (not isinstance(cpt.cls, type) or  # not a class

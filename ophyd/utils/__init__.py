@@ -120,6 +120,14 @@ def ducks_from_namespace(attrs, *, ns=None):
             if all(hasattr(val, attr) for attr in attrs)]
 
 
+def underscores_to_camel_case(underscores):
+    'Convert abc_def_ghi to abcDefGhi'
+    if '_' in underscores and underscores.strip('_') != '':
+        return ''.join(s.capitalize() for s in underscores.split('_'))
+
+    return underscores.capitalize()
+
+
 class DO_NOT_USE:
     "sentinel value"
     ...
