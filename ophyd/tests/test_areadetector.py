@@ -439,6 +439,16 @@ def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, c
             assert Path(fn).exists()
 
 
+@pytest.fixture
+def h5py():
+    try:
+        import h5py
+    except ImportError as ex:
+        raise pytest.skip('h5py unavailable') from ex
+
+    return h5py
+
+
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/tmp/data1/%Y/%m/%d', None, False),
                           (None, '/tmp/data1/%Y/%m/%d', None, False),
@@ -447,7 +457,8 @@ def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, c
                           ('/', '/tmp/data1/%Y/%m/%d', None, False),
                           ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fshdf_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, cleanup):
+def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
+                      check_files, cleanup):
     fs = DummyFS()
     if check_files:
         fh = pytest.importorskip('databroker.assets.handlers')
