@@ -390,7 +390,7 @@ class DynamicDeviceComponent(Component):
         return type(self.clsname, (Device, ), clsdict)
 
     def create_attr(self, attr_name):
-        'Create aComponent from the dynamic device definition'
+        'Create a Component from the dynamic device definition'
         try:
             cls, suffix, kwargs = self.defn[attr_name]
         except Exception as ex:
@@ -1143,7 +1143,9 @@ class Device(BlueskyInterface, OphydObject):
             try:
                 # Initial access of signal
                 cpt = self._sig_attrs[name]
-                return cpt.__get__(self, None)
+                sig = cpt.__get__(self, None)
+                setattr(self, name, sig)
+                return sig
             except KeyError:
                 raise AttributeError(name)
 
