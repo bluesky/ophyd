@@ -28,6 +28,7 @@ addons:
     packages:
       - graphviz
       - procserv
+      - libhdf5-dev
 
 cache:
   directories:
@@ -70,9 +71,6 @@ install:
   - python -mpip install -Ur test-requirements.txt
   - python -mpip install -e .
 
-  # set up directories we will need
-  - mkdir /tmp/data
-  - python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
   - echo "PATH=$PATH"
   - echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
@@ -89,7 +87,7 @@ script:
   - codecov
 
   # caproto-based tests (xfail for now)
-  - timeout 5m python run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
+  - timeout 5m python run_tests.py -v -k 'caproto' || /bin/true
 
   - set -e
   # Build docs.

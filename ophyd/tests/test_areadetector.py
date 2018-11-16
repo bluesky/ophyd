@@ -1,19 +1,21 @@
-import time
+import datetime
 import logging
+import os
+import shutil
+import time
+
 import pytest
 from io import StringIO
 from pathlib import PurePath, Path
-from ophyd.ophydobj import Kind
+
+from ophyd.utils.paths import make_dir_tree
 from ophyd import (SimDetector, SingleTrigger, Component,
-                   DynamicDeviceComponent, EpicsSignalRO)
-from ophyd.status import wait
+                   DynamicDeviceComponent, EpicsSignalRO, Kind, wait)
 from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
-                                        ColorConvPlugin,
-                                        ProcessPlugin, OverlayPlugin,
-                                        ROIPlugin, TransformPlugin,
-                                        NetCDFPlugin, TIFFPlugin, JPEGPlugin,
-                                        HDF5Plugin,
-                                        MagickPlugin)
+                                        ColorConvPlugin, ProcessPlugin,
+                                        OverlayPlugin, ROIPlugin,
+                                        TransformPlugin, NetCDFPlugin,
+                                        TIFFPlugin, JPEGPlugin, HDF5Plugin)
 
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite,
@@ -358,16 +360,36 @@ def test_default_configuration_attrs(plugin):
                           (Component, DynamicDeviceComponent))
 
 
-@pytest.mark.skipif(not os.path.exists('/data'), reason='No /data')
+@pytest.fixture(scope='function')
+def data_paths(request):
+    def clean_dirs():
+        shutil.rmtree('/tmp/data1')
+        os.unlink('/tmp/data2')
+
+    try:
+        clean_dirs()
+    except Exception:
+        ...
+
+    now = datetime.datetime.now()
+
+    for year_offset in [-1, 0, 1]:
+        make_dir_tree(now.year + year_offset,
+                      base_path='/tmp/data1')
+
+    os.symlink('/tmp/data1', '/tmp/data2')
+    request.addfinalizer(clean_dirs)
+
+
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/data/%Y/%m/%d', None, False),
-                          (None, '/data/%Y/%m/%d', None, False),
-                          ('/data', '%Y/%m/%d', None, False),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/data/%Y/%m/%d', None, False),
-                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
+def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, cleanup):
     fs = DummyFS()
     fs2 = DummyFS()
     if check_files:
@@ -417,17 +439,26 @@ def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
             assert Path(fn).exists()
 
 
-@pytest.mark.skipif(not os.path.exists('/data'), reason='No /data')
+@pytest.fixture
+def h5py():
+    try:
+        import h5py
+    except ImportError as ex:
+        raise pytest.skip('h5py unavailable') from ex
+
+    return h5py
+
+
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/data/%Y/%m/%d', None, False),
-                          (None, '/data/%Y/%m/%d', None, False),
-                          ('/data', '%Y/%m/%d', None, False),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/data/%Y/%m/%d', None, False),
-                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
-    pytest.skip('hdf5 plugin is busted with docker images')
+def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
+                      check_files, cleanup):
     fs = DummyFS()
     if check_files:
         fh = pytest.importorskip('databroker.assets.handlers')

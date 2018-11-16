@@ -1,10 +1,13 @@
 import logging
 import pytest
 
+from types import SimpleNamespace
+
 from ophyd import EpicsMCA, EpicsDXP
 from ophyd.mca import add_rois
 from ophyd.utils import enum, ReadOnlyError
-from .conftest import using_fake_epics_pv
+
+from caproto.tests.conftest import run_example_ioc
 
 MCAMode = enum(PHA='PHA', MCS='MCS', List='List')
 DxpPresetMode = enum(No_preset='No preset',
@@ -14,36 +17,57 @@ DxpPresetMode = enum(No_preset='No preset',
 logger = logging.getLogger(__name__)
 
 
-REAL_SCALER = False
-devs = ['XF:23ID2-ES{Vortex}mca1', 'XF:23ID2-ES{Vortex}dxp1:']
+@pytest.fixture(scope='function')
+def mca_test_ioc(prefix, request):
+    name = 'test_signal IOC'
+    pvs = dict(mca_prefix=f'{prefix}mca',
+               dxp_prefix=f'{prefix}dxp:'
+               )
+
+    process = run_example_ioc('ophyd.tests.mca_ioc',
+                              request=request,
+                              pv_to_check=pvs['mca_prefix'],
+                              args=('--prefix', prefix))
+    return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
+                           type='caproto')
 
 
-@using_fake_epics_pv
-def test_mca_spectrum():
-    mca = EpicsMCA(devs[0], name='test')
+@pytest.fixture(scope='function')
+def mca(cleanup, mca_test_ioc):
+    mca = EpicsMCA(mca_test_ioc.pvs['mca_prefix'], name='mca')
+    mca.wait_for_connection()
+    cleanup.add(mca)
+    return mca
+
+
+@pytest.fixture(scope='function')
+def dxp(cleanup, mca_test_ioc):
+    dxp = EpicsDXP(mca_test_ioc.pvs['dxp_prefix'], name='dxp')
+    dxp.wait_for_connection()
+    cleanup.add(dxp)
+    return dxp
+
+
+def test_mca_spectrum(mca):
     with pytest.raises(ReadOnlyError):
         mca.spectrum.put(3.14)
     with pytest.raises(ReadOnlyError):
         mca.background.put(3.14)
 
 
-@using_fake_epics_pv
-def test_mca_read_attrs():
+def test_mca_read_attrs(mca):
     # default read_attrs
-    mca = EpicsMCA(devs[0], name='test')
     default_normal_kind = ['preset_real_time', 'elapsed_real_time', 'spectrum']
     assert set(default_normal_kind) == set(mca.read_attrs)
     # test passing in custom read_attrs (with dots!)
     r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
-    mca = EpicsMCA(devs[0], read_attrs=r_attrs, name='test')
+
+    mca.read_attrs = r_attrs
     expected = set(r_attrs + ['rois.roi1', 'rois.roi2', 'rois'])
     assert expected == set(mca.read_attrs)
 
 
-@using_fake_epics_pv
-def test_mca_describe():
-    mca = EpicsMCA(devs[0], name='test')
-
+def test_mca_describe(mca):
     desc = mca.describe()
     d = desc[mca.name + '_spectrum']
 
@@ -51,10 +75,7 @@ def test_mca_describe():
     assert d['shape'] == []
 
 
-@using_fake_epics_pv
-def test_mca_signals():
-    mca = EpicsMCA(devs[0], name='mca')
-    mca.wait_for_connection()
+def test_mca_signals(mca):
     mca.mode.put(MCAMode.PHA)
     mca.stage()
     mca.start.put(1)
@@ -66,8 +87,7 @@ def test_mca_signals():
     mca.unstage()
 
 
-@using_fake_epics_pv
-def test_rois():
+def test_rois(mca):
     # iterables only
     with pytest.raises(TypeError):
         add_rois(1)
@@ -77,18 +97,14 @@ def test_rois():
     with pytest.raises(ValueError):
         add_rois([32, ])
     # read-only?
-    mca = EpicsMCA(devs[0], name='test')
     with pytest.raises(ReadOnlyError):
         mca.rois.roi1.count.put(3.14)
     with pytest.raises(ReadOnlyError):
         mca.rois.roi1.net_count.put(3.14)
 
 
-@using_fake_epics_pv
-def test_dxp_signals():
+def test_dxp_signals(dxp):
     # NOTE: values used below are those currently used at 23id2
-    dxp = EpicsDXP(devs[1], name='dxp')
-    dxp.wait_for_connection()
     dxp.preset_mode.put(DxpPresetMode.Real_time)
     dxp.stage()
     dxp.unstage()
