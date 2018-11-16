@@ -343,6 +343,7 @@ class DynamicDeviceComponent(Component):
         self.default_read_attrs = default_read_attrs
         self.default_configuration_attrs = default_configuration_attrs
         self.attrs = list(defn.keys())
+        self.component_class = component_class
         self.components = {attr: component_class(cls, suffix, **kwargs)
                            for attr, (cls, suffix, kwargs) in self.defn.items()
                            }
@@ -350,18 +351,27 @@ class DynamicDeviceComponent(Component):
         # NOTE: cls is None here, as it gets created in __set_name__, below
         super().__init__(cls=None, suffix='', lazy=False, kind=kind)
 
+        # Allow easy access to all generated components directly in the
+        # DynamicDeviceComponent instance
+        for attr, cpt in self.components.items():
+            if not hasattr(self, attr):
+                setattr(self, attr, cpt)
+
+    def __getnewargs_ex__(self):
+        'Get arguments needed to copy this class (used for pickle/copy)'
+        kwargs = dict(clsname=self.clsname,
+                      doc=self.doc,
+                      kind=self.kind,
+                      default_read_attrs=self.default_read_attrs,
+                      default_configuration_attrs=self.default_configuration_attrs,
+                      component_class=self.component_class)
+        return ((self.defn, ), kwargs)
+
     def __set_name__(self, owner, attr_name):
         if self.clsname is None:
             self.clsname = underscores_to_camel_case(attr_name)
         super().__set_name__(owner, attr_name)
         self.cls = self._create_class()
-
-    def __getattr__(self, attr):
-        try:
-            return self.components[attr]
-        except KeyError:
-            raise AttributeError(f'{attr} is not a valid component '
-                                 'attribute') from None
 
     def _create_class(self):
         docstring = self.doc
@@ -836,19 +846,16 @@ class Device(BlueskyInterface, OphydObject):
                                 dotted_name=attr,
                                 item=cpt
                                 )
-            if isinstance(cpt, DynamicDeviceComponent):
-                ...
-            elif isinstance(cpt, Component):
-                if (issubclass(cpt.cls, Device) or
-                        hasattr(cpt.cls, 'walk_components')):
-                    sub_dev = cpt.cls
-                    for walk in sub_dev.walk_components():
-                        ancestors = (cls, ) + walk.ancestors
-                        dotted_name = '.'.join((attr, walk.dotted_name))
-                        yield ComponentWalk(ancestors=ancestors,
-                                            dotted_name=dotted_name,
-                                            item=walk.item
-                                            )
+            if (issubclass(cpt.cls, Device) or
+                    hasattr(cpt.cls, 'walk_components')):
+                sub_dev = cpt.cls
+                for walk in sub_dev.walk_components():
+                    ancestors = (cls, ) + walk.ancestors
+                    dotted_name = '.'.join((attr, walk.dotted_name))
+                    yield ComponentWalk(ancestors=ancestors,
+                                        dotted_name=dotted_name,
+                                        item=walk.item
+                                        )
 
     def walk_signals(self, *, include_lazy=False):
         '''Walk all signals in the Device hierarchy
@@ -865,27 +872,30 @@ class Device(BlueskyInterface, OphydObject):
             top-level device `walk_signals` was called on.
         '''
         for attr, cpt in self._sig_attrs.items():
-            if cpt.lazy and (include_lazy or attr in self.__dict__):
-                sig = getattr(self, attr)
+            # 2 scenarios:
+            #  - Always include non-lazy components
+            #  - Include a lazy if already instantiated OR requested with
+            #    include_lazy
+            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            should_walk = not cpt.lazy or lazy_ok
+
+            if not should_walk:
+                continue
+
+            sig = getattr(self, attr)
+            if isinstance(sig, Device):
+                for walk in sig.walk_signals(include_lazy=include_lazy):
+                    ancestors = (self, ) + walk.ancestors
+                    dotted_name = '.'.join((attr, walk.dotted_name))
+                    yield ComponentWalk(ancestors=ancestors,
+                                        dotted_name=dotted_name,
+                                        item=walk.item
+                                        )
+            else:
                 yield ComponentWalk(ancestors=(self, ),
                                     dotted_name=attr,
                                     item=sig
                                     )
-            elif not cpt.lazy:
-                sig = getattr(self, attr)
-                if isinstance(sig, Device):
-                    for walk in sig.walk_signals(include_lazy=include_lazy):
-                        ancestors = (self, ) + walk.ancestors
-                        dotted_name = '.'.join((attr, walk.dotted_name))
-                        yield ComponentWalk(ancestors=ancestors,
-                                            dotted_name=dotted_name,
-                                            item=walk.item
-                                            )
-                else:
-                    yield ComponentWalk(ancestors=(self, ),
-                                        dotted_name=attr,
-                                        item=sig
-                                        )
 
     @classmethod
     def walk_subdevice_classes(cls):
@@ -895,14 +905,11 @@ class Device(BlueskyInterface, OphydObject):
         ------
         (dotted_name, subdevice_class)
         '''
-        for item in cls.walk_components():
-            cpt = item.item
-            if isinstance(cpt, DynamicDeviceComponent):
-                for cpt_attr, (cpt_cls, suffix, kwargs) in cpt.defn.items():
-                    if isinstance(cpt_cls, Device):
-                        yield ('.'.join((item.dotted_name, cpt_attr)), cpt_cls)
-            elif isinstance(cpt, Component) and issubclass(cpt.cls, Device):
-                yield (item.dotted_name, cpt.cls)
+        for attr in cls._sub_devices:
+            cpt = getattr(cls, attr)
+            yield (attr, cpt.cls)
+            for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
+                yield ('.'.join((attr, sub_attr)), sub_cls)
 
     def walk_subdevices(self):
         '''Walk all sub-Devices in the hierarchy
