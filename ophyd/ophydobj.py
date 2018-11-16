@@ -5,8 +5,6 @@ import logging
 
 from enum import IntFlag
 
-from .status import (StatusBase, MoveStatus, DeviceStatus)
-
 
 class Kind(IntFlag):
     """
@@ -16,10 +14,10 @@ class Kind(IntFlag):
     traverse it in read(), read_configuration(), or neither. Additionally, if
     decides whether to include its name in `.hints['fields']`.
     """
-    omitted = 0
-    normal = 1
-    config = 2
-    hinted = 5  # Notice that bool(hinted & normal) is True.
+    omitted = 0b000
+    normal = 0b001
+    config = 0b010
+    hinted = 0b101  # Notice that bool(hinted & normal) is True.
 
 
 class UnknownSubscription(KeyError):
@@ -101,8 +99,8 @@ class OphydObject:
 
     def _validate_kind(self, val):
         if isinstance(val, str):
-            val = getattr(Kind, val.lower())
-        return val
+            return Kind[val.lower()]
+        return Kind(val)
 
     @property
     def kind(self):

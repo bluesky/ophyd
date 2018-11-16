@@ -1,6 +1,8 @@
 import collections
 import contextlib
+import copy
 import functools
+import itertools
 import logging
 import textwrap
 import time as ttime
@@ -14,12 +16,11 @@ from .ophydobj import OphydObject, Kind
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
-                    doc_annotation_forwarder, underscores_to_camel_case)
+                    doc_annotation_forwarder, underscores_to_camel_case,
+                    getattrs)
 
 from typing import Dict, List, Any, TypeVar, Tuple
-from types import SimpleNamespace
 from collections.abc import MutableSequence
-from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
 ALL_COMPONENTS = object()
@@ -107,11 +108,12 @@ class Component:
         self.parent = None  # parent is also to be set later when known
         self.cls = cls
         self.kwargs = kwargs
-        self.lazy = lazy
+        self.lazy = lazy  # False if self.is_device else lazy  (TODO)
         self.suffix = suffix
         self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
-        self.kind = _ensure_kind(kind)
+        self.kind = (Kind[kind.lower()] if isinstance(kind, str)
+                     else Kind(kind))
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
         self.add_prefix = tuple(add_prefix)
@@ -162,7 +164,7 @@ class Component:
         kwargs = self.kwargs.copy()
         kwargs.update(
             name=f'{instance.name}_{self.attr}',
-            kind=instance._initial_state[self.attr].kind,
+            kind=instance._component_kinds[self.attr],
             attr_name=self.attr,
         )
 
@@ -706,18 +708,16 @@ class Device(BlueskyInterface, OphydObject):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    # over ride in sub-classes to control the default
-    # contents of read and configuration attrs lists
-
-    # To use the new 'kind' parameter, set these equal to the sentinel
-    # REPSECT_KIND, defined in this module.
-
-    # If `None`, defaults to `self.component_names'
+    # Over-ride in sub-classes to control the default contents of read and
+    # configuration attrs lists.
+    # For read attributes, if `None`, defaults to `self.component_names'
     _default_read_attrs = None
-    # If `None`, defaults to `[]`
+
+    # For configuration attributes, if `None`, defaults to `[]`
     _default_configuration_attrs = None
-    # When instantiating a lazy signal upon first access, wait for it to connect
-    # before returning control to the user
+
+    # When instantiating a lazy signal upon first access, wait for it to
+    # connect before returning control to the user
     lazy_wait_for_connection = True
 
     def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
@@ -726,8 +726,10 @@ class Device(BlueskyInterface, OphydObject):
 
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
-        self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
-                               for k, cpt in self._sig_attrs.items()}
+
+        # Copy the Device-defined signal kinds, for user modification
+        self._component_kinds = self._component_kinds.copy()
+
         self.prefix = prefix
         if self.component_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
@@ -806,6 +808,12 @@ class Device(BlueskyInterface, OphydObject):
                           }
 
         cls._sig_attrs.update(**this_sig_attrs)
+
+        # Record the class-defined kinds - these can be updated on a
+        # per-instance basis
+        cls._component_kinds = {attr: cpt.kind
+                                for attr, cpt in cls._sig_attrs.items()
+                                }
 
         bad_attrs = set(cls._sig_attrs).intersection(DEVICE_RESERVED_ATTRS)
         if bad_attrs:
@@ -943,21 +951,50 @@ class Device(BlueskyInterface, OphydObject):
                 'Failed to disconnect all signals ({})'.format(msg),
                 exceptions=exceptions)
 
+    def _get_kind(self, name):
+        '''Get a Kind for a given Component
+
+        If the Component is instantiated, it will be retrieved directly from
+        that object.
+
+        If the Component is lazy and not yet instantiated, the default value as
+        specified by the Component class will be used.  This is stashed away in
+        `_component_kinds`.
+        '''
+        return (self._signals[name].kind
+                if name in self._signals
+                else self._component_kinds[name]
+                )
+
+    def _set_kind(self, name, kind):
+        '''Set the Kind for a given Component'''
+        if name in self._signals:
+            self._signals[name].kind = kind
+        else:
+            self._component_kinds[name] = kind
+
+    def _get_components_of_kind(self, kind):
+        'Get names of components that match a specific kind'
+        for component_name in self.component_names:
+            # this might be lazy and get the Cpt
+            component_kind = self._get_kind(component_name)
+            if kind & component_kind:
+                yield component_name, getattr(self, component_name)
+
     def _validate_kind(self, val):
-        if isinstance(val, str):
-            val = getattr(Kind, val.lower())
+        val = super()._validate_kind(val)
         if Kind.normal & val:
-            val = val | Kind.config
-        return super()._validate_kind(val)
+            val |= Kind.config
+        return val
 
     @property
     def read_attrs(self):
-        return self.OphydAttrList(self, Kind.normal, Kind.hinted,
-                                  'read_attrs')
+        return self.OphydAttrList(self, Kind.normal, Kind.hinted, 'read_attrs')
 
     @read_attrs.setter
     def read_attrs(self, val):
-        self.__attr_list_helper(val, Kind.normal, Kind.hinted, 'read_attrs')
+        self.__set_kinds_according_to_list(val, Kind.normal, Kind.hinted,
+                                           'read_attrs')
 
     @property
     def configuration_attrs(self):
@@ -966,34 +1003,36 @@ class Device(BlueskyInterface, OphydObject):
 
     @configuration_attrs.setter
     def configuration_attrs(self, val):
-        self.__attr_list_helper(val, Kind.config, Kind.config,
-                                'configuration_attrs')
+        self.__set_kinds_according_to_list(val, Kind.config, Kind.config,
+                                           'configuration_attrs')
 
-    def __attr_list_helper(self, val, set_kind, unset_kind, recurse_name):
-        val = set(val)
-        cn = set(self.component_names)
+    def __set_kinds_according_to_list(self, master_list, set_kind, unset_kind,
+                                      recurse_name):
+        master_list = set(master_list)
+        component_names = set(self.component_names)
 
-        for c in cn:
-            if c in val:
-                _lazy_get(self, c).kind |= set_kind
-            else:
-                _lazy_get(self, c).kind &= ~unset_kind
+        for name in component_names:
+            kind = self._get_kind(name)
+            kind = (kind | set_kind if name in master_list
+                    else kind & ~unset_kind)
+            self._set_kind(name, kind)
 
         # now look at everything else, presumably things with dots
-        extra = val - cn
+        extra = master_list - component_names
         fail = set(c for c in extra if '.' not in c)
-        if fail:
 
-            raise ValueError("You asked to add the components {fail} "
-                             "to {recurse_name} "
-                             "on {self.name!r}, but there is no such child in "
-                             "{self.component_names}."
-                             .format(fail=fail, self=self,
-                                     recurse_name=recurse_name))
-        group = groupby(((child, rest)
-                         for child, _, rest in (c.partition('.')
-                                                for c in extra)),
-                        lambda x: x[0])
+        if fail:
+            raise ValueError(
+                f"You asked to add the components {fail} to {recurse_name} "
+                f"on {self.name!r}, but there is no such child in "
+                f"{self.component_names}."
+            )
+
+        group = itertools.groupby(
+            ((child, rest)
+             for child, _, rest in (c.partition('.') for c in extra)),
+            lambda x: x[0])
+
         # we are into grand-children, can not be lazy!
         for child, cf_list in group:
             cpt = getattr(self, child)
@@ -1164,13 +1203,9 @@ class Device(BlueskyInterface, OphydObject):
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
         res = super().read()
-        for component_name in self.component_names:
-            # this might be lazy and get the Cpt
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.normal:
-                # this forces us to get the real version
-                component = getattr(self, component_name)
-                res.update(component.read())
+
+        for _, component in self._get_components_of_kind(Kind.normal):
+            res.update(component.read())
         return res
 
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -1181,23 +1216,16 @@ class Device(BlueskyInterface, OphydObject):
         ``configuration_attrs`` list.
         """
         res = OrderedDict()
-        for component_name in self.component_names:
-            # this might be lazy and get the Cpt
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.config:
-                # this forces us to get the real version
-                component = getattr(self, component_name)
-                res.update(component.read_configuration())
+
+        for _, component in self._get_components_of_kind(Kind.config):
+            res.update(component.read_configuration())
         return res
 
     @doc_annotation_forwarder(BlueskyInterface)
     def describe(self):
         res = super().describe()
-        for component_name in self.component_names:
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.normal:
-                component = getattr(self, component_name)
-                res.update(component.describe())
+        for _, component in self._get_components_of_kind(Kind.normal):
+            res.update(component.describe())
         return res
 
     def describe_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -1216,24 +1244,16 @@ class Device(BlueskyInterface, OphydObject):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         res = OrderedDict()
-        for component_name in self.component_names:
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.config:
-                component = getattr(self, component_name)
-                res.update(component.describe_configuration())
+        for _, component in self._get_components_of_kind(Kind.config):
+            res.update(component.describe_configuration())
         return res
 
     @property
     def hints(self):
         fields = []
-        for component_name in self.component_names:
-            # Pick off the component's kind without instantiating it.
-            kind = _lazy_get(self, component_name).kind
-            if Kind.normal & kind:
-                # OK, we have to instantiate it.
-                component = getattr(self, component_name)
-                c_hints = component.hints
-                fields.extend(c_hints.get('fields', []))
+        for _, component in self._get_components_of_kind(Kind.normal):
+            c_hints = component.hints
+            fields.extend(c_hints.get('fields', []))
         return {'fields': fields}
 
     @property
@@ -1278,9 +1298,7 @@ class Device(BlueskyInterface, OphydObject):
         '''Stop the Device and all (instantiated) subdevices'''
         exc_list = []
 
-        for attr in self._sub_devices:
-            dev = getattr(self, attr)
-
+        for attr, dev in getattrs(self, self._sub_devices):
             if not dev.connected:
                 self.log.debug('stop: device %s (%s) is not connected; '
                                'skipping', attr, dev)
@@ -1399,18 +1417,17 @@ class Device(BlueskyInterface, OphydObject):
             self._recurse_key = recurse_key
 
         def __internal_list(self):
+            def per_component(name, component):
+                yield name
+                for v in getattr(component, self._recurse_key, []):
+                    yield '.'.join([name, v])
 
-            children = [c for c in self._parent.component_names
-                        if _lazy_get(self._parent, c).kind & self._kind]
-            out = []
-            for c in children:
-                cmpt = getattr(self._parent, c)
-                out.append(c)
-                if hasattr(cmpt, self._recurse_key):
-                    out.extend('.'.join([c, v]) for v in
-                               getattr(cmpt, self._recurse_key, []))
+            out = (per_component(name, component)
+                   for name, component in
+                   self._parent._get_components_of_kind(self._kind)
+                   )
 
-            return out
+            return list(itertools.chain.from_iterable(out))
 
         def __getitem__(self, key):
             return self.__internal_list()[key]
@@ -1419,11 +1436,13 @@ class Device(BlueskyInterface, OphydObject):
             raise NotImplemented
 
         def __delitem__(self, key):
-            o = self.__internal_list()[key]
+            to_delete = self.__internal_list()[key]
             if not isinstance(key, slice):
-                o = [o]
-            for k in o:
-                getattr(self._parent, k).kind &= ~self._remove_kind
+                to_delete = [to_delete]
+
+            for attr in to_delete:
+                item_kind = self._parent._get_kind(attr)
+                item_kind &= ~self._remove_kind
 
         def __len__(self):
             return len(self.__internal_list())
@@ -1432,7 +1451,8 @@ class Device(BlueskyInterface, OphydObject):
             getattr(self._parent, object).kind |= self._kind
 
         def remove(self, value):
-            getattr(self._parent, value).kind &= ~self._remove_kind
+            kind = self._parent._get_kind(value)
+            kind &= ~self._remove_kind
 
         def __contains__(self, value):
             return value in self.__internal_list()
@@ -1459,14 +1479,6 @@ if not hasattr(Device, '_sig_attrs'):
 @contextlib.contextmanager
 def kind_context(kind):
     yield functools.partial(Component, kind=kind)
-
-
-def _lazy_get(parent, name):
-    return parent._signals.get(name, parent._initial_state[name])
-
-
-def _ensure_kind(k):
-    return getattr(Kind, k.lower()) if isinstance(k, str) else k
 
 
 def _wait_for_connection_context(value, doc):

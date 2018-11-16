@@ -128,6 +128,12 @@ def underscores_to_camel_case(underscores):
     return underscores.capitalize()
 
 
+def getattrs(obj, gen):
+    'For each item in the generator `gen`, yields (attr, getattr(obj, attr))'
+    for attr in gen:
+        yield attr, getattr(obj, attr)
+
+
 class DO_NOT_USE:
     "sentinel value"
     ...
