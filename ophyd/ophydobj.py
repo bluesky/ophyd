@@ -38,6 +38,9 @@ class OphydObject:
     ----------
     name : str, optional
         The name of the object.
+    attr_name : str, optional
+        The attr name on it's parent (if it has one)
+        ex ``getattr(self.parent, self.attr_name) is self``
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
     kind : a member the Kind IntEnum (or equivalent integer), optional
@@ -50,7 +53,7 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name=None, parent=None, labels=None,
+    def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
         if labels is None:
             labels = set()
@@ -64,6 +67,7 @@ class OphydObject:
         # base name and ref to parent, these go with properties
         if name is None:
             name = ''
+        self._attr_name = attr_name
         if not isinstance(name, str):
             raise ValueError("name must be a string.")
         self._name = name
@@ -109,6 +113,18 @@ class OphydObject:
         self._kind = self._validate_kind(val)
 
     @property
+    def dotted_name(self) -> str:
+        """Return the dotted name
+
+        """
+        names = []
+        obj = self
+        while obj.parent is not None:
+            names.append(obj.attr_name)
+            obj = obj.parent
+        return '.'.join(names[::-1])
+
+    @property
     def name(self):
         '''name of the device'''
         return self._name
@@ -116,6 +132,10 @@ class OphydObject:
     @name.setter
     def name(self, name):
         self._name = name
+
+    @property
+    def attr_name(self):
+        return self._attr_name
 
     @property
     def connected(self):

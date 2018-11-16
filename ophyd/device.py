@@ -146,10 +146,13 @@ class Component:
         return suffix
 
     def create_component(self, instance):
-        '''Create a component for the instance'''
+        'Instantiate the object described by this Component for a Device'
         kwargs = self.kwargs.copy()
-        kwargs['name'] = '{}_{}'.format(instance.name, self.attr)
-        kwargs['kind'] = instance._initial_state[self.attr].kind
+        kwargs.update(
+            name=f'{instance.name}_{self.attr}',
+            kind=instance._initial_state[self.attr].kind,
+            attr_name=self.attr,
+        )
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
@@ -701,7 +704,7 @@ class Device(BlueskyInterface, OphydObject):
     prefix : str, optional
         The PV prefix for all components of the device
     name : str, keyword only
-        The name of the device
+        The name of the device (as will be reported via read()`
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
     read_attrs : sequence of attribute names
