@@ -1,7 +1,5 @@
 codecov
-coveralls
 matplotlib
 pytest
-pytest-cov
 databroker
 caproto[complete]

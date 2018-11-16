@@ -1,5 +1,8 @@
 [run]
 source=ophyd
+concurrency=
+    thread
+    multiprocessing
 
 [report]
 omit=

@@ -1,8 +1,5 @@
 language: python
-sudo: required
-python:
-  - 3.6
-dist: trusty
+dist: xenial
 
 env:
   global:
@@ -41,8 +38,10 @@ matrix:
   include:
     - python: 3.6
       env: BUILD_DOCS=true
+    - python: 3.7
+      env: BUILD_DOCS=
     - python: nightly
-      env: EPICS_DEB_DIST="jessie/staging"
+      env: BUILD_DOCS=
 
 before_install:
   - export MPLBACKEND=agg
@@ -52,7 +51,8 @@ before_install:
   # - git clone --single-branch --branch "${EPICS_ON_TRAVIS_VERSION}" https://github.com/klauer/epics-on-travis "$CI_TOP"
   # but for now, get the latest scripts:
   - git clone --single-branch --branch master https://github.com/klauer/epics-on-travis "$CI_TOP"
-  - sudo ifup docker0
+  - ip addr
+  - ping -b -c 5 $ETH0_IP
   - echo "EPICS_CA_ADDR_LIST=$ETH0_BCAST" >> "$CI_SCRIPTS/epics-config.sh"
   - echo "EPICS_PVA_ADDR_LIST=$ETH0_BCAST" >> "$CI_SCRIPTS/epics-config.sh"
   - echo "EPICS_PVA_INTF_LIST=$ETH0_IP" >> "$CI_SCRIPTS/epics-config.sh"
@@ -83,9 +83,10 @@ script:
   - caproto-get -v 13SIM1:cam1:Acquire
 
   # non-caproto-based tests
-  - coverage run --concurrency=thread --parallel-mode run_tests.py -v --cov=ophyd --cov-report term-missing -k 'not caproto'
+  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k 'not caproto'
   - coverage combine
   - coverage report
+  - codecov
 
   # caproto-based tests (xfail for now)
   - timeout 5m python run_tests.py -v --cov=ophyd --cov-report term-missing -k 'caproto' || /bin/true
