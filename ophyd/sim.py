@@ -664,8 +664,8 @@ class SynSignalWithRegistry(SynSignal):
 
     def stage(self):
         self._file_stem = short_uid()
-        self._path_stem = os.path.join(self.save_path, self._file_stem)
         self._datum_counter = itertools.count()
+        self._path_stem = os.path.join(self.save_path, self._file_stem)
 
         # This is temporarily more complicated than it will be in the future.
         # It needs to support old configurations that have a registry.
@@ -696,13 +696,14 @@ class SynSignalWithRegistry(SynSignal):
         for idx, (name, reading) in enumerate(super().read().items()):
             # Save the actual reading['value'] to disk. For a real detector,
             # this part would be done by the detector IOC, not by ophyd.
-            self.save_func('{}_{}.{}'.format(self._path_stem, idx,
+            data_counter = next(self._datum_counter)
+            self.save_func('{}_{}.{}'.format(self._path_stem, data_counter,
                                              self.save_ext), reading['value'])
             # This is temporarily more complicated than it will be in the
             # future.  It needs to support old configurations that have a
             # registry.
             datum = {'resource': self._resource_uid,
-                     'datum_kwargs': dict(index=idx)}
+                     'datum_kwargs': dict(index=data_counter)}
             if self.reg is not None:
                 # If a Registry is set, we need to allow it to generate the
                 # datum_id for us.
@@ -712,7 +713,7 @@ class SynSignalWithRegistry(SynSignal):
             else:
                 # If a Registry is not set, we need to generate the datum_id.
                 datum_id = '{}/{}'.format(self._resource_uid,
-                                          next(self._datum_counter))
+                                          data_counter)
             datum['datum_id'] = datum_id
             self._asset_docs_cache.append(('datum', datum))
             # And now change the reading in place, replacing the value with

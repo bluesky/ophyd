@@ -1,5 +1,5 @@
-from ophyd.sim import (SynGauss, Syn2DGauss, SynAxis,
-                       make_fake_device, FakeEpicsSignal, FakeEpicsSignalRO)
+from ophyd.sim import (SynGauss, Syn2DGauss, SynAxis, make_fake_device,
+                       FakeEpicsSignal, FakeEpicsSignalRO, SynSignalWithRegistry)
 from ophyd.device import (Device, Component as Cpt, FormattedComponent as FCpt,
                           DynamicDeviceComponent as DDCpt)
 from ophyd.signal import Signal, EpicsSignal, EpicsSignalRO
@@ -7,6 +7,8 @@ from ophyd.areadetector.base import EpicsSignalWithRBV
 from ophyd.utils import ReadOnlyError, LimitError, DisconnectedError
 import numpy as np
 import pytest
+import tempfile
+import shutil
 
 
 def test_random_state_gauss1d():
@@ -212,3 +214,21 @@ def test_fake_epics_signal_enum():
     assert sig.get(as_string=False) == 2
     with pytest.raises(ValueError):
         sig.put('bazillion')
+
+
+def test_SynSignalWithRegistry():
+    tempdirname = tempfile.mkdtemp()
+
+    def data_func():
+        return np.array(np.ones((10, 10)))
+
+    img = SynSignalWithRegistry(data_func, save_path=tempdirname,
+                                name='img', labels={'detectors'})
+    img.stage()
+    img.trigger()
+    d0 = img.read()
+    assert int(d0['img']['value'][-1]) == 0
+    img.trigger()
+    d1 = img.read()
+    assert int(d1['img']['value'][-1]) == 1  # increased by 1
+    shutil.rmtree(tempdirname)
