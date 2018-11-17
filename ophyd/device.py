@@ -1011,13 +1011,14 @@ class Device(BlueskyInterface, OphydObject):
         master_list = set(master_list)
         component_names = set(self.component_names)
 
+        # For all children of this class, update their kinds
         for name in component_names:
             kind = self._get_kind(name)
             kind = (kind | set_kind if name in master_list
                     else kind & ~unset_kind)
             self._set_kind(name, kind)
 
-        # now look at everything else, presumably things with dots
+        # Now look at everything else, presumably things with dots
         extra = master_list - component_names
         fail = set(c for c in extra if '.' not in c)
 
@@ -1054,8 +1055,6 @@ class Device(BlueskyInterface, OphydObject):
 
     def _summary(self):
         "Return a string summarizing the structure of the Device."
-        desc = self.describe()
-        config_desc = self.describe_configuration()
         read_attrs = self.read_attrs
         config_attrs = self.configuration_attrs
         used_attrs = set(read_attrs + config_attrs)
@@ -1063,40 +1062,28 @@ class Device(BlueskyInterface, OphydObject):
                        if a not in used_attrs]
         hints = getattr(self, 'hints', {}).get('fields', [])
 
-        def format_leaf(a):
-            s = getattr(self, a)
-            return '{:<20} {:<20}({!r})'.format(a, type(s).__name__,
-                                                s.name)
+        def format_leaf(attr):
+            cpt = getattr(self, attr)
+            return f'{attr:<20} {type(cpt).__name__:<20}({cpt.name!r})'
+
+        def format_hint(key):
+            return ''.join(('*' if key in hints else ' ', key))
+
+        categories = [
+            ('data keys (* hints)', sorted(self.describe()), format_hint),
+            ('read attrs', read_attrs, format_leaf),
+            ('config keys', sorted(self.describe_configuration()), str),
+            ('configuration attrs', config_attrs, format_leaf),
+            ('unused attrs', extra_attrs, format_leaf)
+        ]
 
         out = []
-        out.append('data keys (* hints)')
-        out.append('-------------------')
-        for k in sorted(desc):
-            out.append(('*' if k in hints else ' ') + k)
-        out.append('')
+        for title, items, formatter in categories:
+            out.append(title)
+            out.append('-' * len(title))
+            out.extend([formatter(s) for s in items])
+            out.append('')
 
-        out.append('read attrs')
-        out.append('----------')
-        for a in read_attrs:
-            out.append(format_leaf(a))
-
-        out.append('')
-        out.append('config keys')
-        out.append('-----------')
-        for k in sorted(config_desc):
-            out.append(k)
-        out.append('')
-
-        out.append('configuration attrs')
-        out.append('----------')
-        for a in config_attrs:
-            out.append(format_leaf(a))
-        out.append('')
-
-        out.append('Unused attrs')
-        out.append('------------')
-        for a in extra_attrs:
-            out.append(format_leaf(a))
         return '\n'.join(out)
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):

@@ -509,6 +509,7 @@ def test_walk_signals(include_lazy):
     print(MyDevice.sub1.cls.cpt1)
 
     dev = MyDevice('', name='mydev')
+    dev.summary()
 
     expected = [
         ComponentWalk(ancestors=(dev, dev.sub1, ),
