@@ -1031,9 +1031,9 @@ class FakeEpicsSignal(SynSignal):
     We can emulate EpicsSignal features here. We currently emulate the put
     limits and some enum handling.
     """
-    def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
-                 put_complete=False, string=False, limits=False,
-                 auto_monitor=False, name=None, **kwargs):
+    def __init__(self, read_pv, write_pv=None, *, put_complete=False,
+                 string=False, limits=False, auto_monitor=False, name=None,
+                 **kwargs):
         """
         Mimic EpicsSignal signature
         """
