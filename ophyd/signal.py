@@ -428,8 +428,6 @@ class EpicsSignalBase(Signal):
     ----------
     read_pv : str
         The PV to read from
-    pv_kw : dict, optional
-        Keyword arguments for ``epics.PV(**pv_kw)``
     auto_monitor : bool, optional
         Use automonitor with epics.PV
     name : str, optional
@@ -438,7 +436,6 @@ class EpicsSignalBase(Signal):
         Attempt to cast the EPICS PV value to a string by default
     '''
     def __init__(self, read_pv, *,
-                 pv_kw=None,
                  string=False,
                  auto_monitor=False,
                  name=None,
@@ -454,13 +451,9 @@ class EpicsSignalBase(Signal):
                                'using this class: {}'
                                ''.format(new_class.__name__))
 
-        if pv_kw is None:
-            pv_kw = dict()
-
         self._lock = threading.RLock()
         self._read_pv = None
         self._string = bool(string)
-        self._pv_kw = pv_kw
         self._auto_monitor = auto_monitor
         self._pvs_ready_event = threading.Event()
 
@@ -487,8 +480,8 @@ class EpicsSignalBase(Signal):
         self._read_pv = cl.get_pv(
             read_pv, form=cl.pv_form, auto_monitor=auto_monitor,
             connection_callback=self._pv_connected,
-            access_callback=self._pv_access_callback,
-            **pv_kw)
+            access_callback=self._pv_access_callback
+        )
 
         with self._lock:
             self._read_pv.add_callback(self._read_changed,
@@ -605,8 +598,7 @@ class EpicsSignalBase(Signal):
                 self._read_pv = self._reinitialize_pv(
                     self._read_pv, auto_monitor=True,
                     connection_callback=self._pv_connected,
-                    access_callback=self._pv_access_callback,
-                    **self._pv_kw)
+                    access_callback=self._pv_access_callback)
                 self._read_pv.add_callback(self._read_changed,
                                            run_now=self._read_pv.connected)
 
@@ -652,7 +644,6 @@ class EpicsSignalBase(Signal):
     def _repr_info(self):
         yield ('read_pv', self._read_pv.pvname)
         yield from super()._repr_info()
-        yield ('pv_kw', self._pv_kw)
         yield ('auto_monitor', self._auto_monitor)
         yield ('string', self._string)
 
@@ -778,8 +769,6 @@ class EpicsSignalRO(EpicsSignalBase):
     ----------
     read_pv : str
         The PV to read from
-    pv_kw : dict, optional
-        Keyword arguments for ``epics.PV(**pv_kw)``
     limits : bool, optional
         Check limits prior to writing value
     auto_monitor : bool, optional
@@ -788,11 +777,10 @@ class EpicsSignalRO(EpicsSignalBase):
         Name of signal.  If not given defaults to read_pv
     '''
 
-    def __init__(self, read_pv, *, pv_kw=None, string=False,
-                 auto_monitor=False, name=None, **kwargs):
-        super().__init__(read_pv, pv_kw=pv_kw, string=string,
-                         auto_monitor=auto_monitor, name=name,
-                         **kwargs)
+    def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
+                 **kwargs):
+        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
+                         name=name, **kwargs)
         self._metadata['write_access'] = False
 
     def put(self, *args, **kwargs):
@@ -829,8 +817,6 @@ class EpicsSignal(EpicsSignalBase):
         The PV to read from
     write_pv : str, optional
         The PV to write to if different from the read PV
-    pv_kw : dict, optional
-        Keyword arguments for ``epics.PV(**pv_kw)``
     limits : bool, optional
         Check limits prior to writing value
     auto_monitor : bool, optional
@@ -848,9 +834,9 @@ class EpicsSignal(EpicsSignalBase):
     '''
     SUB_SETPOINT = 'setpoint'
 
-    def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
-                 put_complete=False, string=False, limits=False,
-                 auto_monitor=False, name=None, **kwargs):
+    def __init__(self, read_pv, write_pv=None, *, put_complete=False,
+                 string=False, limits=False, auto_monitor=False, name=None,
+                 **kwargs):
 
         self._write_pv = None
         self._use_limits = bool(limits)
@@ -862,9 +848,8 @@ class EpicsSignal(EpicsSignalBase):
         if write_pv == read_pv:
             write_pv = None
 
-        super().__init__(read_pv, pv_kw=pv_kw, string=string,
-                         auto_monitor=auto_monitor, name=name,
-                         **kwargs)
+        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
+                         name=name, **kwargs)
 
         if write_pv is not None:
             validate_pv_name(write_pv)
@@ -874,8 +859,8 @@ class EpicsSignal(EpicsSignalBase):
                 write_pv, form=cl.pv_form,
                 auto_monitor=self._auto_monitor,
                 connection_callback=self._pv_connected,
-                access_callback=self._pv_access_callback,
-                **self._pv_kw)
+                access_callback=self._pv_access_callback
+            )
             self._write_pv.add_callback(self._write_changed,
                                         run_now=self._write_pv.connected)
         else:
@@ -903,8 +888,8 @@ class EpicsSignal(EpicsSignalBase):
                 self._write_pv = self._reinitialize_pv(
                     self._write_pv, auto_monitor=True,
                     connection_callback=self._pv_connected,
-                    access_callback=self._pv_access_callback,
-                    **self._pv_kw)
+                    access_callback=self._pv_access_callback
+                )
                 self._write_pv.add_callback(self._write_changed,
                                             run_now=self._write_pv.connected)
 
