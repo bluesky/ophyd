@@ -1,16 +1,6 @@
 '''
 P4P TODO list
 
-* Discuss with upstream
-    1. There does not appear to be a way to monitor connection status outside
-       of a value monitor
-    2. No such thing as read/write access?
-    3. Wrapping basic Python data types...
-    4. pvRequest filters for monitoring data? pvRequest seems limited to a
-       comma-delimited list of dotted fields
-    5. Issue: '[13SIM1:Pva1:Image] warning : not a channel request'
-       What does this mean/why is it not an exception we can catch?
-
 * In this shim
     1. Support non-normative types (and attributes/etc with AD images)
     2. Process by default?
@@ -85,7 +75,6 @@ def normative_type_to_dictionary(value):
 
     if len(ntype_dict):
         info['metadata'] = ntype_dict
-        print(ntype_dict)
     return info
 
 
@@ -98,11 +87,11 @@ class P4pContext:
 
     def release_pv(self, pv):
         pvinfo = self.pvinfo[pv.pvname]
-        pvinfo.instances.pop(pv)
+        pvinfo.instances.remove(pv)
         if not len(pvinfo.instances):
             for sub in list(pvinfo.subscriptions):
                 sub.close()
-                pvinfo.subscriptions.pop(sub)
+                pvinfo.subscriptions.remove(sub)
             self.pvinfo.pop(pv.pvname)
 
     def get_pv(self, pvname, *, connect, callback=None, form='time', verbose=False,
@@ -261,14 +250,17 @@ class NormativeTypePV:
     def wait_for_connection(self, timeout=5):
         if not self._connect_event.wait(timeout):
             raise TimeoutError(f'Failed to connect within {timeout:.3f} sec')
+        return True
 
     def _status_update(self, value):
         if isinstance(value, p4p.client.raw.Cancelled):
             ...
         elif isinstance(value, p4p.client.raw.Disconnected):
             self._connect_event.clear()
+            was_connected = self.connected
             self._metadata['connected'] = False
-            self.connection_callback(self.pvname, conn=False, pv=self)
+            if was_connected:
+                self.connection_callback(self.pvname, conn=False, pv=self)
 
     def _monitor_update(self, info):
         if not self.connected:
@@ -392,7 +384,7 @@ def setup(logger):
     global _dispatcher
 
     if _dispatcher is not None:
-        logger.debug('ophyd already setup')
+        logger.debug('ophyd/p4p already setup')
         return
 
     def _cleanup():
@@ -400,7 +392,7 @@ def setup(logger):
         if _dispatcher is None:
             return
 
-        logger.debug('Performing p4p cleanup')
+        logger.debug('Performing ophyd/p4p cleanup')
         if _dispatcher.is_alive():
             logger.debug('Joining the dispatcher thread')
             _dispatcher.stop()
