@@ -1,6 +1,5 @@
 import collections
 import contextlib
-import copy
 import functools
 import itertools
 import logging
