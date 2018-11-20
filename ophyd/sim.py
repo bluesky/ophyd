@@ -908,15 +908,11 @@ def make_fake_device(cls):
                                      )
             else:
                 fake_cpt = copy.copy(cpt)
-            if isinstance(cpt, Component):
-                fake_cpt.cls = make_fake_device(cpt.cls)
-                logger.debug('switch cpt_name=%s to cls=%s',
-                             cpt_name, fake_cpt.cls)
-            else:
-                raise RuntimeError(f"{cpt} is not a component or a dynamic "
-                                   f"device component. I don't know how you "
-                                   f"found this error, should be impossible "
-                                   f"to reach it.")
+
+            fake_cpt.cls = make_fake_device(cpt.cls)
+            logger.debug('switch cpt_name=%s to cls=%s', cpt_name,
+                         fake_cpt.cls)
+
             fake_dict[cpt_name] = fake_cpt
         fake_class = type('Fake{}'.format(cls.__name__), (cls,), fake_dict)
         fake_device_cache[cls] = fake_class
