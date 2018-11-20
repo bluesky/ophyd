@@ -8,7 +8,7 @@ from ophyd import (Device, Component, FormattedComponent,
                    wait_for_lazy_connection, do_not_wait_for_lazy_connection)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
-from ophyd.device import ComponentWalk
+from ophyd.device import ComponentWalk, create_device_from_components
 from ophyd.utils import ExceptionBundle
 
 
@@ -647,3 +647,25 @@ def test_dotted_name():
 
     assert o.a.y.attr_name == 'y'
     assert o.b.y.attr_name == 'y'
+
+
+def test_create_device():
+    components = dict(cpt1=Component(Signal, value=0),
+                      cpt2=Component(Signal, value=1),
+                      cpt3=Component(Signal, value=2)
+                      )
+    Dev = create_device_from_components('Dev', base_class=Device,
+                                        **components
+                                        )
+    assert Dev.__name__ == 'Dev'
+    assert Dev.cpt1 is components['cpt1']
+    dev = Dev(name='dev')
+    assert dev.cpt1.get() == 0
+    assert dev.cpt2.get() == 1
+    assert dev.cpt3.get() == 2
+
+
+def test_create_device_bad_component():
+    with pytest.raises(ValueError):
+        create_device_from_components('Dev', base_class=Device,
+                                      bad_component=None)

@@ -329,11 +329,15 @@ class DynamicDeviceComponent(Component):
         A class attribute to put on the dynamically generated class
     default_configuration_attrs : list, optional
         A class attribute to put on the dynamically generated class
+    component_class : class, optional
+        Defaults to Component
+    base_class : class, optional
+        Defaults to Device
     '''
 
     def __init__(self, defn, *, clsname=None, doc=None, kind=Kind.normal,
                  default_read_attrs=None, default_configuration_attrs=None,
-                 component_class=Component):
+                 component_class=Component, base_class=None):
         if isinstance(default_read_attrs, collections.Iterable):
             default_read_attrs = tuple(default_read_attrs)
 
@@ -346,6 +350,7 @@ class DynamicDeviceComponent(Component):
         self.default_configuration_attrs = default_configuration_attrs
         self.attrs = list(defn.keys())
         self.component_class = component_class
+        self.base_class = base_class if base_class is not None else Device
         self.components = {attr: component_class(cls, suffix, **kwargs)
                            for attr, (cls, suffix, kwargs) in self.defn.items()
                            }
@@ -361,40 +366,22 @@ class DynamicDeviceComponent(Component):
 
     def __getnewargs_ex__(self):
         'Get arguments needed to copy this class (used for pickle/copy)'
-        kwargs = dict(clsname=self.clsname,
-                      doc=self.doc,
-                      kind=self.kind,
+        kwargs = dict(clsname=self.clsname, doc=self.doc, kind=self.kind,
                       default_read_attrs=self.default_read_attrs,
                       default_configuration_attrs=self.default_configuration_attrs,
-                      component_class=self.component_class)
+                      component_class=self.component_class,
+                      base_class=self.base_class)
         return ((self.defn, ), kwargs)
 
     def __set_name__(self, owner, attr_name):
         if self.clsname is None:
             self.clsname = underscores_to_camel_case(attr_name)
         super().__set_name__(owner, attr_name)
-        self.cls = self._create_class()
-
-    def _create_class(self):
-        docstring = self.doc
-        if docstring is None:
-            docstring = '{} sub-device'.format(self.clsname)
-
-        clsdict = OrderedDict(
-            __doc__=docstring,
-            _default_read_attrs=self.default_read_attrs,
-            _default_configuration_attrs=self.default_configuration_attrs
-        )
-
-        for attr in self.defn.keys():
-            try:
-                cls, suffix, kwargs = self.defn[attr]
-            except Exception as ex:
-                raise ValueError('Malformed dynamic device definition') from ex
-
-            clsdict[attr] = Component(cls, suffix, **kwargs)
-
-        return type(self.clsname, (Device, ), clsdict)
+        self.cls = create_device_from_components(
+            self.clsname, default_read_attrs=self.default_read_attrs,
+            default_configuration_attrs=self.default_configuration_attrs,
+            base_class=self.base_class,
+            **self.components)
 
     def __repr__(self):
         return '\n'.join(f'{attr} = {cpt!r}'
@@ -1462,6 +1449,57 @@ if not hasattr(Device, '_sig_attrs'):
 @contextlib.contextmanager
 def kind_context(kind):
     yield functools.partial(Component, kind=kind)
+
+
+def create_device_from_components(name, *, docstring=None,
+                                  default_read_attrs=None,
+                                  default_configuration_attrs=None,
+                                  base_class=Device, **components):
+    '''Factory function to make a Device from Components
+
+    Parameters
+    ----------
+    name : str
+        Class name to create
+    docstring : str, optional
+        Docstring to attach to the class
+    default_read_attrs : list, optional
+        Outside of Kind, control the default read_attrs list.
+        Defaults to all `component_names'
+    default_configuration_attrs : list, optional
+        Outside of Kind, control the default configuration_attrs list.
+        Defaults to []
+    base_class : Device or sub-class, optional
+        Class to inherit from, defaults to Device
+    **components : dict
+        Keyword arguments are used to map component attribute names to
+        Components.
+
+    Returns
+    -------
+    cls : Device
+        Newly generated Device class
+    '''
+    if docstring is None:
+        docstring = f'{name} Device'
+
+    if not isinstance(base_class, tuple):
+        base_class = (base_class, )
+
+    clsdict = OrderedDict(
+        __doc__=docstring,
+        _default_read_attrs=default_read_attrs,
+        _default_configuration_attrs=default_configuration_attrs
+    )
+
+    for attr, component in components.items():
+        if not isinstance(component, Component):
+            raise ValueError(f'Attribute {attr} is not a Component. '
+                             f'It is of type {type(component).__name__}')
+
+        clsdict[attr] = component
+
+    return type(name, base_class, clsdict)
 
 
 def _wait_for_connection_context(value, doc):
