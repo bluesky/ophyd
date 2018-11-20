@@ -1505,7 +1505,7 @@ def create_device_from_components(name, *, docstring=None,
 def _wait_for_connection_context(value, doc):
     @contextlib.contextmanager
     def wrapped(dev):
-        '''Context manager which changes the wait behavior of lazy signal instantiation
+        f'''Context manager which changes the wait behavior of lazy signal instantiation
 
         By default, upon instantiation of a lazy signal, `wait_for_connection`
         is called.  While a common source of confusion, this is done
