@@ -3,6 +3,7 @@ import contextlib
 import functools
 import itertools
 import logging
+import operator
 import textwrap
 import time as ttime
 import types
@@ -1145,29 +1146,19 @@ class Device(BlueskyInterface, OphydObject):
         As a reminder, __getattr__ is only called if a real attribute doesn't
         already exist, or a device component has yet to be instantiated.
         '''
-        if '.' not in name:
-            if self._destroyed:
-                raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
-            try:
-                # Initial access of signal
-                cpt = self._sig_attrs[name]
-                sig = cpt.__get__(self, None)
-                setattr(self, name, sig)
-                return sig
-            except KeyError:
-                raise AttributeError(name)
+        if '.' in name:
+            return operator.attrgetter(name)(self)
 
-        attr_names = name.split('.')
+        if self._destroyed:
+            raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
         try:
-            attr = getattr(self, attr_names[0])
-        except AttributeError:
-            raise AttributeError('{} of {}'.format(attr_names[0], name))
-
-        if len(attr_names) > 1:
-            sub_attr_names = '.'.join(attr_names[1:])
-            return getattr(attr, sub_attr_names)
-
-        return attr
+            # Initial access of signal
+            cpt = self._sig_attrs[name]
+            sig = cpt.__get__(self, None)
+            setattr(self, name, sig)
+            return sig
+        except KeyError:
+            raise AttributeError(name)
 
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
