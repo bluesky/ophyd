@@ -387,18 +387,14 @@ class DynamicDeviceComponent(Component):
         )
 
         for attr in self.defn.keys():
-            clsdict[attr] = self.create_attr(attr)
+            try:
+                cls, suffix, kwargs = self.defn[attr]
+            except Exception as ex:
+                raise ValueError('Malformed dynamic device definition') from ex
+
+            clsdict[attr] = Component(cls, suffix, **kwargs)
 
         return type(self.clsname, (Device, ), clsdict)
-
-    def create_attr(self, attr_name):
-        'Create a Component from the dynamic device definition'
-        try:
-            cls, suffix, kwargs = self.defn[attr_name]
-        except Exception as ex:
-            raise ValueError('Malformed dynamic device definition') from ex
-
-        return Component(cls, suffix, **kwargs)
 
     def __repr__(self):
         return '\n'.join(f'{attr} = {cpt!r}'
