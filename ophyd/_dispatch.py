@@ -56,8 +56,8 @@ class _CallbackThread(threading.Thread):
 
 class EventDispatcher:
     def __init__(self, *, context, logger, timeout=0.1,
-                 thread_class=_CallbackThread,
-                 debug_monitor=False):
+                 thread_class=_CallbackThread, debug_monitor=False,
+                 utility_threads=4):
         self._threads = {}
         self._thread_class = thread_class
         self._timeout = timeout
@@ -66,10 +66,16 @@ class EventDispatcher:
         self._stop_event = threading.Event()
         self.context = context
         self.logger = logger
+        self._util_lock = threading.RLock()
+        self._utility_threads = [f'util{i}' for i in range(utility_threads)]
+        self._util_thread_available = []
 
         self._start_thread(name='metadata')
         self._start_thread(name='monitor')
         self._start_thread(name='get_put')
+
+        for name in self._utility_threads:
+            self._start_thread(name=name)
 
         if debug_monitor:
             self._debug_monitor_thread = threading.Thread(
@@ -120,6 +126,16 @@ class EventDispatcher:
                 thread.join()
 
         self._threads.clear()
+
+    def schedule_utility_task(self, callback, *args, **kwargs):
+        'Schedule `callback` with the given args and kwargs in a util thread'
+        with self._util_lock:
+            if not self._util_thread_available:
+                self._util_thread_available = list(self._utility_threads)
+            use_thread = self._util_thread_available.pop(0)
+
+        # Schedule it through the wrapper:
+        wrap_callback(self, use_thread, callback)(*args, **kwargs)
 
     def _start_thread(self, name):
         'Start dispatcher thread by name'

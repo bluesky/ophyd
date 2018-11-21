@@ -11,7 +11,7 @@ from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 thread_class = threading.Thread
 pv_form = 'time'
 module_logger = logging.getLogger(__name__)
-_dispatcher = None
+dispatcher = None
 name = 'caproto'
 
 
@@ -24,10 +24,10 @@ class PV(_PV):
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None,
                  context=None):
-        connection_callback = wrap_callback(_dispatcher, 'metadata',
+        connection_callback = wrap_callback(dispatcher, 'metadata',
                                             connection_callback)
-        callback = wrap_callback(_dispatcher, 'monitor', callback)
-        access_callback = wrap_callback(_dispatcher, 'metadata',
+        callback = wrap_callback(dispatcher, 'monitor', callback)
+        access_callback = wrap_callback(dispatcher, 'metadata',
                                         access_callback)
 
         super().__init__(pvname, form=form, verbose=verbose,
@@ -39,14 +39,14 @@ class PV(_PV):
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
-        callback = wrap_callback(_dispatcher, 'monitor', callback)
+        callback = wrap_callback(dispatcher, 'monitor', callback)
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
                                     with_ctrlvars=with_ctrlvars, **kw)
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
-        callback = wrap_callback(_dispatcher, 'get_put', callback)
+        callback = wrap_callback(dispatcher, 'get_put', callback)
         return super().put(value, wait=wait, timeout=timeout,
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
@@ -100,9 +100,9 @@ def setup(logger):
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
-    global _dispatcher
+    global dispatcher
 
-    if _dispatcher is not None:
+    if dispatcher is not None:
         logger.debug('ophyd already setup')
         return
 
@@ -111,23 +111,22 @@ def setup(logger):
 
     def _cleanup():
         '''Clean up the ophyd session'''
-        global _dispatcher
-        if _dispatcher is None:
+        global dispatcher
+        if dispatcher is None:
             return
 
         pyepics_compat.get_pv = pyepics_compat._get_pv
 
         logger.debug('Performing ophyd cleanup')
-        if _dispatcher.is_alive():
+        if dispatcher.is_alive():
             logger.debug('Joining the dispatcher thread')
-            _dispatcher.stop()
+            dispatcher.stop()
 
-        _dispatcher = None
+        dispatcher = None
 
     logger.debug('Installing event dispatcher')
     context = PV._default_context.broadcaster
-    _dispatcher = EventDispatcher(thread_class=CaprotoCallbackThread,
-                                  context=context,
-                                  logger=logger)
+    dispatcher = EventDispatcher(thread_class=CaprotoCallbackThread,
+                                 context=context, logger=logger)
     atexit.register(_cleanup)
-    return _dispatcher
+    return dispatcher

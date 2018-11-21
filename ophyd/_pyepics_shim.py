@@ -16,7 +16,7 @@ else:
 
 
 module_logger = logging.getLogger(__name__)
-_dispatcher = None
+dispatcher = None
 
 
 class PyepicsCallbackThread(_CallbackThread):
@@ -33,10 +33,10 @@ class PyepicsShimPV(epics.PV):
     def __init__(self, pvname, callback=None, form='time', verbose=False,
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None):
-        connection_callback = wrap_callback(_dispatcher, 'metadata',
+        connection_callback = wrap_callback(dispatcher, 'metadata',
                                             connection_callback)
-        callback = wrap_callback(_dispatcher, 'monitor', callback)
-        access_callback = wrap_callback(_dispatcher, 'metadata',
+        callback = wrap_callback(dispatcher, 'monitor', callback)
+        access_callback = wrap_callback(dispatcher, 'metadata',
                                         access_callback)
 
         super().__init__(pvname, form=form, verbose=verbose,
@@ -47,14 +47,14 @@ class PyepicsShimPV(epics.PV):
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
-        callback = wrap_callback(_dispatcher, 'monitor', callback)
+        callback = wrap_callback(dispatcher, 'monitor', callback)
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
                                     with_ctrlvars=with_ctrlvars, **kw)
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
-        callback = wrap_callback(_dispatcher, 'get_put', callback)
+        callback = wrap_callback(dispatcher, 'get_put', callback)
         return super().put(value, wait=wait, timeout=timeout,
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
@@ -65,7 +65,7 @@ def release_pvs(*pvs):
         pv.clear_callbacks()
         # Perform the clear auto monitor in one of our dispatcher threads:
         # they are guaranteed to be in the right CA context
-        wrapped = wrap_callback(_dispatcher, 'monitor', pv.clear_auto_monitor)
+        wrapped = wrap_callback(dispatcher, 'monitor', pv.clear_auto_monitor)
         # queue the call in the 'monitor' dispatcher:
         wrapped()
 
@@ -101,11 +101,11 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
     #         # wrapping is taken care of by `add_callback`
     #         thispv.add_callback(callback)
     #     if access_callback is not None:
-    #         access_callback = wrap_callback(_dispatcher, 'metadata',
+    #         access_callback = wrap_callback(dispatcher, 'metadata',
     #                                         access_callback)
     #         thispv.access_callbacks.append(access_callback)
     #     if connection_callback is not None:
-    #         connection_callback = wrap_callback(_dispatcher, 'metadata',
+    #         connection_callback = wrap_callback(dispatcher, 'metadata',
     #                                             connection_callback)
     #         thispv.connection_callbacks.append(connection_callback)
     #     if thispv.connected:
@@ -133,9 +133,9 @@ def setup(logger):
     # It's important to use the same context in the callback dispatcher
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
-    global _dispatcher
+    global dispatcher
 
-    if _dispatcher is not None:
+    if dispatcher is not None:
         logger.debug('ophyd already setup')
         return
 
@@ -145,25 +145,24 @@ def setup(logger):
 
     def _cleanup():
         '''Clean up the ophyd session'''
-        global _dispatcher
-        if _dispatcher is None:
+        global dispatcher
+        if dispatcher is None:
             return
         epics.get_pv = epics._get_pv
         epics.pv.get_pv = epics._get_pv
 
         logger.debug('Performing ophyd cleanup')
-        if _dispatcher.is_alive():
+        if dispatcher.is_alive():
             logger.debug('Joining the dispatcher thread')
-            _dispatcher.stop()
+            dispatcher.stop()
 
-        _dispatcher = None
+        dispatcher = None
 
     logger.debug('Installing event dispatcher')
-    _dispatcher = EventDispatcher(thread_class=PyepicsCallbackThread,
-                                  context=ca.current_context(),
-                                  logger=logger)
+    dispatcher = EventDispatcher(thread_class=PyepicsCallbackThread,
+                                 context=ca.current_context(), logger=logger)
     atexit.register(_cleanup)
-    return _dispatcher
+    return dispatcher
 
 
 def get_pv_form(version):
