@@ -51,6 +51,21 @@ class PV(_PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
+                          timeout=None, with_ctrlvars=False, use_monitor=True):
+        value = super().get(count=count, as_string=as_string,
+                            as_numpy=as_numpy, timeout=timeout,
+                            with_ctrlvars=with_ctrlvars,
+                            use_monitor=use_monitor)
+        if value is None:
+            return value
+
+        return {'value': value,
+                'status': self._args['status'],
+                'severity': self._args['severity'],
+                'timestamp': self._args['timestamp'],
+                }
+
     def clear_auto_monitor(self):
         # TODO move into caproto
         self.auto_monitor = False

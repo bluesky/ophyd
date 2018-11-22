@@ -108,8 +108,12 @@ def signal_test_ioc(prefix, request):
     name = 'test_signal IOC'
     pvs = dict(read_only=f'{prefix}read_only',
                read_write=f'{prefix}read_write',
+               pair_set=f'{prefix}pair_set',
+               pair_rbv=f'{prefix}pair_rbv',
                waveform=f'{prefix}waveform',
                bool_enum=f'{prefix}bool_enum',
+               alarm_status=f'{prefix}alarm_status',
+               set_severity=f'{prefix}set_severity',
                )
 
     process = run_example_ioc('ophyd.tests.signal_ioc',
