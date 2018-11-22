@@ -92,15 +92,6 @@ def test_signal_copy():
     assert signal.timestamp == sig_copy.timestamp
 
 
-def test_rw_removal(cleanup, signal_test_ioc):
-    # rw kwarg is no longer used
-    with pytest.raises(RuntimeError):
-        EpicsSignal(signal_test_ioc.pvs['read_only'], rw=False)
-
-    with pytest.raises(RuntimeError):
-        EpicsSignal(signal_test_ioc.pvs['read_only'], rw=True)
-
-
 def test_epicssignal_readonly(cleanup, signal_test_ioc):
     signal = EpicsSignalRO(signal_test_ioc.pvs['read_only'])
     cleanup.add(signal)

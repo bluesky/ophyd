@@ -495,17 +495,6 @@ class EpicsSignalBase(Signal):
     '''
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
                  **kwargs):
-        if 'rw' in kwargs:
-            if kwargs['rw']:
-                new_class = EpicsSignal
-            else:
-                new_class = EpicsSignalRO
-
-            raise RuntimeError('rw is no longer an option for EpicsSignal. '
-                               'Based on your setting of `rw`, you should be '
-                               'using this class: {}'
-                               ''.format(new_class.__name__))
-
         self._lock = threading.RLock()
         self._read_pv = None
         self._string = bool(string)
