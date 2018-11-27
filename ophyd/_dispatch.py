@@ -8,15 +8,19 @@ class _CallbackThread(threading.Thread):
     'A queue-based callback dispatcher thread'
 
     def __init__(self, name, *, dispatcher, logger, context,
-                 stop_event, timeout, daemon=True):
+                 stop_event, timeout, callback_queue=None, daemon=True):
         super().__init__(name=name, daemon=daemon)
         self.context = context
         self.current_callback = None
         self.dispatcher = dispatcher
         self.logger = logger
-        self.queue = queue.Queue()
         self.stop_event = stop_event
         self.timeout = timeout
+
+        if callback_queue is None:
+            callback_queue = queue.Queue()
+
+        self.queue = callback_queue
 
     def __repr__(self):
         return '<{} qsize={}>'.format(self.__class__.__name__,
@@ -66,16 +70,15 @@ class EventDispatcher:
         self._stop_event = threading.Event()
         self.context = context
         self.logger = logger
-        self._util_lock = threading.RLock()
         self._utility_threads = [f'util{i}' for i in range(utility_threads)]
-        self._util_thread_available = []
+        self._utility_queue = queue.Queue()
 
         self._start_thread(name='metadata')
         self._start_thread(name='monitor')
         self._start_thread(name='get_put')
 
         for name in self._utility_threads:
-            self._start_thread(name=name)
+            self._start_thread(name=name, callback_queue=self._utility_queue)
 
         if debug_monitor:
             self._debug_monitor_thread = threading.Thread(
@@ -129,22 +132,17 @@ class EventDispatcher:
 
     def schedule_utility_task(self, callback, *args, **kwargs):
         'Schedule `callback` with the given args and kwargs in a util thread'
-        with self._util_lock:
-            if not self._util_thread_available:
-                self._util_thread_available = list(self._utility_threads)
-            use_thread = self._util_thread_available.pop(0)
+        self._utility_queue.put((callback, args, kwargs))
 
-        # Schedule it through the wrapper:
-        wrap_callback(self, use_thread, callback)(*args, **kwargs)
-
-    def _start_thread(self, name):
+    def _start_thread(self, name, *, callback_queue=None):
         'Start dispatcher thread by name'
         self._threads[name] = self._thread_class(name=name, dispatcher=self,
                                                  stop_event=self._stop_event,
                                                  timeout=self.timeout,
                                                  context=self.context,
                                                  logger=self.logger,
-                                                 daemon=True)
+                                                 daemon=True,
+                                                 callback_queue=callback_queue)
         self._threads[name].start()
 
 
@@ -154,11 +152,11 @@ def wrap_callback(dispatcher, event_type, callback):
         return
 
     assert event_type in dispatcher._threads
+    callback_queue = dispatcher._threads[event_type].queue
 
     @functools.wraps(callback)
     def wrapped(*args, **kwargs):
-        queue = dispatcher._threads[event_type].queue
-        queue.put((callback, args, kwargs))
+        callback_queue.put((callback, args, kwargs))
 
     wrapped._wrapped_callback = True
     return wrapped
