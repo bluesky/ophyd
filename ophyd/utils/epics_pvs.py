@@ -4,6 +4,7 @@ import time as ttime
 import logging
 import functools
 import numpy as np
+import typing
 
 from .errors import DisconnectedError, OpException
 
@@ -282,7 +283,8 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
                            rtol=rtol if rtol is not None else 1e-5,
                            atol=atol if atol is not None else 1e-8,
                            )
-    ret = a == b
+    ret = (a == b)
+
     try:
         return bool(ret)
     except ValueError:
@@ -297,20 +299,31 @@ _type_map = {'number': (float, np.floating),
 
 
 def data_type(val):
-    '''Determine data-type of val.
+    '''Determine the JSON-friendly type name given a value
 
     Returns
     -------
     str
-        One of ('number', 'array', 'string'), else raises ValueError
+        One of {'number', 'integer', 'array', 'string'}
+
+    Raises
+    ------
+    ValueError if the type is not recognized
     '''
+    bad_iterables = (str, bytes, dict)
+    if isinstance(val, typing.Iterable) and not isinstance(val, bad_iterables):
+        return 'array'
+
     for json_type, py_types in _type_map.items():
         if isinstance(val, py_types):
             return json_type
-    # no legit type found...
+
     raise ValueError(
-        '{!r} '.format(val) +
-        'not a valid type (int, float, ndarray, str, list, tuple)')
+        f'Cannot determine the appropriate bluesky-friendly data type for '
+        f'value {val} of Python type {type(val)}. '
+        f'Supported types include: int, float, str, and iterables such as '
+        f'list, tuple, np.ndarray, and so on.'
+    )
 
 
 def data_shape(val):
@@ -322,8 +335,7 @@ def data_shape(val):
         Empty list if val is number or string, otherwise
         ``list(np.ndarray.shape)``
     '''
-    dtype = data_type(val)
-    if dtype != 'array':
+    if data_type(val) != 'array':
         return []
 
     try:
