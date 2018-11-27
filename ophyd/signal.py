@@ -60,7 +60,7 @@ class Signal(OphydObject):
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
                  labels=None, kind=Kind.hinted, tolerance=None,
                  rtolerance=None, metadata=None, cl=None, attr_name='',
-                 metadata_value_keys=None):
+                 metadata_keys=None):
 
         super().__init__(name=name, parent=parent, kind=kind, labels=labels,
                          attr_name=attr_name)
@@ -72,17 +72,16 @@ class Signal(OphydObject):
         if timestamp is None:
             timestamp = time.time()
 
-        if metadata_value_keys is None:
-            metadata_value_keys = ('status', 'severity', 'precision')
+        if metadata_keys is None:
+            metadata_keys = ('status', 'severity', 'precision')
 
         if metadata is None:
-            metadata = {key: None
-                        for key in metadata_value_keys}
+            metadata = {key: None for key in metadata_keys}
 
         self._destroyed = False
         self._set_thread = None
         self._tolerance = tolerance
-        self._metadata_value_keys = metadata_value_keys
+        self._metadata_keys = metadata_keys
         # self.tolerance is a property
         self.rtolerance = rtolerance
 
@@ -111,9 +110,9 @@ class Signal(OphydObject):
         pass
 
     @property
-    def metadata_value_keys(self):
+    def metadata_keys(self):
         'Metadata keys that will be passed along on value subscriptions'
-        return tuple(self._metadata_value_keys)
+        return tuple(self._metadata_keys)
 
     @property
     def timestamp(self):
@@ -204,7 +203,7 @@ class Signal(OphydObject):
         self._metadata.update(**metadata)
 
         md_for_callback = {key: metadata[key]
-                           for key in self._metadata_value_keys + ('timestamp', )
+                           for key in self._metadata_keys + ('timestamp', )
                            if key in metadata}
 
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
@@ -366,17 +365,17 @@ class DerivedSignal(Signal):
         if isinstance(derived_from, str):
             derived_from = getattr(parent, derived_from)
 
-        metadata_value_keys = getattr(derived_from, 'metadata_value_keys', None)
+        metadata_keys = getattr(derived_from, 'metadata_keys', None)
 
         super().__init__(name=name, parent=parent,
-                         metadata_value_keys=metadata_value_keys, **kwargs)
+                         metadata_keys=metadata_keys, **kwargs)
 
         self._derived_from = derived_from
 
         if write_access is None:
             write_access = derived_from.write_access
 
-        md_info = {key: None for key in self.metadata_value_keys}
+        md_info = {key: None for key in self.metadata_keys}
 
         self._metadata.update(
             connected=derived_from.connected,
@@ -410,7 +409,7 @@ class DerivedSignal(Signal):
     def _derived_metadata_callback(self, *, connected, read_access,
                                    write_access, timestamp, **kwargs):
         updated_md = {key: kwargs[key]
-                      for key in self.metadata_value_keys
+                      for key in self.metadata_keys
                       if key in kwargs
                       }
 
@@ -426,7 +425,7 @@ class DerivedSignal(Signal):
     def _derived_value_callback(self, value=None, **kwargs):
         value = self.inverse(value)
         updated_md = {key: kwargs[key]
-                      for key in self.metadata_value_keys
+                      for key in self.metadata_keys
                       if key in kwargs
                       }
         self._metadata.update(**updated_md)
@@ -628,13 +627,13 @@ class EpicsSignalBase(Signal):
     @raise_if_disconnected
     def alarm_status(self):
         """PV status"""
-        return self._metadata.get('status', None)
+        return self._metadata['status']
 
     @property
     @raise_if_disconnected
     def alarm_severity(self):
         """PV alarm severity"""
-        return self._metadata.get('severity', None)
+        return self._metadata['severity']
 
     def _reinitialize_pv(self, old_instance, **pv_kw):
         '''Reinitialize a PV instance
@@ -936,14 +935,14 @@ class EpicsSignal(EpicsSignalBase):
         self._put_complete = put_complete
         self._setpoint = None
 
-        metadata_value_keys = kwargs.pop(
-            'metadata_value_keys',
+        metadata_keys = kwargs.pop(
+            'metadata_keys',
             ('status', 'severity', 'precision', 'timestamp',
              'setpoint_timestamp', 'setpoint_status', 'setpoint_severity')
         )
 
         super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
-                         name=name, metadata_value_keys=metadata_value_keys,
+                         name=name, metadata_keys=metadata_keys,
                          **kwargs)
 
         if write_pv is None or read_pv == write_pv:
