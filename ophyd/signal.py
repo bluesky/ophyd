@@ -704,12 +704,10 @@ class EpicsSignalBase(Signal):
 
         # Ensure callbacks are run prior to returning, as
         # @raise_if_disconnected can cause issues otherwise.
-        try:
-            self._pvs_ready_event.wait(timeout)
-        except TimeoutError:
+        if not self._pvs_ready_event.wait(timeout):
             raise TimeoutError('Control layer {} failed to send connection and '
                                'access rights information within {:.1f} sec'
-                               ''.format(self.cl.name, float(timeout))) from None
+                               ''.format(self.cl.name, float(timeout)))
 
     def wait_for_connection(self, timeout=1.0):
         '''Wait for the underlying signals to initialize or connect'''
