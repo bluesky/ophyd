@@ -27,7 +27,6 @@ from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 import uuid
-import os
 import epics
 
 logger = logging.getLogger(__name__)

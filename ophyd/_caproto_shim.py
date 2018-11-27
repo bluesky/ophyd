@@ -50,6 +50,14 @@ class PV(_PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    def get_all_metadata(self):
+        if self._args['timestamp'] is None:
+            self.get_timevars()
+        self.get_ctrlvars()
+        md = self._args.copy()
+        md.pop('value', None)
+        return md
+
     def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
                           timeout=None, with_ctrlvars=False, use_monitor=True):
         value = super().get(count=count, as_string=as_string,

@@ -496,7 +496,7 @@ class EpicsSignalBase(Signal):
         self._read_pv = None
         self._string = bool(string)
         self._auto_monitor = auto_monitor
-        self._pvs_ready_event = threading.Event()
+        self._signal_is_ready = threading.Event()
 
         if name is None:
             name = read_pv
@@ -504,7 +504,7 @@ class EpicsSignalBase(Signal):
         metadata_keys = kwargs.pop(
             'metadata_keys',
             ('status', 'severity', 'precision', 'timestamp', 'units',
-             'enum_strs')
+             'enum_strs', 'read_access', 'write_access')
         )
 
         super().__init__(name=name, metadata_keys=metadata_keys, **kwargs)
@@ -549,24 +549,22 @@ class EpicsSignalBase(Signal):
         rather, ready for usage)
         '''
         pvname = pv.pvname
-        try:
-            metadata = dict(
-                # DBR_TIME type
-                status=pv.status,
-                severity=pv.severity,
-                timestamp=pv.timestamp,
 
-                # DBR_CTRL type
-                precision=pv.precision,
-                units=pv.units,
-                enum_strs=pv.enum_strs,
-                lower_ctrl_limit=pv.lower_ctrl_limit,
-                upper_ctrl_limit=pv.upper_ctrl_limit,
-            )
-            self._metadata_changed(pv, metadata)
+        try:
+            md = pv.get_all_metadata()
         except Exception as ex:
-            logger.debug('Initial metadata request failed for %s', pvname,
+            logger.error('Initial metadata request failed for %s', pvname,
                          exc_info=ex)
+        else:
+            # Do not include read/write access or any unknown keys:
+            md = {key: value for key, value in md.items()
+                  if key in ('status', 'severity', 'precision', 'timestamp',
+                             'units', 'enum_strs', 'setpoint_timestamp',
+                             'setpoint_status', 'setpoint_severity',
+                             'lower_ctrl_limit', 'upper_ctrl_limit',
+                             )
+                  }
+            self._metadata_changed(pv, md)
         finally:
             self._received_first_metadata[pvname] = True
             self._set_event_if_ready()
@@ -580,34 +578,37 @@ class EpicsSignalBase(Signal):
             return
 
         if not conn:
-            self._pvs_ready_event.clear()
+            self._signal_is_ready.clear()
             self._access_rights_valid[pv.pvname] = False
 
-        old_connected = self.connected
         self._connection_states[pvname] = conn
-        self._metadata['connected'] = all(self._connection_states.values())
 
         if not self._received_first_metadata[pvname]:
             self.cl.dispatcher.schedule_utility_task(
                 self._update_metadata_manually, pv)
-
-        if old_connected != self.connected:
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
         self._set_event_if_ready()
 
     def _set_event_if_ready(self):
         '''If connected and access rights received, set the "ready" event used
         in wait_for_connection.'''
-        access_rights = all(self._access_rights_valid.values())
-        metadata = all(self._received_first_metadata.values())
-        if self.connected and access_rights and metadata:
-            self._pvs_ready_event.set()
+        with self._lock:
+            already_connected = self._metadata['connected']
+            if self._destroyed or already_connected:
+                return
+            elif not all([*self._connection_states.values(),
+                          *self._access_rights_valid.values(),
+                          *self._received_first_metadata.values()]):
+                return
+
+            self._metadata['connected'] = True
+            self._signal_is_ready.set()
+
+        self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
     def _pv_access_callback(self, read_access, write_access, pv):
         'Control-layer callback: PV access rights have changed'
         self._access_rights_valid[pv.pvname] = True
-        self._set_event_if_ready()
 
     @property
     def as_string(self):
@@ -693,18 +694,27 @@ class EpicsSignalBase(Signal):
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
-    def _ensure_connected(self, pv, *, timeout):
+    def _ensure_connected(self, *pvs, timeout):
         'Ensure that `pv` is connected, with access/connection callbacks run'
         with self._lock:
             if self.connected:
                 return
 
-            if not pv.wait_for_connection(timeout=timeout):
-                raise TimeoutError('Failed to connect to %s' % pv.pvname)
+            for pv in pvs:
+                if not pv.wait_for_connection(timeout=timeout):
+                    raise TimeoutError('Failed to connect to %s' % pv.pvname)
+
+        for pv in pvs:
+            if not self._received_first_metadata[pv.pvname]:
+                # Utility threads can get backed up in cases of PV connection
+                # storms.  Since the user is specifically blocking on this PV,
+                # make it a priority and perform the request in the current
+                # thread.
+                self._update_metadata_manually(pv)
 
         # Ensure callbacks are run prior to returning, as
         # @raise_if_disconnected can cause issues otherwise.
-        if not self._pvs_ready_event.wait(timeout):
+        if not self._signal_is_ready.wait(timeout):
             raise TimeoutError('Control layer {} failed to send connection and '
                                'access rights information within {:.1f} sec'
                                ''.format(self.cl.name, float(timeout)))
@@ -721,10 +731,11 @@ class EpicsSignalBase(Signal):
     @property
     def pvname(self):
         '''The readback PV name'''
-        return self._read_pv.pvname
+        if self._read_pv is not None:
+            return self._read_pv.pvname
 
     def _repr_info(self):
-        yield ('read_pv', self._read_pv.pvname)
+        yield ('read_pv', self.pvname)
         yield from super()._repr_info()
         yield ('auto_monitor', self._auto_monitor)
         yield ('string', self._string)
@@ -764,7 +775,7 @@ class EpicsSignalBase(Signal):
             as_string = self._string
 
         with self._lock:
-            self._ensure_connected(self._read_pv, timeout=connection_timeout)
+            self.wait_for_connection(timeout=connection_timeout)
             info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
@@ -903,6 +914,7 @@ class EpicsSignalRO(EpicsSignalBase):
             self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
         super()._pv_access_callback(read_access, write_access, pv)
+        self._set_event_if_ready()
 
 
 class EpicsSignal(EpicsSignalBase):
@@ -947,7 +959,7 @@ class EpicsSignal(EpicsSignalBase):
             'metadata_keys',
             ('status', 'severity', 'precision', 'timestamp', 'units',
              'enum_strs', 'setpoint_timestamp', 'setpoint_status',
-             'setpoint_severity')
+             'setpoint_severity', 'read_access', 'write_access')
         )
 
         super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
@@ -958,6 +970,8 @@ class EpicsSignal(EpicsSignalBase):
             setpoint_timestamp=None,
             setpoint_status=None,
             setpoint_severity=None,
+            lower_ctrl_limit=None,
+            upper_ctrl_limit=None,
         )
 
         if write_pv is None or read_pv == write_pv:
@@ -996,9 +1010,7 @@ class EpicsSignal(EpicsSignalBase):
 
     def wait_for_connection(self, timeout=1.0):
         '''Wait for the underlying signals to initialize or connect'''
-        super().wait_for_connection(timeout=timeout)
-
-        self._ensure_connected(self._write_pv, timeout=timeout)
+        self._ensure_connected(self._read_pv, self._write_pv, timeout=timeout)
 
     @property
     def tolerance(self):
@@ -1035,7 +1047,8 @@ class EpicsSignal(EpicsSignalBase):
     @property
     def setpoint_pvname(self):
         '''The setpoint PV name'''
-        return self._write_pv.pvname
+        if self._write_pv is not None:
+            return self._write_pv.pvname
 
     @property
     def setpoint_alarm_status(self):
@@ -1100,16 +1113,21 @@ class EpicsSignal(EpicsSignalBase):
         if self._destroyed:
             return
 
+        md_update = {}
         if pv is self._read_pv:
-            self._metadata['read_access'] = read_access
+            md_update['read_access'] = read_access
 
         if pv is self._write_pv:
-            self._metadata['write_access'] = write_access
+            md_update['write_access'] = write_access
+
+        if md_update:
+            self._metadata.update(**md_update)
 
         if self.connected:
             self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
         super()._pv_access_callback(read_access, write_access, pv)
+        self._set_event_if_ready()
 
     def _update_setpoint_metadata(self, metadata):
         md_update = {md_key: metadata[key]
@@ -1187,7 +1205,7 @@ class EpicsSignal(EpicsSignalBase):
             self.check_value(value)
 
         with self._lock:
-            self._ensure_connected(self._write_pv, timeout=connection_timeout)
+            self.wait_for_connection(timeout=connection_timeout)
             if use_complete is None:
                 use_complete = self._put_complete
 

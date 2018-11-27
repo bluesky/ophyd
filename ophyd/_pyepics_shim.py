@@ -1,5 +1,7 @@
 import atexit
 import logging
+import threading
+import time
 import warnings
 
 import epics
@@ -34,6 +36,8 @@ class PyepicsShimPV(epics.PV):
     def __init__(self, pvname, callback=None, form='time', verbose=False,
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None):
+        self._get_lock = threading.Lock()
+        self._metadata_lock = threading.RLock()
         connection_callback = wrap_callback(dispatcher, 'metadata',
                                             connection_callback)
         callback = wrap_callback(dispatcher, 'monitor', callback)
@@ -45,6 +49,16 @@ class PyepicsShimPV(epics.PV):
                          connection_timeout=connection_timeout,
                          connection_callback=connection_callback,
                          callback=callback, access_callback=access_callback)
+
+    def get_ctrlvars(self, timeout=5, warn=True):
+        "get control values for variable"
+        with self._metadata_lock:
+            return super().get_ctrlvars(timeout=timeout, warn=warn)
+
+    def get_timevars(self, timeout=5, warn=True):
+        "get time values for variable"
+        with self._metadata_lock:
+            return super().get_timevars(timeout=timeout, warn=warn)
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
@@ -60,20 +74,126 @@ class PyepicsShimPV(epics.PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    def _getarg(self, arg):
+        "wrapper for property retrieval"
+        if self._args[arg] is None:
+            if arg in ('status', 'severity', 'timestamp', 'posixseconds',
+                       'nanoseconds'):
+                self.get_timevars(timeout=1, warn=False)
+            else:
+                self.get_ctrlvars(timeout=1, warn=False)
+        return self._args.get(arg, None)
+
+    def _get(self, count=None, as_string=False, as_numpy=True,
+            timeout=None, with_ctrlvars=False, use_monitor=True):
+        """Returns the current value of the PV.  Use the options:
+
+        Vendored from pyepics for usage with ophyd
+
+        count       explicitly limit count for array data
+        as_string   flag(True/False) to get a string representation
+                    of the value.
+        as_numpy    flag(True/False) to use numpy array as the
+                    return type for array data.
+        timeout     maximum time to wait for value to be received.
+                    (default = 0.5 + log10(count) seconds)
+        use_monitor flag(True/False) to use value from latest
+                    monitor callback (True, default) or to make an
+                    explicit CA call for the value.
+
+        >>> p.get('13BMD:m1.DIR')
+        0
+        >>> p.get('13BMD:m1.DIR', as_string=True)
+        'Pos'
+        """
+        if not self.wait_for_connection(timeout=timeout):
+            return None
+        if with_ctrlvars and getattr(self, 'units', None) is None:
+            if self.form == 'ctrl':
+                # ctrlvars will be updated as the get completes, since this
+                # metadata comes bundled with our DBR_CTRL* request.
+                pass
+            else:
+                self.get_ctrlvars()
+
+        if ((not use_monitor) or
+                (not self.auto_monitor) or
+                (self._args['value'] is None) or
+                (count is not None and count > len(self._args['value']))):
+
+            # respect count argument on subscription also for calls to get
+            if count is None and self._args['count'] != self._args['nelm']:
+                count = self._args['count']
+
+            ca_get = ca.get_with_metadata
+            if ca.get_cache(self.pvname)['value'] is not None:
+                ca_get = ca.get_complete_with_metadata
+
+            md = ca_get(self.chid, ftype=self.ftype, count=count,
+                        timeout=timeout, as_numpy=as_numpy)
+            if md is None:
+                # Get failed. Indicate with a `None` as the return value
+                val = None
+                self._args['value'] = None
+            else:
+                val = md['value']
+                # Update value and all included metadata. Depending on the PV
+                # form, this could include timestamp, alarm information,
+                # ctrlvars, and so on.
+                self._args.update(**md)
+        else:
+            md = self._args.copy()
+            val = self._args['value']
+
+        if as_string:
+            char_value = self._set_charval(val, force_long_string=as_string)
+            md['value'] = char_value
+            return md
+        elif self.count <= 1 or val is None:
+            return md
+
+        # After this point:
+        #   * self.count is > 1
+        #   * val should be set and a sequence
+        try:
+            len(val)
+        except TypeError:
+            # Edge case where a scalar value leaks through ca.unpack()
+            val = [val]
+
+        if count is None:
+            count = len(val)
+
+        if (as_numpy and not isinstance(val, ca.numpy.ndarray)):
+            val = ca.numpy.asarray(val)
+        elif (not as_numpy and isinstance(val, ca.numpy.ndarray)):
+            val = val.tolist()
+
+        # allow asking for less data than actually exists in the cached value
+        if count < len(val):
+            val = val[:count]
+
+        md['value'] = val
+        return val
+
+    def get_all_metadata(self):
+        if self._args['status'] is None:
+            self.get_timevars()
+        self.get_ctrlvars()
+        md = self._args.copy()
+        md.pop('value', None)
+        return md
+
     def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
                           timeout=None, with_ctrlvars=False, use_monitor=True):
-        value = super().get(count=count, as_string=as_string,
-                            as_numpy=as_numpy, timeout=timeout,
-                            with_ctrlvars=with_ctrlvars,
-                            use_monitor=use_monitor)
-        if value is None:
-            return value
-
-        return {'value': value,
-                'status': self._args['status'],
-                'severity': self._args['severity'],
-                'timestamp': self._args['timestamp'],
-                }
+        # pyepics does not deal with multithreaded access very well due to its
+        # usage of a per-context global name-based cache; so we lock the PV
+        # here during the process:
+        with self._get_lock:
+            return self._get(count=count, as_string=as_string,
+                             as_numpy=as_numpy, timeout=timeout,
+                             with_ctrlvars=with_ctrlvars,
+                             use_monitor=use_monitor)
 
 
 def release_pvs(*pvs):
