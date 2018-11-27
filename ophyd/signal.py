@@ -529,7 +529,7 @@ class EpicsSignalBase(Signal):
         )
 
         self._read_pv = cl.get_pv(
-            read_pv, form=cl.pv_form, auto_monitor=auto_monitor,
+            read_pv, auto_monitor=auto_monitor,
             connection_callback=self._pv_connected,
             access_callback=self._pv_access_callback
         )
@@ -654,8 +654,7 @@ class EpicsSignalBase(Signal):
 
             self._connection_states[old_instance.pvname] = False
             self._access_rights_valid[old_instance.pvname] = False
-            new_instance = self.cl.get_pv(old_instance.pvname,
-                                          form=old_instance.form, **pv_kw)
+            new_instance = self.cl.get_pv(old_instance.pvname, **pv_kw)
 
             if was_connected:
                 new_instance.wait_for_connection()
@@ -953,12 +952,11 @@ class EpicsSignal(EpicsSignalBase):
             self._connection_states[write_pv] = False
             self._access_rights_valid[write_pv] = False
             self._received_first_metadata[write_pv] = False
-            self._write_pv = cl.get_pv(
-                write_pv, form=cl.pv_form,
-                auto_monitor=self._auto_monitor,
-                connection_callback=self._pv_connected,
-                access_callback=self._pv_access_callback
-            )
+            self._write_pv = cl.get_pv(write_pv,
+                                       auto_monitor=self._auto_monitor,
+                                       connection_callback=self._pv_connected,
+                                       access_callback=self._pv_access_callback
+                                       )
             self._write_pv.add_callback(self._write_changed,
                                         run_now=self._write_pv.connected)
 

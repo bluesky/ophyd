@@ -9,7 +9,6 @@ from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
 
 thread_class = threading.Thread
-pv_form = 'time'
 module_logger = logging.getLogger(__name__)
 dispatcher = None
 name = 'caproto'

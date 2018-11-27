@@ -16,6 +16,7 @@ else:
 
 
 module_logger = logging.getLogger(__name__)
+name = 'pyepics'
 dispatcher = None
 
 
@@ -180,18 +181,16 @@ def setup(logger):
     return dispatcher
 
 
-def get_pv_form(version):
-    '''Get the PV form that should be used for pyepics
+def _check_pyepics_version(version):
+    '''Verify compatibility with the pyepics version installed
 
-    Due to a bug in certain versions of PyEpics, form='time' cannot be used
-    with some large arrays.
+    Due to a bug in older versions of pyepics, form='time' cannot be used with
+    some large arrays.
 
-    native: gives time.time() timestamps from this machine
-    time: gives timestamps from the PVs themselves
+    native: gives time.time() timestamps from this machine without metadata
+    time: gives timestamps from the IOC, along with alarm status/severity
 
-    Returns
-    -------
-    {'native', 'time'}
+    For proper functionality, ophyd requires pyepics >= 3.2.4
     '''
     def _fix_git_versioning(in_str):
         return in_str.replace('-g', '+g')
@@ -215,21 +214,18 @@ def get_pv_form(version):
     except ImportError:
         parse_version = _naive_parse_version
 
-    version = parse_version(_fix_git_versioning(version))
+    try:
+        version = parse_version(_fix_git_versioning(version))
+    except Exception:
+        version = None
 
     if version is None:
-        warnings.warn('Unrecognized PyEpics version; using local timestamps',
-                      ImportWarning)
-        return 'native'
-
+        warnings.warn('Unrecognized PyEpics version; assuming it is '
+                      'compatible', ImportWarning)
     elif version <= parse_version('3.2.3'):
-        warnings.warn(
-            ('PyEpics versions <= 3.2.3 will use local timestamps '
-             '(version: %s)' % epics.__version__), ImportWarning)
-        return 'native'
-    else:
-        return 'time'
+        raise RuntimeError(f'The installed version of pyepics={version} is not'
+                           f'compatible with ophyd.  Please upgrade to the '
+                           f'latest version.')
 
 
-pv_form = get_pv_form(epics.__version__)
-name = 'pyepics'
+_check_pyepics_version(getattr(epics, '__version__', None))
