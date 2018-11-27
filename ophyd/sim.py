@@ -403,16 +403,21 @@ class SynGauss(SynSignal):
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
         self._motor = motor
-        if random_state is None:
-            random_state = np.random
+        self._motor_field = motor_field
+        self._center = center
+        self._sigma = sigma
+        self._Imax = Imax
+        self._noise = noise
+        self._noise_multiplier = noise_multiplier
+        self._random_state = random_state or np.random
 
         def func():
-            m = motor.read()[motor_field]['value']
-            v = Imax * np.exp(-(m - center) ** 2 / (2 * sigma ** 2))
-            if noise == 'poisson':
-                v = int(random_state.poisson(np.round(v), 1))
-            elif noise == 'uniform':
-                v += random_state.uniform(-1, 1) * noise_multiplier
+            m = self._motor.read()[self._motor_field]['value']
+            v = self._Imax * np.exp(-(m - self._center) ** 2 / (2 * self._sigma ** 2))
+            if self._noise == 'poisson':
+                v = int(self._random_state.poisson(np.round(v), 1))
+            elif self._noise == 'uniform':
+                v += self._random_state.uniform(-1, 1) * self._noise_multiplier
             return v
 
         super().__init__(func=func, name=name, **kwargs)
