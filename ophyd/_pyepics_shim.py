@@ -207,13 +207,7 @@ def setup(logger):
 def _check_pyepics_version(version):
     '''Verify compatibility with the pyepics version installed
 
-    Due to a bug in older versions of pyepics, form='time' cannot be used with
-    some large arrays.
-
-    native: gives time.time() timestamps from this machine without metadata
-    time: gives timestamps from the IOC, along with alarm status/severity
-
-    For proper functionality, ophyd requires pyepics >= 3.2.4
+    For proper functionality, ophyd requires pyepics >= 3.3.2
     '''
     def _fix_git_versioning(in_str):
         return in_str.replace('-g', '+g')
@@ -245,7 +239,7 @@ def _check_pyepics_version(version):
     if version is None:
         warnings.warn('Unrecognized PyEpics version; assuming it is '
                       'compatible', ImportWarning)
-    elif version < parse_version('3.3.1'):
+    elif version < parse_version('3.3.2'):
         raise RuntimeError(f'The installed version of pyepics={version} is not'
                            f'compatible with ophyd.  Please upgrade to the '
                            f'latest version.')
