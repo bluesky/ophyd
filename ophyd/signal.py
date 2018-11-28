@@ -6,7 +6,7 @@ import warnings
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError, set_and_wait,
+from .utils import (ReadOnlyError, LimitError, DisconnectedError, set_and_wait,
                     doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
@@ -746,8 +746,7 @@ class EpicsSignalBase(Signal):
                 return
 
             for pv in pvs:
-                if not pv.wait_for_connection(timeout=timeout):
-                    raise TimeoutError('Failed to connect to %s' % pv.pvname)
+                pv.wait_for_connection(timeout=timeout)
 
         for pv in pvs:
             if not self._received_first_metadata[pv.pvname]:
@@ -821,7 +820,10 @@ class EpicsSignalBase(Signal):
             as_string = self._string
 
         with self._lock:
-            self.wait_for_connection(timeout=connection_timeout)
+            try:
+                self.wait_for_connection(timeout=connection_timeout)
+            except TimeoutError as ex:
+                raise DisconnectedError(f'{self.name!r} is disconnected') from ex
             info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
