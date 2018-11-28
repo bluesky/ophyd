@@ -50,6 +50,8 @@ class PV(_PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    # TODO: caproto breaks API compatibility in wait_for_connection, raising TimeoutError
+
     def get_all_metadata(self):
         if self._args['timestamp'] is None:
             self.get_timevars()
@@ -60,6 +62,7 @@ class PV(_PV):
 
     def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
                           timeout=None, with_ctrlvars=False, use_monitor=True):
+        # TODO: this should be supported in caproto
         value = super().get(count=count, as_string=as_string,
                             as_numpy=as_numpy, timeout=timeout,
                             with_ctrlvars=with_ctrlvars,
