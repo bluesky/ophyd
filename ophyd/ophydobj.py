@@ -373,6 +373,7 @@ class OphydObject:
         return '{}({})'.format(self.__class__.__name__, info)
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the object repr'
         if self.name is not None:
             yield ('name', self.name)
 

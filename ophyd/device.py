@@ -1169,11 +1169,10 @@ class Device(BlueskyInterface, OphydObject):
         return res
 
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
-        """
-        returns dictionary mapping names to (value, timestamp) pairs
+        """Dictionary mapping names to value dicts with keys: value, timestamp
 
-        To control which fields are included, adjust the
-        ``configuration_attrs`` list.
+        To control which fields are included, change the Component kinds on the
+        device, or modify the ``configuration_attrs`` list.
         """
         res = OrderedDict()
 

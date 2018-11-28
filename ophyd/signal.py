@@ -6,7 +6,8 @@ import warnings
 
 import numpy as np
 
-from .utils import ReadOnlyError, LimitError, set_and_wait
+from .utils import (ReadOnlyError, LimitError, set_and_wait,
+                    doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
@@ -128,6 +129,7 @@ class Signal(OphydObject):
         self._tolerance = tolerance
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
         try:
             value = self.value
@@ -274,18 +276,44 @@ class Signal(OphydObject):
                             'timestamp': self.timestamp}}
 
     def describe(self):
-        """Return the description as a dictionary"""
+        """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
+
+        This keys in the `OrderedDict` this method returns must match the
+        keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
+
+        This provides schema related information, (ex shape, dtype), the
+        source (ex PV name), and if available, units, limits, precision etc.
+
+        Returns
+        -------
+        data_keys : OrderedDict
+            The keys must be strings and the values must be dict-like
+            with the ``event_model.event_descriptor.data_key`` schema.
+        """
         val = self.value
         return {self.name: {'source': 'SIM:{}'.format(self.name),
                             'dtype': data_type(val),
                             'shape': data_shape(val)}}
 
     def read_configuration(self):
-        "Subclasses may customize this."
+        'Dictionary mapping names to value dicts with keys: value, timestamp'
         return self.read()
 
     def describe_configuration(self):
-        "Subclasses may customize this."
+        """Provide schema & meta-data for `~BlueskyInterface.read_configuration`
+
+        This keys in the `OrderedDict` this method returns must match the keys
+        in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
+
+        This provides schema related information, (ex shape, dtype), the source
+        (ex PV name), and if available, units, limits, precision etc.
+
+        Returns
+        -------
+        data_keys : OrderedDict
+            The keys must be strings and the values must be dict-like
+            with the ``event_model.event_descriptor.data_key`` schema.
+        """
         return self.describe()
 
     @property
@@ -297,14 +325,17 @@ class Signal(OphydObject):
 
     @property
     def low_limit(self):
+        'The low, inclusive control limit for the Signal'
         return self.limits[0]
 
     @property
     def high_limit(self):
+        'The high, inclusive control limit for the Signal'
         return self.limits[1]
 
     @property
     def hints(self):
+        'Field hints for plotting'
         if (~Kind.normal & Kind.hinted) & self.kind:
             return {'fields': [self.name]}
         else:
@@ -312,7 +343,7 @@ class Signal(OphydObject):
 
     @property
     def connected(self):
-        'Is the signal connected to its associated hardware?'
+        'Is the signal connected to its associated hardware, and ready to use?'
         return self._metadata.get('connected') and not self._destroyed
 
     @property
@@ -327,13 +358,13 @@ class Signal(OphydObject):
 
     @property
     def metadata(self):
-        'All metadata associated with the signal'
-        return dict(self._metadata)
+        'A copy of the metadata dictionary associated with the signal'
+        return self._metadata.copy()
 
     def destroy(self):
-        '''Disconnect the Signal from the underlying control layer
+        '''Disconnect the Signal from the underlying control layer; destroy it
 
-        Clears all subscriptions on this Signal.  Once disconnected, the signal
+        Clears all subscriptions on this Signal.  Once destroyed, the signal
         may no longer be used.
         '''
         self._destroyed = True
@@ -341,6 +372,8 @@ class Signal(OphydObject):
 
     def __del__(self):
         try:
+            # Attempt to destroy the signal, but ignore any possible exceptions
+            # as Python may have already garbage-collected related objects
             self.destroy()
         except Exception:
             ...
@@ -351,11 +384,22 @@ class DerivedSignal(Signal):
                  parent=None, **kwargs):
         '''A signal which is derived from another one
 
+        Calculations of the DerivedSignal value can be done in subclasses of
+        DerivedSignal, overriding the `forward` and `inverse` methods.
+
+        Metadata keys and write access are inherited from the main signal,
+        referred to as `derived_from`.
+
+        The description of this Signal, from `describe` will include an
+        additional key indicating the signal name from where it was derived.
+
         Parameters
         ----------
         derived_from : Union[Signal, str]
-            The signal from which this one is derived.  If a string assumed
-            to be a sibling on the parent.
+            The signal from which this one is derived.  This may be a string
+            attribute name that indicates a sibling to use.  When used in a
+            Device, this is then simply the attribute name of another
+            Component.
         name : str, optional
             The signal name
         parent : Device, optional
@@ -407,6 +451,7 @@ class DerivedSignal(Signal):
 
     def _derived_metadata_callback(self, *, connected, read_access,
                                    write_access, timestamp, **kwargs):
+        'Main signal metadata updated - update the DerivedSignal'
         updated_md = {key: kwargs[key]
                       for key in self.metadata_keys
                       if key in kwargs
@@ -422,6 +467,7 @@ class DerivedSignal(Signal):
         self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
     def _derived_value_callback(self, value=None, **kwargs):
+        'Main signal value updated - update the DerivedSignal'
         value = self.inverse(value)
         updated_md = {key: kwargs[key]
                       for key in self.metadata_keys
@@ -432,7 +478,7 @@ class DerivedSignal(Signal):
         self._run_subs(sub_type=self.SUB_VALUE, value=value, **updated_md)
 
     def get(self, **kwargs):
-        '''Get the value from the original signal'''
+        'Get the value from the original signal, with `inverse` applied to it'
         value = self._derived_from.get(**kwargs)
         self._readback = self.inverse(value)
         self._metadata['timestamp'] = self._derived_from.timestamp
@@ -470,6 +516,7 @@ class DerivedSignal(Signal):
         return tuple(self.inverse(v) for v in self._derived_from.limits)
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
         yield ('derived_from', self._derived_from)
 
@@ -512,19 +559,10 @@ class EpicsSignalBase(Signal):
         validate_pv_name(read_pv)
 
         # Keep track of all associated PV's connectivity and access rights
-        # callbacks:
-        # Note: these are {pvname: bool}
-        self._connection_states = {
-            read_pv: False
-        }
-
-        self._access_rights_valid = {
-            read_pv: False
-        }
-
-        self._received_first_metadata = {
-            read_pv: False
-        }
+        # callbacks. These map `pvname` to bool:
+        self._connection_states = {read_pv: False}
+        self._access_rights_valid = {read_pv: False}
+        self._received_first_metadata = {read_pv: False}
 
         self._metadata.update(
             connected=False,
@@ -570,6 +608,7 @@ class EpicsSignalBase(Signal):
             self._set_event_if_ready()
 
     def _metadata_changed(self, pv, metadata):
+        'Notification: the metadata of a single PV has changed'
         self._metadata.update(**metadata)
 
     def _pv_connected(self, pvname, conn, pv):
@@ -676,6 +715,7 @@ class EpicsSignalBase(Signal):
 
         return new_instance
 
+    @doc_annotation_forwarder(Signal)
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
             event_type = self._default_sub
@@ -735,6 +775,7 @@ class EpicsSignalBase(Signal):
             return self._read_pv.pvname
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the Signal repr'
         yield ('read_pv', self.pvname)
         yield from super()._repr_info()
         yield ('auto_monitor', self._auto_monitor)
@@ -793,12 +834,14 @@ class EpicsSignalBase(Signal):
         return value
 
     def _fix_type(self, value):
+        'Cast the given value according to the data type of this EpicsSignal'
         if self._string:
             value = waveform_to_string(value)
 
         return value
 
     def _get_metadata_from_kwargs(self, kwargs):
+        'Metadata from the control layer -> metadata for this Signal'
         metadata = {key: kwargs[key]
                     for key in ('status', 'severity', 'precision',
                                 'lower_ctrl_limit', 'upper_ctrl_limit',
@@ -895,9 +938,11 @@ class EpicsSignalRO(EpicsSignalBase):
         self._metadata['write_access'] = False
 
     def put(self, *args, **kwargs):
+        'Disabled for a read-only signal'
         raise ReadOnlyError('Cannot write to read-only EpicsSignal')
 
     def set(self, *args, **kwargs):
+        'Disabled for a read-only signal'
         raise ReadOnlyError('Read-only signals cannot be set')
 
     def _pv_access_callback(self, read_access, write_access, pv):
@@ -989,6 +1034,7 @@ class EpicsSignal(EpicsSignalBase):
         #  (2) a completely separate PV instance
         # It will not be None, until destroy() is called.
 
+    @doc_annotation_forwarder(EpicsSignalBase)
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
             event_type = self._default_sub
@@ -1061,6 +1107,7 @@ class EpicsSignal(EpicsSignalBase):
         return self._metadata['setpoint_severity']
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
         yield ('write_pv', self._write_pv.pvname)
         yield ('limits', self._use_limits)
@@ -1130,6 +1177,7 @@ class EpicsSignal(EpicsSignalBase):
         self._set_event_if_ready()
 
     def _update_setpoint_metadata(self, metadata):
+        'Setpoint PV metadata -> Signal metadata'
         md_update = {md_key: metadata[key]
                      for key, md_key in (('timestamp', 'setpoint_timestamp'),
                                          ('status', 'setpoint_status'),
@@ -1355,10 +1403,12 @@ class AttributeSignal(Signal):
         return obj
 
     def get(self, **kwargs):
+        'Get the value from the associated attribute'
         self._readback = getattr(self.base, self.attr)
         return self._readback
 
     def put(self, value, **kwargs):
+        'Write to the associated attribute'
         if not self.write_access:
             raise ReadOnlyError('AttributeSignal is marked as read-only')
 
