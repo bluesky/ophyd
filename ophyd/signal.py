@@ -840,10 +840,7 @@ class EpicsSignalBase(Signal):
             as_string = self._string
 
         with self._lock:
-            try:
-                self.wait_for_connection(timeout=connection_timeout)
-            except TimeoutError as ex:
-                raise DisconnectedError(f'{self.name!r} is disconnected') from ex
+            self.wait_for_connection(timeout=connection_timeout)
             info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
