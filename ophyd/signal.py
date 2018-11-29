@@ -906,7 +906,7 @@ class EpicsSignalBase(Signal):
     def _read_changed(self, value=None, **kwargs):
         '''A callback indicating that the read value has changed'''
         metadata = self._metadata_changed(self._read_pvname, kwargs,
-                                          update=False)
+                                          update=False, require_timestamp=True)
         timestamp = metadata.pop('timestamp')
         super().put(value=self._fix_type(value), timestamp=timestamp,
                     metadata=metadata, force=True)
