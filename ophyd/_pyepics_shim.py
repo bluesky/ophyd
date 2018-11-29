@@ -95,6 +95,8 @@ class PyepicsShimPV(epics.PV):
         return self._args.get(arg, None)
 
     def wait_for_connection(self, timeout=None):
+        if timeout is None:
+            timeout = self.connection_timeout
         connected = super().wait_for_connection(timeout=timeout)
         if not connected:
             raise TimeoutError(f"{self.pvname} could not connect within "
