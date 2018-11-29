@@ -380,6 +380,6 @@ class OphydObject:
         if self._parent is not None:
             yield ('parent', self.parent.name)
 
-    def __copy__(self):
-        info = dict(self._repr_info())
-        return self.__class__(**info)
+    def __getnewargs_ex__(self):
+        kwargs = dict(self._repr_info())
+        return ((), kwargs)

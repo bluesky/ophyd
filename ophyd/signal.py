@@ -563,7 +563,7 @@ class EpicsSignalBase(Signal):
                       )
 
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
-                 metadata=None, **kwargs):
+                 metadata=None, all_pvs=None, **kwargs):
         self._lock = threading.RLock()
         self._read_pv = None
         self._read_pvname = read_pv
@@ -581,21 +581,35 @@ class EpicsSignalBase(Signal):
         metadata.update(
             connected=False,
         )
-        super().__init__(name=name, metadata=metadata, **kwargs)
+
+        kwargs.pop('value', None)
+        super().__init__(name=name, metadata=metadata, value=None, **kwargs)
 
         validate_pv_name(read_pv)
 
         # Keep track of all associated PV's connectivity and access rights
         # callbacks. These map `pvname` to bool:
-        self._connection_states = {read_pv: False}
-        self._access_rights_valid = {read_pv: False}
-        self._received_first_metadata = {read_pv: False}
+        if all_pvs is None:
+            all_pvs = {read_pv}
+        self._connection_states = {pv: False for pv in all_pvs}
+        self._access_rights_valid = {pv: False for pv in all_pvs}
+        self._received_first_metadata = {pv: False for pv in all_pvs}
         self._metadata_key_map = {read_pv: self._read_pv_metadata_key_map}
+        for pv in all_pvs:
+            if pv not in self._metadata_key_map:
+                self._metadata_key_map[pv] = {}
 
         self._initialize_pv('_read_pv', pvname=read_pv,
                             callback=self._read_changed,
                             auto_monitor=self._auto_monitor,
                             )
+
+    def __getnewargs_ex__(self):
+        args, kwargs = super().__getnewargs_ex__()
+        # 'value' shows up in the EpicsSignal repr, but should not be used to
+        # copy the Signal
+        kwargs.pop('value', None)
+        return (args, kwargs)
 
     def _update_metadata_manually(self, pv):
         '''Update all metadata associated with a PV
@@ -606,7 +620,13 @@ class EpicsSignalBase(Signal):
         '''
         try:
             md = pv.get_all_metadata()
+        except TimeoutError as ex:
+            if self._destroyed:
+                return
+            logger.warning('Initial metadata request failed for %s', pv.pvname)
         except Exception as ex:
+            if self._destroyed:
+                return
             logger.error('Initial metadata request failed for %s', pv.pvname,
                          exc_info=ex)
         else:
@@ -1050,14 +1070,19 @@ class EpicsSignal(EpicsSignalBase):
             upper_ctrl_limit=None,
         )
 
-        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
-                         name=name, metadata=metadata, **kwargs)
+        if write_pv is None:
+            write_pv = read_pv
 
-        if write_pv is None or read_pv == write_pv:
+        self._setpoint_pvname = write_pv
+
+        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
+                         name=name, metadata=metadata,
+                         all_pvs={read_pv, write_pv}, **kwargs)
+
+        if read_pv == write_pv:
             self._write_pv = self._read_pv
         else:
             validate_pv_name(write_pv)
-            self._received_first_metadata[write_pv] = False
             self._metadata_key_map = {
                 write_pv: self._write_pv_metadata_key_map,
                 read_pv: {key: value for key, value
@@ -1071,8 +1096,6 @@ class EpicsSignal(EpicsSignalBase):
                                 callback=self._write_changed,
                                 auto_monitor=self._auto_monitor,
                                 )
-
-        self._write_pvname = self._write_pv.pvname
 
         # NOTE: after this point, write_pv can either be:
         #  (1) the same as read_pv
@@ -1138,7 +1161,7 @@ class EpicsSignal(EpicsSignalBase):
     @property
     def setpoint_pvname(self):
         '''The setpoint PV name'''
-        return self._write_pvname
+        return self._setpoint_pvname
 
     @property
     def setpoint_alarm_status(self):
@@ -1196,7 +1219,7 @@ class EpicsSignal(EpicsSignalBase):
         setpoint = info['value']
         if as_string:
             setpoint = waveform_to_string(setpoint)
-        self._metadata_changed(self._write_pvname, info, require_timestamp=True)
+        self._metadata_changed(self.setpoint_pvname, info, require_timestamp=True)
         return self._fix_type(setpoint)
 
     def _pv_access_callback(self, read_access, write_access, pv):
@@ -1208,7 +1231,7 @@ class EpicsSignal(EpicsSignalBase):
         if pv.pvname == self._read_pvname:
             md_update['read_access'] = read_access
 
-        if pv.pvname is self._write_pvname:
+        if pv.pvname is self.setpoint_pvname:
             md_update['write_access'] = write_access
 
         if md_update:
@@ -1227,8 +1250,8 @@ class EpicsSignal(EpicsSignalBase):
             pvname, cl_metadata, update=update,
             require_timestamp=require_timestamp)
 
-        if (self._write_pvname != self._read_pvname and
-                self._write_pvname == pvname):
+        if (self.setpoint_pvname != self._read_pvname and
+                self.setpoint_pvname == pvname):
             self._run_subs(sub_type=self.SUB_SETPOINT_META,
                            timestamp=self._metadata['setpoint_timestamp'],
                            status=self._metadata['setpoint_status'],
@@ -1248,9 +1271,9 @@ class EpicsSignal(EpicsSignalBase):
         old_value = self._setpoint
         self._setpoint = self._fix_type(value)
 
-        self._metadata_changed(self._write_pvname, kwargs, require_timestamp=True)
+        self._metadata_changed(self.setpoint_pvname, kwargs, require_timestamp=True)
 
-        if self._read_pvname != self._write_pvname:
+        if self._read_pvname != self.setpoint_pvname:
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._metadata['setpoint_timestamp'],
@@ -1292,7 +1315,7 @@ class EpicsSignal(EpicsSignalBase):
         old_value = self._setpoint
         self._setpoint = value
 
-        if self._read_pvname == self._write_pvname:
+        if self._read_pvname == self.setpoint_pvname:
             # readback and setpoint PV are one in the same, so update the
             # readback as well
             timestamp = time.time()
