@@ -293,7 +293,7 @@ def test_describe(bool_enum_signal):
     assert desc['dtype'] == 'integer'
     assert desc['shape'] == []
     # assert 'precision' in desc
-    assert desc['enum_strs'] == ['Off', 'On']
+    assert desc['enum_strs'] == ('Off', 'On')
     assert 'upper_ctrl_limit' in desc
     assert 'lower_ctrl_limit' in desc
 
