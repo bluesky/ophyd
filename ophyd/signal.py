@@ -6,8 +6,8 @@ import warnings
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError, DisconnectedError, set_and_wait,
-                    doc_annotation_forwarder)
+from .utils import (ReadOnlyError, LimitError, DisconnectedError,
+                    DestroyedError, set_and_wait, doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
@@ -56,11 +56,12 @@ class Signal(OphydObject):
     SUB_VALUE = 'value'
     SUB_META = 'meta'
     _default_sub = SUB_VALUE
+    _metadata_keys = None
+    _core_metadata_keys = ('connected', 'read_access', 'write_access', 'timestamp')
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
                  labels=None, kind=Kind.hinted, tolerance=None,
-                 rtolerance=None, metadata=None, cl=None, attr_name='',
-                 metadata_keys=None):
+                 rtolerance=None, metadata=None, cl=None, attr_name=''):
 
         super().__init__(name=name, parent=parent, kind=kind, labels=labels,
                          attr_name=attr_name)
@@ -72,16 +73,9 @@ class Signal(OphydObject):
         if timestamp is None:
             timestamp = time.time()
 
-        if metadata_keys is None:
-            metadata_keys = ('status', 'severity', 'precision')
-
-        if metadata is None:
-            metadata = {key: None for key in metadata_keys}
-
         self._destroyed = False
         self._set_thread = None
         self._tolerance = tolerance
-        self._metadata_keys = metadata_keys
         # self.tolerance is a property
         self.rtolerance = rtolerance
 
@@ -91,11 +85,22 @@ class Signal(OphydObject):
             connected=True,
             read_access=True,
             write_access=True,
+            timestamp=timestamp,
+            status=None,
+            severity=None,
+            precision=None,
         )
 
-        self._metadata.update(**metadata)
-        # TODO: some overlap in metadata keys: timestamp
-        self._metadata['timestamp'] = timestamp
+        if metadata is not None:
+            self._metadata.update(**metadata)
+
+        if self._metadata_keys is None:
+            self._metadata_keys = tuple(self._metadata.keys())
+        else:
+            unset_metadata = {key: None for key in self._metadata_keys
+                              if key not in self._metadata}
+
+            self._metadata.update(**unset_metadata)
 
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
@@ -347,17 +352,17 @@ class Signal(OphydObject):
     @property
     def connected(self):
         'Is the signal connected to its associated hardware, and ready to use?'
-        return self._metadata.get('connected') and not self._destroyed
+        return self._metadata['connected'] and not self._destroyed
 
     @property
     def read_access(self):
         'Can the signal be read?'
-        return self._metadata.get('read_access')
+        return self._metadata['read_access']
 
     @property
     def write_access(self):
         'Can the signal be written to?'
-        return self._metadata.get('write_access')
+        return self._metadata['write_access']
 
     @property
     def metadata(self):
@@ -411,25 +416,22 @@ class DerivedSignal(Signal):
         if isinstance(derived_from, str):
             derived_from = getattr(parent, derived_from)
 
-        metadata_keys = getattr(derived_from, 'metadata_keys', None)
+        # Metadata keys from the class itself take precedence
+        self._metadata_keys = getattr(self, '_metadata_keys', None)
+
+        # However, if not specified, the keys from the original signal are used
+        if self._metadata_keys is None:
+            self._metadata_keys = getattr(derived_from, 'metadata_keys', None)
+            # And failing that, they are the defaults from all signals
 
         super().__init__(name=name, parent=parent,
-                         metadata_keys=metadata_keys, **kwargs)
+                         metadata=derived_from.metadata, **kwargs)
 
         self._derived_from = derived_from
 
-        if write_access is None:
-            write_access = derived_from.write_access
-
-        md_info = {key: None for key in self.metadata_keys
-                   if key not in ('connected', 'read_access', 'write_access')}
-
-        self._metadata.update(
-            connected=derived_from.connected,
-            read_access=derived_from.read_access,
-            write_access=write_access,
-            **md_info
-        )
+        self._allow_writes = (write_access is not False)
+        self._metadata['write_access'] = (derived_from.write_access and
+                                          self._allow_writes)
 
         if self.connected:
             # set up the initial timestamp reporting, if connected
@@ -453,32 +455,32 @@ class DerivedSignal(Signal):
         desc['derived_from'] = self._derived_from.name
         return {self.name: desc}
 
-    def _derived_metadata_callback(self, *, connected, read_access,
-                                   write_access, timestamp, **kwargs):
-        'Main signal metadata updated - update the DerivedSignal'
-        updated_md = {key: kwargs[key]
-                      for key in self.metadata_keys
+    def _update_metadata_from_callback(self, **kwargs):
+        updated_md = {key: kwargs[key] for key in self.metadata_keys
                       if key in kwargs
                       }
 
-        self._metadata.update(
-            connected=connected,
-            read_access=read_access,
-            write_access=write_access,
-            **updated_md
-        )
+        if 'write_access' in updated_md:
+            updated_md['write_access'] = (updated_md['write_access'] and
+                                          self._allow_writes)
+        self._metadata.update(**updated_md)
+        return updated_md
+
+    def _derived_metadata_callback(self, *, connected, read_access,
+                                   write_access, timestamp, **kwargs):
+        'Main signal metadata updated - update the DerivedSignal'
+        self._update_metadata_from_callback(connected=connected,
+                                            read_access=read_access,
+                                            write_access=write_access,
+                                            timestamp=timestamp, **kwargs)
 
         self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
     def _derived_value_callback(self, value=None, **kwargs):
         'Main signal value updated - update the DerivedSignal'
         value = self.inverse(value)
-        updated_md = {key: kwargs[key]
-                      for key in self.metadata_keys
-                      if key in kwargs
-                      }
-        self._metadata.update(**updated_md)
-
+        self._readback = value
+        updated_md = self._update_metadata_from_callback(**kwargs)
         self._run_subs(sub_type=self.SUB_VALUE, value=value, **updated_md)
 
     def get(self, **kwargs):
@@ -554,23 +556,32 @@ class EpicsSignalBase(Signal):
         # ignored: read_access, write_access, connected, etc.
     )
 
+    _metadata_keys = (Signal._core_metadata_keys +
+                      ('status', 'severity', 'precision', 'lower_ctrl_limit',
+                       'upper_ctrl_limit', 'units', 'enum_strs',
+                       )
+                      )
+
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
-                 **kwargs):
+                 metadata=None, **kwargs):
         self._lock = threading.RLock()
         self._read_pv = None
+        self._read_pvname = read_pv
         self._string = bool(string)
         self._auto_monitor = auto_monitor
         self._signal_is_ready = threading.Event()
+        self._first_connection = True
 
         if name is None:
             name = read_pv
 
-        metadata_keys = kwargs.pop(
-            'metadata_keys', (('connected', 'read_access', 'write_access') +
-                              tuple(self._read_pv_metadata_key_map))
-        )
+        if metadata is None:
+            metadata = {}
 
-        super().__init__(name=name, metadata_keys=metadata_keys, **kwargs)
+        metadata.update(
+            connected=False,
+        )
+        super().__init__(name=name, metadata=metadata, **kwargs)
 
         validate_pv_name(read_pv)
 
@@ -580,10 +591,6 @@ class EpicsSignalBase(Signal):
         self._access_rights_valid = {read_pv: False}
         self._received_first_metadata = {read_pv: False}
         self._metadata_key_map = {read_pv: self._read_pv_metadata_key_map}
-        self._metadata.update(
-            connected=False,
-            **{key: None for key in self._metadata_key_map[read_pv]}
-        )
 
         self._initialize_pv('_read_pv', pvname=read_pv,
                             callback=self._read_changed,
@@ -597,24 +604,21 @@ class EpicsSignalBase(Signal):
         metadata.  This happens before the signal is marked as 'connected' (or
         rather, ready for usage)
         '''
-        pvname = pv.pvname
-
         try:
             md = pv.get_all_metadata()
         except Exception as ex:
-            logger.error('Initial metadata request failed for %s', pvname,
+            logger.error('Initial metadata request failed for %s', pv.pvname,
                          exc_info=ex)
         else:
-            self._metadata_changed(pv, md, require_timestamp=True)
-        finally:
-            self._received_first_metadata[pvname] = True
+            self._metadata_changed(pv.pvname, md, require_timestamp=True)
+            self._received_first_metadata[pv.pvname] = True
             self._set_event_if_ready()
 
-    def _metadata_changed(self, pv, cl_metadata, *, require_timestamp=False,
+    def _metadata_changed(self, pvname, cl_metadata, *, require_timestamp=False,
                           update=True):
         'Notification: the metadata of a single PV has changed'
         metadata = self._get_metadata_from_kwargs(
-            pv.pvname, cl_metadata, require_timestamp=require_timestamp)
+            pvname, cl_metadata, require_timestamp=require_timestamp)
         if update:
             self._metadata.update(**metadata)
         return metadata
@@ -624,6 +628,7 @@ class EpicsSignalBase(Signal):
         if self._destroyed:
             return
 
+        was_connected = self.connected
         if not conn:
             self._signal_is_ready.clear()
             self._access_rights_valid[pv.pvname] = False
@@ -636,6 +641,10 @@ class EpicsSignalBase(Signal):
 
         self._set_event_if_ready()
 
+        if was_connected and not conn:
+            # Send a notification of disconnection
+            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+
     def _set_event_if_ready(self):
         '''If connected and access rights received, set the "ready" event used
         in wait_for_connection.'''
@@ -646,6 +655,9 @@ class EpicsSignalBase(Signal):
             elif not all([*self._connection_states.values(),
                           *self._access_rights_valid.values(),
                           *self._received_first_metadata.values()]):
+                if self._metadata['connected']:
+                    self._metadata['connected'] = False
+                    # subs are run in _pv_connected
                 return
 
             self._metadata['connected'] = True
@@ -665,7 +677,7 @@ class EpicsSignalBase(Signal):
     @property
     def precision(self):
         '''The precision of the read PV, as reported by EPICS'''
-        return self._metadata.get('precision', 0)
+        return self._metadata['precision']
 
     @property
     def enum_strs(self):
@@ -713,7 +725,6 @@ class EpicsSignalBase(Signal):
                 connection_callback=self._pv_connected,
                 access_callback=self._pv_access_callback)
 
-            # Update the attribute with the new PV instance
             setattr(self, attr_name, new_instance)
 
             if was_connected:
@@ -747,6 +758,8 @@ class EpicsSignalBase(Signal):
         with self._lock:
             if self.connected:
                 return
+            elif self._destroyed:
+                raise DestroyedError('Cannot re-use a destroyed Signal')
 
             for pv in pvs:
                 pv.wait_for_connection(timeout=timeout)
@@ -768,7 +781,12 @@ class EpicsSignalBase(Signal):
 
     def wait_for_connection(self, timeout=1.0):
         '''Wait for the underlying signals to initialize or connect'''
-        self._ensure_connected(self._read_pv, timeout=timeout)
+        try:
+            self._ensure_connected(self._read_pv, timeout=timeout)
+        except TimeoutError as ex:
+            if self._destroyed:
+                raise DestroyedError('Signal has been destroyed')
+            raise
 
     @property
     def timestamp(self):
@@ -778,8 +796,7 @@ class EpicsSignalBase(Signal):
     @property
     def pvname(self):
         '''The readback PV name'''
-        if self._read_pv is not None:
-            return self._read_pv.pvname
+        return self._read_pvname
 
     def _repr_info(self):
         'Yields pairs of (key, value) to generate the Signal repr'
@@ -830,7 +847,10 @@ class EpicsSignalBase(Signal):
             info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
-            value = None
+            # TODO: API?
+            timeout = kwargs.get('timeout', None)
+            raise TimeoutError(f'Failed to read {self._read_pvname} within '
+                               f'{timeout} sec')
         else:
             value = info.pop('value')
             if as_string:
@@ -850,7 +870,7 @@ class EpicsSignalBase(Signal):
 
         return value
 
-    def _get_metadata_from_kwargs(self, pv, cl_metadata, *, require_timestamp=False):
+    def _get_metadata_from_kwargs(self, pvname, cl_metadata, *, require_timestamp=False):
         'Metadata from the control layer -> metadata for this Signal'
         def fix_value(fixer_function, value):
             return (fixer_function(value)
@@ -859,8 +879,8 @@ class EpicsSignalBase(Signal):
 
         metadata = {md_key: fix_value(fixer_function, cl_metadata[cl_key])
                     for cl_key, (md_key, fixer_function)
-                    in self._metadata_key_map[pv].items()
-                    if cl_key in cl_metadata}
+                    in self._metadata_key_map[pvname].items()
+                    if cl_metadata.get(cl_key, None) is not None}
 
         if require_timestamp and metadata.get('timestamp', None) is None:
             metadata['timestamp'] = time.time()
@@ -868,7 +888,8 @@ class EpicsSignalBase(Signal):
 
     def _read_changed(self, value=None, **kwargs):
         '''A callback indicating that the read value has changed'''
-        metadata = self._metadata_changed(self._read_pv, kwargs, update=False)
+        metadata = self._metadata_changed(self._read_pvname, kwargs,
+                                          update=False)
         timestamp = metadata.pop('timestamp')
         super().put(value=self._fix_type(value), timestamp=timestamp,
                     metadata=metadata, force=True)
@@ -881,22 +902,22 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        desc = {'source': 'PV:{}'.format(self._read_pv.pvname), }
-
         val = self.value
-        desc['dtype'] = data_type(val)
-        desc['shape'] = data_shape(val)
+        lower_ctrl_limit, upper_ctrl_limit = self.limits
+        desc = dict(
+            source='PV:{}'.format(self._read_pv.pvname),
+            dtype=data_type(val),
+            shape=data_shape(val),
+            units=self._metadata['units'],
+            lower_ctrl_limit=lower_ctrl_limit,
+            upper_ctrl_limit=upper_ctrl_limit,
+        )
 
-        try:
-            desc['precision'] = int(self.precision)
-        except (ValueError, TypeError):
-            pass
-
-        desc['units'] = self._metadata['units']
-        (desc['lower_ctrl_limit'], desc['upper_ctrl_limit']) = self.limits
+        if self.precision is not None:
+            desc['precision'] = self.precision
 
         if self.enum_strs is not None:
-            desc['enum_strs'] = list(self.enum_strs)
+            desc['enum_strs'] = tuple(self.enum_strs)
 
         return {self.name: desc}
 
@@ -961,11 +982,14 @@ class EpicsSignalRO(EpicsSignalBase):
             read_access=read_access,
             write_access=False,
         )
-        if self.connected:
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
+        was_connected = self.connected
         super()._pv_access_callback(read_access, write_access, pv)
         self._set_event_if_ready()
+
+        if was_connected:
+            # _set_event_if_ready, above, will run metadata callbacks
+            self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
 
 class EpicsSignal(EpicsSignalBase):
@@ -1007,6 +1031,11 @@ class EpicsSignal(EpicsSignalBase):
         upper_ctrl_limit=('upper_ctrl_limit', None),
     )
 
+    _metadata_keys = (EpicsSignalBase._metadata_keys +
+                      ('setpoint_status', 'setpoint_severity',
+                       'setpoint_precision', 'setpoint_timestamp')
+                      )
+
     def __init__(self, read_pv, write_pv=None, *, put_complete=False,
                  string=False, limits=False, auto_monitor=False, name=None,
                  **kwargs):
@@ -1016,15 +1045,7 @@ class EpicsSignal(EpicsSignalBase):
         self._put_complete = put_complete
         self._setpoint = None
 
-        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
-                         name=name, **kwargs)
-
-        if kwargs.get('metadata_keys', None):
-            self._metadata_keys += tuple(md_key for
-                                         cl_key, (md_key, _) in
-                                         self._write_pv_metadata_key_map.items())
-
-        self._metadata.update(
+        metadata = dict(
             setpoint_timestamp=None,
             setpoint_status=None,
             setpoint_severity=None,
@@ -1032,28 +1053,29 @@ class EpicsSignal(EpicsSignalBase):
             upper_ctrl_limit=None,
         )
 
+        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
+                         name=name, metadata=metadata, **kwargs)
+
         if write_pv is None or read_pv == write_pv:
             self._write_pv = self._read_pv
         else:
             validate_pv_name(write_pv)
             self._received_first_metadata[write_pv] = False
-            self._metadata_key_map.update(**{
+            self._metadata_key_map = {
                 write_pv: self._write_pv_metadata_key_map,
                 read_pv: {key: value for key, value
                           in self._metadata_key_map[read_pv].items()
                           if key not in ('lower_ctrl_limit',
                                          'upper_ctrl_limit')
                           }
-            })
+            }
 
-            self._metadata.update(
-                **{key: None for key in self._write_pv_metadata_key_map
-                   if key not in self._metadata}
-            )
             self._initialize_pv('_write_pv', pvname=write_pv,
                                 callback=self._write_changed,
                                 auto_monitor=self._auto_monitor,
                                 )
+
+        self._write_pvname = self._write_pv.pvname
 
         # NOTE: after this point, write_pv can either be:
         #  (1) the same as read_pv
@@ -1119,8 +1141,7 @@ class EpicsSignal(EpicsSignalBase):
     @property
     def setpoint_pvname(self):
         '''The setpoint PV name'''
-        if self._write_pv is not None:
-            return self._write_pv.pvname
+        return self._write_pvname
 
     @property
     def setpoint_alarm_status(self):
@@ -1178,7 +1199,7 @@ class EpicsSignal(EpicsSignalBase):
         setpoint = info['value']
         if as_string:
             setpoint = waveform_to_string(setpoint)
-        self._metadata_changed(self._write_pv, info, require_timestamp=True)
+        self._metadata_changed(self._write_pvname, info, require_timestamp=True)
         return self._fix_type(setpoint)
 
     def _pv_access_callback(self, read_access, write_access, pv):
@@ -1187,10 +1208,10 @@ class EpicsSignal(EpicsSignalBase):
             return
 
         md_update = {}
-        if pv is self._read_pv:
+        if pv.pvname == self._read_pvname:
             md_update['read_access'] = read_access
 
-        if pv is self._write_pv:
+        if pv.pvname is self._write_pvname:
             md_update['write_access'] = write_access
 
         if md_update:
@@ -1202,14 +1223,15 @@ class EpicsSignal(EpicsSignalBase):
         super()._pv_access_callback(read_access, write_access, pv)
         self._set_event_if_ready()
 
-    def _metadata_changed(self, pv, cl_metadata, *, require_timestamp=False,
+    def _metadata_changed(self, pvname, cl_metadata, *, require_timestamp=False,
                           update=True):
         'Metadata for one PV has changed'
         metadata = super()._metadata_changed(
-            pv, cl_metadata, update=update,
+            pvname, cl_metadata, update=update,
             require_timestamp=require_timestamp)
 
-        if self._write_pv != self._read_pv and self._write_pv is pv:
+        if (self._write_pvname != self._read_pvname and
+                self._write_pvname == pvname):
             self._run_subs(sub_type=self.SUB_SETPOINT_META,
                            timestamp=self._metadata['setpoint_timestamp'],
                            status=self._metadata['setpoint_status'],
@@ -1229,9 +1251,9 @@ class EpicsSignal(EpicsSignalBase):
         old_value = self._setpoint
         self._setpoint = self._fix_type(value)
 
-        self._metadata_changed(self._write_pv, kwargs, require_timestamp=True)
+        self._metadata_changed(self._write_pvname, kwargs, require_timestamp=True)
 
-        if self._read_pv is not self._write_pv:
+        if self._read_pvname != self._write_pvname:
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._metadata['setpoint_timestamp'],
@@ -1273,7 +1295,7 @@ class EpicsSignal(EpicsSignalBase):
         old_value = self._setpoint
         self._setpoint = value
 
-        if self._read_pv is self._write_pv:
+        if self._read_pvname == self._write_pvname:
             # readback and setpoint PV are one in the same, so update the
             # readback as well
             timestamp = time.time()

@@ -22,7 +22,7 @@ from .base import (ADBase, ADComponent as C, ad_group,
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
-from ..utils.errors import PluginMisconfigurationError
+from ..utils.errors import (PluginMisconfigurationError, DestroyedError)
 
 
 logger = logging.getLogger(__name__)
@@ -253,7 +253,11 @@ class PluginBase(ADBase):
         if not connected or self._plugin_type is None:
             return
 
-        plugin_type = self.plugin_type.get()
+        try:
+            plugin_type = self.plugin_type.get()
+        except DestroyedError:
+            return
+
         self._misconfigured = not plugin_type.startswith(self._plugin_type)
         if self._misconfigured:
             logger.warning(

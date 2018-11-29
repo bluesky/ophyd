@@ -37,7 +37,8 @@ class PyepicsShimPV(epics.PV):
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None):
         self._get_lock = threading.Lock()
-        self._metadata_lock = threading.RLock()
+        self._ctrlvars_lock = threading.Lock()
+        self._timevars_lock = threading.Lock()
         connection_callback = wrap_callback(dispatcher, 'metadata',
                                             connection_callback)
         callback = wrap_callback(dispatcher, 'monitor', callback)
@@ -52,12 +53,12 @@ class PyepicsShimPV(epics.PV):
 
     def get_ctrlvars(self, timeout=5, warn=True):
         "get control values for variable"
-        with self._metadata_lock:
+        with self._ctrlvars_lock:
             return super().get_ctrlvars(timeout=timeout, warn=warn)
 
     def get_timevars(self, timeout=5, warn=True):
         "get time values for variable"
-        with self._metadata_lock:
+        with self._timevars_lock:
             return super().get_timevars(timeout=timeout, warn=warn)
 
     def add_callback(self, callback=None, index=None, run_now=False,
@@ -66,6 +67,15 @@ class PyepicsShimPV(epics.PV):
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
                                     with_ctrlvars=with_ctrlvars, **kw)
+
+    def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
+                          timeout=None, with_ctrlvars=False, form=None,
+                          use_monitor=True):
+        with self._get_lock:
+            return super().get_with_metadata(
+                count=count, as_string=as_string, as_numpy=as_numpy,
+                timeout=timeout, with_ctrlvars=with_ctrlvars, form=form,
+                use_monitor=use_monitor)
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
@@ -89,6 +99,11 @@ class PyepicsShimPV(epics.PV):
         if not connected:
             raise TimeoutError(f"{self.pvname} could not connect within "
                                f"{float(timeout):.3}-second timeout.")
+        return connected
+
+    @property
+    def is_enum(self):
+        return self.ftype in (dbr.ENUM, dbr.TIME_ENUM, dbr.CTRL_ENUM)
 
     def get_all_metadata(self):
         if self._args['status'] is None:
@@ -97,6 +112,11 @@ class PyepicsShimPV(epics.PV):
         md = self._args.copy()
         md.pop('value', None)
         return md
+
+    def clear_callbacks(self):
+        super().clear_callbacks()
+        self.access_callbacks.clear()
+        self.connection_callbacks.clear()
 
 
 def release_pvs(*pvs):

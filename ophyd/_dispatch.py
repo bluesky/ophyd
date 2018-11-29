@@ -148,8 +148,8 @@ class EventDispatcher:
 
 def wrap_callback(dispatcher, event_type, callback):
     'Wrap a callback for usage with the dispatcher'
-    if callback is None:
-        return
+    if callback is None or getattr(callback, '_wrapped_callback', False):
+        return callback
 
     assert event_type in dispatcher._threads
     callback_queue = dispatcher._threads[event_type].queue
