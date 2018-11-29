@@ -201,8 +201,11 @@ class Signal(OphydObject):
         self._metadata.update(**metadata)
 
         md_for_callback = {key: metadata[key]
-                           for key in self._metadata_keys + ('timestamp', )
+                           for key in self._metadata_keys
                            if key in metadata}
+
+        if 'timestamp' not in self._metadata_keys:
+            md_for_callback['timestamp'] = timestamp
 
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, **md_for_callback)
