@@ -60,21 +60,10 @@ class PV(_PV):
         md.pop('value', None)
         return md
 
-    def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
-                          timeout=None, with_ctrlvars=False, use_monitor=True):
-        # TODO: this should be supported in caproto
-        value = super().get(count=count, as_string=as_string,
-                            as_numpy=as_numpy, timeout=timeout,
-                            with_ctrlvars=with_ctrlvars,
-                            use_monitor=use_monitor)
-        if value is None:
-            return value
-
-        return {'value': value,
-                'status': self._args['status'],
-                'severity': self._args['severity'],
-                'timestamp': self._args['timestamp'],
-                }
+    def clear_callbacks(self):
+        super().clear_callbacks()
+        self.access_callbacks.clear()
+        self.connection_callbacks.clear()
 
     def clear_auto_monitor(self):
         # TODO move into caproto
