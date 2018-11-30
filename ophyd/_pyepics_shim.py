@@ -94,15 +94,6 @@ class PyepicsShimPV(epics.PV):
                 self.get_ctrlvars(timeout=1, warn=False)
         return self._args.get(arg, None)
 
-    def wait_for_connection(self, timeout=None):
-        if timeout is None:
-            timeout = self.connection_timeout
-        connected = super().wait_for_connection(timeout=timeout)
-        if not connected:
-            raise TimeoutError(f"{self.pvname} could not connect within "
-                               f"{float(timeout):.3}-second timeout.")
-        return connected
-
     @property
     def is_enum(self):
         return self.ftype in (dbr.ENUM, dbr.TIME_ENUM, dbr.CTRL_ENUM)

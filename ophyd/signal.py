@@ -766,7 +766,9 @@ class EpicsSignalBase(Signal):
                 raise DestroyedError('Cannot re-use a destroyed Signal')
 
             for pv in pvs:
-                pv.wait_for_connection(timeout=timeout)
+                if not pv.wait_for_connection(timeout=timeout):
+                    raise TimeoutError(f"{pv.pvname} could not connect within "
+                                       f"{float(timeout):.3}-second timeout.")
 
         for pv in pvs:
             if not self._received_first_metadata[pv.pvname]:
