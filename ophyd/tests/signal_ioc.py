@@ -19,7 +19,7 @@ class SignalTestIOC(PVGroup):
     async def pair_set(self, instance, value):
         await self.pair_rbv.write(value=value)
 
-    waveform = pvproperty(value=[0, 1, 2], read_only=True,
+    waveform = pvproperty(value=[ord('a'), ord('b'), ord('c')], read_only=True,
                           alarm_group='alarm_a')
     bool_enum = pvproperty(value=True, alarm_group='alarm_a')
     alarm_status = pvproperty(value=0)
