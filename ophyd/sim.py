@@ -902,23 +902,22 @@ def make_fake_device(cls):
         # Update all the components recursively
         for cpt_name in cls.component_names:
             cpt = getattr(cls, cpt_name)
-            fake_cpt = copy.copy(cpt)
-            if isinstance(cpt, Component):
-                fake_cpt.cls = make_fake_device(cpt.cls)
-                logger.debug('switch cpt_name=%s to cls=%s',
-                             cpt_name, fake_cpt.cls)
-            # DDCpt stores the classes in a different place
-            elif isinstance(cpt, DDC):
-                fake_defn = {}
-                for ddcpt_name, ddcpt_tuple in cpt.defn.items():
-                    subcls = make_fake_device(ddcpt_tuple[0])
-                    fake_defn[ddcpt_name] = [subcls] + list(ddcpt_tuple[1:])
-                fake_cpt.defn = fake_defn
+            if isinstance(cpt, DDC):
+                # Make a regular Component out of the DDC, as it already has
+                # been generated
+                fake_cpt = Component(cls=cpt.cls, suffix=cpt.suffix,
+                                     lazy=cpt.lazy,
+                                     trigger_value=cpt.trigger_value,
+                                     kind=cpt.kind, add_prefix=cpt.add_prefix,
+                                     doc=cpt.doc, **cpt.kwargs,
+                                     )
             else:
-                raise RuntimeError(("{} is not a component or a dynamic "
-                                    "device component. I don't know how you "
-                                    "found this error, should be impossible "
-                                    "to reach it.".format(cpt)))
+                fake_cpt = copy.copy(cpt)
+
+            fake_cpt.cls = make_fake_device(cpt.cls)
+            logger.debug('switch cpt_name=%s to cls=%s', cpt_name,
+                         fake_cpt.cls)
+
             fake_dict[cpt_name] = fake_cpt
         fake_class = type('Fake{}'.format(cls.__name__), (cls,), fake_dict)
         fake_device_cache[cls] = fake_class
@@ -947,29 +946,23 @@ def clear_fake_device(dev, *, default_value=0, default_string_value='',
         List of all (signal_instance, value) that were set
     '''
 
-    devs = [dev]
     all_values = []
-    while devs:
-        sub_dev = devs.pop(0)
-        devs.extend([getattr(sub_dev, name)
-                     for name in sub_dev._sub_devices])
-        for name, cpt in sub_dev._sig_attrs.items():
-            sig = getattr(sub_dev, name)
-            if isinstance(cpt, DDC) or not hasattr(sig, 'sim_put'):
-                continue
+    for walk in dev.walk_signals(include_lazy=True):
+        sig = walk.item
+        if not hasattr(sig, 'sim_put'):
+            continue
 
-            try:
-                string = (hasattr(cpt, 'kwargs') and
-                          cpt.kwargs.get('string', False))
-                value = (default_string_value
-                         if string
-                         else default_value)
-                sig.sim_put(value)
-            except Exception as ex:
-                if not ignore_exceptions:
-                    raise
-            else:
-                all_values.append((sig, value))
+        try:
+            string = getattr(sig, 'as_string', False)
+            value = (default_string_value
+                     if string
+                     else default_value)
+            sig.sim_put(value)
+        except Exception as ex:
+            if not ignore_exceptions:
+                raise
+        else:
+            all_values.append((sig, value))
 
     return all_values
 

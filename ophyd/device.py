@@ -1,8 +1,9 @@
 import collections
 import contextlib
 import functools
-import inspect
+import itertools
 import logging
+import operator
 import textwrap
 import time as ttime
 import types
@@ -12,14 +13,14 @@ from enum import Enum
 from collections import (OrderedDict, namedtuple)
 
 from .ophydobj import OphydObject, Kind
+from .signal import Signal
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
-                    doc_annotation_forwarder)
+                    doc_annotation_forwarder, underscores_to_camel_case,
+                    getattrs)
 
 from typing import Dict, List, Any, TypeVar, Tuple
-from types import SimpleNamespace
 from collections.abc import MutableSequence
-from itertools import groupby
 
 A, B = TypeVar('A'), TypeVar('B')
 ALL_COMPONENTS = object()
@@ -104,13 +105,15 @@ class Component:
     def __init__(self, cls, suffix=None, *, lazy=False, trigger_value=None,
                  add_prefix=None, doc=None, kind=Kind.normal, **kwargs):
         self.attr = None  # attr is set later by the device when known
+        self.parent = None  # parent is also to be set later when known
         self.cls = cls
         self.kwargs = kwargs
-        self.lazy = lazy
+        self.lazy = lazy  # False if self.is_device else lazy  (TODO)
         self.suffix = suffix
         self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
-        self.kind = _ensure_kind(kind)
+        self.kind = (Kind[kind.lower()] if isinstance(kind, str)
+                     else Kind(kind))
         if add_prefix is None:
             add_prefix = ('suffix', 'write_pv')
         self.add_prefix = tuple(add_prefix)
@@ -118,6 +121,18 @@ class Component:
 
     def __set_name__(self, owner, attr_name):
         self.attr = attr_name
+        if self.doc is None:
+            self.doc = self.make_docstring(owner)
+
+    @property
+    def is_device(self):
+        'Does this Component contain a Device?'
+        return isinstance(self.cls, type) and issubclass(self.cls, Device)
+
+    @property
+    def is_signal(self):
+        'Does this Component contain a Signal?'
+        return isinstance(self.cls, type) and issubclass(self.cls, Signal)
 
     def maybe_add_prefix(self, instance, kw, suffix):
         """Add prefix to a suffix if kw is in self.add_prefix
@@ -141,8 +156,7 @@ class Component:
         str
         """
         if kw in self.add_prefix:
-            return '{prefix}{suffix}'.format(prefix=instance.prefix,
-                                             suffix=suffix)
+            return f'{instance.prefix}{suffix}'
         return suffix
 
     def create_component(self, instance):
@@ -150,18 +164,14 @@ class Component:
         kwargs = self.kwargs.copy()
         kwargs.update(
             name=f'{instance.name}_{self.attr}',
-            kind=instance._initial_state[self.attr].kind,
+            kind=instance._component_kinds[self.attr],
             attr_name=self.attr,
         )
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
-        if (isinstance(self.cls, type) and  # is a class
-                issubclass(self.cls, DynamicDeviceComponent)):
-            cpt_inst = self.cls(self.suffix).create_component(self)
-
-        elif self.suffix is not None:
+        if self.suffix is not None:
             pv_name = self.maybe_add_prefix(instance, 'suffix', self.suffix)
             cpt_inst = self.cls(pv_name, parent=instance, **kwargs)
         else:
@@ -174,6 +184,7 @@ class Component:
         return cpt_inst
 
     def make_docstring(self, parent_class):
+        'Create a docstring for the Component'
         if self.doc is not None:
             return self.doc
 
@@ -187,26 +198,20 @@ class Component:
         return '\n'.join(doc)
 
     def __repr__(self):
-        kw_str = (
-            ', '.join('{}={!r}'.format(k, v) for k, v in self.kwargs.items()
-                      if k not in ['read_attrs', 'configuration_attrs'])
-        )
+        repr_dict = self.kwargs.copy()
+        repr_dict.pop('read_attrs', None)
+        repr_dict.pop('configuration_attrs', None)
+        repr_dict['kind'] = self.kind.name
 
-        if self.suffix is not None:
-            suffix_str = '{!r}'.format(self.suffix)
-            if self.kwargs:
-                suffix_str += ', '
-        else:
-            suffix_str = ''
+        kw_str = ', '.join(f'{k}={v!r}' for k, v in repr_dict.items())
+        suffix = (repr(self.suffix) if self.suffix
+                  else '')
 
-        if suffix_str or kw_str:
-            arg_str = ', {}{}'.format(suffix_str, kw_str)
-        else:
-            arg_str = ''
-        arg_str += ', kind={}'.format(self.kind)
+        component_class = self.cls.__name__
+        args = ', '.join(s for s in (component_class, suffix, kw_str) if s)
 
-        return ('{self.__class__.__name__}({self.cls.__name__}{arg_str})'
-                ''.format(self=self, arg_str=arg_str))
+        this_class = self.__class__.__name__
+        return f'{this_class}({args})'
 
     __str__ = __repr__
 
@@ -298,8 +303,8 @@ class FormattedComponent(Component):
         return suffix.format(self=instance)
 
 
-class DynamicDeviceComponent:
-    '''An Device component that dynamically creates a OphydDevice
+class DynamicDeviceComponent(Component):
+    '''An Device component that dynamically creates an ophyd Device
 
     Parameters
     ----------
@@ -324,112 +329,64 @@ class DynamicDeviceComponent:
         A class attribute to put on the dynamically generated class
     default_configuration_attrs : list, optional
         A class attribute to put on the dynamically generated class
+    component_class : class, optional
+        Defaults to Component
+    base_class : class, optional
+        Defaults to Device
     '''
 
     def __init__(self, defn, *, clsname=None, doc=None, kind=Kind.normal,
-                 default_read_attrs=None, default_configuration_attrs=None):
-        self.defn = defn
-        self.clsname = clsname
-        self.attr = None  # attr is set later by the device when known
-        self.lazy = False
-        self.doc = doc
+                 default_read_attrs=None, default_configuration_attrs=None,
+                 component_class=Component, base_class=None):
         if isinstance(default_read_attrs, collections.Iterable):
             default_read_attrs = tuple(default_read_attrs)
+
         if isinstance(default_configuration_attrs, collections.Iterable):
             default_configuration_attrs = tuple(default_configuration_attrs)
+
+        self.defn = defn
+        self.clsname = clsname
         self.default_read_attrs = default_read_attrs
         self.default_configuration_attrs = default_configuration_attrs
-        self.kind = _ensure_kind(kind)
-
-        # TODO: component compatibility
-        self.trigger_value = None
         self.attrs = list(defn.keys())
+        self.component_class = component_class
+        self.base_class = base_class if base_class is not None else Device
+        self.components = {attr: component_class(cls, suffix, **kwargs)
+                           for attr, (cls, suffix, kwargs) in self.defn.items()
+                           }
+
+        # NOTE: cls is None here, as it gets created in __set_name__, below
+        super().__init__(cls=None, suffix='', lazy=False, kind=kind)
+
+        # Allow easy access to all generated components directly in the
+        # DynamicDeviceComponent instance
+        for attr, cpt in self.components.items():
+            if not hasattr(self, attr):
+                setattr(self, attr, cpt)
+
+    def __getnewargs_ex__(self):
+        'Get arguments needed to copy this class (used for pickle/copy)'
+        kwargs = dict(clsname=self.clsname, doc=self.doc, kind=self.kind,
+                      default_read_attrs=self.default_read_attrs,
+                      default_configuration_attrs=self.default_configuration_attrs,
+                      component_class=self.component_class,
+                      base_class=self.base_class)
+        return ((self.defn, ), kwargs)
 
     def __set_name__(self, owner, attr_name):
-        self.attr = attr_name
-
-    def make_docstring(self, parent_class):
-        if self.doc is not None:
-            return self.doc
-
-        doc = ['{} comprised of'.format(self.__class__.__name__),
-               '::',
-               '',
-               ]
-
-        doc.append(textwrap.indent(repr(self), prefix=' ' * 4))
-        doc.append('')
-        return '\n'.join(doc)
+        if self.clsname is None:
+            self.clsname = underscores_to_camel_case(attr_name)
+        super().__set_name__(owner, attr_name)
+        self.cls = create_device_from_components(
+            self.clsname, default_read_attrs=self.default_read_attrs,
+            default_configuration_attrs=self.default_configuration_attrs,
+            base_class=self.base_class,
+            **self.components)
 
     def __repr__(self):
-        doc = []
-        for attr, (cls, suffix, kwargs) in self.defn.items():
-            kw_str = ', '.join('{}={!r}'.format(k, v)
-                               for k, v in kwargs.items())
-            if suffix is not None:
-                suffix_str = '{!r}'.format(suffix)
-                if kwargs:
-                    suffix_str += ', '
-            else:
-                suffix_str = ''
-
-            if suffix_str or kw_str:
-                arg_str = ', {}{}'.format(suffix_str, kw_str)
-            else:
-                arg_str = ''
-
-            doc.append('{attr} = Component({cls.__name__}{arg_str})'
-                       ''.format(attr=attr, cls=cls, arg_str=arg_str))
-
-        return '\n'.join(doc)
-
-    def create_attr(self, attr_name):
-        cls, suffix, kwargs = self.defn[attr_name]
-        inst = Component(cls, suffix, **kwargs)
-        inst.attr = attr_name
-        return inst
-
-    def create_component(self, instance):
-        '''Create a component for the instance'''
-        clsname = self.clsname
-        if clsname is None:
-            # make up a class name based on the instance's class name
-            clsname = ''.join((instance.__class__.__name__,
-                               self.attr.capitalize()))
-
-            # TODO: and if the attribute has any underscores, convert that to
-            #       camelcase
-
-        docstring = self.doc
-        if docstring is None:
-            docstring = '{} sub-device'.format(clsname)
-
-        clsdict = OrderedDict(
-            __doc__=docstring,
-            _default_read_attrs=self.default_read_attrs,
-            _default_configuration_attrs=self.default_configuration_attrs
-        )
-
-        for attr in self.defn.keys():
-            clsdict[attr] = self.create_attr(attr)
-
-        cls = type(clsname, (Device, ), clsdict)
-        return cls(instance.prefix,
-                   name='{}_{}'.format(instance.name, self.attr),
-                   parent=instance,
-                   kind=instance._initial_state[self.attr].kind)
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self
-
-        if self.attr not in instance._signals:
-            instance._signals[self.attr] = self.create_component(instance)
-
-        return instance._signals[self.attr]
-
-    def __set__(self, instance, value):
-        raise RuntimeError('Use .put()')
+        return '\n'.join(f'{attr} = {cpt!r}'
+                         for attr, cpt in self.components.items()
+                         )
 
     def subscriptions(self, event_type):
         raise NotImplementedError('DynamicDeviceComponent does not yet '
@@ -734,18 +691,16 @@ class Device(BlueskyInterface, OphydObject):
 
     SUB_ACQ_DONE = 'acq_done'  # requested acquire
 
-    # over ride in sub-classes to control the default
-    # contents of read and configuration attrs lists
-
-    # To use the new 'kind' parameter, set these equal to the sentinel
-    # REPSECT_KIND, defined in this module.
-
-    # If `None`, defaults to `self.component_names'
+    # Over-ride in sub-classes to control the default contents of read and
+    # configuration attrs lists.
+    # For read attributes, if `None`, defaults to `self.component_names'
     _default_read_attrs = None
-    # If `None`, defaults to `[]`
+
+    # For configuration attributes, if `None`, defaults to `[]`
     _default_configuration_attrs = None
-    # When instantiating a lazy signal upon first access, wait for it to connect
-    # before returning control to the user
+
+    # When instantiating a lazy signal upon first access, wait for it to
+    # connect before returning control to the user
     lazy_wait_for_connection = True
 
     def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
@@ -754,8 +709,10 @@ class Device(BlueskyInterface, OphydObject):
 
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
-        self._initial_state = {k: SimpleNamespace(kind=cpt.kind)
-                               for k, cpt in self._sig_attrs.items()}
+
+        # Copy the Device-defined signal kinds, for user modification
+        self._component_kinds = self._component_kinds.copy()
+
         self.prefix = prefix
         if self.component_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
@@ -800,57 +757,68 @@ class Device(BlueskyInterface, OphydObject):
 
     @classmethod
     def _initialize_device(cls):
+        '''Initializes the Device and all of its Components
+
+        Initializes the following attributes from the Components::
+            - _sig_attrs - dict of attribute name to Component
+            - component_names - a list of attribute names used for components
+            - _device_tuple - An auto-generated namedtuple based on all
+              existing Components in the Device
+            - _sub_devices - a list of attributes which hold a Device
+        '''
+
         for attr in DEVICE_INSTANCE_ATTRS:
             if attr in cls.__dict__:
                 raise TypeError("The attribute name %r is reserved for "
                                 "use by the Device class. Choose a different "
                                 "name." % attr)
 
-        cls._sig_attrs = OrderedDict()
+        # this is so that the _sig_attrs class attribute includes the sigattrs
+        # from all of its class-inheritance-parents so we do not have to do
+        # this look up everytime we look at it.
+        base_devices = [base for base in reversed(cls.__bases__)
+                        if hasattr(base, '_sig_attrs')]
 
-        # this is so that the _sig_attrs class attribute includes the
-        # sigattrs from all of it's class-inheritance-parents so we do
-        # not have to do this look up everytime we look at it.
-        for base in reversed(cls.__bases__):
-            if not hasattr(base, '_sig_attrs'):
-                continue
-
-            for attr, cpt in base._sig_attrs.items():
-                cls._sig_attrs[attr] = cpt
+        cls._sig_attrs = OrderedDict((attr, cpt)
+                                     for base in base_devices
+                                     for attr, cpt in base._sig_attrs.items()
+                                     )
 
         # map component classes to their attribute names from this class
-        for attr, value in cls.__dict__.items():
-            if isinstance(value, (Component, DynamicDeviceComponent)):
-                if attr in DEVICE_RESERVED_ATTRS:
-                    raise TypeError("The attribute name %r is part of the "
-                                    "bluesky interface and cannot be used as "
-                                    "the name of a component. Choose a "
-                                    "different name." % attr)
-                cls._sig_attrs[attr] = value
+        this_sig_attrs = {attr: cpt
+                          for attr, cpt in cls.__dict__.items()
+                          if isinstance(cpt, Component)
+                          }
+
+        cls._sig_attrs.update(**this_sig_attrs)
+
+        # Record the class-defined kinds - these can be updated on a
+        # per-instance basis
+        cls._component_kinds = {attr: cpt.kind
+                                for attr, cpt in cls._sig_attrs.items()
+                                }
+
+        bad_attrs = set(cls._sig_attrs).intersection(DEVICE_RESERVED_ATTRS)
+        if bad_attrs:
+            raise TypeError(f'The attribute name(s) {bad_attrs} are part of'
+                            f' the bluesky interface and cannot be used as '
+                            f'component names. Choose a different name.')
 
         # List Signal attribute names.
-        cls.component_names = tuple(cls._sig_attrs.keys())
+        cls.component_names = tuple(cls._sig_attrs)
 
         # The namedtuple associated with the device
-        cls._device_tuple = namedtuple(
-            f'{cls.__name__}Tuple',
-            [comp for comp in cls.component_names
-             if not comp.startswith('_')])
-        # Finally, create all the component docstrings
-        for cpt in cls._sig_attrs.values():
-            cpt.__doc__ = cpt.make_docstring(cls)
+        cls._device_tuple = namedtuple(f'{cls.__name__}Tuple',
+                                       [comp for comp in cls.component_names
+                                        if not comp.startswith('_')])
 
         # List the attributes that are Devices (not Signals).
         # This list is used by stage/unstage. Only Devices need to be staged.
-        cls._sub_devices = []
-        for attr, cpt in cls._sig_attrs.items():
-            if (isinstance(cpt, Component) and
-                    (not isinstance(cpt.cls, type) or  # not a class
-                     not issubclass(cpt.cls, Device))):  # not a Device
-                continue
-            cls._sub_devices.append(attr)
+        cls._sub_devices = [attr for attr, cpt in cls._sig_attrs.items()
+                            if cpt.is_device]
 
     def __init_subclass__(cls, **kwargs):
+        'This is called automatically in Python for all subclasses of Device'
         super().__init_subclass__(**kwargs)
         cls._initialize_device(**kwargs)
 
@@ -869,19 +837,16 @@ class Device(BlueskyInterface, OphydObject):
                                 dotted_name=attr,
                                 item=cpt
                                 )
-            if isinstance(cpt, DynamicDeviceComponent):
-                ...
-            elif isinstance(cpt, Component):
-                if (issubclass(cpt.cls, Device) or
-                        hasattr(cpt.cls, 'walk_components')):
-                    sub_dev = cpt.cls
-                    for walk in sub_dev.walk_components():
-                        ancestors = (cls, ) + walk.ancestors
-                        dotted_name = '.'.join((attr, walk.dotted_name))
-                        yield ComponentWalk(ancestors=ancestors,
-                                            dotted_name=dotted_name,
-                                            item=walk.item
-                                            )
+            if (issubclass(cpt.cls, Device) or
+                    hasattr(cpt.cls, 'walk_components')):
+                sub_dev = cpt.cls
+                for walk in sub_dev.walk_components():
+                    ancestors = (cls, ) + walk.ancestors
+                    dotted_name = '.'.join((attr, walk.dotted_name))
+                    yield ComponentWalk(ancestors=ancestors,
+                                        dotted_name=dotted_name,
+                                        item=walk.item
+                                        )
 
     def walk_signals(self, *, include_lazy=False):
         '''Walk all signals in the Device hierarchy
@@ -898,27 +863,30 @@ class Device(BlueskyInterface, OphydObject):
             top-level device `walk_signals` was called on.
         '''
         for attr, cpt in self._sig_attrs.items():
-            if cpt.lazy and (include_lazy or attr in self.__dict__):
-                sig = getattr(self, attr)
+            # 2 scenarios:
+            #  - Always include non-lazy components
+            #  - Include a lazy if already instantiated OR requested with
+            #    include_lazy
+            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            should_walk = not cpt.lazy or lazy_ok
+
+            if not should_walk:
+                continue
+
+            sig = getattr(self, attr)
+            if isinstance(sig, Device):
+                for walk in sig.walk_signals(include_lazy=include_lazy):
+                    ancestors = (self, ) + walk.ancestors
+                    dotted_name = '.'.join((attr, walk.dotted_name))
+                    yield ComponentWalk(ancestors=ancestors,
+                                        dotted_name=dotted_name,
+                                        item=walk.item
+                                        )
+            else:
                 yield ComponentWalk(ancestors=(self, ),
                                     dotted_name=attr,
                                     item=sig
                                     )
-            elif not cpt.lazy:
-                sig = getattr(self, attr)
-                if isinstance(sig, Device):
-                    for walk in sig.walk_signals(include_lazy=include_lazy):
-                        ancestors = (self, ) + walk.ancestors
-                        dotted_name = '.'.join((attr, walk.dotted_name))
-                        yield ComponentWalk(ancestors=ancestors,
-                                            dotted_name=dotted_name,
-                                            item=walk.item
-                                            )
-                else:
-                    yield ComponentWalk(ancestors=(self, ),
-                                        dotted_name=attr,
-                                        item=sig
-                                        )
 
     @classmethod
     def walk_subdevice_classes(cls):
@@ -928,14 +896,11 @@ class Device(BlueskyInterface, OphydObject):
         ------
         (dotted_name, subdevice_class)
         '''
-        for item in cls.walk_components():
-            cpt = item.item
-            if isinstance(cpt, DynamicDeviceComponent):
-                for cpt_attr, (cpt_cls, suffix, kwargs) in cpt.defn.items():
-                    if isinstance(cpt_cls, Device):
-                        yield ('.'.join((item.dotted_name, cpt_attr)), cpt_cls)
-            elif isinstance(cpt, Component) and issubclass(cpt.cls, Device):
-                yield (item.dotted_name, cpt.cls)
+        for attr in cls._sub_devices:
+            cpt = getattr(cls, attr)
+            yield (attr, cpt.cls)
+            for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
+                yield ('.'.join((attr, sub_attr)), sub_cls)
 
     def walk_subdevices(self):
         '''Walk all sub-Devices in the hierarchy
@@ -969,21 +934,50 @@ class Device(BlueskyInterface, OphydObject):
                 'Failed to disconnect all signals ({})'.format(msg),
                 exceptions=exceptions)
 
+    def _get_kind(self, name):
+        '''Get a Kind for a given Component
+
+        If the Component is instantiated, it will be retrieved directly from
+        that object.
+
+        If the Component is lazy and not yet instantiated, the default value as
+        specified by the Component class will be used.  This is stashed away in
+        `_component_kinds`.
+        '''
+        return (self._signals[name].kind
+                if name in self._signals
+                else self._component_kinds[name]
+                )
+
+    def _set_kind(self, name, kind):
+        '''Set the Kind for a given Component'''
+        if name in self._signals:
+            self._signals[name].kind = kind
+        else:
+            self._component_kinds[name] = kind
+
+    def _get_components_of_kind(self, kind):
+        'Get names of components that match a specific kind'
+        for component_name in self.component_names:
+            # this might be lazy and get the Cpt
+            component_kind = self._get_kind(component_name)
+            if kind & component_kind:
+                yield component_name, getattr(self, component_name)
+
     def _validate_kind(self, val):
-        if isinstance(val, str):
-            val = getattr(Kind, val.lower())
+        val = super()._validate_kind(val)
         if Kind.normal & val:
-            val = val | Kind.config
-        return super()._validate_kind(val)
+            val |= Kind.config
+        return val
 
     @property
     def read_attrs(self):
-        return self.OphydAttrList(self, Kind.normal, Kind.hinted,
-                                  'read_attrs')
+        return self.OphydAttrList(self, Kind.normal, Kind.hinted, 'read_attrs')
 
     @read_attrs.setter
     def read_attrs(self, val):
-        self.__attr_list_helper(val, Kind.normal, Kind.hinted, 'read_attrs')
+        self.__set_kinds_according_to_list(val, Kind.normal, Kind.hinted,
+                                           'read_attrs')
 
     @property
     def configuration_attrs(self):
@@ -992,34 +986,37 @@ class Device(BlueskyInterface, OphydObject):
 
     @configuration_attrs.setter
     def configuration_attrs(self, val):
-        self.__attr_list_helper(val, Kind.config, Kind.config,
-                                'configuration_attrs')
+        self.__set_kinds_according_to_list(val, Kind.config, Kind.config,
+                                           'configuration_attrs')
 
-    def __attr_list_helper(self, val, set_kind, unset_kind, recurse_name):
-        val = set(val)
-        cn = set(self.component_names)
+    def __set_kinds_according_to_list(self, master_list, set_kind, unset_kind,
+                                      recurse_name):
+        master_list = set(master_list)
+        component_names = set(self.component_names)
 
-        for c in cn:
-            if c in val:
-                _lazy_get(self, c).kind |= set_kind
-            else:
-                _lazy_get(self, c).kind &= ~unset_kind
+        # For all children of this class, update their kinds
+        for name in component_names:
+            kind = self._get_kind(name)
+            kind = (kind | set_kind if name in master_list
+                    else kind & ~unset_kind)
+            self._set_kind(name, kind)
 
-        # now look at everything else, presumably things with dots
-        extra = val - cn
+        # Now look at everything else, presumably things with dots
+        extra = master_list - component_names
         fail = set(c for c in extra if '.' not in c)
-        if fail:
 
-            raise ValueError("You asked to add the components {fail} "
-                             "to {recurse_name} "
-                             "on {self.name!r}, but there is no such child in "
-                             "{self.component_names}."
-                             .format(fail=fail, self=self,
-                                     recurse_name=recurse_name))
-        group = groupby(((child, rest)
-                         for child, _, rest in (c.partition('.')
-                                                for c in extra)),
-                        lambda x: x[0])
+        if fail:
+            raise ValueError(
+                f"You asked to add the components {fail} to {recurse_name} "
+                f"on {self.name!r}, but there is no such child in "
+                f"{self.component_names}."
+            )
+
+        group = itertools.groupby(
+            ((child, rest)
+             for child, _, rest in (c.partition('.') for c in extra)),
+            lambda x: x[0])
+
         # we are into grand-children, can not be lazy!
         for child, cf_list in group:
             cpt = getattr(self, child)
@@ -1041,8 +1038,6 @@ class Device(BlueskyInterface, OphydObject):
 
     def _summary(self):
         "Return a string summarizing the structure of the Device."
-        desc = self.describe()
-        config_desc = self.describe_configuration()
         read_attrs = self.read_attrs
         config_attrs = self.configuration_attrs
         used_attrs = set(read_attrs + config_attrs)
@@ -1050,40 +1045,28 @@ class Device(BlueskyInterface, OphydObject):
                        if a not in used_attrs]
         hints = getattr(self, 'hints', {}).get('fields', [])
 
-        def format_leaf(a):
-            s = getattr(self, a)
-            return '{:<20} {:<20}({!r})'.format(a, type(s).__name__,
-                                                s.name)
+        def format_leaf(attr):
+            cpt = getattr(self, attr)
+            return f'{attr:<20} {type(cpt).__name__:<20}({cpt.name!r})'
+
+        def format_hint(key):
+            return ''.join(('*' if key in hints else ' ', key))
+
+        categories = [
+            ('data keys (* hints)', sorted(self.describe()), format_hint),
+            ('read attrs', read_attrs, format_leaf),
+            ('config keys', sorted(self.describe_configuration()), str),
+            ('configuration attrs', config_attrs, format_leaf),
+            ('unused attrs', extra_attrs, format_leaf)
+        ]
 
         out = []
-        out.append('data keys (* hints)')
-        out.append('-------------------')
-        for k in sorted(desc):
-            out.append(('*' if k in hints else ' ') + k)
-        out.append('')
+        for title, items, formatter in categories:
+            out.append(title)
+            out.append('-' * len(title))
+            out.extend([formatter(s) for s in items])
+            out.append('')
 
-        out.append('read attrs')
-        out.append('----------')
-        for a in read_attrs:
-            out.append(format_leaf(a))
-
-        out.append('')
-        out.append('config keys')
-        out.append('-----------')
-        for k in sorted(config_desc):
-            out.append(k)
-        out.append('')
-
-        out.append('configuration attrs')
-        out.append('----------')
-        for a in config_attrs:
-            out.append(format_leaf(a))
-        out.append('')
-
-        out.append('Unused attrs')
-        out.append('------------')
-        for a in extra_attrs:
-            out.append(format_leaf(a))
         return '\n'.join(out)
 
     def wait_for_connection(self, all_signals=False, timeout=2.0):
@@ -1163,38 +1146,26 @@ class Device(BlueskyInterface, OphydObject):
         As a reminder, __getattr__ is only called if a real attribute doesn't
         already exist, or a device component has yet to be instantiated.
         '''
-        if '.' not in name:
-            if self._destroyed:
-                raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
-            try:
-                # Initial access of signal
-                cpt = self._sig_attrs[name]
-                return cpt.__get__(self, None)
-            except KeyError:
-                raise AttributeError(name)
+        if '.' in name:
+            return operator.attrgetter(name)(self)
 
-        attr_names = name.split('.')
+        if self._destroyed:
+            raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
         try:
-            attr = getattr(self, attr_names[0])
-        except AttributeError:
-            raise AttributeError('{} of {}'.format(attr_names[0], name))
-
-        if len(attr_names) > 1:
-            sub_attr_names = '.'.join(attr_names[1:])
-            return getattr(attr, sub_attr_names)
-
-        return attr
+            # Initial access of signal
+            cpt = self._sig_attrs[name]
+            sig = cpt.__get__(self, None)
+            setattr(self, name, sig)
+            return sig
+        except KeyError:
+            raise AttributeError(name)
 
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
         res = super().read()
-        for component_name in self.component_names:
-            # this might be lazy and get the Cpt
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.normal:
-                # this forces us to get the real version
-                component = getattr(self, component_name)
-                res.update(component.read())
+
+        for _, component in self._get_components_of_kind(Kind.normal):
+            res.update(component.read())
         return res
 
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -1205,23 +1176,16 @@ class Device(BlueskyInterface, OphydObject):
         ``configuration_attrs`` list.
         """
         res = OrderedDict()
-        for component_name in self.component_names:
-            # this might be lazy and get the Cpt
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.config:
-                # this forces us to get the real version
-                component = getattr(self, component_name)
-                res.update(component.read_configuration())
+
+        for _, component in self._get_components_of_kind(Kind.config):
+            res.update(component.read_configuration())
         return res
 
     @doc_annotation_forwarder(BlueskyInterface)
     def describe(self):
         res = super().describe()
-        for component_name in self.component_names:
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.normal:
-                component = getattr(self, component_name)
-                res.update(component.describe())
+        for _, component in self._get_components_of_kind(Kind.normal):
+            res.update(component.describe())
         return res
 
     def describe_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
@@ -1240,24 +1204,16 @@ class Device(BlueskyInterface, OphydObject):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         res = OrderedDict()
-        for component_name in self.component_names:
-            component = _lazy_get(self, component_name)
-            if component.kind & Kind.config:
-                component = getattr(self, component_name)
-                res.update(component.describe_configuration())
+        for _, component in self._get_components_of_kind(Kind.config):
+            res.update(component.describe_configuration())
         return res
 
     @property
     def hints(self):
         fields = []
-        for component_name in self.component_names:
-            # Pick off the component's kind without instantiating it.
-            kind = _lazy_get(self, component_name).kind
-            if Kind.normal & kind:
-                # OK, we have to instantiate it.
-                component = getattr(self, component_name)
-                c_hints = component.hints
-                fields.extend(c_hints.get('fields', []))
+        for _, component in self._get_components_of_kind(Kind.normal):
+            c_hints = component.hints
+            fields.extend(c_hints.get('fields', []))
         return {'fields': fields}
 
     @property
@@ -1302,9 +1258,7 @@ class Device(BlueskyInterface, OphydObject):
         '''Stop the Device and all (instantiated) subdevices'''
         exc_list = []
 
-        for attr in self._sub_devices:
-            dev = getattr(self, attr)
-
+        for attr, dev in getattrs(self, self._sub_devices):
             if not dev.connected:
                 self.log.debug('stop: device %s (%s) is not connected; '
                                'skipping', attr, dev)
@@ -1423,18 +1377,17 @@ class Device(BlueskyInterface, OphydObject):
             self._recurse_key = recurse_key
 
         def __internal_list(self):
+            def per_component(name, component):
+                yield name
+                for v in getattr(component, self._recurse_key, []):
+                    yield '.'.join([name, v])
 
-            children = [c for c in self._parent.component_names
-                        if _lazy_get(self._parent, c).kind & self._kind]
-            out = []
-            for c in children:
-                cmpt = getattr(self._parent, c)
-                out.append(c)
-                if hasattr(cmpt, self._recurse_key):
-                    out.extend('.'.join([c, v]) for v in
-                               getattr(cmpt, self._recurse_key, []))
+            out = (per_component(name, component)
+                   for name, component in
+                   self._parent._get_components_of_kind(self._kind)
+                   )
 
-            return out
+            return list(itertools.chain.from_iterable(out))
 
         def __getitem__(self, key):
             return self.__internal_list()[key]
@@ -1443,11 +1396,13 @@ class Device(BlueskyInterface, OphydObject):
             raise NotImplemented
 
         def __delitem__(self, key):
-            o = self.__internal_list()[key]
+            to_delete = self.__internal_list()[key]
             if not isinstance(key, slice):
-                o = [o]
-            for k in o:
-                getattr(self._parent, k).kind &= ~self._remove_kind
+                to_delete = [to_delete]
+
+            for attr in to_delete:
+                item_kind = self._parent._get_kind(attr)
+                item_kind &= ~self._remove_kind
 
         def __len__(self):
             return len(self.__internal_list())
@@ -1456,7 +1411,8 @@ class Device(BlueskyInterface, OphydObject):
             getattr(self._parent, object).kind |= self._kind
 
         def remove(self, value):
-            getattr(self._parent, value).kind &= ~self._remove_kind
+            kind = self._parent._get_kind(value)
+            kind &= ~self._remove_kind
 
         def __contains__(self, value):
             return value in self.__internal_list()
@@ -1485,18 +1441,61 @@ def kind_context(kind):
     yield functools.partial(Component, kind=kind)
 
 
-def _lazy_get(parent, name):
-    return parent._signals.get(name, parent._initial_state[name])
+def create_device_from_components(name, *, docstring=None,
+                                  default_read_attrs=None,
+                                  default_configuration_attrs=None,
+                                  base_class=Device, **components):
+    '''Factory function to make a Device from Components
 
+    Parameters
+    ----------
+    name : str
+        Class name to create
+    docstring : str, optional
+        Docstring to attach to the class
+    default_read_attrs : list, optional
+        Outside of Kind, control the default read_attrs list.
+        Defaults to all `component_names'
+    default_configuration_attrs : list, optional
+        Outside of Kind, control the default configuration_attrs list.
+        Defaults to []
+    base_class : Device or sub-class, optional
+        Class to inherit from, defaults to Device
+    **components : dict
+        Keyword arguments are used to map component attribute names to
+        Components.
 
-def _ensure_kind(k):
-    return getattr(Kind, k.lower()) if isinstance(k, str) else k
+    Returns
+    -------
+    cls : Device
+        Newly generated Device class
+    '''
+    if docstring is None:
+        docstring = f'{name} Device'
+
+    if not isinstance(base_class, tuple):
+        base_class = (base_class, )
+
+    clsdict = OrderedDict(
+        __doc__=docstring,
+        _default_read_attrs=default_read_attrs,
+        _default_configuration_attrs=default_configuration_attrs
+    )
+
+    for attr, component in components.items():
+        if not isinstance(component, Component):
+            raise ValueError(f'Attribute {attr} is not a Component. '
+                             f'It is of type {type(component).__name__}')
+
+        clsdict[attr] = component
+
+    return type(name, base_class, clsdict)
 
 
 def _wait_for_connection_context(value, doc):
     @contextlib.contextmanager
     def wrapped(dev):
-        '''Context manager which changes the wait behavior of lazy signal instantiation
+        f'''Context manager which changes the wait behavior of lazy signal instantiation
 
         By default, upon instantiation of a lazy signal, `wait_for_connection`
         is called.  While a common source of confusion, this is done

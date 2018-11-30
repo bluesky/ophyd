@@ -120,6 +120,20 @@ def ducks_from_namespace(attrs, *, ns=None):
             if all(hasattr(val, attr) for attr in attrs)]
 
 
+def underscores_to_camel_case(underscores):
+    'Convert abc_def_ghi to abcDefGhi'
+    if '_' in underscores and underscores.strip('_') != '':
+        return ''.join(s.capitalize() for s in underscores.split('_'))
+
+    return underscores.capitalize()
+
+
+def getattrs(obj, gen):
+    'For each item in the generator `gen`, yields (attr, getattr(obj, attr))'
+    for attr in gen:
+        yield attr, getattr(obj, attr)
+
+
 class DO_NOT_USE:
     "sentinel value"
     ...
