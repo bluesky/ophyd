@@ -66,21 +66,11 @@ class PyepicsShimPV(epics.PV):
 
         # Not auto-monitoring; need to set up the internal monitor before
         # subscriptions can be used
-        if self.auto_monitor is True:
-            mask = ca.DEFAULT_SUBSCRIPTION_MASK
-        elif self.auto_monitor is None:
-            mask = ca.DEFAULT_SUBSCRIPTION_MASK
-            self.auto_monitor = mask
-        else:
-            mask = self.auto_monitor
+        if not self.auto_monitor:
+            self.auto_monitor = ca.DEFAULT_SUBSCRIPTION_MASK
 
-        if self.wait_for_connection():
-            self._monref = ca.create_subscription(
-                self.chid,
-                use_ctrl=(self.form == 'ctrl'),
-                use_time=(self.form == 'time'),
-                callback=self._PV__on_changes,  # TODO: very-private in pyepics
-                mask=mask, count=self.count)
+        if self.connected:
+            self.force_connect(pvname=self.pvname, chid=self.chid, conn=True)
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
