@@ -52,13 +52,20 @@ class PV(_PV):
 
     # TODO: caproto breaks API compatibility in wait_for_connection, raising TimeoutError
 
-    def get_all_metadata(self):
-        if self._args['timestamp'] is None:
-            self.get_timevars()
-        self.get_ctrlvars()
+    def get_all_metadata_blocking(self, timeout):
+        if self._args['status'] is None:
+            self.get_timevars(timeout=timeout)
+        self.get_ctrlvars(timeout=timeout)
         md = self._args.copy()
         md.pop('value', None)
         return md
+
+    def get_all_metadata_callback(self, callback, *, timeout):
+        def get_metadata_thread():
+            md = self.get_all_metadata_blocking(timeout=timeout)
+            callback(self.pvname, md)
+
+        dispatcher.schedule_utility_task(get_metadata_thread)
 
     def clear_callbacks(self):
         super().clear_callbacks()

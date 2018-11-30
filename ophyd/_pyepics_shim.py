@@ -107,13 +107,20 @@ class PyepicsShimPV(epics.PV):
     def is_enum(self):
         return self.ftype in (dbr.ENUM, dbr.TIME_ENUM, dbr.CTRL_ENUM)
 
-    def get_all_metadata(self):
+    def get_all_metadata_blocking(self, timeout):
         if self._args['status'] is None:
-            self.get_timevars()
-        self.get_ctrlvars()
+            self.get_timevars(timeout=timeout)
+        self.get_ctrlvars(timeout=timeout)
         md = self._args.copy()
         md.pop('value', None)
         return md
+
+    def get_all_metadata_callback(self, callback, *, timeout):
+        def get_metadata_thread():
+            md = self.get_all_metadata_blocking(timeout=timeout)
+            callback(self.pvname, md)
+
+        dispatcher.schedule_utility_task(get_metadata_thread)
 
     def clear_callbacks(self):
         super().clear_callbacks()

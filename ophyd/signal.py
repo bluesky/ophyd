@@ -611,28 +611,12 @@ class EpicsSignalBase(Signal):
         kwargs.pop('value', None)
         return (args, kwargs)
 
-    def _update_metadata_manually(self, pv):
-        '''Update all metadata associated with a PV
-
-        Upon the first connection, this is run in a separate thread to get
-        metadata.  This happens before the signal is marked as 'connected' (or
-        rather, ready for usage)
-        '''
-        try:
-            md = pv.get_all_metadata()
-        except TimeoutError as ex:
-            if self._destroyed:
-                return
-            logger.warning('Initial metadata request failed for %s', pv.pvname)
-        except Exception as ex:
-            if self._destroyed:
-                return
-            logger.error('Initial metadata request failed for %s', pv.pvname,
-                         exc_info=ex)
-        else:
-            self._metadata_changed(pv.pvname, md, require_timestamp=True)
-            self._received_first_metadata[pv.pvname] = True
-            self._set_event_if_ready()
+    def _initial_metadata_callback(self, pvname, cl_metadata):
+        'Control-layer callback: all initial metadata - control and status'
+        self._metadata_changed(pvname, cl_metadata, require_timestamp=True,
+                               update=True)
+        self._received_first_metadata[pvname] = True
+        self._set_event_if_ready()
 
     def _metadata_changed(self, pvname, cl_metadata, *, require_timestamp=False,
                           update=True):
@@ -651,13 +635,13 @@ class EpicsSignalBase(Signal):
         was_connected = self.connected
         if not conn:
             self._signal_is_ready.clear()
-            self._access_rights_valid[pv.pvname] = False
+            self._access_rights_valid[pvname] = False
 
         self._connection_states[pvname] = conn
 
         if not self._received_first_metadata[pvname]:
-            self.cl.dispatcher.schedule_utility_task(
-                self._update_metadata_manually, pv)
+            pv.get_all_metadata_callback(self._initial_metadata_callback,
+                                         timeout=10)
 
         self._set_event_if_ready()
 
@@ -790,7 +774,8 @@ class EpicsSignalBase(Signal):
                 # storms.  Since the user is specifically blocking on this PV,
                 # make it a priority and perform the request in the current
                 # thread.
-                self._update_metadata_manually(pv)
+                md = pv.get_all_metadata_blocking(timeout=timeout)
+                self._initial_metadata_callback(pv.pvname, md)
 
         # Ensure callbacks are run prior to returning, as
         # @raise_if_disconnected can cause issues otherwise.
@@ -922,7 +907,7 @@ class EpicsSignalBase(Signal):
         val = self.value
         lower_ctrl_limit, upper_ctrl_limit = self.limits
         desc = dict(
-            source='PV:{}'.format(self._read_pv.pvname),
+            source='PV:{}'.format(self._read_pvname),
             dtype=data_type(val),
             shape=data_shape(val),
             units=self._metadata['units'],
@@ -1176,7 +1161,7 @@ class EpicsSignal(EpicsSignalBase):
     def _repr_info(self):
         'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
-        yield ('write_pv', self._write_pv.pvname)
+        yield ('write_pv', self._setpoint_pvname)
         yield ('limits', self._use_limits)
         yield ('put_complete', self._put_complete)
 
