@@ -38,6 +38,8 @@ class PV(_PV):
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
+        if not self.auto_monitor:
+            self.auto_monitor = True
         callback = wrap_callback(dispatcher, 'monitor', callback)
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
@@ -45,6 +47,8 @@ class PV(_PV):
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
+        if callback:
+            use_complete = True
         callback = wrap_callback(dispatcher, 'get_put', callback)
         return super().put(value, wait=wait, timeout=timeout,
                            use_complete=use_complete, callback=callback,

@@ -236,9 +236,9 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         rtol = signal.rtolerance
 
     try:
-        es = signal.enum_strs
+        enum_strings = signal.enum_strs
     except AttributeError:
-        es = ()
+        enum_strings = ()
 
     if atol is not None:
         within_str = ['within {!r}'.format(atol)]
@@ -253,7 +253,8 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     else:
         within_str = ''
 
-    while not _compare_maybe_enum(val, current_value, es, atol, rtol):
+    while not _compare_maybe_enum(val, current_value, enum_strings, atol,
+                                  rtol):
         logger.debug("Waiting for %s to be set from %r to %r%s...",
                      signal.name, current_value, val, within_str)
         ttime.sleep(poll_time)

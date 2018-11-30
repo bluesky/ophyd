@@ -6,8 +6,8 @@ import warnings
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError, DisconnectedError,
-                    DestroyedError, set_and_wait, doc_annotation_forwarder)
+from .utils import (ReadOnlyError, LimitError, DestroyedError, set_and_wait,
+                    doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
@@ -564,7 +564,7 @@ class EpicsSignalBase(Signal):
 
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
                  metadata=None, all_pvs=None, **kwargs):
-        self._lock = threading.RLock()
+        self._metadata_lock = threading.RLock()
         self._read_pv = None
         self._read_pvname = read_pv
         self._string = bool(string)
@@ -594,15 +594,18 @@ class EpicsSignalBase(Signal):
         self._connection_states = {pv: False for pv in all_pvs}
         self._access_rights_valid = {pv: False for pv in all_pvs}
         self._received_first_metadata = {pv: False for pv in all_pvs}
+        self._monitors = {pv: None for pv in all_pvs}
+
         self._metadata_key_map = {read_pv: self._read_pv_metadata_key_map}
+
         for pv in all_pvs:
             if pv not in self._metadata_key_map:
                 self._metadata_key_map[pv] = {}
 
-        self._initialize_pv('_read_pv', pvname=read_pv,
-                            callback=self._read_changed,
-                            auto_monitor=self._auto_monitor,
-                            )
+        self._read_pv = self.cl.get_pv(
+            read_pv, auto_monitor=self._auto_monitor,
+            connection_callback=self._pv_connected,
+            access_callback=self._pv_access_callback)
 
     def __getnewargs_ex__(self):
         args, kwargs = super().__getnewargs_ex__()
@@ -652,7 +655,7 @@ class EpicsSignalBase(Signal):
     def _set_event_if_ready(self):
         '''If connected and access rights received, set the "ready" event used
         in wait_for_connection.'''
-        with self._lock:
+        with self._metadata_lock:
             already_connected = self._metadata['connected']
             if self._destroyed or already_connected:
                 return
@@ -698,77 +701,31 @@ class EpicsSignalBase(Signal):
         """PV alarm severity"""
         return self._metadata['severity']
 
-    def _initialize_pv(self, attr_name, pvname, callback, *, auto_monitor=None):
-        '''Initialize or reinitialize a PV instance
-
-        For reinitialization: Clears callbacks, sets PV form, and ensures
-        connectivity status remains.
-
-        Parameters
-        ----------
-        attr_name : str
-            The attribute name of the old PV instance
-        pvname : str
-            The PV name
-        callback : callable
-            Monitor callback to add for the newly re-initialized PV instance
-        '''
-        with self._lock:
-            old_instance = getattr(self, attr_name, None)
-            self._connection_states[pvname] = False
-            self._access_rights_valid[pvname] = False
-
-            if old_instance is not None:
-                old_instance.clear_callbacks()
-                was_connected = self.connected
-            else:
-                was_connected = False
-
-            new_instance = self.cl.get_pv(
-                pvname, auto_monitor=auto_monitor,
-                connection_callback=self._pv_connected,
-                access_callback=self._pv_access_callback)
-
-            setattr(self, attr_name, new_instance)
-
-            if was_connected:
-                self.wait_for_connection()
-
-            new_instance.add_callback(callback, run_now=new_instance.connected)
-
-        return new_instance
-
     @doc_annotation_forwarder(Signal)
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
             event_type = self._default_sub
 
-        # check if this is a setpoint subscription, and we are not explicitly
-        # auto monitoring
-        should_reinitialize = (event_type == self.SUB_VALUE and
-                               self._auto_monitor is not True)
-
-        # but if the epics.PV has already connected and determined that it
-        # should automonitor (based on the maximum automonitor length), then we
-        # don't need to reinitialize it
-        if should_reinitialize:
-            self._initialize_pv('_read_pv', pvname=self.pvname,
-                                callback=self._read_changed, auto_monitor=True)
+        with self._metadata_lock:
+            if (event_type == self.SUB_VALUE and not
+                    self._monitors[self._read_pvname]):
+                mon = self._read_pv.add_callback(self._read_changed)
+                self._monitors[self._read_pvname] = mon
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def _ensure_connected(self, *pvs, timeout):
         'Ensure that `pv` is connected, with access/connection callbacks run'
-        with self._lock:
+        with self._metadata_lock:
             if self.connected:
                 return
             elif self._destroyed:
                 raise DestroyedError('Cannot re-use a destroyed Signal')
 
-            for pv in pvs:
-                if not pv.wait_for_connection(timeout=timeout):
-                    raise TimeoutError(f"{pv.pvname} could not connect within "
-                                       f"{float(timeout):.3}-second timeout.")
+        for pv in pvs:
+            if not pv.wait_for_connection(timeout=timeout):
+                raise TimeoutError(f"{pv.pvname} could not connect within "
+                                   f"{float(timeout):.3}-second timeout.")
 
         for pv in pvs:
             if not self._received_first_metadata[pv.pvname]:
@@ -846,9 +803,8 @@ class EpicsSignalBase(Signal):
         if as_string is None:
             as_string = self._string
 
-        with self._lock:
-            self.wait_for_connection(timeout=connection_timeout)
-            info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
+        self.wait_for_connection(timeout=connection_timeout)
+        info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
             # TODO: API?
@@ -1079,10 +1035,10 @@ class EpicsSignal(EpicsSignalBase):
                           }
             }
 
-            self._initialize_pv('_write_pv', pvname=write_pv,
-                                callback=self._write_changed,
-                                auto_monitor=self._auto_monitor,
-                                )
+            self._write_pv = self.cl.get_pv(
+                write_pv, auto_monitor=self._auto_monitor,
+                connection_callback=self._pv_connected,
+                access_callback=self._pv_access_callback)
 
         # NOTE: after this point, write_pv can either be:
         #  (1) the same as read_pv
@@ -1094,18 +1050,11 @@ class EpicsSignal(EpicsSignalBase):
         if event_type is None:
             event_type = self._default_sub
 
-        # check if this is a setpoint subscription, and we are not explicitly
-        # auto monitoring
-        should_reinitialize = (event_type == self.SUB_SETPOINT and
-                               self._auto_monitor is not True)
-
-        # but if the epics.PV has already connected and determined that it
-        # should automonitor (based on the maximum automonitor length), then we
-        # don't need to reinitialize it
-        if should_reinitialize:
-            self._initialize_pv('_write_pv', pvname=self.setpoint_pvname,
-                                callback=self._write_changed,
-                                auto_monitor=True)
+        with self._metadata_lock:
+            if (event_type == self.SUB_SETPOINT and not
+                    self._monitors[self._setpoint_pvname]):
+                mon = self._write_pv.add_callback(self._write_changed)
+                self._monitors[self._write_pvname] = mon
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
@@ -1196,9 +1145,7 @@ class EpicsSignal(EpicsSignalBase):
 
         Keyword arguments are passed on to epics.PV.get()
         '''
-        with self._lock:
-            info = self._write_pv.get_with_metadata(as_string=as_string,
-                                                    **kwargs)
+        info = self._write_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
             return None
@@ -1268,7 +1215,7 @@ class EpicsSignal(EpicsSignalBase):
                            severity=self._metadata['setpoint_severity'],
                            )
 
-    def put(self, value, force=False, connection_timeout=1.0,
+    def put(self, value, force=False, connection_timeout=1.0, callback=None,
             use_complete=None, **kwargs):
         '''Using channel access, set the write PV to `value`.
 
@@ -1285,19 +1232,21 @@ class EpicsSignal(EpicsSignalBase):
             for the connection to complete.
         use_complete : bool, optional
             Override put completion settings
+        callback : callable
+            Callback for when the put has completed
         '''
         if not force:
             self.check_value(value)
 
-        with self._lock:
-            self.wait_for_connection(timeout=connection_timeout)
-            if use_complete is None:
-                use_complete = self._put_complete
+        self.wait_for_connection(timeout=connection_timeout)
+        if use_complete is None:
+            use_complete = self._put_complete
 
-            if not self.write_access:
-                raise ReadOnlyError('No write access to underlying EPICS PV')
+        if not self.write_access:
+            raise ReadOnlyError('No write access to underlying EPICS PV')
 
-            self._write_pv.put(value, use_complete=use_complete, **kwargs)
+        self._write_pv.put(value, use_complete=use_complete, callback=callback,
+                           **kwargs)
 
         old_value = self._setpoint
         self._setpoint = value
