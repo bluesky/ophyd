@@ -272,6 +272,7 @@ class Signal(OphydObject):
     def value(self, value):
         self.put(value)
 
+    @raise_if_disconnected
     def read(self):
         '''Put the status of the signal into a simple dictionary format
         for data acquisition
