@@ -799,8 +799,6 @@ class EpicsSignalBase(Signal):
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
         '''
-        # NOTE: in the future this should be improved to grab self._readback
-        #       instead, when all of the kwargs match up
         if as_string is None:
             as_string = self._string
 
@@ -808,20 +806,18 @@ class EpicsSignalBase(Signal):
         info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
-            # TODO: API?
             timeout = kwargs.get('timeout', None)
             raise TimeoutError(f'Failed to read {self._read_pvname} within '
                                f'{timeout} sec')
-        else:
-            value = info.pop('value')
-            if as_string:
-                value = waveform_to_string(value)
 
-            # The following will update all metadata, run subscriptions, and
-            # also update self._readback such that this value can be accessed
-            # through EpicsSignal.value
-            self._read_changed(value=value, **info)
+        value = info.pop('value')
+        if as_string:
+            value = waveform_to_string(value)
 
+        # The following will update all metadata, run subscriptions, and
+        # also update self._readback such that this value can be accessed
+        # through EpicsSignal.value
+        self._read_changed(value=value, **info)
         return value
 
     def _fix_type(self, value):
@@ -1139,23 +1135,49 @@ class EpicsSignal(EpicsSignalBase):
             raise LimitError('Value {} outside of range: [{}, {}]'
                              .format(value, low_limit, high_limit))
 
-    @raise_if_disconnected
-    def get_setpoint(self, *, as_string=None, **kwargs):
-        '''Get the setpoint value (use only if the setpoint PV and the readback
-        PV differ)
+    def get_setpoint(self, *, as_string=None, connection_timeout=1.0,
+                     **kwargs):
+        '''Get the setpoint value (if setpoint PV and readback PV differ)
 
-        Keyword arguments are passed on to epics.PV.get()
+        Parameters
+        ----------
+        count : int, optional
+            Explicitly limit count for array data
+        as_string : bool, optional
+            Get a string representation of the value, defaults to as_string
+            from this signal, optional
+        as_numpy : bool
+            Use numpy array as the return type for array data.
+        timeout : float, optional
+            maximum time to wait for value to be received.
+            (default = 0.5 + log10(count) seconds)
+        use_monitor : bool, optional
+            to use value from latest monitor callback or to make an
+            explicit CA call for the value. (default: True)
+        connection_timeout : float, optional
+            If not already connected, allow up to `connection_timeout` seconds
+            for the connection to complete.
         '''
+        if as_string is None:
+            as_string = self._string
+
+        self.wait_for_connection(timeout=connection_timeout)
         info = self._write_pv.get_with_metadata(as_string=as_string, **kwargs)
 
         if info is None:
-            return None
+            timeout = kwargs.get('timeout', None)
+            raise TimeoutError(f'Failed to read {self._write_pvname} within '
+                               f'{timeout} sec')
 
-        setpoint = info['value']
+        value = info.pop('value')
         if as_string:
-            setpoint = waveform_to_string(setpoint)
-        self._metadata_changed(self.setpoint_pvname, info, require_timestamp=True)
-        return self._fix_type(setpoint)
+            value = waveform_to_string(value)
+
+        # The following will update all metadata, run subscriptions, and
+        # also update self._readback such that this value can be accessed
+        # through EpicsSignal.value
+        self._write_changed(value=value, **info)
+        return self._fix_type(value)
 
     def _pv_access_callback(self, read_access, write_access, pv):
         'Control-layer callback: PV access rights have changed '
