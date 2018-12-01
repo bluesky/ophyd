@@ -281,7 +281,8 @@ class Signal(OphydObject):
         -------
             dict
         '''
-        return {self.name: {'value': self.get(),
+        value = self.get()
+        return {self.name: {'value': value,
                             'timestamp': self.timestamp}}
 
     def describe(self):
@@ -877,18 +878,6 @@ class EpicsSignalBase(Signal):
             desc['enum_strs'] = tuple(self.enum_strs)
 
         return {self.name: desc}
-
-    def read(self):
-        """Read the signal and format for data collection
-
-        Returns
-        -------
-        dict
-            Dictionary of value timestamp pairs
-        """
-
-        return {self.name: {'value': self.get(),
-                            'timestamp': self.timestamp}}
 
     def destroy(self):
         '''Disconnect the EpicsSignal from the underlying PV instance'''
