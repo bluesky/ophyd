@@ -12,11 +12,6 @@ from ophyd.status import wait
 from ophyd.utils import OrderedDefaultDict
 
 
-@pytest.fixture
-def prefix():
-    return 'XF:23ID1-ES{Tst-Cam:1}'
-
-
 @pytest.fixture(params=['Stats1:',
                         # 'Stats2:',
                         # 'Stats3:',
@@ -29,7 +24,7 @@ def stats_suffix(request):
 
 
 @pytest.fixture(scope='function')
-def ts_sim_detector(prefix, stats_suffix):
+def ts_sim_detector(ad_prefix, stats_suffix):
     class Detector(SimDetector):
         acquire = Cpt(EpicsSignalWithRBV, 'cam1:Acquire', trigger_value=1)
         cam = Cpt(SimDetectorCam, 'cam1:')
@@ -37,7 +32,7 @@ def ts_sim_detector(prefix, stats_suffix):
         stats = Cpt(StatsPlugin, stats_suffix)
 
     try:
-        det = Detector(prefix, name='sim')
+        det = Detector(ad_prefix, name='sim')
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')
@@ -93,14 +88,14 @@ def test_ad_time_series(ts_sim_detector, tscollector):
 
 
 @pytest.fixture(scope='function')
-def wf_sim_detector(prefix):
+def wf_sim_detector(ad_prefix):
     suffix = '??TODO??'
 
     class Detector(SimDetector):
         wfcol = Cpt(WaveformCollector, suffix)
 
     try:
-        det = Detector(prefix, name='det')
+        det = Detector(ad_prefix, name='det')
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')

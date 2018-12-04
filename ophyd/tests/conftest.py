@@ -78,6 +78,26 @@ def motor(request, cleanup):
     return motor
 
 
+@pytest.fixture(scope='module')
+def ad_prefix():
+    'AreaDetector prefix'
+    prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
+
+    for prefix in prefixes:
+        test_pv = prefix + 'TIFF1:PluginType_RBV'
+        try:
+            sig = EpicsSignalRO(test_pv)
+            sig.wait_for_connection(timeout=2)
+        except TimeoutError:
+            ...
+        else:
+            print('areaDetector detected with prefix:', prefix)
+            return prefix
+        finally:
+            sig.destroy()
+    raise pytest.skip('No areaDetector IOC running')
+
+
 @pytest.fixture(scope='function')
 def prefix():
     'Random PV prefix for a server'

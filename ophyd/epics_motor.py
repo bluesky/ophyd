@@ -219,6 +219,7 @@ class EpicsMotor(Device, PositionerBase):
     def _pos_changed(self, timestamp=None, value=None, **kwargs):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
+        print('set position', value)
 
     @motor_done_move.sub_value
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
