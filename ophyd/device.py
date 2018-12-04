@@ -1083,9 +1083,8 @@ class Device(BlueskyInterface, OphydObject):
                    for walk in self.walk_signals(include_lazy=all_signals)
                    ]
 
-        pending_subs = {walk.item: getattr(walk.item,
-                                           '_subscriptions_to_connect', [])
-                        for walk in self.walk_subdevices()
+        pending_subs = {item: getattr(item, '_subscriptions_to_connect', [])
+                        for name, item in self.walk_subdevices()
                         }
         pending_subs[self] = self._subscriptions_to_connect
 
@@ -1135,8 +1134,8 @@ class Device(BlueskyInterface, OphydObject):
         signals_connected = all(walk.item.connected for walk in
                                 self.walk_signals(include_lazy=False))
         pending_subs = any(
-            getattr(walk.item, '_subscriptions_to_connect', None)
-            for walk in self.walk_subdevices()
+            getattr(item, '_subscriptions_to_connect', None)
+            for name, item in self.walk_subdevices()
         )
 
         pending_subs = pending_subs or self._subscriptions_to_connect
