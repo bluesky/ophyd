@@ -902,15 +902,27 @@ class Device(BlueskyInterface, OphydObject):
             for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
                 yield ('.'.join((attr, sub_attr)), sub_cls)
 
-    def walk_subdevices(self):
+    def walk_subdevices(self, *, include_lazy=False):
         '''Walk all sub-Devices in the hierarchy
 
         Yields
         ------
         (dotted_name, subdevice_instance)
         '''
-        for dotted_name, cls in self.walk_subdevice_classes():
-            yield (dotted_name, getattr(self, dotted_name))
+        # TODO: Devices can be lazy, outside of original design intent; should
+        # discuss this at some point
+        cls = type(self)
+        for attr in cls._sub_devices:
+            cpt = getattr(cls, attr)
+            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            should_walk = not cpt.lazy or lazy_ok
+
+            if should_walk:
+                dev = getattr(self, attr)
+                yield (attr, dev)
+                for sub_attr, sub_dev in dev.walk_subdevices(
+                        include_lazy=include_lazy):
+                    yield ('.'.join((attr, sub_attr)), sub_dev)
 
     def destroy(self):
         'Disconnect and destroy all signals on the Device'
@@ -1079,13 +1091,14 @@ class Device(BlueskyInterface, OphydObject):
         timeout : float or None
             Overall timeout
         '''
-        signals = [walk.item
-                   for walk in self.walk_signals(include_lazy=all_signals)
-                   ]
+        signals = [
+            walk.item for walk in self.walk_signals(include_lazy=all_signals)
+        ]
 
-        pending_subs = {item: getattr(item, '_subscriptions_to_connect', [])
-                        for name, item in self.walk_subdevices()
-                        }
+        pending_subs = {
+            item: getattr(item, '_subscriptions_to_connect', [])
+            for name, item in self.walk_subdevices(include_lazy=all_signals)
+        }
         pending_subs[self] = self._subscriptions_to_connect
 
         t0 = ttime.time()
