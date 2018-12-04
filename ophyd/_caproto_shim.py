@@ -65,11 +65,12 @@ class PV(_PV):
         return md
 
     def get_all_metadata_callback(self, callback, *, timeout):
-        def get_metadata_thread():
+        def get_metadata_thread(pvname):
             md = self.get_all_metadata_blocking(timeout=timeout)
-            callback(self.pvname, md)
+            callback(pvname, md)
 
-        _dispatcher.schedule_utility_task(get_metadata_thread)
+        _dispatcher.schedule_utility_task(get_metadata_thread,
+                                          pvname=self.pvname)
 
     def clear_callbacks(self):
         super().clear_callbacks()
