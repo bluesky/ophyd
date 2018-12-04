@@ -27,6 +27,8 @@ def quadem():
         elif isinstance(cc, StatsPlugin):
             cc.plugin_type.sim_put(StatsPlugin._plugin_type)
             cc.nd_array_port.sim_put('NSLS_EM')
+        else:
+            cc.plugin_type.sim_put('unknown')
 
         cc.enable.sim_set_enum_strs(['Disabled', 'Enabled'])
         cc.enable.put('Enabled')
