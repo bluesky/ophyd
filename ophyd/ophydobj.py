@@ -191,7 +191,7 @@ class OphydObject:
         '''
         if sub_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(sub_type, self.subscriptions))
 
         kwargs['sub_type'] = sub_type
@@ -276,7 +276,7 @@ class OphydObject:
         # check that this is a valid event type
         if event_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(event_type, self.subscriptions))
 
         # wrapper for callback to snarf exceptions

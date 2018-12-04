@@ -711,7 +711,8 @@ class EpicsSignalBase(Signal):
         with self._metadata_lock:
             if (event_type == self.SUB_VALUE and not
                     self._monitors[self._read_pvname]):
-                mon = self._read_pv.add_callback(self._read_changed)
+                mon = self._read_pv.add_callback(self._read_changed,
+                                                 run_now=self._read_pv.connected)
                 self._monitors[self._read_pvname] = mon
 
         return super().subscribe(callback, event_type=event_type, run=run)
@@ -1039,7 +1040,8 @@ class EpicsSignal(EpicsSignalBase):
         with self._metadata_lock:
             if (event_type == self.SUB_SETPOINT and not
                     self._monitors[self._setpoint_pvname]):
-                mon = self._write_pv.add_callback(self._write_changed)
+                mon = self._write_pv.add_callback(self._write_changed,
+                                                  run_now=self._write_pv.connected)
                 self._monitors[self._write_pvname] = mon
 
         return super().subscribe(callback, event_type=event_type, run=run)

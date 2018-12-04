@@ -219,17 +219,10 @@ class Component:
         if instance is None:
             return self
 
-        if self.attr not in instance._signals:
-            cpt_inst = self.create_component(instance)
-            instance._signals[self.attr] = cpt_inst
-
-            for event_type, functions in self._subscriptions.items():
-                for func in functions:
-                    cpt_inst.subscribe(types.MethodType(func, instance),
-                                       event_type=event_type,
-                                       run=cpt_inst.connected)
-
-        return instance._signals[self.attr]
+        try:
+            return instance._signals[self.attr]
+        except KeyError:
+            return instance._instantiate_component(self.attr)
 
     def __set__(self, instance, owner):
         raise RuntimeError('Do not use setattr with components; use '
@@ -699,6 +692,9 @@ class Device(BlueskyInterface, OphydObject):
     # For configuration attributes, if `None`, defaults to `[]`
     _default_configuration_attrs = None
 
+    # Subscriptions of importance for the Device to be ready for usage
+    _important_event_types = {'value', 'meta'}
+
     # When instantiating a lazy signal upon first access, wait for it to
     # connect before returning control to the user
     lazy_wait_for_connection = True
@@ -712,6 +708,10 @@ class Device(BlueskyInterface, OphydObject):
 
         # Copy the Device-defined signal kinds, for user modification
         self._component_kinds = self._component_kinds.copy()
+
+        # Subscriptions necessary to run prior to marking the Device as
+        # connected (or ready to use)
+        self._subscriptions_to_connect = {}
 
         self.prefix = prefix
         if self.component_names and prefix is None:
@@ -1079,39 +1079,33 @@ class Device(BlueskyInterface, OphydObject):
         timeout : float or None
             Overall timeout
         '''
-        names = [attr for attr, cpt in self._sig_attrs.items()
-                 if not cpt.lazy or all_signals]
+        signals = [walk.item
+                   for walk in self.walk_signals(include_lazy=all_signals)
+                   ]
 
-        # Instantiate first to kickoff connection process
-        signals = [getattr(self, name) for name in names]
+        pending_subs = {walk.item: getattr(walk.item,
+                                           '_subscriptions_to_connect', [])
+                        for walk in self.walk_subdevices()
+                        }
+        pending_subs[self] = self._subscriptions_to_connect
 
         t0 = ttime.time()
         while timeout is None or (ttime.time() - t0) < timeout:
-            connected = [sig.connected for sig in signals]
-            if all(connected):
+            connected = all(sig.connected for sig in signals)
+            if connected and not any(pending_subs.values()):
                 return
             ttime.sleep(min((0.05, timeout / 10.0)))
 
-        unconnected = ', '.join(self._get_unconnected())
-        raise TimeoutError('Failed to connect to all signals: {}'
-                           ''.format(unconnected))
-
-    def _get_unconnected(self):
-        '''Yields all of the signal pvnames or prefixes that are unconnected
-
-        This recurses throughout the device hierarchy, only checking signals
-        that have already been instantiated.
-        '''
-        for attr, sig in self.get_instantiated_signals():
-            if sig.connected:
-                continue
-
-            if hasattr(sig, 'pvname'):
-                prefix = sig.pvname
-            else:
-                prefix = sig.prefix
-
-            yield '{} ({})'.format(attr, prefix)
+        reasons = []
+        unconnected = ', '.join(sig.name for sig in signals if not sig.connected)
+        if unconnected:
+            reasons.append(f'Failed to connect to all signals: {unconnected}')
+        if any(pending_subs.values()):
+            pending = ', '.join(f'{dev.name}.{attr}[{event_type}]'
+                                for dev, items in pending_subs.items()
+                                for attr, event_type, method in items)
+            reasons.append(f'Subscriptions did not start for: {pending}')
+        raise TimeoutError('; '.join(reasons))
 
     def get_instantiated_signals(self, *, attr_prefix=None):
         '''Yields all of the instantiated signals in a device hierarchy
@@ -1138,27 +1132,67 @@ class Device(BlueskyInterface, OphydObject):
 
     @property
     def connected(self):
-        return all(signal.connected for name, signal in self._signals.items())
+        signals_connected = all(walk.item.connected for walk in
+                                self.walk_signals(include_lazy=False))
+        pending_subs = any(
+            getattr(walk.item, '_subscriptions_to_connect', None)
+            for walk in self.walk_subdevices()
+        )
+
+        pending_subs = pending_subs or self._subscriptions_to_connect
+        return signals_connected and not pending_subs
 
     def __getattr__(self, name):
-        '''Get a component from a fully-qualified name
-
-        As a reminder, __getattr__ is only called if a real attribute doesn't
-        already exist, or a device component has yet to be instantiated.
-        '''
+        '''Get a component from a fully-qualified name'''
         if '.' in name:
             return operator.attrgetter(name)(self)
 
+        # Components will be instantiated through the descriptor mechanism in
+        # the Component class, so anything reaching this point is an error.
+        raise AttributeError(name)
+
+    def _instantiate_component(self, attr):
+        'Create a Component specifically for this Device'
         if self._destroyed:
             raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
+
         try:
             # Initial access of signal
-            cpt = self._sig_attrs[name]
-            sig = cpt.__get__(self, None)
-            setattr(self, name, sig)
-            return sig
+            cpt = self._sig_attrs[attr]
         except KeyError:
-            raise AttributeError(name)
+            raise AttributeError(attr) from None
+
+        self._signals[attr] = cpt.create_component(self)
+        sig = self._signals[attr]
+
+        def wrap(subscriber, event_type):
+            'Wrap the subscriber: mark when the first subscription has run'
+            self._subscriptions_to_connect[(attr, event_type, subscriber)] = True
+
+            @functools.wraps(subscriber)
+            def wrapped(*args, **kwargs):
+                try:
+                    ret = subscriber(*args, **kwargs)
+                finally:
+                    # Mark the subscription as having been run
+                    self._subscriptions_to_connect.pop(
+                        (attr, event_type, subscriber), None)
+                return ret
+
+            return wrapped
+
+        for event_type, functions in cpt._subscriptions.items():
+            for func in functions:
+                method = types.MethodType(func, self)
+                if event_type in self._important_event_types:
+                    # Wrap function and verify that it's been called prior to
+                    # the device being marked as 'connected' (i.e.,
+                    # ready for usage)
+                    method = wrap(method, event_type)
+
+                sig.subscribe(method, event_type=event_type, run=sig.connected)
+
+        return sig
 
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):

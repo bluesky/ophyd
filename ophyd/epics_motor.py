@@ -84,13 +84,11 @@ class EpicsMotor(Device, PositionerBase):
         self.user_readback.name = self.name
 
     @property
-    @raise_if_disconnected
     def precision(self):
         '''The precision of the readback PV, as reported by EPICS'''
         return self.user_readback.precision
 
     @property
-    @raise_if_disconnected
     def egu(self):
         '''The engineering units (EGU) for a position'''
         return self.motor_egu.get()
