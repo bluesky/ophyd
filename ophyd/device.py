@@ -1558,7 +1558,7 @@ def required_for_connection(func=None, *, description=None, device=None):
     if description is None:
         if hasattr(func, '_subscriptions'):
             description = ', '.join(
-                f'{{device}}{func.__name__}[{event_type}] subscription'
+                f'{{device}}.{func.__name__}[{event_type}] subscription'
                 for cpt, event_type in func._subscriptions
             )
         else:
