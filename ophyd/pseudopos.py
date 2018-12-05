@@ -11,7 +11,7 @@ from collections import (OrderedDict, namedtuple, Sequence, Mapping)
 
 from .utils import (DisconnectedError, ExceptionBundle)
 from .positioner import (PositionerBase, SoftPositioner)
-from .device import (Device, Component as Cpt, Kind)
+from .device import (Device, Component as Cpt, Kind, required_for_connection)
 from .signal import AttributeSignal
 
 
@@ -66,24 +66,25 @@ class PseudoSingle(Device, SoftPositioner):
         # The index of this PseudoSingle in the parent PseudoPositioner tuple
         # will be set post-instantiation:
         self._idx = None
-
-        self._parent.subscribe(self._sub_proxy, event_type=self.SUB_START)
-        self._parent.subscribe(self._sub_proxy, event_type=self.SUB_DONE)
-        self._parent.subscribe(self._sub_proxy_idx,
+        self._parent.subscribe(self._sub_proxy_start, event_type=self.SUB_START)
+        self._parent.subscribe(self._sub_proxy_done, event_type=self.SUB_DONE)
+        self._parent.subscribe(self._sub_proxy_readback,
                                event_type=self.SUB_READBACK)
 
     def _repr_info(self):
         yield from super()._repr_info()
-
         yield ('idx', self._idx)
 
-    def _sub_proxy(self, obj=None, **kwargs):
-        '''Parent callbacks such as start of motion, motion finished, etc. will
-        be simply passed through.
-        '''
+    def _sub_proxy_start(self, obj=None, **kwargs):
+        'Pass through parent callbacks for motion started'
         return self._run_subs(obj=self, **kwargs)
 
-    def _sub_proxy_idx(self, obj=None, value=None, **kwargs):
+    def _sub_proxy_done(self, obj=None, **kwargs):
+        'Pass through parent callbacks for motion started'
+        return self._run_subs(obj=self, **kwargs)
+
+    @required_for_connection(description='{device.name} readback subscription')
+    def _sub_proxy_readback(self, obj=None, value=None, **kwargs):
         '''Parent callbacks including a position value will be filtered through
         this function and re-broadcast using only the relevant position to this
         pseudo axis.
@@ -420,6 +421,7 @@ class PseudoPositioner(Device, SoftPositioner):
         for real in self._real:
             # Subscribe to events from all the real motors and update the
             # internal state of their position
+            self._required_for_connection[real] = f'{real.name} readback position'
             real.subscribe(self._real_pos_update, event_type=real.SUB_READBACK,
                            run=True)
 
@@ -531,10 +533,6 @@ class PseudoPositioner(Device, SoftPositioner):
     def _repr_info(self):
         yield from super()._repr_info()
         yield ('concurrent', self._concurrent)
-
-    @property
-    def connected(self):
-        return all(mtr.connected for mtr in self._real)
 
     def stop(self, success=False):
         del self._move_queue[:]
@@ -689,6 +687,10 @@ class PseudoPositioner(Device, SoftPositioner):
         except DisconnectedError:
             pass
 
+        # Now that we have a position for this motor, it is no longer blocking
+        # the PseudoPositioner from being marked as connected:
+        self._required_for_connection.pop(real, None)
+
     def _done_moving(self, success=True):
         '''Call this when motion has completed.  Runs SUB_DONE subscription.'''
         del self._real_waiting[:]
@@ -760,7 +762,7 @@ class PseudoPositioner(Device, SoftPositioner):
                     return
 
                 self.log.debug('[%s:sequential] Moving next motor: %s',
-                             self.name, real.name)
+                               self.name, real.name)
 
                 elapsed = time.time() - t0
                 if timeout is None:
@@ -769,7 +771,7 @@ class PseudoPositioner(Device, SoftPositioner):
                     sub_timeout = timeout - elapsed
 
                 self.log.debug('[%s:sequential] Moving %s to %s (timeout=%s)',
-                             self.name, real.name, position, sub_timeout)
+                               self.name, real.name, position, sub_timeout)
 
                 if sub_timeout is not None and sub_timeout < 0:
                     self.log.error('Motion timeout')
@@ -780,8 +782,8 @@ class PseudoPositioner(Device, SoftPositioner):
                                        moved_cb=move_next,
                                        **kwargs)
                     pending_status.append(status)
-                    self.log.debug('[%s:sequential] waiting on %s',
-                                 self.name, real.name)
+                    self.log.debug('[%s:sequential] waiting on %s', self.name,
+                                   real.name)
 
         self.log.debug('[%s:sequential] started', self.name)
         move_next()

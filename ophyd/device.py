@@ -1,12 +1,12 @@
 import collections
 import contextlib
 import functools
+import inspect
 import itertools
 import logging
 import operator
 import textwrap
 import time as ttime
-import types
 import warnings
 
 from enum import Enum
@@ -246,6 +246,9 @@ class Component:
         '''
         def subscriber(func):
             self._subscriptions[event_type].append(func)
+            if not hasattr(func, 'subscriptions'):
+                func._subscriptions = []
+            func._subscriptions.append((self, event_type))
             return func
         return subscriber
 
@@ -692,9 +695,6 @@ class Device(BlueskyInterface, OphydObject):
     # For configuration attributes, if `None`, defaults to `[]`
     _default_configuration_attrs = None
 
-    # Subscriptions of importance for the Device to be ready for usage
-    _important_event_types = {'value', 'meta'}
-
     # When instantiating a lazy signal upon first access, wait for it to
     # connect before returning control to the user
     lazy_wait_for_connection = True
@@ -709,9 +709,9 @@ class Device(BlueskyInterface, OphydObject):
         # Copy the Device-defined signal kinds, for user modification
         self._component_kinds = self._component_kinds.copy()
 
-        # Subscriptions necessary to run prior to marking the Device as
-        # connected (or ready to use)
-        self._subscriptions_to_connect = {}
+        # Subscriptions to run or general methods necessary to call prior to
+        # marking the Device as connected
+        self._required_for_connection = self._required_for_connection.copy()
 
         self.prefix = prefix
         if self.component_names and prefix is None:
@@ -765,6 +765,9 @@ class Device(BlueskyInterface, OphydObject):
             - _device_tuple - An auto-generated namedtuple based on all
               existing Components in the Device
             - _sub_devices - a list of attributes which hold a Device
+            - _required_for_connection - a dictionary of object-to-description
+              for additional things that block this from being reported as
+              connected
         '''
 
         for attr in DEVICE_INSTANCE_ATTRS:
@@ -816,6 +819,14 @@ class Device(BlueskyInterface, OphydObject):
         # This list is used by stage/unstage. Only Devices need to be staged.
         cls._sub_devices = [attr for attr, cpt in cls._sig_attrs.items()
                             if cpt.is_device]
+
+        # All (obj, description) that may block the Device from being shown as
+        # connected:
+        cls._required_for_connection = dict(
+            obj._required_for_connection
+            for attr, obj in cls.__dict__.items()
+            if getattr(obj, '_required_for_connection', False)
+        )
 
     def __init_subclass__(cls, **kwargs):
         'This is called automatically in Python for all subclasses of Device'
@@ -1095,28 +1106,34 @@ class Device(BlueskyInterface, OphydObject):
             walk.item for walk in self.walk_signals(include_lazy=all_signals)
         ]
 
-        pending_subs = {
-            item: getattr(item, '_subscriptions_to_connect', [])
-            for name, item in self.walk_subdevices(include_lazy=all_signals)
+        pending_funcs = {
+            dev: getattr(dev, '_required_for_connection', {})
+            for name, dev in self.walk_subdevices(include_lazy=all_signals)
         }
-        pending_subs[self] = self._subscriptions_to_connect
+        pending_funcs[self] = self._required_for_connection
 
         t0 = ttime.time()
         while timeout is None or (ttime.time() - t0) < timeout:
             connected = all(sig.connected for sig in signals)
-            if connected and not any(pending_subs.values()):
+            if connected and not any(pending_funcs.values()):
                 return
             ttime.sleep(min((0.05, timeout / 10.0)))
 
+        def get_name(sig):
+            sig_name = f'{self.name}.{sig.dotted_name}'
+            return (f'{sig_name} ({sig.pvname})' if hasattr(sig, 'pvname')
+                    else sig_name)
+
         reasons = []
-        unconnected = ', '.join(sig.name for sig in signals if not sig.connected)
+        unconnected = ', '.join(get_name(sig)
+                                for sig in signals if not sig.connected)
         if unconnected:
             reasons.append(f'Failed to connect to all signals: {unconnected}')
-        if any(pending_subs.values()):
-            pending = ', '.join(f'{dev.name}.{attr}[{event_type}]'
-                                for dev, items in pending_subs.items()
-                                for attr, event_type, method in items)
-            reasons.append(f'Subscriptions did not start for: {pending}')
+        if any(pending_funcs.values()):
+            pending = ', '.join(description.format(device=dev.name)
+                                for dev, funcs in pending_funcs.items()
+                                for obj, description in funcs.items())
+            reasons.append(f'Pending operations: {pending}')
         raise TimeoutError('; '.join(reasons))
 
     def get_instantiated_signals(self, *, attr_prefix=None):
@@ -1146,13 +1163,13 @@ class Device(BlueskyInterface, OphydObject):
     def connected(self):
         signals_connected = all(walk.item.connected for walk in
                                 self.walk_signals(include_lazy=False))
-        pending_subs = any(
-            getattr(item, '_subscriptions_to_connect', None)
+        pending_funcs = any(
+            getattr(item, '_required_for_connection', None)
             for name, item in self.walk_subdevices()
         )
 
-        pending_subs = pending_subs or self._subscriptions_to_connect
-        return signals_connected and not pending_subs
+        pending_funcs = pending_funcs or self._required_for_connection
+        return signals_connected and not pending_funcs
 
     def __getattr__(self, name):
         '''Get a component from a fully-qualified name'''
@@ -1177,31 +1194,9 @@ class Device(BlueskyInterface, OphydObject):
         self._signals[attr] = cpt.create_component(self)
         sig = self._signals[attr]
 
-        def wrap(subscriber, event_type):
-            'Wrap the subscriber: mark when the first subscription has run'
-            self._subscriptions_to_connect[(attr, event_type, subscriber)] = True
-
-            @functools.wraps(subscriber)
-            def wrapped(*args, **kwargs):
-                try:
-                    ret = subscriber(*args, **kwargs)
-                finally:
-                    # Mark the subscription as having been run
-                    self._subscriptions_to_connect.pop(
-                        (attr, event_type, subscriber), None)
-                return ret
-
-            return wrapped
-
         for event_type, functions in cpt._subscriptions.items():
             for func in functions:
-                method = types.MethodType(func, self)
-                if event_type in self._important_event_types:
-                    # Wrap function and verify that it's been called prior to
-                    # the device being marked as 'connected' (i.e.,
-                    # ready for usage)
-                    method = wrap(method, event_type)
-
+                method = getattr(self, func.__name__)
                 sig.subscribe(method, event_type=event_type, run=sig.connected)
 
         return sig
@@ -1535,6 +1530,51 @@ def create_device_from_components(name, *, docstring=None,
         clsdict[attr] = component
 
     return type(name, base_class, clsdict)
+
+
+def required_for_connection(func=None, *, description=None):
+    '''Require that a method be called prior to marking a Device as connected
+
+    This is a decorator that wraps the given function.  When the function is
+    called for the first time, the Device instance is informed that this
+    operation is no longer pending.
+
+    Parameters
+    ----------
+    func : callable, optional
+        Function to wrap
+    description : str, optional
+        Optional string description to be shown when `wait_for_connection`
+        fails.  Can include {device} which will be substituted when presented
+        to the user.
+    '''
+
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        try:
+            ret = func(self, *args, **kwargs)
+        finally:
+            self._required_for_connection.pop(key, None)
+        return ret
+
+    if func is None:
+        if description is None:
+            raise ValueError('Either func or description must be specified')
+        return functools.partial(required_for_connection,
+                                 description=description)
+
+    if description is None:
+        if hasattr(wrapped, '_subscriptions'):
+            description = ', '.join(
+                f'{{device}}{func.__name__}[{event_type}] subscription'
+                for cpt, event_type in func._subscriptions
+            )
+        else:
+            description = f'{func.__name__} call'
+
+    key = inspect.unwrap(func)
+    wrapped._required_for_connection = (key, description)
+    return wrapped
 
 
 def _wait_for_connection_context(value, doc):

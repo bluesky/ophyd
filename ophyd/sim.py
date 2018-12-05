@@ -1129,8 +1129,9 @@ class FakeEpicsSignal(SynSignal):
         every fake signal.
         """
         force = kwargs.pop('force', True)
+        # The following will emit SUB_VALUE:
         ret = Signal.put(self, *args, force=force, **kwargs)
-        # Ensure that some metadata is reported
+        # Also, ensure that SUB_META has been emitted:
         self._run_subs(sub_type=self.SUB_META, **self._metadata)
         return ret
 
