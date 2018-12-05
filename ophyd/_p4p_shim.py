@@ -75,6 +75,13 @@ def normative_type_to_dictionary(value):
 
     if len(ntype_dict):
         info['metadata'] = ntype_dict
+
+        # Custom handling for areaDetector metadata (epics:nt/NTNDArray:1.0)
+        # TODO: more generic handling for this stuff
+        if 'dimension' in ntype_dict and info['value'] is not None:
+            shape = tuple(dim['size'] for dim in ntype_dict['dimension'])
+            info['value'] = info['value'].reshape(shape)
+
     return info
 
 
@@ -288,12 +295,34 @@ class NormativeTypePV:
         self._callbacks[callback] = wrap_callback(_dispatcher, 'monitor',
                                                   callback)
 
+    def get_all_metadata_callback(self, callback, *, timeout):
+        def get_metadata_thread(pvname):
+            md = self.get_all_metadata_blocking(timeout=timeout)
+            callback(pvname, md)
+
+        _dispatcher.schedule_utility_task(get_metadata_thread,
+                                          pvname=self.pvname)
+
+    def get_all_metadata_blocking(self, timeout):
+        md = self.get_with_metadata(timeout=timeout)
+        if md is not None:
+            md.pop('value', None)
+        return md
+
+    def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
+                          timeout=None, with_ctrlvars=False, use_monitor=True):
+        # TODO (or not?) use_monitor
+        md = normative_type_to_dictionary(self.context.get(self.pvname, timeout=timeout))
+        self._metadata.update(**md)
+        return md
+
     def get(self, count=None, as_string=False, as_numpy=True, timeout=None,
             with_ctrlvars=False, use_monitor=True):
-        # TODO (or not?) use_monitor
-        info = normative_type_to_dictionary(self.context.get(self.pvname, timeout=timeout))
-        self._metadata.update(**info)
-        return self._metadata['value']
+        md = self.get_with_metadata(count=count, as_string=as_string,
+                                    as_numpy=as_numpy, timeout=timeout,
+                                    with_ctrlvars=with_ctrlvars,
+                                    use_monitor=use_monitor)
+        return md['value']
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
