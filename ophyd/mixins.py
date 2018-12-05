@@ -2,6 +2,7 @@ import time
 import logging
 
 from .signal import EpicsSignal
+from .device import required_for_connection
 from .positioner import PositionerBase
 from .status import (MoveStatus, wait as status_wait)
 
