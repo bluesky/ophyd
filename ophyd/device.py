@@ -1532,7 +1532,7 @@ def create_device_from_components(name, *, docstring=None,
     return type(name, base_class, clsdict)
 
 
-def required_for_connection(func=None, *, description=None):
+def required_for_connection(func=None, *, description=None, device=None):
     '''Require that a method be called prior to marking a Device as connected
 
     This is a decorator that wraps the given function.  When the function is
@@ -1549,14 +1549,6 @@ def required_for_connection(func=None, *, description=None):
         to the user.
     '''
 
-    @functools.wraps(func)
-    def wrapped(self, *args, **kwargs):
-        try:
-            ret = func(self, *args, **kwargs)
-        finally:
-            self._required_for_connection.pop(key, None)
-        return ret
-
     if func is None:
         if description is None:
             raise ValueError('Either func or description must be specified')
@@ -1564,7 +1556,7 @@ def required_for_connection(func=None, *, description=None):
                                  description=description)
 
     if description is None:
-        if hasattr(wrapped, '_subscriptions'):
+        if hasattr(func, '_subscriptions'):
             description = ', '.join(
                 f'{{device}}{func.__name__}[{event_type}] subscription'
                 for cpt, event_type in func._subscriptions
@@ -1573,6 +1565,31 @@ def required_for_connection(func=None, *, description=None):
             description = f'{func.__name__} call'
 
     key = inspect.unwrap(func)
+
+    if device is not None:
+        # With the Device specified, this can only be done post-init, with the
+        # required_for_connection flag set prior to returning.
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                ret = func(*args, **kwargs)
+            finally:
+                device._required_for_connection.pop(key, None)
+            return ret
+
+        # Add a specific requirement
+        device._required_for_connection[func] = description
+    else:
+        # With the Device unspecified, this can only be used as a decorator on
+        # unbound methods.
+        @functools.wraps(func)
+        def wrapped(self, *args, **kwargs):
+            try:
+                ret = func(self, *args, **kwargs)
+            finally:
+                self._required_for_connection.pop(key, None)
+            return ret
+
     wrapped._required_for_connection = (key, description)
     return wrapped
 
