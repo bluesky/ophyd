@@ -16,11 +16,11 @@ import time as ttime
 
 from collections import OrderedDict
 
-from .. import Component as Cpt
-from .base import (ADBase, ADComponent as C, ad_group,
-                   EpicsSignalWithRBV as SignalWithRBV, NDDerivedSignal)
+from .base import (ADBase, ADComponent as C,
+                   EpicsSignalWithRBV as SignalWithRBV,
+                   DDC_EpicsSignal, DDC_EpicsSignalRO, DDC_SignalWithRBV)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
-from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
+from ..device import GenerateDatumInterface
 from ..utils import enum, set_and_wait
 from ..utils.errors import (PluginMisconfigurationError, DestroyedError)
 
@@ -206,12 +206,12 @@ class PluginBase(ADBase, version=(1, 9, 1)):
     width = C(EpicsSignalRO, 'ArraySize0_RBV')
     height = C(EpicsSignalRO, 'ArraySize1_RBV')
     depth = C(EpicsSignalRO, 'ArraySize2_RBV')
-    array_size = DDC(ad_group(EpicsSignalRO,
-                              (('height', 'ArraySize1_RBV'),
-                               ('width', 'ArraySize0_RBV'),
-                               ('depth', 'ArraySize2_RBV'))),
-                     doc='The array size',
-                     default_read_attrs=('height', 'width', 'depth'))
+    array_size = DDC_EpicsSignalRO(
+        ('height', 'ArraySize1_RBV'),
+        ('width', 'ArraySize0_RBV'),
+        ('depth', 'ArraySize2_RBV'),
+        doc='The array size'
+    )
 
     bayer_pattern = C(EpicsSignalRO, 'BayerPattern_RBV')
     blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks',
@@ -222,12 +222,12 @@ class PluginBase(ADBase, version=(1, 9, 1)):
     dim0_sa = C(EpicsSignal, 'Dim0SA')
     dim1_sa = C(EpicsSignal, 'Dim1SA')
     dim2_sa = C(EpicsSignal, 'Dim2SA')
-    dim_sa = DDC(ad_group(EpicsSignal,
-                          (('dim0', 'Dim0SA'),
-                           ('dim1', 'Dim1SA'),
-                           ('dim2', 'Dim2SA'))),
-                 doc='Dimension sub-arrays',
-                 default_read_attrs=('dim0', 'dim1', 'dim2'))
+    dim_sa = DDC_EpicsSignal(
+        ('dim0', 'Dim0SA'),
+        ('dim1', 'Dim1SA'),
+        ('dim2', 'Dim2SA'),
+        doc='Dimension sub-arrays'
+    )
 
     dimensions = C(EpicsSignalRO, 'Dimensions_RBV')
     dropped_arrays = C(SignalWithRBV, 'DroppedArrays')
@@ -321,22 +321,22 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
     bgd_width = C(SignalWithRBV, 'BgdWidth')
     centroid_threshold = C(SignalWithRBV, 'CentroidThreshold')
 
-    centroid = DDC(ad_group(EpicsSignalRO,
-                            (('x', 'CentroidX_RBV'),
-                             ('y', 'CentroidY_RBV'))),
-                   doc='The centroid XY',
-                   default_read_attrs=('x', 'y'))
+    centroid = DDC_EpicsSignalRO(
+        ('x', 'CentroidX_RBV'),
+        ('y', 'CentroidY_RBV'),
+        doc='The centroid XY',
+    )
 
     compute_centroid = C(SignalWithRBV, 'ComputeCentroid', string=True)
     compute_histogram = C(SignalWithRBV, 'ComputeHistogram', string=True)
     compute_profiles = C(SignalWithRBV, 'ComputeProfiles', string=True)
     compute_statistics = C(SignalWithRBV, 'ComputeStatistics', string=True)
 
-    cursor = DDC(ad_group(SignalWithRBV,
-                          (('x', 'CursorX'),
-                           ('y', 'CursorY'))),
-                 doc='The cursor XY',
-                 default_read_attrs=('x', 'y'))
+    cursor = DDC_SignalWithRBV(
+        ('x', 'CursorX'),
+        ('y', 'CursorY'),
+        doc='The cursor XY',
+    )
 
     hist_entropy = C(EpicsSignalRO, 'HistEntropy_RBV')
     hist_max = C(SignalWithRBV, 'HistMax')
@@ -344,58 +344,58 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
     hist_size = C(SignalWithRBV, 'HistSize')
     histogram = C(EpicsSignalRO, 'Histogram_RBV')
 
-    max_size = DDC(ad_group(EpicsSignal,
-                            (('x', 'MaxSizeX'),
-                             ('y', 'MaxSizeY'))),
-                   doc='The maximum size in XY',
-                   default_read_attrs=('x', 'y'))
+    max_size = DDC_EpicsSignal(
+        ('x', 'MaxSizeX'),
+        ('y', 'MaxSizeY'),
+        doc='The maximum size in XY',
+    )
 
     max_value = C(EpicsSignalRO, 'MaxValue_RBV')
-    max_xy = DDC(ad_group(EpicsSignalRO,
-                          (('x', 'MaxX_RBV'),
-                           ('y', 'MaxY_RBV'))),
-                 doc='Maximum in XY',
-                 default_read_attrs=('x', 'y'))
+    max_xy = DDC_EpicsSignalRO(
+        ('x', 'MaxX_RBV'),
+        ('y', 'MaxY_RBV'),
+        doc='Maximum in XY',
+    )
 
     mean_value = C(EpicsSignalRO, 'MeanValue_RBV')
     min_value = C(EpicsSignalRO, 'MinValue_RBV')
 
-    min_xy = DDC(ad_group(EpicsSignalRO,
-                          (('x', 'MinX_RBV'),
-                           ('y', 'MinY_RBV'))),
-                 doc='Minimum in XY',
-                 default_read_attrs=('x', 'y'))
+    min_xy = DDC_EpicsSignalRO(
+        ('x', 'MinX_RBV'),
+        ('y', 'MinY_RBV'),
+        doc='Minimum in XY',
+    )
 
     net = C(EpicsSignalRO, 'Net_RBV')
-    profile_average = DDC(ad_group(EpicsSignalRO,
-                                   (('x', 'ProfileAverageX_RBV'),
-                                    ('y', 'ProfileAverageY_RBV'))),
-                          doc='Profile average in XY',
-                          default_read_attrs=('x', 'y'))
+    profile_average = DDC_EpicsSignalRO(
+        ('x', 'ProfileAverageX_RBV'),
+        ('y', 'ProfileAverageY_RBV'),
+        doc='Profile average in XY',
+    )
 
-    profile_centroid = DDC(ad_group(EpicsSignalRO,
-                                    (('x', 'ProfileCentroidX_RBV'),
-                                     ('y', 'ProfileCentroidY_RBV'))),
-                           doc='Profile centroid in XY',
-                           default_read_attrs=('x', 'y'))
+    profile_centroid = DDC_EpicsSignalRO(
+        ('x', 'ProfileCentroidX_RBV'),
+        ('y', 'ProfileCentroidY_RBV'),
+        doc='Profile centroid in XY',
+    )
 
-    profile_cursor = DDC(ad_group(EpicsSignalRO,
-                                  (('x', 'ProfileCursorX_RBV'),
-                                   ('y', 'ProfileCursorY_RBV'))),
-                         doc='Profile cursor in XY',
-                         default_read_attrs=('x', 'y'))
+    profile_cursor = DDC_EpicsSignalRO(
+        ('x', 'ProfileCursorX_RBV'),
+        ('y', 'ProfileCursorY_RBV'),
+        doc='Profile cursor in XY',
+    )
 
-    profile_size = DDC(ad_group(EpicsSignalRO,
-                                (('x', 'ProfileSizeX_RBV'),
-                                 ('y', 'ProfileSizeY_RBV'))),
-                       doc='Profile size in XY',
-                       default_read_attrs=('x', 'y'))
+    profile_size = DDC_EpicsSignalRO(
+        ('x', 'ProfileSizeX_RBV'),
+        ('y', 'ProfileSizeY_RBV'),
+        doc='Profile size in XY',
+    )
 
-    profile_threshold = DDC(ad_group(EpicsSignalRO,
-                                     (('x', 'ProfileThresholdX_RBV'),
-                                      ('y', 'ProfileThresholdY_RBV'))),
-                            doc='Profile threshold in XY',
-                            default_read_attrs=('x', 'y'))
+    profile_threshold = DDC_EpicsSignalRO(
+        ('x', 'ProfileThresholdX_RBV'),
+        ('y', 'ProfileThresholdY_RBV'),
+        doc='Profile threshold in XY',
+    )
 
     set_xhopr = C(EpicsSignal, 'SetXHOPR')
     set_yhopr = C(EpicsSignal, 'SetYHOPR')
@@ -405,30 +405,30 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
     sigma = C(EpicsSignalRO, 'Sigma_RBV')
     ts_acquiring = C(EpicsSignal, 'TSAcquiring')
 
-    ts_centroid = DDC(ad_group(EpicsSignal,
-                               (('x', 'TSCentroidX'),
-                                ('y', 'TSCentroidY'))),
-                      doc='Time series centroid in XY',
-                      default_read_attrs=('x', 'y'))
+    ts_centroid = DDC_EpicsSignal(
+        ('x', 'TSCentroidX'),
+        ('y', 'TSCentroidY'),
+        doc='Time series centroid in XY',
+    )
 
     ts_control = C(EpicsSignal, 'TSControl', string=True)
     ts_current_point = C(EpicsSignal, 'TSCurrentPoint')
     ts_max_value = C(EpicsSignal, 'TSMaxValue')
 
-    ts_max = DDC(ad_group(EpicsSignal,
-                          (('x', 'TSMaxX'),
-                           ('y', 'TSMaxY'))),
-                 doc='Time series maximum in XY',
-                 default_read_attrs=('x', 'y'))
+    ts_max = DDC_EpicsSignal(
+        ('x', 'TSMaxX'),
+        ('y', 'TSMaxY'),
+        doc='Time series maximum in XY',
+    )
 
     ts_mean_value = C(EpicsSignal, 'TSMeanValue')
     ts_min_value = C(EpicsSignal, 'TSMinValue')
 
-    ts_min = DDC(ad_group(EpicsSignal,
-                          (('x', 'TSMinX'),
-                           ('y', 'TSMinY'))),
-                 doc='Time series minimum in XY',
-                 default_read_attrs=('x', 'y'))
+    ts_min = DDC_EpicsSignal(
+        ('x', 'TSMinX'),
+        ('y', 'TSMinY'),
+        doc='Time series minimum in XY',
+    )
 
     ts_net = C(EpicsSignal, 'TSNet')
     ts_num_points = C(EpicsSignal, 'TSNumPoints')
@@ -508,13 +508,13 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
     enable_low_clip = C(SignalWithRBV, 'EnableLowClip', string=True)
     enable_offset_scale = C(SignalWithRBV, 'EnableOffsetScale', string=True)
 
-    fc = DDC(ad_group(SignalWithRBV,
-                      (('fc1', 'FC1'),
-                       ('fc2', 'FC2'),
-                       ('fc3', 'FC3'),
-                       ('fc4', 'FC4'))),
-             doc='Filter coefficients',
-             default_read_attrs=('fc1', 'fc2', 'fc3', 'fc4'))
+    fc = DDC_SignalWithRBV(
+        ('fc1', 'FC1'),
+        ('fc2', 'FC2'),
+        ('fc3', 'FC3'),
+        ('fc4', 'FC4'),
+        doc='Filter coefficients',
+    )
 
     foffset = C(SignalWithRBV, 'FOffset')
     fscale = C(SignalWithRBV, 'FScale')
@@ -527,23 +527,23 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
     num_filter_recip = C(EpicsSignal, 'NumFilterRecip')
     num_filtered = C(EpicsSignalRO, 'NumFiltered_RBV')
 
-    oc = DDC(ad_group(SignalWithRBV,
-                      (('oc1', 'OC1'),
-                       ('oc2', 'OC2'),
-                       ('oc3', 'OC3'),
-                       ('oc4', 'OC4'))),
-             doc='Output coefficients',
-             default_read_attrs=('oc1', 'oc2', 'oc3', 'oc4'))
+    oc = DDC_SignalWithRBV(
+        ('oc1', 'OC1'),
+        ('oc2', 'OC2'),
+        ('oc3', 'OC3'),
+        ('oc4', 'OC4'),
+        doc='Output coefficients',
+    )
 
     o_offset = C(SignalWithRBV, 'OOffset')
     o_scale = C(SignalWithRBV, 'OScale')
     offset = C(SignalWithRBV, 'Offset')
 
-    rc = DDC(ad_group(SignalWithRBV,
-                      (('rc1', 'RC1'),
-                       ('rc2', 'RC2'))),
-             doc='Filter coefficients',
-             default_read_attrs=('rc1', 'rc2'))
+    rc = DDC_SignalWithRBV(
+        ('rc1', 'RC1'),
+        ('rc2', 'RC2'),
+        doc='Filter coefficients',
+    )
 
     roffset = C(SignalWithRBV, 'ROffset')
     recursive_ave_diff_seq = C(EpicsSignal, 'RecursiveAveDiffSeq')
@@ -606,11 +606,11 @@ class OverlayPlugin(PluginBase, version=(1, 9, 1)):
         'overlay_1', 'overlay_2', 'overlay_3', 'overlay_4', 'overlay_5',
         'overlay_6', 'overlay_7', 'overlay_8')
     )
-    max_size = DDC(ad_group(EpicsSignalRO,
-                            (('x', 'MaxSizeX_RBV'),
-                             ('y', 'MaxSizeY_RBV'))),
-                   doc='The maximum size in XY',
-                   default_read_attrs=('x', 'y'))
+    max_size = DDC_EpicsSignalRO(
+        ('x', 'MaxSizeX_RBV'),
+        ('y', 'MaxSizeY_RBV'),
+        doc='The maximum size in XY',
+    )
 
     overlay_1 = C(Overlay, '1:')
     overlay_2 = C(Overlay, '2:')
@@ -635,61 +635,60 @@ class ROIPlugin(PluginBase, version=(1, 9, 1)):
     _default_read_attrs = ('enable', 'min_xyz.min_x', 'size.x',
                            'min_xyz.min_y', 'size.y', 'min_xyz.min_z',
                            'size.z')
-    array_size = DDC(ad_group(EpicsSignalRO,
-                              (('x', 'ArraySizeX_RBV'),
-                               ('y', 'ArraySizeY_RBV'),
-                               ('z', 'ArraySizeZ_RBV'))),
-                     doc='Size of the ROI data in XYZ',
-                     default_read_attrs=('x', 'y', 'z'))
+    array_size = DDC_EpicsSignalRO(
+        ('x', 'ArraySizeX_RBV'),
+        ('y', 'ArraySizeY_RBV'),
+        ('z', 'ArraySizeZ_RBV'),
+        doc='Size of the ROI data in XYZ',
+    )
 
-    auto_size = DDC(ad_group(SignalWithRBV,
-                             (('x', 'AutoSizeX'),
-                              ('y', 'AutoSizeY'),
-                              ('z', 'AutoSizeZ'))),
-                    doc=('Automatically set SizeXYZ to the input array size '
-                         'minus MinXYZ'),
-                    default_read_attrs=('x', 'y', 'z'))
+    auto_size = DDC_SignalWithRBV(
+        ('x', 'AutoSizeX'),
+        ('y', 'AutoSizeY'),
+        ('z', 'AutoSizeZ'),
+        doc='Automatically set SizeXYZ to the input array size minus MinXYZ',
+    )
 
-    bin_ = DDC(ad_group(SignalWithRBV,
-                        (('x', 'BinX'),
-                         ('y', 'BinY'),
-                         ('z', 'BinZ'))),
-               doc='Binning in XYZ',
-               default_read_attrs=('x', 'y', 'z'))
+    bin_ = DDC_SignalWithRBV(
+        ('x', 'BinX'),
+        ('y', 'BinY'),
+        ('z', 'BinZ'),
+        doc='Binning in XYZ',
+    )
 
     data_type_out = C(SignalWithRBV, 'DataTypeOut', string=True)
     enable_scale = C(SignalWithRBV, 'EnableScale', string=True)
 
-    roi_enable = DDC(ad_group(SignalWithRBV,
-                              (('x', 'EnableX'),
-                               ('y', 'EnableY'),
-                               ('z', 'EnableZ')), string=True),
-                     doc=('Enable ROI calculations in the X, Y, Z dimensions. '
-                          'If not enabled then the start, size, binning, and '
-                          'reverse operations are disabled in the X/Y/Z '
-                          'dimension, and the values from the input array '
-                          'are used.'),
-                     default_read_attrs=('x', 'y', 'z'))
+    roi_enable = DDC_SignalWithRBV(
+        ('x', 'EnableX'),
+        ('y', 'EnableY'),
+        ('z', 'EnableZ'),
+        string=True,
+        doc=('Enable ROI calculations in the X, Y, Z dimensions. If not '
+             'enabled then the start, size, binning, and reverse operations '
+             'are disabled in the X/Y/Z dimension, and the values from the '
+             'input array are used.')
+    )
 
-    max_xy = DDC(ad_group(EpicsSignal,
-                          (('x', 'MaxX'),
-                           ('y', 'MaxY'))),
-                 doc='Maximum in XY',
-                 default_read_attrs=('x', 'y'))
+    max_xy = DDC_EpicsSignal(
+        ('x', 'MaxX'),
+        ('y', 'MaxY'),
+        doc='Maximum in XY',
+    )
 
-    max_size = DDC(ad_group(EpicsSignalRO,
-                            (('x', 'MaxSizeX_RBV'),
-                             ('y', 'MaxSizeY_RBV'),
-                             ('z', 'MaxSizeZ_RBV'))),
-                   doc='Maximum size of the ROI in XYZ',
-                   default_read_attrs=('x', 'y', 'z'))
+    max_size = DDC_EpicsSignalRO(
+        ('x', 'MaxSizeX_RBV'),
+        ('y', 'MaxSizeY_RBV'),
+        ('z', 'MaxSizeZ_RBV'),
+        doc='Maximum size of the ROI in XYZ',
+    )
 
-    min_xyz = DDC(ad_group(SignalWithRBV,
-                           (('min_x', 'MinX'),
-                            ('min_y', 'MinY'),
-                            ('min_z', 'MinZ'))),
-                  doc='Minimum size of the ROI in XYZ',
-                  default_read_attrs=('min_x', 'min_y', 'min_z'))
+    min_xyz = DDC_SignalWithRBV(
+        ('min_x', 'MinX'),
+        ('min_y', 'MinY'),
+        ('min_z', 'MinZ'),
+        doc='Minimum size of the ROI in XYZ',
+    )
 
     def set(self, region):
         ''' This functions allows for the ROI regions to be set.
@@ -716,23 +715,23 @@ class ROIPlugin(PluginBase, version=(1, 9, 1)):
         return functools.reduce(operator.and_, status)
 
     name_ = C(SignalWithRBV, 'Name', doc='ROI name')
-    reverse = DDC(ad_group(SignalWithRBV,
-                           (('x', 'ReverseX'),
-                            ('y', 'ReverseY'),
-                            ('z', 'ReverseZ'))),
-                  doc='Reverse ROI in the XYZ dimensions. (0=No, 1=Yes)',
-                  default_read_attrs=('x', 'y', 'z'))
+    reverse = DDC_SignalWithRBV(
+        ('x', 'ReverseX'),
+        ('y', 'ReverseY'),
+        ('z', 'ReverseZ'),
+        doc='Reverse ROI in the XYZ dimensions. (0=No, 1=Yes)',
+    )
 
     scale = C(SignalWithRBV, 'Scale')
     set_xhopr = C(EpicsSignal, 'SetXHOPR')
     set_yhopr = C(EpicsSignal, 'SetYHOPR')
 
-    size = DDC(ad_group(SignalWithRBV,
-                        (('x', 'SizeX'),
-                         ('y', 'SizeY'),
-                         ('z', 'SizeZ'))),
-               doc='Size of the ROI in XYZ',
-               default_read_attrs=('x', 'y', 'z'))
+    size = DDC_SignalWithRBV(
+        ('x', 'SizeX'),
+        ('y', 'SizeY'),
+        ('z', 'SizeZ'),
+        doc='Size of the ROI in XYZ',
+    )
 
 
 @register_plugin
@@ -745,50 +744,50 @@ class TransformPlugin(PluginBase, version=(1, 9, 1)):
     width = C(SignalWithRBV, 'ArraySize0')
     height = C(SignalWithRBV, 'ArraySize1')
     depth = C(SignalWithRBV, 'ArraySize2')
-    array_size = DDC(ad_group(SignalWithRBV,
-                              (('height', 'ArraySize1'),
-                               ('width', 'ArraySize0'),
-                               ('depth', 'ArraySize2'))),
-                     doc='Array size',
-                     default_read_attrs=('height', 'width', 'depth'))
+    array_size = DDC_SignalWithRBV(
+        ('height', 'ArraySize1'),
+        ('width', 'ArraySize0'),
+        ('depth', 'ArraySize2'),
+        doc='Array size',
+    )
 
     name_ = C(EpicsSignal, 'Name')
     origin_location = C(SignalWithRBV, 'OriginLocation')
-    t1_max_size = DDC(ad_group(EpicsSignal,
-                               (('size0', 'T1MaxSize0'),
-                                ('size1', 'T1MaxSize1'),
-                                ('size2', 'T1MaxSize2'))),
-                      doc='Transform 1 max size',
-                      default_read_attrs=('size0', 'size1', 'size2'))
+    t1_max_size = DDC_EpicsSignal(
+        ('size0', 'T1MaxSize0'),
+        ('size1', 'T1MaxSize1'),
+        ('size2', 'T1MaxSize2'),
+        doc='Transform 1 max size',
+    )
 
-    t2_max_size = DDC(ad_group(EpicsSignal,
-                               (('size0', 'T2MaxSize0'),
-                                ('size1', 'T2MaxSize1'),
-                                ('size2', 'T2MaxSize2'))),
-                      doc='Transform 2 max size',
-                      default_read_attrs=('size0', 'size1', 'size2'))
+    t2_max_size = DDC_EpicsSignal(
+        ('size0', 'T2MaxSize0'),
+        ('size1', 'T2MaxSize1'),
+        ('size2', 'T2MaxSize2'),
+        doc='Transform 2 max size',
+    )
 
-    t3_max_size = DDC(ad_group(EpicsSignal,
-                               (('size0', 'T3MaxSize0'),
-                                ('size1', 'T3MaxSize1'),
-                                ('size2', 'T3MaxSize2'))),
-                      doc='Transform 3 max size',
-                      default_read_attrs=('size0', 'size1', 'size2'))
+    t3_max_size = DDC_EpicsSignal(
+        ('size0', 'T3MaxSize0'),
+        ('size1', 'T3MaxSize1'),
+        ('size2', 'T3MaxSize2'),
+        doc='Transform 3 max size',
+    )
 
-    t4_max_size = DDC(ad_group(EpicsSignal,
-                               (('size0', 'T4MaxSize0'),
-                                ('size1', 'T4MaxSize1'),
-                                ('size2', 'T4MaxSize2'))),
-                      doc='Transform 4 max size',
-                      default_read_attrs=('size0', 'size1', 'size2'))
+    t4_max_size = DDC_EpicsSignal(
+        ('size0', 'T4MaxSize0'),
+        ('size1', 'T4MaxSize1'),
+        ('size2', 'T4MaxSize2'),
+        doc='Transform 4 max size',
+    )
 
-    types = DDC(ad_group(EpicsSignal,
-                         (('type1', 'Type1'),
-                          ('type2', 'Type2'),
-                          ('type3', 'Type3'),
-                          ('type4', 'Type4'))),
-                doc='Transform types',
-                default_read_attrs=('type1', 'type2', 'type3', 'type4'))
+    types = DDC_EpicsSignal(
+        ('type1', 'Type1'),
+        ('type2', 'Type2'),
+        ('type3', 'Type3'),
+        ('type4', 'Type4'),
+        doc='Transform types',
+    )
 
 
 class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1)):
@@ -907,19 +906,19 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1)):
     compression = C(SignalWithRBV, 'Compression')
     data_bits_offset = C(SignalWithRBV, 'DataBitsOffset')
 
-    extra_dim_name = DDC(ad_group(EpicsSignalRO,
-                                  (('name_x', 'ExtraDimNameX_RBV'),
-                                   ('name_y', 'ExtraDimNameY_RBV'),
-                                   ('name_n', 'ExtraDimNameN_RBV'))),
-                         doc='Extra dimension names (XYN)',
-                         default_read_attrs=('name_x', 'name_y', 'name_n'))
+    extra_dim_name = DDC_EpicsSignalRO(
+        ('name_x', 'ExtraDimNameX_RBV'),
+        ('name_y', 'ExtraDimNameY_RBV'),
+        ('name_n', 'ExtraDimNameN_RBV'),
+        doc='Extra dimension names (XYN)',
+    )
 
-    extra_dim_size = DDC(ad_group(SignalWithRBV,
-                                  (('size_x', 'ExtraDimSizeX'),
-                                   ('size_y', 'ExtraDimSizeY'),
-                                   ('size_n', 'ExtraDimSizeN'))),
-                         doc='Extra dimension sizes (XYN)',
-                         default_read_attrs=('size_x', 'size_y', 'size_n'))
+    extra_dim_size = DDC_SignalWithRBV(
+        ('size_x', 'ExtraDimSizeX'),
+        ('size_y', 'ExtraDimSizeY'),
+        ('size_n', 'ExtraDimSizeN'),
+        doc='Extra dimension sizes (XYN)',
+    )
 
     io_speed = C(EpicsSignal, 'IOSpeed')
     num_col_chunks = C(SignalWithRBV, 'NumColChunks')

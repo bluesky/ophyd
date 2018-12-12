@@ -196,29 +196,29 @@ def ad_group(cls, attr_suffix, **kwargs):
     return defn
 
 
-def DDC_EpicsSignal(*items, **kw):
+def DDC_EpicsSignal(*items, doc=None, **kw):
     'DynamicDeviceComponent using EpicsSignal for all components'
     default_read_attrs = kw.pop("default_read_attrs",
                                 [attr for attr, prefix in items])
     return DynamicDeviceComponent(
         ad_group(EpicsSignal, items),
-        default_read_attrs=default_read_attrs, **kw)
+        default_read_attrs=default_read_attrs, doc=doc, **kw)
 
 
-def DDC_EpicsSignalRO(*items, **kw):
+def DDC_EpicsSignalRO(*items, doc=None, **kw):
     'DynamicDeviceComponent using EpicsSignalRO for all components'
     default_read_attrs = kw.pop("default_read_attrs", [attr for attr, prefix in items])
     return DynamicDeviceComponent(
-        ad_group(EpicsSignalRO, items),
-        default_read_attrs=default_read_attrs, **kw)
+        ad_group(EpicsSignalRO, items, **kw),
+        default_read_attrs=default_read_attrs, doc=doc)
 
 
-def DDC_SignalWithRBV(*items, **kw):
+def DDC_SignalWithRBV(*items, doc=None, **kw):
     'DynamicDeviceComponent using EpicsSignalWithRBV for all components'
     default_read_attrs = kw.pop("default_read_attrs", [attr for attr, prefix in items])
     return DynamicDeviceComponent(
-        ad_group(EpicsSignalWithRBV, items),
-        default_read_attrs=default_read_attrs, **kw)
+        ad_group(EpicsSignalWithRBV, items, **kw),
+        default_read_attrs=default_read_attrs, doc=doc, **kw)
 
 
 class ADBase(Device):
