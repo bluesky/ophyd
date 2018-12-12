@@ -6,9 +6,9 @@ from collections import OrderedDict
 import networkx as nx
 import numpy as np
 
-from ..signal import EpicsSignal, DerivedSignal
 from . import docs
-from ..device import (Device, Component)
+from ..signal import EpicsSignal, DerivedSignal
+from ..device import (Device, Component, DynamicDeviceComponent)
 from ..signal import (ArrayAttributeSignal)
 
 
@@ -194,6 +194,31 @@ def ad_group(cls, attr_suffix, **kwargs):
     for attr, suffix in attr_suffix:
         defn[attr] = (cls, suffix, kwargs)
     return defn
+
+
+def DDC_EpicsSignal(*items, **kw):
+    'DynamicDeviceComponent using EpicsSignal for all components'
+    default_read_attrs = kw.pop("default_read_attrs",
+                                [attr for attr, prefix in items])
+    return DynamicDeviceComponent(
+        ad_group(EpicsSignal, items),
+        default_read_attrs=default_read_attrs, **kw)
+
+
+def DDC_EpicsSignalRO(*items, **kw):
+    'DynamicDeviceComponent using EpicsSignalRO for all components'
+    default_read_attrs = kw.pop("default_read_attrs", [attr for attr, prefix in items])
+    return DynamicDeviceComponent(
+        ad_group(EpicsSignalRO, items),
+        default_read_attrs=default_read_attrs, **kw)
+
+
+def DDC_SignalWithRBV(*items, **kw):
+    'DynamicDeviceComponent using EpicsSignalWithRBV for all components'
+    default_read_attrs = kw.pop("default_read_attrs", [attr for attr, prefix in items])
+    return DynamicDeviceComponent(
+        ad_group(EpicsSignalWithRBV, items),
+        default_read_attrs=default_read_attrs, **kw)
 
 
 class ADBase(Device):
