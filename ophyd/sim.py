@@ -1045,9 +1045,18 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
     pass
 
 
+class FakeEpicsSignalWithRBV(FakeEpicsSignal):
+    """
+    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming scheme
+    """
+    def __init__(self, prefix, **kwargs):
+        super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
+
+
 fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      EpicsSignalRO: FakeEpicsSignalRO,
-                     EpicsSignalWithRBV: FakeEpicsSignal}
+                     EpicsSignalWithRBV: FakeEpicsSignalWithRBV,
+                     }
 
 
 def hw():
