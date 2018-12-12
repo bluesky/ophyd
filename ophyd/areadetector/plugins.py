@@ -16,9 +16,11 @@ import time as ttime
 
 from collections import OrderedDict
 
-from .base import (ADBase, ADComponent as C,
+from .. import Component
+from .base import (ADBase, ADComponent as Cpt,
                    EpicsSignalWithRBV as SignalWithRBV,
-                   DDC_EpicsSignal, DDC_EpicsSignalRO, DDC_SignalWithRBV)
+                   DDC_EpicsSignal, DDC_EpicsSignalRO, DDC_SignalWithRBV,
+                   NDDerivedSignal)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import GenerateDatumInterface
 from ..utils import enum, set_and_wait
@@ -87,18 +89,18 @@ class PluginBase(ADBase, version=(1, 9, 1)):
     _plugin_type = None
     _suffix_re = None
 
-    array_counter = C(SignalWithRBV, 'ArrayCounter')
-    array_rate = C(EpicsSignalRO, 'ArrayRate_RBV')
-    asyn_io = C(EpicsSignal, 'AsynIO')
+    array_counter = Cpt(SignalWithRBV, 'ArrayCounter')
+    array_rate = Cpt(EpicsSignalRO, 'ArrayRate_RBV')
+    asyn_io = Cpt(EpicsSignal, 'AsynIO')
 
-    nd_attributes_file = C(EpicsSignal, 'NDAttributesFile', string=True)
-    pool_alloc_buffers = C(EpicsSignalRO, 'PoolAllocBuffers')
-    pool_free_buffers = C(EpicsSignalRO, 'PoolFreeBuffers')
-    pool_max_buffers = C(EpicsSignalRO, 'PoolMaxBuffers')
-    pool_max_mem = C(EpicsSignalRO, 'PoolMaxMem')
-    pool_used_buffers = C(EpicsSignalRO, 'PoolUsedBuffers')
-    pool_used_mem = C(EpicsSignalRO, 'PoolUsedMem')
-    port_name = C(EpicsSignalRO, 'PortName_RBV', string=True)
+    nd_attributes_file = Cpt(EpicsSignal, 'NDAttributesFile', string=True)
+    pool_alloc_buffers = Cpt(EpicsSignalRO, 'PoolAllocBuffers')
+    pool_free_buffers = Cpt(EpicsSignalRO, 'PoolFreeBuffers')
+    pool_max_buffers = Cpt(EpicsSignalRO, 'PoolMaxBuffers')
+    pool_max_mem = Cpt(EpicsSignalRO, 'PoolMaxMem')
+    pool_used_buffers = Cpt(EpicsSignalRO, 'PoolUsedBuffers')
+    pool_used_mem = Cpt(EpicsSignalRO, 'PoolUsedMem')
+    port_name = Cpt(EpicsSignalRO, 'PortName_RBV', string=True)
 
     def stage(self):
         super().stage()
@@ -200,12 +202,12 @@ class PluginBase(ADBase, version=(1, 9, 1)):
     def _asyn_pipeline_configuration_names(self):
         return [_.configuration_names.name for _ in self._asyn_pipeline]
 
-    asyn_pipeline_config = Cpt(ArrayAttributeSignal,
-                               attr='_asyn_pipeline_configuration_names')
+    asyn_pipeline_config = Component(ArrayAttributeSignal,
+                                     attr='_asyn_pipeline_configuration_names')
 
-    width = C(EpicsSignalRO, 'ArraySize0_RBV')
-    height = C(EpicsSignalRO, 'ArraySize1_RBV')
-    depth = C(EpicsSignalRO, 'ArraySize2_RBV')
+    width = Cpt(EpicsSignalRO, 'ArraySize0_RBV')
+    height = Cpt(EpicsSignalRO, 'ArraySize1_RBV')
+    depth = Cpt(EpicsSignalRO, 'ArraySize2_RBV')
     array_size = DDC_EpicsSignalRO(
         ('height', 'ArraySize1_RBV'),
         ('width', 'ArraySize0_RBV'),
@@ -213,15 +215,14 @@ class PluginBase(ADBase, version=(1, 9, 1)):
         doc='The array size'
     )
 
-    bayer_pattern = C(EpicsSignalRO, 'BayerPattern_RBV')
-    blocking_callbacks = C(SignalWithRBV, 'BlockingCallbacks',
-                           string=True)
-    color_mode = C(EpicsSignalRO, 'ColorMode_RBV')
-    data_type = C(EpicsSignalRO, 'DataType_RBV', string=True)
+    bayer_pattern = Cpt(EpicsSignalRO, 'BayerPattern_RBV')
+    blocking_callbacks = Cpt(SignalWithRBV, 'BlockingCallbacks', string=True)
+    color_mode = Cpt(EpicsSignalRO, 'ColorMode_RBV')
+    data_type = Cpt(EpicsSignalRO, 'DataType_RBV', string=True)
 
-    dim0_sa = C(EpicsSignal, 'Dim0SA')
-    dim1_sa = C(EpicsSignal, 'Dim1SA')
-    dim2_sa = C(EpicsSignal, 'Dim2SA')
+    dim0_sa = Cpt(EpicsSignal, 'Dim0SA')
+    dim1_sa = Cpt(EpicsSignal, 'Dim1SA')
+    dim2_sa = Cpt(EpicsSignal, 'Dim2SA')
     dim_sa = DDC_EpicsSignal(
         ('dim0', 'Dim0SA'),
         ('dim1', 'Dim1SA'),
@@ -229,23 +230,23 @@ class PluginBase(ADBase, version=(1, 9, 1)):
         doc='Dimension sub-arrays'
     )
 
-    dimensions = C(EpicsSignalRO, 'Dimensions_RBV')
-    dropped_arrays = C(SignalWithRBV, 'DroppedArrays')
-    enable = C(SignalWithRBV, 'EnableCallbacks', string=True)
-    min_callback_time = C(SignalWithRBV, 'MinCallbackTime')
-    nd_array_address = C(SignalWithRBV, 'NDArrayAddress')
-    nd_array_port = C(SignalWithRBV, 'NDArrayPort')
-    ndimensions = C(EpicsSignalRO, 'NDimensions_RBV')
-    plugin_type = C(EpicsSignalRO, 'PluginType_RBV', lazy=False)
+    dimensions = Cpt(EpicsSignalRO, 'Dimensions_RBV')
+    dropped_arrays = Cpt(SignalWithRBV, 'DroppedArrays')
+    enable = Cpt(SignalWithRBV, 'EnableCallbacks', string=True)
+    min_callback_time = Cpt(SignalWithRBV, 'MinCallbackTime')
+    nd_array_address = Cpt(SignalWithRBV, 'NDArrayAddress')
+    nd_array_port = Cpt(SignalWithRBV, 'NDArrayPort')
+    ndimensions = Cpt(EpicsSignalRO, 'NDimensions_RBV')
+    plugin_type = Cpt(EpicsSignalRO, 'PluginType_RBV', lazy=False)
 
-    queue_free = C(EpicsSignal, 'QueueFree')
-    queue_free_low = C(EpicsSignal, 'QueueFreeLow')
-    queue_size = C(EpicsSignal, 'QueueSize')
-    queue_use = C(EpicsSignal, 'QueueUse')
-    queue_use_high = C(EpicsSignal, 'QueueUseHIGH')
-    queue_use_hihi = C(EpicsSignal, 'QueueUseHIHI')
-    time_stamp = C(EpicsSignalRO, 'TimeStamp_RBV')
-    unique_id = C(EpicsSignalRO, 'UniqueId_RBV')
+    queue_free = Cpt(EpicsSignal, 'QueueFree')
+    queue_free_low = Cpt(EpicsSignal, 'QueueFreeLow')
+    queue_size = Cpt(EpicsSignal, 'QueueSize')
+    queue_use = Cpt(EpicsSignal, 'QueueUse')
+    queue_use_high = Cpt(EpicsSignal, 'QueueUseHIGH')
+    queue_use_hihi = Cpt(EpicsSignal, 'QueueUseHIHI')
+    time_stamp = Cpt(EpicsSignalRO, 'TimeStamp_RBV')
+    unique_id = Cpt(EpicsSignalRO, 'UniqueId_RBV')
 
     @plugin_type.sub_meta
     def _plugin_type_connected(self, connected, **kw):
@@ -282,13 +283,13 @@ class ImagePlugin(PluginBase, version=(1, 9, 1)):
     _html_docs = ['NDPluginStdArrays.html']
     _plugin_type = 'NDPluginStdArrays'
 
-    array_data = C(EpicsSignal, 'ArrayData')
-    shaped_image = C(NDDerivedSignal, derived_from='array_data',
-                     shape=('array_size.height',
-                            'array_size.width',
-                            'array_size.depth'),
-                     num_dimensions='ndimensions',
-                     kind='omitted')
+    array_data = Cpt(EpicsSignal, 'ArrayData')
+    shaped_image = Cpt(NDDerivedSignal, derived_from='array_data',
+                       shape=('array_size.height',
+                              'array_size.width',
+                              'array_size.depth'),
+                       num_dimensions='ndimensions',
+                       kind='omitted')
 
     @property
     def image(self):
@@ -318,8 +319,8 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         'profile_cursor')
     )
 
-    bgd_width = C(SignalWithRBV, 'BgdWidth')
-    centroid_threshold = C(SignalWithRBV, 'CentroidThreshold')
+    bgd_width = Cpt(SignalWithRBV, 'BgdWidth')
+    centroid_threshold = Cpt(SignalWithRBV, 'CentroidThreshold')
 
     centroid = DDC_EpicsSignalRO(
         ('x', 'CentroidX_RBV'),
@@ -327,10 +328,10 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='The centroid XY',
     )
 
-    compute_centroid = C(SignalWithRBV, 'ComputeCentroid', string=True)
-    compute_histogram = C(SignalWithRBV, 'ComputeHistogram', string=True)
-    compute_profiles = C(SignalWithRBV, 'ComputeProfiles', string=True)
-    compute_statistics = C(SignalWithRBV, 'ComputeStatistics', string=True)
+    compute_centroid = Cpt(SignalWithRBV, 'ComputeCentroid', string=True)
+    compute_histogram = Cpt(SignalWithRBV, 'ComputeHistogram', string=True)
+    compute_profiles = Cpt(SignalWithRBV, 'ComputeProfiles', string=True)
+    compute_statistics = Cpt(SignalWithRBV, 'ComputeStatistics', string=True)
 
     cursor = DDC_SignalWithRBV(
         ('x', 'CursorX'),
@@ -338,11 +339,11 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='The cursor XY',
     )
 
-    hist_entropy = C(EpicsSignalRO, 'HistEntropy_RBV')
-    hist_max = C(SignalWithRBV, 'HistMax')
-    hist_min = C(SignalWithRBV, 'HistMin')
-    hist_size = C(SignalWithRBV, 'HistSize')
-    histogram = C(EpicsSignalRO, 'Histogram_RBV')
+    hist_entropy = Cpt(EpicsSignalRO, 'HistEntropy_RBV')
+    hist_max = Cpt(SignalWithRBV, 'HistMax')
+    hist_min = Cpt(SignalWithRBV, 'HistMin')
+    hist_size = Cpt(SignalWithRBV, 'HistSize')
+    histogram = Cpt(EpicsSignalRO, 'Histogram_RBV')
 
     max_size = DDC_EpicsSignal(
         ('x', 'MaxSizeX'),
@@ -350,15 +351,15 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='The maximum size in XY',
     )
 
-    max_value = C(EpicsSignalRO, 'MaxValue_RBV')
+    max_value = Cpt(EpicsSignalRO, 'MaxValue_RBV')
     max_xy = DDC_EpicsSignalRO(
         ('x', 'MaxX_RBV'),
         ('y', 'MaxY_RBV'),
         doc='Maximum in XY',
     )
 
-    mean_value = C(EpicsSignalRO, 'MeanValue_RBV')
-    min_value = C(EpicsSignalRO, 'MinValue_RBV')
+    mean_value = Cpt(EpicsSignalRO, 'MeanValue_RBV')
+    min_value = Cpt(EpicsSignalRO, 'MinValue_RBV')
 
     min_xy = DDC_EpicsSignalRO(
         ('x', 'MinX_RBV'),
@@ -366,7 +367,7 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='Minimum in XY',
     )
 
-    net = C(EpicsSignalRO, 'Net_RBV')
+    net = Cpt(EpicsSignalRO, 'Net_RBV')
     profile_average = DDC_EpicsSignalRO(
         ('x', 'ProfileAverageX_RBV'),
         ('y', 'ProfileAverageY_RBV'),
@@ -397,13 +398,13 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='Profile threshold in XY',
     )
 
-    set_xhopr = C(EpicsSignal, 'SetXHOPR')
-    set_yhopr = C(EpicsSignal, 'SetYHOPR')
-    sigma_xy = C(EpicsSignalRO, 'SigmaXY_RBV')
-    sigma_x = C(EpicsSignalRO, 'SigmaX_RBV')
-    sigma_y = C(EpicsSignalRO, 'SigmaY_RBV')
-    sigma = C(EpicsSignalRO, 'Sigma_RBV')
-    ts_acquiring = C(EpicsSignal, 'TSAcquiring')
+    set_xhopr = Cpt(EpicsSignal, 'SetXHOPR')
+    set_yhopr = Cpt(EpicsSignal, 'SetYHOPR')
+    sigma_xy = Cpt(EpicsSignalRO, 'SigmaXY_RBV')
+    sigma_x = Cpt(EpicsSignalRO, 'SigmaX_RBV')
+    sigma_y = Cpt(EpicsSignalRO, 'SigmaY_RBV')
+    sigma = Cpt(EpicsSignalRO, 'Sigma_RBV')
+    ts_acquiring = Cpt(EpicsSignal, 'TSAcquiring')
 
     ts_centroid = DDC_EpicsSignal(
         ('x', 'TSCentroidX'),
@@ -411,9 +412,9 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='Time series centroid in XY',
     )
 
-    ts_control = C(EpicsSignal, 'TSControl', string=True)
-    ts_current_point = C(EpicsSignal, 'TSCurrentPoint')
-    ts_max_value = C(EpicsSignal, 'TSMaxValue')
+    ts_control = Cpt(EpicsSignal, 'TSControl', string=True)
+    ts_current_point = Cpt(EpicsSignal, 'TSCurrentPoint')
+    ts_max_value = Cpt(EpicsSignal, 'TSMaxValue')
 
     ts_max = DDC_EpicsSignal(
         ('x', 'TSMaxX'),
@@ -421,8 +422,8 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='Time series maximum in XY',
     )
 
-    ts_mean_value = C(EpicsSignal, 'TSMeanValue')
-    ts_min_value = C(EpicsSignal, 'TSMinValue')
+    ts_mean_value = Cpt(EpicsSignal, 'TSMeanValue')
+    ts_min_value = Cpt(EpicsSignal, 'TSMinValue')
 
     ts_min = DDC_EpicsSignal(
         ('x', 'TSMinX'),
@@ -430,15 +431,15 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
         doc='Time series minimum in XY',
     )
 
-    ts_net = C(EpicsSignal, 'TSNet')
-    ts_num_points = C(EpicsSignal, 'TSNumPoints')
-    ts_read = C(EpicsSignal, 'TSRead')
-    ts_sigma = C(EpicsSignal, 'TSSigma')
-    ts_sigma_x = C(EpicsSignal, 'TSSigmaX')
-    ts_sigma_xy = C(EpicsSignal, 'TSSigmaXY')
-    ts_sigma_y = C(EpicsSignal, 'TSSigmaY')
-    ts_total = C(EpicsSignal, 'TSTotal')
-    total = C(EpicsSignalRO, 'Total_RBV')
+    ts_net = Cpt(EpicsSignal, 'TSNet')
+    ts_num_points = Cpt(EpicsSignal, 'TSNumPoints')
+    ts_read = Cpt(EpicsSignal, 'TSRead')
+    ts_sigma = Cpt(EpicsSignal, 'TSSigma')
+    ts_sigma_x = Cpt(EpicsSignal, 'TSSigmaX')
+    ts_sigma_xy = Cpt(EpicsSignal, 'TSSigmaXY')
+    ts_sigma_y = Cpt(EpicsSignal, 'TSSigmaY')
+    ts_total = Cpt(EpicsSignal, 'TSTotal')
+    total = Cpt(EpicsSignalRO, 'Total_RBV')
 
 
 @register_plugin
@@ -450,8 +451,8 @@ class ColorConvPlugin(PluginBase, version=(1, 9, 1)):
     _default_configuration_attrs = (PluginBase._default_configuration_attrs +
                                     ('color_mode_out', 'false_color'))
 
-    color_mode_out = C(SignalWithRBV, 'ColorModeOut')
-    false_color = C(SignalWithRBV, 'FalseColor')
+    color_mode_out = Cpt(SignalWithRBV, 'ColorModeOut')
+    false_color = Cpt(SignalWithRBV, 'FalseColor')
 
 
 @register_plugin
@@ -495,18 +496,18 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
         'valid_background',
         'valid_flat_field')
     )
-    auto_offset_scale = C(EpicsSignal, 'AutoOffsetScale', string=True)
-    auto_reset_filter = C(SignalWithRBV, 'AutoResetFilter', string=True)
-    average_seq = C(EpicsSignal, 'AverageSeq')
-    copy_to_filter_seq = C(EpicsSignal, 'CopyToFilterSeq')
-    data_type_out = C(SignalWithRBV, 'DataTypeOut', string=True)
-    difference_seq = C(EpicsSignal, 'DifferenceSeq')
-    enable_background = C(SignalWithRBV, 'EnableBackground', string=True)
-    enable_filter = C(SignalWithRBV, 'EnableFilter', string=True)
-    enable_flat_field = C(SignalWithRBV, 'EnableFlatField', string=True)
-    enable_high_clip = C(SignalWithRBV, 'EnableHighClip', string=True)
-    enable_low_clip = C(SignalWithRBV, 'EnableLowClip', string=True)
-    enable_offset_scale = C(SignalWithRBV, 'EnableOffsetScale', string=True)
+    auto_offset_scale = Cpt(EpicsSignal, 'AutoOffsetScale', string=True)
+    auto_reset_filter = Cpt(SignalWithRBV, 'AutoResetFilter', string=True)
+    average_seq = Cpt(EpicsSignal, 'AverageSeq')
+    copy_to_filter_seq = Cpt(EpicsSignal, 'CopyToFilterSeq')
+    data_type_out = Cpt(SignalWithRBV, 'DataTypeOut', string=True)
+    difference_seq = Cpt(EpicsSignal, 'DifferenceSeq')
+    enable_background = Cpt(SignalWithRBV, 'EnableBackground', string=True)
+    enable_filter = Cpt(SignalWithRBV, 'EnableFilter', string=True)
+    enable_flat_field = Cpt(SignalWithRBV, 'EnableFlatField', string=True)
+    enable_high_clip = Cpt(SignalWithRBV, 'EnableHighClip', string=True)
+    enable_low_clip = Cpt(SignalWithRBV, 'EnableLowClip', string=True)
+    enable_offset_scale = Cpt(SignalWithRBV, 'EnableOffsetScale', string=True)
 
     fc = DDC_SignalWithRBV(
         ('fc1', 'FC1'),
@@ -516,16 +517,16 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
         doc='Filter coefficients',
     )
 
-    foffset = C(SignalWithRBV, 'FOffset')
-    fscale = C(SignalWithRBV, 'FScale')
-    filter_callbacks = C(SignalWithRBV, 'FilterCallbacks', string=True)
-    filter_type = C(EpicsSignal, 'FilterType', string=True)
-    filter_type_seq = C(EpicsSignal, 'FilterTypeSeq')
-    high_clip = C(SignalWithRBV, 'HighClip')
-    low_clip = C(SignalWithRBV, 'LowClip')
-    num_filter = C(SignalWithRBV, 'NumFilter')
-    num_filter_recip = C(EpicsSignal, 'NumFilterRecip')
-    num_filtered = C(EpicsSignalRO, 'NumFiltered_RBV')
+    foffset = Cpt(SignalWithRBV, 'FOffset')
+    fscale = Cpt(SignalWithRBV, 'FScale')
+    filter_callbacks = Cpt(SignalWithRBV, 'FilterCallbacks', string=True)
+    filter_type = Cpt(EpicsSignal, 'FilterType', string=True)
+    filter_type_seq = Cpt(EpicsSignal, 'FilterTypeSeq')
+    high_clip = Cpt(SignalWithRBV, 'HighClip')
+    low_clip = Cpt(SignalWithRBV, 'LowClip')
+    num_filter = Cpt(SignalWithRBV, 'NumFilter')
+    num_filter_recip = Cpt(EpicsSignal, 'NumFilterRecip')
+    num_filtered = Cpt(EpicsSignalRO, 'NumFiltered_RBV')
 
     oc = DDC_SignalWithRBV(
         ('oc1', 'OC1'),
@@ -535,9 +536,9 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
         doc='Output coefficients',
     )
 
-    o_offset = C(SignalWithRBV, 'OOffset')
-    o_scale = C(SignalWithRBV, 'OScale')
-    offset = C(SignalWithRBV, 'Offset')
+    o_offset = Cpt(SignalWithRBV, 'OOffset')
+    o_scale = Cpt(SignalWithRBV, 'OScale')
+    offset = Cpt(SignalWithRBV, 'Offset')
 
     rc = DDC_SignalWithRBV(
         ('rc1', 'RC1'),
@@ -545,46 +546,46 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
         doc='Filter coefficients',
     )
 
-    roffset = C(SignalWithRBV, 'ROffset')
-    recursive_ave_diff_seq = C(EpicsSignal, 'RecursiveAveDiffSeq')
-    recursive_ave_seq = C(EpicsSignal, 'RecursiveAveSeq')
-    reset_filter = C(SignalWithRBV, 'ResetFilter')
-    save_background = C(SignalWithRBV, 'SaveBackground')
-    save_flat_field = C(SignalWithRBV, 'SaveFlatField')
-    scale = C(SignalWithRBV, 'Scale')
-    scale_flat_field = C(SignalWithRBV, 'ScaleFlatField')
-    sum_seq = C(EpicsSignal, 'SumSeq')
-    valid_background = C(EpicsSignalRO, 'ValidBackground_RBV', string=True)
-    valid_flat_field = C(EpicsSignalRO, 'ValidFlatField_RBV', string=True)
+    roffset = Cpt(SignalWithRBV, 'ROffset')
+    recursive_ave_diff_seq = Cpt(EpicsSignal, 'RecursiveAveDiffSeq')
+    recursive_ave_seq = Cpt(EpicsSignal, 'RecursiveAveSeq')
+    reset_filter = Cpt(SignalWithRBV, 'ResetFilter')
+    save_background = Cpt(SignalWithRBV, 'SaveBackground')
+    save_flat_field = Cpt(SignalWithRBV, 'SaveFlatField')
+    scale = Cpt(SignalWithRBV, 'Scale')
+    scale_flat_field = Cpt(SignalWithRBV, 'ScaleFlatField')
+    sum_seq = Cpt(EpicsSignal, 'SumSeq')
+    valid_background = Cpt(EpicsSignalRO, 'ValidBackground_RBV', string=True)
+    valid_flat_field = Cpt(EpicsSignalRO, 'ValidFlatField_RBV', string=True)
 
 
 class Overlay(ADBase, version=(1, 9, 1)):
     _html_docs = ['NDPluginOverlay.html']
 
-    blue = C(SignalWithRBV, 'Blue')
-    draw_mode = C(SignalWithRBV, 'DrawMode')
-    green = C(SignalWithRBV, 'Green')
-    max_size_x = C(EpicsSignal, 'MaxSizeX')
-    max_size_y = C(EpicsSignal, 'MaxSizeY')
-    overlay_portname = C(SignalWithRBV, 'Name')
+    blue = Cpt(SignalWithRBV, 'Blue')
+    draw_mode = Cpt(SignalWithRBV, 'DrawMode')
+    green = Cpt(SignalWithRBV, 'Green')
+    max_size_x = Cpt(EpicsSignal, 'MaxSizeX')
+    max_size_y = Cpt(EpicsSignal, 'MaxSizeY')
+    overlay_portname = Cpt(SignalWithRBV, 'Name')
 
-    position_x = C(SignalWithRBV, 'PositionX')
-    position_y = C(SignalWithRBV, 'PositionY')
+    position_x = Cpt(SignalWithRBV, 'PositionX')
+    position_y = Cpt(SignalWithRBV, 'PositionY')
 
-    position_xlink = C(EpicsSignal, 'PositionXLink')
-    position_ylink = C(EpicsSignal, 'PositionYLink')
+    position_xlink = Cpt(EpicsSignal, 'PositionXLink')
+    position_ylink = Cpt(EpicsSignal, 'PositionYLink')
 
-    red = C(SignalWithRBV, 'Red')
-    set_xhopr = C(EpicsSignal, 'SetXHOPR')
-    set_yhopr = C(EpicsSignal, 'SetYHOPR')
-    shape = C(SignalWithRBV, 'Shape')
+    red = Cpt(SignalWithRBV, 'Red')
+    set_xhopr = Cpt(EpicsSignal, 'SetXHOPR')
+    set_yhopr = Cpt(EpicsSignal, 'SetYHOPR')
+    shape = Cpt(SignalWithRBV, 'Shape')
 
-    size_x = C(SignalWithRBV, 'SizeX')
-    size_y = C(SignalWithRBV, 'SizeY')
+    size_x = Cpt(SignalWithRBV, 'SizeX')
+    size_y = Cpt(SignalWithRBV, 'SizeY')
 
-    size_xlink = C(EpicsSignal, 'SizeXLink')
-    size_ylink = C(EpicsSignal, 'SizeYLink')
-    use = C(SignalWithRBV, 'Use')
+    size_xlink = Cpt(EpicsSignal, 'SizeXLink')
+    size_ylink = Cpt(EpicsSignal, 'SizeYLink')
+    use = Cpt(SignalWithRBV, 'Use')
 
 
 @register_plugin
@@ -612,14 +613,14 @@ class OverlayPlugin(PluginBase, version=(1, 9, 1)):
         doc='The maximum size in XY',
     )
 
-    overlay_1 = C(Overlay, '1:')
-    overlay_2 = C(Overlay, '2:')
-    overlay_3 = C(Overlay, '3:')
-    overlay_4 = C(Overlay, '4:')
-    overlay_5 = C(Overlay, '5:')
-    overlay_6 = C(Overlay, '6:')
-    overlay_7 = C(Overlay, '7:')
-    overlay_8 = C(Overlay, '8:')
+    overlay_1 = Cpt(Overlay, '1:')
+    overlay_2 = Cpt(Overlay, '2:')
+    overlay_3 = Cpt(Overlay, '3:')
+    overlay_4 = Cpt(Overlay, '4:')
+    overlay_5 = Cpt(Overlay, '5:')
+    overlay_6 = Cpt(Overlay, '6:')
+    overlay_7 = Cpt(Overlay, '7:')
+    overlay_8 = Cpt(Overlay, '8:')
 
 
 @register_plugin
@@ -656,8 +657,8 @@ class ROIPlugin(PluginBase, version=(1, 9, 1)):
         doc='Binning in XYZ',
     )
 
-    data_type_out = C(SignalWithRBV, 'DataTypeOut', string=True)
-    enable_scale = C(SignalWithRBV, 'EnableScale', string=True)
+    data_type_out = Cpt(SignalWithRBV, 'DataTypeOut', string=True)
+    enable_scale = Cpt(SignalWithRBV, 'EnableScale', string=True)
 
     roi_enable = DDC_SignalWithRBV(
         ('x', 'EnableX'),
@@ -714,7 +715,7 @@ class ROIPlugin(PluginBase, version=(1, 9, 1)):
 
         return functools.reduce(operator.and_, status)
 
-    name_ = C(SignalWithRBV, 'Name', doc='ROI name')
+    name_ = Cpt(SignalWithRBV, 'Name', doc='ROI name')
     reverse = DDC_SignalWithRBV(
         ('x', 'ReverseX'),
         ('y', 'ReverseY'),
@@ -722,9 +723,9 @@ class ROIPlugin(PluginBase, version=(1, 9, 1)):
         doc='Reverse ROI in the XYZ dimensions. (0=No, 1=Yes)',
     )
 
-    scale = C(SignalWithRBV, 'Scale')
-    set_xhopr = C(EpicsSignal, 'SetXHOPR')
-    set_yhopr = C(EpicsSignal, 'SetYHOPR')
+    scale = Cpt(SignalWithRBV, 'Scale')
+    set_xhopr = Cpt(EpicsSignal, 'SetXHOPR')
+    set_yhopr = Cpt(EpicsSignal, 'SetYHOPR')
 
     size = DDC_SignalWithRBV(
         ('x', 'SizeX'),
@@ -741,9 +742,9 @@ class TransformPlugin(PluginBase, version=(1, 9, 1)):
     _html_docs = ['NDPluginTransform.html']
     _plugin_type = 'NDPluginTransform'
 
-    width = C(SignalWithRBV, 'ArraySize0')
-    height = C(SignalWithRBV, 'ArraySize1')
-    depth = C(SignalWithRBV, 'ArraySize2')
+    width = Cpt(SignalWithRBV, 'ArraySize0')
+    height = Cpt(SignalWithRBV, 'ArraySize1')
+    depth = Cpt(SignalWithRBV, 'ArraySize2')
     array_size = DDC_SignalWithRBV(
         ('height', 'ArraySize1'),
         ('width', 'ArraySize0'),
@@ -751,8 +752,8 @@ class TransformPlugin(PluginBase, version=(1, 9, 1)):
         doc='Array size',
     )
 
-    name_ = C(EpicsSignal, 'Name')
-    origin_location = C(SignalWithRBV, 'OriginLocation')
+    name_ = Cpt(EpicsSignal, 'Name')
+    origin_location = Cpt(SignalWithRBV, 'OriginLocation')
     t1_max_size = DDC_EpicsSignal(
         ('size0', 'T1MaxSize0'),
         ('size1', 'T1MaxSize1'),
@@ -808,26 +809,26 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1)):
     ))
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
-    auto_increment = C(SignalWithRBV, 'AutoIncrement')
-    auto_save = C(SignalWithRBV, 'AutoSave')
-    capture = C(SignalWithRBV, 'Capture')
-    delete_driver_file = C(SignalWithRBV, 'DeleteDriverFile')
-    file_format = C(SignalWithRBV, 'FileFormat')
-    file_name = C(SignalWithRBV, 'FileName', string=True)
-    file_number = C(SignalWithRBV, 'FileNumber')
-    file_number_sync = C(EpicsSignal, 'FileNumber_Sync')
-    file_number_write = C(EpicsSignal, 'FileNumber_write')
-    file_path = C(SignalWithRBV, 'FilePath', string=True)
-    file_path_exists = C(EpicsSignalRO, 'FilePathExists_RBV')
-    file_template = C(SignalWithRBV, 'FileTemplate', string=True)
-    file_write_mode = C(SignalWithRBV, 'FileWriteMode')
-    full_file_name = C(EpicsSignalRO, 'FullFileName_RBV', string=True)
-    num_capture = C(SignalWithRBV, 'NumCapture')
-    num_captured = C(EpicsSignalRO, 'NumCaptured_RBV')
-    read_file = C(SignalWithRBV, 'ReadFile')
-    write_file = C(SignalWithRBV, 'WriteFile')
-    write_message = C(EpicsSignal, 'WriteMessage', string=True)
-    write_status = C(EpicsSignal, 'WriteStatus')
+    auto_increment = Cpt(SignalWithRBV, 'AutoIncrement')
+    auto_save = Cpt(SignalWithRBV, 'AutoSave')
+    capture = Cpt(SignalWithRBV, 'Capture')
+    delete_driver_file = Cpt(SignalWithRBV, 'DeleteDriverFile')
+    file_format = Cpt(SignalWithRBV, 'FileFormat')
+    file_name = Cpt(SignalWithRBV, 'FileName', string=True)
+    file_number = Cpt(SignalWithRBV, 'FileNumber')
+    file_number_sync = Cpt(EpicsSignal, 'FileNumber_Sync')
+    file_number_write = Cpt(EpicsSignal, 'FileNumber_write')
+    file_path = Cpt(SignalWithRBV, 'FilePath', string=True)
+    file_path_exists = Cpt(EpicsSignalRO, 'FilePathExists_RBV')
+    file_template = Cpt(SignalWithRBV, 'FileTemplate', string=True)
+    file_write_mode = Cpt(SignalWithRBV, 'FileWriteMode')
+    full_file_name = Cpt(EpicsSignalRO, 'FullFileName_RBV', string=True)
+    num_capture = Cpt(SignalWithRBV, 'NumCapture')
+    num_captured = Cpt(EpicsSignalRO, 'NumCaptured_RBV')
+    read_file = Cpt(SignalWithRBV, 'ReadFile')
+    write_file = Cpt(SignalWithRBV, 'WriteFile')
+    write_message = Cpt(EpicsSignal, 'WriteMessage', string=True)
+    write_status = Cpt(EpicsSignal, 'WriteStatus')
 
 
 @register_plugin
@@ -855,7 +856,7 @@ class JPEGPlugin(FilePlugin, version=(1, 9, 1)):
     _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
         'jpeg_quality',))
 
-    jpeg_quality = C(SignalWithRBV, 'JPEGQuality')
+    jpeg_quality = Cpt(SignalWithRBV, 'JPEGQuality')
 
 
 @register_plugin
@@ -868,9 +869,9 @@ class NexusPlugin(FilePlugin, version=(1, 9, 1)):
     _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
         'template_file_name', 'template_file_path'))
 
-    file_template_valid = C(EpicsSignal, 'FileTemplateValid')
-    template_file_name = C(SignalWithRBV, 'TemplateFileName', string=True)
-    template_file_path = C(SignalWithRBV, 'TemplateFilePath', string=True)
+    file_template_valid = Cpt(EpicsSignal, 'FileTemplateValid')
+    template_file_name = Cpt(SignalWithRBV, 'TemplateFileName', string=True)
+    template_file_path = Cpt(SignalWithRBV, 'TemplateFilePath', string=True)
 
 
 @register_plugin
@@ -901,10 +902,10 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1)):
         'zlevel')
     )
 
-    boundary_align = C(SignalWithRBV, 'BoundaryAlign')
-    boundary_threshold = C(SignalWithRBV, 'BoundaryThreshold')
-    compression = C(SignalWithRBV, 'Compression')
-    data_bits_offset = C(SignalWithRBV, 'DataBitsOffset')
+    boundary_align = Cpt(SignalWithRBV, 'BoundaryAlign')
+    boundary_threshold = Cpt(SignalWithRBV, 'BoundaryThreshold')
+    compression = Cpt(SignalWithRBV, 'Compression')
+    data_bits_offset = Cpt(SignalWithRBV, 'DataBitsOffset')
 
     extra_dim_name = DDC_EpicsSignalRO(
         ('name_x', 'ExtraDimNameX_RBV'),
@@ -920,18 +921,18 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1)):
         doc='Extra dimension sizes (XYN)',
     )
 
-    io_speed = C(EpicsSignal, 'IOSpeed')
-    num_col_chunks = C(SignalWithRBV, 'NumColChunks')
-    num_data_bits = C(SignalWithRBV, 'NumDataBits')
-    num_extra_dims = C(SignalWithRBV, 'NumExtraDims')
-    num_frames_chunks = C(SignalWithRBV, 'NumFramesChunks')
-    num_frames_flush = C(SignalWithRBV, 'NumFramesFlush')
-    num_row_chunks = C(SignalWithRBV, 'NumRowChunks')
-    run_time = C(EpicsSignal, 'RunTime')
-    szip_num_pixels = C(SignalWithRBV, 'SZipNumPixels')
-    store_attr = C(SignalWithRBV, 'StoreAttr')
-    store_perform = C(SignalWithRBV, 'StorePerform')
-    zlevel = C(SignalWithRBV, 'ZLevel')
+    io_speed = Cpt(EpicsSignal, 'IOSpeed')
+    num_col_chunks = Cpt(SignalWithRBV, 'NumColChunks')
+    num_data_bits = Cpt(SignalWithRBV, 'NumDataBits')
+    num_extra_dims = Cpt(SignalWithRBV, 'NumExtraDims')
+    num_frames_chunks = Cpt(SignalWithRBV, 'NumFramesChunks')
+    num_frames_flush = Cpt(SignalWithRBV, 'NumFramesFlush')
+    num_row_chunks = Cpt(SignalWithRBV, 'NumRowChunks')
+    run_time = Cpt(EpicsSignal, 'RunTime')
+    szip_num_pixels = Cpt(SignalWithRBV, 'SZipNumPixels')
+    store_attr = Cpt(SignalWithRBV, 'StoreAttr')
+    store_perform = Cpt(SignalWithRBV, 'StorePerform')
+    zlevel = Cpt(SignalWithRBV, 'ZLevel')
 
     def warmup(self):
         """
@@ -971,9 +972,9 @@ class MagickPlugin(FilePlugin, version=(1, 9, 1)):
     _default_configuration_attrs = (FilePlugin._default_configuration_attrs + (
         'bit_depth', 'compress_type', 'quality',))
 
-    bit_depth = C(SignalWithRBV, 'BitDepth')
-    compress_type = C(SignalWithRBV, 'CompressType')
-    quality = C(SignalWithRBV, 'Quality')
+    bit_depth = Cpt(SignalWithRBV, 'BitDepth')
+    compress_type = Cpt(SignalWithRBV, 'CompressType')
+    quality = Cpt(SignalWithRBV, 'Quality')
 
 
 def plugin_from_pvname(pv):
