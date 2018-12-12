@@ -57,7 +57,7 @@ def register_plugin(cls):
     return cls
 
 
-class PluginBase(ADBase):
+class PluginBase(ADBase, version=(1, 9, 1)):
     '''AreaDetector plugin base class'''
     def __init__(self, *args, **kwargs):
 
@@ -276,7 +276,7 @@ class PluginBase(ADBase):
 
 
 @register_plugin
-class ImagePlugin(PluginBase):
+class ImagePlugin(PluginBase, version=(1, 9, 1)):
     _default_suffix = 'image1:'
     _suffix_re = r'image\d:'
     _html_docs = ['NDPluginStdArrays.html']
@@ -305,7 +305,7 @@ class ImagePlugin(PluginBase):
 
 
 @register_plugin
-class StatsPlugin(PluginBase):
+class StatsPlugin(PluginBase, version=(1, 9, 1)):
     _default_suffix = 'Stats1:'
     _suffix_re = r'Stats\d:'
     _html_docs = ['NDPluginStats.html']
@@ -442,7 +442,7 @@ class StatsPlugin(PluginBase):
 
 
 @register_plugin
-class ColorConvPlugin(PluginBase):
+class ColorConvPlugin(PluginBase, version=(1, 9, 1)):
     _default_suffix = 'CC1:'
     _suffix_re = r'CC\d:'
     _html_docs = ['NDPluginColorConvert.html']
@@ -455,7 +455,7 @@ class ColorConvPlugin(PluginBase):
 
 
 @register_plugin
-class ProcessPlugin(PluginBase):
+class ProcessPlugin(PluginBase, version=(1, 9, 1)):
     _default_suffix = 'Proc1:'
     _suffix_re = r'Proc\d:'
     _html_docs = ['NDPluginProcess.html']
@@ -558,7 +558,7 @@ class ProcessPlugin(PluginBase):
     valid_flat_field = C(EpicsSignalRO, 'ValidFlatField_RBV', string=True)
 
 
-class Overlay(ADBase):
+class Overlay(ADBase, version=(1, 9, 1)):
     _html_docs = ['NDPluginOverlay.html']
 
     blue = C(SignalWithRBV, 'Blue')
@@ -588,7 +588,7 @@ class Overlay(ADBase):
 
 
 @register_plugin
-class OverlayPlugin(PluginBase):
+class OverlayPlugin(PluginBase, version=(1, 9, 1)):
     '''Plugin which adds graphics overlays to an NDArray image
 
     Keyword arguments are passed to the base class, PluginBase
@@ -623,7 +623,7 @@ class OverlayPlugin(PluginBase):
 
 
 @register_plugin
-class ROIPlugin(PluginBase):
+class ROIPlugin(PluginBase, version=(1, 9, 1)):
 
     _default_suffix = 'ROI1:'
     _suffix_re = r'ROI\d:'
@@ -736,7 +736,7 @@ class ROIPlugin(PluginBase):
 
 
 @register_plugin
-class TransformPlugin(PluginBase):
+class TransformPlugin(PluginBase, version=(1, 9, 1)):
     _default_suffix = 'Trans1:'
     _suffix_re = r'Trans\d:'
     _html_docs = ['NDPluginTransform.html']
@@ -791,7 +791,7 @@ class TransformPlugin(PluginBase):
                 default_read_attrs=('type1', 'type2', 'type3', 'type4'))
 
 
-class FilePlugin(PluginBase, GenerateDatumInterface):
+class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1)):
     _default_suffix = ''
     _html_docs = ['NDPluginFile.html']
     _plugin_type = 'NDPluginFile'
@@ -832,7 +832,7 @@ class FilePlugin(PluginBase, GenerateDatumInterface):
 
 
 @register_plugin
-class NetCDFPlugin(FilePlugin):
+class NetCDFPlugin(FilePlugin, version=(1, 9, 1)):
     _default_suffix = 'netCDF1:'
     _suffix_re = r'netCDF\d:'
     _html_docs = ['NDFileNetCDF.html']
@@ -840,7 +840,7 @@ class NetCDFPlugin(FilePlugin):
 
 
 @register_plugin
-class TIFFPlugin(FilePlugin):
+class TIFFPlugin(FilePlugin, version=(1, 9, 1)):
     _default_suffix = 'TIFF1:'
     _suffix_re = r'TIFF\d:'
     _html_docs = ['NDFileTIFF.html']
@@ -848,7 +848,7 @@ class TIFFPlugin(FilePlugin):
 
 
 @register_plugin
-class JPEGPlugin(FilePlugin):
+class JPEGPlugin(FilePlugin, version=(1, 9, 1)):
     _default_suffix = 'JPEG1:'
     _suffix_re = r'JPEG\d:'
     _html_docs = ['NDFileJPEG.html']
@@ -860,7 +860,7 @@ class JPEGPlugin(FilePlugin):
 
 
 @register_plugin
-class NexusPlugin(FilePlugin):
+class NexusPlugin(FilePlugin, version=(1, 9, 1)):
     _default_suffix = 'Nexus1:'
     _suffix_re = r'Nexus\d:'
     _html_docs = ['NDFileNexus.html']
@@ -875,7 +875,7 @@ class NexusPlugin(FilePlugin):
 
 
 @register_plugin
-class HDF5Plugin(FilePlugin):
+class HDF5Plugin(FilePlugin, version=(1, 9, 1)):
     _default_suffix = 'HDF1:'
     _suffix_re = r'HDF\d:'
     _html_docs = ['NDFileHDF5.html']
@@ -964,7 +964,7 @@ class HDF5Plugin(FilePlugin):
 
 
 @register_plugin
-class MagickPlugin(FilePlugin):
+class MagickPlugin(FilePlugin, version=(1, 9, 1)):
     _default_suffix = 'Magick1:'
     _suffix_re = r'Magick\d:'
     _html_docs = ['NDFileMagick']  # sic., no html extension
