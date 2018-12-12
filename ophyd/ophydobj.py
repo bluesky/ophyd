@@ -97,6 +97,50 @@ class OphydObject:
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
 
+    def __init_subclass__(cls, version=None, version_of=None, **kwargs):
+        'This is called automatically in Python for all subclasses of OphydObject'
+        super().__init_subclass__(**kwargs)
+
+        if version is None:
+            # Only in the simple case of single inheritance, copy in the parent
+            # version information
+            try:
+                parent_class, = cls.__bases__
+            except ValueError:
+                parent_info = None
+            else:
+                parent_info = getattr(parent_class, '_class_info_', None)
+
+            if parent_info is not None:
+                # This class does not *define* a version, but it may be of
+                # a specific version.
+                # Propagate the version information from the parent
+                cls._class_info_ = parent_info.copy()
+            else:
+                cls._class_info_ = dict(versions={})
+
+            return
+
+        if version_of is None:
+            # This class is the first of its version
+            ...
+            version_dict = {}
+        elif not issubclass(cls, version_of):
+            raise RuntimeError(
+                f'Versions are only valid for classes in the same '
+                f'hierarchy. {cls.__name__} is not a subclass of '
+                f'{version_of.__name__}.'
+            )
+        else:
+            version_dict = version_of._class_info_['versions']
+
+        version_dict[version] = cls
+
+        cls._class_info_ = dict(
+            versions=version_dict,
+            version=version,
+        )
+
     def _validate_kind(self, val):
         if isinstance(val, str):
             return Kind[val.lower()]
