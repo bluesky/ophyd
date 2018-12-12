@@ -1,7 +1,9 @@
-import textwrap
+import functools
 import inspect
 import re
 import sys
+import textwrap
+
 from collections import OrderedDict
 import networkx as nx
 import numpy as np
@@ -196,29 +198,17 @@ def ad_group(cls, attr_suffix, **kwargs):
     return defn
 
 
-def DDC_EpicsSignal(*items, doc=None, **kw):
-    'DynamicDeviceComponent using EpicsSignal for all components'
-    default_read_attrs = kw.pop("default_read_attrs",
-                                [attr for attr, prefix in items])
+def _ddc_helper(signal_class, *items, kind='config', doc=None, **kwargs):
+    'DynamicDeviceComponent using one signal class for all components'
     return DynamicDeviceComponent(
-        ad_group(EpicsSignal, items),
-        default_read_attrs=default_read_attrs, doc=doc, **kw)
+        ad_group(signal_class, items, kind=kind, **kwargs),
+        doc=doc,
+    )
 
 
-def DDC_EpicsSignalRO(*items, doc=None, **kw):
-    'DynamicDeviceComponent using EpicsSignalRO for all components'
-    default_read_attrs = kw.pop("default_read_attrs", [attr for attr, prefix in items])
-    return DynamicDeviceComponent(
-        ad_group(EpicsSignalRO, items, **kw),
-        default_read_attrs=default_read_attrs, doc=doc)
-
-
-def DDC_SignalWithRBV(*items, doc=None, **kw):
-    'DynamicDeviceComponent using EpicsSignalWithRBV for all components'
-    default_read_attrs = kw.pop("default_read_attrs", [attr for attr, prefix in items])
-    return DynamicDeviceComponent(
-        ad_group(EpicsSignalWithRBV, items, **kw),
-        default_read_attrs=default_read_attrs, doc=doc, **kw)
+DDC_EpicsSignal = functools.partial(_ddc_helper, EpicsSignal)
+DDC_EpicsSignalRO = functools.partial(_ddc_helper, EpicsSignalRO)
+DDC_SignalWithRBV = functools.partial(_ddc_helper, EpicsSignalWithRBV)
 
 
 class ADBase(Device):
@@ -442,7 +432,8 @@ class ADBase(Device):
         return ret
 
     configuration_names = Component(ArrayAttributeSignal,
-                                    attr='_configuration_names')
+                                    attr='_configuration_names',
+                                    kind='config')
 
     @property
     def _configuration_names(self):
