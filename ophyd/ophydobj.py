@@ -102,28 +102,10 @@ class OphydObject:
         super().__init_subclass__(**kwargs)
 
         if version is None:
-            # Only in the simple case of single inheritance, copy in the parent
-            # version information
-            try:
-                parent_class, = cls.__bases__
-            except ValueError:
-                parent_info = None
-            else:
-                parent_info = getattr(parent_class, '_class_info_', None)
-
-            if parent_info is not None:
-                # This class does not *define* a version, but it may be of
-                # a specific version.
-                # Propagate the version information from the parent
-                cls._class_info_ = parent_info.copy()
-            else:
-                cls._class_info_ = dict(versions={})
-
             return
 
         if version_of is None:
             # This class is the first of its version
-            ...
             version_dict = {}
         elif not issubclass(cls, version_of):
             raise RuntimeError(
