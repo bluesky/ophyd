@@ -909,6 +909,10 @@ class Device(BlueskyInterface, OphydObject):
         '''
         for attr in cls._sub_devices:
             cpt = getattr(cls, attr)
+            if cpt is None:
+                # Subclasses can override this, making this None...
+                continue
+
             yield (attr, cpt.cls)
             for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
                 yield ('.'.join((attr, sub_attr)), sub_cls)
