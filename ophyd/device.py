@@ -812,7 +812,7 @@ class Device(BlueskyInterface, OphydObject):
 
         # The namedtuple associated with the device
         cls._device_tuple = namedtuple(f'{cls.__name__}Tuple',
-                                       [comp for comp in cls.component_names
+                                       [comp for comp in cls.component_names[:254]
                                         if not comp.startswith('_')])
 
         # List the attributes that are Devices (not Signals).
