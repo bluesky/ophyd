@@ -516,6 +516,20 @@ class TrivialFlyer:
     def stop(self, *, success=False):
         pass
 
+class NewTrivialFlyer(TrivialFlyer):
+    """
+    The old-style API inserted Resource and Datum documents into a database directly. 
+    The new-style API only caches the documents and provides an interface (collect_asset_docs) 
+    for accessing that cache. This change was part of the "asset refactor" that changed
+    that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
+    Trivial flyer that complies to the API but returns empty data.
+    """
+
+    name = 'new_trivial_flyer'
+
+    def collect_asset_docs(self):
+        for _ in ():
+            yield _
 
 class MockFlyer:
     """
@@ -1192,6 +1206,7 @@ def hw():
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
     trivial_flyer = TrivialFlyer()
+    new_trivial_flyer = NewTrivialFlyer()
 
     ab_det = ABDetector(name='det', labels={'detectors'})
     # area detector that directly stores image data in Event
@@ -1234,6 +1249,7 @@ def hw():
         flyer1=flyer1,
         flyer2=flyer2,
         trivial_flyer=trivial_flyer,
+        new_trivial_flyer=new_trivial_flyer,
         ab_det=ab_det,
         direct_img=direct_img,
         img=img,
