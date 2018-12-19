@@ -517,7 +517,14 @@ class TrivialFlyer:
         pass
 
 class NewTrivialFlyer(TrivialFlyer):
-    """Trivial flyer that complies to the API but returns empty data."""
+    """
+    The old-style API inserted Resource and Datum documents into a database directly. 
+    The new-style API only caches the documents and provides an interface (collect_asset_docs) 
+    for accessing that cache. This change was part of the "asset refactor" that changed
+    that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
+    Trivial flyer that complies to the API but returns empty data.
+    """
+
     name = 'new_trivial_flyer'
 
     def collect_asset_docs(self):
