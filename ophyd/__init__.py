@@ -1,6 +1,7 @@
 import logging
 import types
 import os
+from ophyd.log import set_handler
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
