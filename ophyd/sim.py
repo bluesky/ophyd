@@ -1249,7 +1249,7 @@ def hw():
         flyer1=flyer1,
         flyer2=flyer2,
         trivial_flyer=trivial_flyer,
-        new_trivial_flyer = new_trivial_flyer,
+        new_trivial_flyer=new_trivial_flyer,
         ab_det=ab_det,
         direct_img=direct_img,
         img=img,
