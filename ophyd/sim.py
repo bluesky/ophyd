@@ -1035,7 +1035,9 @@ class FakeEpicsSignal(SynSignal):
         if value is None:
             raise ValueError('Cannot write None to EPICS PVs')
         if self._use_limits and not self.limits[0] <= value <= self.limits[1]:
-            raise LimitError(f'value={value} not within limits {self.limits}')
+            raise LimitError(
+                'value={value} not within limits {self.limits}'.format(
+                    value=value, self=self))
 
 
 class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):

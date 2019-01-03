@@ -395,4 +395,6 @@ class SoftPositioner(PositionerBase):
         low_limit, high_limit = self.limits
 
         if low_limit < high_limit and not (low_limit <= pos <= high_limit):
-            raise LimitError(f'position={pos} not within limits {self.limits}')
+            raise LimitError(
+                'position={pos} not within limits {self.limits}'.format(
+                    pos=pos, self=self))
