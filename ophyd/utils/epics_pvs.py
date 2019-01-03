@@ -282,11 +282,15 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
                            rtol=rtol if rtol is not None else 1e-5,
                            atol=atol if atol is not None else 1e-8,
                            )
-    return a == b
+    ret = a == b
+    try:
+        return bool(ret)
+    except ValueError:
+        return np.all(ret)
 
 
 _type_map = {'number': (float, np.floating),
-             'array': (np.ndarray, ),
+             'array': (np.ndarray, list, tuple),
              'string': (str, ),
              'integer': (int, np.integer),
              }
@@ -304,7 +308,9 @@ def data_type(val):
         if isinstance(val, py_types):
             return json_type
     # no legit type found...
-    raise ValueError('{} not a valid type (int, float, ndarray, str)'.format(val))
+    raise ValueError(
+        '{!r} '.format(val) +
+        'not a valid type (int, float, ndarray, str, list, tuple)')
 
 
 def data_shape(val):
@@ -316,13 +322,14 @@ def data_shape(val):
         Empty list if val is number or string, otherwise
         ``list(np.ndarray.shape)``
     '''
-    for json_type, py_types in _type_map.items():
-        if isinstance(val, py_types):
-            if json_type is 'array':
-                return list(val.shape)
-            else:
-                return list()
-    raise ValueError('Cannot determine shape of {}'.format(val))
+    dtype = data_type(val)
+    if dtype != 'array':
+        return []
+
+    try:
+        return list(val.shape)
+    except AttributeError:
+        return [len(val)]
 
 
 # Vendored from pyepics v3.3.0
