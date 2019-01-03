@@ -5,8 +5,9 @@ import numpy as np
 import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
-from ophyd.utils import (make_dir_tree, makedirs)
+from ophyd.utils import (make_dir_tree, makedirs, set_and_wait)
 from .conftest import AssertTools
+from ophyd import Signal
 
 
 logger = logging.getLogger(__name__)
@@ -106,3 +107,35 @@ def test_make_dir_tree():
 def test_valid_pvname():
     with pytest.raises(epics_utils.BadPVName):
         epics_utils.validate_pv_name('this.will.fail')
+
+
+def test_array_into_softsignal():
+    data = np.array([1, 2, 3])
+    s = Signal(name='np.array')
+    set_and_wait(s, data)
+    assert np.all(s.get() == data)
+
+@pytest.mark.parametrize('value, dtype, shape', [
+    [1, 'integer', []],
+    [1.0, 'number', []],
+    [1e-3, 'number', []],
+    ['foo', 'string', []],
+    [np.array([1, 2, 3]), 'array', [3]],
+    [np.array([[1, 2], [3, 4]]), 'array', [2, 2]],
+    [(1, 2, 3), 'array', [3]],
+    [[1, 2, 3], 'array', [3]],
+    [[], 'array', [0]]
+]
+)
+def test_data_type_and_shape(value, dtype, shape):
+    utils = epics_utils
+    assert utils.data_type(value) == dtype
+    assert utils.data_shape(value) == shape
+
+
+@pytest.mark.parametrize('value',
+                         [dict()])
+def test_invalid_data_type(value):
+    utils = epics_utils
+    with pytest.raises(ValueError):
+        utils.data_type(value)

@@ -164,8 +164,8 @@ class Signal(OphydObject):
                                value)
                 success = False
             except Exception as ex:
-                self.log.debug('set_and_wait(%r, %s) failed', self.name, value,
-                               exc_info=ex)
+                self.log.exception('set_and_wait(%r, %s) failed',
+                                   self.name, value)
                 success = False
             else:
                 self.log.debug('set_and_wait(%r, %s) succeeded => %s', self.name,
