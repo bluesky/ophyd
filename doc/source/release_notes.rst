@@ -2,6 +2,39 @@
  Release History
 =================
 
+v1.3.1 (2019-01-03)
+===================
+
+Features
+--------
+
+* Add :class:`~ophyd.FakeEpicsSignalWithRBV`, which is to
+  :class:`~ophyd.FakeEpicsSignal` as :class:`~ophyd.EpicsSignalWithRBV` is to
+  :class:`~ophyd.EpicsSignal`.
+* Add enum-spoofing to :class:`~ophyd.FakeEpicsSignal`.
+* A default handler is added to the ``'ophyd'`` logger at import time. A new
+  convenience function, :func:`~ophyd.set_handler`, addresses common cases
+  such as directing the log output to a file.
+
+Bug Fixes
+---------
+
+* Always interpret simulated motor positions as floats, even if set to an
+  integer position.
+* Accept numpy arrays in ``set_and_wait``.
+* Log errors with ``set_and_wait`` at the ERROR level rather than the (often
+  silenced) DEBUG level.
+* Check limits on :class:`~ophyd.SoftPositioner`.
+* Produce consistent Datum documents in the old and new asset registry code
+  paths in :class:`~ophyd.sim.SynSignalWithRegistry`.
+* Fix some missing imports in :mod:`ophyd.areadetector.plugins`.
+* The verification that the image plugin has received an array of nonzero size
+  was implemented in a way that it would never be tripped.
+* Accept any tuple of the right length in :meth:`~ophyd.Device.put`.
+* :class:`~ophyd.AttributeSignal` now runs subscriptions when it processes an
+  update.
+* Fix some bugs in :class:`~ophyd.FakeEpicsSignal`.
+
 v1.3.0 (2018-09-05)
 ===================
 
