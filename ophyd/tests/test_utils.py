@@ -62,8 +62,6 @@ class TestEpicsUtil(AssertTools):
         self.assertEquals(utils.data_type('foo'), 'string')
         self.assertEquals(utils.data_type(np.array([1,2,3])), 'array')
 
-        self.assertRaises(ValueError, utils.data_type, [1,2,3])
-        self.assertRaises(ValueError, utils.data_type, dict())
 
     def test_data_shape(self):
         utils = epics_utils
@@ -72,8 +70,6 @@ class TestEpicsUtil(AssertTools):
         self.assertEquals(utils.data_shape('foo'), list())
         self.assertEquals(utils.data_shape(np.array([1,2,3])), [3, ])
         self.assertEquals(utils.data_shape(np.array([[1, 2], [3, 4]])), [2, 2])
-
-        self.assertRaises(ValueError, utils.data_shape, list())
 
 
 def assert_OD_equal_ignore_ts(a, b):
