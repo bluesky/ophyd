@@ -322,16 +322,14 @@ def data_shape(val):
         Empty list if val is number or string, otherwise
         ``list(np.ndarray.shape)``
     '''
-    for json_type, py_types in _type_map.items():
-        if isinstance(val, py_types):
-            if json_type is 'array':
-                try:
-                    return list(val.shape)
-                except AttributeError:
-                    return [len(val)]
-            else:
-                return list()
-    raise ValueError('Cannot determine shape of {}'.format(val))
+    dtype = data_type(val)
+    if dtype != 'array':
+        return []
+
+    try:
+        return list(val.shape)
+    except AttributeError:
+        return [len(val)]
 
 
 # Vendored from pyepics v3.3.0
