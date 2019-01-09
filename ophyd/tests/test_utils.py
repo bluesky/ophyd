@@ -35,8 +35,8 @@ def test_waveform_to_string():
 def test_pyepics_version_support():
     from ophyd import get_cl
     shim = pytest.importorskip('ophyd._pyepics_shim')
-    bad_versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', )
-    good_versions = ('3.3.1', )
+    bad_versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', '3.3.1', )
+    good_versions = ('3.3.2', )
     for version in bad_versions:
         with pytest.raises(RuntimeError):
             shim._check_pyepics_version(version)
