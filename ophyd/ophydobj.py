@@ -380,6 +380,23 @@ class OphydObject:
         if self._parent is not None:
             yield ('parent', self.parent.name)
 
+    def __copy__(self):
+        '''Copy the ophyd object
+
+        Shallow copying ophyd objects uses the repr information from the
+        _repr_info method to create a new object.
+        '''
+        kwargs = dict(self._repr_info())
+        return self.__class__(**kwargs)
+
     def __getnewargs_ex__(self):
+        '''Used by pickle to serialize an ophyd object
+
+        Returns
+        -------
+        (args, kwargs)
+            Arguments to be passed to __init__, necessary to recreate this
+            object
+        '''
         kwargs = dict(self._repr_info())
         return ((), kwargs)
