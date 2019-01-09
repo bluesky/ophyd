@@ -175,15 +175,15 @@ and static information about the object
 :class:`Component`
 ------------------
 
-The :class:`Compent` class is a python descriptor_ which override the
-behavior on attribute access.  This allows us to use a declarative
+The :class:`Component` class is a python descriptor_ which overrides the
+behavior of attribute access.  This allows us to use a declarative
 style to define the software representation of the hardware.  The best
-way to understand ::
+way to understand is through an example::
 
   class Foo(Device):
-      bar = Cpt(EpicsSignal, ':bar', string=True)
+      bar = Component(EpicsSignal, ':bar', string=True)
 
-is "When a ``Foo`` instance is created give it a ``bar`` attribute
+which means "When a ``Foo`` instance is created give it a ``bar`` attribute
 which is an instance of :class:`EpicsSignal` and use the extra args
 and kwargs when creating it".  It is a declaration of what you want
 and it is the responsibility of :mod:`ophyd` to make it happen.
