@@ -516,10 +516,11 @@ class TrivialFlyer:
     def stop(self, *, success=False):
         pass
 
+
 class NewTrivialFlyer(TrivialFlyer):
     """
-    The old-style API inserted Resource and Datum documents into a database directly. 
-    The new-style API only caches the documents and provides an interface (collect_asset_docs) 
+    The old-style API inserted Resource and Datum documents into a database directly.
+    The new-style API only caches the documents and provides an interface (collect_asset_docs)
     for accessing that cache. This change was part of the "asset refactor" that changed
     that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
     Trivial flyer that complies to the API but returns empty data.
@@ -530,6 +531,7 @@ class NewTrivialFlyer(TrivialFlyer):
     def collect_asset_docs(self):
         for _ in ():
             yield _
+
 
 class MockFlyer:
     """
@@ -1056,6 +1058,12 @@ class FakeEpicsSignal(SynSignal):
         self._put_func = None
         self._limits = None
 
+    def describe(self):
+        desc = super().describe()
+        if self._enum_strs is not None:
+            desc[self.name]['enum_strs'] = self.enum_strs
+        return desc
+
     def sim_set_func(self, func):
         """
         Update the SynSignal function to set a new value on trigger.
@@ -1128,7 +1136,7 @@ class FakeEpicsSignal(SynSignal):
             The enums will be accessed by array index, e.g. the first item in
             enums will be 0, the next will be 1, etc.
         """
-        self._enum_strs = enums
+        self._enum_strs = tuple(enums)
 
     @property
     def limits(self):
