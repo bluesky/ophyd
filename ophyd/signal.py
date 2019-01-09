@@ -521,7 +521,7 @@ class DerivedSignal(Signal):
     @property
     def limits(self):
         '''Limits from the original signal (low, high), such that low <= value <= high'''
-        return tuple(self.inverse(v) for v in self._derived_from.limits)
+        return tuple(sorted(self.inverse(v) for v in self._derived_from.limits))
 
     def _repr_info(self):
         'Yields pairs of (key, value) to generate the Signal repr'
