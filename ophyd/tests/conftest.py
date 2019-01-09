@@ -1,20 +1,13 @@
 import logging
-import random
-import sys
-import threading
 import time
 import uuid
-import weakref
 
 import pytest
-import numpy as np
-import numpy.testing
 
 from types import SimpleNamespace
-from functools import wraps
 
-from ophyd import (get_cl, set_cl, EpicsMotor, Signal, EpicsSignal,
-                   EpicsSignalRO, Component as Cpt, MotorBundle)
+from ophyd import (set_cl, EpicsMotor, Signal, EpicsSignal, EpicsSignalRO,
+                   Component as Cpt)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 from caproto.tests.conftest import run_example_ioc
 
@@ -32,6 +25,7 @@ def cl_selector(request):
     cl_name = request.param
     if cl_name == 'caproto':
         pytest.importorskip('caproto')
+        logging.getLogger('caproto.bcast').setLevel('INFO')
     elif cl_name == 'pyepics':
         pytest.importorskip('epics')
     set_cl(cl_name)
