@@ -106,10 +106,6 @@ class PyepicsShimPV(epics.PV):
                 self.get_ctrlvars(timeout=1, warn=False)
         return self._args.get(arg, None)
 
-    @property
-    def is_enum(self):
-        return self.ftype in (dbr.ENUM, dbr.TIME_ENUM, dbr.CTRL_ENUM)
-
     def get_all_metadata_blocking(self, timeout):
         if self._args['status'] is None:
             self.get_timevars(timeout=timeout)
