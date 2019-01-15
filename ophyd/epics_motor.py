@@ -284,6 +284,6 @@ class EpicsMotor(Device, PositionerBase):
 class MotorBundle(Device):
     """Sub-class this to device a bundle of motors
 
-    This provides better default behavior for ``hints``.
+    This provides better default behavior for :ref:``hints``.
     """
     ...

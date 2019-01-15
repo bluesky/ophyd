@@ -48,11 +48,14 @@ devices.
 .. autoclass:: ophyd.mca.EpicsDXP
     :members:
 
+.. index:: read_attrs
+.. index:: configuration_attrs
+.. index:: hints
 
 MotorBundle
 -----------
 
-Creating 'bundles' of motors in very common so we also have a helper
+Creating 'bundles' of motors is very common so we also have a helper
 class that tweaks the default behavior of :attr:`read_attrs`,
 :attr:`configuration_attrs`, and :attr:`hints`
 
