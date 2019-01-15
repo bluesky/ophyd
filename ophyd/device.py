@@ -1,12 +1,12 @@
 import collections
 import contextlib
 import functools
+import inspect
 import itertools
 import logging
 import operator
 import textwrap
 import time as ttime
-import types
 import warnings
 
 from enum import Enum
@@ -219,17 +219,10 @@ class Component:
         if instance is None:
             return self
 
-        if self.attr not in instance._signals:
-            cpt_inst = self.create_component(instance)
-            instance._signals[self.attr] = cpt_inst
-
-            for event_type, functions in self._subscriptions.items():
-                for func in functions:
-                    cpt_inst.subscribe(types.MethodType(func, instance),
-                                       event_type=event_type,
-                                       run=cpt_inst.connected)
-
-        return instance._signals[self.attr]
+        try:
+            return instance._signals[self.attr]
+        except KeyError:
+            return instance._instantiate_component(self.attr)
 
     def __set__(self, instance, owner):
         raise RuntimeError('Do not use setattr with components; use '
@@ -253,6 +246,9 @@ class Component:
         '''
         def subscriber(func):
             self._subscriptions[event_type].append(func)
+            if not hasattr(func, 'subscriptions'):
+                func._subscriptions = []
+            func._subscriptions.append((self, event_type))
             return func
         return subscriber
 
@@ -713,6 +709,10 @@ class Device(BlueskyInterface, OphydObject):
         # Copy the Device-defined signal kinds, for user modification
         self._component_kinds = self._component_kinds.copy()
 
+        # Subscriptions to run or general methods necessary to call prior to
+        # marking the Device as connected
+        self._required_for_connection = self._required_for_connection.copy()
+
         self.prefix = prefix
         if self.component_names and prefix is None:
             raise ValueError('Must specify prefix if device signals are being '
@@ -765,6 +765,9 @@ class Device(BlueskyInterface, OphydObject):
             - _device_tuple - An auto-generated namedtuple based on all
               existing Components in the Device
             - _sub_devices - a list of attributes which hold a Device
+            - _required_for_connection - a dictionary of object-to-description
+              for additional things that block this from being reported as
+              connected
         '''
 
         for attr in DEVICE_INSTANCE_ATTRS:
@@ -816,6 +819,14 @@ class Device(BlueskyInterface, OphydObject):
         # This list is used by stage/unstage. Only Devices need to be staged.
         cls._sub_devices = [attr for attr, cpt in cls._sig_attrs.items()
                             if cpt.is_device]
+
+        # All (obj, description) that may block the Device from being shown as
+        # connected:
+        cls._required_for_connection = dict(
+            obj._required_for_connection
+            for attr, obj in cls.__dict__.items()
+            if getattr(obj, '_required_for_connection', False)
+        )
 
     def __init_subclass__(cls, **kwargs):
         'This is called automatically in Python for all subclasses of Device'
@@ -902,15 +913,27 @@ class Device(BlueskyInterface, OphydObject):
             for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
                 yield ('.'.join((attr, sub_attr)), sub_cls)
 
-    def walk_subdevices(self):
+    def walk_subdevices(self, *, include_lazy=False):
         '''Walk all sub-Devices in the hierarchy
 
         Yields
         ------
         (dotted_name, subdevice_instance)
         '''
-        for dotted_name, cls in self.walk_subdevice_classes():
-            yield (dotted_name, getattr(self, dotted_name))
+        # TODO: Devices can be lazy, outside of original design intent; should
+        # discuss this at some point
+        cls = type(self)
+        for attr in cls._sub_devices:
+            cpt = getattr(cls, attr)
+            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            should_walk = not cpt.lazy or lazy_ok
+
+            if should_walk:
+                dev = getattr(self, attr)
+                yield (attr, dev)
+                for sub_attr, sub_dev in dev.walk_subdevices(
+                        include_lazy=include_lazy):
+                    yield ('.'.join((attr, sub_attr)), sub_dev)
 
     def destroy(self):
         'Disconnect and destroy all signals on the Device'
@@ -1079,39 +1102,39 @@ class Device(BlueskyInterface, OphydObject):
         timeout : float or None
             Overall timeout
         '''
-        names = [attr for attr, cpt in self._sig_attrs.items()
-                 if not cpt.lazy or all_signals]
+        signals = [
+            walk.item for walk in self.walk_signals(include_lazy=all_signals)
+        ]
 
-        # Instantiate first to kickoff connection process
-        signals = [getattr(self, name) for name in names]
+        pending_funcs = {
+            dev: getattr(dev, '_required_for_connection', {})
+            for name, dev in self.walk_subdevices(include_lazy=all_signals)
+        }
+        pending_funcs[self] = self._required_for_connection
 
         t0 = ttime.time()
         while timeout is None or (ttime.time() - t0) < timeout:
-            connected = [sig.connected for sig in signals]
-            if all(connected):
+            connected = all(sig.connected for sig in signals)
+            if connected and not any(pending_funcs.values()):
                 return
             ttime.sleep(min((0.05, timeout / 10.0)))
 
-        unconnected = ', '.join(self._get_unconnected())
-        raise TimeoutError('Failed to connect to all signals: {}'
-                           ''.format(unconnected))
+        def get_name(sig):
+            sig_name = f'{self.name}.{sig.dotted_name}'
+            return (f'{sig_name} ({sig.pvname})' if hasattr(sig, 'pvname')
+                    else sig_name)
 
-    def _get_unconnected(self):
-        '''Yields all of the signal pvnames or prefixes that are unconnected
-
-        This recurses throughout the device hierarchy, only checking signals
-        that have already been instantiated.
-        '''
-        for attr, sig in self.get_instantiated_signals():
-            if sig.connected:
-                continue
-
-            if hasattr(sig, 'pvname'):
-                prefix = sig.pvname
-            else:
-                prefix = sig.prefix
-
-            yield '{} ({})'.format(attr, prefix)
+        reasons = []
+        unconnected = ', '.join(get_name(sig)
+                                for sig in signals if not sig.connected)
+        if unconnected:
+            reasons.append(f'Failed to connect to all signals: {unconnected}')
+        if any(pending_funcs.values()):
+            pending = ', '.join(description.format(device=dev.name)
+                                for dev, funcs in pending_funcs.items()
+                                for obj, description in funcs.items())
+            reasons.append(f'Pending operations: {pending}')
+        raise TimeoutError('; '.join(reasons))
 
     def get_instantiated_signals(self, *, attr_prefix=None):
         '''Yields all of the instantiated signals in a device hierarchy
@@ -1138,27 +1161,45 @@ class Device(BlueskyInterface, OphydObject):
 
     @property
     def connected(self):
-        return all(signal.connected for name, signal in self._signals.items())
+        signals_connected = all(walk.item.connected for walk in
+                                self.walk_signals(include_lazy=False))
+        pending_funcs = any(
+            getattr(item, '_required_for_connection', None)
+            for name, item in self.walk_subdevices()
+        )
+
+        pending_funcs = pending_funcs or self._required_for_connection
+        return signals_connected and not pending_funcs
 
     def __getattr__(self, name):
-        '''Get a component from a fully-qualified name
-
-        As a reminder, __getattr__ is only called if a real attribute doesn't
-        already exist, or a device component has yet to be instantiated.
-        '''
+        '''Get a component from a fully-qualified name'''
         if '.' in name:
             return operator.attrgetter(name)(self)
 
+        # Components will be instantiated through the descriptor mechanism in
+        # the Component class, so anything reaching this point is an error.
+        raise AttributeError(name)
+
+    def _instantiate_component(self, attr):
+        'Create a Component specifically for this Device'
         if self._destroyed:
             raise RuntimeError('Cannot instantiate new signals on a destroyed Device')
+
         try:
             # Initial access of signal
-            cpt = self._sig_attrs[name]
-            sig = cpt.__get__(self, None)
-            setattr(self, name, sig)
-            return sig
+            cpt = self._sig_attrs[attr]
         except KeyError:
-            raise AttributeError(name)
+            raise AttributeError(attr) from None
+
+        self._signals[attr] = cpt.create_component(self)
+        sig = self._signals[attr]
+
+        for event_type, functions in cpt._subscriptions.items():
+            for func in functions:
+                method = getattr(self, func.__name__)
+                sig.subscribe(method, event_type=event_type, run=sig.connected)
+
+        return sig
 
     @doc_annotation_forwarder(BlueskyInterface)
     def read(self):
@@ -1169,11 +1210,10 @@ class Device(BlueskyInterface, OphydObject):
         return res
 
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
-        """
-        returns dictionary mapping names to (value, timestamp) pairs
+        """Dictionary mapping names to value dicts with keys: value, timestamp
 
-        To control which fields are included, adjust the
-        ``configuration_attrs`` list.
+        To control which fields are included, change the Component kinds on the
+        device, or modify the ``configuration_attrs`` list.
         """
         res = OrderedDict()
 
@@ -1490,6 +1530,68 @@ def create_device_from_components(name, *, docstring=None,
         clsdict[attr] = component
 
     return type(name, base_class, clsdict)
+
+
+def required_for_connection(func=None, *, description=None, device=None):
+    '''Require that a method be called prior to marking a Device as connected
+
+    This is a decorator that wraps the given function.  When the function is
+    called for the first time, the Device instance is informed that this
+    operation is no longer pending.
+
+    Parameters
+    ----------
+    func : callable, optional
+        Function to wrap
+    description : str, optional
+        Optional string description to be shown when `wait_for_connection`
+        fails.  Can include {device} which will be substituted when presented
+        to the user.
+    '''
+
+    if func is None:
+        if description is None:
+            raise ValueError('Either func or description must be specified')
+        return functools.partial(required_for_connection,
+                                 description=description)
+
+    if description is None:
+        if hasattr(func, '_subscriptions'):
+            description = ', '.join(
+                f'{{device}}.{func.__name__}[{event_type}] subscription'
+                for cpt, event_type in func._subscriptions
+            )
+        else:
+            description = f'{func.__name__} call'
+
+    key = inspect.unwrap(func)
+
+    if device is not None:
+        # With the Device specified, this can only be done post-init, with the
+        # required_for_connection flag set prior to returning.
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                ret = func(*args, **kwargs)
+            finally:
+                device._required_for_connection.pop(key, None)
+            return ret
+
+        # Add a specific requirement
+        device._required_for_connection[func] = description
+    else:
+        # With the Device unspecified, this can only be used as a decorator on
+        # unbound methods.
+        @functools.wraps(func)
+        def wrapped(self, *args, **kwargs):
+            try:
+                ret = func(self, *args, **kwargs)
+            finally:
+                self._required_for_connection.pop(key, None)
+            return ret
+
+    wrapped._required_for_connection = (key, description)
+    return wrapped
 
 
 def _wait_for_connection_context(value, doc):

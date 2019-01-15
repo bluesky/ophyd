@@ -191,7 +191,7 @@ class OphydObject:
         '''
         if sub_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(sub_type, self.subscriptions))
 
         kwargs['sub_type'] = sub_type
@@ -276,7 +276,7 @@ class OphydObject:
         # check that this is a valid event type
         if event_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(event_type, self.subscriptions))
 
         # wrapper for callback to snarf exceptions
@@ -373,6 +373,7 @@ class OphydObject:
         return '{}({})'.format(self.__class__.__name__, info)
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the object repr'
         if self.name is not None:
             yield ('name', self.name)
 
@@ -380,5 +381,22 @@ class OphydObject:
             yield ('parent', self.parent.name)
 
     def __copy__(self):
-        info = dict(self._repr_info())
-        return self.__class__(**info)
+        '''Copy the ophyd object
+
+        Shallow copying ophyd objects uses the repr information from the
+        _repr_info method to create a new object.
+        '''
+        kwargs = dict(self._repr_info())
+        return self.__class__(**kwargs)
+
+    def __getnewargs_ex__(self):
+        '''Used by pickle to serialize an ophyd object
+
+        Returns
+        -------
+        (args, kwargs)
+            Arguments to be passed to __init__, necessary to recreate this
+            object
+        '''
+        kwargs = dict(self._repr_info())
+        return ((), kwargs)

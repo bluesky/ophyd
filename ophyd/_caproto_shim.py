@@ -9,7 +9,6 @@ from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
 
 thread_class = threading.Thread
-pv_form = 'time'
 module_logger = logging.getLogger(__name__)
 _dispatcher = None
 name = 'caproto'
@@ -39,6 +38,8 @@ class PV(_PV):
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
+        if not self.auto_monitor:
+            self.auto_monitor = True
         callback = wrap_callback(_dispatcher, 'monitor', callback)
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
@@ -46,10 +47,35 @@ class PV(_PV):
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
+        if callback:
+            use_complete = True
         callback = wrap_callback(_dispatcher, 'get_put', callback)
         return super().put(value, wait=wait, timeout=timeout,
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
+
+    # TODO: caproto breaks API compatibility in wait_for_connection, raising TimeoutError
+
+    def get_all_metadata_blocking(self, timeout):
+        if self._args['status'] is None:
+            self.get_timevars(timeout=timeout)
+        self.get_ctrlvars(timeout=timeout)
+        md = self._args.copy()
+        md.pop('value', None)
+        return md
+
+    def get_all_metadata_callback(self, callback, *, timeout):
+        def get_metadata_thread(pvname):
+            md = self.get_all_metadata_blocking(timeout=timeout)
+            callback(pvname, md)
+
+        _dispatcher.schedule_utility_task(get_metadata_thread,
+                                          pvname=self.pvname)
+
+    def clear_callbacks(self):
+        super().clear_callbacks()
+        self.access_callbacks.clear()
+        self.connection_callbacks.clear()
 
     def clear_auto_monitor(self):
         # TODO move into caproto
@@ -97,7 +123,7 @@ def setup(logger):
 
     Must be called once per session using ophyd
     '''
-    # It's important to use the same context in the callback dispatcher
+    # It's important to use the same context in the callback _dispatcher
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
     global _dispatcher
@@ -127,7 +153,6 @@ def setup(logger):
     logger.debug('Installing event dispatcher')
     context = PV._default_context.broadcaster
     _dispatcher = EventDispatcher(thread_class=CaprotoCallbackThread,
-                                  context=context,
-                                  logger=logger)
+                                  context=context, logger=logger)
     atexit.register(_cleanup)
     return _dispatcher

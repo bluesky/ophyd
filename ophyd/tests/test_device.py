@@ -8,7 +8,8 @@ from ophyd import (Device, Component, FormattedComponent,
                    wait_for_lazy_connection, do_not_wait_for_lazy_connection)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
-from ophyd.device import ComponentWalk, create_device_from_components
+from ophyd.device import (ComponentWalk, create_device_from_components,
+                          required_for_connection)
 from ophyd.utils import ExceptionBundle
 
 
@@ -669,3 +670,59 @@ def test_create_device_bad_component():
     with pytest.raises(ValueError):
         create_device_from_components('Dev', base_class=Device,
                                       bad_component=None)
+
+
+def test_required_for_connection_on_method_with_subscriptions():
+    class MyDevice(Device):
+        cpt = Component(Signal, value=0)
+
+        @required_for_connection
+        @cpt.sub_value
+        def method(self):
+            ...
+
+    dev = MyDevice(name='dev')
+
+    with pytest.raises(TimeoutError):
+        dev.wait_for_connection(timeout=0.1)
+
+    dev.cpt.put(0)
+    dev.wait_for_connection(timeout=0.1)
+
+
+def test_required_for_connection_on_method():
+    class MyDevice(Device):
+        @required_for_connection
+        def method(self):
+            ...
+
+    dev = MyDevice(name='dev')
+
+    # Timeout without it having been called:
+    with pytest.raises(TimeoutError):
+        dev.wait_for_connection(timeout=0.01)
+
+    # Call and expect no timeout:
+    dev.method()
+    dev.wait_for_connection(timeout=0.01)
+
+
+def test_required_for_connection_in_init():
+    class MyDevice(Device):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.call_to_connect = required_for_connection(self.method,
+                                                           device=self)
+
+        def method(self):
+            print('method called')
+
+    dev = MyDevice(name='dev')
+
+    # Timeout without it having been called:
+    with pytest.raises(TimeoutError):
+        dev.wait_for_connection(timeout=0.01)
+
+    # Call and expect no timeout:
+    dev.call_to_connect()
+    dev.wait_for_connection(timeout=0.01)

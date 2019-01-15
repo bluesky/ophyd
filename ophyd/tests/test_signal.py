@@ -4,10 +4,69 @@ import copy
 import pytest
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
-from ophyd.utils import ReadOnlyError
+from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
 
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope='function')
+def ro_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignalRO(signal_test_ioc.pvs['pair_rbv'], name='pair_rbv')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def bool_enum_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignal(signal_test_ioc.pvs['bool_enum'], name='bool_enum')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def rw_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignal(signal_test_ioc.pvs['read_write'], name='read_write')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def pair_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignal(read_pv=signal_test_ioc.pvs['pair_rbv'],
+                      write_pv=signal_test_ioc.pvs['pair_set'],
+                      name='pair')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def motor_pair_signal(cleanup, motor):
+    sig = EpicsSignal(write_pv=motor.user_setpoint.pvname,
+                      read_pv=motor.user_readback.pvname)
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def set_severity_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignal(signal_test_ioc.pvs['set_severity'], name='set_severity')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def alarm_status_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignal(signal_test_ioc.pvs['alarm_status'], name='alarm_status')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
 
 
 def test_signal_base():
@@ -92,19 +151,11 @@ def test_signal_copy():
     assert signal.timestamp == sig_copy.timestamp
 
 
-def test_rw_removal(cleanup, signal_test_ioc):
-    # rw kwarg is no longer used
-    with pytest.raises(RuntimeError):
-        EpicsSignal(signal_test_ioc.pvs['read_only'], rw=False)
-
-    with pytest.raises(RuntimeError):
-        EpicsSignal(signal_test_ioc.pvs['read_only'], rw=True)
-
-
 def test_epicssignal_readonly(cleanup, signal_test_ioc):
     signal = EpicsSignalRO(signal_test_ioc.pvs['read_only'])
     cleanup.add(signal)
     signal.wait_for_connection()
+    print('EpicsSignalRO.metadata=', signal.metadata)
     signal.value
 
     assert not signal.write_access
@@ -140,14 +191,9 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
     time.sleep(0.2)
 
 
-def test_epicssignal_readwrite_limits(cleanup, signal_test_ioc):
-    signal = EpicsSignal(
-        read_pv=signal_test_ioc.pvs['read_only'],
-        write_pv=signal_test_ioc.pvs['read_write'], limits=True
-    )
-    cleanup.add(signal)
-
-    signal.wait_for_connection()
+def test_epicssignal_readwrite_limits(pair_signal):
+    signal = pair_signal
+    signal.use_limits = True
     signal.check_value((signal.low_limit + signal.high_limit) / 2)
 
     with pytest.raises(ValueError):
@@ -160,19 +206,14 @@ def test_epicssignal_readwrite_limits(cleanup, signal_test_ioc):
         signal.check_value(signal.high_limit + 1)
 
 
-def test_epicssignal_readwrite(cleanup, signal_test_ioc):
-    signal = EpicsSignal(
-        read_pv=signal_test_ioc.pvs['read_only'],
-        write_pv=signal_test_ioc.pvs['read_write'], limits=True
-    )
-    cleanup.add(signal)
+def test_epicssignal_readwrite(signal_test_ioc, pair_signal):
+    pair_signal.use_limits = True
+    signal = pair_signal
 
-    signal.wait_for_connection()
-    assert signal.setpoint_pvname == signal_test_ioc.pvs['read_write']
-    assert signal.pvname == signal_test_ioc.pvs['read_only']
+    assert signal.setpoint_pvname == signal_test_ioc.pvs['pair_set']
+    assert signal.pvname == signal_test_ioc.pvs['pair_rbv']
     signal.value
 
-    signal._update_rate = 2
     time.sleep(0.2)
 
     value = 10
@@ -229,21 +270,13 @@ def test_no_connection(cleanup, signal_test_ioc):
         sig.wait_for_connection()
 
 
-def test_enum_strs(cleanup, signal_test_ioc):
-    sig = EpicsSignal(signal_test_ioc.pvs['bool_enum'])
-    cleanup.add(sig)
-    sig.wait_for_connection()
-
-    assert sig.enum_strs == ('Off', 'On')
+def test_enum_strs(bool_enum_signal):
+    assert bool_enum_signal.enum_strs == ('Off', 'On')
 
 
-def test_setpoint(cleanup, signal_test_ioc):
-    sig = EpicsSignal(signal_test_ioc.pvs['read_write'])
-    cleanup.add(sig)
-    sig.wait_for_connection()
-
-    sig.get_setpoint()
-    sig.get_setpoint(as_string=True)
+def test_setpoint(rw_signal):
+    rw_signal.get_setpoint()
+    rw_signal.get_setpoint(as_string=True)
 
 
 def test_epicssignalro():
@@ -252,17 +285,15 @@ def test_epicssignalro():
         EpicsSignalRO('test', write_pv='nope_sorry')
 
 
-def test_describe(cleanup, signal_test_ioc):
-    sig = EpicsSignal(signal_test_ioc.pvs['bool_enum'], name='my_pv')
-    cleanup.add(sig)
-    sig.wait_for_connection()
+def test_describe(bool_enum_signal):
+    sig = bool_enum_signal
 
     sig.put(1)
-    desc = sig.describe()['my_pv']
+    desc = sig.describe()['bool_enum']
     assert desc['dtype'] == 'integer'
     assert desc['shape'] == []
     # assert 'precision' in desc
-    assert desc['enum_strs'] == ['Off', 'On']
+    assert desc['enum_strs'] == ('Off', 'On')
     assert 'upper_ctrl_limit' in desc
     assert 'lower_ctrl_limit' in desc
 
@@ -337,41 +368,31 @@ def test_soft_derived():
     derived.subscribe(meta_callback, event_type=derived.SUB_META, run=False)
 
     original._metadata['write_access'] = False
-    original._run_subs(sub_type='meta', timestamp=None, **original._metadata)
+    original._run_subs(sub_type='meta', **original._metadata)
 
     assert called == [('meta', True, True, False)]
 
 
-def test_epics_signal_derived(cleanup, signal_test_ioc):
-    signal = EpicsSignalRO(
-        read_pv=signal_test_ioc.pvs['read_only'],
-        name='original',
-    )
-    cleanup.add(signal)
+def test_epics_signal_derived(ro_signal):
+    assert ro_signal.connected
+    assert ro_signal.read_access
+    assert not ro_signal.write_access
 
-    signal.wait_for_connection()
-    assert signal.connected
-    assert signal.read_access
-    assert not signal.write_access
-
-    derived = DerivedSignal(derived_from=signal, name='derived')
+    derived = DerivedSignal(derived_from=ro_signal, name='derived')
     derived.wait_for_connection()
 
     assert derived.connected
     assert derived.read_access
     assert not derived.write_access
 
-    assert derived.timestamp == signal.timestamp
-    assert derived.get() == signal.value
+    assert derived.timestamp == ro_signal.timestamp
+    assert derived.get() == ro_signal.value
 
 
 @pytest.mark.parametrize('put_complete', [True, False])
-def test_epicssignal_set(cleanup, motor, put_complete):
-    sim_pv = EpicsSignal(write_pv=motor.user_setpoint.pvname,
-                         read_pv=motor.user_readback.pvname,
-                         put_complete=put_complete)
-    cleanup.add(sim_pv)
-    sim_pv.wait_for_connection()
+def test_epicssignal_set(motor_pair_signal, put_complete):
+    sim_pv = motor_pair_signal
+    sim_pv.put_complete = put_complete
 
     logging.getLogger('ophyd.signal').setLevel(logging.DEBUG)
     logging.getLogger('ophyd.utils.epics_pvs').setLevel(logging.DEBUG)
@@ -402,23 +423,37 @@ def test_epicssignal_set(cleanup, motor, put_complete):
     wait(st, timeout=5)
 
 
-def test_epicssignal_alarm_status(cleanup, motor):
-    sig = EpicsSignal(write_pv=motor.user_setpoint.setpoint_pvname,
-                      read_pv=motor.user_readback.pvname)
-    cleanup.add(sig)
-    sig.wait_for_connection()
-    sig.alarm_status
-    sig.alarm_severity
-    sig.setpoint_alarm_status
-    sig.setpoint_alarm_severity
+statuses_and_severities = [
+    (AlarmStatus.NO_ALARM, AlarmSeverity.NO_ALARM),
+    (AlarmStatus.READ, AlarmSeverity.MINOR),
+    (AlarmStatus.WRITE, AlarmSeverity.MAJOR),
+    (AlarmStatus.HIHI, AlarmSeverity.INVALID),
+    (AlarmStatus.NO_ALARM, AlarmSeverity.NO_ALARM),
+]
 
 
-def test_epicssignalro_alarm_status(cleanup, motor):
-    sig = EpicsSignalRO(motor.user_readback.pvname)
-    cleanup.add(sig)
-    sig.wait_for_connection()
-    sig.alarm_status
-    sig.alarm_severity
+@pytest.mark.parametrize('status, severity', statuses_and_severities)
+def test_epicssignal_alarm_status(set_severity_signal, alarm_status_signal, pair_signal, status, severity):
+    alarm_status_signal.put(status, wait=True)
+    set_severity_signal.put(severity, wait=True)
+
+    pair_signal.get()
+    assert pair_signal.alarm_status == status
+    assert pair_signal.alarm_severity == severity
+
+    pair_signal.get_setpoint()
+    assert pair_signal.setpoint_alarm_status == status
+    assert pair_signal.setpoint_alarm_severity == severity
+
+
+@pytest.mark.parametrize('status, severity', statuses_and_severities)
+def test_epicssignalro_alarm_status(set_severity_signal, alarm_status_signal, ro_signal, status, severity):
+    alarm_status_signal.put(status, wait=True)
+    set_severity_signal.put(severity, wait=True)
+
+    ro_signal.get()
+    assert ro_signal.alarm_status == status
+    assert ro_signal.alarm_severity == severity
 
 
 def test_hints(cleanup, motor):

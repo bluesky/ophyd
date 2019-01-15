@@ -128,7 +128,7 @@ class SignalPositionerMixin(PositionerBase):
         # set() functionality depends on the signal
         self._internal_status = self._mixed_set(position, timeout=timeout,
                                                 settle_time=self.settle_time)
-        self._internal_status.finished_cb = finished
+        self._internal_status.add_callback(finished)
 
         if wait:
             try:

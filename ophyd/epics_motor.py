@@ -6,7 +6,7 @@ from .signal import (EpicsSignal, EpicsSignalRO)
 from .utils import DisconnectedError
 from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
 from .positioner import PositionerBase
-from .device import (Device, Component as Cpt)
+from .device import (Device, Component as Cpt, required_for_connection)
 from .status import wait as status_wait
 from enum import Enum
 
@@ -84,13 +84,11 @@ class EpicsMotor(Device, PositionerBase):
         self.user_readback.name = self.name
 
     @property
-    @raise_if_disconnected
     def precision(self):
         '''The precision of the readback PV, as reported by EPICS'''
         return self.user_readback.precision
 
     @property
-    @raise_if_disconnected
     def egu(self):
         '''The engineering units (EGU) for a position'''
         return self.motor_egu.get()
@@ -217,11 +215,13 @@ class EpicsMotor(Device, PositionerBase):
         '''Check that the position is within the soft limits'''
         self.user_setpoint.check_value(pos)
 
+    @required_for_connection
     @user_readback.sub_value
     def _pos_changed(self, timestamp=None, value=None, **kwargs):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)
 
+    @required_for_connection
     @motor_done_move.sub_value
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
