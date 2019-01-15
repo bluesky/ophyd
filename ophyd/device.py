@@ -831,7 +831,7 @@ class Device(BlueskyInterface, OphydObject):
     def __init_subclass__(cls, **kwargs):
         'This is called automatically in Python for all subclasses of Device'
         super().__init_subclass__(**kwargs)
-        cls._initialize_device(**kwargs)
+        cls._initialize_device()
 
     @classmethod
     def walk_components(cls):
