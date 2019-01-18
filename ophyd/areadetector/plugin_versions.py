@@ -4,7 +4,7 @@ from ..device import create_device_from_components
 from . import new_plugins
 
 
-class PluginVersions(Device):
+class PluginVersions(Device, version_type='ADCore'):
     ...
 
 

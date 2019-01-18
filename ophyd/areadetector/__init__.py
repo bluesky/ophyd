@@ -9,4 +9,5 @@ from .base import *
 from .cam import *
 from .detectors import *
 from .plugins import *
+from .new_plugins import *
 from .trigger_mixins import *

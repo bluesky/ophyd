@@ -2,7 +2,7 @@ from .. import Device, Component as Cpt
 from . import plugin_versions
 
 
-class CommonPlugins(Device):
+class CommonPlugins(Device, version_type='ADCore'):
     ...
 
 

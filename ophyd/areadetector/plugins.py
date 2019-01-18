@@ -59,7 +59,7 @@ def register_plugin(cls):
     return cls
 
 
-class PluginBase(ADBase, version=(1, 9, 1)):
+class PluginBase(ADBase, version=(1, 9, 1), version_type='ADCore'):
     '''AreaDetector plugin base class'''
     def __init__(self, *args, **kwargs):
 
@@ -273,7 +273,7 @@ class PluginBase(ADBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class ImagePlugin(PluginBase, version=(1, 9, 1)):
+class ImagePlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'image1:'
     _suffix_re = r'image\d:'
     _html_docs = ['NDPluginStdArrays.html']
@@ -302,7 +302,7 @@ class ImagePlugin(PluginBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class StatsPlugin(PluginBase, version=(1, 9, 1)):
+class StatsPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'Stats1:'
     _suffix_re = r'Stats\d:'
     _html_docs = ['NDPluginStats.html']
@@ -434,7 +434,7 @@ class StatsPlugin(PluginBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class ColorConvPlugin(PluginBase, version=(1, 9, 1)):
+class ColorConvPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'CC1:'
     _suffix_re = r'CC\d:'
     _html_docs = ['NDPluginColorConvert.html']
@@ -445,7 +445,7 @@ class ColorConvPlugin(PluginBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class ProcessPlugin(PluginBase, version=(1, 9, 1)):
+class ProcessPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'Proc1:'
     _suffix_re = r'Proc\d:'
     _html_docs = ['NDPluginProcess.html']
@@ -517,7 +517,7 @@ class ProcessPlugin(PluginBase, version=(1, 9, 1)):
     valid_flat_field = Cpt(EpicsSignalRO, 'ValidFlatField_RBV', string=True, kind='config')
 
 
-class Overlay(ADBase, version=(1, 9, 1)):
+class Overlay(ADBase, version=(1, 9, 1), version_type='ADCore'):
     _html_docs = ['NDPluginOverlay.html']
 
     blue = Cpt(SignalWithRBV, 'Blue')
@@ -547,7 +547,7 @@ class Overlay(ADBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class OverlayPlugin(PluginBase, version=(1, 9, 1)):
+class OverlayPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     '''Plugin which adds graphics overlays to an NDArray image
 
     Keyword arguments are passed to the base class, PluginBase
@@ -578,7 +578,7 @@ class OverlayPlugin(PluginBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class ROIPlugin(PluginBase, version=(1, 9, 1)):
+class ROIPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
 
     _default_suffix = 'ROI1:'
     _suffix_re = r'ROI\d:'
@@ -689,7 +689,7 @@ class ROIPlugin(PluginBase, version=(1, 9, 1)):
 
 
 @register_plugin
-class TransformPlugin(PluginBase, version=(1, 9, 1)):
+class TransformPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'Trans1:'
     _suffix_re = r'Trans\d:'
     _html_docs = ['NDPluginTransform.html']
@@ -744,7 +744,7 @@ class TransformPlugin(PluginBase, version=(1, 9, 1)):
     )
 
 
-class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1)):
+class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = ''
     _html_docs = ['NDPluginFile.html']
     _plugin_type = 'NDPluginFile'
@@ -773,7 +773,7 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1)):
 
 
 @register_plugin
-class NetCDFPlugin(FilePlugin, version=(1, 9, 1)):
+class NetCDFPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'netCDF1:'
     _suffix_re = r'netCDF\d:'
     _html_docs = ['NDFileNetCDF.html']
@@ -781,7 +781,7 @@ class NetCDFPlugin(FilePlugin, version=(1, 9, 1)):
 
 
 @register_plugin
-class TIFFPlugin(FilePlugin, version=(1, 9, 1)):
+class TIFFPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'TIFF1:'
     _suffix_re = r'TIFF\d:'
     _html_docs = ['NDFileTIFF.html']
@@ -789,7 +789,7 @@ class TIFFPlugin(FilePlugin, version=(1, 9, 1)):
 
 
 @register_plugin
-class JPEGPlugin(FilePlugin, version=(1, 9, 1)):
+class JPEGPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'JPEG1:'
     _suffix_re = r'JPEG\d:'
     _html_docs = ['NDFileJPEG.html']
@@ -799,7 +799,7 @@ class JPEGPlugin(FilePlugin, version=(1, 9, 1)):
 
 
 @register_plugin
-class NexusPlugin(FilePlugin, version=(1, 9, 1)):
+class NexusPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'Nexus1:'
     _suffix_re = r'Nexus\d:'
     _html_docs = ['NDFileNexus.html']
@@ -812,7 +812,7 @@ class NexusPlugin(FilePlugin, version=(1, 9, 1)):
 
 
 @register_plugin
-class HDF5Plugin(FilePlugin, version=(1, 9, 1)):
+class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'HDF1:'
     _suffix_re = r'HDF\d:'
     _html_docs = ['NDFileHDF5.html']
@@ -882,7 +882,7 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1)):
 
 
 @register_plugin
-class MagickPlugin(FilePlugin, version=(1, 9, 1)):
+class MagickPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'Magick1:'
     _suffix_re = r'Magick\d:'
     _html_docs = ['NDFileMagick']  # sic., no html extension

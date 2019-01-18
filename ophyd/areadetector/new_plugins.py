@@ -588,7 +588,7 @@ class ROIPlugin_V34(PluginBase_V34, ROIPlugin_V33, version=(3, 4), version_of=RO
 # --- NDROIStat ---
 
 
-class ROIStatPlugin(Device):
+class ROIStatPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -624,7 +624,7 @@ class ROIStatPlugin_V34(PluginBase_V34, ROIStatPlugin_V33, version=(3, 4), versi
 # --- NDROIStatN ---
 
 
-class ROIStatNPlugin(Device):
+class ROIStatNPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -864,7 +864,7 @@ class TransformPlugin_V34(PluginBase_V34, TransformPlugin_V33, version=(3, 4), v
 # --- NDPva ---
 
 
-class PvaPlugin(Device):
+class PvaPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -892,7 +892,7 @@ class PvaPlugin_V34(PluginBase_V34, PvaPlugin_V33, version=(3, 4), version_of=Pv
 # --- NDFFT ---
 
 
-class FFTPlugin(Device):
+class FFTPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -933,7 +933,7 @@ class FFTPlugin_V34(PluginBase_V34, FFTPlugin_V33, version=(3, 4), version_of=FF
 # --- NDScatter ---
 
 
-class ScatterPlugin(Device):
+class ScatterPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -957,7 +957,7 @@ class ScatterPlugin_V34(PluginBase_V34, ScatterPlugin_V33, version=(3, 4), versi
 # --- NDPosPlugin ---
 
 
-class PosPlugin(Device):
+class PosPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -999,7 +999,7 @@ class PosPluginPlugin_V34(PluginBase_V34, PosPluginPlugin_V33, version=(3, 4), v
 # --- NDCircularBuff ---
 
 
-class CircularBuffPlugin(Device):
+class CircularBuffPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1057,7 +1057,7 @@ class CircularBuffPlugin_V34(
 # --- NDAttributeN ---
 
 
-class AttributeNPlugin(Device):
+class AttributeNPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1075,7 +1075,7 @@ class AttributeNPlugin_V26(AttributeNPlugin_V22, version=(2, 6), version_of=Attr
 # --- NDAttrPlot ---
 
 
-class AttrPlotPlugin(Device):
+class AttrPlotPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1096,7 +1096,7 @@ class AttrPlotPlugin_V34(PluginBase_V34, AttrPlotPlugin_V33, version=(3, 4), ver
 # --- NDTimeSeriesN ---
 
 
-class TimeSeriesNPlugin(Device):
+class TimeSeriesNPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1109,7 +1109,7 @@ class TimeSeriesNPlugin_V25(TimeSeriesNPlugin, version=(2, 5), version_of=TimeSe
 # --- NDTimeSeries ---
 
 
-class TimeSeriesPlugin(Device):
+class TimeSeriesPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1151,7 +1151,7 @@ class TimeSeriesPlugin_V34(PluginBase_V34, TimeSeriesPlugin_V33, version=(3, 4),
 # --- NDCodec ---
 
 
-class CodecPlugin(Device):
+class CodecPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1172,19 +1172,7 @@ class CodecPlugin_V34(PluginBase_V34, CodecPlugin, version=(3, 4), version_of=Co
 
 
 
-class GatherNPlugin(Device):
-    "Serves as a base class for other versions"
-    def __init__(self, *args, index, **kwargs):
-        self.index = index
-        super().__init__(*args, **kwargs)
-
-
-class GatherNPlugin_V31(GatherNPlugin, version=(3, 1), version_of=GatherNPlugin):
-    gather_array_address = FCpt(SignalWithRBV, "{self.prefix}NDArrayAddress_{self.index}")
-    gather_array_port = FCpt(SignalWithRBV, "{self.prefix}NDArrayPort_{self.index}", string=True)
-
-
-class AttributePlugin(Device):
+class AttributePlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
 
@@ -1254,5 +1242,17 @@ class AttributePlugin_V34(PluginBase_V34, AttributePlugin_V33, version=(3, 4), v
 
 # --- NDGather / NDGatherN ---
 
-class GatherPlugin(PluginBase_V31, version=(3, 1)):
+class GatherPlugin(PluginBase_V31, version=(3, 1), version_type='ADCore'):
     ...
+
+
+class GatherNPlugin(Device, version_type='ADCore'):
+    "Serves as a base class for other versions"
+    def __init__(self, *args, index, **kwargs):
+        self.index = index
+        super().__init__(*args, **kwargs)
+
+
+class GatherNPlugin_V31(GatherNPlugin, version=(3, 1), version_of=GatherNPlugin):
+    gather_array_address = FCpt(SignalWithRBV, "{self.prefix}NDArrayAddress_{self.index}")
+    gather_array_port = FCpt(SignalWithRBV, "{self.prefix}NDArrayPort_{self.index}", string=True)
