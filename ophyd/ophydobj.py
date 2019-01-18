@@ -104,6 +104,19 @@ class OphydObject:
         super().__init_subclass__(**kwargs)
 
         if version is None:
+            if version_of is not None:
+                raise RuntimeError('Must specify a version if `version_of` '
+                                   'is specified')
+            if version_type is None:
+                return
+            # Allow specification of version_type without specifying a version,
+            # for use in a base class
+
+            cls._class_info_ = dict(
+                versions={},
+                version=None,
+                version_type=version_type,
+            )
             return
 
         if version_of is None:
