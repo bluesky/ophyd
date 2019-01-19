@@ -7,7 +7,8 @@ import threading
 import functools
 import math
 
-from collections import (OrderedDict, namedtuple, Sequence, Mapping)
+from collections import (OrderedDict, namedtuple)
+from collections.abc import Sequence, Mapping
 
 from .utils import (DisconnectedError, ExceptionBundle)
 from .positioner import (PositionerBase, SoftPositioner)
