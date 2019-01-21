@@ -1140,7 +1140,7 @@ fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      EpicsSignalWithRBV: FakeEpicsSignal}
 
 
-def hw():
+def hw(save_path=None):
     "Build a set of synthetic hardware (hence the abbreviated name, hw)"
     motor = SynAxis(name='motor', labels={'motors'})
     motor1 = SynAxis(name='motor1', labels={'motors'})
@@ -1181,7 +1181,8 @@ def hw():
                            name='img', labels={'detectors'})
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
-                                name='img', labels={'detectors'})
+                                name='img', labels={'detectors'},
+                                save_path=save_path)
     invariant1 = InvariantSignal(func=lambda: 0, name='invariant1',
                                  labels={'detectors'})
     invariant2 = InvariantSignal(func=lambda: 0, name='invariant2',
