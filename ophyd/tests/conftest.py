@@ -283,9 +283,9 @@ def using_fake_epics_waveform(fcn):
 
 
 @pytest.fixture()
-def hw():
+def hw(tmpdir):
     from ophyd.sim import hw
-    return hw()
+    return hw(str(tmpdir))
 
 
 @pytest.fixture(params=['caproto', 'pyepics'], autouse=True)
