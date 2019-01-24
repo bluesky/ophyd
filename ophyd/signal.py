@@ -1,5 +1,4 @@
 # vi: ts=4 sw=4
-from collections import ChainMap
 import logging
 import time
 import threading
@@ -458,7 +457,8 @@ class DerivedSignal(Signal):
         desc['derived_from'] = self._derived_from.name
         # Description of the derived signal 
         derived_desc = self._derived_from.describe()[self._derived_from.name]
-        return {self.name: dict(ChainMap(desc, derived_desc))}
+        derived_desc.update(desc)
+        return {self.name: derived_desc}
 
     def _update_metadata_from_callback(self, **kwargs):
         updated_md = {key: kwargs[key] for key in self.metadata_keys
