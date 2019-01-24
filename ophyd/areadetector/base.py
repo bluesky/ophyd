@@ -41,7 +41,7 @@ class NDDerivedSignal(DerivedSignal):
         ``Signal`` objects. The specifications of the signals follows the same
         rules as the ``derived_from`` parameter
 
-    num_dimensions: int, str, ``Signal``
+    num_dimensions: int, str, ``Signal``, optional
         The number of dimensions of the array. This can either be a static
         ``int`` or a ``Signal`` itself.
 
@@ -58,7 +58,7 @@ class NDDerivedSignal(DerivedSignal):
                                                shape=('height', 'width'),
                                                num_dimensions=2)
     """
-    def __init__(self, derived_from, shape, num_dimensions,
+    def __init__(self, derived_from, shape, num_dimensions=None,
                  parent=None, **kwargs):
         super().__init__(derived_from, parent=parent, **kwargs)
         # Assemble our shape of signals
@@ -69,6 +69,8 @@ class NDDerivedSignal(DerivedSignal):
             self._shape.append(dim)
         self._shape = tuple(self._shape)
         # Assemble ndims
+        if not num_dimensions:
+            num_dimensions = len(self._shape)
         if isinstance(num_dimensions, str):
             num_dimensions = getattr(parent, num_dimensions)
         self._num_dimensions = num_dimensions
