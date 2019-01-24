@@ -4,8 +4,9 @@ import re
 import sys
 from collections import OrderedDict
 import networkx as nx
+import numpy as np
 
-from ..signal import EpicsSignal
+from ..signal import EpicsSignal, DerivedSignal
 from . import docs
 from ..device import (Device, Component)
 from ..signal import (ArrayAttributeSignal)
@@ -17,6 +18,77 @@ class EpicsSignalWithRBV(EpicsSignal):
 
     def __init__(self, prefix, **kwargs):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
+
+
+class NDDerivedSignal(DerivedSignal):
+    """
+    DerivedSignal to shape a flattened array
+
+    The purpose of this class is to take a flattened array and shape in its'
+    proper form. The shape of the final array may be static in which case the
+    shape and number of dimensions can be set as static integers. Otherwise,
+    other signals from this classes parent can inform what the proper shape of
+    the array
+    """
+    def __init__(self, derived_from, shape, num_dimensions,
+                 parent=None, **kwargs):
+        super().__init__(derived_from, parent=parent, **kwargs)
+        # Assemble our shape of signals
+        self._shape = []
+        for dim in shape:
+            if isinstance(dim, str):
+                dim = getattr(parent, dim)
+            self._shape.append(dim)
+        self._shape = tuple(self._shape)
+        # Assemble ndims
+        if isinstance(num_dimensions, str):
+            num_dimensions = getattr(parent, num_dimensions)
+        self._num_dimensions = num_dimensions
+
+        # Ensure callbacks are fired when array is reshaped
+        for dim in self._shape + (self._num_dimensions, ):
+            if not isinstance(dim, (int, float)):
+                dim.subscribe(self._array_shape_callback,
+                              event_type=self.SUB_VALUE,
+                              run=False)
+
+    @property
+    def derived_shape(self):
+        """Shape of output signal"""
+        shape = list()
+        for dim in self._shape:
+            if not isinstance(dim, (int, float)):
+                dim = dim.get()
+            shape.append(dim)
+        return tuple(shape)
+
+    @property
+    def derived_ndims(self):
+        """Number of dimensions"""
+        ndims = self._num_dimensions
+        if not isinstance(ndims, (int, float)):
+            ndims = ndims.get()
+        return int(ndims)
+
+    def forward(self, value):
+        """Flatten the array to send back to the DerivedSignal"""
+        return np.array(value).flatten()
+
+    def inverse(self, value):
+        """Shape the flat array to send as a result of ``.get``"""
+        print(self.derived_shape, self._shape, self.derived_ndims)
+        array_shape = self.derived_shape[:self.derived_ndims]
+        if not any(array_shape):
+            raise RuntimeError(f"Invalid array size {self.derived_shape}")
+
+        array = self._derived_from.get()
+        return np.array(array).reshape(array_shape)
+
+    def _array_shape_callback(self, **kwargs):
+        value = self.inverse(self._derived_from.value)
+        self._readback = value
+        self._run_subs(sub_type=self.SUB_VALUE, value=value,
+                       **self._metadata)
 
 
 class ADComponent(Component):
