@@ -47,7 +47,7 @@ class NDDerivedSignal(DerivedSignal):
 
         # Ensure callbacks are fired when array is reshaped
         for dim in self._shape + (self._num_dimensions, ):
-            if not isinstance(dim, (int, float)):
+            if not isinstance(dim, int):
                 dim.subscribe(self._array_shape_callback,
                               event_type=self.SUB_VALUE,
                               run=False)
