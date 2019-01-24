@@ -283,6 +283,12 @@ class ImagePlugin(PluginBase):
     _plugin_type = 'NDPluginStdArrays'
 
     array_data = C(EpicsSignal, 'ArrayData')
+    shaped_image = C(NDDerivedSignal, 'array_data',
+                     shape=('array_size.height',
+                            'array_size.width',
+                            'array_size.depth')
+                     ndims='ndimensions',
+                     kind='omitted')
 
     @property
     def image(self):
