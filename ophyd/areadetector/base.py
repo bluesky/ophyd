@@ -24,11 +24,39 @@ class NDDerivedSignal(DerivedSignal):
     """
     DerivedSignal to shape a flattened array
 
-    The purpose of this class is to take a flattened array and shape in its'
+    The purpose of this class is to take a flattened array and shape in its
     proper form. The shape of the final array may be static in which case the
     shape and number of dimensions can be set as static integers. Otherwise,
-    other signals from this classes parent can inform what the proper shape of
-    the array
+     other signals from this classes parent can inform the proper shape of
+    the array.
+
+    Parameters
+    ----------
+    derived_from : str, ``ophyd.Signal``
+        Either a `str` that specifies the attribute of the parent we will get
+        the unshaped array or an ``ophyd.Signal`` itself.
+
+    shape: tuple
+        A tuple containing integers in the case of a static array or links to
+        ``Signal`` objects. The specifications of the signals follows the same
+        rules as the ``derived_from`` parameter
+
+    num_dimensions: int, str, ``Signal``
+        The number of dimensions of the array. This can either be a static
+        ``int`` or a ``Signal`` itself.
+
+    Example
+    -------
+    .. code:: python
+
+        class TwoDimensionalDetector(Device):
+
+            flat_array = Cpt(EpicsSignal, ':Array')
+            width = Cpt(EpicsSignalRO, ':Width')
+            height = Cpt(EpicsSignalRO, ':Height')
+            shaped_array = Cpt(NDDerivedSignal('flat_array',
+                                               shape=('height', 'width'),
+                                               num_dimensions=2)
     """
     def __init__(self, derived_from, shape, num_dimensions,
                  parent=None, **kwargs):
