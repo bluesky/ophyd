@@ -63,6 +63,7 @@ class NDDerivedSignal(DerivedSignal):
         super().__init__(derived_from=derived_from, parent=parent, **kwargs)
         # Assemble our shape of signals
         self._shape = []
+        self._has_subscribed = False
         for dim in shape:
             if isinstance(dim, str):
                 dim = getattr(parent, dim)
@@ -109,13 +110,15 @@ class NDDerivedSignal(DerivedSignal):
 
     def subscribe(self, callback, event_type=None, run=True):
         super().subscribe(callback, event_type=event_type, run=run)
-        if event_type is None or event_type == self.SUB_VALUE:
+        if not self._has_subscribed and (event_type is None
+                                         or event_type == self.SUB_VALUE):
             # Ensure callbacks are fired when array is reshaped
             for dim in self._shape + (self._num_dimensions, ):
                 if not isinstance(dim, int):
                     dim.subscribe(self._array_shape_callback,
                                   event_type=self.SUB_VALUE,
                                   run=False)
+        self._has_subscribed = True
 
     def _array_shape_callback(self, **kwargs):
         value = self.inverse(self._derived_from.value)
