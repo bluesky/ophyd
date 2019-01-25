@@ -73,6 +73,31 @@ matrix:
       env:
         - BUILD_DOCS=
         - TEST_CL=p4p
+  allow_failures:
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
 
 before_install:
   - export MPLBACKEND=agg
