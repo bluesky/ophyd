@@ -529,7 +529,10 @@ class DerivedSignal(Signal):
     def _repr_info(self):
         'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
-        yield ('derived_from', self._derived_from.dotted_name)
+        if self.parent is not None:
+            yield ('derived_from', self._derived_from.dotted_name)
+        else:
+            yield ('derived_from', self._derived_from)
 
 
 class EpicsSignalBase(Signal):
