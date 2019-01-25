@@ -110,15 +110,10 @@ script:
   - echo "Checking if the areaDetector IOC is running:"
   - caproto-get -v 13SIM1:cam1:Acquire
 
-  - |
-    if [ "${TEST_CL}" == "caproto" ]; then
-      python run_tests.py -v -k "caproto"
-    else
-      coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
-      coverage combine
-      coverage report
-      codecov
-    fi
+  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
+  - coverage combine
+  - coverage report
+  - codecov
 
   - set -e
   # Build docs.
