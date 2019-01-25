@@ -455,7 +455,7 @@ class DerivedSignal(Signal):
         '''Description based on the original signal description'''
         desc = super().describe()[self.name]  # Description of this signal
         desc['derived_from'] = self._derived_from.name
-        # Description of the derived signal 
+        # Description of the derived signal
         derived_desc = self._derived_from.describe()[self._derived_from.name]
         derived_desc.update(desc)
         return {self.name: derived_desc}
