@@ -58,9 +58,9 @@ class NDDerivedSignal(DerivedSignal):
                                                shape=('height', 'width'),
                                                num_dimensions=2)
     """
-    def __init__(self, derived_from, shape, num_dimensions=None,
+    def __init__(self, derived_from, *, shape, num_dimensions=None,
                  parent=None, **kwargs):
-        super().__init__(derived_from, parent=parent, **kwargs)
+        super().__init__(derived_from=derived_from, parent=parent, **kwargs)
         # Assemble our shape of signals
         self._shape = []
         for dim in shape:
@@ -122,8 +122,8 @@ class NDDerivedSignal(DerivedSignal):
 
 
 class ADComponent(Component):
-    def __init__(self, cls, suffix, lazy=True, **kwargs):
-        super().__init__(cls, suffix, lazy=lazy, **kwargs)
+    def __init__(self, cls, suffix=None, *, lazy=True, **kwargs):
+        super().__init__(cls, suffix=suffix, lazy=lazy, **kwargs)
 
     def find_docs(self, parent_class):
         '''Find all the documentation related to this class, all the way up the
@@ -160,6 +160,9 @@ class ADComponent(Component):
                                          prefix=' ' * 4))
             block.append('')
             return '\n'.join(block)
+
+        if self.suffix is None:
+            return
 
         suffixes = [self.suffix]
 
