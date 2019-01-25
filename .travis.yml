@@ -139,7 +139,11 @@ script:
   - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
   - coverage combine
   - coverage report
-  - codecov
+  # Make sure only the primary build uploads to codecov
+  - |
+    if [ $BUILD_DOCS ]; then
+      codecov
+    fi
 
   - set -e
   # Build docs.
