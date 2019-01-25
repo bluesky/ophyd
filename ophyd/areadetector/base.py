@@ -109,7 +109,7 @@ class NDDerivedSignal(DerivedSignal):
         return np.array(array).reshape(array_shape)
 
     def subscribe(self, callback, event_type=None, run=True):
-        super().subscribe(callback, event_type=event_type, run=run)
+        cid = super().subscribe(callback, event_type=event_type, run=run)
         if not self._has_subscribed and (event_type is None
                                          or event_type == self.SUB_VALUE):
             # Ensure callbacks are fired when array is reshaped
@@ -119,6 +119,8 @@ class NDDerivedSignal(DerivedSignal):
                                   event_type=self.SUB_VALUE,
                                   run=False)
         self._has_subscribed = True
+        return cid
+
 
     def _array_shape_callback(self, **kwargs):
         value = self.inverse(self._derived_from.value)
