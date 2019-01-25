@@ -38,11 +38,41 @@ cache:
 matrix:
   include:
     - python: 3.6
-      env: BUILD_DOCS=true
+      env:
+        - BUILD_DOCS=true
+        - TEST_CL=pyepics
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
     - python: 3.7
-      env: BUILD_DOCS=
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=pyepics
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
     - python: nightly
-      env: BUILD_DOCS=
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=pyepics
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
 
 before_install:
   - export MPLBACKEND=agg
@@ -80,14 +110,15 @@ script:
   - echo "Checking if the areaDetector IOC is running:"
   - caproto-get -v 13SIM1:cam1:Acquire
 
-  # non-caproto-based tests
-  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k 'not caproto'
-  - coverage combine
-  - coverage report
-  - codecov
-
-  # caproto-based tests (xfail for now)
-  - timeout 5m python run_tests.py -v -k 'caproto' || /bin/true
+  - |
+    if [ "${TEST_CL}" == "caproto" ]; then
+      python run_tests.py -v -k "caproto"
+    else
+      coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
+      coverage combine
+      coverage report
+      codecov
+    fi
 
   - set -e
   # Build docs.
