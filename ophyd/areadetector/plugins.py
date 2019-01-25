@@ -287,7 +287,7 @@ class ImagePlugin(PluginBase):
                      shape=('array_size.height',
                             'array_size.width',
                             'array_size.depth'),
-                     ndims='ndimensions',
+                     num_dimensions='ndimensions',
                      kind='omitted')
 
     @property
