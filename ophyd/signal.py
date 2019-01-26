@@ -453,9 +453,12 @@ class DerivedSignal(Signal):
 
     def describe(self):
         '''Description based on the original signal description'''
-        desc = self._derived_from.describe()[self._derived_from.name]
+        desc = super().describe()[self.name]  # Description of this signal
         desc['derived_from'] = self._derived_from.name
-        return {self.name: desc}
+        # Description of the derived signal
+        derived_desc = self._derived_from.describe()[self._derived_from.name]
+        derived_desc.update(desc)
+        return {self.name: derived_desc}
 
     def _update_metadata_from_callback(self, **kwargs):
         updated_md = {key: kwargs[key] for key in self.metadata_keys
@@ -526,7 +529,10 @@ class DerivedSignal(Signal):
     def _repr_info(self):
         'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
-        yield ('derived_from', self._derived_from)
+        if self.parent is not None:
+            yield ('derived_from', self._derived_from.dotted_name)
+        else:
+            yield ('derived_from', self._derived_from)
 
 
 class EpicsSignalBase(Signal):

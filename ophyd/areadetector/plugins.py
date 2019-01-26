@@ -18,7 +18,7 @@ from collections import OrderedDict
 
 from .. import Component as Cpt
 from .base import (ADBase, ADComponent as C, ad_group,
-                   EpicsSignalWithRBV as SignalWithRBV)
+                   EpicsSignalWithRBV as SignalWithRBV, NDDerivedSignal)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import DynamicDeviceComponent as DDC, GenerateDatumInterface
 from ..utils import enum, set_and_wait
@@ -283,6 +283,12 @@ class ImagePlugin(PluginBase):
     _plugin_type = 'NDPluginStdArrays'
 
     array_data = C(EpicsSignal, 'ArrayData')
+    shaped_image = C(NDDerivedSignal, derived_from='array_data',
+                     shape=('array_size.height',
+                            'array_size.width',
+                            'array_size.depth'),
+                     num_dimensions='ndimensions',
+                     kind='omitted')
 
     @property
     def image(self):
