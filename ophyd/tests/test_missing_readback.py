@@ -21,7 +21,8 @@ class TestMissingReadBack(unittest.TestCase):
 
         I guess that's a bug
         """
-        self.assertRaises(ValueError, self.fake_signal.describe)
+        # self.assertRaises(ValueError, self.fake_signal.describe)
+        self.assertRaises(AssertionError, self.fake_signal.describe)
 
     def testDescribeAfterSet(self):
         """If the value is once set it does not fail any longer
@@ -30,4 +31,5 @@ class TestMissingReadBack(unittest.TestCase):
         fs.signal.sim_put(42)
 
 if __name__ == '__main__':
+    #TestDevice(name = "fake_device").describe()
     unittest.main()
