@@ -301,6 +301,12 @@ class Signal(OphydObject):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         val = self.value
+        if val is None:
+            raise AssertionError(
+                f'Description can not yet been made for {self.name} as '
+                f'self.value == None. This typically means, that the '
+                f'value was never set.'
+                )
         return {self.name: {'source': 'SIM:{}'.format(self.name),
                             'dtype': data_type(val),
                             'shape': data_shape(val)}}
