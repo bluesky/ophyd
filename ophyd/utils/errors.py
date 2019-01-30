@@ -37,3 +37,6 @@ class RedundantStaging(OpException):
 class PluginMisconfigurationError(TypeError, OpException):
     # Keeping TypeError for backward-compatibility
     pass
+
+class NonPVValue(ValueError, OpException):
+    '''Value can not be converted to an epics.PV value'''

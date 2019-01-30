@@ -6,7 +6,7 @@ import functools
 import numpy as np
 import typing
 
-from .errors import DisconnectedError, OpException
+from .errors import DisconnectedError, OpException, NonPVValue
 
 
 __all__ = ['split_record_field',
@@ -319,7 +319,7 @@ def data_type(val):
         if isinstance(val, py_types):
             return json_type
 
-    raise ValueError(
+    raise NonPVValue(
         f'Cannot determine the appropriate bluesky-friendly data type for '
         f'value {val} of Python type {type(val)}. '
         f'Supported types include: int, float, str, and iterables such as '
