@@ -51,5 +51,5 @@ def test_describe_after_set_invalid_value():
         fs.describe()
 
     # check if the variable name is given as quoted string in the description
-    msg_signal, msg_data_type =  des.value.args
+    msg_signal, =  des.value.args
     assert(f'"{pvs_varname}_signal"' in msg_signal)

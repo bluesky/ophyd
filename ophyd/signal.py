@@ -301,22 +301,18 @@ class Signal(OphydObject):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         val = self.value
-        try:
-            dtype = data_type(val)
-        except Exception as npv:
-            if isinstance(npv, NonPVValue) and val is None:
-                msg, = npv.args
-                raise NonPVValue(
-                    f'Description can not yet been made for "{self.name}" as '
-                    f'self.value = None. This typically means, that the '
-                    f'value was never set.'
+        if val is None:
+            raise NonPVValue(
+                f'Description can not yet been made for "{self.name}" as '
+                f'self.value = None. This typically means, that the '
+                f'value was never set.'
                 )
 
-            # val was not None so lets give all the knowledge to the user
-            txt = f'Conversion error for self.value for variable "{self.name}":'
-            args = (txt,) + npv.args
-            npv.args = args
-            raise npv
+        try:
+            dtype = data_type(val)
+        except Exception as ex:
+            msg = f'Conversion error for self.value for variable "{self.name}".'
+            raise ex.__class__(msg) from ex
 
         return {self.name: {'source': 'SIM:{}'.format(self.name),
                             'dtype': dtype,
