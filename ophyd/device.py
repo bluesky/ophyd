@@ -1493,7 +1493,8 @@ def kind_context(kind):
 def create_device_from_components(name, *, docstring=None,
                                   default_read_attrs=None,
                                   default_configuration_attrs=None,
-                                  base_class=Device, **components):
+                                  base_class=Device, class_kwargs=None,
+                                  **components):
     '''Factory function to make a Device from Components
 
     Parameters
@@ -1525,6 +1526,9 @@ def create_device_from_components(name, *, docstring=None,
     if not isinstance(base_class, tuple):
         base_class = (base_class, )
 
+    if class_kwargs is None:
+        class_kwargs = {}
+
     clsdict = OrderedDict(
         __doc__=docstring,
         _default_read_attrs=default_read_attrs,
@@ -1538,7 +1542,7 @@ def create_device_from_components(name, *, docstring=None,
 
         clsdict[attr] = component
 
-    return type(name, base_class, clsdict)
+    return type(name, base_class, clsdict, **class_kwargs)
 
 
 def required_for_connection(func=None, *, description=None, device=None):
