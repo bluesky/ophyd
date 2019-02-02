@@ -116,11 +116,13 @@ class OphydObject:
                 versions={},
                 version=None,
                 version_type=version_type,
+                version_of=version_of
             )
             return
 
         if version_of is None:
             versions = {}
+            version_of = cls
         else:
             versions = version_of._class_info_['versions']
             version_type = version_of._class_info_['version_type']
@@ -137,6 +139,7 @@ class OphydObject:
             versions=versions,
             version=version,
             version_type=version_type,
+            version_of=version_of
         )
 
     def _validate_kind(self, val):
