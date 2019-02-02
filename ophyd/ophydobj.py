@@ -133,6 +133,9 @@ class OphydObject:
                     f'{version_of.__name__}.'
                 )
 
+        if versions is not None and version in versions:
+            print(
+                f"redefining {version_of} {cls} {version} {versions[version]}")
         versions[version] = cls
 
         cls._class_info_ = dict(
