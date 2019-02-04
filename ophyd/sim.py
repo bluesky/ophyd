@@ -8,6 +8,7 @@ import os
 import random
 import threading
 import time as ttime
+from typing import Dict, Any, Tuple
 import uuid
 import warnings
 import weakref
@@ -139,6 +140,13 @@ class SynSignal(Signal):
         # example.
         return super().get()
 
+    def configure(self,
+                  d: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        '''Configure the device for something during a run
+        '''
+        old = self.read_configuration()
+        new = self.read_configuration()
+        return old, new
 
 class SignalRO(Signal):
     def __init__(self, *args, **kwargs):
