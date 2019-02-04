@@ -150,6 +150,7 @@ class SynSignal(Signal):
         new = self.read_configuration()
         return old, new
 
+
 class SignalRO(Signal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
