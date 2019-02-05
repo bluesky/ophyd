@@ -311,7 +311,7 @@ class Signal(OphydObject):
         try:
             dtype = data_type(val)
         except Exception as ex:
-            msg = f'Conversion error for self.value for variable "{self.name}".'
+            msg = f'Type inference failed for {self.value!r} for {self.name!r}.'
             raise ex.__class__(msg) from ex
 
         return {self.name: {'source': 'SIM:{}'.format(self.name),
