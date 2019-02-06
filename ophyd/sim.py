@@ -144,7 +144,7 @@ class SynSignal(Signal):
                   d: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         '''Configure the device for something during a run
         '''
-        if not d:
+        if d:
             warnings.warn('The `configure` method on `ophyd.sim.SynSignal` '
                           'devices is a no-op method, all information'
                           'included in the dictionary `d` is ignored')
