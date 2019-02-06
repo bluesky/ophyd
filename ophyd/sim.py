@@ -437,7 +437,8 @@ class SynGauss(SynSignal):
 
         def func():
             m = self._motor.read()[self._motor_field]['value']
-            v = self.Imax * np.exp(-(m - self.center) ** 2 / (2 * self.sigma ** 2))
+            v = self.Imax * np.exp(-(m - self.center) ** 2 /
+                                   (2 * self.sigma ** 2))
             if self.noise == 'poisson':
                 v = int(self.random_state.poisson(np.round(v), 1))
             elif self.noise == 'uniform':
@@ -543,11 +544,12 @@ class TrivialFlyer:
 
 class NewTrivialFlyer(TrivialFlyer):
     """
-    The old-style API inserted Resource and Datum documents into a database directly.
-    The new-style API only caches the documents and provides an interface (collect_asset_docs)
-    for accessing that cache. This change was part of the "asset refactor" that changed
-    that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
-    Trivial flyer that complies to the API but returns empty data.
+    The old-style API inserted Resource and Datum documents into a database
+    directly. The new-style API only caches the documents and provides an
+    interface (collect_asset_docs for accessing that cache. This change was
+    part of the "asset refactor" that changed that way Resource and Datum
+    documents flowed through ophyd, bluesky, and databroker. Trivial flyer that
+    complies to the API but returns empty data.
     """
 
     name = 'new_trivial_flyer'
@@ -998,7 +1000,7 @@ def clear_fake_device(dev, *, default_value=0, default_string_value='',
                      if string
                      else default_value)
             sig.sim_put(value)
-        except Exception as ex:
+        except Exception:
             if not ignore_exceptions:
                 raise
         else:
@@ -1202,7 +1204,8 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
 
 class FakeEpicsSignalWithRBV(FakeEpicsSignal):
     """
-    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming scheme
+    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming
+    scheme
     """
     def __init__(self, prefix, **kwargs):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
