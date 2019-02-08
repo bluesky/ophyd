@@ -1,330 +1,189 @@
 from .. import Device, Component as Cpt
-from . import plugin_versions
+from . import plugins
+from ..device import create_device_from_components
 
 
 class CommonPlugins(Device, version_type='ADCore'):
     ...
 
 
-class CommonPlugins_V20(CommonPlugins, version=(2, 0), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V20
-
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+def _select_version(cls, version):
+    all_versions = cls._class_info_['versions']
+    matched_version = max(ver for ver in all_versions if ver <= version)
+    return all_versions[matched_version]
 
 
-class CommonPlugins_V21(CommonPlugins, version=(2, 1), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V21
+def _get_bases(cls, version):
+    mixin_cls = _select_version(cls, version)
+    base_cls = _select_version(plugins.PluginBase, version)
+    if issubclass(mixin_cls, base_cls):
+        return (mixin_cls, )
 
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+    return (mixin_cls, base_cls)
 
 
-class CommonPlugins_V22(CommonPlugins, version=(2, 2), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V22
+def _make_common_numbered(clsname, version,
+                          cpt_cls_base, base_cls_base,
+                          attr_prefix):
+    try:
+        cpt_cls = _select_version(cpt_cls_base, version)
+    except ValueError:
+        return
+    bases = _get_bases(base_cls_base, version)
 
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+    return create_device_from_components(
+        name=clsname,
+        base_class=bases,
+        class_kwargs={
+            'version_of': base_cls_base,
+            'version': version},
+        **{f'{attr_prefix}_{j}': Cpt(cpt_cls, f'{j}:')
+           for j in range(1, 9)}
+    )
 
 
-class CommonPlugins_V23(CommonPlugins, version=(2, 3), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V23
+def _make_common_gather(clsname, version):
+    base_cls_base = plugins.GatherPlugin
+    cpt_cls_base = plugins.GatherNPlugin
 
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+    try:
+        cpt_cls = _select_version(cpt_cls_base, version)
+    except ValueError:
+        return
+
+    bases = _get_bases(base_cls_base, version)
+
+    return create_device_from_components(
+        name=clsname,
+        base_class=bases,
+        class_kwargs={
+            'version_of': base_cls_base,
+            'version': version},
+        **{f'gather_{j}': Cpt(cpt_cls, '', index=j)
+           for j in range(1, 9)}
+    )
 
 
-class CommonPlugins_V24(CommonPlugins, version=(2, 4), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V24
-
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+versions = [(1, 9, 1),
+            (2, 0),
+            (2, 1),
+            (2, 2),
+            (2, 3),
+            (2, 4),
+            (2, 5),
+            (2, 6),
+            (3, 1),
+            (3, 2),
+            (3, 3),
+            (3, 4)
+            ]
 
 
-class CommonPlugins_V25(CommonPlugins, version=(2, 5), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V25
+for version in versions:
+    ver_string = "".join(str(_) for _ in version)
+    _make_common_numbered(f'_CommonOverlayPlugin_V{ver_string}',
+                          version,
+                          plugins.Overlay, plugins.OverlayPlugin,
+                          'overlay')
+    _make_common_numbered(f'_CommonAttributePlugin_V{ver_string}',
+                          version,
+                          plugins.AttributeNPlugin,
+                          plugins.AttributePlugin,
+                          'attr')
+    _make_common_numbered(f'_CommonROIStatPlugin_V{ver_string}',
+                          version,
+                          plugins.ROIStatNPlugin,
+                          plugins.ROIStatPlugin,
+                          'attr')
 
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+    _make_common_gather(f'_CommonGatherPlugin_V{ver_string}', version)
 
 
-class CommonPlugins_V26(CommonPlugins, version=(2, 6), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V26
-
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    magick1 = Cpt(plugins.MagickPlugin, "Magick1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
-
-
-class CommonPlugins_V31(CommonPlugins, version=(3, 1), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V31
-
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    fft1 = Cpt(plugins.FFTPlugin, "FFT1:")
-    gather1 = Cpt(plugins.CommonGatherPlugin, "Gather1:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    scatter1 = Cpt(plugins.ScatterPlugin, "Scatter1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+all_plugins = {
+    ('attr1', plugins.AttributePlugin, 'Attr1:'),
+    ('cb1', plugins.CircularBuffPlugin, 'CB1:'),
+    ('cc1', plugins.ColorConvPlugin, 'CC1:'),
+    ('cc2', plugins.ColorConvPlugin, 'CC2:'),
+    ('codec1', plugins.CodecPlugin, 'Codec1:'),
+    ('codec2', plugins.CodecPlugin, 'Codec2:'),
+    ('fft1', plugins.FFTPlugin, 'FFT1:'),
+    ('gather1', plugins.GatherPlugin, 'Gather1:'),
+    ('hdf1', plugins.HDF5Plugin, 'HDF1:'),
+    ('jpeg1', plugins.JPEGPlugin, 'JPEG1:'),
+    ('magick1', plugins.MagickPlugin, 'Magick1:'),
+    ('netcdf1', plugins.NetCDFPlugin, 'netCDF1:'),
+    ('nexus1', plugins.NexusPlugin, 'Nexus1:'),
+    ('over1', plugins.OverlayPlugin, 'Over1:'),
+    ('proc1', plugins.ProcessPlugin, 'Proc1:'),
+    ('proc1_tiff', plugins.TIFFPlugin, 'Proc1:TIFF:'),
+    ('roi1', plugins.ROIPlugin, 'ROI1:'),
+    ('roi2', plugins.ROIPlugin, 'ROI2:'),
+    ('roi3', plugins.ROIPlugin, 'ROI3:'),
+    ('roi4', plugins.ROIPlugin, 'ROI4:'),
+    ('roistat1', plugins.ROIStatPlugin, 'ROIStat1:'),
+    ('scatter1', plugins.ScatterPlugin, 'Scatter1:'),
+    ('stats1', plugins.StatsPlugin, 'Stats1:'),
+    ('stats1_ts', plugins.TimeSeriesPlugin, 'Stats1:TS:'),
+    ('stats2', plugins.StatsPlugin, 'Stats2:'),
+    ('stats2_ts', plugins.TimeSeriesPlugin, 'Stats2:TS:'),
+    ('stats3', plugins.StatsPlugin, 'Stats3:'),
+    ('stats3_ts', plugins.TimeSeriesPlugin, 'Stats3:TS:'),
+    ('stats4', plugins.StatsPlugin, 'Stats4:'),
+    ('stats4_ts', plugins.TimeSeriesPlugin, 'Stats4:TS:'),
+    ('stats5', plugins.StatsPlugin, 'Stats5:'),
+    ('stats5_ts', plugins.TimeSeriesPlugin, 'Stats5:TS:'),
+    ('tiff1', plugins.TIFFPlugin, 'TIFF1:'),
+    ('trans1', plugins.TransformPlugin, 'Trans1:')
+}
 
 
-class CommonPlugins_V32(CommonPlugins, version=(3, 2), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V32
-
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    fft1 = Cpt(plugins.FFTPlugin, "FFT1:")
-    gather1 = Cpt(plugins.CommonGatherPlugin, "Gather1:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    scatter1 = Cpt(plugins.ScatterPlugin, "Scatter1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
+common_plugins = {}
 
 
-class CommonPlugins_V33(CommonPlugins, version=(3, 3), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V33
+for version in versions:
+    local_plugins = {}
+    for attr, cls, suffix in all_plugins:
+        if attr == 'magick1' and version > (3, 0):
+            continue
+        elif attr.endswith('_ts') and version < (3, 3):
+            continue
+        elif attr == 'fft1' and version < (3, 0):
+            continue
+        elif attr == 'proc1_tiff' and version < (3, 3):
+            continue
+        elif attr == 'attr1' and version < (2, 2):
+            continue
 
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    fft1 = Cpt(plugins.FFTPlugin, "FFT1:")
-    gather1 = Cpt(plugins.CommonGatherPlugin, "Gather1:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    proc1_tiff = Cpt(plugins.TIFFPlugin, "Proc1:TIFF:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    scatter1 = Cpt(plugins.ScatterPlugin, "Scatter1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats1_ts = Cpt(plugins.TimeSeriesPlugin, "Stats1:TS:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats2_ts = Cpt(plugins.TimeSeriesPlugin, "Stats2:TS:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats3_ts = Cpt(plugins.TimeSeriesPlugin, "Stats3:TS:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats4_ts = Cpt(plugins.TimeSeriesPlugin, "Stats4:TS:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    stats5_ts = Cpt(plugins.TimeSeriesPlugin, "Stats5:TS:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
+        try:
+            _select_version(cls, version)
+        except ValueError:
+            continue
+
+        local_plugins[attr] = Cpt(cls, suffix)
+
+    ver_string = "".join(str(_) for _ in version)
+    class_name = f'CommonPlugins_V{ver_string}'
+
+    common_plugins[class_name] = create_device_from_components(
+        name=class_name,
+        base_class=CommonPlugins,
+        class_kwargs=dict(
+            version=version,
+            version_of=CommonPlugins),
+        **local_plugins)
 
 
-class CommonPlugins_V34(CommonPlugins, version=(3, 4), version_of=CommonPlugins):
-    plugins = plugin_versions.PluginVersions_V34
+versioned_plugins = {}
 
-    attr1 = Cpt(plugins.CommonAttributePlugin, "Attr1:")
-    cb1 = Cpt(plugins.CircularBuffPlugin, "CB1:")
-    cc1 = Cpt(plugins.ColorConvPlugin, "CC1:")
-    cc2 = Cpt(plugins.ColorConvPlugin, "CC2:")
-    codec1 = Cpt(plugins.CodecPlugin, "Codec1:")
-    codec2 = Cpt(plugins.CodecPlugin, "Codec2:")
-    fft1 = Cpt(plugins.FFTPlugin, "FFT1:")
-    gather1 = Cpt(plugins.CommonGatherPlugin, "Gather1:")
-    hdf1 = Cpt(plugins.HDF5Plugin, "HDF1:")
-    jpeg1 = Cpt(plugins.JPEGPlugin, "JPEG1:")
-    netcdf1 = Cpt(plugins.NetCDFPlugin, "netCDF1:")
-    nexus1 = Cpt(plugins.NexusPlugin, "Nexus1:")
-    over1 = Cpt(plugins.CommonOverlayPlugin, "Over1:")
-    proc1 = Cpt(plugins.ProcessPlugin, "Proc1:")
-    proc1_tiff = Cpt(plugins.TIFFPlugin, "Proc1:TIFF:")
-    roi1 = Cpt(plugins.ROIPlugin, "ROI1:")
-    roi2 = Cpt(plugins.ROIPlugin, "ROI2:")
-    roi3 = Cpt(plugins.ROIPlugin, "ROI3:")
-    roi4 = Cpt(plugins.ROIPlugin, "ROI4:")
-    roistat1 = Cpt(plugins.CommonROIStatPlugin, "ROIStat1:")
-    scatter1 = Cpt(plugins.ScatterPlugin, "Scatter1:")
-    stats1 = Cpt(plugins.StatsPlugin, "Stats1:")
-    stats1_ts = Cpt(plugins.TimeSeriesPlugin, "Stats1:TS:")
-    stats2 = Cpt(plugins.StatsPlugin, "Stats2:")
-    stats2_ts = Cpt(plugins.TimeSeriesPlugin, "Stats2:TS:")
-    stats3 = Cpt(plugins.StatsPlugin, "Stats3:")
-    stats3_ts = Cpt(plugins.TimeSeriesPlugin, "Stats3:TS:")
-    stats4 = Cpt(plugins.StatsPlugin, "Stats4:")
-    stats4_ts = Cpt(plugins.TimeSeriesPlugin, "Stats4:TS:")
-    stats5 = Cpt(plugins.StatsPlugin, "Stats5:")
-    stats5_ts = Cpt(plugins.TimeSeriesPlugin, "Stats5:TS:")
-    tiff1 = Cpt(plugins.TIFFPlugin, "TIFF1:")
-    trans1 = Cpt(plugins.TransformPlugin, "Trans1:")
+for version in versions:
+    versioned_plugins[version] = local_plugins = {}
+    for _, cls, _ in all_plugins:
+        try:
+            local_plugins[cls.__name__] = _select_version(cls, version)
+        except ValueError:
+            continue
+
+
+globals().update(**common_plugins)
+
+__all__ = list(common_plugins)
