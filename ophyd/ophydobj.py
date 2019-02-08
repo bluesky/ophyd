@@ -6,6 +6,9 @@ import logging
 from enum import IntFlag
 
 
+module_logger = logging.getLogger(__name__)
+
+
 class Kind(IntFlag):
     """
     This is used in the .kind attribute of all OphydObj (Signals, Devices).
@@ -134,8 +137,9 @@ class OphydObject:
                 )
 
         if versions is not None and version in versions:
-            print(
-                f"redefining {version_of} {cls} {version} {versions[version]}")
+            module_logger.warning('Redefining %r version %s: old=%r new=%r',
+                                  version_of, version, versions[version], cls)
+
         versions[version] = cls
 
         cls._class_info_ = dict(
