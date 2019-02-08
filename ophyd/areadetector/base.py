@@ -9,7 +9,7 @@ import networkx as nx
 import numpy as np
 
 from . import docs
-from ..signal import EpicsSignal, DerivedSignal
+from ..signal import (EpicsSignal, DerivedSignal, EpicsSignalRO)
 from ..device import (Device, Component, DynamicDeviceComponent)
 from ..signal import (ArrayAttributeSignal)
 
@@ -112,8 +112,8 @@ class NDDerivedSignal(DerivedSignal):
 
     def subscribe(self, callback, event_type=None, run=True):
         cid = super().subscribe(callback, event_type=event_type, run=run)
-        if not self._has_subscribed and (event_type is None
-                                         or event_type == self.SUB_VALUE):
+        if not self._has_subscribed and (event_type is None or
+                                         event_type == self.SUB_VALUE):
             # Ensure callbacks are fired when array is reshaped
             for dim in self._shape + (self._num_dimensions, ):
                 if not isinstance(dim, int):
@@ -122,7 +122,6 @@ class NDDerivedSignal(DerivedSignal):
                                   run=False)
         self._has_subscribed = True
         return cid
-
 
     def _array_shape_callback(self, **kwargs):
         value = self.inverse(self._derived_from.value)
