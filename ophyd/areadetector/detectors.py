@@ -106,7 +106,7 @@ class Andor3Detector(DetectorBase):
 
 class BrukerDetector(DetectorBase):
     _html_docs = ['BrukerDoc.html']
-    cam = C(cam.Andor3DetectorCam, 'cam1:')
+    cam = C(cam.BrukerDetectorCam, 'cam1:')
 
 
 class FirewireLinDetector(DetectorBase):
