@@ -136,7 +136,7 @@ class MarCCDDetector(DetectorBase):
 
 class PerkinElmerDetector(DetectorBase):
     _html_docs = ['PerkinElmerDoc.html']
-    cam = C(cam.LightFieldDetectorCam, 'cam1:')
+    cam = C(cam.PerkinElmerDetectorCam, 'cam1:')
 
 
 class PSLDetector(DetectorBase):
