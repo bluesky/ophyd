@@ -566,8 +566,9 @@ def wait(status, timeout=None, *, poll_rate=0.05):
 
     if status.done:
         if status.success is not None and not status.success:
-            raise RuntimeError('Operation completed but reported an error')
+            raise RuntimeError('Operation completed but reported an error: {}'
+                               ''.format(status))
     elif time_exceeded():
         elapsed = time.time() - t0
-        raise TimeoutError('Operation failed to complete within {} seconds'
-                           '(elapsed {} sec)'.format(timeout, elapsed))
+        raise TimeoutError('Operation failed to complete within {} seconds '
+                           '(elapsed {:.2f} sec)'.format(timeout, elapsed))

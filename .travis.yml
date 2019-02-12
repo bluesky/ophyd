@@ -36,13 +36,69 @@ cache:
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
 matrix:
+  fast_finish: true
   include:
     - python: 3.6
-      env: BUILD_DOCS=true
+      env:
+        - BUILD_DOCS=true
+        - TEST_CL=pyepics
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
     - python: 3.7
-      env: BUILD_DOCS=
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=pyepics
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
     - python: nightly
-      env: BUILD_DOCS=
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=pyepics
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
+  allow_failures:
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.6
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: 3.7
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=caproto
+    - python: nightly
+      env:
+        - BUILD_DOCS=
+        - TEST_CL=p4p
 
 before_install:
   - export MPLBACKEND=agg
@@ -80,14 +136,14 @@ script:
   - echo "Checking if the areaDetector IOC is running:"
   - caproto-get -v 13SIM1:cam1:Acquire
 
-  # non-caproto-based tests
-  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k 'not caproto'
+  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
   - coverage combine
   - coverage report
-  - codecov
-
-  # caproto-based tests (xfail for now)
-  - timeout 5m python run_tests.py -v -k 'caproto' || /bin/true
+  # Make sure only the primary build uploads to codecov
+  - |
+    if [ $BUILD_DOCS ]; then
+      codecov
+    fi
 
   - set -e
   # Build docs.

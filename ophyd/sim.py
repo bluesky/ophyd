@@ -99,6 +99,9 @@ class SynSignal(Signal):
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind, **kwargs)
+        self._metadata.update(
+            connected=True,
+        )
 
     def describe(self):
         res = super().describe()
@@ -138,6 +141,13 @@ class SynSignal(Signal):
 
 
 class SignalRO(Signal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(
+            connected=True,
+            write_access=False,
+        )
+
     def put(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
@@ -516,10 +526,11 @@ class TrivialFlyer:
     def stop(self, *, success=False):
         pass
 
+
 class NewTrivialFlyer(TrivialFlyer):
     """
-    The old-style API inserted Resource and Datum documents into a database directly. 
-    The new-style API only caches the documents and provides an interface (collect_asset_docs) 
+    The old-style API inserted Resource and Datum documents into a database directly.
+    The new-style API only caches the documents and provides an interface (collect_asset_docs)
     for accessing that cache. This change was part of the "asset refactor" that changed
     that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
     Trivial flyer that complies to the API but returns empty data.
@@ -530,6 +541,7 @@ class NewTrivialFlyer(TrivialFlyer):
     def collect_asset_docs(self):
         for _ in ():
             yield _
+
 
 class MockFlyer:
     """
@@ -1055,6 +1067,15 @@ class FakeEpicsSignal(SynSignal):
         self._use_limits = limits
         self._put_func = None
         self._limits = None
+        self._metadata.update(
+            connected=True,
+        )
+
+    def describe(self):
+        desc = super().describe()
+        if self._enum_strs is not None:
+            desc[self.name]['enum_strs'] = self.enum_strs
+        return desc
 
     def sim_set_func(self, func):
         """
@@ -1107,7 +1128,12 @@ class FakeEpicsSignal(SynSignal):
         Implement here instead of FakeEpicsSignalRO so you can call it with
         every fake signal.
         """
-        return Signal.put(self, *args, **kwargs)
+        force = kwargs.pop('force', True)
+        # The following will emit SUB_VALUE:
+        ret = Signal.put(self, *args, force=force, **kwargs)
+        # Also, ensure that SUB_META has been emitted:
+        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        return ret
 
     @property
     def enum_strs(self):
@@ -1128,7 +1154,9 @@ class FakeEpicsSignal(SynSignal):
             The enums will be accessed by array index, e.g. the first item in
             enums will be 0, the next will be 1, etc.
         """
-        self._enum_strs = enums
+        self._enum_strs = tuple(enums)
+        self._metadata['enum_strs'] = tuple(enums)
+        self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
     @property
     def limits(self):
@@ -1172,7 +1200,7 @@ fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      }
 
 
-def hw():
+def hw(save_path=None):
     "Build a set of synthetic hardware (hence the abbreviated name, hw)"
     motor = SynAxis(name='motor', labels={'motors'})
     motor1 = SynAxis(name='motor1', labels={'motors'})
@@ -1214,7 +1242,8 @@ def hw():
                            name='img', labels={'detectors'})
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
-                                name='img', labels={'detectors'})
+                                name='img', labels={'detectors'},
+                                save_path=save_path)
     invariant1 = InvariantSignal(func=lambda: 0, name='invariant1',
                                  labels={'detectors'})
     invariant2 = InvariantSignal(func=lambda: 0, name='invariant2',

@@ -9,8 +9,8 @@ unknown = int
 
 
 class MCAROIGroup(PVGroup):
-    label = pvproperty(name='NM', dtype=unknown)
-    count = pvproperty(name='', dtype=unknown, read_only=True)
+    label = pvproperty(value='label', name='NM')
+    count = pvproperty(value=1, name='', read_only=True)
     net_count = pvproperty(name='N', dtype=unknown, read_only=True)
     preset_count = pvproperty(name='P', dtype=unknown)
     is_preset = pvproperty(name='IP', dtype=unknown)
@@ -84,7 +84,8 @@ class EpicsMCAGroup(PVGroup):
 class EpicsDXPGroup(PVGroup):
     preset_mode = pvproperty_with_rbv(value='Live time', name='PresetMode',
                                       dtype=str)
-    live_time_output = pvproperty_with_rbv(name='LiveTimeOutput', dtype=str)
+    live_time_output = pvproperty_with_rbv(value='livetimeoutput',
+                                           name='LiveTimeOutput', dtype=str)
     elapsed_live_time = pvproperty(name='ElapsedLiveTime', dtype=unknown)
     elapsed_real_time = pvproperty(name='ElapsedRealTime', dtype=unknown)
     elapsed_trigger_live_time = pvproperty(
@@ -95,7 +96,8 @@ class EpicsDXPGroup(PVGroup):
         name='TriggerThreshold', dtype=unknown)
     trigger_gap_time = pvproperty_with_rbv(
         name='TriggerGapTime', dtype=unknown)
-    trigger_output = pvproperty_with_rbv(name='TriggerOutput', dtype=str)
+    trigger_output = pvproperty_with_rbv(value='trigger_output',
+                                         name='TriggerOutput', dtype=str)
     max_width = pvproperty_with_rbv(name='MaxWidth', dtype=unknown)
     peaking_time = pvproperty_with_rbv(name='PeakingTime', dtype=unknown)
     energy_threshold = pvproperty_with_rbv(

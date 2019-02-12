@@ -27,7 +27,7 @@ def mca_test_ioc(prefix, request):
     process = run_example_ioc('ophyd.tests.mca_ioc',
                               request=request,
                               pv_to_check=pvs['mca_prefix'],
-                              args=('--prefix', prefix))
+                              args=('--prefix', prefix, '-v'))
     return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
                            type='caproto')
 

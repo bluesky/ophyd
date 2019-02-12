@@ -1,5 +1,6 @@
 import atexit
 import logging
+import threading
 import warnings
 
 import epics
@@ -16,6 +17,7 @@ else:
 
 
 module_logger = logging.getLogger(__name__)
+name = 'pyepics'
 _dispatcher = None
 
 
@@ -33,6 +35,9 @@ class PyepicsShimPV(epics.PV):
     def __init__(self, pvname, callback=None, form='time', verbose=False,
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None):
+        self._get_lock = threading.Lock()
+        self._ctrlvars_lock = threading.Lock()
+        self._timevars_lock = threading.Lock()
         connection_callback = wrap_callback(_dispatcher, 'metadata',
                                             connection_callback)
         callback = wrap_callback(_dispatcher, 'monitor', callback)
@@ -45,12 +50,44 @@ class PyepicsShimPV(epics.PV):
                          connection_callback=connection_callback,
                          callback=callback, access_callback=access_callback)
 
+    def get_ctrlvars(self, timeout=5, warn=True):
+        "get control values for variable"
+        with self._ctrlvars_lock:
+            return super().get_ctrlvars(timeout=timeout, warn=warn)
+
+    def get_timevars(self, timeout=5, warn=True):
+        "get time values for variable"
+        with self._timevars_lock:
+            return super().get_timevars(timeout=timeout, warn=warn)
+
+    def _configure_auto_monitor(self):
+        if self._monref is not None:
+            return
+
+        # Not auto-monitoring; need to set up the internal monitor before
+        # subscriptions can be used
+        if not self.auto_monitor:
+            self.auto_monitor = ca.DEFAULT_SUBSCRIPTION_MASK
+
+        if self.connected:
+            self.force_connect(pvname=self.pvname, chid=self.chid, conn=True)
+
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
+        self._configure_auto_monitor()
         callback = wrap_callback(_dispatcher, 'monitor', callback)
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
                                     with_ctrlvars=with_ctrlvars, **kw)
+
+    def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
+                          timeout=None, with_ctrlvars=False, form=None,
+                          use_monitor=True):
+        with self._get_lock:
+            return super().get_with_metadata(
+                count=count, as_string=as_string, as_numpy=as_numpy,
+                timeout=timeout, with_ctrlvars=with_ctrlvars, form=form,
+                use_monitor=use_monitor)
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
@@ -59,14 +96,45 @@ class PyepicsShimPV(epics.PV):
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
 
+    def _getarg(self, arg):
+        "wrapper for property retrieval"
+        if self._args[arg] is None:
+            if arg in ('status', 'severity', 'timestamp', 'posixseconds',
+                       'nanoseconds'):
+                self.get_timevars(timeout=1, warn=False)
+            else:
+                self.get_ctrlvars(timeout=1, warn=False)
+        return self._args.get(arg, None)
+
+    def get_all_metadata_blocking(self, timeout):
+        if self._args['status'] is None:
+            self.get_timevars(timeout=timeout)
+        self.get_ctrlvars(timeout=timeout)
+        md = self._args.copy()
+        md.pop('value', None)
+        return md
+
+    def get_all_metadata_callback(self, callback, *, timeout):
+        def get_metadata_thread(pvname):
+            md = self.get_all_metadata_blocking(timeout=timeout)
+            callback(pvname, md)
+
+        _dispatcher.schedule_utility_task(get_metadata_thread,
+                                          pvname=self.pvname)
+
+    def clear_callbacks(self):
+        super().clear_callbacks()
+        self.access_callbacks.clear()
+        self.connection_callbacks.clear()
+
 
 def release_pvs(*pvs):
     for pv in pvs:
         pv.clear_callbacks()
-        # Perform the clear auto monitor in one of our dispatcher threads:
+        # Perform the clear auto monitor in one of our _dispatcher threads:
         # they are guaranteed to be in the right CA context
         wrapped = wrap_callback(_dispatcher, 'monitor', pv.clear_auto_monitor)
-        # queue the call in the 'monitor' dispatcher:
+        # queue the call in the 'monitor' _dispatcher:
         wrapped()
 
 
@@ -130,7 +198,7 @@ def setup(logger):
 
     Must be called once per session using ophyd
     '''
-    # It's important to use the same context in the callback dispatcher
+    # It's important to use the same context in the callback _dispatcher
     # as the main thread, otherwise not-so-savvy users will be very
     # confused
     global _dispatcher
@@ -160,24 +228,15 @@ def setup(logger):
 
     logger.debug('Installing event dispatcher')
     _dispatcher = EventDispatcher(thread_class=PyepicsCallbackThread,
-                                  context=ca.current_context(),
-                                  logger=logger)
+                                  context=ca.current_context(), logger=logger)
     atexit.register(_cleanup)
     return _dispatcher
 
 
-def get_pv_form(version):
-    '''Get the PV form that should be used for pyepics
+def _check_pyepics_version(version):
+    '''Verify compatibility with the pyepics version installed
 
-    Due to a bug in certain versions of PyEpics, form='time' cannot be used
-    with some large arrays.
-
-    native: gives time.time() timestamps from this machine
-    time: gives timestamps from the PVs themselves
-
-    Returns
-    -------
-    {'native', 'time'}
+    For proper functionality, ophyd requires pyepics >= 3.3.2
     '''
     def _fix_git_versioning(in_str):
         return in_str.replace('-g', '+g')
@@ -201,21 +260,18 @@ def get_pv_form(version):
     except ImportError:
         parse_version = _naive_parse_version
 
-    version = parse_version(_fix_git_versioning(version))
+    try:
+        version = parse_version(_fix_git_versioning(version))
+    except Exception:
+        version = None
 
     if version is None:
-        warnings.warn('Unrecognized PyEpics version; using local timestamps',
-                      ImportWarning)
-        return 'native'
-
-    elif version <= parse_version('3.2.3'):
-        warnings.warn(
-            ('PyEpics versions <= 3.2.3 will use local timestamps '
-             '(version: %s)' % epics.__version__), ImportWarning)
-        return 'native'
-    else:
-        return 'time'
+        warnings.warn('Unrecognized PyEpics version; assuming it is '
+                      'compatible', ImportWarning)
+    elif version < parse_version('3.3.2'):
+        raise RuntimeError(f'The installed version of pyepics={version} is not'
+                           f'compatible with ophyd.  Please upgrade to the '
+                           f'latest version.')
 
 
-pv_form = get_pv_form(epics.__version__)
-name = 'pyepics'
+_check_pyepics_version(getattr(epics, '__version__', None))

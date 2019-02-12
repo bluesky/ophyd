@@ -3,20 +3,22 @@ import logging
 import os
 import shutil
 import time
+from unittest.mock import Mock
 
+import numpy as np
 import pytest
 from io import StringIO
 from pathlib import PurePath, Path
 
 from ophyd.utils.paths import make_dir_tree
-from ophyd import (SimDetector, SingleTrigger, Component,
+from ophyd import (SimDetector, SingleTrigger, Component, Device,
                    DynamicDeviceComponent, EpicsSignalRO, Kind, wait)
 from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         ColorConvPlugin, ProcessPlugin,
                                         OverlayPlugin, ROIPlugin,
                                         TransformPlugin, NetCDFPlugin,
                                         TIFFPlugin, JPEGPlugin, HDF5Plugin)
-
+from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite,
     FileStoreHDF5)
@@ -26,31 +28,12 @@ from ophyd.areadetector.filestore_mixins import (
 from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
+from ophyd.signal import Signal
 import uuid
-import os
 import epics
 
 logger = logging.getLogger(__name__)
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
-
-
-@pytest.fixture(scope='module')
-def ad_prefix():
-    prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
-
-    for prefix in prefixes:
-        test_pv = prefix + 'TIFF1:PluginType_RBV'
-        try:
-            sig = EpicsSignalRO(test_pv)
-            sig.wait_for_connection(timeout=2)
-        except TimeoutError:
-            ...
-        else:
-            print('areaDetector detected with prefix:', prefix)
-            return prefix
-        finally:
-            sig.destroy()
-    raise pytest.skip('No areaDetector IOC running')
 
 
 class DummyFS:
@@ -556,3 +539,37 @@ def test_many_connect(ad_prefix, cleanup):
     for j in range(5):
         print(j)
         tester()
+
+
+def test_ndderivedsignal_with_scalars():
+    sig = Signal(value=np.zeros(12), name='zeros')
+    shaped = NDDerivedSignal(sig, shape=(4, 3), num_dimensions=2, name='shaped')
+    shaped.derived_shape == (4, 3)
+    shaped.derived_ndims == 2
+    assert shaped.get().shape == (4, 3)
+    # Describe returns list
+    assert shaped.describe()[shaped.name]['shape'] == [4, 3]
+    shaped.put(np.ones((4, 3)))
+    assert all(sig.get() == np.ones(12))
+
+
+def test_ndderivedsignal_with_parent():
+
+    class Detector(Device):
+        flat_image = Component(Signal, value=np.ones(12))
+        width = Component(Signal, value=4)
+        height = Component(Signal, value=3)
+        ndims = Component(Signal, value=2)
+        shaped_image = Component(NDDerivedSignal, 'flat_image',
+                                 shape=('width', 'height'),
+                                 num_dimensions='ndims')
+
+
+    det = Detector(name='det')
+    det.shaped_image.get().shape == (4, 3)
+    cb = Mock()
+    det.shaped_image.subscribe(cb)
+    det.width.put(6)
+    det.height.put(2)
+    assert cb.called
+    assert det.shaped_image._readback.shape == (6, 2)

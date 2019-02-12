@@ -12,7 +12,7 @@ class Kind(IntFlag):
 
     A Device examines its components' .kind atttribute to decide whether to
     traverse it in read(), read_configuration(), or neither. Additionally, if
-    decides whether to include its name in `.hints['fields']`.
+    decides whether to include its name in `hints['fields']`.
     """
     omitted = 0b000
     normal = 0b001
@@ -41,8 +41,9 @@ class OphydObject:
         ex ``getattr(self.parent, self.attr_name) is self``
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
-    kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.normal. See Kind for options.
+    kind : a member of the :class:`~ophydobj.Kind` :class:`~enum.IntEnum`
+        (or equivalent integer), optional
+        Default is ``Kind.normal``. See :class:`~ophydobj.Kind` for options.
 
     Attributes
     ----------
@@ -96,6 +97,34 @@ class OphydObject:
             name = self.name
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
+
+    def __init_subclass__(cls, version=None, version_of=None,
+                          version_type=None, **kwargs):
+        'This is called automatically in Python for all subclasses of OphydObject'
+        super().__init_subclass__(**kwargs)
+
+        if version is None:
+            return
+
+        if version_of is None:
+            versions = {}
+        else:
+            versions = version_of._class_info_['versions']
+            version_type = version_of._class_info_['version_type']
+            if not issubclass(cls, version_of):
+                raise RuntimeError(
+                    f'Versions are only valid for classes in the same '
+                    f'hierarchy. {cls.__name__} is not a subclass of '
+                    f'{version_of.__name__}.'
+                )
+
+        versions[version] = cls
+
+        cls._class_info_ = dict(
+            versions=versions,
+            version=version,
+            version_type=version_type,
+        )
 
     def _validate_kind(self, val):
         if isinstance(val, str):
@@ -191,7 +220,7 @@ class OphydObject:
         '''
         if sub_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(sub_type, self.subscriptions))
 
         kwargs['sub_type'] = sub_type
@@ -276,7 +305,7 @@ class OphydObject:
         # check that this is a valid event type
         if event_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(event_type, self.subscriptions))
 
         # wrapper for callback to snarf exceptions
@@ -373,6 +402,7 @@ class OphydObject:
         return '{}({})'.format(self.__class__.__name__, info)
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the object repr'
         if self.name is not None:
             yield ('name', self.name)
 
@@ -380,5 +410,22 @@ class OphydObject:
             yield ('parent', self.parent.name)
 
     def __copy__(self):
-        info = dict(self._repr_info())
-        return self.__class__(**info)
+        '''Copy the ophyd object
+
+        Shallow copying ophyd objects uses the repr information from the
+        _repr_info method to create a new object.
+        '''
+        kwargs = dict(self._repr_info())
+        return self.__class__(**kwargs)
+
+    def __getnewargs_ex__(self):
+        '''Used by pickle to serialize an ophyd object
+
+        Returns
+        -------
+        (args, kwargs)
+            Arguments to be passed to __init__, necessary to recreate this
+            object
+        '''
+        kwargs = dict(self._repr_info())
+        return ((), kwargs)

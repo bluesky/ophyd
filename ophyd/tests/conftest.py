@@ -1,20 +1,13 @@
 import logging
-import random
-import sys
-import threading
 import time
 import uuid
-import weakref
 
 import pytest
-import numpy as np
-import numpy.testing
 
 from types import SimpleNamespace
-from functools import wraps
 
-from ophyd import (get_cl, set_cl, EpicsMotor, Signal, EpicsSignal,
-                   EpicsSignalRO, Component as Cpt, MotorBundle)
+from ophyd import (set_cl, EpicsMotor, Signal, EpicsSignal, EpicsSignalRO,
+                   Component as Cpt)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 from caproto.tests.conftest import run_example_ioc
 
@@ -22,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture()
-def hw():
+def hw(tmpdir):
     from ophyd.sim import hw
-    return hw()
+    return hw(str(tmpdir))
 
 
 @pytest.fixture(params=['caproto', 'pyepics'], autouse=True)
@@ -32,6 +25,7 @@ def cl_selector(request):
     cl_name = request.param
     if cl_name == 'caproto':
         pytest.importorskip('caproto')
+        logging.getLogger('caproto.bcast').setLevel('INFO')
     elif cl_name == 'pyepics':
         pytest.importorskip('epics')
     set_cl(cl_name)
@@ -78,6 +72,26 @@ def motor(request, cleanup):
     return motor
 
 
+@pytest.fixture(scope='module')
+def ad_prefix():
+    'AreaDetector prefix'
+    prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
+
+    for prefix in prefixes:
+        test_pv = prefix + 'TIFF1:PluginType_RBV'
+        try:
+            sig = EpicsSignalRO(test_pv)
+            sig.wait_for_connection(timeout=2)
+        except TimeoutError:
+            ...
+        else:
+            print('areaDetector detected with prefix:', prefix)
+            return prefix
+        finally:
+            sig.destroy()
+    raise pytest.skip('No areaDetector IOC running')
+
+
 @pytest.fixture(scope='function')
 def prefix():
     'Random PV prefix for a server'
@@ -98,7 +112,7 @@ def fake_motor_ioc(prefix, request):
     process = run_example_ioc('ophyd.tests.fake_motor_ioc',
                               request=request,
                               pv_to_check=pvs['setpoint'],
-                              args=('--prefix', prefix, '--list-pvs'))
+                              args=('--prefix', prefix, '--list-pvs', '-v'))
     return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
                            type='caproto')
 
@@ -108,14 +122,18 @@ def signal_test_ioc(prefix, request):
     name = 'test_signal IOC'
     pvs = dict(read_only=f'{prefix}read_only',
                read_write=f'{prefix}read_write',
+               pair_set=f'{prefix}pair_set',
+               pair_rbv=f'{prefix}pair_rbv',
                waveform=f'{prefix}waveform',
                bool_enum=f'{prefix}bool_enum',
+               alarm_status=f'{prefix}alarm_status',
+               set_severity=f'{prefix}set_severity',
                )
 
     process = run_example_ioc('ophyd.tests.signal_ioc',
                               request=request,
                               pv_to_check=pvs['read_only'],
-                              args=('--prefix', prefix, '--list-pvs'))
+                              args=('--prefix', prefix, '--list-pvs', '-v'))
     return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
                            type='caproto')
 
