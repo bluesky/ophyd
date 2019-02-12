@@ -106,7 +106,7 @@ class Andor3Detector(DetectorBase):
 
 class BrukerDetector(DetectorBase):
     _html_docs = ['BrukerDoc.html']
-    cam = C(cam.Andor3DetectorCam, 'cam1:')
+    cam = C(cam.BrukerDetectorCam, 'cam1:')
 
 
 class FirewireLinDetector(DetectorBase):
@@ -136,7 +136,7 @@ class MarCCDDetector(DetectorBase):
 
 class PerkinElmerDetector(DetectorBase):
     _html_docs = ['PerkinElmerDoc.html']
-    cam = C(cam.LightFieldDetectorCam, 'cam1:')
+    cam = C(cam.PerkinElmerDetectorCam, 'cam1:')
 
 
 class PSLDetector(DetectorBase):
