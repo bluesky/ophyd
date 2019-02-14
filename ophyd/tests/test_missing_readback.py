@@ -27,7 +27,7 @@ def test_describe_fail():
 
     # check if the variable name is given as quoted string in the description
     msg, =  des.value.args
-    assert(f'"{pvs_varname}_signal"' in msg)
+    assert(f"'{pvs_varname}_signal'" in msg)
 
 def test_describe_after_set():
     """If readback was set does descirbe fail?
@@ -52,4 +52,4 @@ def test_describe_after_set_invalid_value():
 
     # check if the variable name is given as quoted string in the description
     msg_signal, =  des.value.args
-    assert(f'"{pvs_varname}_signal"' in msg_signal)
+    assert(f"'{pvs_varname}_signal'" in msg_signal)

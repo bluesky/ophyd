@@ -303,7 +303,7 @@ class Signal(OphydObject):
         val = self.value
         if val is None:
             raise NonPVValue(
-                f'Description can not yet been made for "{self.name}" as '
+                f'Description can not yet been made for {self.name!r} as '
                 f'self.value = None. This typically means, that the '
                 f'value was never set.'
                 )
@@ -311,7 +311,7 @@ class Signal(OphydObject):
         try:
             dtype = data_type(val)
         except Exception as ex:
-            msg = f'Conversion error for self.value for variable "{self.name}".'
+            msg = f'Type inference failed for {self.value!r} for {self.name!r}.'
             raise ex.__class__(msg) from ex
 
         return {self.name: {'source': 'SIM:{}'.format(self.name),
