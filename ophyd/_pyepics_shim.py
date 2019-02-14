@@ -269,7 +269,7 @@ def _check_pyepics_version(version):
         warnings.warn('Unrecognized PyEpics version; assuming it is '
                       'compatible', ImportWarning)
     elif version < parse_version('3.3.2'):
-        raise RuntimeError(f'The installed version of pyepics={version} is not'
+        raise RuntimeError(f'The installed version of pyepics={version} is not '
                            f'compatible with ophyd.  Please upgrade to the '
                            f'latest version.')
 
