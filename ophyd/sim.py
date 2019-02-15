@@ -1256,10 +1256,10 @@ def hw(save_path=None):
     ab_det = ABDetector(name='det', labels={'detectors'})
     # area detector that directly stores image data in Event
     direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
-                           name='img', labels={'detectors'})
+                           name='direct_img', labels={'detectors'})
 
     direct_img_list = SynSignal(func=lambda: [[1] * 10] * 10,
-                                name='img', labels={'detectors'})
+                                name='direct_img_list', labels={'detectors'})
 
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
