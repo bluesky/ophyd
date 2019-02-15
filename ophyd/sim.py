@@ -1257,6 +1257,10 @@ def hw(save_path=None):
     # area detector that directly stores image data in Event
     direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
                            name='img', labels={'detectors'})
+
+    direct_img_list = SynSignal(func=lambda: [[1] * 10] * 10,
+                                name='img', labels={'detectors'})
+
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
                                 name='img', labels={'detectors'},
@@ -1298,6 +1302,7 @@ def hw(save_path=None):
         new_trivial_flyer=new_trivial_flyer,
         ab_det=ab_det,
         direct_img=direct_img,
+        direct_img_list=direct_img_list,
         img=img,
         invariant1=invariant1,
         invariant2=invariant2,
