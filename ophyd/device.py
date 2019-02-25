@@ -785,6 +785,7 @@ class Device(BlueskyInterface, OphydObject):
         cls._sig_attrs = OrderedDict((attr, cpt)
                                      for base in base_devices
                                      for attr, cpt in base._sig_attrs.items()
+                                     if getattr(cls, attr) is not None
                                      )
 
         # map component classes to their attribute names from this class
