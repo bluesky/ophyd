@@ -919,8 +919,11 @@ class PluginBase_V22(PluginBase_V20, version=(2, 2), version_of=PluginBase):
     )
 
 
-class PluginBase_V26(PluginBase_V22, version=(2, 6), version_of=PluginBase):
+class PluginBase_V25(PluginBase_V22, version=(2, 5), version_of=PluginBase):
     queue_size = Cpt(SignalWithRBV, 'QueueSize')
+
+
+class PluginBase_V26(PluginBase_V25, version=(2, 6), version_of=PluginBase):
     dimensions = Cpt(SignalWithRBV, "Dimensions")
     driver_version = Cpt(EpicsSignalRO, "DriverVersion_RBV", string=True)
     execution_time = Cpt(EpicsSignalRO, "ExecutionTime_RBV", string=True)
@@ -1003,7 +1006,11 @@ class FilePlugin_V22(PluginBase_V22, FilePlugin_V21, version=(2, 2), version_of=
     temp_suffix = Cpt(SignalWithRBV, "TempSuffix", string=True)
 
 
-class FilePlugin_V26(PluginBase_V26, FilePlugin_V22, version=(2, 6), version_of=FilePlugin):
+class FilePlugin_V25(PluginBase_V25, FilePlugin_V22, version=(2, 5), version_of=FilePlugin):
+    ...
+
+
+class FilePlugin_V26(PluginBase_V26, FilePlugin_V25, version=(2, 6), version_of=FilePlugin):
     ...
 
 
@@ -1029,7 +1036,11 @@ class ColorConvPlugin_V22(PluginBase_V22, ColorConvPlugin_V20, version=(2, 2), v
     ...
 
 
-class ColorConvPlugin_V26(PluginBase_V26, ColorConvPlugin_V22, version=(2, 6), version_of=ColorConvPlugin):
+class ColorConvPlugin_V25(PluginBase_V25, ColorConvPlugin_V22, version=(2, 5), version_of=ColorConvPlugin):
+    ...
+
+
+class ColorConvPlugin_V26(PluginBase_V26, ColorConvPlugin_V25, version=(2, 6), version_of=ColorConvPlugin):
     ...
 
 
@@ -1070,7 +1081,7 @@ class HDF5Plugin_V22(FilePlugin_V22, HDF5Plugin_V21, version=(2, 2), version_of=
     nd_attribute_chunk = Cpt(SignalWithRBV, "NDAttributeChunk")
 
 
-class HDF5Plugin_V25(HDF5Plugin_V22, version=(2, 5), version_of=HDF5Plugin):
+class HDF5Plugin_V25(FilePlugin_V25, HDF5Plugin_V22, version=(2, 5), version_of=HDF5Plugin):
     dim_att_datasets = Cpt(SignalWithRBV, "DimAttDatasets", string=True,
                            doc="0='No' 1='Yes'")
     fill_value = Cpt(SignalWithRBV, "FillValue")
@@ -1188,7 +1199,11 @@ class ImagePlugin_V22(PluginBase_V22, ImagePlugin_V20, version=(2, 2), version_o
     ...
 
 
-class ImagePlugin_V26(PluginBase_V26, ImagePlugin_V22, version=(2, 6), version_of=ImagePlugin):
+class ImagePlugin_V25(PluginBase_V25, ImagePlugin_V22, version=(2, 5), version_of=ImagePlugin):
+    ...
+
+
+class ImagePlugin_V26(PluginBase_V26, ImagePlugin_V25, version=(2, 6), version_of=ImagePlugin):
     ...
 
 
@@ -1219,7 +1234,11 @@ class JPEGPlugin_V22(FilePlugin_V22, JPEGPlugin_V21, version=(2, 2), version_of=
     ...
 
 
-class JPEGPlugin_V26(FilePlugin_V26, JPEGPlugin_V22, version=(2, 6), version_of=JPEGPlugin):
+class JPEGPlugin_V25(FilePlugin_V25, JPEGPlugin_V22, version=(2, 5), version_of=JPEGPlugin):
+    ...
+
+
+class JPEGPlugin_V26(FilePlugin_V26, JPEGPlugin_V25, version=(2, 6), version_of=JPEGPlugin):
     ...
 
 
@@ -1250,7 +1269,11 @@ class MagickPlugin_V22(FilePlugin_V22, MagickPlugin_V21, version=(2, 2), version
     ...
 
 
-class MagickPlugin_V26(FilePlugin_V26, MagickPlugin_V22, version=(2, 6), version_of=MagickPlugin):
+class MagickPlugin_V25(FilePlugin_V25, MagickPlugin_V22, version=(2, 5), version_of=MagickPlugin):
+    ...
+
+
+class MagickPlugin_V26(FilePlugin_V26, MagickPlugin_V25, version=(2, 6), version_of=MagickPlugin):
     ...
 
 
@@ -1281,7 +1304,11 @@ class NetCDFPlugin_V22(FilePlugin_V22, NetCDFPlugin_V21, version=(2, 2), version
     ...
 
 
-class NetCDFPlugin_V26(FilePlugin_V26, NetCDFPlugin_V22, version=(2, 6), version_of=NetCDFPlugin):
+class NetCDFPlugin_V25(FilePlugin_V25, NetCDFPlugin_V22, version=(2, 5), version_of=NetCDFPlugin):
+    ...
+
+
+class NetCDFPlugin_V26(FilePlugin_V26, NetCDFPlugin_V25, version=(2, 6), version_of=NetCDFPlugin):
     ...
 
 
@@ -1312,7 +1339,11 @@ class NexusPlugin_V22(FilePlugin_V22, NexusPlugin_V21, version=(2, 2), version_o
     ...
 
 
-class NexusPlugin_V26(FilePlugin_V26, NexusPlugin_V22, version=(2, 6), version_of=NexusPlugin):
+class NexusPlugin_V25(FilePlugin_V25, NexusPlugin_V22, version=(2, 5), version_of=NexusPlugin):
+    ...
+
+
+class NexusPlugin_V26(FilePlugin_V26, NexusPlugin_V25, version=(2, 6), version_of=NexusPlugin):
     ...
 
 
@@ -1389,7 +1420,11 @@ class OverlayPlugin_V22(PluginBase_V22, OverlayPlugin_V20, version=(2, 2), versi
     ...
 
 
-class OverlayPlugin_V26(PluginBase_V26, OverlayPlugin_V22, version=(2, 6), version_of=OverlayPlugin):
+class OverlayPlugin_V25(PluginBase_V25, OverlayPlugin_V22, version=(2, 5), version_of=OverlayPlugin):
+    ...
+
+
+class OverlayPlugin_V26(PluginBase_V26, OverlayPlugin_V25, version=(2, 6), version_of=OverlayPlugin):
     ...
 
 
@@ -1416,7 +1451,11 @@ class ProcessPlugin_V22(PluginBase_V22, ProcessPlugin_V20, version=(2, 2), versi
     ...
 
 
-class ProcessPlugin_V26(PluginBase_V26, ProcessPlugin_V22, version=(2, 6), version_of=ProcessPlugin):
+class ProcessPlugin_V25(PluginBase_V25, ProcessPlugin_V22, version=(2, 5), version_of=ProcessPlugin):
+    ...
+
+
+class ProcessPlugin_V26(PluginBase_V26, ProcessPlugin_V25, version=(2, 6), version_of=ProcessPlugin):
     ...
 
 
@@ -1454,7 +1493,11 @@ class ROIPlugin_V22(PluginBase_V22, ROIPlugin_V20, version=(2, 2), version_of=RO
     ...
 
 
-class ROIPlugin_V26(PluginBase_V26, ROIPlugin_V22, version=(2, 6), version_of=ROIPlugin):
+class ROIPlugin_V25(PluginBase_V25, ROIPlugin_V22, version=(2, 5), version_of=ROIPlugin):
+    ...
+
+
+class ROIPlugin_V26(PluginBase_V26, ROIPlugin_V25, version=(2, 6), version_of=ROIPlugin):
     collapse_dims = Cpt(SignalWithRBV, "CollapseDims", string=True, doc="0='Disable' 1='Enable'")
 
 
@@ -1490,7 +1533,11 @@ class ROIStatPlugin_V23(ROIStatPlugin_V22, version=(2, 3), version_of=ROIStatPlu
     ts_read = Cpt(EpicsSignal, "TSRead")
 
 
-class ROIStatPlugin_V26(PluginBase_V26, ROIStatPlugin_V23, version=(2, 6), version_of=ROIStatPlugin):
+class ROIStatPlugin_V25(PluginBase_V25, ROIStatPlugin_V23, version=(2, 5), version_of=ROIStatPlugin):
+    ...
+
+
+class ROIStatPlugin_V26(PluginBase_V26, ROIStatPlugin_V25, version=(2, 6), version_of=ROIStatPlugin):
     ...
 
 
@@ -1598,7 +1645,7 @@ class StatsPlugin_V22(PluginBase_V22, StatsPlugin_V20, version=(2, 2), version_o
     data_type = Cpt(SignalWithRBV, 'DataType', string=True)
 
 
-class StatsPlugin_V25(StatsPlugin_V22, version=(2, 5), version_of=StatsPlugin):
+class StatsPlugin_V25(PluginBase_V25, StatsPlugin_V22, version=(2, 5), version_of=StatsPlugin):
     ts_timestamp = Cpt(EpicsSignal, "TSTimestamp")
 
 
@@ -1677,7 +1724,11 @@ class TIFFPlugin_V22(FilePlugin_V22, TIFFPlugin_V21, version=(2, 2), version_of=
     ...
 
 
-class TIFFPlugin_V26(FilePlugin_V26, TIFFPlugin_V22, version=(2, 6), version_of=TIFFPlugin):
+class TIFFPlugin_V25(FilePlugin_V25, TIFFPlugin_V22, version=(2, 5), version_of=TIFFPlugin):
+    ...
+
+
+class TIFFPlugin_V26(FilePlugin_V26, TIFFPlugin_V25, version=(2, 6), version_of=TIFFPlugin):
     ...
 
 
@@ -1730,7 +1781,11 @@ class TransformPlugin_V22(PluginBase_V22, TransformPlugin_V21, version=(2, 2), v
     ...
 
 
-class TransformPlugin_V26(PluginBase_V26, TransformPlugin_V22, version=(2, 6), version_of=TransformPlugin):
+class TransformPlugin_V25(PluginBase_V25, TransformPlugin_V22, version=(2, 5), version_of=TransformPlugin):
+    ...
+
+
+class TransformPlugin_V26(PluginBase_V26, TransformPlugin_V25, version=(2, 6), version_of=TransformPlugin):
     ...
 
 
@@ -1754,7 +1809,7 @@ class PvaPlugin(Device, version_type='ADCore'):
     ...
 
 
-class PvaPlugin_V25(PluginBase_V22, PvaPlugin, version=(2, 5), version_of=PvaPlugin):
+class PvaPlugin_V25(PluginBase_V25, PvaPlugin, version=(2, 5), version_of=PvaPlugin):
     pv_name = Cpt(EpicsSignalRO, "PvName_RBV")
 
 
@@ -1782,7 +1837,7 @@ class FFTPlugin(Device, version_type='ADCore'):
     ...
 
 
-class FFTPlugin_V25(PluginBase_V22, FFTPlugin, version=(2, 5), version_of=FFTPlugin):
+class FFTPlugin_V25(PluginBase_V25, FFTPlugin, version=(2, 5), version_of=FFTPlugin):
     fft_abs_value = Cpt(EpicsSignal, "FFTAbsValue")
     fft_direction = Cpt(SignalWithRBV, "FFTDirection", string=True, doc="0='Time to freq.' 1='Freq. to time'")
     fft_freq_axis = Cpt(EpicsSignal, "FFTFreqAxis")
@@ -1847,7 +1902,7 @@ class PosPlugin(Device, version_type='ADCore'):
     ...
 
 
-class PosPluginPlugin_V25(PluginBase_V22, PosPlugin, version=(2, 5), version_of=PosPlugin):
+class PosPluginPlugin_V25(PluginBase_V25, PosPlugin, version=(2, 5), version_of=PosPlugin):
     delete = Cpt(EpicsSignal, "Delete", string=True, doc="")
     duplicate = Cpt(SignalWithRBV, "Duplicate")
     expected_id = Cpt(EpicsSignalRO, "ExpectedID_RBV")
@@ -1913,8 +1968,14 @@ class CircularBuffPlugin_V22(PluginBase_V22, CircularBuffPlugin, version=(2, 2),
     )
 
 
+class CircularBuffPlugin_V25(
+    PluginBase_V25, CircularBuffPlugin_V22, version=(2, 5), version_of=CircularBuffPlugin
+):
+    ...
+
+
 class CircularBuffPlugin_V26(
-    PluginBase_V26, CircularBuffPlugin_V22, version=(2, 6), version_of=CircularBuffPlugin
+    PluginBase_V26, CircularBuffPlugin_V25, version=(2, 6), version_of=CircularBuffPlugin
 ):
     ...
 
@@ -1999,7 +2060,7 @@ class TimeSeriesPlugin(Device, version_type='ADCore'):
     ...
 
 
-class TimeSeriesPlugin_V25(PluginBase_V22, TimeSeriesPlugin, version=(2, 5), version_of=TimeSeriesPlugin):
+class TimeSeriesPlugin_V25(PluginBase_V25, TimeSeriesPlugin, version=(2, 5), version_of=TimeSeriesPlugin):
     ts_acquire = Cpt(EpicsSignal, "TSAcquire")
     ts_acquire_mode = Cpt(
         SignalWithRBV, "TSAcquireMode", string=True, doc="0='Fixed length' 1='Circ. buffer'"
@@ -2092,7 +2153,11 @@ class AttributePlugin_V22(PluginBase_V22, AttributePlugin_V20, version=(2, 2), v
     )
 
 
-class AttributePlugin_V26(PluginBase_V26, AttributePlugin_V22, version=(2, 6), version_of=AttributePlugin):
+class AttributePlugin_V25(PluginBase_V25, AttributePlugin_V22, version=(2, 5), version_of=AttributePlugin):
+    ...
+
+
+class AttributePlugin_V26(PluginBase_V26, AttributePlugin_V25, version=(2, 6), version_of=AttributePlugin):
     ts_acquiring = Cpt(EpicsSignal, "TSAcquiring", string=True, doc="0='Done' 1='Acquiring'")
     ts_control = Cpt(EpicsSignal, 'TSControl', string=True, doc="0=Erase/Start 1=Start 2=Stop 3=Read")
     ts_current_point = Cpt(EpicsSignal, 'TSCurrentPoint')
