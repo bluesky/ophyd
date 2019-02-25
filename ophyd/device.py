@@ -879,7 +879,7 @@ class Device(BlueskyInterface, OphydObject):
             #  - Always include non-lazy components
             #  - Include a lazy if already instantiated OR requested with
             #    include_lazy
-            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            lazy_ok = cpt.lazy and (include_lazy or attr in self._signals)
             should_walk = not cpt.lazy or lazy_ok
 
             if not should_walk:
@@ -926,7 +926,7 @@ class Device(BlueskyInterface, OphydObject):
         cls = type(self)
         for attr in cls._sub_devices:
             cpt = getattr(cls, attr)
-            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            lazy_ok = cpt.lazy and (include_lazy or attr in self._signals)
             should_walk = not cpt.lazy or lazy_ok
 
             if should_walk:
