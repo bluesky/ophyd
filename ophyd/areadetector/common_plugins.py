@@ -98,23 +98,23 @@ versions = [(1, 9, 1),
 
 for version in versions:
     ver_string = "".join(str(_) for _ in version)
-    _make_common_numbered(f'_CommonOverlayPlugin_V{ver_string}',
+    _make_common_numbered(f'CommonOverlayPlugin_V{ver_string}',
                           version,
                           plugins.Overlay, (CommonOverlayPlugin,
                                             plugins.OverlayPlugin,),
                           'overlay')
-    _make_common_numbered(f'_CommonAttributePlugin_V{ver_string}',
+    _make_common_numbered(f'CommonAttributePlugin_V{ver_string}',
                           version,
                           plugins.AttributeNPlugin, (CommonAttributePlugin,
                                                      plugins.AttributePlugin),
                           'attr')
-    _make_common_numbered(f'_CommonROIStatPlugin_V{ver_string}',
+    _make_common_numbered(f'CommonROIStatPlugin_V{ver_string}',
                           version,
                           plugins.ROIStatNPlugin, (CommonROIStatPlugin,
                                                    plugins.ROIStatPlugin),
                           'attr')
 
-    _make_common_gather(f'_CommonGatherPlugin_V{ver_string}', version)
+    _make_common_gather(f'CommonGatherPlugin_V{ver_string}', version)
 
 
 all_plugins = {
