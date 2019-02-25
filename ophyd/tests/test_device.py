@@ -726,3 +726,22 @@ def test_required_for_connection_in_init():
     # Call and expect no timeout:
     dev.call_to_connect()
     dev.wait_for_connection(timeout=0.01)
+
+
+def test_noneified_component():
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+
+    class MyDeviceWithoutSub2(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = None
+
+    assert MyDevice.component_names == ('sub1', 'sub2')
+    assert MyDevice._sub_devices == ['sub1', 'sub2']
+
+    assert MyDeviceWithoutSub2.component_names == ('sub1', )
+    assert MyDeviceWithoutSub2._sub_devices == ['sub1']
