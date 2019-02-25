@@ -269,7 +269,7 @@ def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
         roi1 = Cpt(ROIPlugin, 'ROI1:')
         stats1 = Cpt(StatsPlugin, 'Stats1:')
 
-    nested_det = MyDetector(prefix, name='nested_test')
+    nested_det = MyDetector(ad_prefix, name='nested_test')
 
     nested_det.stats1.nd_array_port.put(nested_det.roi1.port_name.get())
     nested_det.plugins.tiff1.nd_array_port.put(nested_det.cam.port_name.get())
