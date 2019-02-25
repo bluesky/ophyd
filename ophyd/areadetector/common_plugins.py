@@ -7,6 +7,22 @@ class CommonPlugins(Device, version_type='ADCore'):
     ...
 
 
+class CommonOverlayPlugin(Device, version_type='ADCore'):
+    ...
+
+
+class CommonAttributePlugin(Device, version_type='ADCore'):
+    ...
+
+
+class CommonROIStatPlugin(Device, version_type='ADCore'):
+    ...
+
+
+class CommonGatherPlugin(Device, version_type='ADCore'):
+    ...
+
+
 def _select_version(cls, version):
     all_versions = cls._class_info_['versions']
     matched_version = max(ver for ver in all_versions if ver <= version)
@@ -22,14 +38,15 @@ def _get_bases(cls, version):
     return (mixin_cls, base_cls)
 
 
-def _make_common_numbered(clsname, version,
-                          cpt_cls_base, base_cls_base,
+def _make_common_numbered(clsname, version, cpt_cls_base, bases,
                           attr_prefix):
     try:
         cpt_cls = _select_version(cpt_cls_base, version)
     except ValueError:
         return
-    bases = _get_bases(base_cls_base, version)
+
+    base_cls_base, plugin_base = bases
+    bases = (base_cls_base, ) + _get_bases(plugin_base, version)
 
     return create_device_from_components(
         name=clsname,
@@ -51,13 +68,13 @@ def _make_common_gather(clsname, version):
     except ValueError:
         return
 
-    bases = _get_bases(base_cls_base, version)
+    bases = (CommonGatherPlugin, ) + _get_bases(base_cls_base, version)
 
     return create_device_from_components(
         name=clsname,
         base_class=bases,
         class_kwargs={
-            'version_of': base_cls_base,
+            'version_of': CommonGatherPlugin,
             'version': version},
         **{f'gather_{j}': Cpt(cpt_cls, '', index=j)
            for j in range(1, 9)}
@@ -83,44 +100,45 @@ for version in versions:
     ver_string = "".join(str(_) for _ in version)
     _make_common_numbered(f'_CommonOverlayPlugin_V{ver_string}',
                           version,
-                          plugins.Overlay, plugins.OverlayPlugin,
+                          plugins.Overlay, (CommonOverlayPlugin,
+                                            plugins.OverlayPlugin,),
                           'overlay')
     _make_common_numbered(f'_CommonAttributePlugin_V{ver_string}',
                           version,
-                          plugins.AttributeNPlugin,
-                          plugins.AttributePlugin,
+                          plugins.AttributeNPlugin, (CommonAttributePlugin,
+                                                     plugins.AttributePlugin),
                           'attr')
     _make_common_numbered(f'_CommonROIStatPlugin_V{ver_string}',
                           version,
-                          plugins.ROIStatNPlugin,
-                          plugins.ROIStatPlugin,
+                          plugins.ROIStatNPlugin, (CommonROIStatPlugin,
+                                                   plugins.ROIStatPlugin),
                           'attr')
 
     _make_common_gather(f'_CommonGatherPlugin_V{ver_string}', version)
 
 
 all_plugins = {
-    ('attr1', plugins.AttributePlugin, 'Attr1:'),
+    ('attr1', CommonAttributePlugin, 'Attr1:'),
     ('cb1', plugins.CircularBuffPlugin, 'CB1:'),
     ('cc1', plugins.ColorConvPlugin, 'CC1:'),
     ('cc2', plugins.ColorConvPlugin, 'CC2:'),
     ('codec1', plugins.CodecPlugin, 'Codec1:'),
     ('codec2', plugins.CodecPlugin, 'Codec2:'),
     ('fft1', plugins.FFTPlugin, 'FFT1:'),
-    ('gather1', plugins.GatherPlugin, 'Gather1:'),
+    ('gather1', CommonGatherPlugin, 'Gather1:'),
     ('hdf1', plugins.HDF5Plugin, 'HDF1:'),
     ('jpeg1', plugins.JPEGPlugin, 'JPEG1:'),
     ('magick1', plugins.MagickPlugin, 'Magick1:'),
     ('netcdf1', plugins.NetCDFPlugin, 'netCDF1:'),
     ('nexus1', plugins.NexusPlugin, 'Nexus1:'),
-    ('over1', plugins.OverlayPlugin, 'Over1:'),
+    ('over1', CommonOverlayPlugin, 'Over1:'),
     ('proc1', plugins.ProcessPlugin, 'Proc1:'),
     ('proc1_tiff', plugins.TIFFPlugin, 'Proc1:TIFF:'),
     ('roi1', plugins.ROIPlugin, 'ROI1:'),
     ('roi2', plugins.ROIPlugin, 'ROI2:'),
     ('roi3', plugins.ROIPlugin, 'ROI3:'),
     ('roi4', plugins.ROIPlugin, 'ROI4:'),
-    ('roistat1', plugins.ROIStatPlugin, 'ROIStat1:'),
+    ('roistat1', CommonROIStatPlugin, 'ROIStat1:'),
     ('scatter1', plugins.ScatterPlugin, 'Scatter1:'),
     ('stats1', plugins.StatsPlugin, 'Stats1:'),
     ('stats1_ts', plugins.TimeSeriesPlugin, 'Stats1:TS:'),
@@ -155,7 +173,7 @@ for version in versions:
             continue
 
         try:
-            _select_version(cls, version)
+            cls = _select_version(cls, version)
         except ValueError:
             continue
 
