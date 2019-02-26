@@ -100,13 +100,11 @@ class NDDerivedSignal(DerivedSignal):
 
     def inverse(self, value):
         """Shape the flat array to send as a result of ``.get``"""
-        print(self.derived_shape, self._shape, self.derived_ndims)
         array_shape = self.derived_shape[:self.derived_ndims]
         if not any(array_shape):
             raise RuntimeError(f"Invalid array size {self.derived_shape}")
 
-        array = self._derived_from.get()
-        return np.array(array).reshape(array_shape)
+        return np.array(value[:np.prod(array_shape)]).reshape(array_shape)
 
     def subscribe(self, callback, event_type=None, run=True):
         cid = super().subscribe(callback, event_type=event_type, run=run)
