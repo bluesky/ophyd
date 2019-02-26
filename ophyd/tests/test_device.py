@@ -510,8 +510,9 @@ def test_walk_signals(include_lazy):
     print(MyDevice.sub1.cls.cpt1)
 
     dev = MyDevice('', name='mydev')
-    dev.summary()
+    walked_list = list(dev.walk_signals(include_lazy=include_lazy))
 
+    dev.summary()
     expected = [
         ComponentWalk(ancestors=(dev, dev.sub1, ),
                       dotted_name='sub1.cpt1',
@@ -559,7 +560,7 @@ def test_walk_signals(include_lazy):
                     if 'cpt4' not in item.dotted_name
                     ]
 
-    assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
+    assert walked_list == expected
 
 
 def test_walk_subdevice_classes():
