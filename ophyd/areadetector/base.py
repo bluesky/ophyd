@@ -105,8 +105,7 @@ class NDDerivedSignal(DerivedSignal):
         if not any(array_shape):
             raise RuntimeError(f"Invalid array size {self.derived_shape}")
 
-        array = self._derived_from.value
-        return np.array(array).reshape(array_shape)
+        return np.array(value).reshape(array_shape)
 
     def subscribe(self, callback, event_type=None, run=True):
         cid = super().subscribe(callback, event_type=event_type, run=run)
