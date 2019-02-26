@@ -100,7 +100,6 @@ class NDDerivedSignal(DerivedSignal):
 
     def inverse(self, value):
         """Shape the flat array to send as a result of ``.get``"""
-        print(self.derived_shape, self._shape, self.derived_ndims)
         array_shape = self.derived_shape[:self.derived_ndims]
         if not any(array_shape):
             raise RuntimeError(f"Invalid array size {self.derived_shape}")
