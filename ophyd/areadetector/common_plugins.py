@@ -198,5 +198,12 @@ for version in versions:
 
 
 globals().update(**common_plugins)
+del local_plugins
+del version
+del class_name
+del suffix
+del ver_string
+del attr
+del cls
 
 __all__ = list(common_plugins)
