@@ -9,6 +9,23 @@ from enum import IntFlag
 module_logger = logging.getLogger(__name__)
 
 
+def select_version(cls, version):
+    """Select highest version of a class less that the requested version
+
+    Parameters
+    ----------
+    cls : type
+        The base class to find a version child  of
+
+    version : any
+        Must be the same type as used to define the class versions.
+
+    """
+    all_versions = cls._class_info_['versions']
+    matched_version = max(ver for ver in all_versions if ver <= version)
+    return all_versions[matched_version]
+
+
 class Kind(IntFlag):
     """
     This is used in the .kind attribute of all OphydObj (Signals, Devices).

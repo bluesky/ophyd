@@ -1,6 +1,7 @@
 from .. import Device, Component as Cpt
 from . import plugins
 from ..device import create_device_from_components
+from ..ophydobj import select_version
 
 
 class CommonPlugins(Device, version_type='ADCore'):
@@ -23,15 +24,9 @@ class CommonGatherPlugin(Device, version_type='ADCore'):
     ...
 
 
-def _select_version(cls, version):
-    all_versions = cls._class_info_['versions']
-    matched_version = max(ver for ver in all_versions if ver <= version)
-    return all_versions[matched_version]
-
-
 def _get_bases(cls, version):
-    mixin_cls = _select_version(cls, version)
-    base_cls = _select_version(plugins.PluginBase, version)
+    mixin_cls = select_version(cls, version)
+    base_cls = select_version(plugins.PluginBase, version)
     if issubclass(mixin_cls, base_cls):
         return (mixin_cls, )
 
@@ -41,7 +36,7 @@ def _get_bases(cls, version):
 def _make_common_numbered(clsname, version, cpt_cls_base, bases,
                           attr_prefix):
     try:
-        cpt_cls = _select_version(cpt_cls_base, version)
+        cpt_cls = select_version(cpt_cls_base, version)
     except ValueError:
         return
 
@@ -64,7 +59,7 @@ def _make_common_gather(clsname, version):
     cpt_cls_base = plugins.GatherNPlugin
 
     try:
-        cpt_cls = _select_version(cpt_cls_base, version)
+        cpt_cls = select_version(cpt_cls_base, version)
     except ValueError:
         return
 
@@ -173,7 +168,7 @@ for version in versions:
             continue
 
         try:
-            cls = _select_version(cls, version)
+            cls = select_version(cls, version)
         except ValueError:
             continue
 
@@ -197,7 +192,7 @@ for version in versions:
     versioned_plugins[version] = local_plugins = {}
     for _, cls, _ in all_plugins:
         try:
-            local_plugins[cls.__name__] = _select_version(cls, version)
+            local_plugins[cls.__name__] = select_version(cls, version)
         except ValueError:
             continue
 

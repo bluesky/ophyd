@@ -71,7 +71,7 @@ def get_cl():
 
 set_cl()
 
-from .ophydobj import Kind
+from .ophydobj import Kind, select_version
 
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
