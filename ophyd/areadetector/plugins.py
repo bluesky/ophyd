@@ -848,8 +848,10 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     num_row_chunks = Cpt(SignalWithRBV, 'NumRowChunks', kind='config')
     run_time = Cpt(EpicsSignal, 'RunTime', kind='config')
     szip_num_pixels = Cpt(SignalWithRBV, 'SZipNumPixels', kind='config')
-    store_attr = Cpt(SignalWithRBV, 'StoreAttr', kind='config')
-    store_perform = Cpt(SignalWithRBV, 'StorePerform', kind='config')
+    store_attr = Cpt(SignalWithRBV, 'StoreAttr', kind='config', string=True,
+                     doc="0='No' 1='Yes'")
+    store_perform = Cpt(SignalWithRBV, 'StorePerform', kind='config',
+                        string=True, doc="0='No' 1='Yes'")
     zlevel = Cpt(SignalWithRBV, 'ZLevel', kind='config')
 
     def warmup(self):
@@ -1059,15 +1061,6 @@ class ColorConvPlugin_V34(PluginBase_V34, ColorConvPlugin_V33, version=(3, 4), v
 # --- NDFileHDF5 ---
 
 class HDF5Plugin_V20(FilePlugin_V20, HDF5Plugin, version=(2, 0), version_of=HDF5Plugin):
-    # data_bits_offset = Cpt(SignalWithRBV, 'DataBitsOffset')
-    # io_speed = Cpt(EpicsSignal, 'IOSpeed')
-    # num_data_bits = Cpt(SignalWithRBV, 'NumDataBits')
-    # num_frames_flush = Cpt(SignalWithRBV, 'NumFramesFlush')
-    # run_time = Cpt(EpicsSignal, 'RunTime')
-    # szip_num_pixels = Cpt(SignalWithRBV, 'SZipNumPixels')
-    # store_attr = Cpt(SignalWithRBV, 'StoreAttr', string=True, doc="0='No' 1='Yes'")
-    # store_perform = Cpt(SignalWithRBV, 'StorePerform', string=True, doc="0='No' 1='Yes'")
-    # zlevel = Cpt(SignalWithRBV, 'ZLevel')
     ...
 
 
