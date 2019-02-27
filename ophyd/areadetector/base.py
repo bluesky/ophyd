@@ -310,7 +310,7 @@ class ADBase(Device):
             if name == port_name:
                 return self
 
-        for name, subdevice in self.walk_subdevices():
+        for name, subdevice in self.walk_subdevices(include_lazy=True):
             if hasattr(subdevice, 'get_plugin_by_asyn_port'):
                 sig = subdevice.get_plugin_by_asyn_port(port_name)
                 if sig is not None:
@@ -332,7 +332,7 @@ class ADBase(Device):
         except AttributeError:
             pass
 
-        for name, subdevice in self.walk_subdevices():
+        for name, subdevice in self.walk_subdevices(include_lazy=True):
             if hasattr(subdevice, 'get_asyn_port_dictionary'):
                 ret.update(subdevice.get_asyn_port_dictionary())
 
