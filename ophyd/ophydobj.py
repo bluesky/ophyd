@@ -145,7 +145,16 @@ class OphydObject:
             version_of = cls
         else:
             versions = version_of._class_info_['versions']
-            version_type = version_of._class_info_['version_type']
+            if version_type is None:
+                version_type = version_of._class_info_['version_type']
+
+            elif version_type != version_of._class_info_['version_type']:
+                raise RuntimeError(
+                    "version_type with in a family must be consistent, "
+                    f"you passed in {version_type}, to {cls.__name__} "
+                    f"but {version_of.__name__} has version_type "
+                    f"{version_of._class_info_['version_type']}")
+
             if not issubclass(cls, version_of):
                 raise RuntimeError(
                     f'Versions are only valid for classes in the same '
