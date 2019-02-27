@@ -131,7 +131,7 @@ class ScalerCH(Device):
             of the channels to select.
         '''
         self.match_names()
-        name_map = {getattr(self.channels, s).name.get(): s
+        name_map = {getattr(self.channels, s).chname.get(): s
                     for s in self.channels.component_names}
 
         read_attrs = ['chan01']  # always include time
