@@ -2,6 +2,7 @@ from .. import Device, Component as Cpt
 from . import plugins
 from ..device import create_device_from_components
 from ..ophydobj import select_version
+from types import SimpleNamespace
 
 
 class CommonPlugins(Device, version_type='ADCore'):
@@ -189,13 +190,13 @@ for version in versions:
 versioned_plugins = {}
 
 for version in versions:
-    versioned_plugins[version] = local_plugins = {}
+    local_plugins = {}
     for _, cls, _ in all_plugins:
         try:
             local_plugins[cls.__name__] = select_version(cls, version)
         except ValueError:
             continue
-
+    versioned_plugins[version] = SimpleNamespace(**local_plugins)
 
 globals().update(**common_plugins)
 del local_plugins
@@ -206,4 +207,5 @@ del ver_string
 del attr
 del cls
 
-__all__ = list(common_plugins)
+
+__all__ = list(common_plugins) + ['versioned_plugins']
