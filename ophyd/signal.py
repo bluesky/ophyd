@@ -785,7 +785,8 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def get(self, *, as_string=None, connection_timeout=1.0, **kwargs):
+    def get(self, *, as_string=None, connection_timeout=1.0, form='time',
+            **kwargs):
         '''Get the readback value through an explicit call to EPICS
 
         Parameters
@@ -806,12 +807,15 @@ class EpicsSignalBase(Signal):
         connection_timeout : float, optional
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
+        form : {'time', 'ctrl'}
+            PV form to request
         '''
         if as_string is None:
             as_string = self._string
 
         self.wait_for_connection(timeout=connection_timeout)
-        info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
+        info = self._read_pv.get_with_metadata(as_string=as_string, form=form,
+                                               **kwargs)
 
         if info is None:
             timeout = kwargs.get('timeout', None)
@@ -822,10 +826,21 @@ class EpicsSignalBase(Signal):
         if as_string:
             value = waveform_to_string(value)
 
-        # The following will update all metadata, run subscriptions, and
-        # also update self._readback such that this value can be accessed
-        # through EpicsSignal.value
-        self._read_changed(value=value, **info)
+        if self._monitors[self._read_pvname]:
+            # Callbacks here will be done automatically through the
+            # subscription mechanism.
+            if form != 'time':
+                # But just in case we requested additional metadata not present
+                # in the callbacks, update it here
+                self._metadata_changed(self._read_pvname, info)
+        else:
+            # No monitor is present on the PV - meaning that SUB_VALUE is not
+            # subscribed to.
+            #
+            # The following will update all metadata, run subscriptions, and
+            # also update self._readback such that this value can be accessed
+            # through EpicsSignal.value
+            self._read_changed(value=value, **info)
         return value
 
     def _fix_type(self, value):
@@ -1048,7 +1063,7 @@ class EpicsSignal(EpicsSignalBase):
                     self._monitors[self._setpoint_pvname]):
                 mon = self._write_pv.add_callback(self._write_changed,
                                                   run_now=self._write_pv.connected)
-                self._monitors[self._write_pvname] = mon
+                self._monitors[self._setpoint_pvname] = mon
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
@@ -1133,7 +1148,7 @@ class EpicsSignal(EpicsSignalBase):
                              .format(value, low_limit, high_limit))
 
     def get_setpoint(self, *, as_string=None, connection_timeout=1.0,
-                     **kwargs):
+                     form='time', **kwargs):
         '''Get the setpoint value (if setpoint PV and readback PV differ)
 
         Parameters
@@ -1154,26 +1169,37 @@ class EpicsSignal(EpicsSignalBase):
         connection_timeout : float, optional
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
+        form : {'time', 'ctrl'}
+            PV form to request
         '''
         if as_string is None:
             as_string = self._string
 
         self.wait_for_connection(timeout=connection_timeout)
-        info = self._write_pv.get_with_metadata(as_string=as_string, **kwargs)
+        info = self._write_pv.get_with_metadata(as_string=as_string, form=form,
+                                                **kwargs)
 
         if info is None:
             timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._write_pvname} within '
+            raise TimeoutError(f'Failed to read {self._setpoint_pvname} within '
                                f'{timeout} sec')
 
         value = info.pop('value')
         if as_string:
             value = waveform_to_string(value)
 
-        # The following will update all metadata, run subscriptions, and
-        # also update self._readback such that this value can be accessed
-        # through EpicsSignal.value
-        self._write_changed(value=value, **info)
+        if self._monitors[self._setpoint_pvname]:
+            # Callbacks here will be done automatically through the
+            # subscription mechanism
+            if form != 'time':
+                # But just in case we requested additional metadata not present
+                # in the callbacks, update it here
+                self._metadata_changed(self._setpoint_pvname, info)
+        else:
+            # The following will update all metadata, run subscriptions, and
+            # also update self._setpoint
+            self._write_changed(value=value, **info)
+
         return self._fix_type(value)
 
     def _pv_access_callback(self, read_access, write_access, pv):
