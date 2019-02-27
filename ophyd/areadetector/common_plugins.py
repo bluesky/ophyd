@@ -1,8 +1,7 @@
 from .. import Device, Component as Cpt
 from . import plugins
 from ..device import create_device_from_components
-from ..ophydobj import select_version
-from types import SimpleNamespace
+from ..ophydobj import select_version, OphydObject
 
 
 class CommonPlugins(Device, version_type='ADCore'):
@@ -189,6 +188,11 @@ for version in versions:
 
 versioned_plugins = {}
 
+
+class Plugins(OphydObject, version_type='ADCore'):
+    ...
+
+
 for version in versions:
     local_plugins = {}
     for _, cls, _ in all_plugins:
@@ -196,9 +200,16 @@ for version in versions:
             local_plugins[cls.__name__] = select_version(cls, version)
         except ValueError:
             continue
-    versioned_plugins[version] = SimpleNamespace(**local_plugins)
+    ver_string = "".join(str(_) for _ in version)
+    class_name = f"Plugins_V{ver_string}"
+    versioned_plugins[class_name] = type(class_name,
+                                         (Plugins,),
+                                         local_plugins,
+                                         version=version,
+                                         version_of=Plugins)
 
-globals().update(**common_plugins)
+
+globals().update(**common_plugins, **versioned_plugins)
 del local_plugins
 del version
 del class_name
@@ -208,4 +219,4 @@ del attr
 del cls
 
 
-__all__ = list(common_plugins) + ['versioned_plugins']
+__all__ = list(common_plugins) + list(versioned_plugins)
