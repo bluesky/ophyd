@@ -10,12 +10,15 @@ module_logger = logging.getLogger(__name__)
 
 
 def select_version(cls, version):
-    """Select highest version of a class less that the requested version
+    """Select closest compatible version to requested version
+
+    Compatible is defined as ``class_version <= requested_version``
+    as defined by the types used to denote the versions.
 
     Parameters
     ----------
     cls : type
-        The base class to find a version child  of
+        The base class to find a version of
 
     version : any
         Must be the same type as used to define the class versions.
