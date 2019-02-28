@@ -462,11 +462,11 @@ def test_hints(cleanup, fake_motor_ioc):
     assert sig.hints == {'fields': [sig.name]}
 
 
-def test_epicssignal_sub_setpoint(fake_motor_ioc):
+def test_epicssignal_sub_setpoint(cleanup, fake_motor_ioc):
     pvs = fake_motor_ioc.pvs
-    motor = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
-                        name='motor')
-    actuate = EpicsSignal(pvs['actuate'], name='actuate')
+    pv = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                     name='pv')
+    cleanup.add(pv)
 
     setpoint_called = []
     setpoint_meta_called = []
@@ -477,15 +477,39 @@ def test_epicssignal_sub_setpoint(fake_motor_ioc):
     def sub_setpoint_meta(timestamp, **kwargs):
         setpoint_meta_called.append(timestamp)
 
-    motor.subscribe(sub_setpoint, event_type=motor.SUB_SETPOINT)
-    motor.subscribe(sub_setpoint_meta, event_type=motor.SUB_SETPOINT_META)
+    pv.subscribe(sub_setpoint, event_type=pv.SUB_SETPOINT)
+    pv.subscribe(sub_setpoint_meta, event_type=pv.SUB_SETPOINT_META)
 
-    motor.wait_for_connection()
-    actuate.wait_for_connection()
+    pv.wait_for_connection()
 
-    motor.put(1, wait=True)
-    motor.put(2, wait=True)
+    pv.put(1, wait=True)
+    pv.put(2, wait=True)
     time.sleep(0.5)
 
     assert len(setpoint_called) >= 3
     assert len(setpoint_meta_called) >= 3
+
+
+def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
+    pvs = fake_motor_ioc.pvs
+    sig = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                      name='motor')
+    cleanup.add(sig)
+
+    called = []
+
+    def generic_sub(sub_type, **kwargs):
+        called.append((sub_type, sig.get(), sig.get_setpoint()))
+
+    for event_type in (sig.SUB_VALUE, sig.SUB_META,
+                       sig.SUB_SETPOINT, sig.SUB_SETPOINT_META):
+        sig.subscribe(generic_sub, event_type=event_type)
+
+    sig.wait_for_connection()
+
+    sig.put(1, wait=True)
+    sig.put(2, wait=True)
+    time.sleep(0.5)
+
+    print(called)
+    print('total', len(called))
