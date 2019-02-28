@@ -456,7 +456,7 @@ def test_epicssignalro_alarm_status(set_severity_signal, alarm_status_signal, ro
     assert ro_signal.alarm_severity == severity
 
 
-def test_hints(cleanup, motor):
-    sig = EpicsSignalRO(motor.user_readback.pvname)
+def test_hints(cleanup, fake_motor_ioc):
+    sig = EpicsSignalRO(fake_motor_ioc.pvs['setpoint'])
     cleanup.add(sig)
     assert sig.hints == {'fields': [sig.name]}
