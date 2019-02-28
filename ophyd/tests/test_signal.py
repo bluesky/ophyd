@@ -460,3 +460,32 @@ def test_hints(cleanup, fake_motor_ioc):
     sig = EpicsSignalRO(fake_motor_ioc.pvs['setpoint'])
     cleanup.add(sig)
     assert sig.hints == {'fields': [sig.name]}
+
+
+def test_epicssignal_sub_setpoint(fake_motor_ioc):
+    pvs = fake_motor_ioc.pvs
+    motor = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                        name='motor')
+    actuate = EpicsSignal(pvs['actuate'], name='actuate')
+
+    setpoint_called = []
+    setpoint_meta_called = []
+
+    def sub_setpoint(old_value, value, **kwargs):
+        setpoint_called.append((old_value, value))
+
+    def sub_setpoint_meta(timestamp, **kwargs):
+        setpoint_meta_called.append(timestamp)
+
+    motor.subscribe(sub_setpoint, event_type=motor.SUB_SETPOINT)
+    motor.subscribe(sub_setpoint_meta, event_type=motor.SUB_SETPOINT_META)
+
+    motor.wait_for_connection()
+    actuate.wait_for_connection()
+
+    motor.put(1, wait=True)
+    motor.put(2, wait=True)
+    time.sleep(0.5)
+
+    assert len(setpoint_called) >= 3
+    assert len(setpoint_meta_called) >= 3

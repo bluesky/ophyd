@@ -1294,17 +1294,6 @@ class EpicsSignal(EpicsSignalBase):
         self._write_pv.put(value, use_complete=use_complete, callback=callback,
                            **kwargs)
 
-        old_value = self._setpoint
-        self._setpoint = value
-
-        if self._read_pvname == self.setpoint_pvname:
-            # readback and setpoint PV are one in the same, so update the
-            # readback as well
-            timestamp = time.time()
-            super().put(value, timestamp=timestamp, force=True)
-            self._run_subs(sub_type=self.SUB_SETPOINT, old_value=old_value,
-                           value=value, timestamp=timestamp)
-
     def set(self, value, *, timeout=None, settle_time=None):
         '''Set is like `EpicsSignal.put`, but is here for bluesky compatibility
 
