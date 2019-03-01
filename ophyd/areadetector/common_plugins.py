@@ -219,4 +219,4 @@ del attr
 del cls
 
 
-__all__ = list(common_plugins) + list(versioned_plugins)
+__all__ = ['PluginNamespace', 'CommonPlugins']
