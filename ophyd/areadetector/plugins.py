@@ -1529,9 +1529,12 @@ class ROIPlugin_V34(PluginBase_V34, ROIPlugin_V33, version=(3, 4), version_of=RO
 # --- NDROIStat ---
 
 
+@register_plugin
 class ROIStatPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _default_suffix = 'ROIStat1:'
+    _suffix_re = r'ROIStat\d:'
+    _plugin_type = 'NDPluginROIStat'
 
 
 class ROIStatPlugin_V22(PluginBase_V22, ROIStatPlugin, version=(2, 2), version_of=ROIStatPlugin):
@@ -1817,9 +1820,12 @@ class TransformPlugin_V34(PluginBase_V34, TransformPlugin_V33, version=(3, 4), v
 # --- NDPva ---
 
 
+@register_plugin
 class PvaPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _default_suffix = 'Pva1:'
+    _suffix_re = r'Pva\d:'
+    _plugin_type = 'NDPluginPva'
 
 
 class PvaPlugin_V25(PluginBase_V25, PvaPlugin, version=(2, 5), version_of=PvaPlugin):
@@ -1845,9 +1851,13 @@ class PvaPlugin_V34(PluginBase_V34, PvaPlugin_V33, version=(3, 4), version_of=Pv
 # --- NDFFT ---
 
 
+@register_plugin
 class FFTPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
     ...
+    _default_suffix = 'FFT1:'
+    _suffix_re = r'FFT\d:'
+    _plugin_type = 'NDPluginFFT'
 
 
 class FFTPlugin_V25(PluginBase_V25, FFTPlugin, version=(2, 5), version_of=FFTPlugin):
@@ -1886,9 +1896,12 @@ class FFTPlugin_V34(PluginBase_V34, FFTPlugin_V33, version=(3, 4), version_of=FF
 # --- NDScatter ---
 
 
+@register_plugin
 class ScatterPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _default_suffix = 'Scatter1:'
+    _suffix_re = r'Scatter\d:'
+    _plugin_type = 'NDPluginScatter'
 
 
 class ScatterPlugin_V31(PluginBase_V31, ScatterPlugin, version=(3, 1), version_of=ScatterPlugin):
@@ -1910,9 +1923,12 @@ class ScatterPlugin_V34(PluginBase_V34, ScatterPlugin_V33, version=(3, 4), versi
 # --- NDPosPlugin ---
 
 
+@register_plugin
 class PosPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _default_suffix = 'Pos1:'
+    _suffix_re = r'Pos\d:'
+    _plugin_type = 'NDPosPlugin'
 
 
 class PosPluginPlugin_V25(PluginBase_V25, PosPlugin, version=(2, 5), version_of=PosPlugin):
@@ -1952,9 +1968,12 @@ class PosPluginPlugin_V34(PluginBase_V34, PosPluginPlugin_V33, version=(3, 4), v
 # --- NDCircularBuff ---
 
 
+@register_plugin
 class CircularBuffPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _default_suffix = 'CB1:'
+    _suffix_re = r'CB\d:'
+    _plugin_type = 'NDPluginCircularBuff'
 
 
 class CircularBuffPlugin_V22(PluginBase_V22, CircularBuffPlugin, version=(2, 2), version_of=CircularBuffPlugin):
@@ -2036,7 +2055,7 @@ class AttributeNPlugin_V26(AttributeNPlugin_V22, version=(2, 6), version_of=Attr
 
 class AttrPlotPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _plugin_type = 'NDAttrPlot'
 
 
 class AttrPlotPlugin_V31(PluginBase_V31, AttrPlotPlugin, version=(3, 1), version_of=AttrPlotPlugin):
@@ -2068,9 +2087,10 @@ class TimeSeriesNPlugin_V25(TimeSeriesNPlugin, version=(2, 5), version_of=TimeSe
 # --- NDTimeSeries ---
 
 
+@register_plugin
 class TimeSeriesPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _plugin_type = 'NDPluginTimeSeries'
 
 
 class TimeSeriesPlugin_V25(PluginBase_V25, TimeSeriesPlugin, version=(2, 5), version_of=TimeSeriesPlugin):
@@ -2110,9 +2130,10 @@ class TimeSeriesPlugin_V34(PluginBase_V34, TimeSeriesPlugin_V33, version=(3, 4),
 # --- NDCodec ---
 
 
+@register_plugin
 class CodecPlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _plugin_type = 'NDPluginCodec'
 
 
 class CodecPlugin_V34(PluginBase_V34, CodecPlugin, version=(3, 4), version_of=CodecPlugin):
@@ -2130,9 +2151,12 @@ class CodecPlugin_V34(PluginBase_V34, CodecPlugin, version=(3, 4), version_of=Co
     mode = Cpt(SignalWithRBV, "Mode", string=True, doc="0=Compress 1=Decompress")
 
 
+@register_plugin
 class AttributePlugin(Device, version_type='ADCore'):
     "Serves as a base class for other versions"
-    ...
+    _default_suffix = 'Attr1:'
+    _suffix_re = r'Attr\d:'
+    _plugin_type = 'NDPluginAttribute'
 
 
 class AttributePlugin_V20(PluginBase_V20, AttributePlugin, version=(2, 0), version_of=AttributePlugin):
@@ -2204,8 +2228,11 @@ class AttributePlugin_V34(PluginBase_V34, AttributePlugin_V33, version=(3, 4), v
 
 # --- NDGather / NDGatherN ---
 
+@register_plugin
 class GatherPlugin(PluginBase_V31, version=(3, 1), version_type='ADCore'):
-    ...
+    _default_suffix = 'Gather:'
+    _suffix_re = r'Gather\d:'
+    _plugin_type = 'NDPluginGather'
 
 
 class GatherNPlugin(Device, version_type='ADCore'):
@@ -2227,9 +2254,10 @@ def plugin_from_pvname(pv):
     global _plugin_class
 
     for type_, cls in _plugin_class.items():
-        m = re.search(cls._suffix_re, pv)
-        if m:
-            return cls
+        if getattr(cls, '_suffix_re', None) is not None:
+            m = re.search(cls._suffix_re, pv)
+            if m:
+                return cls
 
     return None
 
