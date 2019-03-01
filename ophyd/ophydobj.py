@@ -6,6 +6,29 @@ import logging
 from enum import IntFlag
 
 
+module_logger = logging.getLogger(__name__)
+
+
+def select_version(cls, version):
+    """Select closest compatible version to requested version
+
+    Compatible is defined as ``class_version <= requested_version``
+    as defined by the types used to denote the versions.
+
+    Parameters
+    ----------
+    cls : type
+        The base class to find a version of
+
+    version : any
+        Must be the same type as used to define the class versions.
+
+    """
+    all_versions = cls._class_info_['versions']
+    matched_version = max(ver for ver in all_versions if ver <= version)
+    return all_versions[matched_version]
+
+
 class Kind(IntFlag):
     """
     This is used in the .kind attribute of all OphydObj (Signals, Devices).
@@ -104,13 +127,37 @@ class OphydObject:
         super().__init_subclass__(**kwargs)
 
         if version is None:
+            if version_of is not None:
+                raise RuntimeError('Must specify a version if `version_of` '
+                                   'is specified')
+            if version_type is None:
+                return
+            # Allow specification of version_type without specifying a version,
+            # for use in a base class
+
+            cls._class_info_ = dict(
+                versions={},
+                version=None,
+                version_type=version_type,
+                version_of=version_of
+            )
             return
 
         if version_of is None:
             versions = {}
+            version_of = cls
         else:
             versions = version_of._class_info_['versions']
-            version_type = version_of._class_info_['version_type']
+            if version_type is None:
+                version_type = version_of._class_info_['version_type']
+
+            elif version_type != version_of._class_info_['version_type']:
+                raise RuntimeError(
+                    "version_type with in a family must be consistent, "
+                    f"you passed in {version_type}, to {cls.__name__} "
+                    f"but {version_of.__name__} has version_type "
+                    f"{version_of._class_info_['version_type']}")
+
             if not issubclass(cls, version_of):
                 raise RuntimeError(
                     f'Versions are only valid for classes in the same '
@@ -118,12 +165,17 @@ class OphydObject:
                     f'{version_of.__name__}.'
                 )
 
+        if versions is not None and version in versions:
+            module_logger.warning('Redefining %r version %s: old=%r new=%r',
+                                  version_of, version, versions[version], cls)
+
         versions[version] = cls
 
         cls._class_info_ = dict(
             versions=versions,
             version=version,
             version_type=version_type,
+            version_of=version_of
         )
 
     def _validate_kind(self, val):

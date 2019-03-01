@@ -813,7 +813,7 @@ class Device(BlueskyInterface, OphydObject):
 
         # The namedtuple associated with the device
         cls._device_tuple = namedtuple(f'{cls.__name__}Tuple',
-                                       [comp for comp in cls.component_names
+                                       [comp for comp in cls.component_names[:254]
                                         if not comp.startswith('_')])
 
         # List the attributes that are Devices (not Signals).
@@ -910,6 +910,10 @@ class Device(BlueskyInterface, OphydObject):
         '''
         for attr in cls._sub_devices:
             cpt = getattr(cls, attr)
+            if cpt is None:
+                # Subclasses can override this, making this None...
+                continue
+
             yield (attr, cpt.cls)
             for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
                 yield ('.'.join((attr, sub_attr)), sub_cls)
@@ -1490,7 +1494,8 @@ def kind_context(kind):
 def create_device_from_components(name, *, docstring=None,
                                   default_read_attrs=None,
                                   default_configuration_attrs=None,
-                                  base_class=Device, **components):
+                                  base_class=Device, class_kwargs=None,
+                                  **components):
     '''Factory function to make a Device from Components
 
     Parameters
@@ -1522,6 +1527,9 @@ def create_device_from_components(name, *, docstring=None,
     if not isinstance(base_class, tuple):
         base_class = (base_class, )
 
+    if class_kwargs is None:
+        class_kwargs = {}
+
     clsdict = OrderedDict(
         __doc__=docstring,
         _default_read_attrs=default_read_attrs,
@@ -1535,7 +1543,7 @@ def create_device_from_components(name, *, docstring=None,
 
         clsdict[attr] = component
 
-    return type(name, base_class, clsdict)
+    return type(name, base_class, clsdict, **class_kwargs)
 
 
 def required_for_connection(func=None, *, description=None, device=None):

@@ -337,7 +337,10 @@ def test_default_configuration_smoke(ad_prefix, cleanup):
 @pytest.mark.parametrize('plugin',
                          _recursive_subclasses(PluginBase))
 def test_default_configuration_attrs(plugin):
-    for k in plugin._default_configuration_attrs:
+    configuration_attrs = plugin._default_configuration_attrs
+    if configuration_attrs is None:
+        pytest.skip('Configuration attrs unset')
+    for k in configuration_attrs:
         assert hasattr(plugin, k)
         assert isinstance(getattr(plugin, k),
                           (Component, DynamicDeviceComponent))
