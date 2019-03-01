@@ -650,7 +650,7 @@ class EpicsSignalBase(Signal):
 
         self._connection_states[pvname] = conn
 
-        if not self._received_first_metadata[pvname]:
+        if conn and not self._received_first_metadata[pvname]:
             pv.get_all_metadata_callback(self._initial_metadata_callback,
                                          timeout=10)
 
