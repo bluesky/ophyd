@@ -512,4 +512,7 @@ def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
     time.sleep(0.5)
 
     print(called)
+    # Arbitrary threshold, but if @klauer screwed something up again, this will
+    # blow up
+    assert len(called) < 20
     print('total', len(called))
