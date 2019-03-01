@@ -190,6 +190,22 @@ versioned_plugins = {}
 
 
 class PluginNamespace(OphydObject, version_type='ADCore'):
+    """
+    This is intended to be used with select_versions.
+
+    This provides namespaces of plugins for a given version of Area Detector.
+
+    Examples
+    --------
+    Access the StatsPlugin for Area Detector version 3.4.
+
+    >>> select_version(PluginNamespace, (3, 4)).StatsPlugin
+    ophyd.areadetector.plugins.StatsPlugin_V34
+    """
+    # This is implemented as an OphydObject in order to leverage OphydObject's
+    # version-resolution class keyword arguments. But it should *not* be used
+    # as a Device or Signal. It should be used with select_version as in the
+    # example in the docstring.
     ...
 
 

@@ -5,6 +5,18 @@
 
 .. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
 '''
+# This module contains:
+# - Classes like `StatsPlugin` that are designed to be counterparts to Area
+#   Detector version 1.9.1, which was what ophyd was originally written
+#   against.
+# - Classes like `StatsPlugin_V{X}{Y}` that are design to be counterparts to
+#   AreaDetector verion X.Y.
+#
+# The module was partly auto-generated and then hand-edited. The generation
+# code is not included in the repo, as it was considered a one-off productivity
+# enhancement for bootstrapping all the versions of Area Detector to date.
+# Updates should be made either by hand or by producing new auto-generation
+# code to suit.
 
 
 import functools
