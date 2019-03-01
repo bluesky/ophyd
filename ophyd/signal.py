@@ -1249,7 +1249,10 @@ class EpicsSignal(EpicsSignalBase):
         self._metadata.update(**metadata)
         self._setpoint = self._fix_type(value)
 
-        if from_monitor:
+        if not from_monitor and self._monitors[self.setpoint_pvname]:
+            # Not from a monitor, and there is an ongoing subscription
+            ...
+        else:
             self._run_subs(sub_type=self.SUB_SETPOINT,
                            old_value=old_value, value=value,
                            timestamp=self._metadata['setpoint_timestamp'],
