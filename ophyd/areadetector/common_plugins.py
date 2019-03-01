@@ -189,7 +189,7 @@ for version in versions:
 versioned_plugins = {}
 
 
-class Plugins(OphydObject, version_type='ADCore'):
+class PluginNamespace(OphydObject, version_type='ADCore'):
     ...
 
 
@@ -201,12 +201,12 @@ for version in versions:
         except ValueError:
             continue
     ver_string = "".join(str(_) for _ in version)
-    class_name = f"Plugins_V{ver_string}"
+    class_name = f"PluginNamespace_V{ver_string}"
     versioned_plugins[class_name] = type(class_name,
-                                         (Plugins,),
+                                         (PluginNamespace,),
                                          local_plugins,
                                          version=version,
-                                         version_of=Plugins)
+                                         version_of=PluginNamespace)
 
 
 globals().update(**common_plugins, **versioned_plugins)
