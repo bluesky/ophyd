@@ -5,7 +5,8 @@ import numpy as np
 import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
-from ophyd.utils import (make_dir_tree, makedirs)
+from ophyd.utils import (make_dir_tree, makedirs, set_and_wait)
+from ophyd import Signal
 
 
 logger = logging.getLogger(__name__)
@@ -31,14 +32,17 @@ def test_waveform_to_string():
     assert epics_utils.waveform_to_string(asc) == s
 
 
-def test_pv_form():
+def test_pyepics_version_support():
     from ophyd import get_cl
-    o_ps = pytest.importorskip('ophyd._pyepics_shim')
-    cl = get_cl()
-    assert cl.pv_form in ('native', 'time')
-    versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', 'unknown')
-    for version in versions:
-        assert o_ps.get_pv_form(version) in ('native', 'time')
+    shim = pytest.importorskip('ophyd._pyepics_shim')
+    bad_versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', '3.3.1', )
+    good_versions = ('3.3.2', )
+    for version in bad_versions:
+        with pytest.raises(RuntimeError):
+            shim._check_pyepics_version(version)
+
+    for version in good_versions:
+        shim._check_pyepics_version(version)
 
 
 def test_records_from_db():
@@ -52,31 +56,30 @@ def test_records_from_db():
     assert ('bo', '$(P)$(S)_calcEnable') in records
 
 
-def test_data_type():
+@pytest.mark.parametrize('value, dtype, shape', [
+    [1, 'integer', []],
+    [1.0, 'number', []],
+    [1e-3, 'number', []],
+    ['foo', 'string', []],
+    [np.array([1, 2, 3]), 'array', [3]],
+    [np.array([[1, 2], [3, 4]]), 'array', [2, 2]],
+    [(1, 2, 3), 'array', [3]],
+    [[1, 2, 3], 'array', [3]],
+    [[], 'array', [0]]
+]
+)
+def test_data_type_and_shape(value, dtype, shape):
     utils = epics_utils
-
-    assert utils.data_type(1) == 'integer'
-    assert utils.data_type(2) != 'number'
-    assert utils.data_type(1e-3) == 'number'
-    assert utils.data_type(2.718) == 'number'
-    assert utils.data_type('foo') == 'string'
-    assert utils.data_type(np.array([1, 2, 3])) == 'array'
-    with pytest.raises(ValueError):
-        utils.data_type([1, 2, 3])
-    with pytest.raises(ValueError):
-        utils.data_type(dict())
+    assert utils.data_type(value) == dtype
+    assert utils.data_shape(value) == shape
 
 
-def test_data_shape():
+@pytest.mark.parametrize('value',
+                         [dict()])
+def test_invalid_data_type(value):
     utils = epics_utils
-
-    assert utils.data_shape(1) == list()
-    assert utils.data_shape('foo') == list()
-    assert utils.data_shape(np.array([1, 2, 3])) == [3, ]
-    assert utils.data_shape(np.array([[1, 2], [3, 4]])) == [2, 2]
-
     with pytest.raises(ValueError):
-        utils.data_shape([])
+        utils.data_type(value)
 
 
 def assert_OD_equal_ignore_ts(a, b):
@@ -110,3 +113,10 @@ def test_make_dir_tree():
 def test_valid_pvname():
     with pytest.raises(epics_utils.BadPVName):
         epics_utils.validate_pv_name('this.will.fail')
+
+
+def test_array_into_softsignal():
+    data = np.array([1, 2, 3])
+    s = Signal(name='np.array')
+    set_and_wait(s, data)
+    assert np.all(s.get() == data)

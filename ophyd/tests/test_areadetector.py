@@ -1,20 +1,24 @@
-import time
+import datetime
 import logging
+import os
+import shutil
+import time
+from unittest.mock import Mock
+
+import numpy as np
 import pytest
 from io import StringIO
 from pathlib import PurePath, Path
-from ophyd.ophydobj import Kind
-from ophyd import (SimDetector, SingleTrigger, Component,
-                   DynamicDeviceComponent, EpicsSignalRO)
-from ophyd.status import wait
-from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
-                                        ColorConvPlugin,
-                                        ProcessPlugin, OverlayPlugin,
-                                        ROIPlugin, TransformPlugin,
-                                        NetCDFPlugin, TIFFPlugin, JPEGPlugin,
-                                        HDF5Plugin,
-                                        MagickPlugin)
 
+from ophyd.utils.paths import make_dir_tree
+from ophyd import (SimDetector, SingleTrigger, Component, Device,
+                   DynamicDeviceComponent, EpicsSignalRO, Kind, wait)
+from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
+                                        ColorConvPlugin, ProcessPlugin,
+                                        OverlayPlugin, ROIPlugin,
+                                        TransformPlugin, NetCDFPlugin,
+                                        TIFFPlugin, JPEGPlugin, HDF5Plugin)
+from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite,
     FileStoreHDF5)
@@ -24,31 +28,12 @@ from ophyd.areadetector.filestore_mixins import (
 from ophyd.areadetector.plugins import PluginBase
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
+from ophyd.signal import Signal
 import uuid
-import os
 import epics
 
 logger = logging.getLogger(__name__)
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
-
-
-@pytest.fixture(scope='module')
-def ad_prefix():
-    prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
-
-    for prefix in prefixes:
-        test_pv = prefix + 'TIFF1:PluginType_RBV'
-        try:
-            sig = EpicsSignalRO(test_pv)
-            sig.wait_for_connection(timeout=2)
-        except TimeoutError:
-            ...
-        else:
-            print('areaDetector detected with prefix:', prefix)
-            return prefix
-        finally:
-            sig.destroy()
-    raise pytest.skip('No areaDetector IOC running')
 
 
 class DummyFS:
@@ -352,22 +337,45 @@ def test_default_configuration_smoke(ad_prefix, cleanup):
 @pytest.mark.parametrize('plugin',
                          _recursive_subclasses(PluginBase))
 def test_default_configuration_attrs(plugin):
-    for k in plugin._default_configuration_attrs:
+    configuration_attrs = plugin._default_configuration_attrs
+    if configuration_attrs is None:
+        pytest.skip('Configuration attrs unset')
+    for k in configuration_attrs:
         assert hasattr(plugin, k)
         assert isinstance(getattr(plugin, k),
                           (Component, DynamicDeviceComponent))
 
 
-@pytest.mark.skipif(not os.path.exists('/data'), reason='No /data')
+@pytest.fixture(scope='function')
+def data_paths(request):
+    def clean_dirs():
+        shutil.rmtree('/tmp/data1')
+        os.unlink('/tmp/data2')
+
+    try:
+        clean_dirs()
+    except Exception:
+        ...
+
+    now = datetime.datetime.now()
+
+    for year_offset in [-1, 0, 1]:
+        make_dir_tree(now.year + year_offset,
+                      base_path='/tmp/data1')
+
+    os.symlink('/tmp/data1', '/tmp/data2')
+    request.addfinalizer(clean_dirs)
+
+
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/data/%Y/%m/%d', None, False),
-                          (None, '/data/%Y/%m/%d', None, False),
-                          ('/data', '%Y/%m/%d', None, False),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/data/%Y/%m/%d', None, False),
-                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
+def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, cleanup):
     fs = DummyFS()
     fs2 = DummyFS()
     if check_files:
@@ -417,17 +425,26 @@ def test_fstiff_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
             assert Path(fn).exists()
 
 
-@pytest.mark.skipif(not os.path.exists('/data'), reason='No /data')
+@pytest.fixture
+def h5py():
+    try:
+        import h5py
+    except ImportError as ex:
+        raise pytest.skip('h5py unavailable') from ex
+
+    return h5py
+
+
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/data/%Y/%m/%d', None, False),
-                          (None, '/data/%Y/%m/%d', None, False),
-                          ('/data', '%Y/%m/%d', None, False),
-                          ('/data', '/data/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/data/%Y/%m/%d', None, False),
-                          ('/tmp/data', '/data/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
+                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
-def test_fshdf_plugin(ad_prefix, root, wpath, rpath, check_files, cleanup):
-    pytest.skip('hdf5 plugin is busted with docker images')
+def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
+                      check_files, cleanup):
     fs = DummyFS()
     if check_files:
         fh = pytest.importorskip('databroker.assets.handlers')
@@ -525,3 +542,37 @@ def test_many_connect(ad_prefix, cleanup):
     for j in range(5):
         print(j)
         tester()
+
+
+def test_ndderivedsignal_with_scalars():
+    sig = Signal(value=np.zeros(12), name='zeros')
+    shaped = NDDerivedSignal(sig, shape=(4, 3), num_dimensions=2, name='shaped')
+    shaped.derived_shape == (4, 3)
+    shaped.derived_ndims == 2
+    assert shaped.get().shape == (4, 3)
+    # Describe returns list
+    assert shaped.describe()[shaped.name]['shape'] == [4, 3]
+    shaped.put(np.ones((4, 3)))
+    assert all(sig.get() == np.ones(12))
+
+
+def test_ndderivedsignal_with_parent():
+
+    class Detector(Device):
+        flat_image = Component(Signal, value=np.ones(12))
+        width = Component(Signal, value=4)
+        height = Component(Signal, value=3)
+        ndims = Component(Signal, value=2)
+        shaped_image = Component(NDDerivedSignal, 'flat_image',
+                                 shape=('width', 'height'),
+                                 num_dimensions='ndims')
+
+
+    det = Detector(name='det')
+    det.shaped_image.get().shape == (4, 3)
+    cb = Mock()
+    det.shaped_image.subscribe(cb)
+    det.width.put(6)
+    det.height.put(2)
+    assert cb.called
+    assert det.shaped_image._readback.shape == (6, 2)

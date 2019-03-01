@@ -1,13 +1,16 @@
-import textwrap
+import functools
 import inspect
 import re
 import sys
+import textwrap
+
 from collections import OrderedDict
 import networkx as nx
+import numpy as np
 
-from ..signal import EpicsSignal
 from . import docs
-from ..device import (Device, Component)
+from ..signal import (EpicsSignal, DerivedSignal, EpicsSignalRO)
+from ..device import (Device, Component, DynamicDeviceComponent)
 from ..signal import (ArrayAttributeSignal)
 
 
@@ -19,9 +22,115 @@ class EpicsSignalWithRBV(EpicsSignal):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 
 
+class NDDerivedSignal(DerivedSignal):
+    """
+    DerivedSignal to shape a flattened array
+
+    The purpose of this class is to take a flattened array and shape in its
+    proper form. The shape of the final array may be static in which case the
+    shape and number of dimensions can be set as static integers. Otherwise,
+     other signals from this classes parent can inform the proper shape of
+    the array.
+
+    Parameters
+    ----------
+    derived_from : str, ``ophyd.Signal``
+        Either a `str` that specifies the attribute of the parent we will get
+        the unshaped array or an ``ophyd.Signal`` itself.
+
+    shape: tuple
+        A tuple containing integers in the case of a static array or links to
+        ``Signal`` objects. The specifications of the signals follows the same
+        rules as the ``derived_from`` parameter
+
+    num_dimensions: int, str, ``Signal``, optional
+        The number of dimensions of the array. This can either be a static
+        ``int`` or a ``Signal`` itself.
+
+    Example
+    -------
+    .. code:: python
+
+        class TwoDimensionalDetector(Device):
+
+            flat_array = Cpt(EpicsSignal, ':Array')
+            width = Cpt(EpicsSignalRO, ':Width')
+            height = Cpt(EpicsSignalRO, ':Height')
+            shaped_array = Cpt(NDDerivedSignal('flat_array',
+                                               shape=('height', 'width'),
+                                               num_dimensions=2)
+    """
+    def __init__(self, derived_from, *, shape, num_dimensions=None,
+                 parent=None, **kwargs):
+        super().__init__(derived_from=derived_from, parent=parent, **kwargs)
+        # Assemble our shape of signals
+        self._shape = []
+        self._has_subscribed = False
+        for dim in shape:
+            if isinstance(dim, str):
+                dim = getattr(parent, dim)
+            self._shape.append(dim)
+        self._shape = tuple(self._shape)
+        # Assemble ndims
+        if not num_dimensions:
+            num_dimensions = len(self._shape)
+        if isinstance(num_dimensions, str):
+            num_dimensions = getattr(parent, num_dimensions)
+        self._num_dimensions = num_dimensions
+
+    @property
+    def derived_shape(self):
+        """Shape of output signal"""
+        shape = list()
+        for dim in self._shape:
+            if not isinstance(dim, (int, float)):
+                dim = dim.get()
+            shape.append(dim)
+        return tuple(shape)
+
+    @property
+    def derived_ndims(self):
+        """Number of dimensions"""
+        ndims = self._num_dimensions
+        if not isinstance(ndims, (int, float)):
+            ndims = ndims.get()
+        return int(ndims)
+
+    def forward(self, value):
+        """Flatten the array to send back to the DerivedSignal"""
+        return np.array(value).flatten()
+
+    def inverse(self, value):
+        """Shape the flat array to send as a result of ``.get``"""
+        array_shape = self.derived_shape[:self.derived_ndims]
+        if not any(array_shape):
+            raise RuntimeError(f"Invalid array size {self.derived_shape}")
+
+        return np.array(value).reshape(array_shape)
+
+    def subscribe(self, callback, event_type=None, run=True):
+        cid = super().subscribe(callback, event_type=event_type, run=run)
+        if not self._has_subscribed and (event_type is None or
+                                         event_type == self.SUB_VALUE):
+            # Ensure callbacks are fired when array is reshaped
+            for dim in self._shape + (self._num_dimensions, ):
+                if not isinstance(dim, int):
+                    dim.subscribe(self._array_shape_callback,
+                                  event_type=self.SUB_VALUE,
+                                  run=False)
+        self._has_subscribed = True
+        return cid
+
+    def _array_shape_callback(self, **kwargs):
+        value = self.inverse(self._derived_from.value)
+        self._readback = value
+        self._run_subs(sub_type=self.SUB_VALUE, value=value,
+                       **self._metadata)
+
+
 class ADComponent(Component):
-    def __init__(self, cls, suffix, lazy=True, **kwargs):
-        super().__init__(cls, suffix, lazy=lazy, **kwargs)
+    def __init__(self, cls, suffix=None, *, lazy=True, **kwargs):
+        super().__init__(cls, suffix=suffix, lazy=lazy, **kwargs)
 
     def find_docs(self, parent_class):
         '''Find all the documentation related to this class, all the way up the
@@ -59,6 +168,9 @@ class ADComponent(Component):
             block.append('')
             return '\n'.join(block)
 
+        if self.suffix is None:
+            return
+
         suffixes = [self.suffix]
 
         if self.suffix.endswith('_RBV'):
@@ -81,6 +193,19 @@ def ad_group(cls, attr_suffix, **kwargs):
     for attr, suffix in attr_suffix:
         defn[attr] = (cls, suffix, kwargs)
     return defn
+
+
+def _ddc_helper(signal_class, *items, kind='config', doc=None, **kwargs):
+    'DynamicDeviceComponent using one signal class for all components'
+    return DynamicDeviceComponent(
+        ad_group(signal_class, items, kind=kind, **kwargs),
+        doc=doc,
+    )
+
+
+DDC_EpicsSignal = functools.partial(_ddc_helper, EpicsSignal)
+DDC_EpicsSignalRO = functools.partial(_ddc_helper, EpicsSignalRO)
+DDC_SignalWithRBV = functools.partial(_ddc_helper, EpicsSignalWithRBV)
 
 
 class ADBase(Device):
@@ -304,7 +429,8 @@ class ADBase(Device):
         return ret
 
     configuration_names = Component(ArrayAttributeSignal,
-                                    attr='_configuration_names')
+                                    attr='_configuration_names',
+                                    kind='config')
 
     @property
     def _configuration_names(self):

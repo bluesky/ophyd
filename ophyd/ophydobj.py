@@ -5,7 +5,28 @@ import logging
 
 from enum import IntFlag
 
-from .status import (StatusBase, MoveStatus, DeviceStatus)
+
+module_logger = logging.getLogger(__name__)
+
+
+def select_version(cls, version):
+    """Select closest compatible version to requested version
+
+    Compatible is defined as ``class_version <= requested_version``
+    as defined by the types used to denote the versions.
+
+    Parameters
+    ----------
+    cls : type
+        The base class to find a version of
+
+    version : any
+        Must be the same type as used to define the class versions.
+
+    """
+    all_versions = cls._class_info_['versions']
+    matched_version = max(ver for ver in all_versions if ver <= version)
+    return all_versions[matched_version]
 
 
 class Kind(IntFlag):
@@ -14,12 +35,12 @@ class Kind(IntFlag):
 
     A Device examines its components' .kind atttribute to decide whether to
     traverse it in read(), read_configuration(), or neither. Additionally, if
-    decides whether to include its name in `.hints['fields']`.
+    decides whether to include its name in `hints['fields']`.
     """
-    omitted = 0
-    normal = 1
-    config = 2
-    hinted = 5  # Notice that bool(hinted & normal) is True.
+    omitted = 0b000
+    normal = 0b001
+    config = 0b010
+    hinted = 0b101  # Notice that bool(hinted & normal) is True.
 
 
 class UnknownSubscription(KeyError):
@@ -38,10 +59,14 @@ class OphydObject:
     ----------
     name : str, optional
         The name of the object.
+    attr_name : str, optional
+        The attr name on it's parent (if it has one)
+        ex ``getattr(self.parent, self.attr_name) is self``
     parent : parent, optional
         The object's parent, if it exists in a hierarchy
-    kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.normal. See Kind for options.
+    kind : a member of the :class:`~ophydobj.Kind` :class:`~enum.IntEnum`
+        (or equivalent integer), optional
+        Default is ``Kind.normal``. See :class:`~ophydobj.Kind` for options.
 
     Attributes
     ----------
@@ -50,7 +75,7 @@ class OphydObject:
 
     _default_sub = None
 
-    def __init__(self, *, name=None, parent=None, labels=None,
+    def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
         if labels is None:
             labels = set()
@@ -64,6 +89,7 @@ class OphydObject:
         # base name and ref to parent, these go with properties
         if name is None:
             name = ''
+        self._attr_name = attr_name
         if not isinstance(name, str):
             raise ValueError("name must be a string.")
         self._name = name
@@ -95,10 +121,67 @@ class OphydObject:
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
 
+    def __init_subclass__(cls, version=None, version_of=None,
+                          version_type=None, **kwargs):
+        'This is called automatically in Python for all subclasses of OphydObject'
+        super().__init_subclass__(**kwargs)
+
+        if version is None:
+            if version_of is not None:
+                raise RuntimeError('Must specify a version if `version_of` '
+                                   'is specified')
+            if version_type is None:
+                return
+            # Allow specification of version_type without specifying a version,
+            # for use in a base class
+
+            cls._class_info_ = dict(
+                versions={},
+                version=None,
+                version_type=version_type,
+                version_of=version_of
+            )
+            return
+
+        if version_of is None:
+            versions = {}
+            version_of = cls
+        else:
+            versions = version_of._class_info_['versions']
+            if version_type is None:
+                version_type = version_of._class_info_['version_type']
+
+            elif version_type != version_of._class_info_['version_type']:
+                raise RuntimeError(
+                    "version_type with in a family must be consistent, "
+                    f"you passed in {version_type}, to {cls.__name__} "
+                    f"but {version_of.__name__} has version_type "
+                    f"{version_of._class_info_['version_type']}")
+
+            if not issubclass(cls, version_of):
+                raise RuntimeError(
+                    f'Versions are only valid for classes in the same '
+                    f'hierarchy. {cls.__name__} is not a subclass of '
+                    f'{version_of.__name__}.'
+                )
+
+        if versions is not None and version in versions:
+            module_logger.warning('Redefining %r version %s: old=%r new=%r',
+                                  version_of, version, versions[version], cls)
+
+        versions[version] = cls
+
+        cls._class_info_ = dict(
+            versions=versions,
+            version=version,
+            version_type=version_type,
+            version_of=version_of
+        )
+
     def _validate_kind(self, val):
         if isinstance(val, str):
-            val = getattr(Kind, val.lower())
-        return val
+            return Kind[val.lower()]
+        return Kind(val)
 
     @property
     def kind(self):
@@ -109,6 +192,18 @@ class OphydObject:
         self._kind = self._validate_kind(val)
 
     @property
+    def dotted_name(self) -> str:
+        """Return the dotted name
+
+        """
+        names = []
+        obj = self
+        while obj.parent is not None:
+            names.append(obj.attr_name)
+            obj = obj.parent
+        return '.'.join(names[::-1])
+
+    @property
     def name(self):
         '''name of the device'''
         return self._name
@@ -116,6 +211,10 @@ class OphydObject:
     @name.setter
     def name(self, name):
         self._name = name
+
+    @property
+    def attr_name(self):
+        return self._attr_name
 
     @property
     def connected(self):
@@ -173,7 +272,7 @@ class OphydObject:
         '''
         if sub_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(sub_type, self.subscriptions))
 
         kwargs['sub_type'] = sub_type
@@ -258,7 +357,7 @@ class OphydObject:
         # check that this is a valid event type
         if event_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {}, must be one of {!r}"
+                "Unknown subscription {!r}, must be one of {!r}"
                 .format(event_type, self.subscriptions))
 
         # wrapper for callback to snarf exceptions
@@ -355,6 +454,7 @@ class OphydObject:
         return '{}({})'.format(self.__class__.__name__, info)
 
     def _repr_info(self):
+        'Yields pairs of (key, value) to generate the object repr'
         if self.name is not None:
             yield ('name', self.name)
 
@@ -362,5 +462,22 @@ class OphydObject:
             yield ('parent', self.parent.name)
 
     def __copy__(self):
-        info = dict(self._repr_info())
-        return self.__class__(**info)
+        '''Copy the ophyd object
+
+        Shallow copying ophyd objects uses the repr information from the
+        _repr_info method to create a new object.
+        '''
+        kwargs = dict(self._repr_info())
+        return self.__class__(**kwargs)
+
+    def __getnewargs_ex__(self):
+        '''Used by pickle to serialize an ophyd object
+
+        Returns
+        -------
+        (args, kwargs)
+            Arguments to be passed to __init__, necessary to recreate this
+            object
+        '''
+        kwargs = dict(self._repr_info())
+        return ((), kwargs)

@@ -1,5 +1,6 @@
 from ophyd.sim import (SynGauss, Syn2DGauss, SynAxis, make_fake_device,
-                       FakeEpicsSignal, FakeEpicsSignalRO, clear_fake_device,
+                       FakeEpicsSignal, FakeEpicsSignalRO,
+                       FakeEpicsSignalWithRBV, clear_fake_device,
                        instantiate_fake_device, SynSignalWithRegistry)
 from ophyd.device import (Device, Component as Cpt, FormattedComponent as FCpt,
                           DynamicDeviceComponent as DDCpt)
@@ -144,7 +145,7 @@ class Sample(Device):
 def test_make_fake_device():
     assert make_fake_device(EpicsSignal) == FakeEpicsSignal
     assert make_fake_device(EpicsSignalRO) == FakeEpicsSignalRO
-    assert make_fake_device(EpicsSignalWithRBV) == FakeEpicsSignal
+    assert make_fake_device(EpicsSignalWithRBV) == FakeEpicsSignalWithRBV
 
     FakeSample = make_fake_device(Sample)
     my_fake = FakeSample('KITCHEN', name='kitchen')
@@ -239,6 +240,7 @@ def test_fake_epics_signal_enum():
     sig = FakeEpicsSignal('PVNAME', name='sig', string=True)
     sig.sim_set_enum_strs(['zero', 'one', 'two', 'three'])
     sig.put(0)
+    assert sig.describe()['sig']['enum_strs'] == ('zero', 'one', 'two', 'three')
     assert sig.get() == 'zero'
     assert sig.get(as_string=False) == 0
     sig.put('two')

@@ -4,7 +4,7 @@ import logging
 
 from .utils.epics_pvs import fmt_time
 
-from .device import Device
+from .device import (Device, required_for_connection)
 from .ophydobj import Kind
 from .positioner import PositionerBase
 from .status import wait as status_wait
@@ -105,6 +105,10 @@ class PVPositioner(Device, PositionerBase):
 
         if self.done is not None:
             self.done.subscribe(self._move_changed)
+        else:
+            # If there is not a `move_changed` signal, indicate that the
+            # positioner is not moving frm the start:
+            self._move_changed(value=self.done_value)
 
     @property
     def egu(self):
@@ -200,6 +204,7 @@ class PVPositioner(Device, PositionerBase):
 
         return status
 
+    @required_for_connection
     def _move_changed(self, timestamp=None, value=None, sub_type=None,
                       **kwargs):
         was_moving = self._moving
@@ -224,6 +229,7 @@ class PVPositioner(Device, PositionerBase):
                 self._done_moving(success=True, timestamp=timestamp,
                                   value=value)
 
+    @required_for_connection
     def _pos_changed(self, timestamp=None, value=None, **kwargs):
         '''Callback from EPICS, indicating a change in position'''
         self._set_position(value)

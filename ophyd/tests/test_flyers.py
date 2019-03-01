@@ -3,7 +3,7 @@ import pytest
 
 from ophyd import (Component as Cpt,
                    SimDetector, SimDetectorCam, StatsPlugin, EpicsMotor,
-                   Device)
+                   ROIPlugin, ProcessPlugin, Device)
 from ophyd.areadetector.base import EpicsSignalWithRBV
 from ophyd.flyers import (AreaDetectorTimeseriesCollector,
                           WaveformCollector,
@@ -12,32 +12,18 @@ from ophyd.status import wait
 from ophyd.utils import OrderedDefaultDict
 
 
-@pytest.fixture
-def prefix():
-    return 'XF:23ID1-ES{Tst-Cam:1}'
-
-
-@pytest.fixture(params=['Stats1:',
-                        # 'Stats2:',
-                        # 'Stats3:',
-                        # 'Stats4:',
-                        # 'Stats5:',
-                        ]
-                )
-def stats_suffix(request):
-    return request.param
-
-
 @pytest.fixture(scope='function')
-def ts_sim_detector(prefix, stats_suffix):
+def ts_sim_detector(ad_prefix):
     class Detector(SimDetector):
         acquire = Cpt(EpicsSignalWithRBV, 'cam1:Acquire', trigger_value=1)
         cam = Cpt(SimDetectorCam, 'cam1:')
-        ts_col = Cpt(AreaDetectorTimeseriesCollector, stats_suffix)
-        stats = Cpt(StatsPlugin, stats_suffix)
+        ts_col = Cpt(AreaDetectorTimeseriesCollector, 'Stats1:')
+        stats = Cpt(StatsPlugin, 'Stats1:')
+        roi1 = Cpt(ROIPlugin, 'ROI1:')
+        proc1 = Cpt(ProcessPlugin, 'Proc1:')
 
     try:
-        det = Detector(prefix, name='sim')
+        det = Detector(ad_prefix, name='sim')
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')
@@ -68,8 +54,11 @@ def test_ad_time_series(ts_sim_detector, tscollector):
     print('cam stage sigs', cam.stage_sigs)
     print('stats stage sigs', sim_detector.stats.stage_sigs)
 
-    st = tscollector.complete()
-    wait(st)
+    try:
+        # In case the collector is currently running...
+        wait(tscollector.complete())
+    except RuntimeError:
+        ...
 
     tscollector.stage_sigs[tscollector.num_points] = num_points
 
@@ -85,6 +74,9 @@ def test_ad_time_series(ts_sim_detector, tscollector):
     tscollector.pause()
     tscollector.resume()
 
+    st = tscollector.complete()
+    wait(st)
+
     collected = list(tscollector.collect())
     print('collected', collected)
     sim_detector.unstage()
@@ -93,14 +85,14 @@ def test_ad_time_series(ts_sim_detector, tscollector):
 
 
 @pytest.fixture(scope='function')
-def wf_sim_detector(prefix):
+def wf_sim_detector(ad_prefix):
     suffix = '??TODO??'
 
     class Detector(SimDetector):
         wfcol = Cpt(WaveformCollector, suffix)
 
     try:
-        det = Detector(prefix, name='det')
+        det = Detector(ad_prefix, name='det')
         det.wait_for_connection(timeout=1.0)
     except TimeoutError:
         pytest.skip('IOC unavailable')

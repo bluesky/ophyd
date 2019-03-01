@@ -463,6 +463,35 @@ class FileStoreHDF5(FileStorePluginBase):
         self._generate_resource(res_kwargs)
 
 
+class FileStoreHDF5Single(FileStorePluginBase):
+    '''This FileStore mixin is used when running the AreaDetector hdf5 plugin
+    in `Single` mode (ie. one hdf5 file per trigger).
+
+    '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filestore_spec = 'AD_HDF5_SINGLE'  # spec name stored in res. doc
+
+        self.stage_sigs.update([('file_template', '%s%s_%6.6d.h5'),
+                                ('file_write_mode', 'Single'),
+                                ])
+        # 'Single' file_write_mode means one image : one file.
+        # It does NOT mean that 'num_images' is ignored.
+
+    def get_frames_per_point(self):
+        return self.parent.cam.num_images.get()
+
+    def stage(self):
+        super().stage()
+        # this over-rides the behavior is the base stage
+        self._fn = self._fp
+
+        resource_kwargs = {'template': self.file_template.get(),
+                           'filename': self.file_name.get(),
+                           'frame_per_point': self.get_frames_per_point()}
+        self._generate_resource(resource_kwargs)
+
+
 class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -607,6 +636,15 @@ class FileStoreIterativeWrite(FileStoreBase):
 # ready-to-use combinations
 
 class FileStoreHDF5IterativeWrite(FileStoreHDF5, FileStoreIterativeWrite):
+    pass
+
+
+class FileStoreHDF5SingleIterativeWrite(FileStoreHDF5Single,
+                                        FileStoreIterativeWrite):
+    '''
+    Used for running Areadetectors hdf5 plugin in `Single` mode, with
+    `point_number` in the kwargs.
+    '''
     pass
 
 

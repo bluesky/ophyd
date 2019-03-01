@@ -1,6 +1,7 @@
 import logging
 import types
 import os
+from ophyd.log import set_handler
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -37,12 +38,13 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     else:
         raise ValueError('unknown control_layer')
 
-    exports = ('setup', 'caput', 'caget', 'get_pv', 'pv_form', 'thread_class',
-               'name', 'release_pvs')
+    shim.setup(logger)
+
+    exports = ('setup', 'caput', 'caget', 'get_pv', 'thread_class', 'name',
+               'release_pvs')
     # this sets the module level value
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})
-    cl.setup(logger)
     if pv_telemetry:
         from functools import wraps
         from collections import Counter
@@ -69,7 +71,7 @@ def get_cl():
 
 set_cl()
 
-from .ophydobj import Kind
+from .ophydobj import Kind, select_version
 
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
@@ -85,7 +87,7 @@ from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
                      DynamicDeviceComponent, ALL_COMPONENTS, kind_context,
                      wait_for_lazy_connection, do_not_wait_for_lazy_connection)
-from .status import StatusBase
+from .status import StatusBase, wait
 from .mca import EpicsMCA, EpicsDXP
 from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM
 

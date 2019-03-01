@@ -1,4 +1,4 @@
-[![Circle CI](https://circleci.com/gh/NSLS-II/ophyd.svg?style=svg)](https://circleci.com/gh/NSLS-II/ophyd)
+[![Build Status](https://travis-ci.org/NSLS-II/ophyd.svg)](https://travis-ci.org/NSLS-II/ophyd)
 
 [![Code Health](https://landscape.io/github/NSLS-II/ophyd/master/landscape.svg?style=flat)](https://landscape.io/github/NSLS-II/ophyd/master)
 

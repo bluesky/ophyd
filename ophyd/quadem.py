@@ -94,13 +94,13 @@ class QuadEM(SingleTrigger, DetectorBase):
     position_scale_x = Cpt(EpicsSignal, 'PositionScaleX')
     position_scale_Y = Cpt(EpicsSignal, 'PositionScaleY')
 
-    image = ADCpt(ImagePlugin, 'image1:')
-    current1 = ADCpt(StatsPlugin, 'Current1:')
-    current2 = ADCpt(StatsPlugin, 'Current2:')
-    current3 = ADCpt(StatsPlugin, 'Current3:')
-    current4 = ADCpt(StatsPlugin, 'Current4:')
+    image = Cpt(ImagePlugin, 'image1:')
+    current1 = Cpt(StatsPlugin, 'Current1:')
+    current2 = Cpt(StatsPlugin, 'Current2:')
+    current3 = Cpt(StatsPlugin, 'Current3:')
+    current4 = Cpt(StatsPlugin, 'Current4:')
 
-    sum_all = ADCpt(StatsPlugin, 'SumAll:')
+    sum_all = Cpt(StatsPlugin, 'SumAll:')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

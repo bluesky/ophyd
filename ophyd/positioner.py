@@ -5,7 +5,10 @@ import functools
 from .ophydobj import OphydObject, Kind
 from .status import (MoveStatus, wait as status_wait, StatusBase)
 from .utils.epics_pvs import (data_type, data_shape)
+from .utils.errors import LimitError
 from typing import Any, Callable
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -266,14 +269,15 @@ class SoftPositioner(PositionerBase):
                  init_pos=None,
                  **kwargs):
         super().__init__(**kwargs)
-        if init_pos is not None:
-            self.set(init_pos)
+
         self._egu = egu
         if limits is None:
             limits = (0, 0)
 
         self._limits = tuple(limits)
         self.source = source
+        if init_pos is not None:
+            self.set(init_pos)
 
     @property
     def limits(self):
@@ -385,3 +389,10 @@ class SoftPositioner(PositionerBase):
 
     def describe_configuration(self):
         return OrderedDict()
+
+    def check_value(self, pos):
+        '''Check that the position is within the soft limits'''
+        low_limit, high_limit = self.limits
+
+        if low_limit < high_limit and not (low_limit <= pos <= high_limit):
+            raise LimitError(f'position={pos} not within limits {self.limits}')

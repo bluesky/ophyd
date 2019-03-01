@@ -8,7 +8,8 @@ from ophyd import (Device, Component, FormattedComponent,
                    wait_for_lazy_connection, do_not_wait_for_lazy_connection)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
-from ophyd.device import ComponentWalk
+from ophyd.device import (ComponentWalk, create_device_from_components,
+                          required_for_connection)
 from ophyd.utils import ExceptionBundle
 
 
@@ -509,7 +510,9 @@ def test_walk_signals(include_lazy):
     print(MyDevice.sub1.cls.cpt1)
 
     dev = MyDevice('', name='mydev')
+    walked_list = list(dev.walk_signals(include_lazy=include_lazy))
 
+    dev.summary()
     expected = [
         ComponentWalk(ancestors=(dev, dev.sub1, ),
                       dotted_name='sub1.cpt1',
@@ -557,7 +560,7 @@ def test_walk_signals(include_lazy):
                     if 'cpt4' not in item.dotted_name
                     ]
 
-    assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
+    assert walked_list == expected
 
 
 def test_walk_subdevice_classes():
@@ -611,3 +614,135 @@ def test_walk_subdevices():
         ('sub3', dev.sub3),
         ('sub3.subsub', dev.sub3.subsub),
     ]
+
+
+def test_dotted_name():
+    from ophyd import Device, Component as Cpt
+    from ophyd.sim import SynSignal
+
+    class Inner(Device):
+        x = Cpt(SynSignal)
+        y = Cpt(SynSignal)
+
+    class Outer(Device):
+        a = Cpt(Inner)
+        b = Cpt(Inner)
+
+    o = Outer(name='test')
+
+    assert o.dotted_name == ''
+    assert o.a.dotted_name == 'a'
+    assert o.b.dotted_name == 'b'
+
+    assert o.a.x.dotted_name == 'a.x'
+    assert o.b.x.dotted_name == 'b.x'
+
+    assert o.a.y.dotted_name == 'a.y'
+    assert o.b.y.dotted_name == 'b.y'
+
+    assert o.attr_name == ''
+    assert o.a.attr_name == 'a'
+    assert o.b.attr_name == 'b'
+
+    assert o.a.x.attr_name == 'x'
+    assert o.b.x.attr_name == 'x'
+
+    assert o.a.y.attr_name == 'y'
+    assert o.b.y.attr_name == 'y'
+
+
+def test_create_device():
+    components = dict(cpt1=Component(Signal, value=0),
+                      cpt2=Component(Signal, value=1),
+                      cpt3=Component(Signal, value=2)
+                      )
+    Dev = create_device_from_components('Dev', base_class=Device,
+                                        **components
+                                        )
+    assert Dev.__name__ == 'Dev'
+    assert Dev.cpt1 is components['cpt1']
+    dev = Dev(name='dev')
+    assert dev.cpt1.get() == 0
+    assert dev.cpt2.get() == 1
+    assert dev.cpt3.get() == 2
+
+
+def test_create_device_bad_component():
+    with pytest.raises(ValueError):
+        create_device_from_components('Dev', base_class=Device,
+                                      bad_component=None)
+
+
+def test_required_for_connection_on_method_with_subscriptions():
+    class MyDevice(Device):
+        cpt = Component(Signal, value=0)
+
+        @required_for_connection
+        @cpt.sub_value
+        def method(self):
+            ...
+
+    dev = MyDevice(name='dev')
+
+    with pytest.raises(TimeoutError):
+        dev.wait_for_connection(timeout=0.1)
+
+    dev.cpt.put(0)
+    dev.wait_for_connection(timeout=0.1)
+
+
+def test_required_for_connection_on_method():
+    class MyDevice(Device):
+        @required_for_connection
+        def method(self):
+            ...
+
+    dev = MyDevice(name='dev')
+
+    # Timeout without it having been called:
+    with pytest.raises(TimeoutError):
+        dev.wait_for_connection(timeout=0.01)
+
+    # Call and expect no timeout:
+    dev.method()
+    dev.wait_for_connection(timeout=0.01)
+
+
+def test_required_for_connection_in_init():
+    class MyDevice(Device):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.call_to_connect = required_for_connection(self.method,
+                                                           device=self)
+
+        def method(self):
+            print('method called')
+
+    dev = MyDevice(name='dev')
+
+    # Timeout without it having been called:
+    with pytest.raises(TimeoutError):
+        dev.wait_for_connection(timeout=0.01)
+
+    # Call and expect no timeout:
+    dev.call_to_connect()
+    dev.wait_for_connection(timeout=0.01)
+
+
+def test_noneified_component():
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+
+    class MyDeviceWithoutSub2(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = None
+
+    assert MyDevice.component_names == ('sub1', 'sub2')
+    assert MyDevice._sub_devices == ['sub1', 'sub2']
+
+    assert MyDeviceWithoutSub2.component_names == ('sub1', )
+    assert MyDeviceWithoutSub2._sub_devices == ['sub1']

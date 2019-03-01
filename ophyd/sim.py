@@ -84,7 +84,8 @@ class SynSignal(Signal):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None):
+                 loop=None,
+                 **kwargs):
         if func is None:
             # When triggered, just put the current value.
             func = self.get
@@ -97,7 +98,10 @@ class SynSignal(Signal):
         self.precision = 3
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
-                         parent=parent, labels=labels, kind=kind)
+                         parent=parent, labels=labels, kind=kind, **kwargs)
+        self._metadata.update(
+            connected=True,
+        )
 
     def describe(self):
         res = super().describe()
@@ -137,6 +141,13 @@ class SynSignal(Signal):
 
 
 class SignalRO(Signal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(
+            connected=True,
+            write_access=False,
+        )
+
     def put(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
@@ -195,12 +206,14 @@ class SynPeriodicSignal(SynSignal):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None):
+                 loop=None,
+                 **kwargs):
         if func is None:
             func = np.random.rand
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
-                         parent=parent, labels=labels, kind=kind, loop=loop)
+                         parent=parent, labels=labels, kind=kind, loop=loop,
+                         **kwargs)
 
         self.__thread = threading.Thread(target=periodic_update, daemon=True,
                                          args=(weakref.ref(self),
@@ -290,7 +303,8 @@ class SynAxisNoHints(Device):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None):
+                 loop=None,
+                 **kwargs):
         if readback_func is None:
             def readback_func(x):
                 return x
@@ -308,7 +322,8 @@ class SynAxisNoHints(Device):
         self.sim_state['readback'] = readback_func(value)
         self.sim_state['readback_ts'] = ttime.time()
 
-        super().__init__(name=name, parent=parent, labels=labels, kind=kind)
+        super().__init__(name=name, parent=parent, labels=labels, kind=kind,
+                         **kwargs)
         self.readback.name = self.name
 
     def set(self, value):
@@ -398,16 +413,21 @@ class SynGauss(SynSignal):
         if noise not in ('poisson', 'uniform', None):
             raise ValueError("noise must be one of 'poisson', 'uniform', None")
         self._motor = motor
-        if random_state is None:
-            random_state = np.random
+        self._motor_field = motor_field
+        self.center = center
+        self.sigma = sigma
+        self.Imax = Imax
+        self.noise = noise
+        self.noise_multiplier = noise_multiplier
+        self.random_state = random_state or np.random
 
         def func():
-            m = motor.read()[motor_field]['value']
-            v = Imax * np.exp(-(m - center) ** 2 / (2 * sigma ** 2))
-            if noise == 'poisson':
-                v = int(random_state.poisson(np.round(v), 1))
-            elif noise == 'uniform':
-                v += random_state.uniform(-1, 1) * noise_multiplier
+            m = self._motor.read()[self._motor_field]['value']
+            v = self.Imax * np.exp(-(m - self.center) ** 2 / (2 * self.sigma ** 2))
+            if self.noise == 'poisson':
+                v = int(self.random_state.poisson(np.round(v), 1))
+            elif self.noise == 'uniform':
+                v += self.random_state.uniform(-1, 1) * self.noise_multiplier
             return v
 
         super().__init__(func=func, name=name, **kwargs)
@@ -505,6 +525,22 @@ class TrivialFlyer:
 
     def stop(self, *, success=False):
         pass
+
+
+class NewTrivialFlyer(TrivialFlyer):
+    """
+    The old-style API inserted Resource and Datum documents into a database directly.
+    The new-style API only caches the documents and provides an interface (collect_asset_docs)
+    for accessing that cache. This change was part of the "asset refactor" that changed
+    that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
+    Trivial flyer that complies to the API but returns empty data.
+    """
+
+    name = 'new_trivial_flyer'
+
+    def collect_asset_docs(self):
+        for _ in ():
+            yield _
 
 
 class MockFlyer:
@@ -892,23 +928,22 @@ def make_fake_device(cls):
         # Update all the components recursively
         for cpt_name in cls.component_names:
             cpt = getattr(cls, cpt_name)
-            fake_cpt = copy.copy(cpt)
-            if isinstance(cpt, Component):
-                fake_cpt.cls = make_fake_device(cpt.cls)
-                logger.debug('switch cpt_name=%s to cls=%s',
-                             cpt_name, fake_cpt.cls)
-            # DDCpt stores the classes in a different place
-            elif isinstance(cpt, DDC):
-                fake_defn = {}
-                for ddcpt_name, ddcpt_tuple in cpt.defn.items():
-                    subcls = make_fake_device(ddcpt_tuple[0])
-                    fake_defn[ddcpt_name] = [subcls] + list(ddcpt_tuple[1:])
-                fake_cpt.defn = fake_defn
+            if isinstance(cpt, DDC):
+                # Make a regular Component out of the DDC, as it already has
+                # been generated
+                fake_cpt = Component(cls=cpt.cls, suffix=cpt.suffix,
+                                     lazy=cpt.lazy,
+                                     trigger_value=cpt.trigger_value,
+                                     kind=cpt.kind, add_prefix=cpt.add_prefix,
+                                     doc=cpt.doc, **cpt.kwargs,
+                                     )
             else:
-                raise RuntimeError(("{} is not a component or a dynamic "
-                                    "device component. I don't know how you "
-                                    "found this error, should be impossible "
-                                    "to reach it.".format(cpt)))
+                fake_cpt = copy.copy(cpt)
+
+            fake_cpt.cls = make_fake_device(cpt.cls)
+            logger.debug('switch cpt_name=%s to cls=%s', cpt_name,
+                         fake_cpt.cls)
+
             fake_dict[cpt_name] = fake_cpt
         fake_class = type('Fake{}'.format(cls.__name__), (cls,), fake_dict)
         fake_device_cache[cls] = fake_class
@@ -937,29 +972,23 @@ def clear_fake_device(dev, *, default_value=0, default_string_value='',
         List of all (signal_instance, value) that were set
     '''
 
-    devs = [dev]
     all_values = []
-    while devs:
-        sub_dev = devs.pop(0)
-        devs.extend([getattr(sub_dev, name)
-                     for name in sub_dev._sub_devices])
-        for name, cpt in sub_dev._sig_attrs.items():
-            sig = getattr(sub_dev, name)
-            if isinstance(cpt, DDC) or not hasattr(sig, 'sim_put'):
-                continue
+    for walk in dev.walk_signals(include_lazy=True):
+        sig = walk.item
+        if not hasattr(sig, 'sim_put'):
+            continue
 
-            try:
-                string = (hasattr(cpt, 'kwargs') and
-                          cpt.kwargs.get('string', False))
-                value = (default_string_value
-                         if string
-                         else default_value)
-                sig.sim_put(value)
-            except Exception as ex:
-                if not ignore_exceptions:
-                    raise
-            else:
-                all_values.append((sig, value))
+        try:
+            string = getattr(sig, 'as_string', False)
+            value = (default_string_value
+                     if string
+                     else default_value)
+            sig.sim_put(value)
+        except Exception as ex:
+            if not ignore_exceptions:
+                raise
+        else:
+            all_values.append((sig, value))
 
     return all_values
 
@@ -1026,9 +1055,9 @@ class FakeEpicsSignal(SynSignal):
     We can emulate EpicsSignal features here. We currently emulate the put
     limits and some enum handling.
     """
-    def __init__(self, read_pv, write_pv=None, *, pv_kw=None,
-                 put_complete=False, string=False, limits=False,
-                 auto_monitor=False, name=None, **kwargs):
+    def __init__(self, read_pv, write_pv=None, *, put_complete=False,
+                 string=False, limits=False, auto_monitor=False, name=None,
+                 **kwargs):
         """
         Mimic EpicsSignal signature
         """
@@ -1038,6 +1067,15 @@ class FakeEpicsSignal(SynSignal):
         self._use_limits = limits
         self._put_func = None
         self._limits = None
+        self._metadata.update(
+            connected=True,
+        )
+
+    def describe(self):
+        desc = super().describe()
+        if self._enum_strs is not None:
+            desc[self.name]['enum_strs'] = self.enum_strs
+        return desc
 
     def sim_set_func(self, func):
         """
@@ -1090,7 +1128,12 @@ class FakeEpicsSignal(SynSignal):
         Implement here instead of FakeEpicsSignalRO so you can call it with
         every fake signal.
         """
-        return Signal.put(self, *args, **kwargs)
+        force = kwargs.pop('force', True)
+        # The following will emit SUB_VALUE:
+        ret = Signal.put(self, *args, force=force, **kwargs)
+        # Also, ensure that SUB_META has been emitted:
+        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        return ret
 
     @property
     def enum_strs(self):
@@ -1111,7 +1154,9 @@ class FakeEpicsSignal(SynSignal):
             The enums will be accessed by array index, e.g. the first item in
             enums will be 0, the next will be 1, etc.
         """
-        self._enum_strs = enums
+        self._enum_strs = tuple(enums)
+        self._metadata['enum_strs'] = tuple(enums)
+        self._run_subs(sub_type=self.SUB_META, **self._metadata)
 
     @property
     def limits(self):
@@ -1130,8 +1175,8 @@ class FakeEpicsSignal(SynSignal):
         super().check_value(value)
         if value is None:
             raise ValueError('Cannot write None to EPICS PVs')
-        if self._use_limits and not self.limits[0] < value < self.limits[1]:
-            raise LimitError('value={} limits={}'.format(value, self.limits))
+        if self._use_limits and not self.limits[0] <= value <= self.limits[1]:
+            raise LimitError(f'value={value} not within limits {self.limits}')
 
 
 class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
@@ -1141,12 +1186,21 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
     pass
 
 
+class FakeEpicsSignalWithRBV(FakeEpicsSignal):
+    """
+    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming scheme
+    """
+    def __init__(self, prefix, **kwargs):
+        super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
+
+
 fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      EpicsSignalRO: FakeEpicsSignalRO,
-                     EpicsSignalWithRBV: FakeEpicsSignal}
+                     EpicsSignalWithRBV: FakeEpicsSignalWithRBV,
+                     }
 
 
-def hw():
+def hw(save_path=None):
     "Build a set of synthetic hardware (hence the abbreviated name, hw)"
     motor = SynAxis(name='motor', labels={'motors'})
     motor1 = SynAxis(name='motor1', labels={'motors'})
@@ -1180,6 +1234,7 @@ def hw():
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
     trivial_flyer = TrivialFlyer()
+    new_trivial_flyer = NewTrivialFlyer()
 
     ab_det = ABDetector(name='det', labels={'detectors'})
     # area detector that directly stores image data in Event
@@ -1187,7 +1242,8 @@ def hw():
                            name='img', labels={'detectors'})
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
-                                name='img', labels={'detectors'})
+                                name='img', labels={'detectors'},
+                                save_path=save_path)
     invariant1 = InvariantSignal(func=lambda: 0, name='invariant1',
                                  labels={'detectors'})
     invariant2 = InvariantSignal(func=lambda: 0, name='invariant2',
@@ -1222,6 +1278,7 @@ def hw():
         flyer1=flyer1,
         flyer2=flyer2,
         trivial_flyer=trivial_flyer,
+        new_trivial_flyer=new_trivial_flyer,
         ab_det=ab_det,
         direct_img=direct_img,
         img=img,
