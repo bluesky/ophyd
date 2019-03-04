@@ -90,10 +90,8 @@ class DispatcherThreadContext:
 
         current_thread = threading.currentThread()
         if current_thread is self.event_thread:
-            print('calling', func, args, kwargs)
             func(*args, **kwargs)
         else:
-            print('scheduling', func, args, kwargs)
             self.event_thread.queue.put((func, args, kwargs))
 
     __call__ = run
