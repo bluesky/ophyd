@@ -139,8 +139,11 @@ def release_pvs(*pvs):
         for pv in pvs:
             pv.clear_callbacks()
             pv.clear_auto_monitor()
+        event.set()
 
-    _dispatcher.run_in_thread('monitor', _release_pvs)
+    event = threading.Event()
+    _dispatcher.get_thread_context('monitor').run(_release_pvs)
+    event.wait()
 
 
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
