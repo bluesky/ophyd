@@ -23,3 +23,7 @@ def get_pv(*args, **kwargs):
 
 def release_pvs(*args, **kwargs):
     raise NotImplementedError
+
+
+def get_dispatcher():
+    raise NotImplementedError

@@ -135,6 +135,14 @@ class EventDispatcher:
         'Schedule `callback` with the given args and kwargs in a util thread'
         self._utility_queue.put((callback, args, kwargs))
 
+    def run_in_thread(self, event_type, callback, *args, **kwargs):
+        event_thread = self._threads[event_type]
+        current_thread = threading.currentThread()
+        if current_thread is event_thread:
+            callback(*args, **kwargs)
+        else:
+            event_thread.queue.put((callback, args, kwargs))
+
     def _start_thread(self, name, *, callback_queue=None):
         'Start dispatcher thread by name'
         self._threads[name] = self._thread_class(name=name, dispatcher=self,
