@@ -867,7 +867,7 @@ class EpicsSignalBase(Signal):
         metadata = self._metadata_changed(self.pvname, kwargs, update=False,
                                           require_timestamp=True,
                                           from_monitor=from_monitor)
-        if not from_monitor and self._monitors[self.pvname]:
+        if not from_monitor:
             # Update values internally for consistency, but do not run callbacks
             self._metadata.update(**metadata)
             self._readback = value
@@ -1258,7 +1258,7 @@ class EpicsSignal(EpicsSignalBase):
         self._metadata.update(**metadata)
         self._setpoint = self._fix_type(value)
 
-        if not from_monitor and self._monitors[self.setpoint_pvname]:
+        if not from_monitor:
             # Not from a monitor, and there is an ongoing subscription
             ...
         else:
