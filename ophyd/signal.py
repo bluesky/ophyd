@@ -68,6 +68,8 @@ class Signal(OphydObject):
         if cl is None:
             cl = get_cl()
         self.cl = cl
+        self._dispatcher = cl.get_dispatcher()
+        self._metadata_thread_ctx = self._dispatcher.get_thread_context('monitor')
         self._readback = value
 
         if timestamp is None:
@@ -388,6 +390,11 @@ class Signal(OphydObject):
         except Exception:
             ...
 
+    def _run_metadata_callbacks(self):
+        'Run SUB_META in the appropriate dispatcher thread'
+        self._metadata_thread_ctx.run(self._run_subs, sub_type=self.SUB_META,
+                                      **self._metadata)
+
 
 class DerivedSignal(Signal):
     def __init__(self, derived_from, *, write_access=None, name=None,
@@ -479,7 +486,7 @@ class DerivedSignal(Signal):
                                             write_access=write_access,
                                             timestamp=timestamp, **kwargs)
 
-        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        self._run_metadata_callbacks()
 
     def _derived_value_callback(self, value=None, **kwargs):
         'Main signal value updated - update the DerivedSignal'
@@ -658,7 +665,7 @@ class EpicsSignalBase(Signal):
 
         if was_connected and not conn:
             # Send a notification of disconnection
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+            self._run_metadata_callbacks()
 
     def _set_event_if_ready(self):
         '''If connected and access rights received, set the "ready" event used
@@ -678,7 +685,7 @@ class EpicsSignalBase(Signal):
             self._metadata['connected'] = True
             self._signal_is_ready.set()
 
-        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        self._run_metadata_callbacks()
 
     def _pv_access_callback(self, read_access, write_access, pv):
         'Control-layer callback: PV access rights have changed'
@@ -952,7 +959,7 @@ class EpicsSignalRO(EpicsSignalBase):
 
         if was_connected:
             # _set_event_if_ready, above, will run metadata callbacks
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+            self._run_metadata_callbacks()
 
 
 class EpicsSignal(EpicsSignalBase):
@@ -1205,7 +1212,7 @@ class EpicsSignal(EpicsSignalBase):
             self._metadata.update(**md_update)
 
         if self.connected:
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+            self._run_metadata_callbacks()
 
         super()._pv_access_callback(read_access, write_access, pv)
         self._set_event_if_ready()
@@ -1221,15 +1228,17 @@ class EpicsSignal(EpicsSignalBase):
                 self.setpoint_pvname != self.pvname,
                 self.setpoint_pvname == pvname)):
             # Setpoint has its own metadata
-            self._run_subs(sub_type=self.SUB_SETPOINT_META,
-                           timestamp=self._metadata['setpoint_timestamp'],
-                           status=self._metadata['setpoint_status'],
-                           severity=self._metadata['setpoint_severity'],
-                           precision=self._metadata['setpoint_precision'],
-                           lower_ctrl_limit=self._metadata['lower_ctrl_limit'],
-                           upper_ctrl_limit=self._metadata['upper_ctrl_limit'],
-                           units=self._metadata['units'],
-                           )
+            self._metadata_thread_ctx.run(
+                self._run_subs,
+                sub_type=self.SUB_SETPOINT_META,
+                timestamp=self._metadata['setpoint_timestamp'],
+                status=self._metadata['setpoint_status'],
+                severity=self._metadata['setpoint_severity'],
+                precision=self._metadata['setpoint_precision'],
+                lower_ctrl_limit=self._metadata['lower_ctrl_limit'],
+                upper_ctrl_limit=self._metadata['upper_ctrl_limit'],
+                units=self._metadata['units'],
+            )
         return metadata
 
     def _write_changed(self, value=None, timestamp=None, from_monitor=True,
