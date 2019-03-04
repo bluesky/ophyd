@@ -2,6 +2,7 @@ import logging
 import time
 import copy
 import pytest
+import threading
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
@@ -362,13 +363,18 @@ def test_soft_derived():
 
     called = []
 
+    event = threading.Event()
+
     def meta_callback(*, connected, read_access, write_access, **kw):
         called.append(('meta', connected, read_access, write_access))
+        event.set()
 
     derived.subscribe(meta_callback, event_type=derived.SUB_META, run=False)
 
     original._metadata['write_access'] = False
     original._run_subs(sub_type='meta', **original._metadata)
+
+    event.wait(1)
 
     assert called == [('meta', True, True, False)]
 
