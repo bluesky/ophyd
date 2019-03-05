@@ -117,7 +117,7 @@ class SynSignal(Signal):
             if self.loop.is_running():
 
                 def update_and_finish():
-                    self.put(self._func())
+                    self.sim_put(self._func())
                     st._finished()
 
                 self.loop.call_later(delay_time, update_and_finish)
@@ -125,19 +125,37 @@ class SynSignal(Signal):
 
                 def sleep_and_finish():
                     ttime.sleep(delay_time)
-                    self.put(self._func())
+                    self.sim_put(self._func())
                     st._finished()
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             return st
         else:
-            self.put(self._func())
+            self.sim_put(self._func())
             return NullStatus()
 
     def get(self):
         # Get a new value, which allows us to synthesize noisy data, for
         # example.
         return super().get()
+
+
+    def sim_put(self, *args, **kwargs):
+        """
+        Update the read-only signal's value.
+
+        Warning:
+            Original text ..
+
+            Implement here instead of :class:`FakeEpicsSignalRO` so you can call it with
+            every fake signal.
+        """
+        force = kwargs.pop('force', True)
+        # The following will emit SUB_VALUE:
+        ret = Signal.put(self, *args, force=force, **kwargs)
+        # Also, ensure that SUB_META has been emitted:
+        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        return ret
 
 
 class SignalRO(Signal):
@@ -727,6 +745,7 @@ class SynSignalWithRegistry(SynSignal):
         resource['uid'] = self._resource_uid
         self._asset_docs_cache.append(('resource', resource))
 
+
     def trigger(self):
         super().trigger()
         # save file stash file name
@@ -1121,19 +1140,6 @@ class FakeEpicsSignal(SynSignal):
             return self._put_func(value, *args, **kwargs)
         return super().put(value, *args, **kwargs)
 
-    def sim_put(self, *args, **kwargs):
-        """
-        Update the read-only signal's value.
-
-        Implement here instead of FakeEpicsSignalRO so you can call it with
-        every fake signal.
-        """
-        force = kwargs.pop('force', True)
-        # The following will emit SUB_VALUE:
-        ret = Signal.put(self, *args, force=force, **kwargs)
-        # Also, ensure that SUB_META has been emitted:
-        self._run_subs(sub_type=self.SUB_META, **self._metadata)
-        return ret
 
     @property
     def enum_strs(self):
