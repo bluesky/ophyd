@@ -837,11 +837,8 @@ class EpicsSignalBase(Signal):
         if form != 'time' or not has_monitor:
             # Different form such as 'ctrl' holds additional data not available
             # through the DBR_TIME channel access monitor
-            metadata = self._metadata_changed(self.pvname, info, update=False,
-                                              require_timestamp=True,
-                                              from_monitor=False)
-            # Update values internally for consistency, but do not run callbacks
-            self._metadata.update(**metadata)
+            self._metadata_changed(self.pvname, info, update=True,
+                                   require_timestamp=True, from_monitor=False)
 
         if not has_monitor:
             # No monitor - readback can only be updated here
@@ -1198,11 +1195,8 @@ class EpicsSignal(EpicsSignalBase):
         if form != 'time' or not has_monitor:
             # Different form such as 'ctrl' holds additional data not available
             # through the DBR_TIME channel access monitor
-            metadata = self._metadata_changed(self.setpoint_pvname, info,
-                                              require_timestamp=True,
-                                              from_monitor=False,
-                                              update=False)
-            self._metadata.update(**metadata)
+            self._metadata_changed(self.setpoint_pvname, info, update=True,
+                                   from_monitor=False, require_timestamp=True)
 
         if not has_monitor:
             # No monitor - setpoint can only be updated here
@@ -1264,8 +1258,6 @@ class EpicsSignal(EpicsSignalBase):
                                           from_monitor=True,
                                           update=False)
 
-        # Update values internally for consistency, but only run callbacks if this
-        # is due to a monitor
         old_value = self._setpoint
         self._metadata.update(**metadata)
         self._setpoint = self._fix_type(value)
