@@ -424,7 +424,8 @@ class FileStorePluginBase(FileStoreBase):
         filename, read_path, write_path = self.make_filename()
 
         # Ensure we do not have an old file open.
-        set_and_wait(self.capture, 0)
+        if self.file_write_mode != 'Single':
+            set_and_wait(self.capture, 0)
         # These must be set before parent is staged (specifically
         # before capture mode is turned on. They will not be reset
         # on 'unstage' anyway.
