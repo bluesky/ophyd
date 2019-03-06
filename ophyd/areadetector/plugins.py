@@ -2149,7 +2149,7 @@ class CodecPlugin(Device, version_type='ADCore'):
 
 
 class CodecPlugin_V34(PluginBase_V34, CodecPlugin, version=(3, 4), version_of=CodecPlugin):
-    blosc_cl_evel = Cpt(SignalWithRBV, "BloscCLevel")
+    blosc_compression_level = Cpt(SignalWithRBV, "BloscCLevel")
     blosc_compressor = Cpt(
         SignalWithRBV, "BloscCompressor", string=True, doc="0=BloscLZ 1=LZ4 2=LZ4HC 3=SNAPPY 4=ZLIB 5=ZSTD"
     )
