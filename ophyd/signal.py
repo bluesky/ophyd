@@ -637,7 +637,7 @@ class EpicsSignalBase(Signal):
         self._set_event_if_ready()
 
     def _metadata_changed(self, pvname, cl_metadata, *, from_monitor,
-                          require_timestamp=False, update=True):
+                          update, require_timestamp=False):
         'Notification: the metadata of a single PV has changed'
         metadata = self._get_metadata_from_kwargs(
             pvname, cl_metadata, require_timestamp=require_timestamp)
@@ -1224,8 +1224,8 @@ class EpicsSignal(EpicsSignalBase):
         super()._pv_access_callback(read_access, write_access, pv)
         self._set_event_if_ready()
 
-    def _metadata_changed(self, pvname, cl_metadata, *, from_monitor,
-                          require_timestamp=False, update=True):
+    def _metadata_changed(self, pvname, cl_metadata, *, from_monitor, update,
+                          require_timestamp=False):
         'Metadata for one PV has changed'
         metadata = super()._metadata_changed(
             pvname, cl_metadata, from_monitor=from_monitor, update=update,
@@ -1253,13 +1253,11 @@ class EpicsSignal(EpicsSignalBase):
         if timestamp is None:
             timestamp = time.time()
 
-        metadata = self._metadata_changed(self.setpoint_pvname, kwargs,
-                                          require_timestamp=True,
-                                          from_monitor=True,
-                                          update=False)
+        self._metadata_changed(self.setpoint_pvname, kwargs,
+                               require_timestamp=True, from_monitor=True,
+                               update=True)
 
         old_value = self._setpoint
-        self._metadata.update(**metadata)
         self._setpoint = self._fix_type(value)
 
         self._run_subs(sub_type=self.SUB_SETPOINT,
