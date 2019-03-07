@@ -1490,8 +1490,8 @@ class ProcessPlugin_V31(PluginBase_V31, ProcessPlugin_V26, version=(3, 1), versi
 
 class ProcessPlugin_V33(PluginBase_V33, ProcessPlugin_V31, version=(3, 3), version_of=ProcessPlugin):
     port_backup = Cpt(EpicsSignal, "PortBackup", string=True)
-    read_background_tiffs_eq = Cpt(EpicsSignal, "ReadBackgroundTIFFSeq")
-    read_flat_field_tiffs_eq = Cpt(EpicsSignal, "ReadFlatFieldTIFFSeq")
+    read_background_tiff_seq = Cpt(EpicsSignal, "ReadBackgroundTIFFSeq")
+    read_flat_field_tiff_seq = Cpt(EpicsSignal, "ReadFlatFieldTIFFSeq")
 
 
 class ProcessPlugin_V34(PluginBase_V34, ProcessPlugin_V33, version=(3, 4), version_of=ProcessPlugin):
@@ -2149,7 +2149,7 @@ class CodecPlugin(Device, version_type='ADCore'):
 
 
 class CodecPlugin_V34(PluginBase_V34, CodecPlugin, version=(3, 4), version_of=CodecPlugin):
-    blosc_cl_evel = Cpt(SignalWithRBV, "BloscCLevel")
+    blosc_compression_level = Cpt(SignalWithRBV, "BloscCLevel")
     blosc_compressor = Cpt(
         SignalWithRBV, "BloscCompressor", string=True, doc="0=BloscLZ 1=LZ4 2=LZ4HC 3=SNAPPY 4=ZLIB 5=ZSTD"
     )
