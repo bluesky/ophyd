@@ -41,7 +41,7 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     shim.setup(logger)
 
     exports = ('setup', 'caput', 'caget', 'get_pv', 'thread_class', 'name',
-               'release_pvs')
+               'release_pvs', 'get_dispatcher')
     # this sets the module level value
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})

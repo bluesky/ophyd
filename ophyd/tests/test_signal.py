@@ -2,6 +2,7 @@ import logging
 import time
 import copy
 import pytest
+import threading
 
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
@@ -362,13 +363,18 @@ def test_soft_derived():
 
     called = []
 
+    event = threading.Event()
+
     def meta_callback(*, connected, read_access, write_access, **kw):
         called.append(('meta', connected, read_access, write_access))
+        event.set()
 
     derived.subscribe(meta_callback, event_type=derived.SUB_META, run=False)
 
     original._metadata['write_access'] = False
     original._run_subs(sub_type='meta', **original._metadata)
+
+    event.wait(1)
 
     assert called == [('meta', True, True, False)]
 
@@ -456,7 +462,63 @@ def test_epicssignalro_alarm_status(set_severity_signal, alarm_status_signal, ro
     assert ro_signal.alarm_severity == severity
 
 
-def test_hints(cleanup, motor):
-    sig = EpicsSignalRO(motor.user_readback.pvname)
+def test_hints(cleanup, fake_motor_ioc):
+    sig = EpicsSignalRO(fake_motor_ioc.pvs['setpoint'])
     cleanup.add(sig)
     assert sig.hints == {'fields': [sig.name]}
+
+
+def test_epicssignal_sub_setpoint(cleanup, fake_motor_ioc):
+    pvs = fake_motor_ioc.pvs
+    pv = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                     name='pv')
+    cleanup.add(pv)
+
+    setpoint_called = []
+    setpoint_meta_called = []
+
+    def sub_setpoint(old_value, value, **kwargs):
+        setpoint_called.append((old_value, value))
+
+    def sub_setpoint_meta(timestamp, **kwargs):
+        setpoint_meta_called.append(timestamp)
+
+    pv.subscribe(sub_setpoint, event_type=pv.SUB_SETPOINT)
+    pv.subscribe(sub_setpoint_meta, event_type=pv.SUB_SETPOINT_META)
+
+    pv.wait_for_connection()
+
+    pv.put(1, wait=True)
+    pv.put(2, wait=True)
+    time.sleep(0.5)
+
+    assert len(setpoint_called) >= 3
+    assert len(setpoint_meta_called) >= 3
+
+
+def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
+    pvs = fake_motor_ioc.pvs
+    sig = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                      name='motor')
+    cleanup.add(sig)
+
+    called = []
+
+    def generic_sub(sub_type, **kwargs):
+        called.append((sub_type, sig.get(), sig.get_setpoint()))
+
+    for event_type in (sig.SUB_VALUE, sig.SUB_META,
+                       sig.SUB_SETPOINT, sig.SUB_SETPOINT_META):
+        sig.subscribe(generic_sub, event_type=event_type)
+
+    sig.wait_for_connection()
+
+    sig.put(1, wait=True)
+    sig.put(2, wait=True)
+    time.sleep(0.5)
+
+    print(called)
+    # Arbitrary threshold, but if @klauer screwed something up again, this will
+    # blow up
+    assert len(called) < 20
+    print('total', len(called))

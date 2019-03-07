@@ -21,6 +21,11 @@ name = 'pyepics'
 _dispatcher = None
 
 
+def get_dispatcher():
+    'The event dispatcher for the pyepics control layer'
+    return _dispatcher
+
+
 class PyepicsCallbackThread(_CallbackThread):
     def attach_context(self):
         super().attach_context()
@@ -129,13 +134,16 @@ class PyepicsShimPV(epics.PV):
 
 
 def release_pvs(*pvs):
-    for pv in pvs:
-        pv.clear_callbacks()
-        # Perform the clear auto monitor in one of our _dispatcher threads:
-        # they are guaranteed to be in the right CA context
-        wrapped = wrap_callback(_dispatcher, 'monitor', pv.clear_auto_monitor)
-        # queue the call in the 'monitor' _dispatcher:
-        wrapped()
+    # Run _release_pvs in the 'monitor' thread, assuring that the CA context is correct
+    def _release_pvs():
+        for pv in pvs:
+            pv.clear_callbacks()
+            pv.clear_auto_monitor()
+        event.set()
+
+    event = threading.Event()
+    _dispatcher.get_thread_context('monitor').run(_release_pvs)
+    event.wait()
 
 
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,

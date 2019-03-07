@@ -68,6 +68,8 @@ class Signal(OphydObject):
         if cl is None:
             cl = get_cl()
         self.cl = cl
+        self._dispatcher = cl.get_dispatcher()
+        self._metadata_thread_ctx = self._dispatcher.get_thread_context('monitor')
         self._readback = value
 
         if timestamp is None:
@@ -388,6 +390,11 @@ class Signal(OphydObject):
         except Exception:
             ...
 
+    def _run_metadata_callbacks(self):
+        'Run SUB_META in the appropriate dispatcher thread'
+        self._metadata_thread_ctx.run(self._run_subs, sub_type=self.SUB_META,
+                                      **self._metadata)
+
 
 class DerivedSignal(Signal):
     def __init__(self, derived_from, *, write_access=None, name=None,
@@ -479,7 +486,7 @@ class DerivedSignal(Signal):
                                             write_access=write_access,
                                             timestamp=timestamp, **kwargs)
 
-        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        self._run_metadata_callbacks()
 
     def _derived_value_callback(self, value=None, **kwargs):
         'Main signal value updated - update the DerivedSignal'
@@ -625,12 +632,12 @@ class EpicsSignalBase(Signal):
     def _initial_metadata_callback(self, pvname, cl_metadata):
         'Control-layer callback: all initial metadata - control and status'
         self._metadata_changed(pvname, cl_metadata, require_timestamp=True,
-                               update=True)
+                               update=True, from_monitor=False)
         self._received_first_metadata[pvname] = True
         self._set_event_if_ready()
 
-    def _metadata_changed(self, pvname, cl_metadata, *, require_timestamp=False,
-                          update=True):
+    def _metadata_changed(self, pvname, cl_metadata, *, from_monitor,
+                          update, require_timestamp=False):
         'Notification: the metadata of a single PV has changed'
         metadata = self._get_metadata_from_kwargs(
             pvname, cl_metadata, require_timestamp=require_timestamp)
@@ -650,7 +657,7 @@ class EpicsSignalBase(Signal):
 
         self._connection_states[pvname] = conn
 
-        if not self._received_first_metadata[pvname]:
+        if conn and not self._received_first_metadata[pvname]:
             pv.get_all_metadata_callback(self._initial_metadata_callback,
                                          timeout=10)
 
@@ -658,7 +665,7 @@ class EpicsSignalBase(Signal):
 
         if was_connected and not conn:
             # Send a notification of disconnection
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+            self._run_metadata_callbacks()
 
     def _set_event_if_ready(self):
         '''If connected and access rights received, set the "ready" event used
@@ -678,7 +685,7 @@ class EpicsSignalBase(Signal):
             self._metadata['connected'] = True
             self._signal_is_ready.set()
 
-        self._run_subs(sub_type=self.SUB_META, **self._metadata)
+        self._run_metadata_callbacks()
 
     def _pv_access_callback(self, read_access, write_access, pv):
         'Control-layer callback: PV access rights have changed'
@@ -785,7 +792,8 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def get(self, *, as_string=None, connection_timeout=1.0, **kwargs):
+    def get(self, *, as_string=None, connection_timeout=1.0, form='time',
+            **kwargs):
         '''Get the readback value through an explicit call to EPICS
 
         Parameters
@@ -806,12 +814,15 @@ class EpicsSignalBase(Signal):
         connection_timeout : float, optional
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
+        form : {'time', 'ctrl'}
+            PV form to request
         '''
         if as_string is None:
             as_string = self._string
 
         self.wait_for_connection(timeout=connection_timeout)
-        info = self._read_pv.get_with_metadata(as_string=as_string, **kwargs)
+        info = self._read_pv.get_with_metadata(as_string=as_string, form=form,
+                                               **kwargs)
 
         if info is None:
             timeout = kwargs.get('timeout', None)
@@ -822,11 +833,17 @@ class EpicsSignalBase(Signal):
         if as_string:
             value = waveform_to_string(value)
 
-        # The following will update all metadata, run subscriptions, and
-        # also update self._readback such that this value can be accessed
-        # through EpicsSignal.value
-        self._read_changed(value=value, **info)
-        return value
+        has_monitor = self._monitors[self.pvname] is not None
+        if form != 'time' or not has_monitor:
+            # Different form such as 'ctrl' holds additional data not available
+            # through the DBR_TIME channel access monitor
+            self._metadata_changed(self.pvname, info, update=True,
+                                   require_timestamp=True, from_monitor=False)
+
+        if not has_monitor:
+            # No monitor - readback can only be updated here
+            self._readback = value
+        return self._fix_type(value)
 
     def _fix_type(self, value):
         'Cast the given value according to the data type of this EpicsSignal'
@@ -852,11 +869,12 @@ class EpicsSignalBase(Signal):
         return metadata
 
     def _read_changed(self, value=None, **kwargs):
-        '''A callback indicating that the read value has changed'''
-        metadata = self._metadata_changed(self._read_pvname, kwargs,
-                                          update=False, require_timestamp=True)
-        timestamp = metadata.pop('timestamp')
-        super().put(value=self._fix_type(value), timestamp=timestamp,
+        'CA monitor callback indicating that the read value has changed'
+        metadata = self._metadata_changed(self.pvname, kwargs, update=False,
+                                          require_timestamp=True,
+                                          from_monitor=True)
+        # super().put updates self._readback and runs SUB_VALUE
+        super().put(value=value, timestamp=metadata.pop('timestamp'),
                     metadata=metadata, force=True)
 
     def describe(self):
@@ -942,7 +960,7 @@ class EpicsSignalRO(EpicsSignalBase):
 
         if was_connected:
             # _set_event_if_ready, above, will run metadata callbacks
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+            self._run_metadata_callbacks()
 
 
 class EpicsSignal(EpicsSignalBase):
@@ -1048,7 +1066,7 @@ class EpicsSignal(EpicsSignalBase):
                     self._monitors[self._setpoint_pvname]):
                 mon = self._write_pv.add_callback(self._write_changed,
                                                   run_now=self._write_pv.connected)
-                self._monitors[self._write_pvname] = mon
+                self._monitors[self._setpoint_pvname] = mon
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
@@ -1133,7 +1151,7 @@ class EpicsSignal(EpicsSignalBase):
                              .format(value, low_limit, high_limit))
 
     def get_setpoint(self, *, as_string=None, connection_timeout=1.0,
-                     **kwargs):
+                     form='time', **kwargs):
         '''Get the setpoint value (if setpoint PV and readback PV differ)
 
         Parameters
@@ -1154,26 +1172,35 @@ class EpicsSignal(EpicsSignalBase):
         connection_timeout : float, optional
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
+        form : {'time', 'ctrl'}
+            PV form to request
         '''
         if as_string is None:
             as_string = self._string
 
         self.wait_for_connection(timeout=connection_timeout)
-        info = self._write_pv.get_with_metadata(as_string=as_string, **kwargs)
+        info = self._write_pv.get_with_metadata(as_string=as_string, form=form,
+                                                **kwargs)
 
         if info is None:
             timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._write_pvname} within '
+            raise TimeoutError(f'Failed to read {self._setpoint_pvname} within '
                                f'{timeout} sec')
 
         value = info.pop('value')
         if as_string:
             value = waveform_to_string(value)
 
-        # The following will update all metadata, run subscriptions, and
-        # also update self._readback such that this value can be accessed
-        # through EpicsSignal.value
-        self._write_changed(value=value, **info)
+        has_monitor = self._monitors[self.setpoint_pvname] is not None
+        if form != 'time' or not has_monitor:
+            # Different form such as 'ctrl' holds additional data not available
+            # through the DBR_TIME channel access monitor
+            self._metadata_changed(self.setpoint_pvname, info, update=True,
+                                   from_monitor=False, require_timestamp=True)
+
+        if not has_monitor:
+            # No monitor - setpoint can only be updated here
+            self._setpoint = self._fix_type(value)
         return self._fix_type(value)
 
     def _pv_access_callback(self, read_access, write_access, pv):
@@ -1182,58 +1209,63 @@ class EpicsSignal(EpicsSignalBase):
             return
 
         md_update = {}
-        if pv.pvname == self._read_pvname:
+        if pv.pvname == self.pvname:
             md_update['read_access'] = read_access
 
-        if pv.pvname is self.setpoint_pvname:
+        if pv.pvname == self.setpoint_pvname:
             md_update['write_access'] = write_access
 
         if md_update:
             self._metadata.update(**md_update)
 
         if self.connected:
-            self._run_subs(sub_type=self.SUB_META, **self._metadata)
+            self._run_metadata_callbacks()
 
         super()._pv_access_callback(read_access, write_access, pv)
         self._set_event_if_ready()
 
-    def _metadata_changed(self, pvname, cl_metadata, *, require_timestamp=False,
-                          update=True):
+    def _metadata_changed(self, pvname, cl_metadata, *, from_monitor, update,
+                          require_timestamp=False):
         'Metadata for one PV has changed'
         metadata = super()._metadata_changed(
-            pvname, cl_metadata, update=update,
+            pvname, cl_metadata, from_monitor=from_monitor, update=update,
             require_timestamp=require_timestamp)
 
-        if (self.setpoint_pvname != self._read_pvname and
-                self.setpoint_pvname == pvname):
-            self._run_subs(sub_type=self.SUB_SETPOINT_META,
-                           timestamp=self._metadata['setpoint_timestamp'],
-                           status=self._metadata['setpoint_status'],
-                           severity=self._metadata['setpoint_severity'],
-                           precision=self._metadata['setpoint_precision'],
-                           lower_ctrl_limit=self._metadata['lower_ctrl_limit'],
-                           upper_ctrl_limit=self._metadata['upper_ctrl_limit'],
-                           units=self._metadata['units'],
-                           )
+        if all((from_monitor,
+                self.setpoint_pvname != self.pvname,
+                self.setpoint_pvname == pvname)):
+            # Setpoint has its own metadata
+            self._metadata_thread_ctx.run(
+                self._run_subs,
+                sub_type=self.SUB_SETPOINT_META,
+                timestamp=self._metadata['setpoint_timestamp'],
+                status=self._metadata['setpoint_status'],
+                severity=self._metadata['setpoint_severity'],
+                precision=self._metadata['setpoint_precision'],
+                lower_ctrl_limit=self._metadata['lower_ctrl_limit'],
+                upper_ctrl_limit=self._metadata['upper_ctrl_limit'],
+                units=self._metadata['units'],
+            )
         return metadata
 
     def _write_changed(self, value=None, timestamp=None, **kwargs):
-        '''A callback indicating that the write value has changed'''
+        'CA monitor: callback indicating the setpoint PV value has changed'
         if timestamp is None:
             timestamp = time.time()
+
+        self._metadata_changed(self.setpoint_pvname, kwargs,
+                               require_timestamp=True, from_monitor=True,
+                               update=True)
 
         old_value = self._setpoint
         self._setpoint = self._fix_type(value)
 
-        self._metadata_changed(self.setpoint_pvname, kwargs, require_timestamp=True)
-
-        if self._read_pvname != self.setpoint_pvname:
-            self._run_subs(sub_type=self.SUB_SETPOINT,
-                           old_value=old_value, value=value,
-                           timestamp=self._metadata['setpoint_timestamp'],
-                           status=self._metadata['setpoint_status'],
-                           severity=self._metadata['setpoint_severity'],
-                           )
+        self._run_subs(sub_type=self.SUB_SETPOINT,
+                       old_value=old_value, value=value,
+                       timestamp=self._metadata['setpoint_timestamp'],
+                       status=self._metadata['setpoint_status'],
+                       severity=self._metadata['setpoint_severity'],
+                       )
 
     def put(self, value, force=False, connection_timeout=1.0, callback=None,
             use_complete=None, **kwargs):
@@ -1271,9 +1303,7 @@ class EpicsSignal(EpicsSignalBase):
         old_value = self._setpoint
         self._setpoint = value
 
-        if self._read_pvname == self.setpoint_pvname:
-            # readback and setpoint PV are one in the same, so update the
-            # readback as well
+        if self.pvname == self.setpoint_pvname:
             timestamp = time.time()
             super().put(value, timestamp=timestamp, force=True)
             self._run_subs(sub_type=self.SUB_SETPOINT, old_value=old_value,
@@ -1321,6 +1351,9 @@ class EpicsSignal(EpicsSignalBase):
     @property
     def setpoint(self):
         '''The setpoint PV value'''
+        if self._setpoint is not None:
+            return self._setpoint
+
         return self.get_setpoint()
 
     @setpoint.setter

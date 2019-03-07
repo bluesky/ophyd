@@ -59,11 +59,50 @@ class _CallbackThread(threading.Thread):
         self.context = None
 
 
+class DispatcherThreadContext:
+    '''
+    A thread context associated with a single Dispatcher event type
+
+    Parameters
+    ----------
+    dispatcher : Dispatcher
+    event_type : str
+
+    Attributes
+    ----------
+    dispatcher : Dispatcher
+    event_type : str
+    event_thread : _CallbackThread
+    '''
+
+    def __init__(self, dispatcher, event_type):
+        self.dispatcher = dispatcher
+        self.event_type = event_type
+        self.event_thread = None
+
+    def run(self, func, *args, **kwargs):
+        '''
+        If in the correct threading context, run func(*args, **kwargs) directly,
+        otherwise schedule it to be run in that thread.
+        '''
+        if self.event_thread is None:
+            self.event_thread = self.dispatcher._threads[self.event_type]
+
+        current_thread = threading.currentThread()
+        if current_thread is self.event_thread:
+            func(*args, **kwargs)
+        else:
+            self.event_thread.queue.put((func, args, kwargs))
+
+    __call__ = run
+
+
 class EventDispatcher:
     def __init__(self, *, context, logger, timeout=0.1,
                  thread_class=_CallbackThread, debug_monitor=False,
                  utility_threads=4):
         self._threads = {}
+        self._thread_contexts = {}
         self._thread_class = thread_class
         self._timeout = timeout
 
@@ -135,6 +174,10 @@ class EventDispatcher:
         'Schedule `callback` with the given args and kwargs in a util thread'
         self._utility_queue.put((callback, args, kwargs))
 
+    def get_thread_context(self, name):
+        'Get the DispatcherThreadContext for the given thread name'
+        return self._thread_contexts[name]
+
     def _start_thread(self, name, *, callback_queue=None):
         'Start dispatcher thread by name'
         self._threads[name] = self._thread_class(name=name, dispatcher=self,
@@ -144,6 +187,7 @@ class EventDispatcher:
                                                  logger=self.logger,
                                                  daemon=True,
                                                  callback_queue=callback_queue)
+        self._thread_contexts[name] = DispatcherThreadContext(self, name)
         self._threads[name].start()
 
 

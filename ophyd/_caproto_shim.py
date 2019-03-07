@@ -14,6 +14,11 @@ _dispatcher = None
 name = 'caproto'
 
 
+def get_dispatcher():
+    'The event dispatcher for the caproto control layer'
+    return _dispatcher
+
+
 class CaprotoCallbackThread(_CallbackThread):
     ...
 

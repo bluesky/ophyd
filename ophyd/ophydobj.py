@@ -1,3 +1,4 @@
+import functools
 from itertools import count
 
 import time
@@ -362,6 +363,7 @@ class OphydObject:
 
         # wrapper for callback to snarf exceptions
         def wrap_cb(cb):
+            @functools.wraps(cb)
             def inner(*args, **kwargs):
                 try:
                     cb(*args, **kwargs)
