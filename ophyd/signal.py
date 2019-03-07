@@ -6,8 +6,8 @@ import warnings
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError, DestroyedError, set_and_wait,
-                    doc_annotation_forwarder)
+from .utils import (ReadOnlyError, LimitError, DestroyedError, NonPVValue,
+                    set_and_wait, doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name)
@@ -303,8 +303,21 @@ class Signal(OphydObject):
             with the ``event_model.event_descriptor.data_key`` schema.
         """
         val = self.value
+        if val is None:
+            raise NonPVValue(
+                f'Description can not yet been made for {self.name!r} as '
+                f'self.value = None. This typically means, that the '
+                f'value was never set.'
+                )
+
+        try:
+            dtype = data_type(val)
+        except Exception as ex:
+            msg = f'Type inference failed for {self.value!r} for {self.name!r}.'
+            raise ex.__class__(msg) from ex
+
         return {self.name: {'source': 'SIM:{}'.format(self.name),
-                            'dtype': data_type(val),
+                            'dtype': dtype,
                             'shape': data_shape(val)}}
 
     def read_configuration(self):
