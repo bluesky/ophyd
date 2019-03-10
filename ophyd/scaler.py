@@ -135,7 +135,6 @@ class ScalerCH(Device):
         name_map = {}
         for s in self.channels.component_names:
             scaler_channel = getattr(self.channels, s)
-            nm = scaler_channel.chname.get()
             nm = scaler_channel.s.name  # as defined in self.match_names()
             if len(nm) > 0:
                 name_map[nm] = s
