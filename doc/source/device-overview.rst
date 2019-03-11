@@ -8,7 +8,7 @@
 Usage
 =====
 
-The core class of :mod:`ophyd` is :class:`Device` which encodes the
+The core class of :mod:`ophyd` is :class:`~device.Device` which encodes the
 nodes of the hierarchical structure of the device and provides much of
 core API.
 
@@ -18,7 +18,7 @@ core API.
 
    Device
 
-The base :class:`Device` is not particularly useful on it's own, it
+The base :class:`~device.Device` is not particularly useful on it's own, it
 must be sub-classed to provide it with components to do something
 with.
 
@@ -116,10 +116,10 @@ NSLS-II-isms that should be corrected (or at least acknowledged and
 documented).
 
 
-:class:`Device`
-===============
+:class:`~device.Device`
+=======================
 
-:class:`Device` adds a number of additional attributes beyond the
+:class:`~device.Device` adds a number of additional attributes beyond the
 required :mod:`bluesky` API and what is inherited from :class:`~ohpyd.ophydobj.OphydObj`
 for run-time configuration
 
@@ -132,6 +132,8 @@ for run-time configuration
 			      See :ref:`cfg_and_f`
  ---------------------------  --------------------------------------------------------
  :attr:`stage_sigs`           Signals to be set during `Stage and Unstage`_
+ ---------------------------  --------------------------------------------------------
+ :attr:`hints`                Names of components as suggestions for handling in bluesky callbacks.
  ===========================  ========================================================
 
 and static information about the object
@@ -148,7 +150,7 @@ and static information about the object
                               (provisional)
  ===========================  ========================================================
 
-:class:`Device` also has two class-level attributes to control the default contents of
+:class:`~device.Device` also has two class-level attributes to control the default contents of
 :attr:`read_attrs` and :attr:`configuration_attrs`.
 
  ====================================  ========================================================
@@ -171,19 +173,145 @@ and static information about the object
 
  ====================================  ========================================================
 
+.. index:: hints attribute
+.. _hints:
 
-:class:`Component`
-------------------
+:attr:`hints`
+-------------
 
-The :class:`Compent` class is a python descriptor_ which override the
-behavior on attribute access.  This allows us to use a declarative
-style to define the software representation of the hardware.  The best
-way to understand ::
+The :attr:`hints` attribute is a dictionary that provides information about an
+:mod:`ophyd` device to :mod:`bluesky` callbacks that advise how that device
+should be handled by the callback.  While it could be used for many purposes,
+its first use has been to direct the selection of the relevant axes and signals
+to use when plotting data from an event stream.
+
+There are two different locations where the ``hints`` dictionary is created.
+
+1. During the specification of an ophyd :class:`~device.Device`
+1. Configuration of the ``start`` document by a :mod:`bluesky` plan
+
+The ``hints`` dictionary has well-known keys.
+
+===================  ========================================================
+Key                  Description of value
+===================  ========================================================
+``fields``           signal names to be used for a plot as dependent axes
+-------------------  --------------------------------------------------------
+``dimensions``       signal names to be used for a plot as independent axes
+-------------------  --------------------------------------------------------
+``gridding``         advises when to prefer ``LiveGrid`` instead of ``LivePlot``
+===================  ========================================================
+
+The ``hints`` dictionary may also have custom keys used by the custom support.
+
+* example using the *ad hoc* ``vis`` key in the creation of an :mod:`ophyd`
+  detector Device::
+
+	self.hints = {'vis': 'placeholder'}
+
+* then look for this key in the custom :mod:`bluesky` callback::
+
+	assert doc['hints']['det'] == {'vis': 'placeholder'}
+
+
+.. _hints_fields:
+
+``hints["fields"]``
+^^^^^^^^^^^^^^^^^^^
+
+``fields`` is a list of ophyd object name(s) to be used as dependent axes for
+visualization callbacks.  The object name(s) must appear in the dictionary
+returned by the device's ``read()`` method.
+
+Examples:
+
+.. code-block:: python
+
+  quadem.hints == {'fields': ['quadem_current1_mean_value']}
+  sca.hints == {'fields': [sca.channels.name]}
+
+To ensure internal consistency, the ``hints`` attribute of any
+:class:`~signal.Signal` or :class:`~device.Device` cannot be set directly.
+[#use_kind_not_fit]_ Instead of:
+
+.. code-block:: python
+
+  camera.hints = {'fields': [camera.stats1.total.name,
+							 camera.stats2.total.name]}
+
+use the :attr:`kind` :index:`kind` attribute.
+
+.. code-block:: python
+
+  from ophyd import Kind
+
+  camera.stats1.total.kind = Kind.hinted
+  camera.stats2.total.kind = Kind.hinted
+
+or, as a convenient shortcut
+
+.. code-block:: python
+
+  camera.stats1.total.kind = 'hinted'
+  camera.stats2.total.kind = 'hinted'
+
+.. [#use_kind_not_fit] starting with ophyd v1.2.0
+
+
+.. _hints_dimensions:
+
+``hints["dimensions"]``
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Defines the ophyd signal names to be used as independent axes for visualization.
+The syntax is (list of field names, stream name) where the list of field
+names is as above and the stream name is usually ``primary``.
+All the signals must be available in the named stream.
+
+``hints["dimensions"]`` is used by a :mod:`bluesky` plan
+to prepare a :attr:`dimensions` attribute that is placed
+in the `start` document.  It is this :attr:`dimensions` attribute
+that identifies the independent axes for visualization callbacks.
+The plan can use or override what it finds in ``hints["dimensions"]``.
+
+Examples:
+
+.. code-block:: python
+
+	dimensions = [(motor.hints['fields'], 'primary')]
+	dimensions = [(('time'), 'primary')]
+
+.. paraphrased from bluesky/bluesky/callbacks/best_effort.py
+
+For now, :mod:`bluesky` can only handle when all the dimensions belong
+to the same stream.  To generalize, we would need to resample
+and we are not going to handle that yet.
+
+
+.. _hints_gridding:
+
+``hints["gridding"]``
+^^^^^^^^^^^^^^^^^^^^^
+
+This key is used for mesh and grid scans.  When present, it can take these values:
+``rectilinear`` or ``rectilinear_nonsequential``.
+
+In the *Best Effort Callback* from :mod:`bluesky`, if ``hints["gridding"]`` exists and
+is ``"rectilinear"``, then use LiveGrid, otherwise use LivePlot.
+
+
+:class:`~device.Component`
+--------------------------------
+
+The :class:`~device.Component` class is a python descriptor_ which overrides
+the behavior on attribute access.  This allows us to use a declarative style to
+define the software representation of the hardware.  The best way to
+understand is through an example::
 
   class Foo(Device):
-      bar = Cpt(EpicsSignal, ':bar', string=True)
+      bar = Component(EpicsSignal, ':bar', string=True)
 
-is "When a ``Foo`` instance is created give it a ``bar`` attribute
+which means "When a ``Foo`` instance is created give it a ``bar`` attribute
 which is an instance of :class:`EpicsSignal` and use the extra args
 and kwargs when creating it".  It is a declaration of what you want
 and it is the responsibility of :mod:`ophyd` to make it happen.
@@ -262,7 +390,6 @@ right before it was staged.
 
 Implicit Triggering
 -------------------
-
 
 Count Time
 ----------

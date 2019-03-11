@@ -709,15 +709,15 @@ class Device(BlueskyInterface, OphydObject, metaclass=ComponentMeta):
     prefix : str, optional
         The PV prefix for all components of the device
     name : str, keyword only
-        The name of the device
-    kind : a member the Kind IntEnum (or equivalent integer), optional
-        Default is Kind.normal. See Kind for options.
+        The name of the device (as will be reported via read()`
+    kind : a member of the :class:`~ophydobj.Kind` :class:`~enum.IntEnum`
+        (or equivalent integer), optional
+        Default is ``Kind.normal``. See :class:`~ophydobj.Kind` for options.
     read_attrs : sequence of attribute names
-        DEPRECATED
-        the components to include in a normal reading (i.e., in ``read()``)
+        DEPRECATED: the components to include in a normal reading
+        (i.e., in ``read()``)
     configuration_attrs : sequence of attribute names
-        DEPRECATED
-        the components to be read less often (i.e., in
+        DEPRECATED: the components to be read less often (i.e., in
         ``read_configuration()``) and to adjust via ``configure()``
     parent : instance or None, optional
         The instance of the parent device, if applicable
