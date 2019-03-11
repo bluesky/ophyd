@@ -65,7 +65,7 @@ before_install:
 install:
   - |
     if [ $CONDA_ENV ]; then
-       conda create -n testenv python=$TRAVIS_PYTHON_VERSION numpy pyepics databroker networkx -c lightsource2-tag -c conda-forge -c soft-matter -c defaults --override-channels
+       conda create -n testenv python=$TRAVIS_PYTHON_VERSION numpy pyepics pytest-cov databroker networkx -c lightsource2-tag -c conda-forge -c soft-matter -c defaults --override-channels
        source activate testenv
        export PYEPICS_LIBCA=$CONDA_PREFIX/lib/libca.so
        conda install readline -c lightsource2-tag
