@@ -36,7 +36,7 @@ from .. import (Device, Component, FormattedComponent as FCpt)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import GenerateDatumInterface
 from ..utils import enum, set_and_wait
-from ..utils.errors import (PluginMisconfigurationError, DestroyedError)
+from ..utils.errors import (PluginMisconfigurationError, DestroyedError, UnprimedPlugin)
 
 
 logger = logging.getLogger(__name__)
@@ -913,6 +913,13 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
         for sig, val in reversed(list(original_vals.items())):
             ttime.sleep(0.1)
             set_and_wait(sig, val)
+
+    def stage(self):
+        if np.array(self.array_size.get()).sum() == 0:
+            raise UnprimedPlugin(f"The plugin {self.dotted_name} on the "
+                                 f"area detector with name {self.root.name} "
+                                 f"has not been primed.")
+        return super().stage()
 
 
 @register_plugin
