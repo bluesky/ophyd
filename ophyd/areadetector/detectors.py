@@ -16,17 +16,18 @@ __all__ = ['DetectorBase',
            'Andor3Detector',
            'AndorDetector',
            'BrukerDetector',
+           'DexelaDetector',
            'FirewireLinDetector',
            'FirewireWinDetector',
            'LightFieldDetector',
            'Mar345Detector',
            'MarCCDDetector',
+           'PSLDetector',
            'PerkinElmerDetector',
            'PilatusDetector',
            'PixiradDetector',
            'PointGreyDetector',
            'ProsilicaDetector',
-           'PSLDetector',
            'PvcamDetector',
            'RoperDetector',
            'SimDetector',
@@ -107,6 +108,11 @@ class Andor3Detector(DetectorBase):
 class BrukerDetector(DetectorBase):
     _html_docs = ['BrukerDoc.html']
     cam = C(cam.BrukerDetectorCam, 'cam1:')
+
+
+class DexelaDetector(DetectorBase):
+    _html_docs = ['DexelaDoc.html']
+    cam = C(cam.DexelaDetectorCam, 'cam1:')
 
 
 class FirewireLinDetector(DetectorBase):
