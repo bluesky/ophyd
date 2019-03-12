@@ -108,6 +108,7 @@ def fake_motor_ioc(prefix, request):
                step_size=f'{prefix}step_size',
                )
 
+    pytest.importorskip('caproto.tests.conftest')
     from caproto.tests.conftest import run_example_ioc
     process = run_example_ioc('ophyd.tests.fake_motor_ioc',
                               request=request,
@@ -130,6 +131,7 @@ def signal_test_ioc(prefix, request):
                set_severity=f'{prefix}set_severity',
                )
 
+    pytest.importorskip('caproto.tests.conftest')
     from caproto.tests.conftest import run_example_ioc
     process = run_example_ioc('ophyd.tests.signal_ioc',
                               request=request,
