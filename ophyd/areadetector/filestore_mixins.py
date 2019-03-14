@@ -24,7 +24,7 @@ import os
 import logging
 import warnings
 import uuid
-from pathlib import PurePath
+from pathlib import Path, PurePath, PurePosixPath
 
 from datetime import datetime
 from collections import defaultdict
@@ -34,6 +34,8 @@ from ..device import GenerateDatumInterface, BlueskyInterface, Staged
 from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
+
+
 
 
 def new_uid():
@@ -46,7 +48,7 @@ def new_short_uid():
     return '-'.join(new_uid().split('-')[:-1])
 
 
-def _ensure_trailing_slash(path):
+def _ensure_trailing_slash(path, path_semantics=None):
     """
     'a/b/c' -> 'a/b/c/'
 
@@ -54,7 +56,10 @@ def _ensure_trailing_slash(path):
     setpoint filepath to match the readback filepath, we need to add the
     trailing slash ourselves.
     """
-    return os.path.join(path, '')
+    if path_semantics is 'posix':
+        return f'{PurePosixPath(path)}/'
+    else:
+        return f'{PurePath(path)}{os.path.sep}'
 
 
 def resource_factory(spec, root, resource_path, resource_kwargs,
@@ -276,7 +281,11 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def write_path_template(self):
         rootp = self.reg_root
-        ret = PurePath(self._write_path_template)
+        if self.path_semantics is 'posix':
+            ret = PurePosixPath(self._write_path_template)
+        else:
+            ret = PurePath(self._write_path_template)
+
         if self._read_path_template is None and rootp not in ret.parents:
             if not ret.is_absolute():
                 ret = rootp / ret
@@ -285,11 +294,11 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                     ('root: {!r} in not consistent with '
                      'read_path_template: {!r}').format(rootp, ret))
 
-        return _ensure_trailing_slash(str(ret))
+        return _ensure_trailing_slash(str(ret), path_semantics=self.path_semantics)
 
     @write_path_template.setter
     def write_path_template(self, val):
-        self._write_path_template = _ensure_trailing_slash(val)
+        self._write_path_template = _ensure_trailing_slash(val, path_semantics=self.path_semantics)
 
     def stage(self):
         self._locked_key_list = False
