@@ -19,6 +19,7 @@ __all__ = ['DetectorBase',
            'DexelaDetector',
            'FirewireLinDetector',
            'FirewireWinDetector',
+           'GreatEyesDetector',
            'LightFieldDetector',
            'Mar345Detector',
            'MarCCDDetector',
@@ -123,6 +124,11 @@ class FirewireLinDetector(DetectorBase):
 class FirewireWinDetector(DetectorBase):
     _html_docs = ['FirewireWinDoc.html']
     cam = C(cam.FirewireWinDetectorCam, 'cam1:')
+
+
+class GreatEyesDetector(DetectorBase):
+    _html_docs = ['greateyesDoc.html']  # the documentation is not public
+    cam = C(cam.GreatEyesDetectorCam, 'cam1:')
 
 
 class LightFieldDetector(DetectorBase):
