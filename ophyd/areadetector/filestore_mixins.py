@@ -24,7 +24,7 @@ import os
 import logging
 import warnings
 import uuid
-from pathlib import Path, PurePath, PurePosixPath
+from pathlib import PurePath, PurePosixPath, PureWindowsPath
 
 from datetime import datetime
 from collections import defaultdict
@@ -34,8 +34,6 @@ from ..device import GenerateDatumInterface, BlueskyInterface, Staged
 from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
-
-
 
 
 def new_uid():
@@ -56,10 +54,17 @@ def _ensure_trailing_slash(path, path_semantics=None):
     setpoint filepath to match the readback filepath, we need to add the
     trailing slash ourselves.
     """
-    if path_semantics is 'posix':
+    if path_semantics == 'posix':
         return f'{PurePosixPath(path)}/'
-    else:
+    elif path_semantics == 'windows':
+        return f'{PureWindowsPath(path)}\\'
+    elif path_semantics is None:
+        # We are forced to guess which path semantics to use.
+        # Guess that the AD driver is running on the same OS as this client.
         return f'{PurePath(path)}{os.path.sep}'
+    else:
+        # This should never happen, but just for the sake of future-proofing...
+        raise ValueError(f"Cannot handle path_semantics={path_semantics}")
 
 
 def resource_factory(spec, root, resource_path, resource_kwargs,
@@ -281,10 +286,17 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def write_path_template(self):
         rootp = self.reg_root
-        if self.path_semantics is 'posix':
+        if self.path_semantics == 'posix':
             ret = PurePosixPath(self._write_path_template)
-        else:
+        elif self.path_semantics == 'windows':
+            ret = PureWindowsPath(self._write_path_template)
+        elif self.path_semantics is None:
+            # We are forced to guess which path semantics to use.
+            # Guess that the AD driver is running on the same OS as this client.
             ret = PurePath(self._write_path_template)
+        else:
+            # This should never happen, but just for the sake of future-proofing...
+            raise ValueError(f"Cannot handle path_semantics={self.path_semantics}")
 
         if self._read_path_template is None and rootp not in ret.parents:
             if not ret.is_absolute():
