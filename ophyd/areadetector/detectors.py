@@ -127,7 +127,7 @@ class FirewireWinDetector(DetectorBase):
 
 
 class GreatEyesDetector(DetectorBase):
-    _html_docs = ['greateyesDoc.html']  # the documentation is not public
+    _html_docs = []  # the documentation is not public
     cam = C(cam.GreatEyesDetectorCam, 'cam1:')
 
 
