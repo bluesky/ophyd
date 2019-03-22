@@ -711,7 +711,7 @@ class SynSignalWithRegistry(SynSignal):
                     'root': self.save_path,
                     'resource_path': self._file_stem,
                     'resource_kwargs': {},
-                    'path_semantics': os.name}
+                    'path_semantics': {'posix': 'posix', 'nt': 'windows'}[os.name]}
         # If a Registry is set, we need to allow it to generate the uid for us.
         if self.reg is not None:
             # register_resource has accidentally different parameter names...
