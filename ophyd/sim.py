@@ -19,7 +19,7 @@ from tempfile import mkdtemp
 from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
-from .device import (Device, Component, Component as C,
+from .device import (Device, Component, Component as Cpt,
                      DynamicDeviceComponent as DDC, Kind)
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
@@ -857,14 +857,14 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
-    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
-    real1 = C(SoftPositioner, init_pos=0)
-    real2 = C(SoftPositioner, init_pos=0)
-    real3 = C(SoftPositioner, init_pos=0)
+    pseudo1 = Cpt(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
+    pseudo2 = Cpt(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
+    pseudo3 = Cpt(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
+    real1 = Cpt(SoftPositioner, init_pos=0)
+    real2 = Cpt(SoftPositioner, init_pos=0)
+    real3 = Cpt(SoftPositioner, init_pos=0)
 
-    sig = C(Signal, value=0)
+    sig = Cpt(Signal, value=0)
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
@@ -884,10 +884,10 @@ class SPseudo3x3(PseudoPositioner):
 
 
 class SPseudo1x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), kind=Kind.hinted)
-    real1 = C(SoftPositioner, init_pos=0)
-    real2 = C(SoftPositioner, init_pos=0)
-    real3 = C(SoftPositioner, init_pos=0)
+    pseudo1 = Cpt(PseudoSingle, limits=(-10, 10), kind=Kind.hinted)
+    real1 = Cpt(SoftPositioner, init_pos=0)
+    real2 = Cpt(SoftPositioner, init_pos=0)
+    real3 = Cpt(SoftPositioner, init_pos=0)
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
