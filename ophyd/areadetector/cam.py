@@ -17,6 +17,7 @@ __all__ = ['CamBase',
            'DexelaDetectorCam',
            'FirewireLinDetectorCam',
            'FirewireWinDetectorCam',
+           'GreatEyesDetectorCam',
            'LightFieldDetectorCam',
            'Mar345DetectorCam',
            'MarCCDDetectorCam',
@@ -300,6 +301,17 @@ class FirewireWinDetectorCam(CamBase):
     frame_rate = C(SignalWithRBV, 'FR')
     mode = C(SignalWithRBV, 'MODE')
     readout_time = C(SignalWithRBV, 'READOUT_TIME')
+
+
+class GreatEyesDetectorCam(CamBase):
+    _html_docs = []
+    adc_speed = C(SignalWithRBV, 'GreatEyesAdcSpeed')
+    capacity = C(SignalWithRBV, 'GreatEyesCapacity')
+    enable_cooling = C(SignalWithRBV, 'GreatEyesEnableCooling')
+    gain = C(SignalWithRBV, 'GreatEyesGain')
+    hot_side_temp = C(EpicsSignal, 'GreatEyesHotSideTemp')
+    readout_dir = C(SignalWithRBV, 'GreatEyesReadoutDir')
+    sync = C(SignalWithRBV, 'GreatEyesSync')
 
 
 class LightFieldDetectorCam(CamBase):
