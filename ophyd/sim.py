@@ -140,6 +140,12 @@ class SynSignal(Signal):
         # example.
         return super().get()
 
+    def sim_set_func(self, func):
+        """
+        Update the SynSignal function to set a new value on trigger.
+        """
+        self._func = func
+
 
 class SignalRO(Signal):
     def __init__(self, *args, **kwargs):
@@ -1079,12 +1085,6 @@ class FakeEpicsSignal(SynSignal):
         if self._enum_strs is not None:
             desc[self.name]['enum_strs'] = self.enum_strs
         return desc
-
-    def sim_set_func(self, func):
-        """
-        Update the SynSignal function to set a new value on trigger.
-        """
-        self._func = func
 
     def sim_set_putter(self, putter):
         """
