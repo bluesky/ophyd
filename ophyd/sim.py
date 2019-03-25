@@ -142,23 +142,17 @@ class SynSignal(Signal):
         self._func = func
 
 
-class SignalRO(Signal):
+class SynSignalRO(SynSignal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._metadata.update(
-            connected=True,
-            write_access=False,
-        )
+            connected=True,)
 
     def put(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
     def set(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
-
-
-class SynSignalRO(SignalRO, SynSignal):
-    pass
 
 
 def periodic_update(ref, period, period_jitter):
@@ -224,13 +218,21 @@ class SynPeriodicSignal(SynSignal):
         self.__thread.start()
 
 
-class ReadbackSignal(SignalRO):
+class ReadbackSignal(Signal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(
+            connected=True,
+            write_access=False,
+        )
+
     def get(self):
         return self.parent.sim_state['readback']
 
     def describe(self):
         res = super().describe()
-        # There should be only one key here, but for the sake of generality....
+        # There should be only one key here, but for the sake of
+        # generality....
         for k in res:
             res[k]['precision'] = self.parent.precision
         return res
@@ -239,6 +241,12 @@ class ReadbackSignal(SignalRO):
     def timestamp(self):
         '''Timestamp of the readback value'''
         return self.parent.sim_state['readback_ts']
+
+    def put(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+
+    def set(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
 
 class SetpointSignal(Signal):
