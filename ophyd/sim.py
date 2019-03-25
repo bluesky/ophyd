@@ -155,19 +155,6 @@ class SynSignalRO(SynSignal):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
 
-def periodic_update(ref, period, period_jitter):
-    while True:
-        signal = ref()
-        if not signal:
-            # Our target Signal has been garbage collected. Shut down the
-            # Thread.
-            return
-        signal.put(signal._func())
-        del signal
-        # Sleep for period +/- period_jitter.
-        ttime.sleep(max(period + period_jitter * np.random.randn(), 0))
-
-
 class SynPeriodicSignal(SynSignal):
     """
     A synthetic Signal that evaluates a Python function periodically.
@@ -211,7 +198,21 @@ class SynPeriodicSignal(SynSignal):
                          parent=parent, labels=labels, kind=kind, loop=loop,
                          **kwargs)
 
-        self.__thread = threading.Thread(target=periodic_update, daemon=True,
+        def periodic_update(ref, period, period_jitter):
+            while True:
+                signal = ref()
+                if not signal:
+                    # Our target Signal has been garbage collected. Shut
+                    # down the Thread.
+                    return
+                signal.put(signal._func())
+                del signal
+                # Sleep for period +/- period_jitter.
+                ttime.sleep(
+                    max(period + period_jitter * np.random.randn(), 0))
+
+        self.__thread = threading.Thread(target=periodic_update,
+                                         daemon=True,
                                          args=(weakref.ref(self),
                                                period,
                                                period_jitter))
