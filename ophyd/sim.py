@@ -137,11 +137,6 @@ class SynSignal(Signal):
             self.put(self._func())
             return NullStatus()
 
-    def get(self):
-        # Get a new value, which allows us to synthesize noisy data, for
-        # example.
-        return super().get()
-
     def sim_set_func(self, func):
         """
         Update the SynSignal function to set a new value on trigger.
