@@ -219,7 +219,7 @@ class SynPeriodicSignal(SynSignal):
         self.__thread.start()
 
 
-class ReadbackSignal(Signal):
+class _ReadbackSignal(Signal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._metadata.update(
@@ -250,7 +250,7 @@ class ReadbackSignal(Signal):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
 
-class SetpointSignal(Signal):
+class _SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
         self.parent.set(float(value))
 
@@ -296,8 +296,8 @@ class SynAxisNoHints(Device):
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
     """
-    readback = Cpt(ReadbackSignal, value=None, kind='hinted')
-    setpoint = Cpt(SetpointSignal, value=None, kind='normal')
+    readback = Cpt(_ReadbackSignal, value=None, kind='hinted')
+    setpoint = Cpt(_SetpointSignal, value=None, kind='normal')
 
     velocity = Cpt(Signal, value=1, kind='config')
     acceleration = Cpt(Signal, value=1, kind='config')
@@ -387,7 +387,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    readback = Cpt(ReadbackSignal, value=None, kind='hinted')
+    readback = Cpt(_ReadbackSignal, value=None, kind='hinted')
 
 
 class SynGauss(SynSignal):
