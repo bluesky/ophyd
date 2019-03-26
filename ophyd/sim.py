@@ -435,7 +435,7 @@ class SynAxisNoHints(SynAxis):
         raise AttributeError
 
 
-class SynGauss(SynSignal):
+class SynGauss(Device):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -463,31 +463,56 @@ class SynGauss(SynSignal):
     motor = SynAxis(name='motor')
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
+    def _compute(self):
+        m = self._motor.read()[self._motor_field]['value']
+        # we need to do this one at a time because
+        #   - self.read() may be screwed with by the user
+        #   - self.get would cause infinite recursion
+        Imax = self.Imax.get()
+        center = self.center.get()
+        sigma = self.sigma.get()
+        noise = self.noise.get()
+        noise_multiplier = self.noise_multiplier.get()
+        v = Imax * np.exp(-(m - center) ** 2 /
+                          (2 * sigma ** 2))
+        if noise == 'poisson':
+            v = int(self.random_state.poisson(np.round(v), 1))
+        elif noise == 'uniform':
+            v += self.random_state.uniform(-1, 1) * noise_multiplier
+        return v
 
-    def __init__(self, name, motor, motor_field, center, Imax, sigma=1,
-                 noise=None, noise_multiplier=1, random_state=None, **kwargs):
-        if noise not in ('poisson', 'uniform', None):
-            raise ValueError("noise must be one of 'poisson', 'uniform', None")
+    val = Cpt(SynSignal, kind='hinted')
+    Imax = Cpt(Signal, value=10, kind='config')
+    center = Cpt(Signal, value=0, kind='config')
+    sigma = Cpt(Signal, value=1, kind='config')
+    noise = Cpt(EnumSignal, value='none', kind='config',
+                enum_strings=('none', 'poisson', 'uniform'))
+    noise_multiplier = Cpt(Signal, value=1, kind='config')
+
+    def __init__(self, name, motor, motor_field, center, Imax,
+                 *, random_state=None,
+
+                 **kwargs):
+        set_later = {}
+        for k in ('Imax', 'center', 'sigma',
+                  'noise', 'noise_multiplier'):
+            v = kwargs.pop(k, None)
+            if v is not None:
+                set_later[k] = v
+        super().__init__(name=name, **kwargs)
         self._motor = motor
         self._motor_field = motor_field
-        self.center = center
-        self.sigma = sigma
-        self.Imax = Imax
-        self.noise = noise
-        self.noise_multiplier = noise_multiplier
+        self.center.put(center)
+        self.Imax.put(Imax)
+
         self.random_state = random_state or np.random
+        self.val.name = self.name
+        self.val.sim_set_func(self._compute)
+        for k, v in set_later.items():
+            getattr(self, k).put(v)
 
-        def func():
-            m = self._motor.read()[self._motor_field]['value']
-            v = self.Imax * np.exp(-(m - self.center) ** 2 /
-                                   (2 * self.sigma ** 2))
-            if self.noise == 'poisson':
-                v = int(self.random_state.poisson(np.round(v), 1))
-            elif self.noise == 'uniform':
-                v += self.random_state.uniform(-1, 1) * self.noise_multiplier
-            return v
-
-        super().__init__(func=func, name=name, **kwargs)
+    def trigger(self, *args, **kwargs):
+        return self.val.trigger(*args, **kwargs)
 
 
 class Syn2DGauss(SynSignal):
