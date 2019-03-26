@@ -19,7 +19,7 @@ from tempfile import mkdtemp
 from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
-from .device import (Device, Component, Component as Cpt,
+from .device import (Device, Component as Cpt,
                      DynamicDeviceComponent as DDC, Kind)
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
@@ -296,13 +296,13 @@ class SynAxisNoHints(Device):
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
     """
-    readback = Component(ReadbackSignal, value=None, kind='hinted')
-    setpoint = Component(SetpointSignal, value=None, kind='normal')
+    readback = Cpt(ReadbackSignal, value=None, kind='hinted')
+    setpoint = Cpt(SetpointSignal, value=None, kind='normal')
 
-    velocity = Component(Signal, value=1, kind='config')
-    acceleration = Component(Signal, value=1, kind='config')
+    velocity = Cpt(Signal, value=1, kind='config')
+    acceleration = Cpt(Signal, value=1, kind='config')
 
-    unused = Component(Signal, value=1, kind='omitted')
+    unused = Cpt(Signal, value=1, kind='omitted')
 
     SUB_READBACK = 'readback'
     _default_sub = SUB_READBACK
@@ -387,7 +387,7 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
-    readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
+    readback = Cpt(ReadbackSignal, value=None, kind='hinted')
 
 
 class SynGauss(SynSignal):
@@ -814,23 +814,23 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
-    a = Component(SynSignal, func=random.random, kind=Kind.hinted)
-    b = Component(SynSignal, func=random.random)
+    a = Cpt(SynSignal, func=random.random, kind=Kind.hinted)
+    b = Cpt(SynSignal, func=random.random)
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
 
 class DetWithCountTime(Device):
-    intensity = Component(SynSignal, func=lambda: 0, kind=Kind.hinted)
-    count_time = Component(Signal)
+    intensity = Cpt(SynSignal, func=lambda: 0, kind=Kind.hinted)
+    count_time = Cpt(Signal)
 
 
 class DetWithConf(Device):
-    a = Component(SynSignal, func=lambda: 1, kind=Kind.hinted)
-    b = Component(SynSignal, func=lambda: 2, kind=Kind.hinted)
-    c = Component(SynSignal, func=lambda: 3)
-    d = Component(SynSignal, func=lambda: 4)
+    a = Cpt(SynSignal, func=lambda: 1, kind=Kind.hinted)
+    b = Cpt(SynSignal, func=lambda: 2, kind=Kind.hinted)
+    c = Cpt(SynSignal, func=lambda: 3)
+    d = Cpt(SynSignal, func=lambda: 4)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -942,14 +942,14 @@ def make_fake_device(cls):
         for cpt_name in cls.component_names:
             cpt = getattr(cls, cpt_name)
             if isinstance(cpt, DDC):
-                # Make a regular Component out of the DDC, as it already has
+                # Make a regular Cpt out of the DDC, as it already has
                 # been generated
-                fake_cpt = Component(cls=cpt.cls, suffix=cpt.suffix,
-                                     lazy=cpt.lazy,
-                                     trigger_value=cpt.trigger_value,
-                                     kind=cpt.kind, add_prefix=cpt.add_prefix,
-                                     doc=cpt.doc, **cpt.kwargs,
-                                     )
+                fake_cpt = Cpt(cls=cpt.cls, suffix=cpt.suffix,
+                               lazy=cpt.lazy,
+                               trigger_value=cpt.trigger_value,
+                               kind=cpt.kind, add_prefix=cpt.add_prefix,
+                               doc=cpt.doc, **cpt.kwargs,
+                )
             else:
                 fake_cpt = copy.copy(cpt)
 
