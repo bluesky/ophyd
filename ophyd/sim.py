@@ -52,6 +52,40 @@ class NullStatus(StatusBase):
         self._finished(success=True)
 
 
+class EnumSignal(Signal):
+    def __init__(self, *args, value=0, enum_strings, **kwargs):
+        super().__init__(*args, value=0, **kwargs)
+        self._enum_strs = tuple(enum_strings)
+        self._metadata['enum_strs'] = tuple(enum_strings)
+        self.put(value)
+
+    def put(self, value, **kwargs):
+        if value in self._enum_strs:
+            value = self._enum_strs.index(value)
+        elif isinstance(value, str):
+            err = f'{value} not in enum strs {self._enum_strs}'
+            raise ValueError(err)
+        return super().put(value, **kwargs)
+
+    def get(self, *, as_string=True, **kwargs):
+        """
+        Implement getting as enum strings
+        """
+        value = super().get()
+
+        if as_string:
+            if self._enum_strs is not None and isinstance(value, int):
+                return self._enum_strs[value]
+            elif value is not None:
+                return str(value)
+        return value
+
+    def describe(self):
+        desc = super().describe()
+        desc[self.name]['enum_strs'] = self._enum_strs
+        return desc
+
+
 class SynSignal(Signal):
     """
     A synthetic Signal that evaluates a Python function when triggered.
