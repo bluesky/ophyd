@@ -504,7 +504,7 @@ class SynGauss(Device):
         return self.val.trigger(*args, **kwargs)
 
 
-class Syn2DGauss(SynSignal):
+class Syn2DGauss(Device):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -545,29 +545,47 @@ class Syn2DGauss(SynSignal):
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
 
+    val = Cpt(SynSignal, kind='hinted')
+    Imax = Cpt(Signal, value=10, kind='config')
+    center = Cpt(Signal, value=0, kind='config')
+    sigma = Cpt(Signal, value=1, kind='config')
+    noise = Cpt(EnumSignal, value='none', kind='config',
+                enum_strings=('none', 'poisson', 'uniform'))
+    noise_multiplier = Cpt(Signal, value=1, kind='config')
+
+    def _compute(self):
+        x = self._motor0.read()[self._motor_field0]['value']
+        y = self._motor1.read()[self._motor_field1]['value']
+        m = np.array([x, y])
+        Imax = self.Imax.get()
+        center = self.center.get()
+        sigma = self.sigma.get()
+        noise = self.noise.get()
+        noise_multiplier = self.noise_multiplier.get()
+        v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma ** 2))
+        if noise == 'poisson':
+            v = int(self.random_state.poisson(np.round(v), 1))
+        elif noise == 'uniform':
+            v += self.random_state.uniform(-1, 1) * noise_multiplier
+        return v
+
     def __init__(self, name, motor0, motor_field0, motor1, motor_field1,
                  center, Imax, sigma=1, noise=None, noise_multiplier=1,
                  random_state=None, **kwargs):
-
-        if noise not in ('poisson', 'uniform', None):
-            raise ValueError("noise must be one of 'poisson', 'uniform', None")
-        self._motor = motor0
+        super().__init__(name=name, **kwargs)
+        self._motor0 = motor0
         self._motor1 = motor1
+        self._motor_field0 = motor_field0
+        self._motor_field1 = motor_field1
+
         if random_state is None:
             random_state = np.random
+        self.random_state = random_state
+        self.val.name = self.name
+        self.val.sim_set_func(self._compute)
 
-        def func():
-            x = motor0.read()[motor_field0]['value']
-            y = motor1.read()[motor_field1]['value']
-            m = np.array([x, y])
-            v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma ** 2))
-            if noise == 'poisson':
-                v = int(random_state.poisson(np.round(v), 1))
-            elif noise == 'uniform':
-                v += random_state.uniform(-1, 1) * noise_multiplier
-            return v
-
-        super().__init__(name=name, func=func, **kwargs)
+    def trigger(self, *args, **kwargs):
+        return self.val.trigger(*args, **kwargs)
 
 
 class TrivialFlyer:
