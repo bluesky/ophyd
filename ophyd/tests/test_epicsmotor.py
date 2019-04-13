@@ -257,6 +257,19 @@ def test_str_smoke(motor):
     str(motor)
 
 
+def test_read_in_motor_callback(motor):
+    out_cache = []
+    motor.set(0, wait=True)
+
+    def cb(**kwargs):
+        v = motor.read()
+        out_cache.append(v)
+
+    motor.subscribe(cb)
+    motor.set(10, wait=True)
+    assert len(out_cache) > 0
+
+
 def test_motor_bundle():
     class Bundle(MotorBundle):
         a = C(EpicsMotor, ':mtr1')
