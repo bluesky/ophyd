@@ -266,7 +266,7 @@ def test_read_in_motor_callback(motor):
         out_cache.append(v)
 
     motor.subscribe(cb)
-    motor.set(10, wait=True)
+    motor.set(.1, wait=True)
     assert len(out_cache) > 0
 
 
