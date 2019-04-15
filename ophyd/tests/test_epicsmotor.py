@@ -7,6 +7,7 @@ from numpy.testing import assert_allclose
 from ophyd import (EpicsMotor, Signal, EpicsSignal, EpicsSignalRO,
                    Component as C, MotorBundle)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -244,8 +245,9 @@ def test_watchers(motor):
 
     st = motor.set(1)
     st.watch(collect)
-    while not st.done:
-        continue
+    ev = threading.Event()
+    st.add_callback(ev.set)
+    ev.wait()
     assert collector
     assert collector[-1] == 1
     assert len(collector) > 1
@@ -253,6 +255,19 @@ def test_watchers(motor):
 
 def test_str_smoke(motor):
     str(motor)
+
+
+def test_read_in_motor_callback(motor):
+    out_cache = []
+    motor.set(0, wait=True)
+
+    def cb(**kwargs):
+        v = motor.read()
+        out_cache.append(v)
+
+    motor.subscribe(cb)
+    motor.set(.1, wait=True)
+    assert len(out_cache) > 0
 
 
 def test_motor_bundle():
