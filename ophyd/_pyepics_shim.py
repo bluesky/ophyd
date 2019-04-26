@@ -172,6 +172,16 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
 
     thispv = epics.pv._PVcache_.get((pvname, form, context))
     if thispv is not None:
+        if thispv.connected:
+            if connection_callback is not None:
+                connection_callback(pvname=thispv.pvname,
+                                    conn=thispv.connected,
+                                    pv=thispv
+                                    )
+            if access_callback is not None:
+                access_callback(thispv.read_access,
+                                thispv.write_access,
+                                pv=thispv)
         if callback is not None:
             # wrapping is taken care of by `add_callback`
             thispv.add_callback(callback)
@@ -183,16 +193,6 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
             connection_callback = wrap_callback(_dispatcher, 'metadata',
                                                 connection_callback)
             thispv.connection_callbacks.append(connection_callback)
-        if thispv.connected:
-            if connection_callback is not None:
-                connection_callback(pvname=thispv.pvname,
-                                    conn=thispv.connected,
-                                    pv=thispv
-                                    )
-            if access_callback is not None:
-                access_callback(thispv.read_access,
-                                thispv.write_access,
-                                pv=thispv)
 
     else:
         # this implicitly caches in the `pv.PV` init
