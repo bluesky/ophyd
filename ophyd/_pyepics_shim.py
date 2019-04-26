@@ -135,6 +135,7 @@ class PyepicsShimPV(epics.PV):
 
 def release_pvs(*pvs):
     # Run _release_pvs in the 'monitor' thread, assuring that the CA context is correct
+    return
     def _release_pvs():
         for pv in pvs:
             pv.clear_callbacks()
