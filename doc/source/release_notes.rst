@@ -2,6 +2,18 @@
  Release History
 =================
 
+v1.3.3 (2019-05-02)
+===================
+
+Features
+--------
+* Provide way to select all channels of ScalarCH.
+
+Bug Fixes
+---------
+* Ensure that ScalarCH channels with empty names are not selected.
+
+
 v1.3.2 (2019-03-11)
 ===================
 
