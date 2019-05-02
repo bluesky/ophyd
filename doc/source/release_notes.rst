@@ -2,6 +2,35 @@
  Release History
 =================
 
+v1.3.3 (2019-05-02)
+===================
+
+Features
+--------
+* Provide way to select all channels of ScalarCH.
+
+Bug Fixes
+---------
+* Ensure that ScalarCH channels with empty names are not selected.
+
+v1.3.2 (2019-03-11)
+===================
+
+Bug Fixes
+---------
+
+* Update usage of ``collections`` module for Python 3.7.
+* Improve documentation of "hints".
+* Fix ``ophyd.log.logger`` which had erroneous name ``'bluesky'`` instead of
+  ``'ophyd'``.
+* Fix typos in definition of area detector devices wherein ``BrukerDetector``
+  and ``PerkinElmerDetector`` had ``cam`` components from cameras of different
+  brands than their own.
+* In area detector file plugins, do not touch 'Capture' PV if image mode is
+  'Single'. Doing so has no effect, and it generates an error (that should be a
+  warning) from area detector noting that it has no effect.
+* Fix a typo in ``ScalerCH`` definition of its ``name_map``.
+
 v1.3.1 (2019-01-03)
 ===================
 
