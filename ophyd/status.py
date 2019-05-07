@@ -70,7 +70,7 @@ class StatusBase:
             self._timeout_thread.start()
 
     def _wait_and_cleanup(self):
-        '''Handle timeout'''
+        """Handle timeout"""
         try:
             if self.timeout is not None:
                 timeout = self.timeout + self.settle_time
@@ -96,7 +96,7 @@ class StatusBase:
         pass
 
     def _settled(self):
-        '''Hook for when status has completed and settled'''
+        """Hook for when status has completed and settled"""
         pass
 
     def _settle_then_run_callbacks(self, success=True):
@@ -117,7 +117,7 @@ class StatusBase:
             self._callbacks.clear()
 
     def _finished(self, success=True, **kwargs):
-        '''Inform the status object that it is done and if it succeeded
+        """Inform the status object that it is done and if it succeeded
 
         .. warning::
 
@@ -132,7 +132,7 @@ class StatusBase:
         ----------
         success : bool, optional
            if the action succeeded.
-        '''
+        """
         if self.done:
             return
 
@@ -248,7 +248,7 @@ class AndStatus(StatusBase):
 
 
 class Status(StatusBase):
-    '''A basic status object
+    """A basic status object
 
     Has an optional associated object instance
 
@@ -256,7 +256,7 @@ class Status(StatusBase):
     ----------
     obj : any or None
         The object
-    '''
+    """
     def __init__(self, obj=None, **kwargs):
         self.obj = obj
         super().__init__(**kwargs)
@@ -272,7 +272,7 @@ class Status(StatusBase):
 
 
 class DeviceStatus(StatusBase):
-    '''Device status
+    """Device status
 
     Parameters
     ----------
@@ -287,7 +287,7 @@ class DeviceStatus(StatusBase):
     settle_time : float, optional
         The amount of time to wait between motion completion and running
         callbacks
-    '''
+    """
     def __init__(self, device, **kwargs):
         self.device = device
         self._watchers = []
@@ -384,7 +384,7 @@ class SubscriptionStatus(DeviceStatus):
 
 
 class MoveStatus(DeviceStatus):
-    '''Asynchronous movement status
+    """Asynchronous movement status
 
     Parameters
     ----------
@@ -419,7 +419,7 @@ class MoveStatus(DeviceStatus):
         The final position
     success : bool
         Motion successfully completed
-    '''
+    """
 
     def __init__(self, positioner, target, *, start_ts=None,
                  **kwargs):
@@ -497,10 +497,10 @@ class MoveStatus(DeviceStatus):
 
     @property
     def error(self):
-        '''Error between target position and current* position
+        """Error between target position and current* position
 
         * If motion is already complete, the final position is used
-        '''
+        """
         if self.finish_pos is not None:
             finish_pos = self.finish_pos
         else:
@@ -512,7 +512,7 @@ class MoveStatus(DeviceStatus):
             return None
 
     def _settled(self):
-        '''Hook for when motion has completed and settled'''
+        """Hook for when motion has completed and settled"""
         super()._settled()
         self.pos.clear_sub(self._notify_watchers)
         self._watchers.clear()
@@ -521,7 +521,7 @@ class MoveStatus(DeviceStatus):
 
     @property
     def elapsed(self):
-        '''Elapsed time'''
+        """Elapsed time"""
         if self.finish_ts is None:
             return time.time() - self.start_ts
         else:
@@ -538,7 +538,7 @@ class MoveStatus(DeviceStatus):
 
 
 def wait(status, timeout=None, *, poll_rate=0.05):
-    '''(Blocking) wait for the status object to complete
+    """(Blocking) wait for the status object to complete
 
     Parameters
     ----------
@@ -555,7 +555,7 @@ def wait(status, timeout=None, *, poll_rate=0.05):
         If time waited exceeds specified timeout
     RuntimeError
         If the status failed to complete successfully
-    '''
+    """
     t0 = time.time()
 
     def time_exceeded():
