@@ -410,7 +410,7 @@ class BlueskyInterface:
         super().__init__(*args, **kwargs)
 
     def trigger(self) -> StatusBase:
-        """Trigger the device and return status object
+        """Trigger the device and return status object.
 
         This method is responsible for implementing 'trigger' or
         'acquire' functionality of this device.
@@ -419,11 +419,11 @@ class BlueskyInterface:
         and it being able to be read (via the
         :meth:`~BlueskyInterface.read` method) then this method is
         also responsible for arranging that the
-        :obj:`~ophyd.status.StatusBase` object returned my this method
+        :obj:`~ophyd.status.StatusBase` object returned by this method
         is notified when the device is ready to be read.
 
         If there is no delay between triggering and being readable,
-        then this method must return a :obj:`~ophyd.status.SatusBase`
+        then this method must return a :obj:`~ophyd.status.StatusBase`
         object which is already completed.
 
         Returns
@@ -436,7 +436,7 @@ class BlueskyInterface:
         pass
 
     def read(self) -> OrderedDictType[str, Dict[str, Any]]:
-        """Read data from the device
+        """Read data from the device.
 
         This method is expected to be as instantaneous as possible,
         with any substantial acquisition time taken care of in
@@ -463,7 +463,7 @@ class BlueskyInterface:
         return OrderedDict()
 
     def describe(self) -> OrderedDictType[str, Dict[str, Any]]:
-        """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
+        """Provide schema and meta-data for :meth:`~BlueskyInterface.read`.
 
         This keys in the `OrderedDict` this method returns must match the
         keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
@@ -626,7 +626,7 @@ class BlueskyInterface:
         pass
 
     def resume(self) -> None:
-        """Resume a device from a 'paused' state
+        """Resume a device from a 'paused' state.
 
         This is called by the :obj:`bluesky.run_engine.RunEngine`
         when it resumes from an interruption and is responsible for
