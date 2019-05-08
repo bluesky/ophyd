@@ -112,17 +112,9 @@ class PyepicsShimPV(epics.PV):
 
 
 def release_pvs(*pvs):
-    # Run _release_pvs in the 'monitor' thread, assuring that the CA context is correct
-    return
-    def _release_pvs():
-        for pv in pvs:
-            pv.clear_callbacks()
-            pv.clear_auto_monitor()
-        event.set()
-
-    event = threading.Event()
-    _dispatcher.get_thread_context('monitor').run(_release_pvs)
-    event.wait()
+    for pv in pvs:
+        pv.clear_callbacks()
+        pv.clear_auto_monitor()
 
 
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
