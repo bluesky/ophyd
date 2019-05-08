@@ -118,7 +118,8 @@ def release_pvs(*pvs):
 def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
            connection_callback=None, access_callback=None, callback=None,
            **kwargs):
-    """Get a PV from PV cache or create one if needed.
+    """
+    Get a PV from PV cache or create one if needed.
 
     Parameters
     ---------
