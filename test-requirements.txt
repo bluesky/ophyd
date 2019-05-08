@@ -1,5 +1,6 @@
 codecov
 matplotlib
+pymongo
 pytest
 databroker
 caproto[complete]

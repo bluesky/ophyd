@@ -16,8 +16,9 @@ from collections import deque, OrderedDict
 from tempfile import mkdtemp
 
 from .signal import Signal, EpicsSignal, EpicsSignalRO
+from .areadetector.trigger_mixins import ADTriggerStatus
 from .areadetector.base import EpicsSignalWithRBV
-from .status import DeviceStatus, StatusBase
+from .status import DeviceStatus, StatusBase, MoveStatus
 from .device import (Device, Component, Component as C,
                      DynamicDeviceComponent as DDC, Kind)
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle,
 from .positioner import SoftPositioner
 from .utils import DO_NOT_USE, ReadOnlyError, LimitError
 
+from .EstTime import EpicsMotorEstTime, ADEstTime
 logger = logging.getLogger(__name__)
 
 
@@ -101,7 +103,8 @@ class SynSignal(Signal):
                          parent=parent, labels=labels, kind=kind, **kwargs)
         self._metadata.update(
             connected=True,
-        )
+            )
+        self.est_time = ADEstTime(self.name)
 
     def describe(self):
         res = super().describe()
@@ -132,7 +135,13 @@ class SynSignal(Signal):
             return st
         else:
             self.put(self._func())
-            return NullStatus()
+            return ADTriggerStatus(self, done=True, success=True)
+
+    def stage(self):
+        pass
+
+    def unstage(self):
+        pass
 
     def get(self):
         # Get a new value, which allows us to synthesize noisy data, for
@@ -376,6 +385,55 @@ class SynAxisNoHints(Device):
 
 
 class SynAxis(SynAxisNoHints):
+
+    def set(self, value):
+
+        start_pos = self.position
+        old_setpoint = self.sim_state['setpoint']
+        self.sim_state['setpoint'] = value
+        self.sim_state['setpoint_ts'] = ttime.time()
+        self.setpoint._run_subs(sub_type=self.setpoint.SUB_VALUE,
+                                old_value=old_setpoint,
+                                value=self.sim_state['setpoint'],
+                                timestamp=self.sim_state['setpoint_ts'])
+
+        def update_state():
+            old_readback = self.sim_state['readback']
+            self.sim_state['readback'] = self._readback_func(value)
+            self.sim_state['readback_ts'] = ttime.time()
+            self.readback._run_subs(sub_type=self.readback.SUB_VALUE,
+                                    old_value=old_readback,
+                                    value=self.sim_state['readback'],
+                                    timestamp=self.sim_state['readback_ts'])
+            self._run_subs(sub_type=self.SUB_READBACK,
+                           old_value=old_readback,
+                           value=self.sim_state['readback'],
+                           timestamp=self.sim_state['readback_ts'])
+
+        if self.delay:
+            st = DeviceStatus(device=self)
+            if self.loop.is_running():
+
+                def update_and_finish():
+                    update_state()
+                    st._finished()
+
+                self.loop.call_later(self.delay, update_and_finish)
+            else:
+
+                def sleep_and_finish():
+                    ttime.sleep(self.delay)
+                    update_state()
+                    st._finished()
+
+                threading.Thread(target=sleep_and_finish, daemon=True).start()
+
+            return st
+        else:
+            update_state()
+            return MoveStatus(self, value, start_pos=start_pos, done=True,
+                              success=True)
+
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
 
@@ -423,7 +481,8 @@ class SynGauss(SynSignal):
 
         def func():
             m = self._motor.read()[self._motor_field]['value']
-            v = self.Imax * np.exp(-(m - self.center) ** 2 / (2 * self.sigma ** 2))
+            v = self.Imax * np.exp(
+                -(m - self.center) ** 2 / (2 * self.sigma ** 2))
             if self.noise == 'poisson':
                 v = int(self.random_state.poisson(np.round(v), 1))
             elif self.noise == 'uniform':
@@ -529,11 +588,12 @@ class TrivialFlyer:
 
 class NewTrivialFlyer(TrivialFlyer):
     """
-    The old-style API inserted Resource and Datum documents into a database directly.
-    The new-style API only caches the documents and provides an interface (collect_asset_docs)
-    for accessing that cache. This change was part of the "asset refactor" that changed
-    that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
-    Trivial flyer that complies to the API but returns empty data.
+    The old-style API inserted Resource and Datum documents into a database
+    directly. The new-style API only caches the documents and provides an
+    interface (collect_asset_docs) for accessing that cache. This change was
+    part of the "asset refactor" that changed that way Resource and Datum
+    documents flowed through ophyd, bluesky, and databroker. Trivial flyer that
+    complies to the API but returns empty data.
     """
 
     name = 'new_trivial_flyer'
@@ -711,7 +771,8 @@ class SynSignalWithRegistry(SynSignal):
                     'root': self.save_path,
                     'resource_path': self._file_stem,
                     'resource_kwargs': {},
-                    'path_semantics': {'posix': 'posix', 'nt': 'windows'}[os.name]}
+                    'path_semantics': {'posix': 'posix',
+                                       'nt': 'windows'}[os.name]}
         # If a Registry is set, we need to allow it to generate the uid for us.
         if self.reg is not None:
             # register_resource has accidentally different parameter names...
@@ -728,6 +789,7 @@ class SynSignalWithRegistry(SynSignal):
         self._asset_docs_cache.append(('resource', resource))
 
     def trigger(self):
+
         super().trigger()
         # save file stash file name
         self._result.clear()
@@ -762,6 +824,7 @@ class SynSignalWithRegistry(SynSignal):
         return NullStatus()
 
     def read(self):
+
         return self._result
 
     def describe(self):
@@ -1188,7 +1251,7 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
 
 class FakeEpicsSignalWithRBV(FakeEpicsSignal):
     """
-    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming scheme
+    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV name scheme
     """
     def __init__(self, prefix, **kwargs):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
@@ -1212,6 +1275,14 @@ def hw(save_path=None):
     jittery_motor2 = SynAxis(name='jittery_motor2',
                              readback_func=lambda x: x + np.random.rand(),
                              labels={'motors'})
+    for axis in [motor, motor1, motor2, motor3, jittery_motor1,
+                 jittery_motor2]:
+        axis.est_time = EpicsMotorEstTime(axis.name)
+        axis.velocity = SynAxisNoHints(name='velocity')
+        axis.velocity.put(1)
+        axis.settle_time = SynAxisNoHints(name='settle_time')
+        axis.settle_time.put(0)
+
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
                          noise='uniform', sigma=1, noise_multiplier=0.1,
                          labels={'detectors'})
@@ -1230,6 +1301,19 @@ def hw(save_path=None):
     det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
                       'jittery_motor2', center=(0, 0), Imax=1,
                       labels={'detectors'})
+
+    for detector in [noisy_det, det, identical_det, det1, det2, det3, det4,
+                     det5]:
+        detector.acquire_time = SynAxisNoHints(name='acquire_time')
+        detector.acquire_time.put(1)
+        detector.acquire_period = SynAxisNoHints(name='acquire_period')
+        detector.acquire_period.put(1)
+        detector.num_images = SynAxisNoHints(name='num_images')
+        detector.num_images.put(1)
+        detector.trigger_mode = SynAxisNoHints(name='trigger_mode')
+        detector.trigger_mode.put(1)
+        detector.settle_time = SynAxisNoHints(name='settle_time')
+        detector.settle_time.put(0)
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)

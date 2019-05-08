@@ -8,6 +8,7 @@ from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
 from .positioner import PositionerBase
 from .device import (Device, Component as Cpt, required_for_connection)
 from .status import wait as status_wait
+from .EstTime import EpicsMotorEstTime
 from enum import Enum
 
 
@@ -40,11 +41,11 @@ class EpicsMotor(Device, PositionerBase):
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
     '''
+
     # position
     user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted',
                         auto_monitor=True)
     user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
-
     # calibration dial <-> user
     user_offset = Cpt(EpicsSignal, '.OFF', kind='config')
     user_offset_dir = Cpt(EpicsSignal, '.DIR', kind='config')
@@ -82,6 +83,7 @@ class EpicsMotor(Device, PositionerBase):
         # Make the default alias for the user_readback the name of the
         # motor itself.
         self.user_readback.name = self.name
+        self.est_time = EpicsMotorEstTime(self.name)
 
     @property
     def precision(self):

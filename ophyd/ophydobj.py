@@ -1,9 +1,8 @@
 import functools
 from itertools import count
-
+from .EstTime import DefaultEstTime
 import time
 import logging
-
 from enum import IntFlag
 
 
@@ -77,7 +76,7 @@ class OphydObject:
     _default_sub = None
 
     def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
-                 kind=None):
+                 kind=None, est_time=DefaultEstTime):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
@@ -95,6 +94,7 @@ class OphydObject:
             raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
+        self.est_time = est_time(self.name)
 
         self.subscriptions = {getattr(self, k)
                               for k in dir(type(self))
@@ -124,7 +124,7 @@ class OphydObject:
 
     def __init_subclass__(cls, version=None, version_of=None,
                           version_type=None, **kwargs):
-        'This is called automatically in Python for all subclasses of OphydObject'
+        'Called automatically in Python for all subclasses of OphydObject'
         super().__init_subclass__(**kwargs)
 
         if version is None:

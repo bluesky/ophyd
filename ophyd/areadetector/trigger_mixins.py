@@ -12,6 +12,7 @@ To be used like so ::
 import time as ttime
 import logging
 import itertools
+import inspect
 
 from ..status import DeviceStatus
 from ..device import BlueskyInterface, Staged
@@ -29,6 +30,19 @@ class ADTriggerStatus(DeviceStatus):
         super().__init__(*args, **kwargs)
         self.start_ts = ttime.time()
 
+        # This section below ensures that the status object has all of the info
+        # requiredfor storing telemetry associated with it.
+        arg_names = inspect.signature(self.device.est_time.trigger).parameters
+        args = []
+        for arg_name in arg_names:
+            try:
+                args.append(getattr(self,arg_name))
+            except AttributeError:
+                setattr(self, arg_name, getattr(self.device,arg_name).position)
+                args.append(getattr(self,arg_name))
+
+        self.est_time = self.device.est_time.trigger(*args)
+
         # Notify watchers (things like progress bars) of new values
         # at the device's natural update rate.
         if not self.done:
@@ -37,6 +51,10 @@ class ADTriggerStatus(DeviceStatus):
             self._name = self.device.name
             self._initial_count = self.device.cam.array_counter.get()
             self._target_count = self.device.cam.num_images.get()
+        else:
+            self.finish_ts = ttime.time()
+            self.device.est_time.trigger.record(self)
+
 
     def watch(self, func):
         self._watchers.append(func)
@@ -73,6 +91,14 @@ class ADTriggerStatus(DeviceStatus):
                     time_elapsed=time_elapsed,
                     time_remaining=time_remaining)
 
+    def _finished(self, success = True, **kwargs):
+        '''Informs the status object that it is done and if it succeeded. If it
+        suceeded it also records the telemetry associated with the trigger.
+        '''
+        super()._finished(success = success, **kwargs)
+        self.finish_ts = ttime.time()
+        if success:
+            self.device.est_time.trigger.record(self)
 
 class TriggerBase(BlueskyInterface):
     """Base class for trigger mixin classes
