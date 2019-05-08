@@ -70,6 +70,7 @@ class PyepicsShimPV(epics.PV):
 
     def _getarg(self, arg):
         "wrapper for property retrieval"
+        # NOTE: replaces epics.PV._getarg: does not call get() when value unset
         if self._args[arg] is None:
             if arg in ('status', 'severity', 'timestamp', 'posixseconds',
                        'nanoseconds'):
@@ -127,8 +128,6 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
 
     if context is None:
         context = ca.current_context()
-
-    thispv = None
 
     thispv = epics.pv._PVcache_.get((pvname, form, context))
     if thispv is not None:
