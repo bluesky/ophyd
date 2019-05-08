@@ -52,21 +52,10 @@ class PyepicsShimPV(epics.PV):
                          connection_callback=connection_callback,
                          callback=callback, access_callback=access_callback)
 
-    def _configure_auto_monitor(self):
-        if self._monref is not None:
-            return
-
-        # Not auto-monitoring; need to set up the internal monitor before
-        # subscriptions can be used
-        if not self.auto_monitor:
-            self.auto_monitor = ca.DEFAULT_SUBSCRIPTION_MASK
-
-        if self.connected:
-            self.force_connect(pvname=self.pvname, chid=self.chid, conn=True)
-
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
-        self._configure_auto_monitor()
+        if not self.auto_monitor:
+            self.auto_monitor = ca.DEFAULT_SUBSCRIPTION_MASK
         callback = wrap_callback(_dispatcher, 'monitor', callback)
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
