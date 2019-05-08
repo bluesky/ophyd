@@ -40,9 +40,6 @@ class PyepicsShimPV(epics.PV):
     def __init__(self, pvname, callback=None, form='time', verbose=False,
                  auto_monitor=None, count=None, connection_callback=None,
                  connection_timeout=None, access_callback=None):
-        self._get_lock = threading.Lock()
-        self._ctrlvars_lock = threading.Lock()
-        self._timevars_lock = threading.Lock()
         connection_callback = wrap_callback(_dispatcher, 'metadata',
                                             connection_callback)
         callback = wrap_callback(_dispatcher, 'monitor', callback)
@@ -54,16 +51,6 @@ class PyepicsShimPV(epics.PV):
                          connection_timeout=connection_timeout,
                          connection_callback=connection_callback,
                          callback=callback, access_callback=access_callback)
-
-    def get_ctrlvars(self, timeout=5, warn=True):
-        "get control values for variable"
-        with self._ctrlvars_lock:
-            return super().get_ctrlvars(timeout=timeout, warn=warn)
-
-    def get_timevars(self, timeout=5, warn=True):
-        "get time values for variable"
-        with self._timevars_lock:
-            return super().get_timevars(timeout=timeout, warn=warn)
 
     def _configure_auto_monitor(self):
         if self._monref is not None:
@@ -84,15 +71,6 @@ class PyepicsShimPV(epics.PV):
         return super().add_callback(callback=callback, index=index,
                                     run_now=run_now,
                                     with_ctrlvars=with_ctrlvars, **kw)
-
-    def get_with_metadata(self, count=None, as_string=False, as_numpy=True,
-                          timeout=None, with_ctrlvars=False, form=None,
-                          use_monitor=True):
-        with self._get_lock:
-            return super().get_with_metadata(
-                count=count, as_string=as_string, as_numpy=as_numpy,
-                timeout=timeout, with_ctrlvars=with_ctrlvars, form=form,
-                use_monitor=use_monitor)
 
     def put(self, value, wait=False, timeout=30.0, use_complete=False,
             callback=None, callback_data=None):
