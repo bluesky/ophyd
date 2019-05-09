@@ -72,7 +72,7 @@ class DefaultEstTime:
 
         return out_time
 
-    def _set_record(status_object=None):
+    def _set_record(self, status_object=None):
         '''This is a function that records telemetry for the set command.
 
         PARAMETER
@@ -90,7 +90,7 @@ class DefaultEstTime:
             data['position'] = {'start': status_object.start_pos,
                                 'stop': status_object.finish_pos}
 
-            record_telemetry(status_object.obj_name, 'set', data)
+            record_telemetry(status_object.obj.name, 'set', data)
 
     set.record = _set_record
 

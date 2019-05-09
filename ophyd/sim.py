@@ -79,6 +79,9 @@ class SynSignal(Signal):
     """
     # This signature is arranged to mimic the signature of EpicsSignal, where
     # the Python function (func) takes the place of the PV.
+
+    settle_time = Component(Signal, value=0, kind='config')
+
     def __init__(self, func=None, *,
                  name,  # required, keyword-only
                  exposure_time=0,
@@ -147,6 +150,17 @@ class SynSignal(Signal):
         # Get a new value, which allows us to synthesize noisy data, for
         # example.
         return super().get()
+
+
+class SynAD_det(SynSignal):
+    '''A SynSignal class with some additional AD related attributes.
+    '''
+
+    trigger_mode = Component(Signal, value=1, kind='config')
+    num_images = Component(Signal, value=1, kind='config')
+    acquire_period = Component(Signal, value=1, kind='config')
+    acquire_time = Component(Signal, value=1, kind='config')
+
 
 
 class SignalRO(Signal):
@@ -299,6 +313,7 @@ class SynAxisNoHints(Device):
 
     velocity = Component(Signal, value=1, kind='config')
     acceleration = Component(Signal, value=1, kind='config')
+    settle_time = Component(Signal, value=0, kind='config')
 
     unused = Component(Signal, value=1, kind='omitted')
 
@@ -437,7 +452,7 @@ class SynAxis(SynAxisNoHints):
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
 
-class SynGauss(SynSignal):
+class SynGauss(SynAD_det):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -492,7 +507,7 @@ class SynGauss(SynSignal):
         super().__init__(func=func, name=name, **kwargs)
 
 
-class Syn2DGauss(SynSignal):
+class Syn2DGauss(SynAD_det):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -1278,10 +1293,6 @@ def hw(save_path=None):
     for axis in [motor, motor1, motor2, motor3, jittery_motor1,
                  jittery_motor2]:
         axis.est_time = EpicsMotorEstTime(axis.name)
-        axis.velocity = SynAxisNoHints(name='velocity')
-        axis.velocity.put(1)
-        axis.settle_time = SynAxisNoHints(name='settle_time')
-        axis.settle_time.put(0)
 
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
                          noise='uniform', sigma=1, noise_multiplier=0.1,
@@ -1301,19 +1312,6 @@ def hw(save_path=None):
     det5 = Syn2DGauss('det5', jittery_motor1, 'jittery_motor1', jittery_motor2,
                       'jittery_motor2', center=(0, 0), Imax=1,
                       labels={'detectors'})
-
-    for detector in [noisy_det, det, identical_det, det1, det2, det3, det4,
-                     det5]:
-        detector.acquire_time = SynAxisNoHints(name='acquire_time')
-        detector.acquire_time.put(1)
-        detector.acquire_period = SynAxisNoHints(name='acquire_period')
-        detector.acquire_period.put(1)
-        detector.num_images = SynAxisNoHints(name='num_images')
-        detector.num_images.put(1)
-        detector.trigger_mode = SynAxisNoHints(name='trigger_mode')
-        detector.trigger_mode.put(1)
-        detector.settle_time = SynAxisNoHints(name='settle_time')
-        detector.settle_time.put(0)
 
     flyer1 = MockFlyer('flyer1', det, motor, 1, 5, 20)
     flyer2 = MockFlyer('flyer2', det, motor, 1, 5, 10)
