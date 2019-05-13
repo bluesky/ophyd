@@ -119,7 +119,7 @@ script:
   - coverage report
   # Make sure only the primary build uploads to codecov
   - |
-    if [ $PUBLISH_DOCS ]; then
+    if [ ! -z "$PUBLISH_DOCS" ]; then
       codecov
     fi
 
