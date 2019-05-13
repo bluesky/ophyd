@@ -128,7 +128,7 @@ script:
   - pip install -r docs-requirements.txt
   - make -C doc html
   - |
-    if [ $PUBLISH_DOCS ]; then
+    if [ ! -z "$PUBLISH_DOCS" ]; then
       # Push built documentation to GH pages.
       doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master ophyd
       doctr deploy --deploy-repo bluesky/bluesky.github.io --deploy-branch-name master ophyd
