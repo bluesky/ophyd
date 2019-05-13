@@ -156,6 +156,10 @@ class SynAD_det(SynSignal):
     '''A SynSignal class with some additional AD related attributes.
     '''
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        est_time = ADEstTime(self.name)
+
     trigger_mode = Component(Signal, value=1, kind='config')
     num_images = Component(Signal, value=1, kind='config')
     acquire_period = Component(Signal, value=1, kind='config')
@@ -308,6 +312,7 @@ class SynAxisNoHints(Device):
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
     """
+
     readback = Component(ReadbackSignal, value=None, kind='hinted')
     setpoint = Component(SetpointSignal, value=None, kind='normal')
 
@@ -349,6 +354,8 @@ class SynAxisNoHints(Device):
         super().__init__(name=name, parent=parent, labels=labels, kind=kind,
                          **kwargs)
         self.readback.name = self.name
+        est_time = EpicsMotorEstTime(self.name)
+
 
     def set(self, value):
         old_setpoint = self.sim_state['setpoint']
@@ -713,7 +720,7 @@ class MockFlyer:
         pass
 
 
-class SynSignalWithRegistry(SynSignal):
+class SynSignalWithRegistry(SynAD_det):
     """
     A SynSignal integrated with databroker.assets
 
@@ -1290,9 +1297,6 @@ def hw(save_path=None):
     jittery_motor2 = SynAxis(name='jittery_motor2',
                              readback_func=lambda x: x + np.random.rand(),
                              labels={'motors'})
-    for axis in [motor, motor1, motor2, motor3, jittery_motor1,
-                 jittery_motor2]:
-        axis.est_time = EpicsMotorEstTime(axis.name)
 
     noisy_det = SynGauss('noisy_det', motor, 'motor', center=0, Imax=1,
                          noise='uniform', sigma=1, noise_multiplier=0.1,

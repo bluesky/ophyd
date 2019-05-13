@@ -38,7 +38,7 @@ class ADTriggerStatus(DeviceStatus):
             try:
                 args.append(getattr(self,arg_name))
             except AttributeError:
-                setattr(self, arg_name, getattr(self.device,arg_name).position)
+                setattr(self, arg_name, getattr(self.device,arg_name).get())
                 args.append(getattr(self,arg_name))
 
         self.est_time = self.device.est_time.trigger(*args)
