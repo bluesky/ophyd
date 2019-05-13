@@ -5,6 +5,8 @@ env:
   global:
     # Doctr deploy key for NSLS-II/NSLS-II.github.io
     - secure: "jUZbT6RuZCGVKEvBCsK22mvXDvGIN10zlHRqj7Q6cl6lf2KaaXnOKb6azCQRJhbvgi9IUkJzjT3ghqeNhjsWOdxzbX4qzTh6jooySP0nyAY+iOQ/F9Q62RdRwM+N5y/t++1Cv2n5BVAYEnGIrE3SyZbeaYLTvNveJnVdeTIKif4="
+    # Doctr deploy key for bluesky/bluesky.github.io
+    - secure: "EAGsD6kh+3wm4zxcAaEiz1OhXbWJ8fYqrMhneTf/ruHjZTdYLzafbFgo+kjNeh8kPa/9eKpt8BoRvHETsUltxGqgHvo1qubbpJIfZOPz+FdpJo4Yz+q3cqU0ce2lPaE9wirR1LfAx0UNlKi7vlmACVGyRochBQKTFOtpcNLrWsA="
     - ETH0_BCAST: "172.17.255.255"
     - ETH0_IP: "172.17.0.1"
     - BASE_VER: "R7.0.1.1"
@@ -40,40 +42,40 @@ matrix:
   include:
     - python: 3.6
       env:
-        - BUILD_DOCS=true
+        - PUBLISH_DOCS=true
         - TEST_CL=pyepics
     - python: 3.6
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=pyepics
     - python: 3.7
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=pyepics
     - python: nightly
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
   allow_failures:
     - python: 3.6
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - BUILD_DOCS=
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
 
 before_install:
@@ -117,18 +119,17 @@ script:
   - coverage report
   # Make sure only the primary build uploads to codecov
   - |
-    if [ $BUILD_DOCS ]; then
+    if [ $PUBLISH_DOCS ]; then
       codecov
     fi
 
   - set -e
   # Build docs.
+  - pip install -r docs-requirements.txt
+  - make -C doc html
   - |
-    if [ $BUILD_DOCS ]; then
-      pip install -r docs-requirements.txt
-      pushd doc
-      make html
-      popd
-      # Publish docs.
+    if [ $PUBLISH_DOCS ]; then
+      # Push built documentation to GH pages.
       doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master ophyd
+      doctr deploy --deploy-repo bluesky/bluesky.github.io --deploy-branch-name master ophyd
     fi
