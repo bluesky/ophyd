@@ -447,7 +447,7 @@ class MoveStatus(DeviceStatus):
                 args.append(getattr(self, arg_name))
             except AttributeError:
                 try:
-                    val = getattr(self.pos, arg_name.get())
+                    val = getattr(self.pos, arg_name).get()
                 except AttributeError:
                     val = getattr(self.pos, arg_name)
 

@@ -472,8 +472,8 @@ class SynAxis(SynAxisNoHints):
             return st
         else:
             update_state()
-            return MoveStatus(positioner=self, target=value, start_pos=start_pos,
-                              done=True, success=True)
+            return MoveStatus(positioner=self, target=value,
+                              start_pos=start_pos, done=True, success=True)
 
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
