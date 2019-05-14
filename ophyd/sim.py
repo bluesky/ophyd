@@ -398,7 +398,7 @@ class SynAxisNoHints(Device):
                            timestamp=self.sim_state['readback_ts'])
 
         if self.delay:
-            st = MoveStatus(device=self)
+            st = MoveStatus(device=self, target=value)
             if self.loop.is_running():
 
                 def update_and_finish():
@@ -417,7 +417,8 @@ class SynAxisNoHints(Device):
             return st
         else:
             update_state()
-            return MoveStatus(device=self, done=True, success=True)
+            return MoveStatus(device=self, target=value, done=True,
+                              success=True)
 
     @property
     def position(self):
@@ -451,7 +452,7 @@ class SynAxis(SynAxisNoHints):
                            timestamp=self.sim_state['readback_ts'])
 
         if self.delay:
-            st = MoveStatus(device=self)
+            st = MoveStatus(positioner=self, target=value)
             if self.loop.is_running():
 
                 def update_and_finish():
@@ -471,8 +472,8 @@ class SynAxis(SynAxisNoHints):
             return st
         else:
             update_state()
-            return MoveStatus(self, value, start_pos=start_pos, done=True,
-                              success=True)
+            return MoveStatus(positioner=self, target=value, start_pos=start_pos,
+                              done=True, success=True)
 
     readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
 
