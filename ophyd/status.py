@@ -441,6 +441,7 @@ class MoveStatus(DeviceStatus):
         # This section below ensures that the status object has all of the info
         # required for storing telemetry associated with it.
         arg_names = inspect.signature(self.pos.est_time.set).parameters
+        arg_names = [v for v in arg_names if not v == 'self'] # remove 'self'
         args = []
         for arg_name in arg_names:
             try:
@@ -448,19 +449,22 @@ class MoveStatus(DeviceStatus):
             except AttributeError:
                 try:
                     attr = getattr(self.pos, arg_name)
+                    try:
+                        val = attr.get()
+                    except AttributeError:
+                        val = attr
+
+                    setattr(self, arg_name, val)
+                    args.append(getattr(self, arg_name))
+
                 except AttributeError:
                     print('{} attribute on {} required but not found'
                           .format(arg_name, self.pos))
 
-                try:
-                    val = attr.get()
-                except AttributeError:
-                    val = attr
-
-                setattr(self, arg_name, val)
-                args.append(getattr(self, arg_name))
-
-        self.est_time = self.pos.est_time.set(*args)
+        if len(arg_names) == len(args):
+            self.est_time = self.pos.est_time.set(*args)
+        else:
+            self.est_time = None
 
         self._unit = getattr(self.pos, 'egu', None)
         self._precision = getattr(self.pos, 'precision', None)
@@ -478,11 +482,13 @@ class MoveStatus(DeviceStatus):
             self.finish_pos = self.target
             self.finish_ts = time.time()
             if self.success:
-                try:
-                    self.pos.est_time.set.record(self, status_object=self)
-                except AttributeError('est_time.set.record attribute required\
-                                      on {}, but not found'.format(self.pos)):
-                    raise
+                if self.est_time:
+                    try:
+                        self.pos.est_time.set.record(self, status_object=self)
+                    except AttributeError('est_time.set.record attribute'
+                                          'required on {}, but not '
+                                          'found'.format(self.pos)):
+                        raise
 
     def watch(self, func):
         """

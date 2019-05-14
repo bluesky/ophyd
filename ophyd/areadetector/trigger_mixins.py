@@ -32,20 +32,16 @@ class ADTriggerStatus(DeviceStatus):
 
         # This section below ensures that the status object has all of the info
         # requiredfor storing telemetry associated with it.
-        arg_names = inspect.signature(self.device.est_time.trigger).parameters
+        arg_names = list(
+            inspect.signature(self.device.est_time.trigger).parameters)
+        arg_names = [v for v in arg_names if not v == 'self']  # remove 'self'
         args = []
         for arg_name in arg_names:
-            if arg_name is not 'self':
+            try:
+                args.append(getattr(self, arg_name))
+            except AttributeError:
                 try:
-                    args.append(getattr(self, arg_name))
-                except AttributeError:
-                    try:
-                        attr = getattr(self.device, arg_name)
-                    except AttributeError:
-                        print('{} attribute on {} required but not found'
-                              .format(arg_name, self.device))
-                        raise
-
+                    attr = getattr(self.device, arg_name)
                     try:
                         val = attr.get()
                     except AttributeError:
@@ -53,8 +49,14 @@ class ADTriggerStatus(DeviceStatus):
 
                     setattr(self, arg_name, val)
                     args.append(getattr(self, arg_name))
+                except AttributeError:
+                    print('{} attribute on {} required but not found'
+                          .format(arg_name, self.device))
 
-        self.est_time = self.device.est_time.trigger(*args)
+        if len(args) == len(arg_names):
+            self.est_time = self.device.est_time.trigger(*args)
+        else:
+            self.est_time = None
 
         # Notify watchers (things like progress bars) of new values
         # at the device's natural update rate.
@@ -66,7 +68,8 @@ class ADTriggerStatus(DeviceStatus):
             self._target_count = self.device.cam.num_images.get()
         else:
             self.finish_ts = ttime.time()
-            self.device.est_time.trigger.record(self)
+            if self.est_time:
+                self.device.est_time.trigger.record(self)
 
     def watch(self, func):
         self._watchers.append(func)
