@@ -447,17 +447,18 @@ class MoveStatus(DeviceStatus):
                 args.append(getattr(self, arg_name))
             except AttributeError:
                 try:
-                    val = getattr(self.pos, arg_name).get()
-                except AttributeError:
-                    val = getattr(self.pos, arg_name)
-
-                try:
-                    setattr(self, arg_name, val)
-                    args.append(getattr(self, arg_name))
+                    attr = getattr(self.pos, arg_name)
                 except AttributeError:
                     print('{} attribute on {} required but not found'
                           .format(arg_name, self.pos))
-                    raise
+
+                try:
+                    val = attr.get()
+                except AttributeError:
+                    val = attr
+
+                setattr(self, arg_name, val)
+                args.append(getattr(self, arg_name))
 
         self.est_time = self.pos.est_time.set(*args)
 

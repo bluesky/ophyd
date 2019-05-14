@@ -40,17 +40,19 @@ class ADTriggerStatus(DeviceStatus):
                     args.append(getattr(self, arg_name))
                 except AttributeError:
                     try:
-                        val = getattr(self.device, arg_name).get()
-                    except AttributeError:
-                        val = getattr(self.device, arg_name)
-
-                    try:
-                        setattr(self, arg_name, val)
-                        args.append(getattr(self, arg_name))
+                        attr = getattr(self.device, arg_name)
                     except AttributeError:
                         print('{} attribute on {} required but not found'
                               .format(arg_name, self.pos))
                         raise
+
+                    try:
+                        val = attr.get()
+                    except AttributeError:
+                        val = attr
+
+                    setattr(self, arg_name, val)
+                    args.append(getattr(self, arg_name))
 
         self.est_time = self.device.est_time.trigger(*args)
 
