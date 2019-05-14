@@ -43,7 +43,7 @@ class ADTriggerStatus(DeviceStatus):
                         attr = getattr(self.device, arg_name)
                     except AttributeError:
                         print('{} attribute on {} required but not found'
-                              .format(arg_name, self.pos))
+                              .format(arg_name, self.device))
                         raise
 
                     try:
