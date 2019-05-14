@@ -80,8 +80,6 @@ class SynSignal(Signal):
     # This signature is arranged to mimic the signature of EpicsSignal, where
     # the Python function (func) takes the place of the PV.
 
-    settle_time = Component(Signal, value=0, kind='config')
-
     def __init__(self, func=None, *,
                  name,  # required, keyword-only
                  exposure_time=0,
@@ -104,10 +102,8 @@ class SynSignal(Signal):
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind, **kwargs)
-        self._metadata.update(
-            connected=True,
-            )
-        self.est_time = ADEstTime(self.name)
+        self._metadata.update(connected=True)
+        self.settle_time = Signal(name='settle_time', value=0, kind='config')
 
     def describe(self):
         res = super().describe()
@@ -138,7 +134,7 @@ class SynSignal(Signal):
             return st
         else:
             self.put(self._func())
-            return ADTriggerStatus(self, done=True, success=True)
+            return NullStatus()
 
     def stage(self):
         pass
@@ -158,13 +154,36 @@ class SynAD_det(SynSignal):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        est_time = ADEstTime(self.name)
+        self.est_time = ADEstTime(self.name)
+        self.trigger_mode = Signal(name='trigger_mode', value=1, kind='config')
+        self.num_images = Signal(name='num_images', value=1, kind='config')
+        self.acquire_period = Signal(name='acquire_period', value=1,
+                                     kind='config')
+        self.acquire_time = Signal(name='acquire_time', value=1, kind='config')
 
-    trigger_mode = Component(Signal, value=1, kind='config')
-    num_images = Component(Signal, value=1, kind='config')
-    acquire_period = Component(Signal, value=1, kind='config')
-    acquire_time = Component(Signal, value=1, kind='config')
+    def trigger(self):
+        delay_time = self.exposure_time
+        if delay_time:
+            st = ADTriggerStatus(device=self)
+            if self.loop.is_running():
 
+                def update_and_finish():
+                    self.put(self._func())
+                    st._finished()
+
+                self.loop.call_later(delay_time, update_and_finish)
+            else:
+
+                def sleep_and_finish():
+                    ttime.sleep(delay_time)
+                    self.put(self._func())
+                    st._finished()
+
+                threading.Thread(target=sleep_and_finish, daemon=True).start()
+            return st
+        else:
+            self.put(self._func())
+            return ADTriggerStatus(self, success=True, done=True)
 
 
 class SignalRO(Signal):
@@ -333,6 +352,7 @@ class SynAxisNoHints(Device):
                  labels=None,
                  kind=None,
                  loop=None,
+                 est_time=EpicsMotorEstTime,
                  **kwargs):
         if readback_func is None:
             def readback_func(x):
@@ -352,10 +372,8 @@ class SynAxisNoHints(Device):
         self.sim_state['readback_ts'] = ttime.time()
 
         super().__init__(name=name, parent=parent, labels=labels, kind=kind,
-                         **kwargs)
+                         est_time=est_time, **kwargs)
         self.readback.name = self.name
-        est_time = EpicsMotorEstTime(self.name)
-
 
     def set(self, value):
         old_setpoint = self.sim_state['setpoint']
@@ -380,7 +398,7 @@ class SynAxisNoHints(Device):
                            timestamp=self.sim_state['readback_ts'])
 
         if self.delay:
-            st = DeviceStatus(device=self)
+            st = MoveStatus(device=self)
             if self.loop.is_running():
 
                 def update_and_finish():
@@ -399,7 +417,7 @@ class SynAxisNoHints(Device):
             return st
         else:
             update_state()
-            return NullStatus()
+            return MoveStatus(device=self, done=True, success=True)
 
     @property
     def position(self):
@@ -433,7 +451,7 @@ class SynAxis(SynAxisNoHints):
                            timestamp=self.sim_state['readback_ts'])
 
         if self.delay:
-            st = DeviceStatus(device=self)
+            st = MoveStatus(device=self)
             if self.loop.is_running():
 
                 def update_and_finish():
@@ -720,7 +738,7 @@ class MockFlyer:
         pass
 
 
-class SynSignalWithRegistry(SynAD_det):
+class SynSignalWithRegistry(SynSignal):
     """
     A SynSignal integrated with databroker.assets
 

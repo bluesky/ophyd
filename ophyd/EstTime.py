@@ -81,6 +81,7 @@ class DefaultEstTime:
             This is a status object that contains information collected about
             the action to be stored in telemetry.
         '''
+
         if status_object:
             data = {}
             data['estimation'] = {'time': status_object.est_time.est_time,
@@ -357,7 +358,6 @@ class EpicsMotorEstTime(DefaultEstTime):
         if type(start_pos) is tuple:
             start_pos = start_pos[0][0]
 
-
         attributes = [_AttrTuple('velocity', velocity, None)]
 
         velocity_list = self._extract_velocity_list(
@@ -391,7 +391,7 @@ class EpicsMotorEstTime(DefaultEstTime):
 
         return out_time
 
-    def _set_record(status_object=None):
+    def _set_record(self, status_object=None):
         '''This is a function that records telemetry for the set command.
 
         PARAMETER
@@ -409,9 +409,9 @@ class EpicsMotorEstTime(DefaultEstTime):
             data['position'] = {'start': status_object.start_pos,
                                 'stop': status_object.finish_pos}
             data['velocity'] = {
-                'setpoint': status_object.pos.velocity.position}
+                'setpoint': status_object.pos.velocity.get()}
             data['settle_time'] = {
-                'setpoint': status_object.pos.settle_time.position}
+                'setpoint': status_object.pos.settle_time.get()}
 
             record_telemetry(status_object.pos.name, 'set', data)
 
@@ -558,15 +558,15 @@ class ADEstTime(DefaultEstTime):
             data['time'] = {'start': status_object.start_ts,
                             'stop': status_object.finish_ts}
             data['trigger_mode'] = {
-                'setpoint': status_object.device.trigger_mode.position}
+                'setpoint': status_object.device.trigger_mode.get()}
             data['num_images'] = {
-                'setpoint': status_object.device.num_images.position}
+                'setpoint': status_object.device.num_images.get()}
             data['settle_time'] = {
-                'setpoint': status_object.device.settle_time.position}
+                'setpoint': status_object.device.settle_time.get()}
             data['acquire_period'] = {
-                'setpoint': status_object.device.acquire_period.position}
+                'setpoint': status_object.device.acquire_period.get()}
             data['acquire_time'] = {
-                'setpoint': status_object.device.acquire_time.position}
+                'setpoint': status_object.device.acquire_time.get()}
 
             record_telemetry(status_object.device.name, 'trigger', data)
 

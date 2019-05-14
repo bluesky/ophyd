@@ -35,11 +35,13 @@ class ADTriggerStatus(DeviceStatus):
         arg_names = inspect.signature(self.device.est_time.trigger).parameters
         args = []
         for arg_name in arg_names:
-            try:
-                args.append(getattr(self,arg_name))
-            except AttributeError:
-                setattr(self, arg_name, getattr(self.device,arg_name).get())
-                args.append(getattr(self,arg_name))
+            if arg_name is not 'self':
+                try:
+                    args.append(getattr(self, arg_name))
+                except AttributeError:
+                    setattr(self, arg_name,
+                            getattr(self.device, arg_name).get())
+                    args.append(getattr(self, arg_name))
 
         self.est_time = self.device.est_time.trigger(*args)
 
@@ -54,7 +56,6 @@ class ADTriggerStatus(DeviceStatus):
         else:
             self.finish_ts = ttime.time()
             self.device.est_time.trigger.record(self)
-
 
     def watch(self, func):
         self._watchers.append(func)
@@ -91,14 +92,15 @@ class ADTriggerStatus(DeviceStatus):
                     time_elapsed=time_elapsed,
                     time_remaining=time_remaining)
 
-    def _finished(self, success = True, **kwargs):
+    def _finished(self, success=True, **kwargs):
         '''Informs the status object that it is done and if it succeeded. If it
         suceeded it also records the telemetry associated with the trigger.
         '''
-        super()._finished(success = success, **kwargs)
+        super()._finished(success=success, **kwargs)
         self.finish_ts = ttime.time()
         if success:
             self.device.est_time.trigger.record(self)
+
 
 class TriggerBase(BlueskyInterface):
     """Base class for trigger mixin classes

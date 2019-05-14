@@ -474,7 +474,7 @@ class MoveStatus(DeviceStatus):
             self.finish_ts = time.time()
             if self.success:
                 try:
-                    self.pos.est_time.set.record(self)
+                    self.pos.est_time.set.record(self, status_object=self)
                 except AttributeError('est_time.set.record attribute required\
                                       on {}, but not found'.format(self.pos)):
                     raise
