@@ -53,7 +53,8 @@ class UnknownSubscription(KeyError):
 def register_instances_keyed_on_name(fail_if_late=False):
     """Register OphydObj instances in a WeakValueDictionary keyed on name.
 
-    Be advised that ophyd does not require 'name' to be unique so this should
+    Be advised that ophyd does not require 'name' to be unique and is
+    configurable by the user at run-time so this should
     not be relied on unless name uniqueness is enforced by other means.
 
     Parameters
