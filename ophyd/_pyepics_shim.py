@@ -34,7 +34,8 @@ class PyepicsCallbackThread(_CallbackThread):
 
     def detach_context(self):
         super().detach_context()
-        ca.detach_context()
+        if ca.current_context() is not None:
+            ca.detach_context()
 
 
 class PyepicsShimPV(epics.PV):
