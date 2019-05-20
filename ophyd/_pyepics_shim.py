@@ -1,10 +1,10 @@
 import atexit
 import logging
-import threading
+import functools
 import warnings
 
 import epics
-from epics import caget, caput, ca, dbr  # noqa
+from epics import ca, caget, caput
 
 from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
@@ -19,6 +19,7 @@ else:
 module_logger = logging.getLogger(__name__)
 name = 'pyepics'
 _dispatcher = None
+get_pv = epics.get_pv
 
 
 def get_dispatcher():
@@ -115,65 +116,6 @@ def release_pvs(*pvs):
         epics.pv._PVcache_.pop(pv._cache_key, None)
 
 
-def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
-           connection_callback=None, access_callback=None, callback=None,
-           **kwargs):
-    """
-    Get a PV from PV cache or create one if needed.
-
-    Parameters
-    ---------
-    form : str, optional
-        PV form: one of 'native' (default), 'time', 'ctrl'
-    connect : bool, optional
-        whether to wait for connection (default False)
-    context : int, optional
-        PV threading context (defaults to current context)
-    timeout : float, optional
-        connection timeout, in seconds (default 5.0)
-    """
-    if form not in ('native', 'time', 'ctrl'):
-        form = 'native'
-
-    if context is None:
-        context = ca.current_context()
-
-    thispv = epics.pv._PVcache_.get((pvname, form, context))
-    if thispv is not None:
-        if thispv.connected:
-            if connection_callback is not None:
-                connection_callback(pvname=thispv.pvname,
-                                    conn=thispv.connected,
-                                    pv=thispv
-                                    )
-            if access_callback is not None:
-                access_callback(thispv.read_access,
-                                thispv.write_access,
-                                pv=thispv)
-        if callback is not None:
-            # wrapping is taken care of by `add_callback`
-            thispv.add_callback(callback)
-        if access_callback is not None:
-            access_callback = wrap_callback(_dispatcher, 'metadata',
-                                            access_callback)
-            thispv.access_callbacks.append(access_callback)
-        if connection_callback is not None:
-            connection_callback = wrap_callback(_dispatcher, 'metadata',
-                                                connection_callback)
-            thispv.connection_callbacks.append(connection_callback)
-
-    else:
-        # this implicitly caches in the `pv.PV` init
-        thispv = PyepicsShimPV(pvname, form=form, callback=callback,
-                               connection_callback=connection_callback,
-                               access_callback=access_callback, **kwargs)
-
-    if connect:
-        if not thispv.wait_for_connection(timeout=timeout):
-            ca.write('cannot connect to %s' % pvname)
-    return thispv
-
-
 def setup(logger):
     '''Setup ophyd for use
 
@@ -188,17 +130,14 @@ def setup(logger):
         logger.debug('ophyd already setup')
         return
 
-    epics._get_pv = epics.get_pv
-    epics.get_pv = get_pv
-    epics.pv.get_pv = get_pv
+    epics.pv.default_pv_class = PyepicsShimPV
 
     def _cleanup():
         '''Clean up the ophyd session'''
         global _dispatcher
         if _dispatcher is None:
             return
-        epics.get_pv = epics._get_pv
-        epics.pv.get_pv = epics._get_pv
+        epics.pv.default_pv_class = epics.PV
 
         logger.debug('Performing ophyd cleanup')
         if _dispatcher.is_alive():
