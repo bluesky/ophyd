@@ -196,3 +196,6 @@ def _check_pyepics_version(version):
 
 
 _check_pyepics_version(getattr(epics, '__version__', None))
+
+__all__ = ('setup', 'caput', 'caget', 'get_pv', 'thread_class', 'name',
+           'release_pvs', 'get_dispatcher')
