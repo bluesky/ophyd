@@ -259,7 +259,7 @@ class SetpointSignal(Signal):
         return self.parent.sim_state['setpoint_ts']
 
 
-class SynAxisNoHints(Device):
+class SynAxis(Device):
     """
     A synthetic settable Device mimic any 1D Axis (position, temperature).
 
@@ -375,8 +375,17 @@ class SynAxisNoHints(Device):
         return self.readback.get()
 
 
-class SynAxis(SynAxisNoHints):
-    readback = Component(ReadbackSignal, value=None, kind=Kind.hinted)
+class SynAxisEmptyHints(SynAxis):
+    @property
+    def hints(self):
+        return {}
+
+
+class SynAxisNoHints(SynAxis):
+    readback = Component(ReadbackSignal, value=None, kind='omitted')
+    @property
+    def hints(self):
+        raise AttributeError
 
 
 class SynGauss(SynSignal):
@@ -1255,6 +1264,9 @@ def hw(save_path=None):
     motor_no_pos = SynAxisNoPosition(name='motor', labels={'motors'})
     bool_sig = Signal(value=False, name='bool_sig', labels={'detectors'})
 
+    motor_empty_hints1 = SynAxisEmptyHints(name='motor1', labels={'motors'})
+    motor_empty_hints2 = SynAxisEmptyHints(name='motor2', labels={'motors'})
+
     motor_no_hints1 = SynAxisNoHints(name='motor1', labels={'motors'})
     motor_no_hints2 = SynAxisNoHints(name='motor2', labels={'motors'})
     # Because some of these reference one another we must define them (above)
@@ -1292,6 +1304,8 @@ def hw(save_path=None):
         rand=rand,
         rand2=rand2,
         motor_no_pos=motor_no_pos,
+        motor_empty_hints1=motor_empty_hints1,
+        motor_empty_hints2=motor_empty_hints2,
         motor_no_hints1=motor_no_hints1,
         motor_no_hints2=motor_no_hints2,
         bool_sig=bool_sig,
