@@ -13,14 +13,29 @@ def test_status_basic():
     st._finished()
 
 
-def test_status_callback():
+def test_status_callback_deprecated():
+    "The old way, with finished_cb"
     st = StatusBase()
     cb = Mock()
 
-    st.finished_cb = cb
-    assert st.finished_cb is cb
+    with pytest.warns(UserWarning):
+        st.finished_cb = cb
+    with pytest.warns(UserWarning):
+        assert st.finished_cb is cb
     with pytest.raises(RuntimeError):
         st.finished_cb = None
+
+    st._finished()
+    cb.assert_called_once_with()
+
+
+def test_status_callback():
+    "The new way, with add_callback and the callbacks property"
+    st = StatusBase()
+    cb = Mock()
+
+    st.add_callback(cb)
+    assert st.callbacks[0] is cb
 
     st._finished()
     cb.assert_called_once_with()
