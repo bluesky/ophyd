@@ -71,7 +71,9 @@ def get_cl():
 
 set_cl()
 
-from .ophydobj import Kind, select_version
+from .ophydobj import (Kind, select_version,
+                       register_instances_in_weakset,
+                       register_instances_keyed_on_name)
 
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
