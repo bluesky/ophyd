@@ -135,7 +135,7 @@ class OphydObject:
     # This is set to True when the first OphydObj is instiated. This may be of
     # interest to code that adds something to instantiation_callbacks, which
     # may want to know whether it has already "missed" any instances.
-    __instantiated = False
+    __any_instantiated = False
 
     def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
@@ -183,7 +183,7 @@ class OphydObject:
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
 
-        if not self.__instantiated:
+        if not self.__any_instantiated:
             self.log.debug("This is the first instance of OphydObject. "
                            "name={self.name}, id={id(self)}")
             self.__mark_as_instantiated()
@@ -191,7 +191,7 @@ class OphydObject:
 
     @classmethod
     def __mark_as_instantiated(cls):
-        cls.__instantiated = True
+        cls.__any_instantiated = True
 
     @classmethod
     def add_instantiation_callback(cls, callback, fail_if_late=False):
@@ -207,7 +207,7 @@ class OphydObject:
             ``RuntimeError`` if it has, as a way of verify that no instances will
             be "missed" by this registry. False by default.
         """
-        if fail_if_late and OphydObject.__instantiated:
+        if fail_if_late and OphydObject.__any_instantiated:
             raise RuntimeError(
                 "OphydObject has already been instantiated at least once, and "
                 "this callback will not be notified of those instances that "

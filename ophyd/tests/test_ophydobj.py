@@ -171,7 +171,7 @@ def test_register_instance():
     test2 = OphydObject(name='test2')
     assert weakdict['test2'] == test2
 
-    assert OphydObject._OphydObject__instantiated == True
+    assert OphydObject._OphydObject__any_instantiated == True
     with pytest.raises(RuntimeError):
         register_instances_in_weakset(fail_if_late=True)
     with pytest.raises(RuntimeError):
