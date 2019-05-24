@@ -785,6 +785,7 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_
     auto_increment = Cpt(SignalWithRBV, 'AutoIncrement', kind='config')
     auto_save = Cpt(SignalWithRBV, 'AutoSave', kind='config')
     capture = Cpt(SignalWithRBV, 'Capture')
+    create_directory_depth = Cpt(SignalWithRBV, suffix="CreateDirectory")
     delete_driver_file = Cpt(SignalWithRBV, 'DeleteDriverFile', kind='config')
     file_format = Cpt(SignalWithRBV, 'FileFormat', kind='config')
     file_name = Cpt(SignalWithRBV, 'FileName', string=True, kind='config')
