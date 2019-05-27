@@ -19,6 +19,7 @@ setup(name='ophyd',
       long_description=long_description,
       long_description_content_type='text/markdown',
       license='BSD',
+      python_requires='>=3.6',
       install_requires=requirements,
       packages=find_packages(),
       classifiers=[
