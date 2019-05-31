@@ -118,6 +118,7 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
     pv = PV(pvname, form=form, connection_callback=connection_callback,
             access_callback=access_callback, callback=callback,
             **kwargs)
+    pv._reference_count = 0
     if connect:
         pv.wait_for_connection(timeout=timeout)
     return pv

@@ -55,6 +55,7 @@ class PyepicsShimPV(epics.PV):
                          callback=callback, access_callback=access_callback)
 
         self._cache_key = (pvname, form, self.context)
+        self._reference_count = 0
 
     def add_callback(self, callback=None, index=None, run_now=False,
                      with_ctrlvars=True, **kw):
@@ -107,14 +108,19 @@ class PyepicsShimPV(epics.PV):
 
 def release_pvs(*pvs):
     for pv in pvs:
-        pv.clear_callbacks()
-        pv.clear_auto_monitor()
-        # if pv.chid is not None:
-        #     # Clear the channel on the CA-level
-        #     epics.ca.clear_channel(pv.chid)
+        pv._reference_count -= 1
+        if pv._reference_count == 0:
+            pv.clear_callbacks()
+            pv.clear_auto_monitor()
+            # if pv.chid is not None:
+            #     # Clear the channel on the CA-level
+            #     epics.ca.clear_channel(pv.chid)
 
-        # Ensure we don't get this same PV back again
-        epics.pv._PVcache_.pop(pv._cache_key, None)
+            pv.chid = None
+            pv.context = None
+
+            # Ensure we don't get this same PV back again
+            epics.pv._PVcache_.pop(pv._cache_key, None)
 
 
 def setup(logger):
