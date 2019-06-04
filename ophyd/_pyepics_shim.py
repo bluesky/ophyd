@@ -112,9 +112,10 @@ def release_pvs(*pvs):
         if pv._reference_count == 0:
             pv.clear_callbacks()
             pv.clear_auto_monitor()
-            # if pv.chid is not None:
-            #     # Clear the channel on the CA-level
-            #     epics.ca.clear_channel(pv.chid)
+            if pv.chid is not None:
+                # Clear the channel on the CA-level
+                epics.ca.clear_channel(pv.chid)
+
 
             pv.chid = None
             pv.context = None
