@@ -1,6 +1,5 @@
 import atexit
 import logging
-import functools
 import warnings
 
 import epics
@@ -115,7 +114,6 @@ def release_pvs(*pvs):
             if pv.chid is not None:
                 # Clear the channel on the CA-level
                 epics.ca.clear_channel(pv.chid)
-
 
             pv.chid = None
             pv.context = None
