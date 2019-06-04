@@ -33,6 +33,8 @@ def test_checkvalue(motor):
 
 def test_move(motor):
     motor.stop()
+    motor.move(0.1, timeout=5, wait=True)
+
     logger.debug('Move to 0.0')
     motor.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
