@@ -961,6 +961,7 @@ class Device(BlueskyInterface, OphydObject):
             raise ExceptionBundle(
                 'Failed to disconnect all signals ({})'.format(msg),
                 exceptions=exceptions)
+        super().destroy()
 
     def _get_kind(self, name):
         '''Get a Kind for a given Component
