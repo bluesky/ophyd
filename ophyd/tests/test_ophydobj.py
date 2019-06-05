@@ -1,4 +1,5 @@
 import logging
+import ophyd
 import pytest
 
 from unittest.mock import Mock
@@ -191,3 +192,11 @@ def test_register_instance():
         register_instances_in_weakset(fail_if_late=True)
     with pytest.raises(RuntimeError):
         register_instances_keyed_on_name(fail_if_late=True)
+
+
+def test_nameless():
+    obj1 = ophyd.ophydobj.OphydObject()
+    assert obj1.name == 'obj1'
+
+    obj2 = OphydObject()
+    assert obj2.name == 'obj2'

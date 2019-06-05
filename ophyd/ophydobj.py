@@ -1,4 +1,6 @@
+import ast
 import functools
+import inspect
 from itertools import count
 import weakref
 
@@ -102,6 +104,36 @@ def register_instances_in_weakset(fail_if_late=False):
     return weak_set
 
 
+def _find_name_from_code_frame(cls_name):
+    frame = inspect.currentframe()
+    for frame in inspect.getouterframes(frame):
+        code_text = ''.join(frame.code_context).strip()
+        print(frame, code_text)
+        try:
+            code = ast.parse(code_text)
+        except SyntaxError:
+            continue
+
+        assignments = [
+            assignment for assignment in code.body
+            if isinstance(assignment, ast.Assign)
+            if isinstance(assignment.value, ast.Call) and
+            cls_name in (
+                getattr(assignment.value.func, 'attr', ''),
+                getattr(assignment.value.func, 'id', '')
+            )
+        ]
+
+        if assignments:
+            try:
+                assignment, = assignments
+            except TypeError:
+                raise ValueError('Cannot determine name with multiple assignments') from None
+            return assignment.targets[0].id
+
+    return ''
+
+
 class OphydObject:
     '''The base class for all objects in Ophyd
 
@@ -150,7 +182,11 @@ class OphydObject:
 
         # base name and ref to parent, these go with properties
         if name is None:
-            name = ''
+            try:
+                name = _find_name_from_code_frame(self.__class__.__name__)
+            except Exception:
+                name = ''
+
         self._attr_name = attr_name
         if not isinstance(name, str):
             raise ValueError("name must be a string.")
