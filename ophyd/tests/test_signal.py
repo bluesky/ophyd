@@ -523,6 +523,7 @@ def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
     # blow up
     assert len(called) < 20
     print('total', len(called))
+    sig.unsubscribe_all()
 
 
 @pytest.mark.parametrize('pvname, count',
