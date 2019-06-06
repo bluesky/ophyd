@@ -153,6 +153,7 @@ def cleanup(request):
 
     def clean():
         for item in items:
+            item.unsubscribe_all()
             print('Destroying', item.name)
             item.destroy()
         items.clear()
