@@ -497,7 +497,7 @@ def test_epicssignal_sub_setpoint(cleanup, fake_motor_ioc):
     assert len(setpoint_meta_called) >= 3
 
 
-def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
+def test_epicssignal_get_in_callback(fake_motor_ioc, cleanup):
     pvs = fake_motor_ioc.pvs
     sig = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
                       name='motor')
