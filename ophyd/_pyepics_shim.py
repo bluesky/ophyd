@@ -1,11 +1,18 @@
 import atexit
 import logging
 import warnings
-
+from distutils.version import LooseVersion
 import epics
 from epics import ca, caget, caput
 
 from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
+
+_min_pyepics = '3.4.0a1'
+
+if LooseVersion(epics.__version__) < LooseVersion(_min_pyepics):
+    raise ImportError('Version of pyepics too old. '
+                      f'Ophyd requires at least {_min_pyepics}'
+                      f'but {epics.__version__} is installed')
 
 try:
     ca.find_libca()
@@ -158,49 +165,6 @@ def setup(logger):
     atexit.register(_cleanup)
     return _dispatcher
 
-
-def _check_pyepics_version(version):
-    '''Verify compatibility with the pyepics version installed
-
-    For proper functionality, ophyd requires pyepics >= 3.3.2
-    '''
-    def _fix_git_versioning(in_str):
-        return in_str.replace('-g', '+g')
-
-    def _naive_parse_version(version):
-        try:
-            version = version.lower()
-
-            # Strip off the release-candidate version number (best-effort)
-            if 'rc' in version:
-                version = version[:version.index('rc')]
-
-            version_tuple = tuple(int(v) for v in version.split('.'))
-        except Exception:
-            return None
-
-        return version_tuple
-
-    try:
-        from pkg_resources import parse_version
-    except ImportError:
-        parse_version = _naive_parse_version
-
-    try:
-        version = parse_version(_fix_git_versioning(version))
-    except Exception:
-        version = None
-
-    if version is None:
-        warnings.warn('Unrecognized PyEpics version; assuming it is '
-                      'compatible', ImportWarning)
-    elif version < parse_version('3.3.2'):
-        raise RuntimeError(f'The installed version of pyepics={version} is not'
-                           f'compatible with ophyd.  Please upgrade to the '
-                           f'latest version.')
-
-
-_check_pyepics_version(getattr(epics, '__version__', None))
 
 __all__ = ('setup', 'caput', 'caget', 'get_pv', 'thread_class', 'name',
            'release_pvs', 'get_dispatcher')
