@@ -520,6 +520,10 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
 
 @pytest.mark.xfail
 def test_many_connect(ad_prefix, cleanup):
+    import ophyd
+    pytest.skipif(ophyd.get_cl().name == 'pyepics',
+                  "This is exposing race conditions in pyepics which "
+                  "cause segfaults.")
     import gc
     fs = DummyFS()
 
