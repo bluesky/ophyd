@@ -5,3 +5,4 @@ databroker
 caproto[complete]
 h5py
 pytest-faulthandler
+pyepics>=3.4.0
