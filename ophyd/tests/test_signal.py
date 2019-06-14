@@ -4,6 +4,7 @@ import copy
 import pytest
 import threading
 
+from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
@@ -496,7 +497,7 @@ def test_epicssignal_sub_setpoint(cleanup, fake_motor_ioc):
     assert len(setpoint_meta_called) >= 3
 
 
-def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
+def test_epicssignal_get_in_callback(fake_motor_ioc, cleanup):
     pvs = fake_motor_ioc.pvs
     sig = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
                       name='motor')
@@ -522,3 +523,25 @@ def test_epicssignal_get_in_callback(cleanup, fake_motor_ioc):
     # blow up
     assert len(called) < 20
     print('total', len(called))
+    sig.unsubscribe_all()
+
+
+@pytest.mark.parametrize('pvname, count',
+                         [('sim:mtr1.RBV', 10),
+                          ('sim:mtr2.RBV', 10),
+                          ('sim:mtr1.RBV', 100),
+                          ('sim:mtr2.RBV', 100),
+                          ]
+                         )
+def test_epicssignal_pv_reuse(cleanup, pvname, count):
+    signals = [EpicsSignal(pvname, name='sig')
+               for i in range(count)]
+
+    for sig in signals:
+        cleanup.add(sig)
+        sig.wait_for_connection()
+        assert sig.connected
+        assert sig.get() is not None
+
+    if get_cl().name == 'pyepics':
+        assert len(set(id(sig._read_pv) for sig in signals)) == 1

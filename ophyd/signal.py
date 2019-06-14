@@ -621,6 +621,7 @@ class EpicsSignalBase(Signal):
             read_pv, auto_monitor=self._auto_monitor,
             connection_callback=self._pv_connected,
             access_callback=self._pv_access_callback)
+        self._read_pv._reference_count += 1
 
     def __getnewargs_ex__(self):
         args, kwargs = super().__getnewargs_ex__()
@@ -1050,6 +1051,8 @@ class EpicsSignal(EpicsSignalBase):
                 write_pv, auto_monitor=self._auto_monitor,
                 connection_callback=self._pv_connected,
                 access_callback=self._pv_access_callback)
+
+        self._write_pv._reference_count += 1
 
         # NOTE: after this point, write_pv can either be:
         #  (1) the same as read_pv

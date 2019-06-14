@@ -33,6 +33,8 @@ def test_checkvalue(motor):
 
 def test_move(motor):
     motor.stop()
+    motor.move(0.1, timeout=5, wait=True)
+
     logger.debug('Move to 0.0')
     motor.move(0.0, timeout=5, wait=True)
     time.sleep(0.1)
@@ -166,6 +168,7 @@ def test_high_limit_switch_while_moving_out(motor):
 # @pytest.mark.skip(reason="This has become flaky, not sure why")
 def test_homing_forward(motor):
     # homing forward
+    motor.wait_for_connection(all_signals=True, timeout=2)
     motor.move(-1, wait=True)
     res = motor.home("forward", timeout=2, wait=False)
 
