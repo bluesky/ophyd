@@ -7,28 +7,28 @@ v1.4.0 (2019-06-XX)
 
 Features
 --------
-* Version ohpyd classes to support IOCs changing over time. This is currently
-  implemented from AreaDetector and it's plugins (support for 1-9 to 3-5).
-* `.NDDerivedSignal` to expose a re-shaped version of an N-D array.
-* `~.ophyd.device.Component.subscriptions` decorator to set up default
+* Version ophyd classes to support IOCs changing over time. This is currently
+  implemented for AreaDetector plugins (releases 1-9 to 3-4).
+* Added `NDDerivedSignal`, which supplies a reshaped version of an input array signal.
+* Added `~.ophyd.device.Component.subscriptions` decorator to set up default
   subscriptions on a component.
 * Added `.create_device_from_components` to aid dynamic device generation.
 * Added `.required_for_connection` decorator to mark the Components that must
   be connected for the overall Device to be considered connected.
 * Added a hook to be called on all ophyd object creation via the
-  `.ohpydobj.add_instantiation_callback` class method along with the
+  `.ophydobj.add_instantiation_callback` class method along with the
   `.register_instances_keyed_on_name` and
   `.register_instance_in_weakset` helper functions.
 * Added `.ophydobj.dotted_name` property to get the full attribute
   name of a child component.
 * Added ``read_access`` and ``write_access`` properties.
-* Added ``destroy`` method to all ohpyd objects.
+* Added ``destroy`` method to all ophyd objects.
 
 API Changes
 -----------
 
 * Drop support for Python3.5
-* If using pyepics, requires pyepics >= 3.4.0
+* The optional dependency pyepics, if installed, must be above version 3.4.0 to be used.
 * If you are holding a reference to a pyepics.pv.PV that is shared
   with ophyd and all ophyd objects that use that PV are torn down, all
   callbacks on the PV will be cleared and the channel will be torn
@@ -36,25 +36,25 @@ API Changes
 * Removed ``ophyd.control_layer``.  The "control layer" used to access
   EPICS can be controlled via `~ophyd.set_cl`.
 * `.DynamicDeviceComponent` is now a `.Component` sub-class
-* Change argument name in `.ophydobj.subscribe` from ``cb`` to
+* Changed argument name in `.ophydobj.subscribe` from ``cb`` to
   ``callback``.
 * Removed ``ophyd.tests.conftest.FakeEpicsPV``,
   ``ophyd.tests.conftest.FakeEpicsWaveForm`` , and associated helper
   functions.  If you need this class, please vendor it from a previous
-  version of ophyd.
-* Removed ``ophyd.tests.AssertTolls`` and use standard pytest idioms
+  version of ophyd - or please consider moving to `make_fake_device` or `caproto`-based simulation IOCs.
+* Removed ``ophyd.tests.AssertTools`` and use standard pytest idioms
   throughout test suite
 
 
 Internals
 ---------
 * switch from `.Device` using meta-classes to using a
-  ``__init__subclass__``.  There are now no meta-classes in ohpyd!
+  ``__init__subclass__``.  There are now no meta-classes in ophyd!
 * Completely overhauled how we connect to PVs at initialization and tear
   them down on destruction of the ophyd objects.
 * Completely overhauled how PV meta-data is handled.
 * Completely overhauled the dispatcher thread mechanism.
-* Removed our backport of enums.
+* Removed our backport of `enum`, as it is available on the minimum Python 3.6.
 
 
 
