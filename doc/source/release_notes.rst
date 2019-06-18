@@ -42,7 +42,8 @@ API Changes
   you, please create a bug report.
 * Removed :mod:`ophyd.control_layer`.  The "control layer" used to access EPICS
   can be controlled via :func:`ophyd.set_cl`.
-* `.DynamicDeviceComponent` is now a `.Component` sub-class
+* :class:`ophyd.DynamicDeviceComponent` is now an :class:`ophyd.Component`
+  sub-class
 * Changed argument name in :meth:`OphydObj.subscribe` from ``cb`` to
   ``callback``.
 * Removed :class:`ophyd.tests.conftest.FakeEpicsPV`,
