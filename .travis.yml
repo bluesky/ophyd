@@ -76,6 +76,10 @@ matrix:
     - python: nightly
       env:
         - PUBLISH_DOCS=
+        - TEST_CL=pyepics
+    - python: nightly
+      env:
+        - PUBLISH_DOCS=
         - TEST_CL=caproto
 
 before_install:
