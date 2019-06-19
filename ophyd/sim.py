@@ -3,6 +3,8 @@ import copy
 import inspect
 import itertools
 import logging
+from functools import partial
+
 import numpy as np
 import os
 import random
@@ -673,7 +675,8 @@ class SynSignalWithRegistry(SynSignal):
     """
 
     def __init__(self, *args, reg=DO_NOT_USE, save_path=None,
-                 save_func=np.save, save_spec='NPY_SEQ', save_ext='npy',
+                 save_func=partial(np.save, allow_pickle=False),
+                 save_spec='NPY_SEQ', save_ext='npy',
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.save_func = save_func
@@ -792,7 +795,8 @@ class NumpySeqHandler:
         self._name = os.path.join(root, filename)
 
     def __call__(self, index):
-        return np.load('{}_{}.npy'.format(self._name, index))
+        return np.load('{}_{}.npy'.format(self._name, index),
+                       allow_pickle=False)
 
     def get_file_list(self, datum_kwarg_gen):
         "This method is optional. It is not needed for access, but for export."
