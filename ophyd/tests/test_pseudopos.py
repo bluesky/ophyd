@@ -156,6 +156,7 @@ def test_limits():
 
 def test_read_describe():
     pseudo = Pseudo3x3('', name='mypseudo', concurrent=True)
+    pseudo.wait_for_connection()
     desc_dict = pseudo.describe()
     desc_keys = ['source', 'upper_ctrl_limit', 'lower_ctrl_limit', 'shape',
                  'dtype', 'units']

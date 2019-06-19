@@ -1,9 +1,34 @@
+import functools
 from itertools import count
+import weakref
 
 import time
 import logging
 
 from enum import IntFlag
+
+
+module_logger = logging.getLogger(__name__)
+
+
+def select_version(cls, version):
+    """Select closest compatible version to requested version
+
+    Compatible is defined as ``class_version <= requested_version``
+    as defined by the types used to denote the versions.
+
+    Parameters
+    ----------
+    cls : type
+        The base class to find a version of
+
+    version : any
+        Must be the same type as used to define the class versions.
+
+    """
+    all_versions = cls._class_info_['versions']
+    matched_version = max(ver for ver in all_versions if ver <= version)
+    return all_versions[matched_version]
 
 
 class Kind(IntFlag):
@@ -23,6 +48,58 @@ class Kind(IntFlag):
 class UnknownSubscription(KeyError):
     "Subclass of KeyError.  Raised for unknown event type"
     ...
+
+
+def register_instances_keyed_on_name(fail_if_late=False):
+    """Register OphydObj instances in a WeakValueDictionary keyed on name.
+
+    Be advised that ophyd does not require 'name' to be unique and is
+    configurable by the user at run-time so this should
+    not be relied on unless name uniqueness is enforced by other means.
+
+    Parameters
+    ----------
+    fail_if_late : boolean
+        If True, verify that OphydObj has not yet been instantiated and raise
+        ``RuntimeError`` if it has, as a way of verify that no instances will
+        be "missed" by this registry. False by default.
+
+    Returns
+    -------
+    WeakValueDictionary
+    """
+    weak_dict = weakref.WeakValueDictionary()
+
+    def register(instance):
+        weak_dict[instance.name] = instance
+
+    OphydObject.add_instantiation_callback(register, fail_if_late)
+    return weak_dict
+
+
+def register_instances_in_weakset(fail_if_late=False):
+    """Register OphydObj instances in a WeakSet.
+
+    Be advised that OphydObj may not always be hashable.
+
+    Parameters
+    ----------
+    fail_if_late : boolean
+        If True, verify that OphydObj has not yet been instantiated and raise
+        ``RuntimeError`` if it has, as a way of verify that no instances will
+        be "missed" by this registry. False by default.
+
+    Returns
+    -------
+    WeakSet
+    """
+    weak_set = weakref.WeakSet()
+
+    def register(instance):
+        weak_set.add(instance)
+
+    OphydObject.add_instantiation_callback(register, fail_if_late)
+    return weak_set
 
 
 class OphydObject:
@@ -50,7 +127,15 @@ class OphydObject:
     name
     '''
 
+    # Any callables appended to this mutable class variable will be notified
+    # one time when a new instance of OphydObj is instantiated. See
+    # OphydObject.add_instantiation_callback().
+    __instantiation_callbacks = []
     _default_sub = None
+    # This is set to True when the first OphydObj is instiated. This may be of
+    # interest to code that adds something to instantiation_callbacks, which
+    # may want to know whether it has already "missed" any instances.
+    __any_instantiated = False
 
     def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
@@ -98,19 +183,84 @@ class OphydObject:
         # Instantiate logger
         self.log = logging.getLogger(base_log + '.' + name)
 
+        if not self.__any_instantiated:
+            self.log.debug("This is the first instance of OphydObject. "
+                           "name={self.name}, id={id(self)}")
+            self.__mark_as_instantiated()
+        self.__register_instance(self)
+
+    @classmethod
+    def __mark_as_instantiated(cls):
+        cls.__any_instantiated = True
+
+    @classmethod
+    def add_instantiation_callback(cls, callback, fail_if_late=False):
+        """
+        Register a callback which will receive each OphydObject instance.
+
+        Parameters
+        ----------
+        callback : callable
+            Expected signature: ``f(ophydobj_instance)``
+        fail_if_late : boolean
+            If True, verify that OphydObj has not yet been instantiated and raise
+            ``RuntimeError`` if it has, as a way of verify that no instances will
+            be "missed" by this registry. False by default.
+        """
+        if fail_if_late and OphydObject.__any_instantiated:
+            raise RuntimeError(
+                "OphydObject has already been instantiated at least once, and "
+                "this callback will not be notified of those instances that "
+                "have already been created. If that is acceptable for this "
+                "application, set fail_if_false=False.")
+        # This is a class variable.
+        cls.__instantiation_callbacks.append(callback)
+
+    @classmethod
+    def __register_instance(cls, instance):
+        """
+        Notify the callbacks in OphydObject.instantiation_callbacks of an instance.
+        """
+        for callback in cls.__instantiation_callbacks:
+            callback(instance)
+
     def __init_subclass__(cls, version=None, version_of=None,
                           version_type=None, **kwargs):
         'This is called automatically in Python for all subclasses of OphydObject'
         super().__init_subclass__(**kwargs)
 
         if version is None:
+            if version_of is not None:
+                raise RuntimeError('Must specify a version if `version_of` '
+                                   'is specified')
+            if version_type is None:
+                return
+            # Allow specification of version_type without specifying a version,
+            # for use in a base class
+
+            cls._class_info_ = dict(
+                versions={},
+                version=None,
+                version_type=version_type,
+                version_of=version_of
+            )
             return
 
         if version_of is None:
             versions = {}
+            version_of = cls
         else:
             versions = version_of._class_info_['versions']
-            version_type = version_of._class_info_['version_type']
+            if version_type is None:
+                version_type = version_of._class_info_['version_type']
+
+            elif version_type != version_of._class_info_['version_type']:
+                raise RuntimeError(
+                    "version_type with in a family must be consistent, "
+                    f"you passed in {version_type}, to {cls.__name__} "
+                    f"but {version_of.__name__} has version_type "
+                    f"{version_of._class_info_['version_type']}")
+
             if not issubclass(cls, version_of):
                 raise RuntimeError(
                     f'Versions are only valid for classes in the same '
@@ -118,12 +268,17 @@ class OphydObject:
                     f'{version_of.__name__}.'
                 )
 
+        if versions is not None and version in versions:
+            module_logger.warning('Redefining %r version %s: old=%r new=%r',
+                                  version_of, version, versions[version], cls)
+
         versions[version] = cls
 
         cls._class_info_ = dict(
             versions=versions,
             version=version,
             version_type=version_type,
+            version_of=version_of
         )
 
     def _validate_kind(self, val):
@@ -310,6 +465,7 @@ class OphydObject:
 
         # wrapper for callback to snarf exceptions
         def wrap_cb(cb):
+            @functools.wraps(cb)
             def inner(*args, **kwargs):
                 try:
                     cb(*args, **kwargs)

@@ -41,7 +41,7 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     shim.setup(logger)
 
     exports = ('setup', 'caput', 'caget', 'get_pv', 'thread_class', 'name',
-               'release_pvs')
+               'release_pvs', 'get_dispatcher')
     # this sets the module level value
     cl = types.SimpleNamespace(**{k: getattr(shim, k)
                                   for k in exports})
@@ -71,7 +71,9 @@ def get_cl():
 
 set_cl()
 
-from .ophydobj import Kind
+from .ophydobj import (Kind, select_version,
+                       register_instances_in_weakset,
+                       register_instances_keyed_on_name)
 
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)

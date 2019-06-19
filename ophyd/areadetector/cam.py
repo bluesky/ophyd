@@ -14,8 +14,10 @@ __all__ = ['CamBase',
            'Andor3DetectorCam',
            'AndorDetectorCam',
            'BrukerDetectorCam',
+           'DexelaDetectorCam',
            'FirewireLinDetectorCam',
            'FirewireWinDetectorCam',
+           'GreatEyesDetectorCam',
            'LightFieldDetectorCam',
            'Mar345DetectorCam',
            'MarCCDDetectorCam',
@@ -248,6 +250,35 @@ class BrukerDetectorCam(CamBase):
     read_sfrm_timeout = C(EpicsSignal, 'ReadSFRMTimeout')
 
 
+class DexelaDetectorCam(CamBase):
+    acquire_gain = C(EpicsSignal, 'DEXAcquireGain')
+    acquire_offset = C(EpicsSignal, 'DEXAcquireOffset')
+    binning_mode = C(SignalWithRBV, 'DEXBinningMode')
+    corrections_dir = C(EpicsSignal, 'DEXCorrectionsDir', string=True)
+    current_gain_frame = C(EpicsSignal, 'DEXCurrentGainFrame')
+    current_offset_frame = C(EpicsSignal, 'DEXCurrentOffsetFrame')
+    defect_map_available = C(EpicsSignal, 'DEXDefectMapAvailable')
+    defect_map_file = C(EpicsSignal, 'DEXDefectMapFile', string=True)
+    full_well_mode = C(SignalWithRBV, 'DEXFullWellMode')
+    gain_available = C(EpicsSignal, 'DEXGainAvailable')
+    gain_file = C(EpicsSignal, 'DEXGainFile', string=True)
+    load_defect_map_file = C(EpicsSignal, 'DEXLoadDefectMapFile')
+    load_gain_file = C(EpicsSignal, 'DEXLoadGainFile')
+    load_offset_file = C(EpicsSignal, 'DEXLoadOffsetFile')
+    num_gain_frames = C(EpicsSignal, 'DEXNumGainFrames')
+    num_offset_frames = C(EpicsSignal, 'DEXNumOffsetFrames')
+    offset_available = C(EpicsSignal, 'DEXOffsetAvailable')
+    offset_constant = C(SignalWithRBV, 'DEXOffsetConstant')
+    offset_file = C(EpicsSignal, 'DEXOffsetFile', string=True)
+    save_gain_file = C(EpicsSignal, 'DEXSaveGainFile')
+    save_offset_file = C(EpicsSignal, 'DEXSaveOffsetFile')
+    serial_number = C(EpicsSignal, 'DEXSerialNumber')
+    software_trigger = C(EpicsSignal, 'DEXSoftwareTrigger')
+    use_defect_map = C(EpicsSignal, 'DEXUseDefectMap')
+    use_gain = C(EpicsSignal, 'DEXUseGain')
+    use_offset = C(EpicsSignal, 'DEXUseOffset')
+
+
 class FirewireLinDetectorCam(CamBase):
     _html_docs = []
 
@@ -270,6 +301,17 @@ class FirewireWinDetectorCam(CamBase):
     frame_rate = C(SignalWithRBV, 'FR')
     mode = C(SignalWithRBV, 'MODE')
     readout_time = C(SignalWithRBV, 'READOUT_TIME')
+
+
+class GreatEyesDetectorCam(CamBase):
+    _html_docs = []
+    adc_speed = C(SignalWithRBV, 'GreatEyesAdcSpeed')
+    capacity = C(SignalWithRBV, 'GreatEyesCapacity')
+    enable_cooling = C(SignalWithRBV, 'GreatEyesEnableCooling')
+    gain = C(SignalWithRBV, 'GreatEyesGain')
+    hot_side_temp = C(EpicsSignal, 'GreatEyesHotSideTemp')
+    readout_dir = C(SignalWithRBV, 'GreatEyesReadoutDir')
+    sync = C(SignalWithRBV, 'GreatEyesSync')
 
 
 class LightFieldDetectorCam(CamBase):

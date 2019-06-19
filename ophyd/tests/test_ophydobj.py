@@ -2,7 +2,9 @@ import logging
 import pytest
 
 from unittest.mock import Mock
-from ophyd.ophydobj import OphydObject
+from ophyd.ophydobj import (OphydObject,
+                            register_instances_keyed_on_name,
+                            register_instances_in_weakset)
 from ophyd.status import (StatusBase, DeviceStatus, wait)
 
 logger = logging.getLogger(__name__)
@@ -13,14 +15,29 @@ def test_status_basic():
     st._finished()
 
 
-def test_status_callback():
+def test_status_callback_deprecated():
+    "The old way, with finished_cb"
     st = StatusBase()
     cb = Mock()
 
-    st.finished_cb = cb
-    assert st.finished_cb is cb
+    with pytest.warns(UserWarning):
+        st.finished_cb = cb
+    with pytest.warns(UserWarning):
+        assert st.finished_cb is cb
     with pytest.raises(RuntimeError):
         st.finished_cb = None
+
+    st._finished()
+    cb.assert_called_once_with()
+
+
+def test_status_callback():
+    "The new way, with add_callback and the callbacks property"
+    st = StatusBase()
+    cb = Mock()
+
+    st.add_callback(cb)
+    assert st.callbacks[0] is cb
 
     st._finished()
     cb.assert_called_once_with()
@@ -154,3 +171,23 @@ def test_subscribe_no_default():
 
     with pytest.raises(ValueError):
         o.subscribe(lambda *a, **k: None)
+
+
+def test_register_instance():
+    weakset = register_instances_in_weakset()
+    test1 = OphydObject(name='test1')
+    assert test1 in weakset
+    test2 = OphydObject(name='test1')
+    assert test2 in weakset
+
+    weakdict = register_instances_keyed_on_name()
+    test1 = OphydObject(name='test1')
+    assert weakdict['test1'] == test1
+    test2 = OphydObject(name='test2')
+    assert weakdict['test2'] == test2
+
+    assert OphydObject._OphydObject__any_instantiated == True
+    with pytest.raises(RuntimeError):
+        register_instances_in_weakset(fail_if_late=True)
+    with pytest.raises(RuntimeError):
+        register_instances_keyed_on_name(fail_if_late=True)

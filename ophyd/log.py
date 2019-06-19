@@ -128,7 +128,7 @@ class LogFormatter(logging.Formatter):
 plain_log_format = "[%(levelname)1.1s %(asctime)s.%(msecs)03d %(module)s:%(lineno)d] %(message)s"
 color_log_format = ("%(color)s[%(levelname)1.1s %(asctime)s.%(msecs)03d "
                     "%(module)s:%(lineno)d]%(end_color)s %(message)s")
-logger = logging.getLogger('bluesky')
+logger = logging.getLogger('ophyd')
 
 
 current_handler = None  # overwritten below

@@ -1,4 +1,5 @@
 import logging
+import time
 from copy import copy
 from unittest import mock
 from unittest.mock import Mock
@@ -45,10 +46,10 @@ def test_epics_signal_positioner():
     logger.debug(str(p))
     assert not p.moving
     assert abs(p.position - target_pos) <= p.tolerance
-
+    time.sleep(.5)
     moved_cb.assert_called_with(obj=p)
     position_callback.assert_called_with(
-        obj=p, value=target_pos, sub_type=p.SUB_READBACK, timestamp=mock.ANY)
+        obj=p, value=mock.ANY, sub_type=p.SUB_READBACK, timestamp=mock.ANY)
     started_motion_callback.assert_called_once_with(
         obj=p, sub_type=p.SUB_START, timestamp=mock.ANY)
     finished_motion_callback.assert_called_once_with(

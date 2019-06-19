@@ -510,8 +510,9 @@ def test_walk_signals(include_lazy):
     print(MyDevice.sub1.cls.cpt1)
 
     dev = MyDevice('', name='mydev')
-    dev.summary()
+    walked_list = list(dev.walk_signals(include_lazy=include_lazy))
 
+    dev.summary()
     expected = [
         ComponentWalk(ancestors=(dev, dev.sub1, ),
                       dotted_name='sub1.cpt1',
@@ -559,7 +560,7 @@ def test_walk_signals(include_lazy):
                     if 'cpt4' not in item.dotted_name
                     ]
 
-    assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
+    assert walked_list == expected
 
 
 def test_walk_subdevice_classes():
@@ -726,3 +727,22 @@ def test_required_for_connection_in_init():
     # Call and expect no timeout:
     dev.call_to_connect()
     dev.wait_for_connection(timeout=0.01)
+
+
+def test_noneified_component():
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+
+    class MyDeviceWithoutSub2(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = None
+
+    assert MyDevice.component_names == ('sub1', 'sub2')
+    assert MyDevice._sub_devices == ['sub1', 'sub2']
+
+    assert MyDeviceWithoutSub2.component_names == ('sub1', )
+    assert MyDeviceWithoutSub2._sub_devices == ['sub1']

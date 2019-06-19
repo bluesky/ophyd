@@ -32,19 +32,6 @@ def test_waveform_to_string():
     assert epics_utils.waveform_to_string(asc) == s
 
 
-def test_pyepics_version_support():
-    from ophyd import get_cl
-    shim = pytest.importorskip('ophyd._pyepics_shim')
-    bad_versions = ('3.2.3', '3.2.3rc1', '3.2.3-gABCD', '3.3.1', )
-    good_versions = ('3.3.2', )
-    for version in bad_versions:
-        with pytest.raises(RuntimeError):
-            shim._check_pyepics_version(version)
-
-    for version in good_versions:
-        shim._check_pyepics_version(version)
-
-
 def test_records_from_db():
     # db_dir = os.path.join(config.epics_base, 'db')
 

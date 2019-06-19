@@ -410,7 +410,7 @@ class BlueskyInterface:
         super().__init__(*args, **kwargs)
 
     def trigger(self) -> StatusBase:
-        """Trigger the device and return status object
+        """Trigger the device and return status object.
 
         This method is responsible for implementing 'trigger' or
         'acquire' functionality of this device.
@@ -419,11 +419,11 @@ class BlueskyInterface:
         and it being able to be read (via the
         :meth:`~BlueskyInterface.read` method) then this method is
         also responsible for arranging that the
-        :obj:`~ophyd.status.StatusBase` object returned my this method
+        :obj:`~ophyd.status.StatusBase` object returned by this method
         is notified when the device is ready to be read.
 
         If there is no delay between triggering and being readable,
-        then this method must return a :obj:`~ophyd.status.SatusBase`
+        then this method must return a :obj:`~ophyd.status.StatusBase`
         object which is already completed.
 
         Returns
@@ -436,7 +436,7 @@ class BlueskyInterface:
         pass
 
     def read(self) -> OrderedDictType[str, Dict[str, Any]]:
-        """Read data from the device
+        """Read data from the device.
 
         This method is expected to be as instantaneous as possible,
         with any substantial acquisition time taken care of in
@@ -463,7 +463,7 @@ class BlueskyInterface:
         return OrderedDict()
 
     def describe(self) -> OrderedDictType[str, Dict[str, Any]]:
-        """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
+        """Provide schema and meta-data for :meth:`~BlueskyInterface.read`.
 
         This keys in the `OrderedDict` this method returns must match the
         keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
@@ -626,7 +626,7 @@ class BlueskyInterface:
         pass
 
     def resume(self) -> None:
-        """Resume a device from a 'paused' state
+        """Resume a device from a 'paused' state.
 
         This is called by the :obj:`bluesky.run_engine.RunEngine`
         when it resumes from an interruption and is responsible for
@@ -785,6 +785,7 @@ class Device(BlueskyInterface, OphydObject):
         cls._sig_attrs = OrderedDict((attr, cpt)
                                      for base in base_devices
                                      for attr, cpt in base._sig_attrs.items()
+                                     if getattr(cls, attr) is not None
                                      )
 
         # map component classes to their attribute names from this class
@@ -812,7 +813,7 @@ class Device(BlueskyInterface, OphydObject):
 
         # The namedtuple associated with the device
         cls._device_tuple = namedtuple(f'{cls.__name__}Tuple',
-                                       [comp for comp in cls.component_names
+                                       [comp for comp in cls.component_names[:254]
                                         if not comp.startswith('_')])
 
         # List the attributes that are Devices (not Signals).
@@ -878,7 +879,7 @@ class Device(BlueskyInterface, OphydObject):
             #  - Always include non-lazy components
             #  - Include a lazy if already instantiated OR requested with
             #    include_lazy
-            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            lazy_ok = cpt.lazy and (include_lazy or attr in self._signals)
             should_walk = not cpt.lazy or lazy_ok
 
             if not should_walk:
@@ -909,6 +910,10 @@ class Device(BlueskyInterface, OphydObject):
         '''
         for attr in cls._sub_devices:
             cpt = getattr(cls, attr)
+            if cpt is None:
+                # Subclasses can override this, making this None...
+                continue
+
             yield (attr, cpt.cls)
             for sub_attr, sub_cls in cpt.cls.walk_subdevice_classes():
                 yield ('.'.join((attr, sub_attr)), sub_cls)
@@ -925,7 +930,7 @@ class Device(BlueskyInterface, OphydObject):
         cls = type(self)
         for attr in cls._sub_devices:
             cpt = getattr(cls, attr)
-            lazy_ok = cpt.lazy and (include_lazy or attr in self.__dict__)
+            lazy_ok = cpt.lazy and (include_lazy or attr in self._signals)
             should_walk = not cpt.lazy or lazy_ok
 
             if should_walk:
@@ -956,6 +961,7 @@ class Device(BlueskyInterface, OphydObject):
             raise ExceptionBundle(
                 'Failed to disconnect all signals ({})'.format(msg),
                 exceptions=exceptions)
+        super().destroy()
 
     def _get_kind(self, name):
         '''Get a Kind for a given Component
@@ -1489,7 +1495,8 @@ def kind_context(kind):
 def create_device_from_components(name, *, docstring=None,
                                   default_read_attrs=None,
                                   default_configuration_attrs=None,
-                                  base_class=Device, **components):
+                                  base_class=Device, class_kwargs=None,
+                                  **components):
     '''Factory function to make a Device from Components
 
     Parameters
@@ -1521,6 +1528,9 @@ def create_device_from_components(name, *, docstring=None,
     if not isinstance(base_class, tuple):
         base_class = (base_class, )
 
+    if class_kwargs is None:
+        class_kwargs = {}
+
     clsdict = OrderedDict(
         __doc__=docstring,
         _default_read_attrs=default_read_attrs,
@@ -1534,7 +1544,7 @@ def create_device_from_components(name, *, docstring=None,
 
         clsdict[attr] = component
 
-    return type(name, base_class, clsdict)
+    return type(name, base_class, clsdict, **class_kwargs)
 
 
 def required_for_connection(func=None, *, description=None, device=None):

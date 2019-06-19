@@ -2,6 +2,99 @@
  Release History
 =================
 
+v1.4.0 (Pre-release)
+====================
+
+Features
+--------
+
+* Version ophyd classes to support IOCs changing over time. This is currently
+  implemented for AreaDetector plugins (releases 1-9 to 3-4).
+* Added :class:`ophyd.NDDerivedSignal`, which supplies a reshaped version of an
+  input array signal.
+* Added :func:`ophyd.Component.subscriptions` decorator to set up default
+  subscriptions on a component.
+* Added :func:`ophyd.device.create_device_from_components` to aid dynamic
+  device generation.
+* Added :func:`ophyd.device.required_for_connection` decorator to mark the
+  Components that must be connected for the overall Device to be considered
+  connected.
+* Added a hook to be called on all ophyd object creation via the
+  :func:`OphydObj.add_instantiation_callback` class method along with the
+  :func:`.register_instances_keyed_on_name` and
+  :func:`.register_instance_in_weakset` helper functions.
+* Added :attr:`OphydObj.dotted_name` property to get the full attribute name of a
+  child component.
+* Added the properties `read_access`, `write_access`, `metadata` to the base
+  signal class :class:`ophyd.Signal`.
+* Added metadata subscriptions for :class:`ophyd.Signal`.
+* Added :func:`OphydObj.destroy` method to all ophyd objects.
+
+API Changes
+-----------
+
+* Dropped support for Python 3.5.
+* The optional dependency pyepics, if installed, must be above version 3.4.0 to
+  be used.
+* If you are holding a reference to a pyepics.pv.PV that is shared with ophyd
+  and all ophyd objects that use that PV are torn down, all callbacks on the PV
+  will be cleared and the channel will be torn down.  If this is a problem for
+  you, please create a bug report.
+* Removed :mod:`ophyd.control_layer`.  The "control layer" used to access EPICS
+  can be controlled via :func:`ophyd.set_cl`.
+* :class:`ophyd.DynamicDeviceComponent` is now an :class:`ophyd.Component`
+  sub-class
+* Changed argument name in :meth:`OphydObj.subscribe` from ``cb`` to
+  ``callback``.
+* Removed :class:`ophyd.tests.conftest.FakeEpicsPV`,
+  :class:`ophyd.tests.conftest.FakeEpicsWaveForm`, and associated helper
+  functions.  If you need this class, please vendor it from a previous version
+  of ophyd - or please consider moving to `make_fake_device` or `caproto`-based
+  simulation IOCs.
+* Removed ``ophyd.tests.AssertTools`` and use standard pytest idioms throughout
+  the test suite.
+
+Internals
+---------
+
+* Switch from :class:`ophyd.Device` using meta-classes to using
+  ``__init__subclass__``.  There are now no meta-classes used in ophyd!
+* Completely overhauled how we connect to PVs at initialization and tear them
+  down on destruction of the ophyd objects.
+* Completely overhauled how PV meta-data is handled.
+* Completely overhauled the dispatcher thread mechanism.
+* Removed our backport of ``enum``, as it is available on the minimum Python
+  3.6.
+
+v1.3.3 (2019-05-02)
+===================
+
+Features
+--------
+* Provide way to select all channels of ScalarCH.
+
+Bug Fixes
+---------
+* Ensure that ScalarCH channels with empty names are not selected.
+
+v1.3.2 (2019-03-11)
+===================
+
+Bug Fixes
+---------
+
+* Update usage of ``collections`` module for Python 3.7.
+* Improve documentation of "hints".
+* Fix ``ophyd.log.logger`` which had erroneous name ``'bluesky'`` instead of
+  ``'ophyd'``.
+* Fix typos in definition of area detector devices wherein ``BrukerDetector``
+  and ``PerkinElmerDetector`` had ``cam`` components from cameras of different
+  brands than their own.
+* In area detector file plugins, do not touch 'Capture' PV if image mode is
+  'Single'. Doing so has no effect, and it generates an error (that should be a
+  warning) from area detector noting that it has no effect.
+* Fix a typo in ``ScalerCH`` definition of its ``name_map``.
+
 v1.3.1 (2019-01-03)
 ===================
 

@@ -20,7 +20,7 @@ By presenting a uniform interface experimental plans can be agnostic
 to the details of the underlying hardware which simplifies writing
 experimental plans.  For example, every device has a ``read`` method
 which, somewhat tautologically, reads the device.  It is up to the
-object to have an understanding of which of it's signals are
+object to have an understanding of which of its signals are
 interesting and should be included in the reading, to reach out and
 fetch those values, and then to format them into a consistent format.
 Similarly, if a device can be 'moved' (in the most general sense) then
