@@ -391,7 +391,7 @@ def test_lazy_do_not_wait_for_connect():
     assert not d.cpt._waited_for_connection
 
 
-def test_sub_decorator(motor):
+def test_sub_decorator():
     class MyDevice(Device):
         cpt = Component(FakeSignal, 'suffix', lazy=True)
 
@@ -407,10 +407,17 @@ def test_sub_decorator(motor):
         def metadata(self, **kw):
             pass
 
+        @cpt.sub_default
+        @cpt.sub_value
+        @cpt.sub_meta
+        def multi(self, **kw):
+            pass
+
     d = MyDevice('', name='test')
 
     subs = set(event_type for method, event_type, kw in d.cpt._subscriptions)
     assert subs == {None, 'value', 'meta'}
+    assert len(MyDevice.multi._subscriptions) == 3
 
 
 def test_walk_components():
