@@ -246,7 +246,7 @@ class Component:
         '''
         def subscriber(func):
             self._subscriptions[event_type].append(func)
-            if not hasattr(func, 'subscriptions'):
+            if not hasattr(func, '_subscriptions'):
                 func._subscriptions = []
             func._subscriptions.append((self, event_type))
             return func
