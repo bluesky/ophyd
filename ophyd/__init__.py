@@ -19,7 +19,7 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     if control_layer == 'any':
         for c_type in known_layers:
             try:
-                set_cl(c_type)
+                set_cl(c_type, pv_telemetry=pv_telemetry)
             except ImportError:
                 continue
             else:
