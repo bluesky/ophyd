@@ -20,7 +20,7 @@ from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
                     getattrs)
 
 from typing import Dict, List, Any, TypeVar, Tuple
-from collections.abc import MutableSequence
+from collections.abc import MutableSequence, Iterable
 
 A, B = TypeVar('A'), TypeVar('B')
 ALL_COMPONENTS = object()
@@ -334,10 +334,10 @@ class DynamicDeviceComponent(Component):
     def __init__(self, defn, *, clsname=None, doc=None, kind=Kind.normal,
                  default_read_attrs=None, default_configuration_attrs=None,
                  component_class=Component, base_class=None):
-        if isinstance(default_read_attrs, collections.Iterable):
+        if isinstance(default_read_attrs, Iterable):
             default_read_attrs = tuple(default_read_attrs)
 
-        if isinstance(default_configuration_attrs, collections.Iterable):
+        if isinstance(default_configuration_attrs, Iterable):
             default_configuration_attrs = tuple(default_configuration_attrs)
 
         self.defn = defn
