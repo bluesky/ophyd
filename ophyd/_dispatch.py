@@ -38,7 +38,9 @@ class _CallbackThread(threading.Thread):
                 ...
             else:
                 try:
-                    self.current_callback = (callback.__name__, kwargs.get('pvname'))
+                    self.current_callback = (
+                        getattr(callback, '__name__', '(unnamed)'),
+                        kwargs.get('pvname'))
                     callback(*args, **kwargs)
                 except Exception as ex:
                     self.logger.exception(
