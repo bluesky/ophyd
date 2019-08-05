@@ -105,8 +105,13 @@ class NDDerivedSignal(DerivedSignal):
         array_shape = self.derived_shape[:self.derived_ndims]
         if not any(array_shape):
             raise RuntimeError(f"Invalid array size {self.derived_shape}")
+            
+        array_len = np.prod(array_shape)
+        if len(value) < array_len:
+            raise RuntimeError(f"cannot reshape array of size {array_len} into shape {tuple(array_shape)}. Check IOC configuration.")
 
-        return np.array(value).reshape(array_shape)
+        return np.asarray(value[:array_len]).reshape(array_shape)
+
 
     def subscribe(self, callback, event_type=None, run=True):
         cid = super().subscribe(callback, event_type=event_type, run=run)
