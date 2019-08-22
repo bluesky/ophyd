@@ -18,6 +18,7 @@ __all__ = ['CamBase',
            'FirewireLinDetectorCam',
            'FirewireWinDetectorCam',
            'GreatEyesDetectorCam',
+           'Lambda750kCam',
            'LightFieldDetectorCam',
            'Mar345DetectorCam',
            'MarCCDDetectorCam',
@@ -312,6 +313,21 @@ class GreatEyesDetectorCam(CamBase):
     hot_side_temp = C(EpicsSignal, 'GreatEyesHotSideTemp')
     readout_dir = C(SignalWithRBV, 'GreatEyesReadoutDir')
     sync = C(SignalWithRBV, 'GreatEyesSync')
+
+
+class Lambda750kCam(CamBase):
+    """
+    support for X-Spectrum Lambda 750K detector
+    
+    https://x-spectrum.de/products/lambda-350k750k/
+    """
+    _html_docs = ['Lambda750kCam.html']
+
+    config_file_path = C(EpicsSignal, 'ConfigFilePath')
+    firmware_version = C(EpicsSignalRO, 'FirmwareVersion_RBV')
+    operating_mode = C(SignalWithRBV, 'OperatingMode')
+    serial_number = C(EpicsSignalRO, 'SerialNumber_RBV')
+    temperature = C(SignalWithRBV, 'Temperature')
 
 
 class LightFieldDetectorCam(CamBase):
