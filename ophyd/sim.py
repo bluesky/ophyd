@@ -10,9 +10,7 @@ import os
 import random
 import threading
 import time as ttime
-from typing import Dict, Any, Tuple
 import uuid
-import warnings
 import weakref
 
 from collections import deque, OrderedDict
@@ -27,7 +25,7 @@ from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
 from .positioner import SoftPositioner
-from .utils import DO_NOT_USE, ReadOnlyError, LimitError
+from .utils import ReadOnlyError, LimitError
 
 logger = logging.getLogger(__name__)
 
@@ -773,10 +771,9 @@ class SynSignalWithRegistry(SynSignal):
 
     """
 
-    def __init__(self, *args, reg=DO_NOT_USE, save_path=None,
+    def __init__(self, *args, save_path=None,
                  save_func=partial(np.save, allow_pickle=False),
-                 save_spec='NPY_SEQ', save_ext='npy',
-                 **kwargs):
+                 save_spec='NPY_SEQ', save_ext='npy', **kwargs):
         super().__init__(*args, **kwargs)
         self.save_func = save_func
         self.save_ext = save_ext
@@ -793,15 +790,6 @@ class SynSignalWithRegistry(SynSignal):
         self._path_stem = None
         self._result = {}
 
-        if reg is not DO_NOT_USE:
-            warnings.warn("The parameter 'reg' is deprecated. It will be "
-                          "ignored. In a future release the parameter will be "
-                          "removed and passing a value for 'reg' will raise "
-                          "an error.")
-            self.reg = reg
-        else:
-            self.reg = None
-
     def stage(self):
         self._file_stem = short_uid()
         self._datum_counter = itertools.count()
@@ -814,18 +802,8 @@ class SynSignalWithRegistry(SynSignal):
                     'resource_path': self._file_stem,
                     'resource_kwargs': {},
                     'path_semantics': {'posix': 'posix', 'nt': 'windows'}[os.name]}
-        # If a Registry is set, we need to allow it to generate the uid for us.
-        if self.reg is not None:
-            # register_resource has accidentally different parameter names...
-            self._resource_uid = self.reg.register_resource(
-                rpath=resource['resource_path'],
-                rkwargs=resource['resource_kwargs'],
-                root=resource['root'],
-                spec=resource['spec'],
-                path_semantics=resource['path_semantics'])
-        # If a Registry is not set, we need to generate the uid.
-        else:
-            self._resource_uid = new_uid()
+
+        self._resource_uid = new_uid()
         resource['uid'] = self._resource_uid
         self._asset_docs_cache.append(('resource', resource))
 
@@ -844,16 +822,10 @@ class SynSignalWithRegistry(SynSignal):
             # registry.
             datum = {'resource': self._resource_uid,
                      'datum_kwargs': dict(index=data_counter)}
-            if self.reg is not None:
-                # If a Registry is set, we need to allow it to generate the
-                # datum_id for us.
-                datum_id = self.reg.register_datum(
-                    datum_kwargs=datum['datum_kwargs'],
-                    resource_uid=datum['resource'])
-            else:
-                # If a Registry is not set, we need to generate the datum_id.
-                datum_id = '{}/{}'.format(self._resource_uid,
-                                          data_counter)
+
+            # If a Registry is not set, we need to generate the datum_id.
+            datum_id = '{}/{}'.format(self._resource_uid,
+                                      data_counter)
             datum['datum_id'] = datum_id
             self._asset_docs_cache.append(('datum', datum))
             # And now change the reading in place, replacing the value with
