@@ -85,6 +85,7 @@ def _recursive_subclasses(cls):
              for g in _recursive_subclasses(s)])
 
 
+@pytest.mark.adsim
 def test_basic(cleanup, ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
@@ -115,6 +116,7 @@ def test_stubbing():
         pass
 
 
+@pytest.mark.adsim
 def test_detector(ad_prefix, cleanup):
     det = SimDetector(ad_prefix, name='test')
     cleanup.add(det)
@@ -149,6 +151,7 @@ def test_detector(ad_prefix, cleanup):
     det.report
 
 
+@pytest.mark.adsim
 def test_tiff_plugin(ad_prefix, cleanup):
     # det = AreaDetector(ad_prefix)
     class TestDet(SimDetector):
@@ -165,6 +168,7 @@ def test_tiff_plugin(ad_prefix, cleanup):
     plugin
 
 
+@pytest.mark.adsim
 def test_hdf5_plugin(ad_prefix, cleanup):
 
     class MyDet(SimDetector):
@@ -182,6 +186,7 @@ def test_hdf5_plugin(ad_prefix, cleanup):
     d.unstage()
 
 
+@pytest.mark.adsim
 def test_subclass(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
@@ -194,6 +199,7 @@ def test_subclass(ad_prefix, cleanup):
     print(det.tiff1.capture.describe())
 
 
+@pytest.mark.adsim
 def test_getattr(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
@@ -206,6 +212,7 @@ def test_getattr(ad_prefix, cleanup):
     # TODO subclassing issue
 
 
+@pytest.mark.adsim
 def test_invalid_plugins(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
@@ -227,6 +234,7 @@ def test_invalid_plugins(ad_prefix, cleanup):
     assert ['AARDVARK'] == det.missing_plugins()
 
 
+@pytest.mark.adsim
 def test_validate_plugins_no_portname(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         roi1 = Cpt(ROIPlugin, 'ROI1:')
@@ -241,6 +249,7 @@ def test_validate_plugins_no_portname(ad_prefix, cleanup):
     det.validate_asyn_ports()
 
 
+@pytest.mark.adsim
 def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
@@ -282,6 +291,7 @@ def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
     assert tiff is nested_det.get_plugin_by_asyn_port(tiff.port_name.get())
 
 
+@pytest.mark.adsim
 def test_visualize_asyn_digraph_smoke(ad_prefix, cleanup):
     # setup sim detector
     det = SimDetector(ad_prefix, name='test')
@@ -290,6 +300,7 @@ def test_visualize_asyn_digraph_smoke(ad_prefix, cleanup):
     det.visualize_asyn_digraph()
 
 
+@pytest.mark.adsim
 def test_read_configuration_smoke(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
@@ -315,6 +326,7 @@ def test_read_configuration_smoke(ad_prefix, cleanup):
     assert set(conf) == set(desc)
 
 
+@pytest.mark.adsim
 def test_str_smoke(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
@@ -331,6 +343,7 @@ def test_str_smoke(ad_prefix, cleanup):
     str(det)
 
 
+@pytest.mark.adsim
 def test_default_configuration_smoke(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
@@ -388,6 +401,7 @@ def data_paths(request):
     request.addfinalizer(clean_dirs)
 
 
+@pytest.mark.adsim
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/tmp/data1/%Y/%m/%d', None, False),
                           (None, '/tmp/data1/%Y/%m/%d', None, False),
@@ -456,6 +470,7 @@ def h5py():
     return h5py
 
 
+@pytest.mark.adsim
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
                          ((None, '/tmp/data1/%Y/%m/%d', None, False),
                           (None, '/tmp/data1/%Y/%m/%d', None, False),
@@ -518,6 +533,7 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
             assert Path(fn).exists()
 
 
+@pytest.mark.adsim
 @pytest.mark.xfail
 def test_many_connect(ad_prefix, cleanup):
     import ophyd
