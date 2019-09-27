@@ -1270,6 +1270,18 @@ fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      }
 
 
+class DirectImage(Device):
+    img = Cpt(SynSignal, kind='hinted')
+
+    def __init__(self, *args, func=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if func is not None:
+            self.img.sim_set_func(func)
+
+    def trigger(self):
+        return self.img.trigger()
+
+
 def hw(save_path=None):
     "Build a set of synthetic hardware (hence the abbreviated name, hw)"
     motor = SynAxis(name='motor', labels={'motors'})
@@ -1308,11 +1320,12 @@ def hw(save_path=None):
 
     ab_det = ABDetector(name='det', labels={'detectors'})
     # area detector that directly stores image data in Event
-    direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
-                           name='direct_img', labels={'detectors'})
+    direct_img = DirectImage(func=lambda: np.array(np.ones((10, 10))),
+                             name='direct', labels={'detectors'})
 
-    direct_img_list = SynSignal(func=lambda: [[1] * 10] * 10,
-                                name='direct_img_list', labels={'detectors'})
+    direct_img_list = DirectImage(func=lambda: [[1] * 10] * 10,
+                                  name='direct', labels={'detectors'})
+    direct_img_list.img.name = 'direct_img_list'
 
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
