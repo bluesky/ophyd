@@ -109,6 +109,7 @@ def test_waveform(wf_sim_detector, wfcol):
     print('wfcol flyer desc', wfcol.describe_collect())
 
 
+@pytest.mark.motorsim
 @pytest.mark.parametrize('pivot', [True, False])
 def test_monitor_flyer(pivot):
     class BasicDevice(Device):

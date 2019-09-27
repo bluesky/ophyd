@@ -45,6 +45,7 @@ def test_setpoint_but_no_done():
         MyPositioner()
 
 
+@pytest.mark.motorsim
 def test_pvpos(motor):
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, done, stop. No put completion'''
@@ -77,6 +78,7 @@ def test_pvpos(motor):
     m.read()
 
 
+@pytest.mark.motorsim
 def test_put_complete_setpoint_only(motor):
     logger.info('--> PV Positioner, using put completion and a DONE pv')
 
@@ -108,6 +110,7 @@ def test_put_complete_setpoint_only(motor):
     assert not pos.moving
 
 
+@pytest.mark.motorsim
 def test_put_complete_setpoint_readback_done(motor):
     class MyPositioner(PVPositionerPC):
         '''Setpoint, readback, done, stop. Put completion'''
@@ -144,6 +147,7 @@ def test_put_complete_setpoint_readback_done(motor):
     assert not pos.moving
 
 
+@pytest.mark.motorsim
 def test_put_complete_setpoint_readback(motor):
     class MyPositioner(PVPositionerPC):
         '''Setpoint, readback, put completion. No done pv.'''

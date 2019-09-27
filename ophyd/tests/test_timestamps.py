@@ -1,5 +1,6 @@
 import time
 import logging
+import pytest
 from ophyd import (EpicsSignal, EpicsSignalRO)
 
 from numpy.testing import assert_almost_equal
@@ -8,6 +9,7 @@ from numpy.testing import assert_almost_equal
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.motorsim
 def test_read_pv_timestamp_no_monitor(motor):
     sp = EpicsSignal(motor.user_setpoint.pvname, name='test')
     rbv = EpicsSignalRO(motor.user_readback.pvname, name='test')
@@ -25,6 +27,7 @@ def test_read_pv_timestamp_no_monitor(motor):
     sp.put(sp.value - 0.1, wait=True)
 
 
+@pytest.mark.motorsim
 def test_write_pv_timestamp_no_monitor(motor):
     sp = EpicsSignal(motor.user_setpoint.pvname, name='test')
 
@@ -41,6 +44,7 @@ def test_write_pv_timestamp_no_monitor(motor):
     sp.put(sp.value - 0.1, wait=True)
 
 
+@pytest.mark.motorsim
 def test_read_pv_timestamp_monitor(motor):
     sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
                      name='test')
@@ -60,6 +64,7 @@ def test_read_pv_timestamp_monitor(motor):
     sp.put(sp.value - 0.1, wait=True)
 
 
+@pytest.mark.motorsim
 def test_write_pv_timestamp_monitor(motor):
     sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
                      name='test')

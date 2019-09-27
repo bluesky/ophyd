@@ -1,5 +1,6 @@
 import logging
 import time
+import pytest
 from copy import copy
 from unittest import mock
 from unittest.mock import Mock
@@ -22,6 +23,7 @@ def tearDownModule():
     logger.debug('Cleaning up')
 
 
+@pytest.mark.motorsim
 def test_epics_signal_positioner():
     readback = record_field(motor_recs[0], 'RBV')
     setpoint = record_field(motor_recs[0], 'VAL')
