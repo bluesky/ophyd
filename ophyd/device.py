@@ -1136,7 +1136,7 @@ class Device(BlueskyInterface, OphydObject):
         if unconnected:
             reasons.append(f'Failed to connect to all signals: {unconnected}')
         if any(pending_funcs.values()):
-            pending = ', '.join(description.format(device=dev.name)
+            pending = ', '.join(description.format(device=dev)
                                 for dev, funcs in pending_funcs.items()
                                 for obj, description in funcs.items())
             reasons.append(f'Pending operations: {pending}')
