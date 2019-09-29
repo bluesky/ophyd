@@ -82,7 +82,8 @@ an attribute ``_ophyd_labels_``, so named to facilitate duck-typing across
 libraries. For example, the bluesky IPython "magics" use this to identify
 objects for the purpose of displaying them in labeled groups.
 
-The ``wa`` (IPython magic command) groups items by labels.  Here is an example:
+The IPython magic command ``wa`` (available if bluesky is installed as well
+as ophyd) groups items by labels.  Here is an example:
 
 .. code-block:: python
 
