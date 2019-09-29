@@ -278,6 +278,8 @@ class FormattedComponent(Component):
     ...     cpt = Cpt(EpicsSignal, 'suffix')
     ...     # A formatted component, where 'self' refers to the Device instance
     ...     ch = FCpt(EpicsSignal, '{self.prefix}{self._ch_name}')
+    ...     # A formatted component, where 'self' is assumed
+    ...     ch = FCpt(EpicsSignal, '{prefix}{_ch_name}')
     ...
     ...     def __init__(self, prefix, ch_name=None, **kwargs):
     ...         self._ch_name = ch_name
@@ -296,7 +298,9 @@ class FormattedComponent(Component):
         if kw not in self.add_prefix:
             return suffix
 
-        return suffix.format(self=instance)
+        format_dict = dict(instance.__dict__)
+        format_dict['self'] = instance
+        return suffix.format(**format_dict)
 
 
 class DynamicDeviceComponent(Component):
