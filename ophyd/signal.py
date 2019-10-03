@@ -655,6 +655,7 @@ class EpicsSignalBase(Signal):
         was_connected = self.connected
         if not conn:
             self._signal_is_ready.clear()
+            self._metadata['connected'] = False
             self._access_rights_valid[pvname] = False
 
         self._connection_states[pvname] = conn
