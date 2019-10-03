@@ -1,11 +1,10 @@
-import os
+import logging
 import pathlib
 import time as ttime
 
 from .. import EpicsSignal
-from ..status import Status
 
-
+logger = logging.getLogger(__name__)
 OS_NAME_TO_PATH_CLASS = {
     'nt': pathlib.PureWindowsPath,
     'posix': pathlib.PurePosixPath,
@@ -41,15 +40,16 @@ def path_compare(path_a, path_b, semantics):
 def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
                       timeout=10):
     """
-    Set a signal to a value and wait until it reads correctly.
-    For floating point values, it is strongly recommended to set a tolerance.
-    If tolerances are unset, the values will be compared exactly.
+    Set a path signal to a value and wait until it reads back correctly.
 
     Parameters
     ----------
     signal : EpicsPathSignal (or any object with `get` and `put`)
+        The signal itself
     val : object
         value to set signal to
+    path_semantics : {'nt', 'posix'}
+        The OS name for the path
     poll_time : float, optional
         how soon to check whether the value has been successfully set
     timeout : float, optional
@@ -60,7 +60,7 @@ def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
     TimeoutError if timeout is exceeded
     """
     signal.put(val)
-    expiration_time = ttime.time() + timeout if timeout is not None else None
+    deadline = ttime.time() + timeout if timeout is not None else None
     current_value = signal.get()
 
     while not path_compare(current_value, val, semantics=path_semantics):
@@ -70,16 +70,29 @@ def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
-        if expiration_time is not None and ttime.time() > expiration_time:
+        if deadline is not None and ttime.time() > deadline:
             raise TimeoutError("Attempted to set %r to value %r and timed "
                                "out after %r seconds. Current value is %r." %
                                (signal, val, timeout, current_value))
 
 
 class EpicsPathSignal(EpicsSignal):
-    def __init__(self, write_pv, *, path_semantics, **kwargs):
+    def __init__(self, write_pv, *, path_semantics, string=True, **kwargs):
+        '''
+        An areaDetector-compatible EpicsSignal expecting 2 PVs holding a path
+
+        That is, an EpicsPathSignal uses the areaDetector convention of
+        'pvname' being the setpoint and 'pvname_RBV' being the read-back path.
+
+        Operating system-specific path semantics are respected when confirming
+        that a :meth:`.set()` operation has completed.
+        '''
+        if write_pv.endswith('_RBV'):
+            # Strip off _RBV if it was passed in erroneously
+            write_pv = write_pv[:-4]
+
         self.path_semantics = path_semantics
-        if kwargs.get('string', True) is not True:
+        if string is not True:
             raise ValueError('Specifying an EpicsPathSignal with string=False'
                              ' does not make sense')
         if path_semantics not in OS_NAME_TO_PATH_CLASS:
