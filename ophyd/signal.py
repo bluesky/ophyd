@@ -249,6 +249,23 @@ class Signal(OphydObject):
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, **md_for_callback)
 
+    def _set_and_wait(self, value, timeout):
+        '''
+        Overridable hook for subclasses to override :meth:`.set` functionality.
+
+        This will be called in a separate thread (`_set_thread`), but will not
+        be called in parallel.
+
+        Parameters
+        ----------
+        value : any
+            The value
+        timeout : float, optional
+            Maximum time to wait for value to be successfully set, or None
+        '''
+        return set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
+                            rtol=self.rtolerance)
+
     def set(self, value, *, timeout=None, settle_time=None):
         '''Set is like `put`, but is here for bluesky compatibility
 
@@ -265,8 +282,7 @@ class Signal(OphydObject):
 
         def set_thread():
             try:
-                set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
-                             rtol=self.rtolerance)
+                self._set_and_wait(value, timeout)
             except TimeoutError:
                 success = False
                 self.log.warning(

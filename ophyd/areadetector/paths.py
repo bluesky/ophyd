@@ -13,7 +13,28 @@ OS_NAME_TO_PATH_CLASS = {
 
 
 def path_compare(path_a, path_b, semantics):
-    path_class = OS_NAME_TO_PATH_CLASS[semantics]
+    '''
+    Compare paths, given OS-specific semantics
+
+    Parameters
+    ----------
+    path_a : str or pathlib.Path
+        The first path
+    path_b : str or pathlib.Path
+        The second path
+    semantics : {'nt', 'posix'}
+        The OS name for the path
+
+    Returns
+    -------
+    result : bool
+        Whether the paths are equal or not
+    '''
+    try:
+        path_class = OS_NAME_TO_PATH_CLASS[semantics]
+    except KeyError:
+        raise ValueError(f'Unknown path semantics: {semantics}') from None
+
     return path_class(path_a) == path_class(path_b)
 
 
@@ -74,49 +95,19 @@ class EpicsPathSignal(EpicsSignal):
         yield from super()._repr_info()
         yield ('path_semantics', self.path_semantics)
 
-    def set(self, value, *, timeout=None, settle_time=None):
+    def _set_and_wait(self, value, timeout):
         '''
-        Set is like `put`, but is here for bluesky compatibility
+        Overridable hook for subclasses to override :meth:`.set` functionality.
 
-        Returns
-        -------
-        st : Status
-            This status object will be finished upon return in the
-            case of basic soft Signals
+        This will be called in a separate thread (`_set_thread`), but will not
+        be called in parallel.
+
+        Parameters
+        ----------
+        value : any
+            The value
+        timeout : float, optional
+            Maximum time to wait for value to be successfully set, or None
         '''
-        def set_thread():
-            try:
-                set_and_wait_path(self, value, timeout=timeout,
-                                  path_semantics=self.path_semantics,
-                                  )
-            except TimeoutError:
-                self.log.debug('set_and_wait_path(%r, %s) timed out',
-                               self.name, value)
-                success = False
-            except Exception as ex:
-                self.log.exception('set_and_wait_path(%r, %s) failed',
-                                   self.name, value)
-                success = False
-            else:
-                self.log.debug('set_and_wait_path(%r, %s) succeeded => %s',
-                               self.name, value, self.value)
-                success = True
-                if settle_time is not None:
-                    time.sleep(settle_time)
-            finally:
-                # keep a local reference to avoid any GC shenanigans
-                th = self._set_thread
-                # these two must be in this order to avoid a race condition
-                self._set_thread = None
-                st._finished(success=success)
-                del th
-
-        if self._set_thread is not None:
-            raise RuntimeError('Another set() call is still in progress')
-
-        st = Status(self)
-        self._status = st
-        self._set_thread = self.cl.thread_class(target=set_thread)
-        self._set_thread.daemon = True
-        self._set_thread.start()
-        return self._status
+        return set_and_wait_path(self, value, timeout=timeout,
+                                 path_semantics=self.path_semantics)
