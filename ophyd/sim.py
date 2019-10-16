@@ -608,13 +608,18 @@ class Syn2DGauss(Device):
         return v
 
     def __init__(self, name, motor0, motor_field0, motor1, motor_field1,
-                 center, Imax, sigma=1, noise=None, noise_multiplier=1,
+                 center, Imax, sigma=1, noise="none", noise_multiplier=1,
                  random_state=None, **kwargs):
         super().__init__(name=name, **kwargs)
         self._motor0 = motor0
         self._motor1 = motor1
         self._motor_field0 = motor_field0
         self._motor_field1 = motor_field1
+        self.center.put(center)
+        self.Imax.put(Imax)
+        self.sigma.put(sigma)
+        self.noise.put(noise)
+        self.noise_multiplier.put(noise_multiplier)
 
         if random_state is None:
             random_state = np.random
