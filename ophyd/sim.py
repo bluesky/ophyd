@@ -1385,6 +1385,8 @@ def hw(save_path=None):
     # Because some of these reference one another we must define them (above)
     # before we pack them into a namespace (below).
 
+    signal = SynSignal(name='signal')
+
     return SimpleNamespace(
         motor=motor,
         motor1=motor1,
@@ -1423,6 +1425,7 @@ def hw(save_path=None):
         motor_no_hints1=motor_no_hints1,
         motor_no_hints2=motor_no_hints2,
         bool_sig=bool_sig,
+        signal=signal
     )
 
 
