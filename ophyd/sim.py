@@ -508,6 +508,20 @@ class SynGauss(Device):
         for k, v in set_later.items():
             getattr(self, k).put(v)
 
+        self.trigger()
+
+    def subscribe(self, *args, **kwargs):
+        return self.val.subscribe(*args, **kwargs)
+
+    def clear_sub(self, cb, event_type=None):
+        return self.val.clear_sub(cb, event_type=event_type)
+
+    def unsubscribe(self, cid):
+        return self.val.unsubscribe(cid)
+
+    def unsubscribe_all(self):
+        return self.val.unsubscribe_all()
+
     def trigger(self, *args, **kwargs):
         return self.val.trigger(*args, **kwargs)
 
