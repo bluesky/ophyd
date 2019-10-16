@@ -492,8 +492,7 @@ class SynGauss(Device):
 
                  **kwargs):
         set_later = {}
-        for k in ('Imax', 'center', 'sigma',
-                  'noise', 'noise_multiplier'):
+        for k in ('sigma', 'noise', 'noise_multiplier'):
             v = kwargs.pop(k, None)
             if v is not None:
                 set_later[k] = v
