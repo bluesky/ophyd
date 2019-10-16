@@ -1356,6 +1356,7 @@ def hw(save_path=None):
     # area detector that directly stores image data in Event
     direct_img = DirectImage(func=lambda: np.array(np.ones((10, 10))),
                              name='direct', labels={'detectors'})
+    direct_img.img.name = 'img'
 
     direct_img_list = DirectImage(func=lambda: [[1] * 10] * 10,
                                   name='direct', labels={'detectors'})
