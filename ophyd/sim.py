@@ -130,7 +130,7 @@ class SynSignal(Signal):
             loop = asyncio.get_event_loop()
         self._func = func
         self.exposure_time = exposure_time
-        self.precision = 3
+        self.precision = precision
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind, **kwargs)
