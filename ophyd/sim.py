@@ -525,6 +525,22 @@ class SynGauss(Device):
     def trigger(self, *args, **kwargs):
         return self.val.trigger(*args, **kwargs)
 
+    @property
+    def precision(self):
+        return self.val.precision
+
+    @precision.setter
+    def precision(self, v):
+        self.val.precision = v
+
+    @property
+    def exposure_time(self):
+        return self.val.exposure_time
+
+    @exposure_time.setter
+    def exposure_time(self, v):
+        self.val.exposure_time = v
+
 
 class Syn2DGauss(Device):
     """
