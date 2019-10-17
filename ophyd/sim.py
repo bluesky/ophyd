@@ -465,7 +465,7 @@ class SynGauss(Device):
         m = self._motor.read()[self._motor_field]['value']
         # we need to do this one at a time because
         #   - self.read() may be screwed with by the user
-        #   - self.get would cause infinite recursion
+        #   - self.get() would cause infinite recursion
         Imax = self.Imax.get()
         center = self.center.get()
         sigma = self.sigma.get()
@@ -663,7 +663,7 @@ class NewTrivialFlyer(TrivialFlyer):
     """
     The old-style API inserted Resource and Datum documents into a database
     directly. The new-style API only caches the documents and provides an
-    interface (collect_asset_docs for accessing that cache. This change was
+    interface (collect_asset_docs) for accessing that cache. This change was
     part of the "asset refactor" that changed that way Resource and Datum
     documents flowed through ophyd, bluesky, and databroker. Trivial flyer that
     complies to the API but returns empty data.
