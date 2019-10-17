@@ -1,7 +1,7 @@
 codecov
 matplotlib
 pytest
-databroker
+databroker>=1.0.b1
 caproto[complete]
 h5py
 pytest-faulthandler
