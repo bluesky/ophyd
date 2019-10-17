@@ -5,8 +5,8 @@ from collections import OrderedDict
 from .ophydobj import Kind
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import Device
-from .device import (Component as Cpt, DynamicDeviceComponent as DDC,
-                     FormattedComponent as FC)
+from .device import (Component as Cpt, DynamicDeviceComponent as DDCpt,
+                     FormattedComponent as FCpt)
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +32,10 @@ class EpicsScaler(Device):
     auto_count_delay = Cpt(EpicsSignal, '.DLY1', kind=Kind.config)
 
     # the data
-    channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
-                                  kind=Kind.hinted))
-    names = DDC(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33),
-                               kind=Kind.config))
+    channels = DDCpt(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
+                                    kind=Kind.hinted))
+    names = DDCpt(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33),
+                                 kind=Kind.config))
 
     time = Cpt(EpicsSignal, '.T', kind=Kind.config)
     freq = Cpt(EpicsSignal, '.FREQ', kind=Kind.config)
@@ -43,10 +43,10 @@ class EpicsScaler(Device):
     preset_time = Cpt(EpicsSignal, '.TP', kind=Kind.config)
     auto_count_time = Cpt(EpicsSignal, '.TP1', kind=Kind.config)
 
-    presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
+    presets = DDCpt(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
+                                   kind=Kind.omitted))
+    gates = DDCpt(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
                                  kind=Kind.omitted))
-    gates = DDC(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
-                               kind=Kind.omitted))
 
     update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.config)
     auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.config)
@@ -63,14 +63,14 @@ class EpicsScaler(Device):
 class ScalerChannel(Device):
 
     # TODO set up monitor on this to automatically change the name
-    chname = FC(EpicsSignal, '{self.prefix}.NM{self._ch_num}',
+    chname = FCpt(EpicsSignal, '{self.prefix}.NM{self._ch_num}',
+                  kind=Kind.config)
+    s = FCpt(EpicsSignalRO, '{self.prefix}.S{self._ch_num}',
+             kind=Kind.hinted)
+    preset = FCpt(EpicsSignal, '{self.prefix}.PR{self._ch_num}',
+                  kind=Kind.config)
+    gate = FCpt(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True,
                 kind=Kind.config)
-    s = FC(EpicsSignalRO, '{self.prefix}.S{self._ch_num}',
-           kind=Kind.hinted)
-    preset = FC(EpicsSignal, '{self.prefix}.PR{self._ch_num}',
-                kind=Kind.config)
-    gate = FC(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True,
-              kind=Kind.config)
 
     def __init__(self, prefix, ch_num,
                  **kwargs):
@@ -95,7 +95,7 @@ def _sc_chans(attr_fix, id_range):
 class ScalerCH(Device):
 
     # The data
-    channels = DDC(_sc_chans('chan', range(1, 33)))
+    channels = DDCpt(_sc_chans('chan', range(1, 33)))
 
     # tigger + trigger mode
     count = Cpt(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.omitted)
