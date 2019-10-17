@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .status import DeviceStatus, StatusBase
-from .device import (Device, Component as C, BlueskyInterface)
+from .device import (Device, Component as Cpt, BlueskyInterface)
 from .utils import OrderedDefaultDict
 
 from typing import Generator, Dict, Iterable, Any
@@ -95,11 +95,11 @@ class FlyerInterface(BlueskyInterface):
 
 
 class AreaDetectorTimeseriesCollector(Device):
-    control = C(EpicsSignal, "TSControl")
-    num_points = C(EpicsSignal, "TSNumPoints")
-    cur_point = C(EpicsSignalRO, "TSCurrentPoint")
-    waveform = C(EpicsSignalRO, "TSTotal")
-    waveform_ts = C(EpicsSignalRO, "TSTimestamp")
+    control = Cpt(EpicsSignal, "TSControl")
+    num_points = Cpt(EpicsSignal, "TSNumPoints")
+    cur_point = Cpt(EpicsSignalRO, "TSCurrentPoint")
+    waveform = Cpt(EpicsSignalRO, "TSTotal")
+    waveform_ts = Cpt(EpicsSignalRO, "TSTimestamp")
 
     _default_configuration_attrs = ('num_points', )
     _default_read_attrs = ()
@@ -180,12 +180,12 @@ class WaveformCollector(Device):
     _default_configuration_attrs = ()
     _default_read_attrs = ()
 
-    select = C(EpicsSignal, "Sw-Sel")
-    reset = C(EpicsSignal, "Rst-Sel")
-    waveform_count = C(EpicsSignalRO, "Val:TimeN-I")
-    waveform = C(EpicsSignalRO, "Val:Time-Wfrm")
-    waveform_nord = C(EpicsSignalRO, "Val:Time-Wfrm.NORD")
-    data_is_time = C(Signal)
+    select = Cpt(EpicsSignal, "Sw-Sel")
+    reset = Cpt(EpicsSignal, "Rst-Sel")
+    waveform_count = Cpt(EpicsSignalRO, "Val:TimeN-I")
+    waveform = Cpt(EpicsSignalRO, "Val:Time-Wfrm")
+    waveform_nord = Cpt(EpicsSignalRO, "Val:Time-Wfrm.NORD")
+    data_is_time = Cpt(Signal)
 
     def __init__(self, *args,
                  data_is_time=True, stream_name=None,

@@ -396,6 +396,7 @@ def test_epics_signal_derived(ro_signal):
     assert derived.get() == ro_signal.value
 
 
+@pytest.mark.motorsim
 @pytest.mark.parametrize('put_complete', [True, False])
 def test_epicssignal_set(motor_pair_signal, put_complete):
     sim_pv = motor_pair_signal
@@ -526,6 +527,7 @@ def test_epicssignal_get_in_callback(fake_motor_ioc, cleanup):
     sig.unsubscribe_all()
 
 
+@pytest.mark.motorsim
 @pytest.mark.parametrize('pvname, count',
                          [('sim:mtr1.RBV', 10),
                           ('sim:mtr2.RBV', 10),

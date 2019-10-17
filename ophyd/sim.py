@@ -11,7 +11,6 @@ import random
 import threading
 import time as ttime
 import uuid
-import warnings
 import weakref
 
 from collections import deque, OrderedDict
@@ -20,13 +19,13 @@ from tempfile import mkdtemp
 from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
-from .device import (Device, Component, Component as C,
-                     DynamicDeviceComponent as DDC, Kind)
+from .device import (Device, Component as Cpt,
+                     DynamicDeviceComponent as DDCpt, Kind)
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
 from .positioner import SoftPositioner
-from .utils import DO_NOT_USE, ReadOnlyError, LimitError
+from .utils import ReadOnlyError, LimitError
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,40 @@ class NullStatus(StatusBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._finished(success=True)
+
+
+class EnumSignal(Signal):
+    def __init__(self, *args, value=0, enum_strings, **kwargs):
+        super().__init__(*args, value=0, **kwargs)
+        self._enum_strs = tuple(enum_strings)
+        self._metadata['enum_strs'] = tuple(enum_strings)
+        self.put(value)
+
+    def put(self, value, **kwargs):
+        if value in self._enum_strs:
+            value = self._enum_strs.index(value)
+        elif isinstance(value, str):
+            err = f'{value} not in enum strs {self._enum_strs}'
+            raise ValueError(err)
+        return super().put(value, **kwargs)
+
+    def get(self, *, as_string=True, **kwargs):
+        """
+        Implement getting as enum strings
+        """
+        value = super().get()
+
+        if as_string:
+            if self._enum_strs is not None and isinstance(value, int):
+                return self._enum_strs[value]
+            elif value is not None:
+                return str(value)
+        return value
+
+    def describe(self):
+        desc = super().describe()
+        desc[self.name]['enum_strs'] = self._enum_strs
+        return desc
 
 
 class SynSignal(Signal):
@@ -97,7 +130,7 @@ class SynSignal(Signal):
             loop = asyncio.get_event_loop()
         self._func = func
         self.exposure_time = exposure_time
-        self.precision = 3
+        self.precision = precision
         self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind, **kwargs)
@@ -136,42 +169,24 @@ class SynSignal(Signal):
             self.put(self._func())
             return NullStatus()
 
-    def get(self):
-        # Get a new value, which allows us to synthesize noisy data, for
-        # example.
-        return super().get()
+    def sim_set_func(self, func):
+        """
+        Update the SynSignal function to set a new value on trigger.
+        """
+        self._func = func
 
 
-class SignalRO(Signal):
+class SynSignalRO(SynSignal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._metadata.update(
-            connected=True,
-            write_access=False,
-        )
+            connected=True,)
 
     def put(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
     def set(self, value, *, timestamp=None, force=False):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
-
-
-class SynSignalRO(SignalRO, SynSignal):
-    pass
-
-
-def periodic_update(ref, period, period_jitter):
-    while True:
-        signal = ref()
-        if not signal:
-            # Our target Signal has been garbage collected. Shut down the
-            # Thread.
-            return
-        signal.put(signal._func())
-        del signal
-        # Sleep for period +/- period_jitter.
-        ttime.sleep(max(period + period_jitter * np.random.randn(), 0))
 
 
 class SynPeriodicSignal(SynSignal):
@@ -217,20 +232,42 @@ class SynPeriodicSignal(SynSignal):
                          parent=parent, labels=labels, kind=kind, loop=loop,
                          **kwargs)
 
-        self.__thread = threading.Thread(target=periodic_update, daemon=True,
+        def periodic_update(ref, period, period_jitter):
+            while True:
+                signal = ref()
+                if not signal:
+                    # Our target Signal has been garbage collected. Shut
+                    # down the Thread.
+                    return
+                signal.put(signal._func())
+                del signal
+                # Sleep for period +/- period_jitter.
+                ttime.sleep(
+                    max(period + period_jitter * np.random.randn(), 0))
+
+        self.__thread = threading.Thread(target=periodic_update,
+                                         daemon=True,
                                          args=(weakref.ref(self),
                                                period,
                                                period_jitter))
         self.__thread.start()
 
 
-class ReadbackSignal(SignalRO):
+class _ReadbackSignal(Signal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(
+            connected=True,
+            write_access=False,
+        )
+
     def get(self):
         return self.parent.sim_state['readback']
 
     def describe(self):
         res = super().describe()
-        # There should be only one key here, but for the sake of generality....
+        # There should be only one key here, but for the sake of
+        # generality....
         for k in res:
             res[k]['precision'] = self.parent.precision
         return res
@@ -240,8 +277,14 @@ class ReadbackSignal(SignalRO):
         '''Timestamp of the readback value'''
         return self.parent.sim_state['readback_ts']
 
+    def put(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
-class SetpointSignal(Signal):
+    def set(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+
+
+class _SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
         self.parent.set(float(value))
 
@@ -287,13 +330,13 @@ class SynAxis(Device):
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
     """
-    readback = Component(ReadbackSignal, value=None, kind='hinted')
-    setpoint = Component(SetpointSignal, value=None, kind='normal')
+    readback = Cpt(_ReadbackSignal, value=None, kind='hinted')
+    setpoint = Cpt(_SetpointSignal, value=None, kind='normal')
 
-    velocity = Component(Signal, value=1, kind='config')
-    acceleration = Component(Signal, value=1, kind='config')
+    velocity = Cpt(Signal, value=1, kind='config')
+    acceleration = Cpt(Signal, value=1, kind='config')
 
-    unused = Component(Signal, value=1, kind='omitted')
+    unused = Cpt(Signal, value=1, kind='omitted')
 
     SUB_READBACK = 'readback'
     _default_sub = SUB_READBACK
@@ -384,13 +427,13 @@ class SynAxisEmptyHints(SynAxis):
 
 
 class SynAxisNoHints(SynAxis):
-    readback = Component(ReadbackSignal, value=None, kind='omitted')
+    readback = Cpt(_ReadbackSignal, value=None, kind='omitted')
     @property
     def hints(self):
         raise AttributeError
 
 
-class SynGauss(SynSignal):
+class SynGauss(Device):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -418,33 +461,88 @@ class SynGauss(SynSignal):
     motor = SynAxis(name='motor')
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
+    def _compute(self):
+        m = self._motor.read()[self._motor_field]['value']
+        # we need to do this one at a time because
+        #   - self.read() may be screwed with by the user
+        #   - self.get() would cause infinite recursion
+        Imax = self.Imax.get()
+        center = self.center.get()
+        sigma = self.sigma.get()
+        noise = self.noise.get()
+        noise_multiplier = self.noise_multiplier.get()
+        v = Imax * np.exp(-(m - center) ** 2 /
+                          (2 * sigma ** 2))
+        if noise == 'poisson':
+            v = int(self.random_state.poisson(np.round(v), 1))
+        elif noise == 'uniform':
+            v += self.random_state.uniform(-1, 1) * noise_multiplier
+        return v
 
-    def __init__(self, name, motor, motor_field, center, Imax, sigma=1,
-                 noise=None, noise_multiplier=1, random_state=None, **kwargs):
-        if noise not in ('poisson', 'uniform', None):
-            raise ValueError("noise must be one of 'poisson', 'uniform', None")
+    val = Cpt(SynSignal, kind='hinted')
+    Imax = Cpt(Signal, value=10, kind='config')
+    center = Cpt(Signal, value=0, kind='config')
+    sigma = Cpt(Signal, value=1, kind='config')
+    noise = Cpt(EnumSignal, value='none', kind='config',
+                enum_strings=('none', 'poisson', 'uniform'))
+    noise_multiplier = Cpt(Signal, value=1, kind='config')
+
+    def __init__(self, name, motor, motor_field, center, Imax,
+                 *, random_state=None,
+
+                 **kwargs):
+        set_later = {}
+        for k in ('sigma', 'noise', 'noise_multiplier'):
+            v = kwargs.pop(k, None)
+            if v is not None:
+                set_later[k] = v
+        super().__init__(name=name, **kwargs)
         self._motor = motor
         self._motor_field = motor_field
-        self.center = center
-        self.sigma = sigma
-        self.Imax = Imax
-        self.noise = noise
-        self.noise_multiplier = noise_multiplier
+        self.center.put(center)
+        self.Imax.put(Imax)
+
         self.random_state = random_state or np.random
+        self.val.name = self.name
+        self.val.sim_set_func(self._compute)
+        for k, v in set_later.items():
+            getattr(self, k).put(v)
 
-        def func():
-            m = self._motor.read()[self._motor_field]['value']
-            v = self.Imax * np.exp(-(m - self.center) ** 2 / (2 * self.sigma ** 2))
-            if self.noise == 'poisson':
-                v = int(self.random_state.poisson(np.round(v), 1))
-            elif self.noise == 'uniform':
-                v += self.random_state.uniform(-1, 1) * self.noise_multiplier
-            return v
+        self.trigger()
 
-        super().__init__(func=func, name=name, **kwargs)
+    def subscribe(self, *args, **kwargs):
+        return self.val.subscribe(*args, **kwargs)
+
+    def clear_sub(self, cb, event_type=None):
+        return self.val.clear_sub(cb, event_type=event_type)
+
+    def unsubscribe(self, cid):
+        return self.val.unsubscribe(cid)
+
+    def unsubscribe_all(self):
+        return self.val.unsubscribe_all()
+
+    def trigger(self, *args, **kwargs):
+        return self.val.trigger(*args, **kwargs)
+
+    @property
+    def precision(self):
+        return self.val.precision
+
+    @precision.setter
+    def precision(self, v):
+        self.val.precision = v
+
+    @property
+    def exposure_time(self):
+        return self.val.exposure_time
+
+    @exposure_time.setter
+    def exposure_time(self, v):
+        self.val.exposure_time = v
 
 
-class Syn2DGauss(SynSignal):
+class Syn2DGauss(Device):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -485,29 +583,52 @@ class Syn2DGauss(SynSignal):
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
 
-    def __init__(self, name, motor0, motor_field0, motor1, motor_field1,
-                 center, Imax, sigma=1, noise=None, noise_multiplier=1,
-                 random_state=None, **kwargs):
+    val = Cpt(SynSignal, kind='hinted')
+    Imax = Cpt(Signal, value=10, kind='config')
+    center = Cpt(Signal, value=0, kind='config')
+    sigma = Cpt(Signal, value=1, kind='config')
+    noise = Cpt(EnumSignal, value='none', kind='config',
+                enum_strings=('none', 'poisson', 'uniform'))
+    noise_multiplier = Cpt(Signal, value=1, kind='config')
 
-        if noise not in ('poisson', 'uniform', None):
-            raise ValueError("noise must be one of 'poisson', 'uniform', None")
-        self._motor = motor0
+    def _compute(self):
+        x = self._motor0.read()[self._motor_field0]['value']
+        y = self._motor1.read()[self._motor_field1]['value']
+        m = np.array([x, y])
+        Imax = self.Imax.get()
+        center = self.center.get()
+        sigma = self.sigma.get()
+        noise = self.noise.get()
+        noise_multiplier = self.noise_multiplier.get()
+        v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma ** 2))
+        if noise == 'poisson':
+            v = int(self.random_state.poisson(np.round(v), 1))
+        elif noise == 'uniform':
+            v += self.random_state.uniform(-1, 1) * noise_multiplier
+        return v
+
+    def __init__(self, name, motor0, motor_field0, motor1, motor_field1,
+                 center, Imax, sigma=1, noise="none", noise_multiplier=1,
+                 random_state=None, **kwargs):
+        super().__init__(name=name, **kwargs)
+        self._motor0 = motor0
         self._motor1 = motor1
+        self._motor_field0 = motor_field0
+        self._motor_field1 = motor_field1
+        self.center.put(center)
+        self.Imax.put(Imax)
+        self.sigma.put(sigma)
+        self.noise.put(noise)
+        self.noise_multiplier.put(noise_multiplier)
+
         if random_state is None:
             random_state = np.random
+        self.random_state = random_state
+        self.val.name = self.name
+        self.val.sim_set_func(self._compute)
 
-        def func():
-            x = motor0.read()[motor_field0]['value']
-            y = motor1.read()[motor_field1]['value']
-            m = np.array([x, y])
-            v = Imax * np.exp(-np.sum((m - center) ** 2) / (2 * sigma ** 2))
-            if noise == 'poisson':
-                v = int(random_state.poisson(np.round(v), 1))
-            elif noise == 'uniform':
-                v += random_state.uniform(-1, 1) * noise_multiplier
-            return v
-
-        super().__init__(name=name, func=func, **kwargs)
+    def trigger(self, *args, **kwargs):
+        return self.val.trigger(*args, **kwargs)
 
 
 class TrivialFlyer:
@@ -540,11 +661,12 @@ class TrivialFlyer:
 
 class NewTrivialFlyer(TrivialFlyer):
     """
-    The old-style API inserted Resource and Datum documents into a database directly.
-    The new-style API only caches the documents and provides an interface (collect_asset_docs)
-    for accessing that cache. This change was part of the "asset refactor" that changed
-    that way Resource and Datum documents flowed through ophyd, bluesky, and databroker.
-    Trivial flyer that complies to the API but returns empty data.
+    The old-style API inserted Resource and Datum documents into a database
+    directly. The new-style API only caches the documents and provides an
+    interface (collect_asset_docs) for accessing that cache. This change was
+    part of the "asset refactor" that changed that way Resource and Datum
+    documents flowed through ophyd, bluesky, and databroker. Trivial flyer that
+    complies to the API but returns empty data.
     """
 
     name = 'new_trivial_flyer'
@@ -683,10 +805,9 @@ class SynSignalWithRegistry(SynSignal):
 
     """
 
-    def __init__(self, *args, reg=DO_NOT_USE, save_path=None,
+    def __init__(self, *args, save_path=None,
                  save_func=partial(np.save, allow_pickle=False),
-                 save_spec='NPY_SEQ', save_ext='npy',
-                 **kwargs):
+                 save_spec='NPY_SEQ', save_ext='npy', **kwargs):
         super().__init__(*args, **kwargs)
         self.save_func = save_func
         self.save_ext = save_ext
@@ -703,15 +824,6 @@ class SynSignalWithRegistry(SynSignal):
         self._path_stem = None
         self._result = {}
 
-        if reg is not DO_NOT_USE:
-            warnings.warn("The parameter 'reg' is deprecated. It will be "
-                          "ignored. In a future release the parameter will be "
-                          "removed and passing a value for 'reg' will raise "
-                          "an error.")
-            self.reg = reg
-        else:
-            self.reg = None
-
     def stage(self):
         self._file_stem = short_uid()
         self._datum_counter = itertools.count()
@@ -724,18 +836,8 @@ class SynSignalWithRegistry(SynSignal):
                     'resource_path': self._file_stem,
                     'resource_kwargs': {},
                     'path_semantics': {'posix': 'posix', 'nt': 'windows'}[os.name]}
-        # If a Registry is set, we need to allow it to generate the uid for us.
-        if self.reg is not None:
-            # register_resource has accidentally different parameter names...
-            self._resource_uid = self.reg.register_resource(
-                rpath=resource['resource_path'],
-                rkwargs=resource['resource_kwargs'],
-                root=resource['root'],
-                spec=resource['spec'],
-                path_semantics=resource['path_semantics'])
-        # If a Registry is not set, we need to generate the uid.
-        else:
-            self._resource_uid = new_uid()
+
+        self._resource_uid = new_uid()
         resource['uid'] = self._resource_uid
         self._asset_docs_cache.append(('resource', resource))
 
@@ -754,16 +856,10 @@ class SynSignalWithRegistry(SynSignal):
             # registry.
             datum = {'resource': self._resource_uid,
                      'datum_kwargs': dict(index=data_counter)}
-            if self.reg is not None:
-                # If a Registry is set, we need to allow it to generate the
-                # datum_id for us.
-                datum_id = self.reg.register_datum(
-                    datum_kwargs=datum['datum_kwargs'],
-                    resource_uid=datum['resource'])
-            else:
-                # If a Registry is not set, we need to generate the datum_id.
-                datum_id = '{}/{}'.format(self._resource_uid,
-                                          data_counter)
+
+            # If a Registry is not set, we need to generate the datum_id.
+            datum_id = '{}/{}'.format(self._resource_uid,
+                                      data_counter)
             datum['datum_id'] = datum_id
             self._asset_docs_cache.append(('datum', datum))
             # And now change the reading in place, replacing the value with
@@ -814,23 +910,23 @@ class NumpySeqHandler:
 
 
 class ABDetector(Device):
-    a = Component(SynSignal, func=random.random, kind=Kind.hinted)
-    b = Component(SynSignal, func=random.random)
+    a = Cpt(SynSignal, func=random.random, kind=Kind.hinted)
+    b = Cpt(SynSignal, func=random.random)
 
     def trigger(self):
         return self.a.trigger() & self.b.trigger()
 
 
 class DetWithCountTime(Device):
-    intensity = Component(SynSignal, func=lambda: 0, kind=Kind.hinted)
-    count_time = Component(Signal)
+    intensity = Cpt(SynSignal, func=lambda: 0, kind=Kind.hinted)
+    count_time = Cpt(Signal)
 
 
 class DetWithConf(Device):
-    a = Component(SynSignal, func=lambda: 1, kind=Kind.hinted)
-    b = Component(SynSignal, func=lambda: 2, kind=Kind.hinted)
-    c = Component(SynSignal, func=lambda: 3)
-    d = Component(SynSignal, func=lambda: 4)
+    a = Cpt(SynSignal, func=lambda: 1, kind=Kind.hinted)
+    b = Cpt(SynSignal, func=lambda: 2, kind=Kind.hinted)
+    c = Cpt(SynSignal, func=lambda: 3)
+    d = Cpt(SynSignal, func=lambda: 4)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -854,14 +950,14 @@ class InvariantSignal(SynSignal):
 
 
 class SPseudo3x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
-    pseudo2 = C(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
-    pseudo3 = C(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
-    real1 = C(SoftPositioner, init_pos=0)
-    real2 = C(SoftPositioner, init_pos=0)
-    real3 = C(SoftPositioner, init_pos=0)
+    pseudo1 = Cpt(PseudoSingle, limits=(-10, 10), egu='a', kind=Kind.hinted)
+    pseudo2 = Cpt(PseudoSingle, limits=(-10, 10), egu='b', kind=Kind.hinted)
+    pseudo3 = Cpt(PseudoSingle, limits=None, egu='c', kind=Kind.hinted)
+    real1 = Cpt(SoftPositioner, init_pos=0)
+    real2 = Cpt(SoftPositioner, init_pos=0)
+    real3 = Cpt(SoftPositioner, init_pos=0)
 
-    sig = C(Signal, value=0)
+    sig = Cpt(Signal, value=0)
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
@@ -881,10 +977,10 @@ class SPseudo3x3(PseudoPositioner):
 
 
 class SPseudo1x3(PseudoPositioner):
-    pseudo1 = C(PseudoSingle, limits=(-10, 10), kind=Kind.hinted)
-    real1 = C(SoftPositioner, init_pos=0)
-    real2 = C(SoftPositioner, init_pos=0)
-    real3 = C(SoftPositioner, init_pos=0)
+    pseudo1 = Cpt(PseudoSingle, limits=(-10, 10), kind=Kind.hinted)
+    real1 = Cpt(SoftPositioner, init_pos=0)
+    real2 = Cpt(SoftPositioner, init_pos=0)
+    real3 = Cpt(SoftPositioner, init_pos=0)
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
@@ -941,15 +1037,15 @@ def make_fake_device(cls):
         # Update all the components recursively
         for cpt_name in cls.component_names:
             cpt = getattr(cls, cpt_name)
-            if isinstance(cpt, DDC):
-                # Make a regular Component out of the DDC, as it already has
+            if isinstance(cpt, DDCpt):
+                # Make a regular Cpt out of the DDC, as it already has
                 # been generated
-                fake_cpt = Component(cls=cpt.cls, suffix=cpt.suffix,
-                                     lazy=cpt.lazy,
-                                     trigger_value=cpt.trigger_value,
-                                     kind=cpt.kind, add_prefix=cpt.add_prefix,
-                                     doc=cpt.doc, **cpt.kwargs,
-                                     )
+                fake_cpt = Cpt(cls=cpt.cls, suffix=cpt.suffix,
+                               lazy=cpt.lazy,
+                               trigger_value=cpt.trigger_value,
+                               kind=cpt.kind, add_prefix=cpt.add_prefix,
+                               doc=cpt.doc, **cpt.kwargs,
+                )
             else:
                 fake_cpt = copy.copy(cpt)
 
@@ -997,7 +1093,7 @@ def clear_fake_device(dev, *, default_value=0, default_string_value='',
                      if string
                      else default_value)
             sig.sim_put(value)
-        except Exception as ex:
+        except Exception:
             if not ignore_exceptions:
                 raise
         else:
@@ -1089,12 +1185,6 @@ class FakeEpicsSignal(SynSignal):
         if self._enum_strs is not None:
             desc[self.name]['enum_strs'] = self.enum_strs
         return desc
-
-    def sim_set_func(self, func):
-        """
-        Update the SynSignal function to set a new value on trigger.
-        """
-        self._func = func
 
     def sim_set_putter(self, putter):
         """
@@ -1201,7 +1291,8 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
 
 class FakeEpicsSignalWithRBV(FakeEpicsSignal):
     """
-    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming scheme
+    FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming
+    scheme
     """
     def __init__(self, prefix, **kwargs):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
@@ -1211,6 +1302,18 @@ fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      EpicsSignalRO: FakeEpicsSignalRO,
                      EpicsSignalWithRBV: FakeEpicsSignalWithRBV,
                      }
+
+
+class DirectImage(Device):
+    img = Cpt(SynSignal, kind='hinted')
+
+    def __init__(self, *args, func=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if func is not None:
+            self.img.sim_set_func(func)
+
+    def trigger(self):
+        return self.img.trigger()
 
 
 def hw(save_path=None):
@@ -1251,8 +1354,14 @@ def hw(save_path=None):
 
     ab_det = ABDetector(name='det', labels={'detectors'})
     # area detector that directly stores image data in Event
-    direct_img = SynSignal(func=lambda: np.array(np.ones((10, 10))),
-                           name='img', labels={'detectors'})
+    direct_img = DirectImage(func=lambda: np.array(np.ones((10, 10))),
+                             name='direct', labels={'detectors'})
+    direct_img.img.name = 'img'
+
+    direct_img_list = DirectImage(func=lambda: [[1] * 10] * 10,
+                                  name='direct', labels={'detectors'})
+    direct_img_list.img.name = 'direct_img_list'
+
     # area detector that stores data in a file
     img = SynSignalWithRegistry(func=lambda: np.array(np.ones((10, 10))),
                                 name='img', labels={'detectors'},
@@ -1276,6 +1385,8 @@ def hw(save_path=None):
     # Because some of these reference one another we must define them (above)
     # before we pack them into a namespace (below).
 
+    signal = SynSignal(name='signal')
+
     return SimpleNamespace(
         motor=motor,
         motor1=motor1,
@@ -1297,6 +1408,7 @@ def hw(save_path=None):
         new_trivial_flyer=new_trivial_flyer,
         ab_det=ab_det,
         direct_img=direct_img,
+        direct_img_list=direct_img_list,
         img=img,
         invariant1=invariant1,
         invariant2=invariant2,
@@ -1313,6 +1425,7 @@ def hw(save_path=None):
         motor_no_hints1=motor_no_hints1,
         motor_no_hints2=motor_no_hints2,
         bool_sig=bool_sig,
+        signal=signal,
     )
 
 

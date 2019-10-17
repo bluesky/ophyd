@@ -4,7 +4,7 @@ import time
 from copy import copy
 
 from ophyd import (PVPositioner, PVPositionerPC, EpicsSignal, EpicsSignalRO,
-                   Component as C, get_cl, Kind)
+                   Component as Cpt, get_cl, Kind)
 
 logger = logging.getLogger(__name__)
 
@@ -39,19 +39,20 @@ def test_no_setpoint_or_readback():
 
 def test_setpoint_but_no_done():
     class MyPositioner(PVPositioner):
-        setpoint = C(EpicsSignal, '.VAL')
+        setpoint = Cpt(EpicsSignal, '.VAL')
 
     with pytest.raises(ValueError):
         MyPositioner()
 
 
+@pytest.mark.motorsim
 def test_pvpos(motor):
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, done, stop. No put completion'''
-        setpoint = C(EpicsSignal, '.VAL')
-        readback = C(EpicsSignalRO, '.RBV')
-        done = C(EpicsSignalRO, '.MOVN')
-        stop_signal = C(EpicsSignal, '.STOP')
+        setpoint = Cpt(EpicsSignal, '.VAL')
+        readback = Cpt(EpicsSignalRO, '.RBV')
+        done = Cpt(EpicsSignalRO, '.MOVN')
+        stop_signal = Cpt(EpicsSignal, '.STOP')
 
         stop_value = 1
         done_value = 0
@@ -77,12 +78,13 @@ def test_pvpos(motor):
     m.read()
 
 
+@pytest.mark.motorsim
 def test_put_complete_setpoint_only(motor):
     logger.info('--> PV Positioner, using put completion and a DONE pv')
 
     class MyPositioner(PVPositionerPC):
         '''Setpoint only'''
-        setpoint = C(EpicsSignal, '.VAL')
+        setpoint = Cpt(EpicsSignal, '.VAL')
 
     pos = MyPositioner(motor.prefix, name='pc_setpoint_done')
     print(pos.describe())
@@ -108,12 +110,13 @@ def test_put_complete_setpoint_only(motor):
     assert not pos.moving
 
 
+@pytest.mark.motorsim
 def test_put_complete_setpoint_readback_done(motor):
     class MyPositioner(PVPositionerPC):
         '''Setpoint, readback, done, stop. Put completion'''
-        setpoint = C(EpicsSignal, '.VAL')
-        readback = C(EpicsSignalRO, '.RBV')
-        done = C(EpicsSignalRO, '.MOVN')
+        setpoint = Cpt(EpicsSignal, '.VAL')
+        readback = Cpt(EpicsSignalRO, '.RBV')
+        done = Cpt(EpicsSignalRO, '.MOVN')
         done_value = 0
 
     pos = MyPositioner(motor.prefix, name='pos_no_put_compl',
@@ -144,11 +147,12 @@ def test_put_complete_setpoint_readback_done(motor):
     assert not pos.moving
 
 
+@pytest.mark.motorsim
 def test_put_complete_setpoint_readback(motor):
     class MyPositioner(PVPositionerPC):
         '''Setpoint, readback, put completion. No done pv.'''
-        setpoint = C(EpicsSignal, '.VAL')
-        readback = C(EpicsSignalRO, '.RBV')
+        setpoint = Cpt(EpicsSignal, '.VAL')
+        readback = Cpt(EpicsSignalRO, '.RBV')
 
     pos = MyPositioner(motor.prefix, name='pos_put_compl')
     print(pos.describe())
@@ -185,11 +189,11 @@ def test_pvpositioner_with_fake_motor(fake_motor_ioc):
 
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, no put completion. No done pv.'''
-        setpoint = C(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
-        readback = C(EpicsSignalRO, fake_motor_ioc.pvs['readback'])
-        actuate = C(EpicsSignal, fake_motor_ioc.pvs['actuate'])
-        stop_signal = C(EpicsSignal, fake_motor_ioc.pvs['stop'])
-        done = C(EpicsSignal, fake_motor_ioc.pvs['moving'])
+        setpoint = Cpt(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
+        readback = Cpt(EpicsSignalRO, fake_motor_ioc.pvs['readback'])
+        actuate = Cpt(EpicsSignal, fake_motor_ioc.pvs['actuate'])
+        stop_signal = Cpt(EpicsSignal, fake_motor_ioc.pvs['stop'])
+        done = Cpt(EpicsSignal, fake_motor_ioc.pvs['moving'])
 
         actuate_value = 1
         stop_value = 1
@@ -231,11 +235,11 @@ def test_pvpositioner_with_fake_motor(fake_motor_ioc):
 def test_hints(fake_motor_ioc):
     class MyPositioner(PVPositioner):
         '''Setpoint, readback, no put completion. No done pv.'''
-        setpoint = C(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
-        readback = C(EpicsSignalRO, fake_motor_ioc.pvs['readback'])
-        actuate = C(EpicsSignal, fake_motor_ioc.pvs['actuate'])
-        stop_signal = C(EpicsSignal, fake_motor_ioc.pvs['stop'])
-        done = C(EpicsSignal, fake_motor_ioc.pvs['moving'])
+        setpoint = Cpt(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
+        readback = Cpt(EpicsSignalRO, fake_motor_ioc.pvs['readback'])
+        actuate = Cpt(EpicsSignal, fake_motor_ioc.pvs['actuate'])
+        stop_signal = Cpt(EpicsSignal, fake_motor_ioc.pvs['stop'])
+        done = Cpt(EpicsSignal, fake_motor_ioc.pvs['moving'])
 
         actuate_value = 1
         stop_value = 1
