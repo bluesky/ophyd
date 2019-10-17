@@ -272,12 +272,12 @@ class FormattedComponent(Component):
     added onto the Component suffix. Additionally, `str.format()` style strings
     are accepted, allowing access to Device instance attributes:
 
-    >>> from ophyd import (Component as C, FormattedComponent as FC)
+    >>> from ophyd import (Component as Cpt, FormattedComponent as FCpt)
     >>> class MyDevice(Device):
     ...     # A normal component, where 'suffix' is added to prefix verbatim
-    ...     cpt = C(EpicsSignal, 'suffix')
+    ...     cpt = Cpt(EpicsSignal, 'suffix')
     ...     # A formatted component, where 'self' refers to the Device instance
-    ...     ch = FC(EpicsSignal, '{self.prefix}{self._ch_name}')
+    ...     ch = FCpt(EpicsSignal, '{self.prefix}{self._ch_name}')
     ...
     ...     def __init__(self, prefix, ch_name=None, **kwargs):
     ...         self._ch_name = ch_name

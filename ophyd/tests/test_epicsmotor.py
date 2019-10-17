@@ -9,7 +9,7 @@ from ophyd import (
     Signal,
     EpicsSignal,
     EpicsSignalRO,
-    Component as C,
+    Component as Cpt,
     MotorBundle,
 )
 from ophyd.utils.epics_pvs import AlarmSeverity, AlarmStatus
@@ -302,9 +302,9 @@ def test_read_in_motor_callback(motor):
 
 def test_motor_bundle():
     class Bundle(MotorBundle):
-        a = C(EpicsMotor, ":mtr1")
-        b = C(EpicsMotor, ":mtr2")
-        c = C(EpicsMotor, ":mtr3")
+        a = Cpt(EpicsMotor, ":mtr1")
+        b = Cpt(EpicsMotor, ":mtr2")
+        c = Cpt(EpicsMotor, ":mtr3")
 
     bundle = Bundle("sim", name="bundle")
 
