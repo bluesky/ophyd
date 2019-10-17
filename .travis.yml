@@ -105,6 +105,8 @@ before_install:
   - bash "${CI_SCRIPTS}/run-epics-iocs-on-procserv.sh"
 
 install:
+  # what is already here?
+  - pip freeze
   - python -mpip install -Ur requirements.txt
   - python -mpip install -Ur test-requirements.txt
   - python -mpip install -e .
