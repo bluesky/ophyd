@@ -20,7 +20,7 @@ from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
 from .device import (Device, Component as Cpt,
-                     DynamicDeviceComponent as DDC, Kind)
+                     DynamicDeviceComponent as DDCpt, Kind)
 from types import SimpleNamespace
 from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
@@ -1037,7 +1037,7 @@ def make_fake_device(cls):
         # Update all the components recursively
         for cpt_name in cls.component_names:
             cpt = getattr(cls, cpt_name)
-            if isinstance(cpt, DDC):
+            if isinstance(cpt, DDCpt):
                 # Make a regular Cpt out of the DDC, as it already has
                 # been generated
                 fake_cpt = Cpt(cls=cpt.cls, suffix=cpt.suffix,
