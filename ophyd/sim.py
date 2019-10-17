@@ -1425,7 +1425,7 @@ def hw(save_path=None):
         motor_no_hints1=motor_no_hints1,
         motor_no_hints2=motor_no_hints2,
         bool_sig=bool_sig,
-        signal=signal
+        signal=signal,
     )
 
 
