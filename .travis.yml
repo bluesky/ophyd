@@ -105,15 +105,11 @@ before_install:
   - bash "${CI_SCRIPTS}/run-epics-iocs-on-procserv.sh"
 
 install:
-  # use a virtual environment  #- python -mpip install -Ur requirements.txt
-  #- python -mpip install -Ur test-requirements.txt
-
-  - python -m venv ophyd-venv
-  - source ophyd-venv/bin/activate
-  - python -mpip install --upgrade pip
-  - python -mpip install -e .
-  - python -mpip install -r test-requirements.txt
-  # record installed package versions
+  # record installed packages before ophyd is installed
+  - pip freeze
+  - python -m pip install -e .
+  - python -m pip install -r test-requirements.txt
+  # record installed packages after ophyd is installed
   - pip freeze
 
   - echo "PATH=$PATH"
