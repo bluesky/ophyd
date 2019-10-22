@@ -200,7 +200,7 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
-def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
+def set_and_wait(signal, val, poll_time=0.01, timeout=60, rtol=None,
                  atol=None):
     """Set a signal to a value and wait until it reads correctly.
 
@@ -252,7 +252,7 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     else:
         within_str = ''
 
-    while not _compare_maybe_enum(val, current_value, es, atol, rtol):
+    while not _compare_maybe_enum(val, current_value, es, atol, rtol, timeout, start_time, signal.name):
         logger.debug("Waiting for %s to be set from %r to %r%s...",
                      signal.name, current_value, val, within_str)
         ttime.sleep(poll_time)
@@ -265,7 +265,7 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
                                (signal, val, timeout, current_value))
 
 
-def _compare_maybe_enum(a, b, enums, atol, rtol):
+def _compare_maybe_enum(a, b, enums, atol, rtol, timeout, start_time, signal_name):
     if enums:
         # convert enum values to strings if necessary first:
         if not isinstance(a, str):
@@ -273,7 +273,10 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
         if not isinstance(b, str):
             b = enums[b]
         # then compare the strings
-        return a == b
+        ret = a == b
+        if ret and signal_name == 'rixscam_hdf5_capture':
+            print(f'>>>> Setting "{signal_name}" took {ttime.time() - start_time:.5f}s (timeout={timeout}s)')
+        return ret
 
     # if either relative/absolute tolerance is used, use numpy
     # to compare:
