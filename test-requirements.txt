@@ -2,7 +2,7 @@ codecov
 matplotlib
 pytest
 databroker>=1.0.0b1
-caproto[complete]
+caproto[standard] >=0.4.2rc1
 h5py
 pytest-faulthandler
 pyepics>=3.4.0
