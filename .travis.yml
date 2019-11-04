@@ -73,9 +73,8 @@ install:
        sudo -E bash install_epics_on_travis.sh
        python -mpip install -r requirements.txt
     fi
-  - python -mpip install -r test-requirements.txt
   - python -mpip install git+git://github.com/NSLS-II/caproto.git || echo 'caproto did not install'
-  - pip install -e .
+  - pip install -e .[test]
   # set up directories we will need
   - python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
   # setup some path environment variables for epics
