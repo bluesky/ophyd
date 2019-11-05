@@ -1,6 +1,6 @@
 codecov
 coveralls
-caproto[standard]>=0.4.2rc1
+caproto[standard] >=0.4.2rc1
 matplotlib
-pytest>=3.6
+pytest >=3.6
 pytest-cov

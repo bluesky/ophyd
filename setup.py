@@ -4,7 +4,7 @@ import sys
 import versioneer
 
 with open('requirements.txt') as f:
-    requirements = f.read().split()
+    requirements = [r.strip() for r in f.readlines()]
 
 # Temporary hack until databroker is on PyPI, needed because
 # `pip install -r requirements.txt` works with git URLs, but `install_requires`
@@ -13,7 +13,7 @@ requirements = [r for r in requirements if not r.startswith('git+')]
 print("User must install https://github.com/NSLS-II/databroker manually")
 
 with open('test-requirements.txt') as f:
-    test_requirements = f.read().split()
+    test_requirements = [r.strip() for r in f.readlines()]
 
 if sys.version_info < (3, 6):
     caproto_warning = """
