@@ -183,7 +183,7 @@ class Signal(OphydObject):
 
         if self._set_thread is not None:
             raise RuntimeError('Another set() call is still in progress '
-                               f'for {self.name}')
+                               'for {}'.format(self.name))
 
         st = Status(self)
         self._status = st
