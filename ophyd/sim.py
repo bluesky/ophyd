@@ -599,7 +599,7 @@ class Syn2DGauss(Device):
                  random_state=None, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        self._motor = motor0
+        self._motor0 = motor0
         self._motor1 = motor1
         self._motor_field0 = motor_field0
         self._motor_field1 = motor_field1
