@@ -1,6 +1,6 @@
 codecov
 matplotlib
 pytest
-databroker
-caproto[complete]
+databroker >=1.0.0b1
+caproto[standard] >=0.4.2rc1
 h5py
