@@ -5,7 +5,7 @@ from collections import OrderedDict
 from .ophydobj import Kind
 from .signal import (EpicsSignal, EpicsSignalRO)
 from .device import Device
-from .device import (Component as C, DynamicDeviceComponent as DDC,
+from .device import (Component as Cpt, DynamicDeviceComponent as DDC,
                      FormattedComponent as FC)
 
 logger = logging.getLogger(__name__)
@@ -24,12 +24,12 @@ def _scaler_fields(cls, attr_base, field_base, range_, **kwargs):
 class EpicsScaler(Device):
     '''SynApps Scaler Record interface'''
     # tigger + trigger mode
-    count = C(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.omitted)
-    count_mode = C(EpicsSignal, '.CONT', string=True, kind=Kind.config)
+    count = Cpt(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.omitted)
+    count_mode = Cpt(EpicsSignal, '.CONT', string=True, kind=Kind.config)
 
     # delay from triggering to starting counting
-    delay = C(EpicsSignal, '.DLY', kind=Kind.config)
-    auto_count_delay = C(EpicsSignal, '.DLY1', kind=Kind.config)
+    delay = Cpt(EpicsSignal, '.DLY', kind=Kind.config)
+    auto_count_delay = Cpt(EpicsSignal, '.DLY1', kind=Kind.config)
 
     # the data
     channels = DDC(_scaler_fields(EpicsSignalRO, 'chan', '.S', range(1, 33),
@@ -37,21 +37,21 @@ class EpicsScaler(Device):
     names = DDC(_scaler_fields(EpicsSignal, 'name', '.NM', range(1, 33),
                                kind=Kind.config))
 
-    time = C(EpicsSignal, '.T', kind=Kind.config)
-    freq = C(EpicsSignal, '.FREQ', kind=Kind.config)
+    time = Cpt(EpicsSignal, '.T', kind=Kind.config)
+    freq = Cpt(EpicsSignal, '.FREQ', kind=Kind.config)
 
-    preset_time = C(EpicsSignal, '.TP', kind=Kind.config)
-    auto_count_time = C(EpicsSignal, '.TP1', kind=Kind.config)
+    preset_time = Cpt(EpicsSignal, '.TP', kind=Kind.config)
+    auto_count_time = Cpt(EpicsSignal, '.TP1', kind=Kind.config)
 
     presets = DDC(_scaler_fields(EpicsSignal, 'preset', '.PR', range(1, 33),
                                  kind=Kind.omitted))
     gates = DDC(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
                                kind=Kind.omitted))
 
-    update_rate = C(EpicsSignal, '.RATE', kind=Kind.config)
-    auto_count_update_rate = C(EpicsSignal, '.RAT1', kind=Kind.config)
+    update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.config)
+    auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.config)
 
-    egu = C(EpicsSignal, '.EGU', kind=Kind.config)
+    egu = Cpt(EpicsSignal, '.EGU', kind=Kind.config)
 
     def __init__(self, *args, **kwargs):
 
@@ -98,23 +98,23 @@ class ScalerCH(Device):
     channels = DDC(_sc_chans('chan', range(1, 33)))
 
     # tigger + trigger mode
-    count = C(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.omitted)
-    count_mode = C(EpicsSignal, '.CONT', string=True, kind=Kind.config)
+    count = Cpt(EpicsSignal, '.CNT', trigger_value=1, kind=Kind.omitted)
+    count_mode = Cpt(EpicsSignal, '.CONT', string=True, kind=Kind.config)
 
     # delay from triggering to starting counting
-    delay = C(EpicsSignal, '.DLY', kind=Kind.config)
-    auto_count_delay = C(EpicsSignal, '.DLY1', kind=Kind.config)
+    delay = Cpt(EpicsSignal, '.DLY', kind=Kind.config)
+    auto_count_delay = Cpt(EpicsSignal, '.DLY1', kind=Kind.config)
 
-    time = C(EpicsSignal, '.T')
-    freq = C(EpicsSignal, '.FREQ', kind=Kind.config)
+    time = Cpt(EpicsSignal, '.T')
+    freq = Cpt(EpicsSignal, '.FREQ', kind=Kind.config)
 
-    preset_time = C(EpicsSignal, '.TP', kind=Kind.config)
-    auto_count_time = C(EpicsSignal, '.TP1', kind=Kind.config)
+    preset_time = Cpt(EpicsSignal, '.TP', kind=Kind.config)
+    auto_count_time = Cpt(EpicsSignal, '.TP1', kind=Kind.config)
 
-    update_rate = C(EpicsSignal, '.RATE', kind=Kind.omitted)
-    auto_count_update_rate = C(EpicsSignal, '.RAT1', kind=Kind.omitted)
+    update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.omitted)
+    auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.omitted)
 
-    egu = C(EpicsSignal, '.EGU', kind=Kind.config)
+    egu = Cpt(EpicsSignal, '.EGU', kind=Kind.config)
 
     def match_names(self):
         for s in self.channels.component_names:

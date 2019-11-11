@@ -20,7 +20,7 @@ def hw(tmpdir):
     return hw(str(tmpdir))
 
 
-@pytest.fixture(params=['caproto', 'pyepics'], autouse=True)
+@pytest.fixture(params=['pyepics'], autouse=True)
 def cl_selector(request):
     cl_name = request.param
     if cl_name == 'caproto':

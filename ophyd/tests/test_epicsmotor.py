@@ -4,32 +4,43 @@ import pytest
 from copy import copy
 from numpy.testing import assert_allclose
 
-from ophyd import (EpicsMotor, Signal, EpicsSignal, EpicsSignalRO,
-                   Component as C, MotorBundle)
+from ophyd import (
+    EpicsMotor,
+    Signal,
+    EpicsSignal,
+    EpicsSignalRO,
+    Component as Cpt,
+    MotorBundle
+)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.motorsim
 def test_timeout(motor):
     assert motor.timeout == 10.0
     motor.timeout = 20.0
     assert motor.timeout == 20.0
 
 
+@pytest.mark.motorsim
 def test_connected(motor):
     assert motor.connected
 
 
+@pytest.mark.motorsim
 def test_limits(motor):
     device_limits = (motor.low_limit_value.get(), motor.high_limit_value.get())
     assert motor.limits == device_limits
 
 
+@pytest.mark.motorsim
 def test_checkvalue(motor):
     motor.check_value(0)
 
 
+@pytest.mark.motorsim
 def test_move(motor):
     motor.stop()
     logger.debug('Move to 0.0')
@@ -55,6 +66,7 @@ def test_move(motor):
     assert_allclose(motor.position, 0.0)
 
 
+@pytest.mark.motorsim
 def test_copy(motor):
     repr(motor)
     str(motor)
@@ -79,14 +91,17 @@ def test_copy(motor):
     assert res.elapsed > 0
 
 
+@pytest.mark.motorsim
 def test_read(motor):
     motor.read()
 
 
+@pytest.mark.motorsim
 def test_report(motor):
     motor.report
 
 
+@pytest.mark.motorsim
 def test_calibration(motor):
     motor.user_offset.put(0, wait=True)
 
@@ -100,6 +115,7 @@ def test_calibration(motor):
     motor.set_current_position(old_position)
 
 
+@pytest.mark.motorsim
 def test_high_limit_switch(motor):
     # limit switch status
     motor.direction_of_travel.put(1)
@@ -117,6 +133,7 @@ def test_high_limit_switch(motor):
     motor.high_limit_switch.put(0)
 
 
+@pytest.mark.motorsim
 def test_low_limit_switch(motor):
     motor.direction_of_travel.put(0)
     res = motor.move(0, wait=False)
@@ -130,6 +147,7 @@ def test_low_limit_switch(motor):
     motor.low_limit_switch.put(0)
 
 
+@pytest.mark.motorsim
 def test_low_limit_switch_while_moving_out(motor):
     # If the Motor is at the Low Limit Switch
     # all the movements in the opposite
@@ -146,6 +164,7 @@ def test_low_limit_switch_while_moving_out(motor):
     motor.low_limit_switch.put(0)
 
 
+@pytest.mark.motorsim
 def test_high_limit_switch_while_moving_out(motor):
     # If the Motor is at the High Limit Switch
     # all the movements in the opposite
@@ -163,6 +182,7 @@ def test_high_limit_switch_while_moving_out(motor):
 
 
 # @pytest.mark.skip(reason="This has become flaky, not sure why")
+@pytest.mark.motorsim
 def test_homing_forward(motor):
     # homing forward
     motor.move(-1, wait=True)
@@ -177,6 +197,7 @@ def test_homing_forward(motor):
 
 
 # @pytest.mark.skip(reason="This has become flaky, not sure why")
+@pytest.mark.motorsim
 def test_homing_reverse(motor):
     # homing reverse
     motor.move(1, wait=True)
@@ -189,6 +210,7 @@ def test_homing_reverse(motor):
     motor.stop()
 
 
+@pytest.mark.motorsim
 def test_homing_invalid(motor):
     with pytest.raises(ValueError):
         # homing reverse
@@ -202,6 +224,7 @@ def test_homing_invalid(motor):
         motor.stop()
 
 
+@pytest.mark.motorsim
 def test_move_alarm(motor):
     try:
         motor.user_readback.alarm_status = AlarmStatus.COMM
@@ -223,6 +246,7 @@ def test_move_alarm(motor):
         motor.user_readback.alarm_severity = AlarmSeverity.NO_ALARM
 
 
+@pytest.mark.motorsim
 def test_hints(motor):
     assert motor.hints == {'fields': list(motor.user_readback.read())}
 
@@ -231,6 +255,7 @@ def test_hints(motor):
     assert motor.hints == {'fields': list(motor.user_setpoint.read())}
 
 
+@pytest.mark.motorsim
 def test_watchers(motor):
 
     st = motor.set(0)
@@ -251,15 +276,30 @@ def test_watchers(motor):
     assert len(collector) > 1
 
 
+@pytest.mark.motorsim
 def test_str_smoke(motor):
     str(motor)
 
 
+@pytest.mark.motorsim
+def test_read_in_motor_callback(motor):
+    out_cache = []
+    motor.set(0, wait=True)
+
+    def cb(**kwargs):
+        v = motor.read()
+        out_cache.append(v)
+
+    motor.subscribe(cb)
+    motor.set(0.1, wait=True)
+    assert len(out_cache) > 0
+
+
 def test_motor_bundle():
     class Bundle(MotorBundle):
-        a = C(EpicsMotor, ':mtr1')
-        b = C(EpicsMotor, ':mtr2')
-        c = C(EpicsMotor, ':mtr3')
+        a = Cpt(EpicsMotor, ':mtr1')
+        b = Cpt(EpicsMotor, ':mtr2')
+        c = Cpt(EpicsMotor, ':mtr3')
 
     bundle = Bundle('sim', name='bundle')
 

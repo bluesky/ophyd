@@ -815,8 +815,8 @@ class EpicsSignalBase(Signal):
 
         if info is None:
             timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._read_pvname} within '
-                               f'{timeout} sec')
+            raise TimeoutError('Failed to read {} within '.format(self._read_pvname) +
+                               '{} sec'.format(timeout))
 
         value = info.pop('value')
         if as_string:
@@ -1163,8 +1163,8 @@ class EpicsSignal(EpicsSignalBase):
 
         if info is None:
             timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._write_pvname} within '
-                               f'{timeout} sec')
+            raise TimeoutError('Failed to read {} within '.format(self._write_pvname) +
+                               '{} sec'.format(timeout))
 
         value = info.pop('value')
         if as_string:

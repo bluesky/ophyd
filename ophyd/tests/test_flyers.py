@@ -35,6 +35,7 @@ def tscollector(ts_sim_detector):
     return ts_sim_detector.ts_col
 
 
+@pytest.mark.adsim
 def test_ad_time_series(ts_sim_detector, tscollector):
     sim_detector = ts_sim_detector
 
@@ -104,6 +105,7 @@ def wfcol(wf_sim_detector):
     return wf_sim_detector.wfcol
 
 
+@pytest.mark.adsim
 def test_waveform(wf_sim_detector, wfcol):
     print('waveform collector', wfcol)
     print('wfcol flyer desc', wfcol.describe_collect())

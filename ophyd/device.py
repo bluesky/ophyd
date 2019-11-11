@@ -272,12 +272,12 @@ class FormattedComponent(Component):
     added onto the Component suffix. Additionally, `str.format()` style strings
     are accepted, allowing access to Device instance attributes:
 
-    >>> from ophyd import (Component as C, FormattedComponent as FC)
+    >>> from ophyd import (Component as Cpt, FormattedComponent as FCpt)
     >>> class MyDevice(Device):
     ...     # A normal component, where 'suffix' is added to prefix verbatim
-    ...     cpt = C(EpicsSignal, 'suffix')
+    ...     cpt = Cpt(EpicsSignal, 'suffix')
     ...     # A formatted component, where 'self' refers to the Device instance
-    ...     ch = FC(EpicsSignal, '{self.prefix}{self._ch_name}')
+    ...     ch = FCpt(EpicsSignal, '{self.prefix}{self._ch_name}')
     ...
     ...     def __init__(self, prefix, ch_name=None, **kwargs):
     ...         self._ch_name = ch_name
@@ -1130,7 +1130,7 @@ class Device(BlueskyInterface, OphydObject):
         if unconnected:
             reasons.append(f'Failed to connect to all signals: {unconnected}')
         if any(pending_funcs.values()):
-            pending = ', '.join(description.format(device=dev.name)
+            pending = ', '.join(description.format(device=dev)
                                 for dev, funcs in pending_funcs.items()
                                 for obj, description in funcs.items())
             reasons.append(f'Pending operations: {pending}')
