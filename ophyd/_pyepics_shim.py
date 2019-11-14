@@ -19,8 +19,6 @@ _dispatcher = None
 
 
 def get_pv(*args, **kwargs):
-    import epics
-    kwargs.setdefault('context', epics.ca.current_context())
     return _get_pv(*args, **kwargs)
 
 
