@@ -5,6 +5,7 @@ import queue
 import threading
 import warnings
 
+import epics
 from epics import get_pv as _get_pv, caget, caget, caput
 
 try:
