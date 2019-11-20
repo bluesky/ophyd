@@ -1634,8 +1634,10 @@ def _wait_for_connection_context(value, doc):
         '''
         orig = dev.lazy_wait_for_connection
         dev.lazy_wait_for_connection = value
-        yield
-        dev.lazy_wait_for_connection = orig
+        try:
+            yield
+        finally:
+            dev.lazy_wait_for_connection = orig
 
     return wrapped
 
