@@ -1,11 +1,10 @@
 import atexit
 import ctypes
-from distutils.version import LooseVersion
+import epics
 import queue
 import threading
 import warnings
 
-import epics
 from epics import get_pv as _get_pv, caget, caget, caput
 
 try:
@@ -20,8 +19,8 @@ _dispatcher = None
 
 
 def get_pv(*args, **kwargs):
-    if not LooseVersion(epics.__version__) >= LooseVersion('3.4.0'):
-        kwargs.setdefault('context', epics.ca.current_context())
+    import epics
+    kwargs.setdefault('context', epics.ca.current_context())
     return _get_pv(*args, **kwargs)
 
 

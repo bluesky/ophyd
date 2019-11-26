@@ -22,6 +22,8 @@ cache:
 
 matrix:
   include:
+    - python: 3.5
+      env: CONDA_ENV=1
     - python: 3.6
       env: BUILD_DOCS=true CONDA_ENV=1
     - python: 3.6

@@ -34,7 +34,6 @@ extras_require = {
 setup(name='ophyd',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
-      python_requires='>=3.6',
       license='BSD',
       install_requires=requirements,
       packages=find_packages(),
