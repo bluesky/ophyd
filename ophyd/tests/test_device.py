@@ -9,7 +9,8 @@ from ophyd import (Device, Component, FormattedComponent,
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
 from ophyd.device import (ComponentWalk, create_device_from_components,
-                          required_for_connection)
+                          required_for_connection, wait_for_lazy_connection,
+                          do_not_wait_for_lazy_connection)
 from ophyd.utils import ExceptionBundle
 
 
@@ -753,3 +754,23 @@ def test_noneified_component():
 
     assert MyDeviceWithoutSub2.component_names == ('sub1', )
     assert MyDeviceWithoutSub2._sub_devices == ['sub1']
+
+
+@pytest.mark.parametrize('lazy_state, cntx',
+                         [(False, wait_for_lazy_connection),
+                          (True, do_not_wait_for_lazy_connection)])
+def test_lazy_wait_context(lazy_state, cntx):
+    class LocalExcepton(Exception):
+        ...
+
+    d = Device(name='d')
+    d.lazy_wait_for_connection = lazy_state
+
+    try:
+        with cntx(d):
+            assert d.lazy_wait_for_connection == (not lazy_state)
+            raise LocalExcepton
+    except LocalExcepton:
+        ...
+
+    assert d.lazy_wait_for_connection is lazy_state
