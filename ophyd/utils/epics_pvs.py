@@ -226,7 +226,8 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=60, rtol=None,
     TimeoutError if timeout is exceeded
     """
     signal.put(val)
-    expiration_time = ttime.time() + timeout if timeout is not None else None
+    start_time = ttime.time()
+    expiration_time = start_time + timeout if timeout is not None else None
     current_value = signal.get()
 
     if atol is None and hasattr(signal, 'tolerance'):
@@ -275,7 +276,7 @@ def _compare_maybe_enum(a, b, enums, atol, rtol, timeout, start_time, signal_nam
         # then compare the strings
         ret = a == b
         if ret and signal_name == 'rixscam_hdf5_capture':
-            print(f'>>>> Setting "{signal_name}" took {ttime.time() - start_time:.5f}s (timeout={timeout}s)')
+            print(f'>>>> Setting "{signal_name}" to {a} took {ttime.time() - start_time:.5f}s (timeout={timeout}s)')
         return ret
 
     # if either relative/absolute tolerance is used, use numpy
