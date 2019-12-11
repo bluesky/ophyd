@@ -86,6 +86,21 @@ class EnumSignal(Signal):
         return desc
 
 
+class SignalRO(Signal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(
+            connected=True,
+            write_access=False,
+        )
+
+    def put(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+
+    def set(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly".format(self.name))
+
+
 class SynSignal(Signal):
     """
     A synthetic Signal that evaluates a Python function when triggered.
