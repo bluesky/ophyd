@@ -16,7 +16,7 @@ import weakref
 from collections import deque, OrderedDict
 from tempfile import mkdtemp
 
-from .signal import Signal, EpicsSignal, EpicsSignalRO
+from .signal import Signal, SignalRO, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
 from .device import (Device, Component as Cpt,
@@ -84,21 +84,6 @@ class EnumSignal(Signal):
         desc = super().describe()
         desc[self.name]['enum_strs'] = self._enum_strs
         return desc
-
-
-class SignalRO(Signal):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._metadata.update(
-            connected=True,
-            write_access=False,
-        )
-
-    def put(self, value, *, timestamp=None, force=False):
-        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
-
-    def set(self, value, *, timestamp=None, force=False):
-        raise ReadOnlyError("The signal {} is readonly".format(self.name))
 
 
 class SynSignal(Signal):

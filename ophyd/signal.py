@@ -397,6 +397,21 @@ class Signal(OphydObject):
                                       **self._metadata)
 
 
+class SignalRO(Signal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(
+            connected=True,
+            write_access=False,
+        )
+
+    def put(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+
+    def set(self, value, *, timestamp=None, force=False):
+        raise ReadOnlyError("The signal {} is readonly".format(self.name))
+
+
 class DerivedSignal(Signal):
     def __init__(self, derived_from, *, write_access=None, name=None,
                  parent=None, **kwargs):
