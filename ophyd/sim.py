@@ -16,7 +16,7 @@ import weakref
 from collections import deque, OrderedDict
 from tempfile import mkdtemp
 
-from .signal import Signal, EpicsSignal, EpicsSignalRO
+from .signal import Signal, SignalRO, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
 from .device import (Device, Component as Cpt,
