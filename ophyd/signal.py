@@ -409,7 +409,7 @@ class SignalRO(Signal):
         raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
     def set(self, value, *, timestamp=None, force=False):
-        raise ReadOnlyError("The signal {} is readonly".format(self.name))
+        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
 
 
 class DerivedSignal(Signal):
