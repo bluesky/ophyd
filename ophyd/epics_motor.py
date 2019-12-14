@@ -145,16 +145,16 @@ class EpicsMotor(Device, PositionerBase):
             If motion fails other than timing out
         '''
         self._started_moving = False
-        status = None
 
         def dmov_callback(old_value, value, **kwargs):
-            self.log.debug(f'DEBUG: dmov_callback(): new={value} old={old_value}')
+            self.log.debug('dmov_callback(): new=%d old=%d', value, old_value)
             if self._started_moving and value == 1:
-                self.motor_done_move.clear_sub(dmov_callback)
-                status._finished(success=True)
-                status.done = True
 
-        self.motor_done_move.subscribe(dmov_callback)
+                self.motor_done_move.clear_sub(dmov_callback)
+                self.motor_done_move.unsubscribe(cbid)
+                status._finished(success=True)
+
+        cbid = self.motor_done_move.subscribe(dmov_callback, run=False)
         status = super().move(position, **kwargs)
 
         self.user_setpoint.put(position, wait=False)
