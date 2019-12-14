@@ -238,7 +238,6 @@ class EpicsMotor(Device, PositionerBase):
         '''Callback from EPICS, indicating that movement status has changed'''
         was_moving = self._moving
         self._moving = (value != 1)
-        # self._moving = not self.motor_done_move.get()
 
         started = False
         if not self._started_moving:
