@@ -238,6 +238,7 @@ class EpicsMotor(Device, PositionerBase):
         '''Callback from EPICS, indicating that movement status has changed'''
         was_moving = self._moving
         self._moving = (value != 1)
+        # self._moving = not self.motor_done_move.get()
 
         started = False
         if not self._started_moving:
@@ -250,7 +251,10 @@ class EpicsMotor(Device, PositionerBase):
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
                            value=value, **kwargs)
 
-        if was_moving and not self._moving:
+        self.log.debug('_move_changed(): %d  moving: %d', 
+                    self._started_moving, self._moving)
+
+        if self._started_moving and not self._moving:
             success = True
             # Check if we are moving towards the low limit switch
             if self.direction_of_travel.get() == 0:
@@ -277,6 +281,11 @@ class EpicsMotor(Device, PositionerBase):
                     self.log.warning('Motor %s raised an alarm during motion '
                                      'status=%s severity %s',
                                      self.name, status, severity)
+
+            self.log.debug('detected moving DONE=%s, .DMOV=%s, success=%s',
+                           self._started_moving, 
+                           self.motor_done_move.get(), 
+                           success)
             self._done_moving(success=success, timestamp=timestamp,
                               value=value)
 
