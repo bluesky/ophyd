@@ -13,7 +13,7 @@ try:
 except ImportError:
     curses = None
 
-__all__ = ('set_handler',)
+__all__ = ('config_ophyd_logging', 'get_handler', 'set_handler',)
 
 
 def _stderr_supports_color():
@@ -24,8 +24,7 @@ def _stderr_supports_color():
                 if curses.tigetnum("colors") > 0:
                     return True
             elif colorama:
-                if sys.stderr is getattr(colorama.initialise, 'wrapped_stderr',
-                                         object()):
+                if sys.stderr is getattr(colorama.initialise, 'wrapped_stderr', object()):
                     return True
     except Exception:
         # Very broad exception handling because it's always better to
@@ -128,20 +127,34 @@ class LogFormatter(logging.Formatter):
 plain_log_format = "[%(levelname)1.1s %(asctime)s.%(msecs)03d %(module)s:%(lineno)d] %(message)s"
 color_log_format = ("%(color)s[%(levelname)1.1s %(asctime)s.%(msecs)03d "
                     "%(module)s:%(lineno)d]%(end_color)s %(message)s")
+
+
+def validate_level(level) -> int:
+    """
+    Return aN int for level comparison
+    """
+    if isinstance(level, int):
+        levelno = level
+    elif isinstance(level, str):
+        levelno = logging.getLevelName(level)
+
+    if isinstance(levelno, int):
+        return levelno
+    else:
+        raise ValueError("Your level is illegal, please use 'ERROR', 'WARNING', 'INFO', 'DEBUG', OR 'TRACE'.")
+
+
 logger = logging.getLogger('ophyd')
 
 
 current_handler = None  # overwritten below
 
 
-def set_handler(file=sys.stdout, datefmt='%H:%M:%S', color=True):
+def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level='WARNING'):
     """
     Set a new handler on the ``logging.getLogger('ophyd')`` logger.
-
-    This function is run at import time with default paramters. If it is run
-    again by the user, the handler from the previous invocation is removed (if
-    still present) and replaced.
-
+    If this is called more than once, the handler from the previous invocation
+    is removed (if still present) and replaced.
     Parameters
     ----------
     file : object with ``write`` method or filename string
@@ -150,42 +163,44 @@ def set_handler(file=sys.stdout, datefmt='%H:%M:%S', color=True):
         Date format. Default is ``'%H:%M:%S'``.
     color : boolean
         Use ANSI color codes. True by default.
-
+    level : str or int
+        Python logging level, given as string or corresponding integer.
+        Default is 'WARNING'.
     Returns
     -------
     handler : logging.Handler
         The handler, which has already been added to the 'ophyd' logger.
-
     Examples
     --------
     Log to a file.
-
-    >>> set_handler(file='/tmp/what_is_happening.txt')
-
+    >>> config_ophyd_logging(file='/tmp/what_is_happening.txt')
     Include the date along with the time. (The log messages will always include
     microseconds, which are configured separately, not as part of 'datefmt'.)
-
-    >>> set_handler(datefmt="%Y-%m-%d %H:%M:%S")
-
+    >>> config_ophyd_logging(datefmt="%Y-%m-%d %H:%M:%S")
     Turn off ANSI color codes.
-
-    >>> set_handler(color=False)
+    >>> config_ophyd_logging(color=False)
+    Increase verbosity: show level INFO or higher.
+    >>> config_ophyd_logging(level='INFO')
     """
     global current_handler
     if isinstance(file, str):
         handler = logging.FileHandler(file)
     else:
         handler = logging.StreamHandler(file)
+    levelno = validate_level(level)
+    handler.setLevel(levelno)
     if color:
-        format = color_log_format
+        log_format = color_log_format
     else:
-        format = plain_log_format
+        log_format = plain_log_format
     handler.setFormatter(
-        LogFormatter(format, datefmt=datefmt))
+        LogFormatter(log_format, datefmt=datefmt))
     if current_handler in logger.handlers:
         logger.removeHandler(current_handler)
     logger.addHandler(handler)
     current_handler = handler
+    if logger.getEffectiveLevel() > levelno:
+        logger.setLevel(levelno)
     return handler
 
 
