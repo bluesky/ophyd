@@ -203,6 +203,13 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
         logger.setLevel(levelno)
     return handler
 
-
 # Add a handler with the default parameters at import time.
-current_handler = set_handler()
+config_ophyd_logging()
+set_handler = config_ophyd_logging  # for back-compat
+
+def get_handler():
+    """
+    Return the handler configured by the most recent call to :func:`config_ophyd_logging`.
+    If :func:`config_ophyd_logging` has not yet been called, this returns ``None``.
+    """
+    return current_handler
