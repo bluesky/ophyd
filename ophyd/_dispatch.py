@@ -141,8 +141,12 @@ class EventDispatcher:
             status = [
                 '{name}={qsize} ({cb})'.format(name=name, qsize=qsize, cb=cb)
                 for name, qsize, cb in queue_sizes
+                if qsize]
             ]
-            debug_monitor_log.debug(' / '.join(status))
+            if status:
+                debug_monitor_log.debug(' / '.join(status))
+            else:
+                debug_monitor_log.debug('All EventDispatch queues are empty.')
             time.sleep(self.debug_monitor_interval)
 
     def __repr__(self):
