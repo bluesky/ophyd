@@ -141,7 +141,7 @@ class EventDispatcher:
             status = [
                 '{name}={qsize} ({cb})'.format(name=name, qsize=qsize, cb=cb)
                 for name, qsize, cb in queue_sizes
-                if qsize]
+                if qsize
             ]
             if status:
                 debug_monitor_log.debug(' / '.join(status))
