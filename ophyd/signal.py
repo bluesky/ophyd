@@ -810,45 +810,6 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def get_or_timeout(self, *, as_string=None, form='time', 
-                timeout=None, **kwargs):
-        '''Get the readback value from PyEpics or raise TimeoutError
-
-        Parameters
-        ----------
-        as_string : bool, optional
-            Get a string representation of the value, defaults to as_string
-            from this signal, optional
-        timeout : float, optional
-            maximum time to wait for value to be received.
-            (default = 0.5 + log10(count) seconds)
-        form : {'time', 'ctrl'}
-            PV form to request
-
-        Returns
-        ------
-        info
-            a dictionary with the value and other metadata from PyEpics
-
-        Raises
-        ------
-        TimeoutError
-            When PyEpics realizes a timeout, it posts a warning rather
-            than raise an exception.  The message from PyEpics is
-            included in the exception message.
-        '''
-        warnings.filterwarnings("error")
-        try:
-            info = self._read_pv.get_with_metadata(
-                        as_string=as_string, form=form, 
-                        timeout=timeout, **kwargs) 
-            warnings.filterwarnings("default")
-            return info
-        except UserWarning as exc:
-            warnings.filterwarnings("default")
-            raise TimeoutError('Failed to read {} within: {} sec: {}'
-                            .format(self._read_pvname, timeout, exc))
-
     def get(self, *, as_string=None, connection_timeout=1.0, form='time',
             **kwargs):
         '''Get the readback value through an explicit call to EPICS
@@ -878,10 +839,22 @@ class EpicsSignalBase(Signal):
             as_string = self._string
 
         self.wait_for_connection(timeout=connection_timeout)
-        info = self.get_or_timeout(as_string=as_string, form=form, **kwargs)
+
+        warnings.filterwarnings("error")
+        try:
+            info = self._read_pv.get_with_metadata(
+                        as_string=as_string, form=form, 
+                        **kwargs) 
+        except UserWarning as exc:
+            warnings.filterwarnings("default")
+            timeout = kwargs.get('timeout', "(default timeout)")
+            raise TimeoutError('Failed to read {} within: {} sec: {}'
+                            .format(self._read_pvname, timeout, exc))
+        finally:
+            warnings.filterwarnings("default")
 
         if info is None:
-            timeout = kwargs.get('timeout', None)
+            timeout = kwargs.get('timeout', "(default timeout)")
             raise TimeoutError(f'Failed to read {self._read_pvname} within '
                                f'{timeout} sec')
 
