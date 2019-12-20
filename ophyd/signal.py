@@ -840,18 +840,30 @@ class EpicsSignalBase(Signal):
 
         self.wait_for_connection(timeout=connection_timeout)
 
+        def restorewarnings(filters):
+            warnings.resetwarnings()
+            for f in filters:
+                action = f[0]
+                message = f[1] or ""
+                category = f[2]
+                module = f[3] or ""
+                lineno = f[4]
+                warnings.filterwarnings(action, message, category, 
+                                        module, lineno, append=True) 
+
+        old_warning_filters = list(warnings.filters)
         warnings.filterwarnings("error")
         try:
             info = self._read_pv.get_with_metadata(
                         as_string=as_string, form=form, 
                         **kwargs) 
         except UserWarning as exc:
-            warnings.filterwarnings("default")
+            restorewarnings(old_warning_filters)
             timeout = kwargs.get('timeout', "(default timeout)")
             raise TimeoutError('Failed to read {} within: {} sec: {}'
                             .format(self._read_pvname, timeout, exc))
         finally:
-            warnings.filterwarnings("default")
+            restorewarnings(old_warning_filters)
 
         if info is None:
             timeout = kwargs.get('timeout', "(default timeout)")
