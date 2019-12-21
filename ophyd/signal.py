@@ -848,10 +848,12 @@ class EpicsSignalBase(Signal):
         timeout = kwargs.get('timeout', None)
         if timeout is None:
             # `timeout` not given, define here, considering `count`
-            count = kwargs.get('count', 1)
-            timeout = DEFAULT_TIMEOUT + log10(max(1, count))
+            timeout = DEFAULT_TIMEOUT
+            count = max(1, kwargs.get('count', 1))
+            if count > 1:   # avoid log10() this unless needed
+                timeout += log10(count)
             kwargs["timeout"] = timeout
-            self.log.debug('%s.get(): set timeout=%f', self.name, timeout)
+            self.log.debug('%s.get(): set timeout=%f  (%f)', self.name, timeout, time.time())
 
         info = self._read_pv.get_with_metadata(
                     as_string=as_string, form=form, 
