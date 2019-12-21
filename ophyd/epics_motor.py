@@ -144,6 +144,7 @@ class EpicsMotor(Device, PositionerBase):
         RuntimeError
             If motion fails other than timing out
         '''
+        self.log.debug('%s: %s.move()', ">"*30, self.name)
         self._started_moving = False
 
         status = super().move(position, **kwargs)
@@ -267,8 +268,17 @@ class EpicsMotor(Device, PositionerBase):
                     self.log.warning('Motor %s raised an alarm during motion '
                                      'status=%s severity %s',
                                      self.name, status, severity)
+
+            self.log.debug('%s._move_changed(): before _done_moving()'
+                           ' success=%s  value=%s',
+                            self.name, success, value)
+
             self._done_moving(success=success, timestamp=timestamp,
                               value=value)
+
+            self.log.debug('%s._move_changed(): after _done_moving()'
+                           ' success=%s  value=%s',
+                            self.name, success, value)
 
     @property
     def report(self):
