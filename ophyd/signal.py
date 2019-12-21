@@ -851,6 +851,7 @@ class EpicsSignalBase(Signal):
             count = kwargs.get('count', 1)
             timeout = DEFAULT_TIMEOUT + log10(max(1, count))
             kwargs["timeout"] = timeout
+            self.log.debug('%s.get(): set timeout=%f', self.name, timeout)
 
         info = self._read_pv.get_with_metadata(
                     as_string=as_string, form=form, 
@@ -860,6 +861,7 @@ class EpicsSignalBase(Signal):
             # PyEpics will return `None` if there has been a timeout.
             # Notice of this is posted via a call to warnings.warn()
             # We cannot access that message here and remain thread-safe.
+            self.log.debug('%s.get() timed out, %f s', self.name, timeout)
             raise TimeoutError(f'Failed to read {self._read_pv.name}'
                                f' ({self._read_pvname})'
                                f' within {timeout} sec')
