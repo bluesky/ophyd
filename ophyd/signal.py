@@ -1,5 +1,6 @@
 # vi: ts=4 sw=4
 import logging
+from math import log10
 import time
 import threading
 import warnings
@@ -16,6 +17,8 @@ from .status import Status
 from . import get_cl
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_TIMEOUT = 1.0
 
 
 class Signal(OphydObject):
@@ -825,7 +828,8 @@ class EpicsSignalBase(Signal):
             Use numpy array as the return type for array data.
         timeout : float, optional
             maximum time to wait for value to be received.
-            (default = 0.5 + log10(count) seconds)
+            (default = DEFAULT_TIMEOUT seconds. Add 
+            log10(count) seconds for arrays.)
         use_monitor : bool, optional
             to use value from latest monitor callback or to make an
             explicit CA call for the value. (default: True)
@@ -840,35 +844,25 @@ class EpicsSignalBase(Signal):
 
         self.wait_for_connection(timeout=connection_timeout)
 
-        def restorewarnings(filters):
-            warnings.resetwarnings()
-            for f in filters:
-                action = f[0]
-                message = f[1] or ""
-                category = f[2]
-                module = f[3] or ""
-                lineno = f[4]
-                warnings.filterwarnings(action, message, category, 
-                                        module, lineno, append=True) 
+        #if no timeout given, specify here:
+        timeout = kwargs.get('timeout', None)
+        if timeout is None:
+            # `timeout` not given, define here, considering `count`
+            count = kwargs.get('count', 1)
+            timeout = DEFAULT_TIMEOUT + log10(max(1, count))
+            kwargs["timeout"] = timeout
 
-        old_warning_filters = list(warnings.filters)
-        warnings.filterwarnings("error")
-        try:
-            info = self._read_pv.get_with_metadata(
-                        as_string=as_string, form=form, 
-                        **kwargs) 
-        except UserWarning as exc:
-            restorewarnings(old_warning_filters)
-            timeout = kwargs.get('timeout', "(default timeout)")
-            raise TimeoutError('Failed to read {} within: {} sec: {}'
-                            .format(self._read_pvname, timeout, exc))
-        finally:
-            restorewarnings(old_warning_filters)
+        info = self._read_pv.get_with_metadata(
+                    as_string=as_string, form=form, 
+                    **kwargs) 
 
         if info is None:
-            timeout = kwargs.get('timeout', "(default timeout)")
-            raise TimeoutError(f'Failed to read {self._read_pvname} within '
-                               f'{timeout} sec')
+            # PyEpics will return `None` if there has been a timeout.
+            # Notice of this is posted via a call to warnings.warn()
+            # We cannot access that message here and remain thread-safe.
+            raise TimeoutError(f'Failed to read {self._read_pv.name}'
+                               f' ({self._read_pvname})'
+                               f' within {timeout} sec')
 
         value = info.pop('value')
         if as_string:
