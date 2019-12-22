@@ -133,6 +133,7 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
+        logger.debug("_finished(): success=%s, kwargs=%s", success, kwargs)
         if self.done:
             return
 

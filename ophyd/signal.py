@@ -863,8 +863,9 @@ class EpicsSignalBase(Signal):
             # PyEpics will return `None` if there has been a timeout.
             # Notice of this is posted via a call to warnings.warn()
             # We cannot access that message here and remain thread-safe.
-            self.log.debug('%s.get() timed out, %f s', self.name, timeout)
-            raise TimeoutError(f'Failed to read {self._read_pv.name}'
+            self.log.debug('%s.get() (%s) after %s s, raising TimeoutError', 
+                           self.name, self._read_pvname, timeout)
+            raise TimeoutError(f'Failed to read {self.name}'
                                f' ({self._read_pvname})'
                                f' within {timeout} sec')
 
