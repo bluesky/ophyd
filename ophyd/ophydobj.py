@@ -185,7 +185,7 @@ class OphydObject:
 
         if not self.__any_instantiated:
             self.log.debug("This is the first instance of OphydObject. "
-                           "name={self.name}, id={id(self)}")
+                           f"name={self.name}, id={id(self)}")
             self.__mark_as_instantiated()
         self.__register_instance(self)
 
