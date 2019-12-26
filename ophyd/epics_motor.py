@@ -144,10 +144,10 @@ class EpicsMotor(Device, PositionerBase):
         RuntimeError
             If motion fails other than timing out
         '''
-        self.log.debug('%s: %s.move()', ">"*30, self.name)
         self._started_moving = False
 
         status = super().move(position, **kwargs)
+        self.log.debug('%s: %s.move()  uuid=%s', ">"*30, self.name, status._uuid)
         self.user_setpoint.put(position, wait=False)
         try:
             if wait:
@@ -197,6 +197,7 @@ class EpicsMotor(Device, PositionerBase):
         self._started_moving = False
         position = (self.low_limit + self.high_limit) / 2
         status = super().move(position, **kwargs)
+        self.log.debug('%s: %s.home() uuid=%s', ">"*30, self.name, status._uuid)
 
         if direction == HomeEnum.forward:
             self.home_forward.put(1, wait=False)
@@ -235,7 +236,7 @@ class EpicsMotor(Device, PositionerBase):
             started = self._started_moving = (not was_moving and self._moving)
 
         self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                       self, self._moving, value)
+                       self.name, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
