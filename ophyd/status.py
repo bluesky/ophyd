@@ -139,7 +139,7 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
-        logger.debug('%s: status %s._finished(): %s', ">"*20, self._uuid, self)
+        logger.debug('%s: status %s._finished(): done=%s success=%s, kwargs=%s', ">"*20, self._uuid, self.done, success, kwargs)
         if self.done:
             return
 
@@ -152,6 +152,7 @@ class StatusBase:
             self._settle_thread.start()
         else:
             self._settle_then_run_callbacks(success=success)
+        logger.debug('%s: status %s._finished(): %s', "+"*20, self._uuid, self)
 
     @property
     def callbacks(self):
