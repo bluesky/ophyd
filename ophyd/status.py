@@ -152,7 +152,7 @@ class StatusBase:
             self._settle_thread.start()
         else:
             self._settle_then_run_callbacks(success=success)
-        logger.debug('%s: status %s._finished(): %s', "+"*20, self._uuid, self)
+        logger.debug('%s: status %s._finished(): %s', "-"*20, self._uuid, self)
 
     @property
     def callbacks(self):
