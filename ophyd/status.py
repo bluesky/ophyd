@@ -50,10 +50,6 @@ class StatusBase:
         self.success = success
         self.timeout = None
 
-        # FIXME: for debugging only, remove when done, git grep to identify all instances
-        import uuid     # for grep searches:  git grep uuid | grep log
-        self._uuid=uuid.uuid4()     # for grep searches:  git grep uuid | grep log
-
         if settle_time is None:
             settle_time = 0.0
 
@@ -108,7 +104,6 @@ class StatusBase:
         if self.settle_time > 0.0:
             time.sleep(self.settle_time)
 
-        logger.debug('%s: status %s._settle_then_run_callbacks(): %s', ">"*20, self._uuid, self)
         with self._lock:
             if self.done:
                 # We timed out while waiting for the settle time.
@@ -120,7 +115,6 @@ class StatusBase:
             for cb in self._callbacks:
                 cb()
             self._callbacks.clear()
-        logger.debug('%s: status %s._settle_then_run_callbacks(): %s', "-"*20, self._uuid, self)
 
     def _finished(self, success=True, **kwargs):
         """Inform the status object that it is done and if it succeeded
@@ -139,7 +133,6 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
-        logger.debug('%s: status %s._finished(): done=%s success=%s, kwargs=%s', ">"*20, self._uuid, self.done, success, kwargs)
         if self.done:
             return
 
@@ -152,7 +145,6 @@ class StatusBase:
             self._settle_thread.start()
         else:
             self._settle_then_run_callbacks(success=success)
-        logger.debug('%s: status %s._finished(): %s', "-"*20, self._uuid, self)
 
     @property
     def callbacks(self):

@@ -147,7 +147,6 @@ class EpicsMotor(Device, PositionerBase):
         self._started_moving = False
 
         status = super().move(position, **kwargs)
-        self.log.debug('%s: %s.move()  uuid=%s', ">"*30, self.name, status._uuid)
         self.user_setpoint.put(position, wait=False)
         try:
             if wait:
@@ -197,7 +196,6 @@ class EpicsMotor(Device, PositionerBase):
         self._started_moving = False
         position = (self.low_limit + self.high_limit) / 2
         status = super().move(position, **kwargs)
-        self.log.debug('%s: %s.home() uuid=%s', ">"*30, self.name, status._uuid)
 
         if direction == HomeEnum.forward:
             self.home_forward.put(1, wait=False)

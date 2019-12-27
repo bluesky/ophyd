@@ -187,7 +187,6 @@ class PositionerBase(OphydObject):
 
         status = MoveStatus(self, position, timeout=timeout,
                             settle_time=self._settle_time)
-        self.log.debug('%s: %s.move()  uuid=%s', ">"*30, self.name, status._uuid)
 
         if moved_cb is not None:
             status.add_callback(functools.partial(moved_cb, obj=self))
