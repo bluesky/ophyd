@@ -268,16 +268,8 @@ class EpicsMotor(Device, PositionerBase):
                                      'status=%s severity %s',
                                      self.name, status, severity)
 
-            self.log.debug('%s._move_changed(): before _done_moving()'
-                           ' success=%s  value=%s',
-                            self.name, success, value)
-
             self._done_moving(success=success, timestamp=timestamp,
                               value=value)
-
-            self.log.debug('%s._move_changed(): after _done_moving()'
-                           ' success=%s  value=%s',
-                            self.name, success, value)
 
     @property
     def report(self):
