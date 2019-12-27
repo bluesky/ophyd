@@ -844,7 +844,7 @@ class EpicsSignalBase(Signal):
 
         self.wait_for_connection(timeout=connection_timeout)
 
-        #if no timeout given, specify here:
+        # if no timeout given, specify here:
         timeout = kwargs.get('timeout', None)
         if timeout is None:
             # `timeout` not given, define here, considering `count`
@@ -853,7 +853,8 @@ class EpicsSignalBase(Signal):
             if count > 1:   # avoid log10() unless needed
                 timeout += log10(count)
             kwargs["timeout"] = timeout
-            self.log.debug('%s.get(): set timeout=%f  (%f)', self.name, timeout, time.time())
+            self.log.debug('%s.get(): set timeout=%f  (%f)', 
+                self.name, timeout, time.time())
 
         info = self._read_pv.get_with_metadata(
                     as_string=as_string, form=form, 
@@ -863,7 +864,9 @@ class EpicsSignalBase(Signal):
             # PyEpics will return `None` if there has been a timeout.
             # Notice of this is posted via a call to warnings.warn()
             # We cannot access that message here and remain thread-safe.
-            self.log.debug('%s.get() (%s) after %s s, raising TimeoutError', self.name, self._read_pvname, timeout)
+            self.log.debug('%s.get() (%s) after %s s, '
+                           'raising TimeoutError', 
+                           self.name, self._read_pvname, timeout)
             raise TimeoutError(f'Failed to read {self.name}'
                                f' ({self._read_pvname})'
                                f' within {timeout} sec')
@@ -1206,7 +1209,8 @@ class EpicsSignal(EpicsSignalBase):
             Use numpy array as the return type for array data.
         timeout : float, optional
             maximum time to wait for value to be received.
-            (default = 0.5 + log10(count) seconds)
+            (default = DEFAULT_TIMEOUT seconds. Add 
+            log10(count) seconds for arrays.)
         use_monitor : bool, optional
             to use value from latest monitor callback or to make an
             explicit CA call for the value. (default: True)
@@ -1220,13 +1224,33 @@ class EpicsSignal(EpicsSignalBase):
             as_string = self._string
 
         self.wait_for_connection(timeout=connection_timeout)
-        info = self._write_pv.get_with_metadata(as_string=as_string, form=form,
-                                                **kwargs)
+
+        # if no timeout given, specify here:
+        timeout = kwargs.get('timeout', None)
+        if timeout is None:
+            # `timeout` not given, define here, considering `count`
+            timeout = DEFAULT_TIMEOUT
+            count = max(1, kwargs.get('count', 1))
+            if count > 1:   # avoid log10() unless needed
+                timeout += log10(count)
+            kwargs["timeout"] = timeout
+            self.log.debug('%s.get_setpoint(): set timeout=%f  (%f)',
+                self.name, timeout, time.time())
+
+        info = self._write_pv.get_with_metadata(
+                as_string=as_string, form=form,
+                **kwargs)
 
         if info is None:
-            timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._setpoint_pvname} within '
-                               f'{timeout} sec')
+            # PyEpics will return `None` if there has been a timeout.
+            # Notice of this is posted via a call to warnings.warn()
+            # We cannot access that message here and remain thread-safe.
+            self.log.debug('%s.get_setpoint() (%s) after %s s, '
+                           'raising TimeoutError', 
+                           self.name, self._setpoint_pvname, timeout)
+            raise TimeoutError(f'Failed to read {self.name}'
+                               f' ({self._setpoint_pvname})'
+                               f' within {timeout} sec')
 
         value = info.pop('value')
         if as_string:
