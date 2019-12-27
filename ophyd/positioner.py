@@ -199,10 +199,6 @@ class PositionerBase(OphydObject):
 
     def _done_moving(self, success=True, timestamp=None, value=None, **kwargs):
         '''Call when motion has completed.  Runs ``SUB_DONE`` subscription.'''
-        # logger.debug("subscription names: %s", self.subscriptions)
-        # logger.debug("%s._args_cache[%s]=%s", self.name, self.SUB_DONE, self._args_cache[self.SUB_DONE])
-        logger.debug("%s._callbacks[%s]=%s", self.name, self.SUB_DONE, self._callbacks[self.SUB_DONE])
-        logger.debug("%s._done_moving() sub_type=%s value=%s", self.name, self.SUB_DONE, value)
         if success:
             self._run_subs(sub_type=self.SUB_DONE, timestamp=timestamp,
                            value=value)

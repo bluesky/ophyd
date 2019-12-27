@@ -850,7 +850,7 @@ class EpicsSignalBase(Signal):
             # `timeout` not given, define here, considering `count`
             timeout = DEFAULT_TIMEOUT
             count = max(1, kwargs.get('count', 1))
-            if count > 1:   # avoid log10() this unless needed
+            if count > 1:   # avoid log10() unless needed
                 timeout += log10(count)
             kwargs["timeout"] = timeout
             self.log.debug('%s.get(): set timeout=%f  (%f)', self.name, timeout, time.time())
