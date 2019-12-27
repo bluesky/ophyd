@@ -393,8 +393,6 @@ class OphydObject:
         self._args_cache[sub_type] = (tuple(args), dict(kwargs))
 
         for cb in list(self._callbacks[sub_type].values()):
-            if sub_type in ("done_moving", "_req_done"):
-                module_logger.debug("sub_type=%s callback=%s", sub_type, cb)
             cb(*args, **kwargs)
 
     def subscribe(self, callback, event_type=None, run=True):
