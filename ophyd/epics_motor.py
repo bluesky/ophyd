@@ -267,7 +267,6 @@ class EpicsMotor(Device, PositionerBase):
                     self.log.warning('Motor %s raised an alarm during motion '
                                      'status=%s severity %s',
                                      self.name, status, severity)
-
             self._done_moving(success=success, timestamp=timestamp,
                               value=value)
 
