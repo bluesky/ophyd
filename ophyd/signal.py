@@ -18,6 +18,12 @@ from . import get_cl
 logger = logging.getLogger(__name__)
 
 
+# Sentinels used for default values
+DEFAULT_CONNECTION_TIMEOUT = object()
+DEFAULT_TIMEOUT = object()
+DEFAULT_READ_RETRIES = object()
+
+
 class Signal(OphydObject):
     r'''A signal, which can have a read-write or read-only value.
 
@@ -574,6 +580,16 @@ class EpicsSignalBase(Signal):
     string : bool, optional
         Attempt to cast the EPICS PV value to a string by default
     '''
+    # This is set to True when the first instance is made. It is used to ensure
+    # that certain class-global settings can only be made before any
+    # instantiation.
+    __any_instantiated = False
+
+    # See set_default_timeout for more on these.
+    __default_connection_timeout = 1.0
+    __default_timeout = 2.0
+    __default_read_retries = 0
+    __read_attempt_timeout_floor = 0.5
 
     _read_pv_metadata_key_map = dict(
         status=('status', AlarmStatus),
@@ -594,7 +610,11 @@ class EpicsSignalBase(Signal):
                       )
 
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
-                 metadata=None, all_pvs=None, **kwargs):
+                 metadata=None, all_pvs=None,
+                 timeout=DEFAULT_TIMEOUT,
+                 connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+                 read_retries=DEFAULT_READ_RETRIES,
+                 **kwargs):
         self._metadata_lock = threading.RLock()
         self._read_pv = None
         self._read_pvname = read_pv
@@ -602,6 +622,16 @@ class EpicsSignalBase(Signal):
         self._auto_monitor = auto_monitor
         self._signal_is_ready = threading.Event()
         self._first_connection = True
+
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.__default_connection_timeout
+        self._connection_timeout = connection_timeout
+        if timeout is DEFAULT_TIMEOUT:
+            timeout = self.__default_timeout
+        self._timeout = timeout
+        if read_retries is DEFAULT_READ_RETRIES:
+            read_retries = self.__default_read_retries
+        self._read_retries = read_retries
 
         if name is None:
             name = read_pv
@@ -638,6 +668,79 @@ class EpicsSignalBase(Signal):
             connection_callback=self._pv_connected,
             access_callback=self._pv_access_callback)
         self._read_pv._reference_count += 1
+
+        if not self.__any_instantiated:
+            self.log.debug("This is the first instance of EpicsSignalBase. "
+                           "name={self.name}, id={id(self)}")
+            self.__mark_as_instantiated()
+
+    @classmethod
+    def __mark_as_instantiated(cls):
+        "Update state indicated that this class has been instantiated."
+        cls.__any_instantiated = True
+
+    @classmethod
+    def set_default_timeout(cls, *, timeout=2.0, connection_timeout=1.0,
+                            read_retries=0, floor=0.5):
+        """
+        Set the class-wide defaults for timeouts and read retries.
+
+        This may only be called before any instances of EpicsSignalBase are
+        made.
+
+        Parameters
+        ----------
+        timeout: float, optional
+            Total time budget (seconds) for connecting and reading, including
+            all retries.
+        connection_timeout: float, optional
+            Time (seconds) allocated for establishing a connection with the
+            IOC.
+        read_retries: integer, optional
+            Number of retries. The default value is 0, meaning one total
+            read attempt will be made. According to the Channel Access
+            specification, an IOC must respond to a read request, so a
+            well-behaved IOC should never require more than one attempt. But,
+            reportedly, there is a decades-old issue in the EPICS server(s)
+            that causes read requests to sometimes be dropped. Other
+            well-established EPICS clients have chosen to work around this by
+            retrying and hoping for the best. Ophyd provides the ability to
+            *opt in* to this behavior at the user's own risk. It is recommended
+            to investigate the underlying issue causes the IOC to drop
+            requests.
+        floor: float, optional
+            Minimum time per read attempt. Each read attempt will be given
+            ``max(timeout / read_retries, floor)`` seconds to succeed or
+            timeout.
+
+        Raises
+        ------
+        RuntimeError
+            If called after :class:`EpicsSignalBase` has been instantiated for
+            the first time.
+        """
+        if EpicsSignalBase.__any_instantiated:
+            raise RuntimeError(
+                "The method EpicsSignalBase.set_default_timeout may only "
+                "be called before the first instance of EpicsSignalBase is "
+                "created. This is to ensure that all instances are created "
+                "with the same default retry setting in place.")
+        cls.__default_connection_timeout = connection_timeout
+        cls.__default_timeout = timeout
+        cls.__default_read_retries=read_retries
+        cls.__read_attempt_timeout_floor = floor
+
+    @property
+    def connection_timeout(self):
+        return self._connection_timeout
+
+    @property
+    def read_retries(self):
+        return self._read_retries
+
+    @property
+    def timeout(self):
+        return self._timeout
 
     def __getnewargs_ex__(self):
         args, kwargs = super().__getnewargs_ex__()
@@ -810,7 +913,74 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def get(self, *, as_string=None, connection_timeout=1.0, form='time',
+    def _get_with_retries(self, pv, timeout, connection_timeout, retries,
+                          as_string, form):
+        """
+        Utility method implementing a retry loop for get and get_setpoint
+
+        Returns info from pv.read_with_metadata(...) or raises TimeoutError
+        """
+        # Fall back to instance default if no value is given.
+        if timeout is DEFAULT_TIMEOUT:
+            timeout = self.timeout
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.connection_timeout
+        if retries is DEFAULT_READ_RETRIES:
+            retries = self.read_retries
+        retries = int(retries)  # normalize/validate input
+        floor = self.__read_attempt_timeout_floor  # alias for brevity
+        attempts = 1 + retries
+        # Split up our total time budget (timeout) into the max number of
+        # attempts. The max(...) ensures that each attempt is given a
+        # reasonable chance to succeed by never making each one smaller than
+        # `floor`.  The min(...) ensures that, in the edge case where the user
+        # specifically asks for a timeout less than the floor, we respect that.
+        read_timeout = min(timeout, max(timeout / attempts, floor))
+
+        # Retry connecting and reading until either our entire time budget
+        # (timeout) is exhausted or our number of read_retries is reached,
+        # whichever happens first.
+        deadline = time.monotonic() + timeout
+        for attempt in range(attempts):
+            try:
+                # This might raise TimeoutError.
+                self.wait_for_connection(timeout=connection_timeout)
+                # Pyepics returns None when a read request times out.
+                # Raise a TimeoutError on its behalf.
+                info = pv.get_with_metadata(as_string=as_string,
+                                            form=form,
+                                            timeout=read_timeout)
+
+                if info is None:
+                    raise TimeoutError(f"Failed to read {self._read_pvname} "
+                                       f"within {read_timeout} sec")
+            except TimeoutError as err:
+                # This TimeoutError could be due to connection timeout or read
+                # request timeout.
+                if time.monotonic() > deadline or attempt == retries:
+                    # We are out of time or out of attempts (whichever happens
+                    # first). Give up.
+                    # Notice that both errors will be shown in the traceback:
+                    # the immediate cause of this failure and a more general
+                    # message specifying how long / how many attempts we made.
+                    raise TimeoutError(
+                        f"Failed to read {self._read_pvname} "
+                        f"after {attempt} attempts over "
+                        f"{timeout} sec") from err
+                else:
+                    self.log.warning(
+                        "Reading PV %s timed out. Retrying....",
+                        self._read_pvname)
+                    # Continue through the retry loop.
+            else:
+                # Success.
+                return info
+
+    def get(self, *, as_string=None,
+            timeout=DEFAULT_TIMEOUT,
+            connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+            retries=DEFAULT_READ_RETRIES,
+            form='time',
             **kwargs):
         '''Get the readback value through an explicit call to EPICS
 
@@ -832,20 +1002,18 @@ class EpicsSignalBase(Signal):
         connection_timeout : float, optional
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
+        retries : integer, optional
+            Number of times to retry if the first attempt raises a
+            TimeoutError.
         form : {'time', 'ctrl'}
             PV form to request
         '''
         if as_string is None:
             as_string = self._string
 
-        self.wait_for_connection(timeout=connection_timeout)
-        info = self._read_pv.get_with_metadata(as_string=as_string, form=form,
-                                               **kwargs)
-
-        if info is None:
-            timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._read_pvname} within '
-                               f'{timeout} sec')
+        info = self._get_with_retries(
+            self._read_pv, timeout, connection_timeout, retries,
+            as_string, form)
 
         value = info.pop('value')
         if as_string:
@@ -1170,7 +1338,10 @@ class EpicsSignal(EpicsSignalBase):
             raise LimitError('Value {} outside of range: [{}, {}]'
                              .format(value, low_limit, high_limit))
 
-    def get_setpoint(self, *, as_string=None, connection_timeout=1.0,
+    def get_setpoint(self, *, as_string=None,
+                     timeout=DEFAULT_TIMEOUT,
+                     connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+                     retries=DEFAULT_READ_RETRIES,
                      form='time', **kwargs):
         '''Get the setpoint value (if setpoint PV and readback PV differ)
 
@@ -1192,20 +1363,18 @@ class EpicsSignal(EpicsSignalBase):
         connection_timeout : float, optional
             If not already connected, allow up to `connection_timeout` seconds
             for the connection to complete.
+        retries : integer, optional
+            Number of times to retry if the first attempt raises a
+            TimeoutError.
         form : {'time', 'ctrl'}
             PV form to request
         '''
         if as_string is None:
             as_string = self._string
 
-        self.wait_for_connection(timeout=connection_timeout)
-        info = self._write_pv.get_with_metadata(as_string=as_string, form=form,
-                                                **kwargs)
-
-        if info is None:
-            timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._setpoint_pvname} within '
-                               f'{timeout} sec')
+        info = self._get_with_retries(
+            self._write_pv, timeout, connection_timeout, retries,
+            as_string, form)
 
         value = info.pop('value')
         if as_string:
@@ -1287,7 +1456,9 @@ class EpicsSignal(EpicsSignalBase):
                        severity=self._metadata['setpoint_severity'],
                        )
 
-    def put(self, value, force=False, connection_timeout=1.0, callback=None,
+    def put(self, value, force=False,
+            connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+            callback=None,
             use_complete=None, **kwargs):
         '''Using channel access, set the write PV to `value`.
 
@@ -1310,6 +1481,8 @@ class EpicsSignal(EpicsSignalBase):
         if not force:
             self.check_value(value)
 
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.connection_timeout
         self.wait_for_connection(timeout=connection_timeout)
         if use_complete is None:
             use_complete = self._put_complete
