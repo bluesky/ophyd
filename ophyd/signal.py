@@ -1,5 +1,4 @@
 # vi: ts=4 sw=4
-import logging
 import time
 import threading
 import warnings
@@ -14,8 +13,7 @@ from .utils.epics_pvs import (waveform_to_string,
 from .ophydobj import OphydObject, Kind
 from .status import Status
 from . import get_cl
-
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 # Sentinels used for default values
@@ -171,6 +169,7 @@ class Signal(OphydObject):
 
     def get(self, **kwargs):
         '''The readback value'''
+        logger.info('%s get() returning ', self, self._readback)
         return self._readback
 
     def put(self, value, *, timestamp=None, force=False, metadata=None,
@@ -227,6 +226,7 @@ class Signal(OphydObject):
         if 'timestamp' not in self._metadata_keys:
             md_for_callback['timestamp'] = timestamp
 
+        logger.info('%s put(value=%s, timestamp=%s, force=%s, metadata=%s)', self, value, timestamp, force, metadata)
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, **md_for_callback)
 
@@ -239,6 +239,8 @@ class Signal(OphydObject):
             This status object will be finished upon return in the
             case of basic soft Signals
         '''
+        logger.info('%s set(value=%s, timeout=%s, settle_time=%s)', self, value, timeout, settle_time)
+
         def set_thread():
             try:
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
@@ -274,18 +276,22 @@ class Signal(OphydObject):
         self._set_thread = self.cl.thread_class(target=set_thread)
         self._set_thread.daemon = True
         self._set_thread.start()
+        logger.debug('%s set() returning %s', self, self._status)
         return self._status
 
     @property
     def value(self):
         '''The signal's value'''
         if self._readback is not None:
-            return self._readback
-
-        return self.get()
+            val = self._readback
+        else:
+            val = self.get()
+        logger.info('%s value returning %s', self, val)
+        return val
 
     @value.setter
     def value(self, value):
+        logger.info('setting %s value to %s', self, value)
         self.put(value)
 
     @raise_if_disconnected
@@ -393,6 +399,7 @@ class Signal(OphydObject):
         Clears all subscriptions on this Signal.  Once destroyed, the signal
         may no longer be used.
         '''
+        logger.info('%s destroy()', self)
         self._destroyed = True
         super().destroy()
 
