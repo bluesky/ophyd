@@ -930,17 +930,26 @@ class EpicsSignalBase(Signal):
         retries = int(retries)  # normalize/validate input
         floor = self.__read_attempt_timeout_floor  # alias for brevity
         attempts = 1 + retries
-        # Split up our total time budget (timeout) into the max number of
-        # attempts. The max(...) ensures that each attempt is given a
-        # reasonable chance to succeed by never making each one smaller than
-        # `floor`.  The min(...) ensures that, in the edge case where the user
-        # specifically asks for a timeout less than the floor, we respect that.
-        read_timeout = min(timeout, max(timeout / attempts, floor))
+        if timeout is None:
+            # The user has told us to wait forever. How shall we divide
+            # "forever" up into retries? Let us choose 100X the floor timeout
+            # per read.  This is a pretty weird edge case not worth worry about
+            # much: users really shouldn't ask us to wait forever.
+            read_timeout = floor * 100
+            deadline = None
+        else:
+            # Split up our total time budget (timeout) into the max number of
+            # attempts. The max(...) ensures that each attempt is given a
+            # reasonable chance to succeed by never making each one smaller
+            # than `floor`.  The min(...) ensures that, in the edge case where
+            # the user specifically asks for a timeout less than the floor, we
+            # respect that.
+            read_timeout = min(timeout, max(timeout / attempts, floor))
+            deadline = time.monotonic() + timeout
 
         # Retry connecting and reading until either our entire time budget
         # (timeout) is exhausted or our number of read_retries is reached,
         # whichever happens first.
-        deadline = time.monotonic() + timeout
         err = None
         for attempt in range(attempts):
             try:
@@ -959,7 +968,7 @@ class EpicsSignalBase(Signal):
                 err = err_
                 # This TimeoutError could be due to connection timeout or read
                 # request timeout.
-                if time.monotonic() > deadline:
+                if deadline is not None and time.monotonic() > deadline:
                     # We are out of time. Give up.
                     # Notice that both errors will be shown in the traceback:
                     # the immediate cause of this failure and a more general
