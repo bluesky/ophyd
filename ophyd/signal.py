@@ -941,6 +941,7 @@ class EpicsSignalBase(Signal):
         # (timeout) is exhausted or our number of read_retries is reached,
         # whichever happens first.
         deadline = time.monotonic() + timeout
+        err = None
         for attempt in range(attempts):
             try:
                 # This might raise TimeoutError.
@@ -953,28 +954,38 @@ class EpicsSignalBase(Signal):
 
                 if info is None:
                     raise TimeoutError(f"Failed to read {self._read_pvname} "
-                                       f"within {read_timeout} sec")
-            except TimeoutError as err:
+                                       f"within {read_timeout:.2} sec")
+            except TimeoutError as err_:
+                err = err_
                 # This TimeoutError could be due to connection timeout or read
                 # request timeout.
-                if time.monotonic() > deadline or attempt == retries:
-                    # We are out of time or out of attempts (whichever happens
-                    # first). Give up.
+                if time.monotonic() > deadline:
+                    # We are out of time. Give up.
                     # Notice that both errors will be shown in the traceback:
                     # the immediate cause of this failure and a more general
-                    # message specifying how long / how many attempts we made.
+                    # message specifying how long we tried.
                     raise TimeoutError(
-                        f"Failed to read {self._read_pvname} "
-                        f"after {attempt} attempts over "
-                        f"{timeout} sec") from err
-                else:
+                        f"Failed to read {self._read_pvname} in "
+                        f"{timeout:.2} sec. {attempt + 1} attempt(s) were made. "
+                        f"Giving up because timeout has been reached.") from err
+                elif attempt + 1 < attempts:
+                    # We are about to continue through the retry loop.
                     self.log.warning(
-                        "Reading PV %s timed out. Retrying....",
-                        self._read_pvname)
-                    # Continue through the retry loop.
+                        "Attempt %d/%d to read PV %s timed out "
+                        "in %.2f sec. Retrying....",
+                        attempt + 1,
+                        attempts,
+                        self._read_pvname,
+                        read_timeout)
             else:
                 # Success.
                 return info
+        else:
+            # We have run out of attempts. Give up.
+            raise TimeoutError(
+                f"Failed to read {self._read_pvname} "
+                f"after {attempt} attempt(s). "
+                f"Giving up because max retries were reached.") from err
 
     def get(self, *, as_string=None,
             timeout=DEFAULT_TIMEOUT,
