@@ -672,10 +672,10 @@ class EpicsSignalBase(Signal):
         if not self.__any_instantiated:
             self.log.debug("This is the first instance of EpicsSignalBase. "
                            "name={self.name}, id={id(self)}")
-            self.__mark_as_instantiated()
+            EpicsSignalBase._mark_as_instantiated()
 
     @classmethod
-    def __mark_as_instantiated(cls):
+    def _mark_as_instantiated(cls):
         "Update state indicated that this class has been instantiated."
         cls.__any_instantiated = True
 
