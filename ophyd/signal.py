@@ -968,7 +968,7 @@ class EpicsSignalBase(Signal):
                     self.wait_for_connection(timeout=connection_timeout)
                 except TimeoutError:
                     raise ConnectionTimeoutError(
-                        f"Failed to connect to {self._read_pvname} "
+                        f"Failed to connect to {pv.pvname} "
                         f"within {connection_timeout:.2} sec")
                 # Pyepics returns None when a read request times out.
                 # Raise a TimeoutError on its behalf.
@@ -978,7 +978,7 @@ class EpicsSignalBase(Signal):
 
                 if info is None:
                     raise ReadTimeoutError(
-                        f"Failed to read {self._read_pvname} "
+                        f"Failed to read {pv.pvname} "
                         f"within {read_timeout:.2} sec")
             except TimeoutError as err_:
                 err = err_
@@ -990,7 +990,7 @@ class EpicsSignalBase(Signal):
                     # the immediate cause of this failure and a more general
                     # message specifying how long we tried.
                     raise TimeoutError(
-                        f"Failed to read {self._read_pvname} in "
+                        f"Failed to read {pv.pvname} in "
                         f"{timeout:.2} sec. {attempt + 1} attempt(s) were made. "
                         f"Giving up because timeout has been reached.") from err
                 elif attempt + 1 < attempts:
@@ -1001,7 +1001,7 @@ class EpicsSignalBase(Signal):
                             "in %.2f sec. Retrying....",
                             attempt + 1,
                             attempts,
-                            self._read_pvname,
+                            pv.pvname,
                             connection_timeout)
                     elif isinstance(err, ReadTimeoutError):
                         self.log.warning(
@@ -1009,7 +1009,7 @@ class EpicsSignalBase(Signal):
                             "in %.2f sec. Retrying....",
                             attempt + 1,
                             attempts,
-                            self._read_pvname,
+                            pv.pvname,
                             read_timeout)
                     else:
                         assert False, "Unexpected error type"
@@ -1020,7 +1020,7 @@ class EpicsSignalBase(Signal):
             # We have run out of attempts. Give up.
             elapsed = time.monotonic() - start_time
             raise TimeoutError(
-                f"Failed to read {self._read_pvname} "
+                f"Failed to read {pv.pvname} "
                 f"after {attempt} attempt(s) taking place over about "
                 f"{elapsed:.2} seconds in total. "
                 f"Giving up because max retries were reached.") from err
