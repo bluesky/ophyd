@@ -940,10 +940,9 @@ class EpicsSignalBase(Signal):
         attempts = 1 + retries
         start_time = time.monotonic()
         if timeout is None:
-            # The user has told us to wait forever. How shall we divide
-            # "forever" up into retries? Let us choose 100X the floor timeout
-            # per read.  This is a pretty weird edge case not worth worry about
-            # much: users really shouldn't ask us to wait forever.
+            # The user has told us to go until we run out of retires, with no
+            # overall time limit. How shall we divide "unlimited time" up into
+            # retries? Let us choose 100X the floor timeout per read.
             read_timeout = floor * 100
             deadline = None
         else:
