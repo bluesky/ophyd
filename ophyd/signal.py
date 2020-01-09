@@ -1003,7 +1003,7 @@ class EpicsSignalBase(Signal):
                             attempts,
                             pv.pvname,
                             connection_timeout)
-                    elif isinstance(err, ReadTimeoutError):
+                    else:
                         self.log.warning(
                             "Attempt %d/%d to read PV %s timed out "
                             "in %.2f sec. Retrying....",
@@ -1011,8 +1011,6 @@ class EpicsSignalBase(Signal):
                             attempts,
                             pv.pvname,
                             read_timeout)
-                    else:
-                        assert False, "Unexpected error type"
             else:
                 # Success.
                 return info
