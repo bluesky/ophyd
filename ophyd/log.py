@@ -132,7 +132,7 @@ color_log_format = ("%(color)s[%(levelname)1.1s %(asctime)s.%(msecs)03d "
 
 def validate_level(level) -> int:
     """
-    Return aN int for level comparison
+    Return an int for level comparison
     """
     if isinstance(level, int):
         levelno = level
