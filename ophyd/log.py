@@ -151,11 +151,16 @@ logger = logging.getLogger('ophyd')
 current_handler = None  # overwritten below
 
 
-def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level='WARNING'):
+def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level='INFO', backupCount=4):
     """
     Set a new handler on the ``logging.getLogger('ophyd')`` logger.
     If this is called more than once, the handler from the previous invocation
     is removed (if still present) and replaced.
+
+    If a file path is specified a TimedRotatingLogHandler will be used. It will be
+    configured so that a new log file starts every Monday and 4 log files are kept.
+    Log files older than 4 weeks will be deleted.
+
     Parameters
     ----------
     file : object with ``write`` method or filename string
@@ -166,7 +171,9 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
         Use ANSI color codes. True by default.
     level : str or int
         Python logging level, given as string or corresponding integer.
-        Default is 'WARNING'.
+        Default is 'INFO'.
+    backupCount : int
+        Number of historical log files to keep. Default is 4.
     Returns
     -------
     handler : logging.Handler
@@ -180,8 +187,8 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
     >>> config_ophyd_logging(datefmt="%Y-%m-%d %H:%M:%S")
     Turn off ANSI color codes.
     >>> config_ophyd_logging(color=False)
-    Increase verbosity: show level INFO or higher.
-    >>> config_ophyd_logging(level='INFO')
+    Increase verbosity: show level DEBUG or higher.
+    >>> config_ophyd_logging(level='DEBUG')
     """
     global current_handler
     if isinstance(file, str):
@@ -208,9 +215,11 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
         logger.setLevel(levelno)
     return handler
 
+
 # Add a handler with the default parameters at import time.
 config_ophyd_logging()
 set_handler = config_ophyd_logging  # for back-compat
+
 
 def get_handler():
     """
