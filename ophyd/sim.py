@@ -189,12 +189,12 @@ class SynSignalRO(SynSignal):
             connected=True,)
 
     def put(self, value, *, timestamp=None, force=False):
-        msg = "put(value={}) called on {}.".format(self)
+        msg = f"{self}.put(value={value}, timestamp={timestamp}, force={force})"
         logger.error(msg)
         raise ReadOnlyError(msg)
 
     def set(self, value, *, timestamp=None, force=False):
-        msg = "{} is readonly.".format(self)
+        msg = f"{self} is readonly"
         logger.error(msg)
         raise ReadOnlyError(msg)
 
