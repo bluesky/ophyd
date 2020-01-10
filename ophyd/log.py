@@ -2,6 +2,7 @@
 # Apache 2.0. See other_licenses/ in the repository directory.
 
 import logging
+import logging.handlers
 import sys
 try:
     import colorama
@@ -184,7 +185,11 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
     """
     global current_handler
     if isinstance(file, str):
-        handler = logging.FileHandler(file)
+        handler = logging.handlers.TimedRotatingFileHandler(
+            filename=file,
+            when="W0",                 # rollover every Monday
+            backupCount=backupCount,   # keep the most recent 4 log files
+        )
     else:
         handler = logging.StreamHandler(file)
     levelno = validate_level(level)
