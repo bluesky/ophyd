@@ -1,14 +1,11 @@
+from enum import IntFlag
 import functools
 from itertools import count
+from logging import LoggerAdapter
+import time
 import weakref
 
-import time
-import logging
-
-from enum import IntFlag
-
-
-module_logger = logging.getLogger(__name__)
+from .log import logger
 
 
 def select_version(cls, version):
@@ -102,6 +99,14 @@ def register_instances_in_weakset(fail_if_late=False):
     return weak_set
 
 
+class OphydObjectLoggerAdapter(LoggerAdapter):
+    """
+    A LoggerAdapter for use by OphydObject.
+    """
+    def process(self, msg, kwargs):
+        return f"[{self.extra['name']}] {msg}", kwargs
+
+
 class OphydObject:
     '''The base class for all objects in Ophyd
 
@@ -180,12 +185,10 @@ class OphydObject:
         else:
             base_log = self.__class__.__module__
             name = self.name
-        # Instantiate logger
-        self.log = logging.getLogger(base_log + '.' + name)
+        self.log = OphydObjectLoggerAdapter(logger, {'base_log': base_log, 'name': name})
 
         if not self.__any_instantiated:
-            self.log.debug("This is the first instance of OphydObject. "
-                           "name={self.name}, id={id(self)}")
+            self.log.info("first instance of OphydObject: id=%s", id(self))
             OphydObject._mark_as_instantiated()
         self.__register_instance(self)
 
