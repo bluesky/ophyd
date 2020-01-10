@@ -57,6 +57,8 @@ class StatusBase:
         self.success = success
         self.timeout = None
 
+        self.log = StatusBaseLoggerAdapter(logger=logger, extra={'status': self})
+
         if settle_time is None:
             settle_time = 0.0
 
@@ -75,8 +77,6 @@ class StatusBase:
                                       daemon=True, name=self._tname)
             self._timeout_thread = thread
             self._timeout_thread.start()
-
-        self.log = StatusBaseLoggerAdapter(logger=logger, extra={'status': self})
 
     @property
     def done(self):
