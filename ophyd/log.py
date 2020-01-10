@@ -14,7 +14,7 @@ try:
 except ImportError:
     curses = None
 
-__all__ = ('config_ophyd_logging', 'get_handler', 'set_handler',)
+__all__ = ('config_ophyd_logging', 'get_handler', 'logger', 'set_handler',)
 
 
 def _stderr_supports_color():
