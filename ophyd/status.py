@@ -168,7 +168,7 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
-        self.log.info('finished', success)
+        self.log.info('finished')
         if self.done:
             return
 
