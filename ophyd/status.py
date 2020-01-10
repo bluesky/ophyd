@@ -1,14 +1,13 @@
 from collections import deque
-import time
-from threading import RLock
 from functools import wraps
+from logging import LoggerAdapter
+import threading
+import time
 from warnings import warn
 
-import logging
-import threading
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class UseNewProperty(RuntimeError):
@@ -24,6 +23,14 @@ def _locked(func):
             return func(self, *args, **kwargs)
 
     return f
+
+
+class StatusBaseLoggerAdapter(LoggerAdapter):
+    """
+    A LoggerAdapter for use by StatusBase and derived classes.
+    """
+    def process(self, msg, kwargs):
+        return f"[{str(self.extra['status'])}] {msg}", kwargs
 
 
 class StatusBase:
@@ -44,7 +51,7 @@ class StatusBase:
                  success=False):
         super().__init__()
         self._tname = None
-        self._lock = RLock()
+        self._lock = threading.RLock()
         self._callbacks = deque()
         self._done = done
         self.success = success
@@ -68,6 +75,8 @@ class StatusBase:
                                       daemon=True, name=self._tname)
             self._timeout_thread = thread
             self._timeout_thread.start()
+
+        self.log = StatusBaseLoggerAdapter(logger=logger, extra={'status': self})
 
     @property
     def done(self):
@@ -108,7 +117,7 @@ class StatusBase:
                 if self.done:
                     # Avoid race condition with settling.
                     return
-                logger.debug('Status object %s timed out', str(self))
+                self.log.warning('timeout after %d seconds', timeout)
                 try:
                     self._handle_failure()
                 finally:
@@ -159,6 +168,7 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
+        self.log.info('finished', success)
         if self.done:
             return
 
