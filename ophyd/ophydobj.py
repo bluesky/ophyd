@@ -272,8 +272,10 @@ class OphydObject:
                 )
 
         if versions is not None and version in versions:
-            module_logger.warning('Redefining %r version %s: old=%r new=%r',
-                                  version_of, version, versions[version], cls)
+            logger.warning(
+                'Redefining %r version %s: old=%r new=%r',
+                version_of, version, versions[version], cls
+            )
 
         versions[version] = cls
 
