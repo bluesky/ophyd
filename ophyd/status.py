@@ -477,7 +477,7 @@ class MoveStatus(DeviceStatus):
         initial = self.start_pos
         time_elapsed = time.time() - self.start_ts
         try:
-            fraction = abs(target - current) / abs(initial - target)
+            fraction = np.clip(abs(target - current) / abs(initial - target), 0, 1)
         # maybe we can't do math?
         except (TypeError, ZeroDivisionError):
             fraction = None
