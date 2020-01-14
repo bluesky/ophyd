@@ -927,12 +927,12 @@ class EpicsSignalBase(Signal):
                 f"within {connection_timeout:.2} sec") from err
         # Pyepics returns None when a read request times out.  Raise a
         # TimeoutError on its behalf.
-        self.log.info(
+        self.control_layer_log.info(
             'pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)',
             pv.pvname, as_string, form, timeout
         )
         info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
-        self.log.info('pv[%s].get_with_metadata(...) returned', pv.name)
+        self.control_layer_log.info('pv[%s].get_with_metadata(...) returned', pv.name)
 
         if info is None:
             raise ReadTimeoutError(
@@ -1445,7 +1445,7 @@ class EpicsSignal(EpicsSignalBase):
         if not self.write_access:
             raise ReadOnlyError('No write access to underlying EPICS PV')
 
-        self.log.info(
+        self.control_layer_log.info(
             '_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)',
             value, use_complete, callback, kwargs
         )
