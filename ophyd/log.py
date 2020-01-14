@@ -4,8 +4,10 @@
 import logging
 import logging.handlers
 import sys
+
 try:
     import colorama
+
     colorama.init()
 except ImportError:
     colorama = None
@@ -14,18 +16,26 @@ try:
 except ImportError:
     curses = None
 
-__all__ = ('config_ophyd_logging', 'get_handler', 'logger', 'set_handler',)
+__all__ = (
+    "config_ophyd_logging",
+    "get_handler",
+    "logger",
+    "control_layer_logger",
+    "set_handler",
+)
 
 
 def _stderr_supports_color():
     try:
-        if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
+        if hasattr(sys.stderr, "isatty") and sys.stderr.isatty():
             if curses:
                 curses.setupterm()
                 if curses.tigetnum("colors") > 0:
                     return True
             elif colorama:
-                if sys.stderr is getattr(colorama.initialise, 'wrapped_stderr', object()):
+                if sys.stderr is getattr(
+                    colorama.initialise, "wrapped_stderr", object()
+                ):
                     return True
     except Exception:
         # Very broad exception handling because it's always better to
@@ -52,9 +62,9 @@ class LogFormatter(logging.Formatter):
        Added support for ``colorama``. Changed the constructor
        signature to be compatible with `logging.config.dictConfig`.
     """
-    DEFAULT_FORMAT = \
-        '%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s %(message)s'
-    DEFAULT_DATE_FORMAT = '%y%m%d %H:%M:%S'
+
+    DEFAULT_FORMAT = "%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s %(message)s"
+    DEFAULT_DATE_FORMAT = "%y%m%d %H:%M:%S"
     DEFAULT_COLORS = {
         logging.DEBUG: 4,  # Blue
         logging.INFO: 2,  # Green
@@ -62,8 +72,14 @@ class LogFormatter(logging.Formatter):
         logging.ERROR: 1,  # Red
     }
 
-    def __init__(self, fmt=DEFAULT_FORMAT, datefmt=DEFAULT_DATE_FORMAT,
-                 style='%', color=True, colors=DEFAULT_COLORS):
+    def __init__(
+        self,
+        fmt=DEFAULT_FORMAT,
+        datefmt=DEFAULT_DATE_FORMAT,
+        style="%",
+        color=True,
+        colors=DEFAULT_COLORS,
+    ):
         r"""
         :arg bool color: Enables color support.
         :arg str fmt: Log message format.
@@ -90,8 +106,7 @@ class LogFormatter(logging.Formatter):
                 # works with unicode strings.  The explicit calls to
                 # unicode() below are harmless in python2 but will do the
                 # right conversion in python 3.
-                fg_color = (curses.tigetstr("setaf") or
-                            curses.tigetstr("setf") or "")
+                fg_color = curses.tigetstr("setaf") or curses.tigetstr("setf") or ""
 
                 for levelno, code in colors.items():
                     self._colors[levelno] = str(curses.tparm(fg_color, code), "ascii")
@@ -100,10 +115,10 @@ class LogFormatter(logging.Formatter):
                 # If curses is not present (currently we'll only get here for
                 # colorama on windows), assume hard-coded ANSI color codes.
                 for levelno, code in colors.items():
-                    self._colors[levelno] = '\033[2;3%dm' % code
-                self._normal = '\033[0m'
+                    self._colors[levelno] = "\033[2;3%dm" % code
+                self._normal = "\033[0m"
         else:
-            self._normal = ''
+            self._normal = ""
 
     def format(self, record):
         record.message = record.getMessage()
@@ -113,21 +128,25 @@ class LogFormatter(logging.Formatter):
             record.color = self._colors[record.levelno]
             record.end_color = self._normal
         except KeyError:
-            record.color = ''
-            record.end_color = ''
+            record.color = ""
+            record.end_color = ""
 
         formatted = self._fmt % record.__dict__
 
         if record.exc_info and not record.exc_text:
             record.exc_text = self.formatException(record.exc_info)
         if record.exc_text:
-            formatted = '{}\n{}'.format(formatted.rstrip(), record.exc_text)
+            formatted = "{}\n{}".format(formatted.rstrip(), record.exc_text)
         return formatted.replace("\n", "\n    ")
 
 
-plain_log_format = "[%(levelname)1.1s %(asctime)s.%(msecs)03d %(module)s:%(lineno)d] %(message)s"
-color_log_format = ("%(color)s[%(levelname)1.1s %(asctime)s.%(msecs)03d "
-                    "%(module)s:%(lineno)d]%(end_color)s %(message)s")
+plain_log_format = (
+    "[%(levelname)1.1s %(asctime)s.%(msecs)03d %(module)s:%(lineno)d] %(message)s"
+)
+color_log_format = (
+    "%(color)s[%(levelname)1.1s %(asctime)s.%(msecs)03d "
+    "%(module)s:%(lineno)d]%(end_color)s %(message)s"
+)
 
 
 def validate_level(level) -> int:
@@ -142,16 +161,22 @@ def validate_level(level) -> int:
     if isinstance(levelno, int):
         return levelno
     else:
-        raise ValueError("Your level is illegal, please use 'ERROR', 'WARNING', 'INFO', 'DEBUG', OR 'TRACE'.")
+        raise ValueError(
+            "Your level is illegal, please use "
+            "'ERROR', 'WARNING', 'INFO', 'DEBUG', OR 'TRACE'."
+        )
 
 
-logger = logging.getLogger('ophyd')
+logger = logging.getLogger("ophyd")
+control_layer_logger = logging.getLogger("ophyd_control_layer")
 
 
 current_handler = None  # overwritten below
 
 
-def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level='INFO', backupCount=4):
+def config_ophyd_logging(
+    file=sys.stdout, datefmt="%H:%M:%S", color=True, level="INFO", backupCount=4
+):
     """
     Set a new handler on the ``logging.getLogger('ophyd')`` logger.
     If this is called more than once, the handler from the previous invocation
@@ -194,8 +219,8 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
     if isinstance(file, str):
         handler = logging.handlers.TimedRotatingFileHandler(
             filename=file,
-            when="W0",                 # rollover every Monday
-            backupCount=backupCount,   # keep the most recent 4 log files
+            when="W0",  # roll over every Monday
+            backupCount=backupCount,  # keep the most recent "backupCount" log files
         )
     else:
         handler = logging.StreamHandler(file)
@@ -205,14 +230,23 @@ def config_ophyd_logging(file=sys.stdout, datefmt='%H:%M:%S', color=True, level=
         log_format = color_log_format
     else:
         log_format = plain_log_format
-    handler.setFormatter(
-        LogFormatter(log_format, datefmt=datefmt))
+    handler.setFormatter(LogFormatter(log_format, datefmt=datefmt))
+
     if current_handler in logger.handlers:
         logger.removeHandler(current_handler)
     logger.addHandler(handler)
+
+    if current_handler in control_layer_logger.handlers:
+        control_layer_logger.removeHandler(current_handler)
+    control_layer_logger.addHandler(handler)
     current_handler = handler
+
     if logger.getEffectiveLevel() > levelno:
         logger.setLevel(levelno)
+
+    if control_layer_logger.getEffectiveLevel() > levelno:
+        control_layer_logger.setLevel(levelno)
+
     return handler
 
 
