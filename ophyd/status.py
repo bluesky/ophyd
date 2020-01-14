@@ -168,8 +168,8 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
-        self.log.info('finished')
         if self.done:
+            self.log.info('finished')
             return
 
         if success and self.settle_time > 0:
