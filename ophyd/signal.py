@@ -18,6 +18,19 @@ from . import get_cl
 logger = logging.getLogger(__name__)
 
 
+# Sentinels used for default values
+DEFAULT_CONNECTION_TIMEOUT = object()
+DEFAULT_TIMEOUT = object()
+
+
+class ReadTimeoutError(TimeoutError):
+    ...
+
+
+class ConnectionTimeoutError(TimeoutError):
+    ...
+
+
 class Signal(OphydObject):
     r'''A signal, which can have a read-write or read-only value.
 
@@ -574,6 +587,14 @@ class EpicsSignalBase(Signal):
     string : bool, optional
         Attempt to cast the EPICS PV value to a string by default
     '''
+    # This is set to True when the first instance is made. It is used to ensure
+    # that certain class-global settings can only be made before any
+    # instantiation.
+    __any_instantiated = False
+
+    # See set_default_timeout for more on these.
+    __default_connection_timeout = 1.0
+    __default_timeout = 2.0
 
     _read_pv_metadata_key_map = dict(
         status=('status', AlarmStatus),
@@ -594,7 +615,10 @@ class EpicsSignalBase(Signal):
                       )
 
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
-                 metadata=None, all_pvs=None, **kwargs):
+                 metadata=None, all_pvs=None,
+                 timeout=DEFAULT_TIMEOUT,
+                 connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+                 **kwargs):
         self._metadata_lock = threading.RLock()
         self._read_pv = None
         self._read_pvname = read_pv
@@ -602,6 +626,13 @@ class EpicsSignalBase(Signal):
         self._auto_monitor = auto_monitor
         self._signal_is_ready = threading.Event()
         self._first_connection = True
+
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.__default_connection_timeout
+        self._connection_timeout = connection_timeout
+        if timeout is DEFAULT_TIMEOUT:
+            timeout = self.__default_timeout
+        self._timeout = timeout
 
         if name is None:
             name = read_pv
@@ -638,6 +669,55 @@ class EpicsSignalBase(Signal):
             connection_callback=self._pv_connected,
             access_callback=self._pv_access_callback)
         self._read_pv._reference_count += 1
+
+        if not self.__any_instantiated:
+            self.log.debug("This is the first instance of EpicsSignalBase. "
+                           "name={self.name}, id={id(self)}")
+            EpicsSignalBase._mark_as_instantiated()
+
+    @classmethod
+    def _mark_as_instantiated(cls):
+        "Update state indicated that this class has been instantiated."
+        cls.__any_instantiated = True
+
+    @classmethod
+    def set_default_timeout(cls, *, timeout=2.0, connection_timeout=1.0):
+        """
+        Set the class-wide defaults for timeouts
+
+        This may only be called before any instances of EpicsSignalBase are
+        made.
+
+        Parameters
+        ----------
+        timeout: float, optional
+            Total time budget (seconds) for reading, not including connection time.
+        connection_timeout: float, optional
+            Time (seconds) allocated for establishing a connection with the
+            IOC.
+
+        Raises
+        ------
+        RuntimeError
+            If called after :class:`EpicsSignalBase` has been instantiated for
+            the first time.
+        """
+        if EpicsSignalBase.__any_instantiated:
+            raise RuntimeError(
+                "The method EpicsSignalBase.set_default_timeout may only "
+                "be called before the first instance of EpicsSignalBase is "
+                "created. This is to ensure that all instances are created "
+                "with the same default retry setting in place.")
+        cls.__default_connection_timeout = connection_timeout
+        cls.__default_timeout = timeout
+
+    @property
+    def connection_timeout(self):
+        return self._connection_timeout
+
+    @property
+    def timeout(self):
+        return self._timeout
 
     def __getnewargs_ex__(self):
         args, kwargs = super().__getnewargs_ex__()
@@ -810,7 +890,42 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def get(self, *, as_string=None, connection_timeout=1.0, form='time',
+    def _get_with_timeout(self, pv, timeout, connection_timeout, as_string, form):
+        """
+        Utility method implementing a retry loop for get and get_setpoint
+
+        Returns info from pv.read_with_metadata(...) or raises TimeoutError
+        """
+        # Fall back to instance default if no value is given.
+        if timeout is DEFAULT_TIMEOUT:
+            timeout = self.timeout
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.connection_timeout
+
+        if connection_timeout is not None:
+            connection_timeout = float(connection_timeout)
+
+        try:
+            self.wait_for_connection(timeout=connection_timeout)
+        except TimeoutError as err:
+            raise ConnectionTimeoutError(
+                f"Failed to connect to {pv.pvname} "
+                f"within {connection_timeout:.2} sec") from err
+        # Pyepics returns None when a read request times out.  Raise a
+        # TimeoutError on its behalf.
+        info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
+
+        if info is None:
+            raise ReadTimeoutError(
+                f"Failed to read {pv.pvname} "
+                f"within {timeout:.2} sec")
+
+        return info
+
+    def get(self, *, as_string=None,
+            timeout=DEFAULT_TIMEOUT,
+            connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+            form='time',
             **kwargs):
         '''Get the readback value through an explicit call to EPICS
 
@@ -838,14 +953,8 @@ class EpicsSignalBase(Signal):
         if as_string is None:
             as_string = self._string
 
-        self.wait_for_connection(timeout=connection_timeout)
-        info = self._read_pv.get_with_metadata(as_string=as_string, form=form,
-                                               **kwargs)
-
-        if info is None:
-            timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._read_pvname} within '
-                               f'{timeout} sec')
+        info = self._get_with_timeout(
+            self._read_pv, timeout, connection_timeout, as_string, form)
 
         value = info.pop('value')
         if as_string:
@@ -1170,7 +1279,9 @@ class EpicsSignal(EpicsSignalBase):
             raise LimitError('Value {} outside of range: [{}, {}]'
                              .format(value, low_limit, high_limit))
 
-    def get_setpoint(self, *, as_string=None, connection_timeout=1.0,
+    def get_setpoint(self, *, as_string=None,
+                     timeout=DEFAULT_TIMEOUT,
+                     connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
                      form='time', **kwargs):
         '''Get the setpoint value (if setpoint PV and readback PV differ)
 
@@ -1198,14 +1309,8 @@ class EpicsSignal(EpicsSignalBase):
         if as_string is None:
             as_string = self._string
 
-        self.wait_for_connection(timeout=connection_timeout)
-        info = self._write_pv.get_with_metadata(as_string=as_string, form=form,
-                                                **kwargs)
-
-        if info is None:
-            timeout = kwargs.get('timeout', None)
-            raise TimeoutError(f'Failed to read {self._setpoint_pvname} within '
-                               f'{timeout} sec')
+        info = self._get_with_timeout(
+            self._write_pv, timeout, connection_timeout, as_string, form)
 
         value = info.pop('value')
         if as_string:
@@ -1287,7 +1392,9 @@ class EpicsSignal(EpicsSignalBase):
                        severity=self._metadata['setpoint_severity'],
                        )
 
-    def put(self, value, force=False, connection_timeout=1.0, callback=None,
+    def put(self, value, force=False,
+            connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+            callback=None,
             use_complete=None, **kwargs):
         '''Using channel access, set the write PV to `value`.
 
@@ -1310,6 +1417,8 @@ class EpicsSignal(EpicsSignalBase):
         if not force:
             self.check_value(value)
 
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.connection_timeout
         self.wait_for_connection(timeout=connection_timeout)
         if use_complete is None:
             use_complete = self._put_complete

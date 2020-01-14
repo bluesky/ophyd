@@ -132,8 +132,8 @@ class OphydObject:
     # OphydObject.add_instantiation_callback().
     __instantiation_callbacks = []
     _default_sub = None
-    # This is set to True when the first OphydObj is instiated. This may be of
-    # interest to code that adds something to instantiation_callbacks, which
+    # This is set to True when the first OphydObj is instantiated. This may be
+    # of interest to code that adds something to instantiation_callbacks, which
     # may want to know whether it has already "missed" any instances.
     __any_instantiated = False
 
@@ -186,11 +186,11 @@ class OphydObject:
         if not self.__any_instantiated:
             self.log.debug("This is the first instance of OphydObject. "
                            "name={self.name}, id={id(self)}")
-            self.__mark_as_instantiated()
+            OphydObject._mark_as_instantiated()
         self.__register_instance(self)
 
     @classmethod
-    def __mark_as_instantiated(cls):
+    def _mark_as_instantiated(cls):
         cls.__any_instantiated = True
 
     @classmethod
