@@ -5,7 +5,7 @@ from logging import LoggerAdapter
 import time
 import weakref
 
-from .log import logger
+from .log import control_layer_logger, logger
 
 
 def select_version(cls, version):
@@ -186,6 +186,7 @@ class OphydObject:
             base_log = self.__class__.__module__
             name = self.name
         self.log = OphydObjectLoggerAdapter(logger, {'base_log': base_log, 'name': name})
+        self.control_layer_log = OphydObjectLoggerAdapter(control_layer_logger, {'name': name})
 
         if not self.__any_instantiated:
             self.log.info("first instance of OphydObject: id=%s", id(self))
