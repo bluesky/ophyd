@@ -117,7 +117,7 @@ class StatusBase:
                 if self.done:
                     # Avoid race condition with settling.
                     return
-                self.log.warning('timeout after %d seconds', timeout)
+                self.log.warning('timeout after %.2f seconds', timeout)
                 try:
                     self._handle_failure()
                 finally:
