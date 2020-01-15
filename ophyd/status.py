@@ -25,14 +25,6 @@ def _locked(func):
     return f
 
 
-class StatusBaseLoggerAdapter(LoggerAdapter):
-    """
-    A LoggerAdapter for use by StatusBase and derived classes.
-    """
-    def process(self, msg, kwargs):
-        return f"[{str(self.extra['status'])}] {msg}", kwargs
-
-
 class StatusBase:
     """
     This is a base class that provides a single-slot callback for when the
@@ -57,7 +49,7 @@ class StatusBase:
         self.success = success
         self.timeout = None
 
-        self.log = StatusBaseLoggerAdapter(logger=logger, extra={'status': self})
+        self.log = LoggerAdapter(logger=logger, extra={'status': self})
 
         if settle_time is None:
             settle_time = 0.0
