@@ -121,7 +121,16 @@ class LogFormatter(logging.Formatter):
             self._normal = ""
 
     def format(self, record):
-        record.message = record.getMessage()
+        message = []
+        if hasattr(record, "ophyd_object_name"):
+            message.append(f"[{record.ophyd_object_name}]")
+        elif hasattr(record, "status"):
+            message.append(f"[{record.status}]")
+        else:
+            ...
+
+        message.append(record.getMessage())
+        record.message = " ".join(message)
         record.asctime = self.formatTime(record, self.datefmt)
 
         try:
