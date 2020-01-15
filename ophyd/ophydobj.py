@@ -99,14 +99,6 @@ def register_instances_in_weakset(fail_if_late=False):
     return weak_set
 
 
-class OphydObjectLoggerAdapter(LoggerAdapter):
-    """
-    A LoggerAdapter for use by OphydObject.
-    """
-    def process(self, msg, kwargs):
-        return f"[{self.extra['name']}] {msg}", kwargs
-
-
 class OphydObject:
     '''The base class for all objects in Ophyd
 
@@ -185,8 +177,8 @@ class OphydObject:
         else:
             base_log = self.__class__.__module__
             name = self.name
-        self.log = OphydObjectLoggerAdapter(logger, {'base_log': base_log, 'name': name})
-        self.control_layer_log = OphydObjectLoggerAdapter(control_layer_logger, {'name': name})
+        self.log = LoggerAdapter(logger, {'base_log': base_log, 'ophyd_object_name': name})
+        self.control_layer_log = LoggerAdapter(control_layer_logger, {'ophyd_object_name': name})
 
         if not self.__any_instantiated:
             self.log.info("first instance of OphydObject: id=%s", id(self))
