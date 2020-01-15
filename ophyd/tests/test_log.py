@@ -1,9 +1,12 @@
+import io
 import logging
 import logging.handlers
 
 import pytest
 
 import ophyd.log as log
+from ophyd.ophydobj import OphydObject
+from ophyd.status import Status
 
 
 def test_validate_level():
@@ -43,3 +46,32 @@ def test_config_ophyd_logging():
     assert log.current_handler.formatter.datefmt == datefmt
     assert log.logger.getEffectiveLevel() <= logging.DEBUG
     assert log.control_layer_logger.getEffectiveLevel() <= logging.DEBUG
+
+
+def test_logger_adapter_ophyd_object():
+    log_buffer = io.StringIO()
+    log_stream = logging.StreamHandler(stream=log_buffer)
+    log_stream.setFormatter(log.LogFormatter())
+
+    log.logger.addHandler(log_stream)
+
+    ophyd_object = OphydObject(name="testing")
+    ophyd_object.log.info("here is some info")
+    assert log_buffer.getvalue().endswith("[testing] here is some info\n")
+
+
+def test_logger_adapter_status():
+    log_buffer = io.StringIO()
+    log_stream = logging.StreamHandler(stream=log_buffer)
+    log_stream.setFormatter(log.LogFormatter())
+
+    log.logger.addHandler(log_stream)
+
+    status = Status()
+    status.log.info("here is some info")
+    assert log_buffer.getvalue().endswith(f"[{str(status)}] here is some info\n")
+
+    status.done = True
+    status.success = True
+    status.log.info("here is more info")
+    assert log_buffer.getvalue().endswith(f"[{str(status)}] here is more info\n")
