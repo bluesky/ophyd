@@ -74,8 +74,8 @@ class StatusBase:
         """
         Boolean indicating whether associated operation has completed.
 
-        This be set to True at __init__ time or by calling `_finished()`. Once
-        True, it can be never become False.
+        This is set to True at __init__ time or by calling `_finished()`. Once
+        True, it can never become False.
         """
         return self._done
 
