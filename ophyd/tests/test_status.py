@@ -67,6 +67,23 @@ def test_status_pre():
     assert state['done']
 
 
+def test_direct_done_setting():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb()
+
+    with pytest.raises(RuntimeError):
+        st.done = True  # changing isn't allowed
+    with pytest.warns(UserWarning):
+        st.done = False  # but for now no-ops warn
+
+    st._finished()
+
+    with pytest.raises(RuntimeError):
+        st.done = False  # changing isn't allowed
+    with pytest.warns(UserWarning):
+        st.done = True  # but for now no-ops warn
+
+
 def test_subscription_status():
     # Arbitrary device
     d = Device("Tst:Prefix", name='test')

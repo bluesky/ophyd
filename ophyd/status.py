@@ -46,7 +46,7 @@ class StatusBase:
         self._tname = None
         self._lock = RLock()
         self._callbacks = deque()
-        self.done = done
+        self._done = done
         self.success = success
         self.timeout = None
 
@@ -68,6 +68,32 @@ class StatusBase:
                                       daemon=True, name=self._tname)
             self._timeout_thread = thread
             self._timeout_thread.start()
+
+    @property
+    def done(self):
+        """
+        Boolean indicating whether associated operation has completed.
+
+        This is set to True at __init__ time or by calling `_finished()`. Once
+        True, it can never become False.
+        """
+        return self._done
+
+    @done.setter
+    def done(self, value):
+        # For now, allow this setter to work only if it has no effect.
+        # In a future release, make this property not settable.
+        if bool(self._done) != bool(value):
+            raise RuntimeError(
+                "The done-ness of a status object cannot be changed by "
+                "setting its `done` attribute directly. Call `_finished()`.")
+        warn(
+            "Do not set the `done` attribute of a status object directly. "
+            "It should only be set indirectly by calling `_finished()`. "
+            "Direct setting was never intended to be supported and it will be "
+            "disallowed in a future release of ophyd, causing this code path "
+            "to fail.",
+            UserWarning)
 
     def _wait_and_cleanup(self):
         """Handle timeout"""
@@ -109,7 +135,7 @@ class StatusBase:
                 # We timed out while waiting for the settle time.
                 return
             self.success = success
-            self.done = True
+            self._done = True
             self._settled()
 
             for cb in self._callbacks:
