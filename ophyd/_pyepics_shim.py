@@ -1,6 +1,7 @@
 import atexit
 import ctypes
 import epics
+from distutils.version import LooseVersion
 import queue
 import threading
 import warnings
@@ -19,8 +20,10 @@ _dispatcher = None
 
 
 def get_pv(*args, **kwargs):
-    import epics
-    kwargs.setdefault('context', epics.ca.current_context())
+    if LooseVersion(epics.__version__) < LooseVersion('3.4.0'):
+        # The context kwarg was deprecated in 3.4. See
+        # https://github.com/pyepics/pyepics/commit/1ca46afa5afe285fecd4ea1d12a7eeee0376c773
+        kwargs.setdefault('context', epics.ca.current_context())
     return _get_pv(*args, **kwargs)
 
 
