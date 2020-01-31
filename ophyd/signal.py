@@ -16,6 +16,8 @@ from . import get_cl
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_TIMEOUT = 10  # s
+
 
 class Signal(OphydObject):
     '''A signal, which can have a read-write or read-only value.
@@ -491,7 +493,7 @@ class EpicsSignalBase(Signal):
         with self._lock:
             if not self._read_pv.auto_monitor:
                 # force updating the timestamp when not using auto monitoring
-                self._read_pv.get_timevars()
+                self._read_pv.get_timevars(timeout=_DEFAULT_TIMEOUT)
             return self._read_pv.timestamp
 
     @property
@@ -518,7 +520,7 @@ class EpicsSignalBase(Signal):
         # This overrides the base limits
         with self._lock:
             pv = self._read_pv
-            pv.get_ctrlvars()
+            pv.get_ctrlvars(timeout=_DEFAULT_TIMEOUT)
             return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
     def get(self, *, as_string=None, connection_timeout=1.0, **kwargs):
@@ -553,7 +555,7 @@ class EpicsSignalBase(Signal):
                 if not self._read_pv.wait_for_connection(connection_timeout):
                     raise TimeoutError('Failed to connect to %s' %
                                        self._read_pv.pvname)
-
+            kwargs.setdefault('timeout', _DEFAULT_TIMEOUT)
             ret = self._read_pv.get(as_string=as_string, **kwargs)
 
         if as_string:
@@ -769,7 +771,7 @@ class EpicsSignal(EpicsSignalBase):
         with self._lock:
             if not self._write_pv.auto_monitor:
                 # force updating the timestamp when not using auto monitoring
-                self._write_pv.get_timevars()
+                self._write_pv.get_timevars(timeout=_DEFAULT_TIMEOUT)
             return self._write_pv.timestamp
 
     @property
@@ -816,7 +818,7 @@ class EpicsSignal(EpicsSignalBase):
         # read_pv_limits = super().limits
         with self._lock:
             pv = self._write_pv
-            pv.get_ctrlvars()
+            pv.get_ctrlvars(timeout=_DEFAULT_TIMEOUT)
             return (pv.lower_ctrl_limit, pv.upper_ctrl_limit)
 
     def check_value(self, value):
@@ -849,6 +851,7 @@ class EpicsSignal(EpicsSignalBase):
         Keyword arguments are passed on to epics.PV.get()
         '''
         with self._lock:
+            kwargs.setdefault('timeout', _DEFAULT_TIMEOUT)
             setpoint = self._write_pv.get(**kwargs)
         return self._fix_type(setpoint)
 
