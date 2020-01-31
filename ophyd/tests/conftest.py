@@ -65,10 +65,10 @@ class FakeEpicsPV(object):
         except Exception:
             pass
 
-    def get_timevars(self):
+    def get_timevars(self, timeout=None, warn=None):
         pass
 
-    def get_ctrlvars(self):
+    def get_ctrlvars(self, timeout=None, warn=None):
         pass
 
     @property
@@ -191,8 +191,8 @@ class FakeEpicsPV(object):
     def __repr__(self):
         return '<FakePV %s value=%s>' % (self._pvname, self.value)
 
-    def get(self, as_string=False, use_numpy=False,
-            use_monitor=False):
+    def get(self, count=None, as_string=False, use_numpy=False,
+            timeout=None, with_ctrlvals=False, use_monitor=False):
         if as_string:
 
             if isinstance(self.value, list):
