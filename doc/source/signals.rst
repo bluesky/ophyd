@@ -30,17 +30,17 @@ the leaves. Each one represents a single PV or a read--write pair of PVs.
 :attr:`kind`
 -------------
 
-The :attr:`kind` attribute is the means to identify a signal that is 
-relevant for handling by a callback.  
+The :attr:`kind` attribute is the means to identify a signal that is
+relevant for handling by a callback.
 :attr:`kind` controls whether the signal's parent
 Device will include it in ``read()``, ``read_configuration()``, and/or
-``hints.fields``. 
-The first use of :attr:`kind` is to inform 
-visualization callbacks about the independent and dependent display 
-axes for plotting.  
+``hints.fields``.
+The first use of :attr:`kind` is to inform
+visualization callbacks about the independent and dependent display
+axes for plotting.
 A Component marked as hinted will return a dictionary with that component's fields list.
 
-The :attr:`kind` attribute takes string values of: ``config``, 
+The :attr:`kind` attribute takes string values of: ``config``,
 ``hinted``, ``normal``, and ``omitted``.
 These values are like bit flags, a signal could have multiple values.
 
@@ -64,7 +64,7 @@ or, as a convenient shortcut (eliminates the import)
   camera.stats2.total.kind = 'hinted'
 
 With ophyd v1.2.0 or higher, use :attr:`kind` instead of setting
-the :attr:`hints` attribute of the :class:`~device.Device`.  See 
+the :attr:`hints` attribute of the :class:`~device.Device`.  See
 :ref:`hints_fields` for more details.
 
 .. index:: labels attribute
@@ -73,10 +73,10 @@ the :attr:`hints` attribute of the :class:`~device.Device`.  See
 :attr:`labels`
 --------------
 
-:class:`~signal.Signal` and :class:`~device.Device` now accept 
+:class:`~signal.Signal` and :class:`~device.Device` now accept
 a :attr:`labels` attribute.  The value is a list of text strings
 --- presumed but not (yet) forced to be strings --- which the user can use
-for grouping and displaying available hardware or other ophyd constructs. 
+for grouping and displaying available hardware or other ophyd constructs.
 The labels are accessible via
 an attribute ``_ophyd_labels_``, so named to facilitate duck-typing across
 libraries. For example, the bluesky IPython "magics" use this to identify
@@ -105,26 +105,26 @@ Then in an ipython session:
 
 	In [1]: wa
 	general
-	  Positioner                     Value       Low Limit   High Limit  Offset     
-	  m1                             1.0         -100.0      100.0       0.0        
-	  m2                             0.0         -100.0      100.0       0.0        
+	  Positioner                     Value       Low Limit   High Limit  Offset
+	  m1                             1.0         -100.0      100.0       0.0
+	  m2                             0.0         -100.0      100.0       0.0
 
 	  Local variable name                    Ophyd name (to be recorded as metadata)
-	  m1                                     m1                                    
-	  m2                                     m2                                    
+	  m1                                     m1
+	  m2                                     m2
 
 	rig
-	  Positioner                     Value       Low Limit   High Limit  Offset     
-	  rig_b                          0.0         -100.0      100.0       0.0        
-	  rig_l                          0.0         -100.0      100.0       0.0        
-	  rig_r                          0.0         -100.0      100.0       0.0        
-	  rig_t                          0.0         -100.0      100.0       0.0        
+	  Positioner                     Value       Low Limit   High Limit  Offset
+	  rig_b                          0.0         -100.0      100.0       0.0
+	  rig_l                          0.0         -100.0      100.0       0.0
+	  rig_r                          0.0         -100.0      100.0       0.0
+	  rig_t                          0.0         -100.0      100.0       0.0
 
 	  Local variable name                    Ophyd name (to be recorded as metadata)
-	  rig.b                                  rig_b                                 
-	  rig.l                                  rig_l                                 
-	  rig.r                                  rig_r                                 
-	  rig.t                                  rig_t                                 
+	  rig.b                                  rig_b
+	  rig.l                                  rig_l
+	  rig.r                                  rig_r
+	  rig.t                                  rig_t
 
 
 .. automodule:: ophyd.signal

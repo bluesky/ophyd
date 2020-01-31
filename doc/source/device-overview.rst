@@ -203,7 +203,7 @@ Key                  Description of value
 ===================  ========================================================
 
 The ``hints`` dictionary may also have custom keys used by the custom support.
-  
+
 * example using the *ad hoc* ``vis`` key in the creation of an :mod:`ophyd`
   detector Device::
 
@@ -269,8 +269,8 @@ names is as above and the stream name is usually ``primary``.
 All the signals must be available in the named stream.
 
 ``hints["dimensions"]`` is used by a :mod:`bluesky` plan
-to prepare a :attr:`dimensions` attribute that is placed 
-in the `start` document.  It is this :attr:`dimensions` attribute 
+to prepare a :attr:`dimensions` attribute that is placed
+in the `start` document.  It is this :attr:`dimensions` attribute
 that identifies the independent axes for visualization callbacks.
 The plan can use or override what it finds in ``hints["dimensions"]``.
 
@@ -283,7 +283,7 @@ Examples:
 
 .. paraphrased from bluesky/bluesky/callbacks/best_effort.py
 
-For now, :mod:`bluesky` can only handle when all the dimensions belong 
+For now, :mod:`bluesky` can only handle when all the dimensions belong
 to the same stream.  To generalize, we would need to resample
 and we are not going to handle that yet.
 
@@ -296,7 +296,7 @@ and we are not going to handle that yet.
 This key is used for mesh and grid scans.  When present, it can take these values:
 ``rectilinear`` or ``rectilinear_nonsequential``.
 
-In the *Best Effort Callback* from :mod:`bluesky`, if ``hints["gridding"]`` exists and 
+In the *Best Effort Callback* from :mod:`bluesky`, if ``hints["gridding"]`` exists and
 is ``"rectilinear"``, then use LiveGrid, otherwise use LivePlot.
 
 
@@ -305,7 +305,7 @@ is ``"rectilinear"``, then use LiveGrid, otherwise use LivePlot.
 
 The :class:`~device.Component` class is a python descriptor_ which overrides
 the behavior on attribute access.  This allows us to use a declarative style to
-define the software representation of the hardware.  The best way to 
+define the software representation of the hardware.  The best way to
 understand is through an example::
 
   class Foo(Device):
