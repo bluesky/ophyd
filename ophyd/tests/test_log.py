@@ -71,7 +71,6 @@ def test_logger_adapter_status():
     status.log.info("here is some info")
     assert log_buffer.getvalue().endswith(f"[{str(status)}] here is some info\n")
 
-    status.done = True
-    status.success = True
+    status._finished(success=True)
     status.log.info("here is more info")
     assert log_buffer.getvalue().endswith(f"[{str(status)}] here is more info\n")
