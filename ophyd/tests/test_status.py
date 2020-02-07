@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 from ophyd import Device
-from ophyd.status import StatusBase, SubscriptionStatus, UseNewProperty
+from ophyd.status import (StatusBase, SubscriptionStatus, UseNewProperty,
+                          MoveStatus)
 import pytest
 
 
@@ -142,3 +143,13 @@ def test_and():
     assert st4.right is st3
     assert st5.left is st3
     assert st5.right is st4
+
+
+def test_notify_watchers():
+    from ophyd.sim import hw
+    hw = hw()
+    mst = MoveStatus(hw.motor, 10)
+    mst.watch(lambda x: x)
+    mst.target = 0
+    mst.start_pos = 0
+    mst._notify_watchers(0)
