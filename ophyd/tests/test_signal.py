@@ -377,7 +377,7 @@ def test_soft_derived():
 
     event.wait(1)
 
-    assert called == [('meta', True, True, False)]
+    assert called[-1] == [('meta', True, True, False)]
 
 
 def test_epics_signal_derived(ro_signal):
