@@ -127,7 +127,10 @@ class SynSignal(Signal):
             # Initialize readback with a None value
             self._readback = None
         if loop is None:
-            loop = asyncio.get_event_loop()
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
         self._func = func
         self.exposure_time = exposure_time
         self.precision = precision
@@ -260,6 +263,7 @@ class _ReadbackSignal(Signal):
             connected=True,
             write_access=False,
         )
+        self._run_metadata_callbacks()
 
     def get(self):
         return self.parent.sim_state['readback']
@@ -354,7 +358,10 @@ class SynAxis(Device):
             def readback_func(x):
                 return x
         if loop is None:
-            loop = asyncio.get_event_loop()
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
         self.sim_state = {}
         self._readback_func = readback_func
         self.delay = delay
@@ -690,7 +697,10 @@ class MockFlyer:
         self._data = deque()
         self._completion_status = None
         if loop is None:
-            loop = asyncio.get_event_loop()
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
         self.loop = loop
 
     def __setstate__(self, val):

@@ -117,6 +117,8 @@ class Signal(OphydObject):
 
             self._metadata.update(**unset_metadata)
 
+        self._run_metadata_callbacks()
+
     def trigger(self):
         '''Call that is used by bluesky prior to read()'''
         # NOTE: this is a no-op that exists here for bluesky purposes
