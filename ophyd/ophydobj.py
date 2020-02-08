@@ -304,6 +304,7 @@ class OphydObject:
         while obj.parent is not None:
             names.append(obj.attr_name)
             obj = obj.parent
+        names.append(obj.name)
         return '.'.join(names[::-1])
 
     @property
