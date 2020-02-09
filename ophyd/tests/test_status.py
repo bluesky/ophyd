@@ -149,7 +149,9 @@ def test_notify_watchers():
     from ophyd.sim import hw
     hw = hw()
     mst = MoveStatus(hw.motor, 10)
-    mst.watch(lambda x: x)
+    def callback(*args, **kwargs):
+        ...
+    mst.watch(callback)
     mst.target = 0
     mst.start_pos = 0
     mst._notify_watchers(0)
