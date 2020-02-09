@@ -508,7 +508,7 @@ class MoveStatus(DeviceStatus):
         except (TypeError, ZeroDivisionError):
             fraction = None
 
-        if np.isnan(fraction):
+        if fraction is not None and np.isnan(fraction):
             fraction = None
 
         for watcher in self._watchers:

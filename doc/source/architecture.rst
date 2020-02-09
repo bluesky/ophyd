@@ -56,15 +56,15 @@ associated with it:
     makes sense to the people directly working with the ophyd instances.
     They need be unique within a `~ophyd.Device` and hence Python ensures that
     the fully qualified name will be unique within a namespace.
-3. *The ``obj.name`` attribute*.  This name is the one that will be
-   used in the data returned by `~ophyd.Device.read` and will
-   eventually end up in the flowing through `bluesky` and into
-   `databroker` to be eventually exposed to the users at analysis
-   times.  By default, these names are derived from the Python
-   attribute name of the sub-device and the name of it's parent, but
-   can be set at runtime.  These names should be picked to make
-   scientific sense at analysis time and must be unique among devices
-   that will be used simultaneously.
+ 3. *The ``obj.name`` attribute*.  This name is the one that will be
+    used in the data returned by `~ophyd.Device.read` and will
+    eventually end up in the flowing through `bluesky` and into
+    `databroker` to be eventually exposed to the users at analysis
+    times.  By default, these names are derived from the Python
+    attribute name of the sub-device and the name of it's parent, but
+    can be set at runtime.  These names should be picked to make
+    scientific sense at analysis time and must be unique among devices
+    that will be used simultaneously.
 
 .. _hl_api:
 
