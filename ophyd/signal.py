@@ -932,7 +932,7 @@ class EpicsSignalBase(Signal):
             pv.pvname, as_string, form, timeout
         )
         info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
-        self.control_layer_log.info('pv[%s].get_with_metadata(...) returned', pv.name)
+        self.control_layer_log.info('pv[%s].get_with_metadata(...) returned', pv.pvname)
 
         if info is None:
             raise ReadTimeoutError(
