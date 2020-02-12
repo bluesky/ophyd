@@ -121,7 +121,7 @@ script:
   - echo "Checking if the areaDetector IOC is running:"
   - caproto-get -v 13SIM1:cam1:Acquire
 
-  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
+  - coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
   - coverage combine
   - coverage report
   # Make sure only the primary build uploads to codecov
