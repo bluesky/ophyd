@@ -184,7 +184,7 @@ current_handler = None  # overwritten below
 
 
 def config_ophyd_logging(
-    file=sys.stdout, datefmt="%H:%M:%S", color=True, level="INFO", backupCount=4
+    file=sys.stdout, datefmt="%H:%M:%S", color=True, level="WARNING", backupCount=4
 ):
     """
     Set a new handler on the ``logging.getLogger('ophyd')`` logger.
@@ -205,7 +205,7 @@ def config_ophyd_logging(
         Use ANSI color codes. True by default.
     level : str or int
         Python logging level, given as string or corresponding integer.
-        Default is 'INFO'.
+        Default is 'WARNING'.
     backupCount : int
         Number of historical log files to keep. Default is 4.
     Returns
