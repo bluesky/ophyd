@@ -261,8 +261,6 @@ def config_ophyd_logging(
     return handler
 
 
-# Add a handler with the default parameters at import time.
-config_ophyd_logging()
 set_handler = config_ophyd_logging  # for back-compat
 
 
