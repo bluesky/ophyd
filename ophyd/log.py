@@ -191,9 +191,9 @@ def config_ophyd_logging(
     If this is called more than once, the handler from the previous invocation
     is removed (if still present) and replaced.
 
-    If a file path is specified a TimedRotatingLogHandler will be used. It will be
-    configured so that a new log file starts every Monday and 4 log files are kept.
-    Log files older than 4 weeks will be deleted.
+    If a file path is specified a TimedRotatingLogHandler will be used. By default
+    it will be configured so that a new log file starts every Monday and 4 log files
+    are kept. Log files older than 4 weeks will be deleted.
 
     Parameters
     ----------
@@ -207,7 +207,9 @@ def config_ophyd_logging(
         Python logging level, given as string or corresponding integer.
         Default is 'WARNING'.
     backupCount : int
-        Number of historical log files to keep. Default is 4.
+        Number of historical log files to keep. Default is 4. Use 0 to
+        keep all historical log files. The argument name is chosen to match
+        TimedRotatingFileHandler's backupCount.
     Returns
     -------
     handler : logging.Handler
