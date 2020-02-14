@@ -25,8 +25,8 @@ def test_default_config_ophyd_logging():
     log.config_ophyd_logging()
 
     assert isinstance(log.current_handler, logging.StreamHandler)
-    assert log.logger.getEffectiveLevel() <= logging.INFO
-    assert log.control_layer_logger.getEffectiveLevel() <= logging.INFO
+    assert log.logger.getEffectiveLevel() <= logging.WARNING
+    assert log.control_layer_logger.getEffectiveLevel() <= logging.WARNING
 
 
 def test_config_ophyd_logging():
