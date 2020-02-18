@@ -172,7 +172,7 @@ def validate_level(level) -> int:
     else:
         raise ValueError(
             "Your level is illegal, please use "
-            "'ERROR', 'WARNING', 'INFO', 'DEBUG', OR 'TRACE'."
+            "'CRITICAL', 'FATAL', 'ERROR', 'WARNING', 'INFO', or 'DEBUG'."
         )
 
 
