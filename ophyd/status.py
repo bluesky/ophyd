@@ -1,14 +1,13 @@
 from collections import deque
-import time
-from threading import RLock
 from functools import wraps
+from logging import LoggerAdapter
+import threading
+import time
 from warnings import warn
 
-import logging
-import threading
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 class UseNewProperty(RuntimeError):
@@ -44,11 +43,13 @@ class StatusBase:
                  success=False):
         super().__init__()
         self._tname = None
-        self._lock = RLock()
+        self._lock = threading.RLock()
         self._callbacks = deque()
         self._done = done
         self.success = success
         self.timeout = None
+
+        self.log = LoggerAdapter(logger=logger, extra={'status': self})
 
         if settle_time is None:
             settle_time = 0.0
@@ -108,7 +109,7 @@ class StatusBase:
                 if self.done:
                     # Avoid race condition with settling.
                     return
-                logger.debug('Status object %s timed out', str(self))
+                self.log.warning('timeout after %.2f seconds', timeout)
                 try:
                     self._handle_failure()
                 finally:
@@ -160,6 +161,7 @@ class StatusBase:
            if the action succeeded.
         """
         if self.done:
+            self.log.info('finished')
             return
 
         if success and self.settle_time > 0:

@@ -1,14 +1,11 @@
+from enum import IntFlag
 import functools
 from itertools import count
+from logging import LoggerAdapter
+import time
 import weakref
 
-import time
-import logging
-
-from enum import IntFlag
-
-
-module_logger = logging.getLogger(__name__)
+from .log import control_layer_logger, logger
 
 
 def select_version(cls, version):
@@ -180,12 +177,11 @@ class OphydObject:
         else:
             base_log = self.__class__.__module__
             name = self.name
-        # Instantiate logger
-        self.log = logging.getLogger(base_log + '.' + name)
+        self.log = LoggerAdapter(logger, {'base_log': base_log, 'ophyd_object_name': name})
+        self.control_layer_log = LoggerAdapter(control_layer_logger, {'ophyd_object_name': name})
 
         if not self.__any_instantiated:
-            self.log.debug("This is the first instance of OphydObject. "
-                           "name={self.name}, id={id(self)}")
+            self.log.info("first instance of OphydObject: id=%s", id(self))
             OphydObject._mark_as_instantiated()
         self.__register_instance(self)
 
@@ -269,8 +265,10 @@ class OphydObject:
                 )
 
         if versions is not None and version in versions:
-            module_logger.warning('Redefining %r version %s: old=%r new=%r',
-                                  version_of, version, versions[version], cls)
+            logger.warning(
+                'Redefining %r version %s: old=%r new=%r',
+                version_of, version, versions[version], cls
+            )
 
         versions[version] = cls
 

@@ -26,8 +26,7 @@ from .pseudopos import (PseudoPositioner, PseudoSingle,
                         real_position_argument, pseudo_position_argument)
 from .positioner import SoftPositioner
 from .utils import ReadOnlyError, LimitError
-
-logger = logging.getLogger(__name__)
+from .log import logger
 
 
 # two convenience functions 'vendored' from bluesky.utils
@@ -138,6 +137,8 @@ class SynSignal(Signal):
             connected=True,
         )
 
+        logger.info(self)
+
     def describe(self):
         res = super().describe()
         # There should be only one key here, but for the sake of generality....
@@ -146,12 +147,16 @@ class SynSignal(Signal):
         return res
 
     def trigger(self):
+        logger.info('trigger %s', self)
+
         delay_time = self.exposure_time
         if delay_time:
+            logger.info('%s delay_time is %d', self, delay_time)
             st = DeviceStatus(device=self)
             if self.loop.is_running():
 
                 def update_and_finish():
+                    logger.info('update_and_finish %s', self)
                     self.put(self._func())
                     st._finished()
 
@@ -159,6 +164,7 @@ class SynSignal(Signal):
             else:
 
                 def sleep_and_finish():
+                    logger.info('sleep_and_finish %s', self)
                     ttime.sleep(delay_time)
                     self.put(self._func())
                     st._finished()
@@ -183,10 +189,14 @@ class SynSignalRO(SynSignal):
             connected=True,)
 
     def put(self, value, *, timestamp=None, force=False):
-        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+        msg = f"{self}.put(value={value}, timestamp={timestamp}, force={force})"
+        logger.error(msg)
+        raise ReadOnlyError(msg)
 
     def set(self, value, *, timestamp=None, force=False):
-        raise ReadOnlyError("The signal {} is readonly.".format(self.name))
+        msg = f"{self} is readonly"
+        logger.error(msg)
+        raise ReadOnlyError(msg)
 
 
 class SynPeriodicSignal(SynSignal):

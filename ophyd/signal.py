@@ -1,5 +1,4 @@
 # vi: ts=4 sw=4
-import logging
 import time
 import threading
 import warnings
@@ -14,8 +13,6 @@ from .utils.epics_pvs import (waveform_to_string,
 from .ophydobj import OphydObject, Kind
 from .status import Status
 from . import get_cl
-
-logger = logging.getLogger(__name__)
 
 
 # Sentinels used for default values
@@ -78,6 +75,7 @@ class Signal(OphydObject):
 
         super().__init__(name=name, parent=parent, kind=kind, labels=labels,
                          attr_name=attr_name)
+
         if cl is None:
             cl = get_cl()
         self.cl = cl
@@ -196,6 +194,11 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
+        self.log.info(
+            'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
+            value, timestamp, force, metadata
+        )
+
         # TODO: consider adding set_and_wait here as a kwarg
         if kwargs:
             warnings.warn('Signal.put no longer takes keyword arguments; '
@@ -239,23 +242,34 @@ class Signal(OphydObject):
             This status object will be finished upon return in the
             case of basic soft Signals
         '''
+        self.log.info(
+            'set(value=%s, timeout=%s, settle_time=%s)',
+            value, timeout, settle_time
+        )
+
         def set_thread():
             try:
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
                              rtol=self.rtolerance)
             except TimeoutError:
-                self.log.debug('set_and_wait(%r, %s) timed out', self.name,
-                               value)
+                self.log.warning(
+                    'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    value, timeout, self.tolerance, self.rtolerance
+                )
                 success = False
             except Exception as ex:
-                self.log.exception('set_and_wait(%r, %s) failed',
-                                   self.name, value)
+                self.log.exception(
+                    'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    value, timeout, self.tolerance, self.rtolerance
+                )
                 success = False
             else:
-                self.log.debug('set_and_wait(%r, %s) succeeded => %s',
-                               self.name, value, self.value)
+                self.log.info(
+                    'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
+                    value, timeout, self.tolerance, self.rtolerance, self.value)
                 success = True
                 if settle_time is not None:
+                    self.log.info('settling for %d seconds', settle_time)
                     time.sleep(settle_time)
             finally:
                 # keep a local reference to avoid any GC shenanigans
@@ -280,9 +294,10 @@ class Signal(OphydObject):
     def value(self):
         '''The signal's value'''
         if self._readback is not None:
-            return self._readback
-
-        return self.get()
+            val = self._readback
+        else:
+            val = self.get()
+        return val
 
     @value.setter
     def value(self, value):
@@ -853,9 +868,8 @@ class EpicsSignalBase(Signal):
         # Ensure callbacks are run prior to returning, as
         # @raise_if_disconnected can cause issues otherwise.
         if not self._signal_is_ready.wait(timeout):
-            raise TimeoutError('Control layer {} failed to send connection and '
-                               'access rights information within {:.1f} sec'
-                               ''.format(self.cl.name, float(timeout)))
+            raise TimeoutError(f'Control layer {self.cl.name} failed to send connection and '
+                               f'access rights information within {float(timeout):.1f} sec')
 
     def wait_for_connection(self, timeout=1.0):
         '''Wait for the underlying signals to initialize or connect'''
@@ -913,7 +927,12 @@ class EpicsSignalBase(Signal):
                 f"within {connection_timeout:.2} sec") from err
         # Pyepics returns None when a read request times out.  Raise a
         # TimeoutError on its behalf.
+        self.control_layer_log.info(
+            'pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)',
+            pv.pvname, as_string, form, timeout
+        )
         info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
+        self.control_layer_log.info('pv[%s].get_with_metadata(...) returned', pv.pvname)
 
         if info is None:
             raise ReadTimeoutError(
@@ -1426,6 +1445,10 @@ class EpicsSignal(EpicsSignalBase):
         if not self.write_access:
             raise ReadOnlyError('No write access to underlying EPICS PV')
 
+        self.control_layer_log.info(
+            '_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)',
+            value, use_complete, callback, kwargs
+        )
         self._write_pv.put(value, use_complete=use_complete, callback=callback,
                            **kwargs)
 
