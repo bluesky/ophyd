@@ -31,18 +31,15 @@ def test_default_config_ophyd_logging():
 
 def test_config_ophyd_logging():
     datefmt = "%Y:%m:%d %H-%M-%S"
-    backupCount = 10
 
     log.config_ophyd_logging(
         file="ophyd.log",
         datefmt=datefmt,
         color=False,
         level="DEBUG",
-        backupCount=backupCount,
     )
 
-    assert isinstance(log.current_handler, logging.handlers.TimedRotatingFileHandler)
-    assert log.current_handler.backupCount == backupCount
+    assert isinstance(log.current_handler, logging.FileHandler)
     assert log.current_handler.formatter.datefmt == datefmt
     assert log.logger.getEffectiveLevel() <= logging.DEBUG
     assert log.control_layer_logger.getEffectiveLevel() <= logging.DEBUG
