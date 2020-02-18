@@ -2,7 +2,6 @@
 # Apache 2.0. See other_licenses/ in the repository directory.
 
 import logging
-import logging.handlers
 import sys
 
 try:
@@ -247,16 +246,10 @@ def config_ophyd_logging(
         logger.removeHandler(current_handler)
     logger.addHandler(handler)
 
-    if current_handler in control_layer_logger.handlers:
-        control_layer_logger.removeHandler(current_handler)
-    control_layer_logger.addHandler(handler)
     current_handler = handler
 
     if logger.getEffectiveLevel() > levelno:
         logger.setLevel(levelno)
-
-    if control_layer_logger.getEffectiveLevel() > levelno:
-        control_layer_logger.setLevel(levelno)
 
     return handler
 
