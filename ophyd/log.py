@@ -177,7 +177,7 @@ def validate_level(level) -> int:
 
 
 logger = logging.getLogger("ophyd")
-control_layer_logger = logging.getLogger("ophyd_control_layer")
+control_layer_logger = logging.getLogger("ophyd.control_layer")
 
 
 current_handler = None  # overwritten below
