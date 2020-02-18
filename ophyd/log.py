@@ -183,16 +183,12 @@ current_handler = None  # overwritten below
 
 
 def config_ophyd_logging(
-    file=sys.stdout, datefmt="%H:%M:%S", color=True, level="WARNING", backupCount=4
+    file=sys.stdout, datefmt="%H:%M:%S", color=True, level="WARNING"
 ):
     """
     Set a new handler on the ``logging.getLogger('ophyd')`` logger.
     If this is called more than once, the handler from the previous invocation
     is removed (if still present) and replaced.
-
-    If a file path is specified a TimedRotatingLogHandler will be used. By default
-    it will be configured so that a new log file starts every Monday and 4 log files
-    are kept. Log files older than 4 weeks will be deleted.
 
     Parameters
     ----------
@@ -205,10 +201,6 @@ def config_ophyd_logging(
     level : str or int
         Python logging level, given as string or corresponding integer.
         Default is 'WARNING'.
-    backupCount : int
-        Number of historical log files to keep. Default is 4. Use 0 to
-        keep all historical log files. The argument name is chosen to match
-        TimedRotatingFileHandler's backupCount.
     Returns
     -------
     handler : logging.Handler
@@ -227,11 +219,7 @@ def config_ophyd_logging(
     """
     global current_handler
     if isinstance(file, str):
-        handler = logging.handlers.TimedRotatingFileHandler(
-            filename=file,
-            when="W0",  # roll over every Monday
-            backupCount=backupCount,  # keep the most recent "backupCount" log files
-        )
+        handler = logging.FileHandler(file)
     else:
         handler = logging.StreamHandler(file)
     levelno = validate_level(level)
