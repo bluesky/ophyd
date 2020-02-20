@@ -149,10 +149,12 @@ class PVPositioner(Device, PositionerBase):
     def _setup_move(self, position):
         '''Move and do not wait until motion is complete (asynchronous)'''
         self.log.debug('%s.setpoint = %s', self.name, position)
-        self.setpoint.put(position, wait=True)
         if self.actuate is not None:
+            self.setpoint.put(position, wait=True)
             self.log.debug('%s.actuate = %s', self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
+        else:
+            self.setpoint.put(position, wait=False)
 
     def move(self, position, wait=True, timeout=None, moved_cb=None):
         '''Move to a specified position, optionally waiting for motion to
