@@ -596,12 +596,47 @@ class EpicsSignalBase(Signal):
     ----------
     read_pv : str
         The PV to read from
+    string : bool, optional
+        Attempt to cast the EPICS PV value to a string by default
     auto_monitor : bool, optional
         Use automonitor with epics.PV
     name : str, optional
         Name of signal.  If not given defaults to read_pv
-    string : bool, optional
-        Attempt to cast the EPICS PV value to a string by default
+    metadata : dict
+        Merged with metadata received from EPICS
+    all_pvs : set
+        Set of PVs to watch for connection and access rights callbacks.
+        Defaults to ``{read_pvs}``.
+    timeout : float or None, optional
+        The timeout for serving a read request on a connected channel. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        The default value DEFAULT_TIMEOUT means, "Fall back to class-wide
+        default." See EpicsSignalBase.set_default_timeout to configure class
+        defaults.
+
+        Explicitly passing None means, "Wait forever."
+    write_timeout : float or None, optional
+        The timeout for a reply when put completion is used. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        This is very different than the connection and read timeouts
+        above. It relates to how long an action takes to complete, such motor
+        motion or data acquisition. Any default value we choose here is likely
+        to cause problems---either by being too short and giving up too early
+        on a lengthy action or being too long and delaying the report of a
+        failure. A finite value can be injected here or, perhaps more usefully,
+        via `set` at the Device level, where a context-appropriate value can be
+        chosen.
+    connection_timeout : float or None, optional
+        Timeout for connection. This includes the time to search and establish
+        a channel.
+
+        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
+        class-wide default." See EpicsSignalBase.set_default_timeout to
+        configure class defaults.
+
+        Explicitly passing None means, "Wait forever."
     '''
     # This is set to True when the first instance is made. It is used to ensure
     # that certain class-global settings can only be made before any
@@ -1092,6 +1127,36 @@ class EpicsSignalRO(EpicsSignalBase):
         Use automonitor with epics.PV
     name : str, optional
         Name of signal.  If not given defaults to read_pv
+    timeout : float or None, optional
+        The timeout for serving a read request on a connected channel. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        The default value DEFAULT_TIMEOUT means, "Fall back to class-wide
+        default." See EpicsSignalBase.set_default_timeout to configure class
+        defaults.
+
+        Explicitly passing None means, "Wait forever."
+    write_timeout : float or None, optional
+        The timeout for a reply when put completion is used. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        This is very different than the connection and read timeouts
+        above. It relates to how long an action takes to complete, such motor
+        motion or data acquisition. Any default value we choose here is likely
+        to cause problems---either by being too short and giving up too early
+        on a lengthy action or being too long and delaying the report of a
+        failure. A finite value can be injected here or, perhaps more usefully,
+        via `set` at the Device level, where a context-appropriate value can be
+        chosen.
+    connection_timeout : float or None, optional
+        Timeout for connection. This includes the time to search and establish
+        a channel.
+
+        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
+        class-wide default." See EpicsSignalBase.set_default_timeout to
+        configure class defaults.
+
+        Explicitly passing None means, "Wait forever."
     '''
 
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
@@ -1153,6 +1218,36 @@ class EpicsSignal(EpicsSignalBase):
         the write PV
     rtolerance : any, optional
         The relative tolerance associated with the value
+    timeout : float or None, optional
+        The timeout for serving a read request on a connected channel. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        The default value DEFAULT_TIMEOUT means, "Fall back to class-wide
+        default." See EpicsSignalBase.set_default_timeout to configure class
+        defaults.
+
+        Explicitly passing None means, "Wait forever."
+    write_timeout : float or None, optional
+        The timeout for a reply when put completion is used. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        This is very different than the connection and read timeouts
+        above. It relates to how long an action takes to complete, such motor
+        motion or data acquisition. Any default value we choose here is likely
+        to cause problems---either by being too short and giving up too early
+        on a lengthy action or being too long and delaying the report of a
+        failure. A finite value can be injected here or, perhaps more usefully,
+        via `set` at the Device level, where a context-appropriate value can be
+        chosen.
+    connection_timeout : float or None, optional
+        Timeout for connection. This includes the time to search and establish
+        a channel.
+
+        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
+        class-wide default." See EpicsSignalBase.set_default_timeout to
+        configure class defaults.
+
+        Explicitly passing None means, "Wait forever."
     '''
     SUB_SETPOINT = 'setpoint'
     SUB_SETPOINT_META = 'setpoint_meta'
