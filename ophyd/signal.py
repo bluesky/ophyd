@@ -15,9 +15,10 @@ from .status import Status
 from . import get_cl
 
 
-# Sentinels used for default values
+# Sentinels used for default values; see set_default_timeout below for details.
 DEFAULT_CONNECTION_TIMEOUT = object()
 DEFAULT_TIMEOUT = object()
+DEFAULT_WRITE_TIMEOUT = object()
 
 
 class ReadTimeoutError(TimeoutError):
@@ -172,7 +173,7 @@ class Signal(OphydObject):
         return self._readback
 
     def put(self, value, *, timestamp=None, force=False, metadata=None,
-            **kwargs):
+            timeout=DEFAULT_WRITE_TIMEOUT, **kwargs):
         '''Put updates the internal readback value
 
         The value is optionally checked first, depending on the value of force.
@@ -632,6 +633,7 @@ class EpicsSignalBase(Signal):
     def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
                  metadata=None, all_pvs=None,
                  timeout=DEFAULT_TIMEOUT,
+                 write_timeout=DEFAULT_WRITE_TIMEOUT,
                  connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
                  **kwargs):
         self._metadata_lock = threading.RLock()
@@ -648,6 +650,16 @@ class EpicsSignalBase(Signal):
         if timeout is DEFAULT_TIMEOUT:
             timeout = self.__default_timeout
         self._timeout = timeout
+        if write_timeout is DEFAULT_WRITE_TIMEOUT:
+            # This is very different than the connection and read timeouts
+            # above. It relates to how long an action takes to complete. Any
+            # default value we choose here is likely to cause problems---either
+            # by being too short and giving up too early on a lengthy action or
+            # being too long and delaying the report of a failure.
+            # The important thing it is that it is configurable at per-Signal
+            # level via the write_timeout parameter.
+            write_timeout = None  # Wait forever.
+        self._write_timeout = write_timeout
 
         if name is None:
             name = read_pv
@@ -726,6 +738,9 @@ class EpicsSignalBase(Signal):
         cls.__default_connection_timeout = connection_timeout
         cls.__default_timeout = timeout
 
+    # TODO Is there a good reason to prohibit setting these three timeout
+    # properties?
+
     @property
     def connection_timeout(self):
         return self._connection_timeout
@@ -733,6 +748,10 @@ class EpicsSignalBase(Signal):
     @property
     def timeout(self):
         return self._timeout
+
+    @property
+    def write_timeout(self):
+        return self._write_timeout
 
     def __getnewargs_ex__(self):
         args, kwargs = super().__getnewargs_ex__()
@@ -1414,7 +1433,9 @@ class EpicsSignal(EpicsSignalBase):
     def put(self, value, force=False,
             connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
             callback=None,
-            use_complete=None, **kwargs):
+            use_complete=None,
+            timeout=DEFAULT_WRITE_TIMEOUT,
+            **kwargs:
         '''Using channel access, set the write PV to `value`.
 
         Keyword arguments are passed on to callbacks
@@ -1432,12 +1453,17 @@ class EpicsSignal(EpicsSignalBase):
             Override put completion settings
         callback : callable
             Callback for when the put has completed
+        timeout : float, optional
+            Timeout before assuming that put has failed. (Only relevant if
+            put completion is used.)
         '''
         if not force:
             self.check_value(value)
 
         if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
             connection_timeout = self.connection_timeout
+        if timeout is DEFAULT_WRITE_TIMEOUT:
+            timeout = self.write_timeout
         self.wait_for_connection(timeout=connection_timeout)
         if use_complete is None:
             use_complete = self._put_complete
@@ -1450,7 +1476,7 @@ class EpicsSignal(EpicsSignalBase):
             value, use_complete, callback, kwargs
         )
         self._write_pv.put(value, use_complete=use_complete, callback=callback,
-                           **kwargs)
+                           timeout=timeout, **kwargs)
 
         old_value = self._setpoint
         self._setpoint = value
