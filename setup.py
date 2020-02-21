@@ -22,6 +22,10 @@ setup(name='ophyd',
       python_requires='>=3.6',
       install_requires=requirements,
       packages=find_packages(),
+      entry_points={
+          'databroker.handlers': [
+              'NPY_SEQ = ophyd.sim:NumpySeqHandler',
+      ]},
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Programming Language :: Python :: 3.6",
