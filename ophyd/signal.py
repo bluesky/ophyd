@@ -1530,7 +1530,7 @@ class EpicsSignal(EpicsSignalBase):
             callback=None,
             use_complete=None,
             timeout=DEFAULT_WRITE_TIMEOUT,
-            **kwargs:
+            **kwargs):
         '''Using channel access, set the write PV to `value`.
 
         Keyword arguments are passed on to callbacks
