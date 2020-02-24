@@ -72,9 +72,12 @@ class PyepicsShimPV(epics.PV):
                                     run_now=run_now,
                                     with_ctrlvars=with_ctrlvars, **kw)
 
-    def put(self, value, wait=False, timeout=30.0, use_complete=False,
+    def put(self, value, wait=False, timeout=None, use_complete=False,
             callback=None, callback_data=None):
         callback = wrap_callback(_dispatcher, 'get_put', callback)
+        # pyepics does not accept an indefinite timeout
+        if timeout is None:
+            timeout = 315569520  # ten years
         return super().put(value, wait=wait, timeout=timeout,
                            use_complete=use_complete, callback=callback,
                            callback_data=callback_data)
