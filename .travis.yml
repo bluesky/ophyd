@@ -109,6 +109,8 @@ install:
   - pip freeze
   - python -m pip install -e .
   - python -m pip install -r test-requirements.txt
+  # Avoid incompatibility issues between third-party dependencies and numpy.
+  - pip install --upgrade numpy
   # record installed packages after ophyd is installed
   - pip freeze
 
