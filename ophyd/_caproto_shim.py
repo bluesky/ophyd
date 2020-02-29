@@ -149,9 +149,7 @@ def setup(logger):
 
         pyepics_compat.get_pv = pyepics_compat._get_pv
 
-        logger.debug('Performing ophyd cleanup')
         if _dispatcher.is_alive():
-            logger.debug('Joining the dispatcher thread')
             _dispatcher.stop()
 
         _dispatcher = None
