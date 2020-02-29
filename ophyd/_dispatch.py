@@ -49,15 +49,12 @@ class _CallbackThread(threading.Thread):
                     )
 
         self.detach_context()
-        self.logger.debug('Callback thread %s exiting', self.name)
 
     def attach_context(self):
         self.logger.debug('Callback thread %s attaching to context %s',
                           self.name, self.context)
 
     def detach_context(self):
-        self.logger.debug('Callback thread %s detaching from context %s',
-                          self.name, self.context)
         self.context = None
 
 

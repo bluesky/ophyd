@@ -155,9 +155,7 @@ def setup(logger):
             return
         epics.pv.default_pv_class = epics.PV
 
-        logger.debug('Performing ophyd cleanup')
         if _dispatcher.is_alive():
-            logger.debug('Joining the dispatcher thread')
             _dispatcher.stop()
 
         _dispatcher = None
