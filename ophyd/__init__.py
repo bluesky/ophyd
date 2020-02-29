@@ -89,6 +89,7 @@ from .scaler import EpicsScaler
 from .device import (Device, Component, FormattedComponent,
                      DynamicDeviceComponent, ALL_COMPONENTS, kind_context,
                      wait_for_lazy_connection, do_not_wait_for_lazy_connection)
+from .indexed_device import IndexedDevice, IndexedComponent
 from .status import StatusBase, wait
 from .mca import EpicsMCA, EpicsDXP
 from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM

@@ -304,7 +304,8 @@ class FormattedComponent(Component):
 
 
 class DynamicDeviceComponent(Component):
-    '''An Device component that dynamically creates an ophyd Device
+    '''
+    A Device component that dynamically creates an ophyd Device
 
     Parameters
     ----------
@@ -1500,6 +1501,7 @@ def create_device_from_components(name, *, docstring=None,
                                   default_read_attrs=None,
                                   default_configuration_attrs=None,
                                   base_class=Device, class_kwargs=None,
+                                  clsdict=None,
                                   **components):
     '''Factory function to make a Device from Components
 
@@ -1538,7 +1540,8 @@ def create_device_from_components(name, *, docstring=None,
     clsdict = OrderedDict(
         __doc__=docstring,
         _default_read_attrs=default_read_attrs,
-        _default_configuration_attrs=default_configuration_attrs
+        _default_configuration_attrs=default_configuration_attrs,
+        **(clsdict or {})
     )
 
     for attr, component in components.items():
