@@ -91,9 +91,8 @@ def test_2d_slice():
     assert len(dev.cpt1[:, 'A':]) == 40
     assert len(dev.cpt1[:, :'C']) == 20
 
-    # TODO - don't want a list here
-    assert len(dev.cpt1[0, 'A']) == 1
-    assert len(dev.cpt1[(0, 'A')]) == 1
+    assert dev.cpt1[0, 'A'] is dev.cpt1.channel_00A
+    assert dev.cpt1[(0, 'A')] is dev.cpt1.channel_00A
 
     with pytest.raises(ValueError):
         # too many slices
@@ -114,6 +113,7 @@ def test_3d_slice():
     assert len(dev.cpt1[:]) == 10 * 4 * 4
     assert len(dev.cpt1[:, 'A', '0']) == 10 * 1 * 1
     assert len(dev.cpt1[:, 'A':'C', '0']) == 10 * 2 * 1
+    assert dev.cpt1[0, 'A', '0'] is dev.cpt1.channel_00A0
 
 
 def test_string_range():

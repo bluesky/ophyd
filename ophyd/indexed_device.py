@@ -26,6 +26,8 @@ def _summarize_slice_type(slc):
 
 class _IndexedChildLevel(collections.abc.Mapping):
     'A mapping helper to allow access of IndexedDevice[idx][idx2...]'
+    _top_level = True
+
     def __init__(self, device, mapping_dict, leaf_depth):
         self._device = device
         self._d = mapping_dict
@@ -63,6 +65,7 @@ class _IndexedChildLevel(collections.abc.Mapping):
                                       leaf_depth=self._leaf_depth - 1)
 
         full_slice = tuple(item)
+        no_slices = all(not isinstance(i, slice) for i in full_slice)
         if len(full_slice) > self._leaf_depth:
             raise ValueError('Too many slices provided')
         elif len(full_slice) < self._leaf_depth:
@@ -81,11 +84,13 @@ class _IndexedChildLevel(collections.abc.Mapping):
                     leaf_depth=self._leaf_depth - 1,
                 )[full_slice[1:]]
 
-        return list(itertools.chain(*get_slices()))
+        ret = list(itertools.chain(*get_slices()))
+        if no_slices and self._top_level:
+            return ret[0]
+        return ret
 
     def __iter__(self):
-        for item in self._d:
-            yield item
+        yield from self._d
 
     def __len__(self):
         return len(self._d)
@@ -96,7 +101,7 @@ class _IndexedChildLevel(collections.abc.Mapping):
 
 
 class _IndexedChildSlice(_IndexedChildLevel):
-    ...
+    _top_level = False
 
 
 class IndexedDevice(Device, collections.abc.Mapping):
