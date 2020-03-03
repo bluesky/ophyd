@@ -9,8 +9,7 @@ from .utils import underscores_to_camel_case
 
 def _summarize_slice_type(slc):
     'Summarize + verify that only 1 type is used in a slice()'
-    slice_type = set((type(slc.start), type(slc.stop),
-                      type(slc.step)))
+    slice_type = set((type(slc.start), type(slc.stop)))
     if type(None) in slice_type:
         slice_type.remove(type(None))
 
@@ -18,6 +17,9 @@ def _summarize_slice_type(slc):
         raise ValueError(
             f'Unexpected types in slice: {slice_type}'
         )
+
+    if slc.step is not None and not isinstance(slc.step, int):
+        raise ValueError(f'Slice step must be an integer: {slc.step}')
 
     if len(slice_type):
         slice_type, = list(slice_type)
@@ -49,7 +51,7 @@ class _IndexedChildLevel(collections.abc.Mapping):
             slc = slice(
                 match_list.index(slc.start) if slc.start else None,
                 match_list.index(slc.stop) + 1 if slc.stop else None,
-                match_list.index(slc.step) if slc.step else None,
+                slc.step
             )
 
         return {key: self._d[key] for key in match_list[slc]}

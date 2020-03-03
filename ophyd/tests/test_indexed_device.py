@@ -95,6 +95,10 @@ def test_2d_slice():
     assert dev.cpt1[(0, 'A')] is dev.cpt1.channel_00A
 
     with pytest.raises(ValueError):
+        # slice step must be integer
+        dev.cpt1[0:5:'A']
+
+    with pytest.raises(ValueError):
         # too many slices
         dev.cpt1[:, :, :]
 
