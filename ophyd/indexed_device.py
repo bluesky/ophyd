@@ -7,27 +7,96 @@ from .device import Device, Component, Kind, create_device_from_components
 from .utils import underscores_to_camel_case
 
 
+def _summarize_slice_type(slc):
+    'Summarize + verify that only 1 type is used in a slice()'
+    slice_type = set((type(slc.start), type(slc.stop),
+                      type(slc.step)))
+    if type(None) in slice_type:
+        slice_type.remove(type(None))
+
+    if len(slice_type) > 1:
+        raise ValueError(
+            f'Unexpected types in slice: {slice_type}'
+        )
+
+    if len(slice_type):
+        slice_type, = list(slice_type)
+        return slice_type
+
+
 class _IndexedChildLevel(collections.abc.Mapping):
     'A mapping helper to allow access of IndexedDevice[idx][idx2...]'
-    def __init__(self, device, mapping_dict):
+    def __init__(self, device, mapping_dict, leaf_depth):
         self._device = device
         self._d = mapping_dict
+        self._leaf_depth = leaf_depth
+
+    def _get_slice(self, slc):
+        if not isinstance(slc, slice):
+            return {slc: self._d[slc]}
+
+        # Check the type of the slice arguments
+        slice_type = _summarize_slice_type(slc)
+
+        match_list = list(self._d)
+        if slice_type is None or issubclass(slice_type, int):
+            # slice everything (, :,) or slice indices
+            ...
+        else:
+            # Rewrite the slice to be in terms of indices
+            slc = slice(
+                match_list.index(slc.start) if slc.start else None,
+                match_list.index(slc.stop) if slc.stop else None,
+                match_list.index(slc.step) if slc.step else None,
+            )
+
+        return {key: self._d[key] for key in match_list[slc]}
 
     def __getitem__(self, item):
-        value = self._d[item]
-        if isinstance(value, str):
-            return getattr(self._device, value)
-        return _IndexedChildLevel(device=self._device, mapping_dict=value)
+        if isinstance(item, slice):
+            item = (item, )
+        if not isinstance(item, tuple):
+            value = self._d[item]
+            if self._leaf_depth == 1:
+                return getattr(self._device, value)
+            return _IndexedChildLevel(device=self._device, mapping_dict=value,
+                                      leaf_depth=self._leaf_depth - 1)
+
+        full_slice = tuple(item)
+        if len(full_slice) > self._leaf_depth:
+            raise ValueError('Too many slices provided')
+        elif len(full_slice) < self._leaf_depth:
+            missing_slices = self._leaf_depth - len(full_slice)
+            full_slice += (slice(None, None, None), ) * missing_slices
+
+        sliced = self._get_slice(full_slice[0])
+        if self._leaf_depth == 1:
+            return list(self[k] for k in sliced)
+
+        def get_slices():
+            for k, mapping_dict in sliced.items():
+                yield _IndexedChildSlice(
+                    device=self._device,
+                    mapping_dict=mapping_dict,
+                    leaf_depth=self._leaf_depth - 1,
+                )[full_slice[1:]]
+
+        return list(itertools.chain(*get_slices()))
 
     def __iter__(self):
-        yield from self._d
+        for item in self._d:
+            yield item
 
     def __len__(self):
         return len(self._d)
 
     def __repr__(self):
-        options = set(str(s) for s in self)
+        options = list(str(s) for s in self)
         return f'<{self.__class__.__name__} len={len(self)} options={options}>'
+
+
+class _IndexedChildSlice(_IndexedChildLevel):
+    ...
 
 
 class IndexedDevice(Device, collections.abc.Mapping):
@@ -39,7 +108,9 @@ class IndexedDevice(Device, collections.abc.Mapping):
     def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
                  configuration_attrs=None, parent=None, **kwargs):
         self._root_index = _IndexedChildLevel(
-            self, mapping_dict=self._mapping_dict)
+            self, mapping_dict=self._mapping_dict,
+            leaf_depth=self._leaf_depth
+        )
         super().__init__(prefix=prefix, name=name, kind=kind,
                          read_attrs=read_attrs,
                          configuration_attrs=configuration_attrs,
@@ -77,7 +148,7 @@ def _apply_range_to_value(ranges, value):
     ]
 
 
-def _mapping_dict_from_ranges(ranges, attrs, *, tuple_access=True):
+def _mapping_dict_from_ranges(ranges, attrs):
     'Create a dictionary to be used by _IndexedChildLevel'
     mapping_dict = {}
 
@@ -89,9 +160,6 @@ def _mapping_dict_from_ranges(ranges, attrs, *, tuple_access=True):
             d = d[index_part]
 
         d[index[-1]] = attr
-
-        if tuple_access:
-            mapping_dict[index] = attr
 
     return mapping_dict
 
@@ -156,17 +224,6 @@ class IndexedComponent(Component):
             for attr, suffix in expand_attr_and_suffix(ranges):
                 attr = Component(SignalClass, _suffix, **keyword_arg_dict)
 
-    allow_tuple_access : bool, optional
-        Normally, accessing components with __getitem__ would be done on
-        each level individually::
-
-            dev[0]['A']
-
-        Enabling this flag would allow for accessing the same component as
-        follows::
-
-            dev[(0, 'A')]
-
     clsname : str, optional
         The name of the class to be generated
         This defaults to {parent_name}{this_attribute_name.capitalize()}
@@ -179,7 +236,7 @@ class IndexedComponent(Component):
     component_class : class, optional
         Defaults to Component
     base_class : class, optional
-        Defaults to Device
+        Defaults to IndexedDevice
     '''
 
     # Allow for subclasses to override the formatting verifier:
@@ -208,11 +265,10 @@ class IndexedComponent(Component):
         self.attr_to_suffix = dict(zip(attrs, suffixes))
 
         self.mapping_dict = _mapping_dict_from_ranges(
-            ranges, attrs, tuple_access=allow_tuple_access)
+            ranges, attrs)
 
         self.attr_to_index = dict(zip(attrs, itertools.product(*ranges)))
 
-        self.allow_tuple_access = allow_tuple_access
         self.attr = attr
         self.base_class = base_class or IndexedDevice
         self.clsname = clsname
@@ -241,7 +297,7 @@ class IndexedComponent(Component):
         'Get arguments needed to copy this class (used for pickle/copy)'
         kwargs = dict(
             attr=self.attr, suffix=self.suffix, ranges=self.ranges,
-            allow_tuple_access=self.allow_tuple_access, clsname=self.clsname,
+            clsname=self.clsname,
             doc=self.doc, kind=self.kind,
             default_read_attrs=self.default_read_attrs,
             default_configuration_attrs=self.default_configuration_attrs,
@@ -256,6 +312,7 @@ class IndexedComponent(Component):
         clsdict = dict(
             _mapping_dict=copy.deepcopy(self.mapping_dict),
             _attr_to_index=dict(self.attr_to_index),
+            _leaf_depth=len(self.ranges),
         )
         self.cls = create_device_from_components(
             self.clsname, default_read_attrs=self.default_read_attrs,

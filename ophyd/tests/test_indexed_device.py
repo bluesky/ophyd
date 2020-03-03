@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import Mock
+import pytest
 
 from ophyd import (Device, IndexedDevice, IndexedComponent, EpicsSignal,
                    Component, FormattedComponent)
@@ -31,6 +31,8 @@ def test_single_range():
     assert dev.cpt1[0] is dev.cpt1.channel_00
     assert len(dev.cpt1) == 10
     assert list(dev.cpt1) == list(range(10))
+    assert dev.cpt1[:2] == [dev.cpt1.channel_00,
+                            dev.cpt1.channel_01]
 
 
 def test_formatted_component():
@@ -72,6 +74,48 @@ def test_double_range():
     assert len(dev.cpt1[0]) == 4
     assert list(dev.cpt1) == list(range(10))
     assert list(dev.cpt1[0]) == list('ABCD')
+
+
+def test_2d_slice():
+    class MyDev(Device):
+        cpt1 = IndexedComponent(
+            FakeSignal,
+            attr='channel_{:02d}{}',
+            suffix='{:02d}{}:Test',
+            ranges=[range(10), 'ABCD'],
+            component_class=Component,
+        )
+
+    dev = MyDev(prefix='PREFIX:', name='dev')
+    assert len(dev.cpt1[:]) == 10 * 4
+    assert len(dev.cpt1[:, 'A']) == 10
+    assert len(dev.cpt1[:, 'A':'C']) == 20
+    assert len(dev.cpt1[:, 'A':]) == 40
+    assert len(dev.cpt1[:, :'C']) == 20
+
+    # TODO - don't want a list here
+    assert len(dev.cpt1[0, 'A']) == 1
+    assert len(dev.cpt1[(0, 'A')]) == 1
+
+    with pytest.raises(ValueError):
+        # too many slices
+        dev.cpt1[:, :, :]
+
+
+def test_3d_slice():
+    class MyDev(Device):
+        cpt1 = IndexedComponent(
+            FakeSignal,
+            attr='channel_{:02d}{}{}',
+            suffix='{:02d}{}{}:Test',
+            ranges=[range(10), 'ABCD', '0123'],
+            component_class=Component,
+        )
+
+    dev = MyDev(prefix='PREFIX:', name='dev')
+    assert len(dev.cpt1[:]) == 10 * 4 * 4
+    assert len(dev.cpt1[:, 'A', '0']) == 10 * 1 * 1
+    assert len(dev.cpt1[:, 'A':'C', '0']) == 10 * 2 * 1
 
 
 def test_string_range():
