@@ -1,9 +1,7 @@
 import logging
 import pytest
 
-from ophyd import (Device, IndexedDevice, IndexedComponent, EpicsSignal,
-                   Component, FormattedComponent)
-from ophyd import Signal
+from ophyd import (Device, IndexedComponent, Component, FormattedComponent)
 
 from .test_device import FakeSignal
 
