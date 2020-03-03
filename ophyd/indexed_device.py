@@ -48,7 +48,7 @@ class _IndexedChildLevel(collections.abc.Mapping):
             # Rewrite the slice to be in terms of indices
             slc = slice(
                 match_list.index(slc.start) if slc.start else None,
-                match_list.index(slc.stop) if slc.stop else None,
+                match_list.index(slc.stop) + 1 if slc.stop else None,
                 match_list.index(slc.step) if slc.step else None,
             )
 
