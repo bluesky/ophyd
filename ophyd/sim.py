@@ -186,7 +186,9 @@ class SynSignalRO(SynSignal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._metadata.update(
-            connected=True,)
+            connected=True,
+            write_access=False,
+        )
 
     def put(self, value, *, timestamp=None, force=False):
         msg = f"{self}.put(value={value}, timestamp={timestamp}, force={force})"
