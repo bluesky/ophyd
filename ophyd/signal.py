@@ -20,6 +20,8 @@ DEFAULT_CONNECTION_TIMEOUT = object()
 DEFAULT_TIMEOUT = object()
 DEFAULT_WRITE_TIMEOUT = object()
 
+# Sentinel to identify if we have never turned the crank on updating a PV
+DEFAULT_EPICSSIGNAL_VALUE = object()
 
 class ReadTimeoutError(TimeoutError):
     ...
@@ -151,11 +153,11 @@ class Signal(OphydObject):
         'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
         try:
-            value = self.value
+            value = self._readback
         except Exception:
             value = None
 
-        if value is not None:
+        if value is not DEFAULT_EPICSSIGNAL_VALUE:
             yield ('value', value)
 
         yield ('timestamp', self._metadata['timestamp'])
@@ -294,11 +296,46 @@ class Signal(OphydObject):
     @property
     def value(self):
         '''The signal's value'''
-        if self._readback is not None:
-            val = self._readback
+        fix_msg = ("We are falling back to calling `.get` and interrogating "
+                   "the underlying control system, however this may cause several "
+                   "other problems:\n"
+                   "   1. This property access may take an arbitrarily long time\n"
+                   "   2. This property access, which you expect to be read only "
+                   "may change other state in the Signal.\n"
+                   "Your options to fix this are:\n"
+                   "  - do not use obj.value.\n"
+                   "    - If you are using this is in a plan you "
+                   "like want to be using bps.read, bps.rd, bpp.reset_positions_decorator, "
+                   "bpp.reset_positions_wrapper, bpp.relative_set_decorator, or "
+                   "bpp.relative_set_wrapper\n"
+                   "    - if you are doing this in an ophyd method use `self.get`\n"
+                   "  - set up the Signal to monitor\n\n"
+                   "This behavior will likely change in the future.")
+
+        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+            # If we are here, then we have never turned the crank on this Signal.  The current
+            # behavior is to fallback to poking the control system to get the value, however this
+            # is problematic and we may want to change in the future so warn verbosely
+            warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
+                          "which has not gotten value from the control system yet.\n" + fix_msg,
+                          stacklevel=2)
+            return self.get()
         else:
-            val = self.get()
-        return val
+            # if we are in here then we have put/get at least once and/or are monitored
+            has_monitors = (hasattr(self, '_monitors') and
+                            all(v is not None for v in self._monitors.values())
+                            )
+            if not has_monitors:
+                # If we are not monitored, then warn that this may change in the future.
+                warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
+                              "which is a non-monitored signal.\n" + fix_msg,
+                              stacklevel=2)
+                return self.get()
+
+            # else return our cached value and assume something else is keeping us up-to-date
+            # so we can trust the latest news
+            return self._readback
+
 
     @value.setter
     def value(self, value):
@@ -535,6 +572,9 @@ class DerivedSignal(Signal):
 
     def _derived_value_callback(self, value=None, **kwargs):
         'Main signal value updated - update the DerivedSignal'
+        # if some how we get cycled with the default value sentinel, just bail
+        if value is DEFAULT_EPICSSIGNAL_VALUE:
+            return
         value = self.inverse(value)
         self._readback = value
         updated_md = self._update_metadata_from_callback(**kwargs)
@@ -707,7 +747,7 @@ class EpicsSignalBase(Signal):
         )
 
         kwargs.pop('value', None)
-        super().__init__(name=name, metadata=metadata, value=None, **kwargs)
+        super().__init__(name=name, metadata=metadata, value=DEFAULT_EPICSSIGNAL_VALUE, **kwargs)
 
         validate_pv_name(read_pv)
 
