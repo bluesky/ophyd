@@ -750,8 +750,8 @@ class EpicsSignalBase(Signal):
             connected=False,
         )
 
-        kwargs.pop('value', None)
-        super().__init__(name=name, metadata=metadata, value=DEFAULT_EPICSSIGNAL_VALUE, **kwargs)
+        kwargs.setdefault('value', DEFAULT_EPICSSIGNAL_VALUE)
+        super().__init__(name=name, metadata=metadata, **kwargs)
 
         validate_pv_name(read_pv)
 
