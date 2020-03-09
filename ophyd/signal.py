@@ -574,7 +574,7 @@ class DerivedSignal(Signal):
 
         self._run_metadata_callbacks()
 
-    def _derived_value_callback(self, value=None, **kwargs):
+    def _derived_value_callback(self, value, **kwargs):
         'Main signal value updated - update the DerivedSignal'
         # if some how we get cycled with the default value sentinel, just bail
         if value is DEFAULT_EPICSSIGNAL_VALUE:
