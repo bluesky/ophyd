@@ -137,7 +137,7 @@ class SynSignal(Signal):
             connected=True,
         )
 
-        logger.info(self)
+        self.log.info(self)
 
     def describe(self):
         res = super().describe()
@@ -147,16 +147,16 @@ class SynSignal(Signal):
         return res
 
     def trigger(self):
-        logger.info('trigger %s', self)
+        self.log.info('trigger %s', self)
 
         delay_time = self.exposure_time
         if delay_time:
-            logger.info('%s delay_time is %d', self, delay_time)
+            self.log.info('%s delay_time is %d', self, delay_time)
             st = DeviceStatus(device=self)
             if self.loop.is_running():
 
                 def update_and_finish():
-                    logger.info('update_and_finish %s', self)
+                    self.log.info('update_and_finish %s', self)
                     self.put(self._func())
                     st._finished()
 
@@ -164,7 +164,7 @@ class SynSignal(Signal):
             else:
 
                 def sleep_and_finish():
-                    logger.info('sleep_and_finish %s', self)
+                    self.log.info('sleep_and_finish %s', self)
                     ttime.sleep(delay_time)
                     self.put(self._func())
                     st._finished()
@@ -192,12 +192,12 @@ class SynSignalRO(SynSignal):
 
     def put(self, value, *, timestamp=None, force=False):
         msg = f"{self}.put(value={value}, timestamp={timestamp}, force={force})"
-        logger.error(msg)
+        self.log.error(msg)
         raise ReadOnlyError(msg)
 
     def set(self, value, *, timestamp=None, force=False):
         msg = f"{self} is readonly"
-        logger.error(msg)
+        self.log.error(msg)
         raise ReadOnlyError(msg)
 
 
