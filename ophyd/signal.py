@@ -369,7 +369,10 @@ class Signal(OphydObject):
             The keys must be strings and the values must be dict-like
             with the ``event_model.event_descriptor.data_key`` schema.
         """
-        val = self.value
+        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+            val = self.get()
+        else:
+            val = self._readback
         return {self.name: {'source': 'SIM:{}'.format(self.name),
                             'dtype': data_type(val),
                             'shape': data_shape(val)}}
@@ -1125,7 +1128,10 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        val = self.value
+        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+            val = self.get()
+        else:
+            val = self._readback
         lower_ctrl_limit, upper_ctrl_limit = self.limits
         desc = dict(
             source='PV:{}'.format(self._read_pvname),
