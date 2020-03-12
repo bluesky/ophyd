@@ -255,22 +255,22 @@ class Signal(OphydObject):
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
                              rtol=self.rtolerance)
             except TimeoutError:
+                success = False
                 self.log.warning(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     value, timeout, self.tolerance, self.rtolerance
                 )
-                success = False
             except Exception as ex:
+                success = False
                 self.log.exception(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     value, timeout, self.tolerance, self.rtolerance
                 )
-                success = False
             else:
+                success = True
                 self.log.info(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
                     value, timeout, self.tolerance, self.rtolerance, self._readback)
-                success = True
 
                 if settle_time is not None:
                     self.log.info('settling for %d seconds', settle_time)
