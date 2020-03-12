@@ -269,8 +269,9 @@ class Signal(OphydObject):
             else:
                 self.log.info(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
-                    value, timeout, self.tolerance, self.rtolerance, self.value)
+                    value, timeout, self.tolerance, self.rtolerance, self._readback)
                 success = True
+
                 if settle_time is not None:
                     self.log.info('settling for %d seconds', settle_time)
                     time.sleep(settle_time)
