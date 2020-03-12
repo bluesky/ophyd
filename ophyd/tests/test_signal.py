@@ -158,7 +158,7 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
     cleanup.add(signal)
     signal.wait_for_connection()
     print('EpicsSignalRO.metadata=', signal.metadata)
-    signal.value
+    signal.get()
 
     assert not signal.write_access
     assert signal.read_access
@@ -214,13 +214,13 @@ def test_epicssignal_readwrite(signal_test_ioc, pair_signal):
 
     assert signal.setpoint_pvname == signal_test_ioc.pvs['pair_set']
     assert signal.pvname == signal_test_ioc.pvs['pair_rbv']
-    signal.value
+    signal.get()
 
     time.sleep(0.2)
 
     value = 10
     signal.value = value
-    signal.setpoint = value
+    signal.put(value)
     assert signal.setpoint == value
     signal.setpoint_ts
 
@@ -246,7 +246,7 @@ def test_epicssignal_waveform(cleanup, signal_test_ioc):
     signal.wait_for_connection()
 
     sub = signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
-    assert len(signal.value) > 1
+    assert len(signal.get()) > 1
     signal.unsubscribe(sub)
 
 
@@ -393,7 +393,7 @@ def test_epics_signal_derived(ro_signal):
     assert not derived.write_access
 
     assert derived.timestamp == ro_signal.timestamp
-    assert derived.get() == ro_signal.value
+    assert derived.get() == ro_signal.get()
 
 
 @pytest.mark.motorsim

@@ -16,7 +16,7 @@ def test_read_pv_timestamp_no_monitor(motor):
 
     rbv_value0 = rbv.get()
     ts0 = rbv.timestamp
-    sp.put(sp.value + 0.1, wait=True)
+    sp.put(sp.get() + 0.1, wait=True)
     time.sleep(0.1)
 
     rbv_value1 = rbv.get()
