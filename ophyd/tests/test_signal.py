@@ -238,8 +238,12 @@ def test_epicssignal_readwrite(signal_test_ioc, pair_signal):
 
 
 def test_epicssignal_waveform(cleanup, signal_test_ioc):
+    called = False
+
     def update_cb(value=None, **kwargs):
+        nonlocal called
         assert len(value) > 1
+        called = True
 
     signal = EpicsSignal(signal_test_ioc.pvs['waveform'], string=True)
     cleanup.add(signal)
@@ -247,6 +251,7 @@ def test_epicssignal_waveform(cleanup, signal_test_ioc):
 
     sub = signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
     assert len(signal.get()) > 1
+    assert called
     signal.unsubscribe(sub)
 
 
