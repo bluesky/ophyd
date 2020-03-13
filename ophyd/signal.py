@@ -775,6 +775,8 @@ class EpicsSignalBase(Signal):
             connection_callback=self._pv_connected,
             access_callback=self._pv_access_callback)
         self._read_pv._reference_count += 1
+        if self._auto_monitor:
+            self.__add_read_callback()
 
         if not self.__any_instantiated:
             self.log.debug("This is the first instance of EpicsSignalBase. "
@@ -927,17 +929,20 @@ class EpicsSignalBase(Signal):
         """PV alarm severity"""
         return self._metadata['severity']
 
+    def __add_read_callback(self):
+        with self._metadata_lock:
+            if not self._monitors[self._read_pvname]:
+                mon = self._read_pv.add_callback(
+                    self._read_changed,
+                    run_now=self._read_pv.connected)
+                self._monitors[self._read_pvname] = mon
+
     @doc_annotation_forwarder(Signal)
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
             event_type = self._default_sub
-
-        with self._metadata_lock:
-            if (event_type == self.SUB_VALUE and not
-                    self._monitors[self._read_pvname]):
-                mon = self._read_pv.add_callback(self._read_changed,
-                                                 run_now=self._read_pv.connected)
-                self._monitors[self._read_pvname] = mon
+        if event_type == self.SUB_VALUE:
+            self.__add_read_callback()
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
@@ -1358,6 +1363,9 @@ class EpicsSignal(EpicsSignalBase):
                 connection_callback=self._pv_connected,
                 access_callback=self._pv_access_callback)
 
+        if self._auto_monitor:
+            self.__add_write_callback()
+
         self._write_pv._reference_count += 1
 
         # NOTE: after this point, write_pv can either be:
@@ -1365,17 +1373,21 @@ class EpicsSignal(EpicsSignalBase):
         #  (2) a completely separate PV instance
         # It will not be None, until destroy() is called.
 
+    def __add_write_callback(self):
+        with self._metadata_lock:
+            if not self._monitors[self._setpoint_pvname]:
+                mon = self._write_pv.add_callback(
+                    self._write_changed,
+                    run_now=self._write_pv.connected)
+                self._monitors[self._setpoint_pvname] = mon
+
     @doc_annotation_forwarder(EpicsSignalBase)
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
             event_type = self._default_sub
 
-        with self._metadata_lock:
-            if (event_type == self.SUB_SETPOINT and not
-                    self._monitors[self._setpoint_pvname]):
-                mon = self._write_pv.add_callback(self._write_changed,
-                                                  run_now=self._write_pv.connected)
-                self._monitors[self._setpoint_pvname] = mon
+        if event_type == self.SUB_SETPOINT:
+            self.__add_write_callback()
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
