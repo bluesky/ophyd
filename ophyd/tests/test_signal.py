@@ -251,6 +251,9 @@ def test_epicssignal_waveform(cleanup, signal_test_ioc):
 
     sub = signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
     assert len(signal.get()) > 1
+    # force the current thread to allow other threads to run to service
+    # subscription
+    time.sleep(0)
     assert called
     signal.unsubscribe(sub)
 
