@@ -2,8 +2,8 @@
  Release History
 =================
 
-v1.4.0 (Pre-release)
-====================
+v1.4.0 (2020-03-13)
+===================
 
 Features
 --------
@@ -29,6 +29,16 @@ Features
   signal class :class:`ophyd.Signal`.
 * Added metadata subscriptions for :class:`ophyd.Signal`.
 * Added :func:`OphydObj.destroy` method to all ophyd objects.
+* Added support for ADLambda X-Spectrum Lambda 750K camera.
+* Improved error message "Another set() call is still in progress" to include
+  the name of the device that raised the error.
+* Allowed `ophyd.FormattedComponent` strings to be written like
+  ``{prefix}{_ch_name}`` as well as the previously-supported and more verbose
+  ``{self.prefix}{self._ch_name}``.
+* Made timeouts more configurable, including separately configurable connection
+  timeout, write timeout, and read timeout. New method
+  `ophyd.EpicsSignal.set_default_timeout` sets class-wide defaults. Timeouts
+  can also be specified per-instance and in a specific action.
 
 API Changes
 -----------
@@ -53,6 +63,24 @@ API Changes
   simulation IOCs.
 * Removed ``ophyd.tests.AssertTools`` and use standard pytest idioms throughout
   the test suite.
+* Overhauled objects in `ophyd.sim` to inherit from `ophyd.Signal` and
+  `ophyd.Device` and thus behave more like true hardware-connected devices.
+* The `ophyd.StatusBase.done` attribute was formerly settable, but never
+  intended to be. It should only be set by calling
+  `ophyd.StatusBase._finished()`. Now, if it is set from ``False`` to ``True``
+  is warns, and if it is set from ``True`` to ``False`` (which does not make
+  sense) it raises.
+
+Fixes
+-----
+
+* Skip erroneous limits check on ``EpicsMotor.set_current_position``.
+* Handle bug in dispatcher to allow ``functools.partial`` objects to be
+  registered as callbacks.
+* Before shaping area detector image data, truncate any extra elements that
+  exceed the declares waveform length.
+* Fix clipping in status progress updates.
+* Address numpy pickle CVE.
 
 Internals
 ---------
@@ -65,6 +93,7 @@ Internals
 * Completely overhauled the dispatcher thread mechanism.
 * Removed our backport of ``enum``, as it is available on the minimum Python
   3.6.
+* Refactor simulated text object ``SynAxisNoHints`` to be more realistic.
 
 v1.3.3 (2019-05-02)
 ===================
