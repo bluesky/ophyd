@@ -30,7 +30,6 @@ from ophyd.areadetector.util import stub_templates
 from ophyd.device import (Component as Cpt, )
 from ophyd.signal import Signal
 import uuid
-import epics
 
 logger = logging.getLogger(__name__)
 ad_path = '/epics/support/areaDetector/1-9-1/ADApp/Db/'
