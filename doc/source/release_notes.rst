@@ -31,7 +31,7 @@ Features
 * Added :func:`OphydObj.destroy` method to all ophyd objects.
 * Added support for ADLambda X-Spectrum Lambda 750K camera.
 * Improved error message "Another set() call is still in progress" to include
-  the name of the device that raise the error.
+  the name of the device that raised the error.
 * Allowed `ophyd.FormattedComponent` strings to be written like
   ``{prefix}{_ch_name}`` as well as the previously-supported and more verbose
   ``{self.prefix}{self._ch_name}``.
@@ -79,7 +79,7 @@ Fixes
   registered as callbacks.
 * Before shaping area detector image data, truncate any extra elements that
   exceed the declares waveform length.
-* Fix clipping in status progres updates.
+* Fix clipping in status progress updates.
 * Address numpy pickle CVE.
 
 Internals
