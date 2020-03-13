@@ -1789,7 +1789,7 @@ class AttributeSignal(Signal):
                        value=value, timestamp=time.time())
 
     def describe(self):
-        value = self.value
+        value = self.get()
         desc = {'source': 'PY:{}.{}'.format(self.parent.name, self.full_attr),
                 'dtype': data_type(value),
                 'shape': data_shape(value),
