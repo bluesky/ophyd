@@ -175,11 +175,11 @@ def test_clear_fake_device():
     my_fake = FakeSample('KITCHEN', name='kitchen')
     clear_fake_device(my_fake, default_value=49,
                       default_string_value='string')
-    assert my_fake.butter.value == 49
-    assert my_fake.flour.value == 49
-    assert my_fake.sink.value == 49
-    assert my_fake.egg.yolk.value == 'string'
-    assert my_fake.egg.whites.value == 49
+    assert my_fake.butter.get() == 49
+    assert my_fake.flour.get() == 49
+    assert my_fake.sink.get() == 49
+    assert my_fake.egg.yolk.get() == 'string'
+    assert my_fake.egg.whites.get() == 49
 
 
 def test_instantiate_fake_device():
