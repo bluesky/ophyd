@@ -274,7 +274,8 @@ class _ReadbackSignal(Signal):
         )
 
     def get(self):
-        return self.parent.sim_state['readback']
+        self._readback = self.parent.sim_state['readback']
+        return self._readback
 
     def describe(self):
         res = super().describe()
@@ -298,9 +299,11 @@ class _ReadbackSignal(Signal):
 
 class _SetpointSignal(Signal):
     def put(self, value, *, timestamp=None, force=False):
+        self._readback = float(value)
         self.parent.set(float(value))
 
     def get(self):
+        self._readback = self.parent.sim_state['setpoint']
         return self.parent.sim_state['setpoint']
 
     def describe(self):

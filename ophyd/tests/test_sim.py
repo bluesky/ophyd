@@ -265,3 +265,11 @@ def test_SynSignalWithRegistry():
     d1 = img.read()
     assert int(d1['img']['value'][-1]) == 1  # increased by 1
     shutil.rmtree(tempdirname)
+
+
+def test_synaxis_describe():
+    bs = pytest.importorskip('bluesky')
+    import bluesky.plans as bp
+    motor1 = SynAxis(name='motor1')
+    RE = bs.RunEngine()
+    RE(bp.scan([], motor1, -5, 5, 5))
