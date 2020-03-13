@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.motorsim
 def test_read_pv_timestamp_no_monitor(motor):
+    motor.set(0, wait=True)
     sp = EpicsSignal(motor.user_setpoint.pvname, name='test')
     rbv = EpicsSignalRO(motor.user_readback.pvname, name='test')
 
@@ -29,6 +30,7 @@ def test_read_pv_timestamp_no_monitor(motor):
 
 @pytest.mark.motorsim
 def test_write_pv_timestamp_no_monitor(motor):
+    motor.set(0, wait=True)
     sp = EpicsSignal(motor.user_setpoint.pvname, name='test')
 
     sp_value0 = sp.get()
@@ -46,6 +48,8 @@ def test_write_pv_timestamp_no_monitor(motor):
 
 @pytest.mark.motorsim
 def test_read_pv_timestamp_monitor(motor):
+    motor.set(0, wait=True)
+
     sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
                      name='test')
     rbv = EpicsSignalRO(motor.user_readback.pvname, auto_monitor=True,
@@ -66,6 +70,7 @@ def test_read_pv_timestamp_monitor(motor):
 
 @pytest.mark.motorsim
 def test_write_pv_timestamp_monitor(motor):
+    motor.set(0, wait=True)
     sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
                      name='test')
 
