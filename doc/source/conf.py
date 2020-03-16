@@ -28,6 +28,8 @@ import sphinx_rtd_theme
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest', 'sphinx.ext.autosummary',
+              'IPython.sphinxext.ipython_directive',
+              'IPython.sphinxext.ipython_console_highlighting',
               'matplotlib.sphinxext.plot_directive',
               'sphinx.ext.inheritance_diagram',
               'numpydoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx']
