@@ -2,12 +2,12 @@
 Debugging and Logging
 *********************
 
-.. versionchanged:: 1.6.0
+.. versionchanged:: 1.4.0
 
-   Bluesky's use of Python's logging framework has been completely reworked to
+   Ophyd's use of Python's logging framework has been completely reworked to
    follow Python's documented best practices for libraries.
 
-Bluesky uses Python's logging framework, which enables sophisticated log
+Ophyd uses Python's logging framework, which enables sophisticated log
 management. For common simple cases, including viewing logs in the terminal or
 writing them to a file, the next section illustrates streamlined,
 copy/paste-able examples. Users who are familiar with that framework or who
@@ -24,27 +24,22 @@ This is the recommended standard setup.
 
 .. code-block:: python
 
-   from bluesky import config_bluesky_logging
-   config_bluesky_logging()
+   from ophyd import config_ophyd_logging
+   config_ophyd_logging()
 
-It will display ``'bluesky'`` log records of ``WARNING`` level or higher in the
-terminal (standard out) with a format tailored to bluesky.
+It will display ``'ophyd'`` log records of ``WARNING`` level or higher in the
+terminal (standard out) with a format tailored to ophyd.
 
 Maximum verbosity
 -----------------
 
-If the RunEngine is "hanging," running slowly, or repeatedly encountering an
-error, it is useful to know exactly where in the plan the problem is occurring.
-To follow the RunEngine's progress through the plan, crank up the verbosity of
-the logging.
-
-This will display each message from the plan just before the RunEngine
-processes it, giving a clear indication of when plan execution is stuck.
+If operations are "hanging," running slowly, or repeatedly encountering an
+error, increasing the logging verbosity can help identify the underlying issue.
 
 .. code-block:: python
 
-   from bluesky import config_bluesky_logging
-   config_bluesky_logging(level='DEBUG')
+   from ophyd import config_ophyd_logging
+   config_ophyd_logging(level='DEBUG')
 
 Log to a file
 -------------
@@ -54,63 +49,48 @@ out).
 
 .. code-block:: python
 
-    from bluesky import config_bluesky_logging
-    config_bluesky_logging(file='/tmp/bluesky.log', level='DEBUG')
-
-.. important::
-
-   We strongly recommend setting levels on *handlers* not on *loggers*.
-   In previous versions of bluesky, we recommended adjusting the level on the
-   *logger*, as in ``RE.log.setLevel('DEBUG')``. We now recommended
-   that you *avoid* setting levels on loggers because it would affect all
-   handlers downstream, potentially inhibiting some other part of the program
-   from collecting the records it wants to collect.
+    from ophyd import config_ophyd_logging
+    config_ophyd_logging(file='/tmp/ophyd.log', level='DEBUG')
 
 .. _logger_api:
 
-Bluesky's Logging-Related API
+Ophyd's Logging-Related API
 =============================
 
 Logger Names
 ------------
 
-Here are the primary loggers used by bluesky.
+Here are the primary loggers used by ophyd.
 
-* ``'bluesky'`` --- the logger to which all bluesky log records propagate
-* ``'bluesky.emit_document'`` --- A log record is emitted whenever a Document
-  is emitted. The log record does not contain the full content of the
-  Document.
-* ``'bluesky.RE'`` --- Records from a RunEngine. INFO-level notes state
-  changes. DEBUG-level notes when each message from a plan is about to be
-  processed and when a status object has completed.
-* ``'bluesky.RE.msg`` --- A log record is emitted when each
-  :class:`~bluesky.utils.Msg` is about to be processed.
-* ``'bluesky.RE.state`` --- A log record is emitted when the RunEngine's state
-  changes.
+* ``'ophyd'`` --- the logger to which all ophyd log records propagate
+* ``'ophyd.control_layer'`` --- logs requests issued to the underlying control
+  layer (e.g. pyepics, caproto)
+* ``'ophyd.event_dispatcher'`` --- issues regular summaries of the backlog of
+  updates from the control layer that are being processed on background threads
 
-There are also some module-level loggers for specific features.
+There are also many module-level loggers for specific features.
 
 Formatter
 ---------
 
-.. autoclass:: bluesky.log.LogFormatter
+.. autoclass:: ophyd.log.LogFormatter
 
 Global Handler
 ---------------
 
-Following Python's recommendation, bluesky does not install any handlers at
+Following Python's recommendation, ophyd does not install any handlers at
 import time, but it provides a function to set up a basic useful configuration
 in one line, similar to Python's :py:func:`logging.basicConfig` but with some
-additional options---and scoped to the ``'bluesky'`` logger with bluesky's
-:class:`bluesky.log.LogFormatter`. It streamlines common use cases without
+additional options---and scoped to the ``'ophyd'`` logger with ophyd's
+:class:`ophyd.log.LogFormatter`. It streamlines common use cases without
 interfering with more sophisticated use cases.
 
-We recommend that facilities using bluesky leave this function for users and
+We recommend that facilities using ophyd leave this function for users and
 configure any standardized, facility-managed logging handlers separately, as
 described in the next section.
 
-.. autofunction:: bluesky.log.config_bluesky_logging
-.. autofunction:: bluesky.log.get_handler
+.. autofunction:: ophyd.log.config_ophyd_logging
+.. autofunction:: ophyd.log.get_handler
 
 Advanced Example
 ================
@@ -124,14 +104,14 @@ For further reference, see the Python 3 logging howto:
 https://docs.python.org/3/howto/logging.html#logging-flow
 
 As an illustrative example, we will set up two handlers using the Python
-logging framework directly, ignoring bluesky's convenience function.
+logging framework directly, ignoring ophyd's convenience function.
 
 Suppose we set up a handler aimed at a file:
 
 .. code-block:: python
 
     import logging
-    file_handler = logging.FileHandler('bluesky.log')
+    file_handler = logging.FileHandler('ophyd.log')
 
 And another aimed at `Logstash <https://www.elastic.co/products/logstash>`_:
 
@@ -140,12 +120,12 @@ And another aimed at `Logstash <https://www.elastic.co/products/logstash>`_:
     import logstash  # requires python-logstash package
     logstash_handler = logstash.TCPLogstashHandler(<host>, <port>, version=1)
 
-We can attach the handlers to the bluesky logger, to which all log records
-created by bluesky propagate:
+We can attach the handlers to the ophyd logger, to which all log records
+created by ophyd propagate:
 
 .. code-block:: python
 
-    logger = logging.getLogger('bluesky')
+    logger = logging.getLogger('ophyd')
     logger.addHandler(logstash_handler)
     logger.addHandler(file_filter)
 
