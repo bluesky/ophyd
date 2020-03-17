@@ -214,10 +214,10 @@ class PVPositioner(Device, PositionerBase):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
             self.log.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
-                         self.name, started)
+                           self.name, started)
 
         self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                     self.name, self._moving, value)
+                       self.name, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
