@@ -438,8 +438,8 @@ class FileStorePluginBase(FileStoreBase):
         # so we do it redundantly here in Python.
         self._fn = self.file_template.get() % (read_path,
                                                filename,
+                                               # file_number is *next* iteration
                                                self.file_number.get() - 1)
-        #                                      # file_number is *next* iteration
         self._fp = read_path
         if not self.file_path_exists.get():
             raise IOError("Path %s does not exist on IOC."
