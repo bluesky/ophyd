@@ -44,9 +44,9 @@ class PositionerBase(OphydObject):
 
     # High level
     def set(self, new_position: Any, *,
-            timeout: float=None,
-            moved_cb: Callable =None,
-            wait: bool =False) -> StatusBase:
+            timeout: float = None,
+            moved_cb: Callable = None,
+            wait: bool = False) -> StatusBase:
         """Set a value and return a Status object
 
 
