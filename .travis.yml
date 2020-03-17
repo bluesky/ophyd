@@ -37,52 +37,72 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
-matrix:
+jobs:
   fast_finish: true
   include:
+    - python: 3.7  # Separate build to run flake8 check
+      env:
+        - FLAKE_8=true
     - python: 3.6
       env:
         - PUBLISH_DOCS=true
+        - FLAKE_8=
         - TEST_CL=pyepics
     - python: 3.6
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=caproto
     - python: 3.7
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=pyepics
     - python: 3.7
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=caproto
     - python: nightly
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=pyepics
     - python: nightly
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=caproto
   allow_failures:
     - python: 3.6
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=caproto
     - python: 3.7
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=caproto
     - python: nightly
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=pyepics
     - python: nightly
       env:
         - PUBLISH_DOCS=
+        - FLAKE_8=
         - TEST_CL=caproto
 
 before_install:
+  - if [ ! -z "$FLAKE_8" ]; then
+        pip install flake8;
+        flake8 .;
+        echo "The project code was verified by 'flake8'";
+        exit;
+    fi
+
   - export MPLBACKEND=agg
   - git fetch --unshallow
 
@@ -118,7 +138,6 @@ install:
   - echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
 script:
-  - flake8
   - echo "Checking if the motor IOC is running:"
   - caproto-get -v sim:mtr1
   - echo "Checking if the areaDetector IOC is running:"
