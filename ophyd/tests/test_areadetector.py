@@ -12,7 +12,7 @@ from pathlib import PurePath, Path
 
 from ophyd.utils.paths import make_dir_tree
 from ophyd import (SimDetector, SingleTrigger, Component, Device,
-                   DynamicDeviceComponent, EpicsSignalRO, Kind, wait)
+                   DynamicDeviceComponent, Kind, wait)
 from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         ColorConvPlugin, ProcessPlugin,
                                         OverlayPlugin, ROIPlugin,
@@ -606,7 +606,6 @@ def test_ndderivedsignal_with_parent():
         shaped_image = Component(NDDerivedSignal, 'flat_image',
                                  shape=('width', 'height'),
                                  num_dimensions='ndims')
-
 
     det = Detector(name='det')
     det.shaped_image.get().shape == (4, 3)
