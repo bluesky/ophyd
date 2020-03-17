@@ -439,7 +439,7 @@ class FileStorePluginBase(FileStoreBase):
         self._fn = self.file_template.get() % (read_path,
                                                filename,
                                                self.file_number.get() - 1)
-                                               # file_number is *next* iteration
+        #                                      # file_number is *next* iteration
         self._fp = read_path
         if not self.file_path_exists.get():
             raise IOError("Path %s does not exist on IOC."
@@ -518,7 +518,7 @@ class FileStoreTIFF(FileStorePluginBase):
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
-    '''Write out 'squashed' tiffs
+    r'''Write out 'squashed' tiffs
 
     .. note::
 
