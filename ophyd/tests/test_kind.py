@@ -359,7 +359,6 @@ def test_ddc():
     class ThingHaver(Device):
         a = DDCpt({'A': (Thing, '', {})})
 
-
     th = ThingHaver(name='th')
     assert th.a.A.a.kind & Kind.normal
     assert th.a.A.kind & Kind.normal
