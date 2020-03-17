@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from caproto.server import (pvproperty, PVGroup, ioc_arg_parser, run, SubGroup,
                             get_pv_pair_wrapper)
-from caproto import ChannelType
 
 pvproperty_with_rbv = get_pv_pair_wrapper(setpoint_suffix='',
                                           readback_suffix='_RBV')
