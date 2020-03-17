@@ -1454,7 +1454,7 @@ class Device(BlueskyInterface, OphydObject):
             return self.__internal_list()[key]
 
         def __setitem__(self, key, val):
-            raise NotImplemented
+            raise NotImplementedError
 
         def __delitem__(self, key):
             to_delete = self.__internal_list()[key]
