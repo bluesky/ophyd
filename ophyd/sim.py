@@ -2,7 +2,6 @@ import asyncio
 import copy
 import inspect
 import itertools
-import logging
 from functools import partial
 
 import numpy as np
@@ -16,7 +15,7 @@ import weakref
 from collections import deque, OrderedDict
 from tempfile import mkdtemp
 
-from .signal import Signal, SignalRO, EpicsSignal, EpicsSignalRO
+from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
 from .status import DeviceStatus, StatusBase
 from .device import (Device, Component as Cpt,
@@ -1060,7 +1059,7 @@ def make_fake_device(cls):
                                trigger_value=cpt.trigger_value,
                                kind=cpt.kind, add_prefix=cpt.add_prefix,
                                doc=cpt.doc, **cpt.kwargs,
-                )
+                               )
             else:
                 fake_cpt = copy.copy(cpt)
 
