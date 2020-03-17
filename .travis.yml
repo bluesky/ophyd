@@ -118,6 +118,7 @@ install:
   - echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
 script:
+  - flake8
   - echo "Checking if the motor IOC is running:"
   - caproto-get -v sim:mtr1
   - echo "Checking if the areaDetector IOC is running:"
