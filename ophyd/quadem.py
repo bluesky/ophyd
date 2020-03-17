@@ -3,7 +3,7 @@ from collections import OrderedDict
 from . import (EpicsSignalRO, EpicsSignal, Component as Cpt,
                DynamicDeviceComponent as DDCpt, Signal,
                Kind, kind_context)
-from .areadetector import (ADComponent as ADCpt, EpicsSignalWithRBV,
+from .areadetector import (EpicsSignalWithRBV,
                            ImagePlugin, StatsPlugin, DetectorBase,
                            SingleTrigger, ADBase)
 from .status import DeviceStatus
