@@ -92,7 +92,7 @@ class DocRow(object):
             lines = self.description.split('\n')
             line_count = len(lines)
             if line_count > 1:
-                m = re.match('^(\s+)', lines[1])
+                m = re.match(r'^(\s+)', lines[1])
                 if m:
                     whitespace = m.groups()[0]
                     self.description = '\n%s%s' % (whitespace, self.description.lstrip())
