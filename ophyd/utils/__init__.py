@@ -1,5 +1,5 @@
 # vi: ts=4 sw=4 sts=4 expandtab
-import logging  # noqa: F401
+import logging
 from collections import OrderedDict
 
 from .errors import *  # noqa: F401, F403
