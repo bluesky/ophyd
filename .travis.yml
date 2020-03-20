@@ -42,61 +42,43 @@ jobs:
   include:
     - python: 3.7  # Separate build to run flake8 check
       env:
-        - FLAKE_8=true
+        - FLAKE8=true
     - python: 3.6
       env:
         - PUBLISH_DOCS=true
-        - FLAKE_8=
         - TEST_CL=pyepics
     - python: 3.6
       env:
         - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=pyepics
     - python: 3.7
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=pyepics
     - python: nightly
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=caproto
   allow_failures:
     - python: 3.6
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=pyepics
     - python: nightly
       env:
-        - PUBLISH_DOCS=
-        - FLAKE_8=
         - TEST_CL=caproto
 
 before_install:
-  - if [ "$FLAKE_8" ]; then
+  - if [ "$FLAKE8" ]; then
         pip install flake8;
         flake8 .;
         let res=$?;
