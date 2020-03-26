@@ -25,7 +25,7 @@ setup(name='ophyd',
       entry_points={
           'databroker.handlers': [
               'NPY_SEQ = ophyd.sim:NumpySeqHandler',
-      ]},
+          ]},
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Programming Language :: Python :: 3.6",

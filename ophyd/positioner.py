@@ -44,9 +44,9 @@ class PositionerBase(OphydObject):
 
     # High level
     def set(self, new_position: Any, *,
-            timeout: float=None,
-            moved_cb: Callable =None,
-            wait: bool =False) -> StatusBase:
+            timeout: float = None,
+            moved_cb: Callable = None,
+            wait: bool = False) -> StatusBase:
         """Set a value and return a Status object
 
 
@@ -87,7 +87,7 @@ class PositionerBase(OphydObject):
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
 
-    def stop(self, *, success: bool =False):
+    def stop(self, *, success: bool = False):
         '''Stops motion.
 
         Sub-classes must extend this method to _actually_ stop the device.

@@ -6,9 +6,6 @@ from numpy.testing import assert_allclose
 
 from ophyd import (
     EpicsMotor,
-    Signal,
-    EpicsSignal,
-    EpicsSignalRO,
     Component as Cpt,
     MotorBundle,
 )

@@ -105,13 +105,13 @@ class NDDerivedSignal(DerivedSignal):
         array_shape = self.derived_shape[:self.derived_ndims]
         if not any(array_shape):
             raise RuntimeError(f"Invalid array size {self.derived_shape}")
-            
+
         array_len = np.prod(array_shape)
         if len(value) < array_len:
-            raise RuntimeError(f"cannot reshape array of size {array_len} into shape {tuple(array_shape)}. Check IOC configuration.")
+            raise RuntimeError(f"cannot reshape array of size {array_len} "
+                               f"into shape {tuple(array_shape)}. Check IOC configuration.")
 
         return np.asarray(value[:array_len]).reshape(array_shape)
-
 
     def subscribe(self, callback, event_type=None, run=True):
         cid = super().subscribe(callback, event_type=event_type, run=run)
@@ -381,7 +381,8 @@ class ADBase(Device):
             if None (default) then a new figure is created otherwise it is
             plotted on the specified axes.
         *args, **kwargs : networkx.draw_networkx args and kwargs.
-            For the allowed args and kwargs see the `networkx.draw_networkx documentation <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
+            For the allowed args and kwargs see the `networkx.draw_networkx documentation
+            <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
         '''
         # Importing matplotlib.pyplot here as it is not a dependency except for
         # this method.

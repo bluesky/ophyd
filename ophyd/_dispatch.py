@@ -43,7 +43,7 @@ class _CallbackThread(threading.Thread):
                         getattr(callback, '__name__', '(unnamed)'),
                         kwargs.get('pvname'))
                     callback(*args, **kwargs)
-                except Exception as ex:
+                except Exception:
                     self.logger.exception(
                         'Exception occurred during callback %r (pvname=%r)',
                         callback, kwargs.get('pvname')

@@ -1,6 +1,5 @@
 import atexit
 import logging
-import warnings
 from distutils.version import LooseVersion
 import epics
 from epics import ca, caget, caput

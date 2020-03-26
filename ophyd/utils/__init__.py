@@ -2,10 +2,9 @@
 import logging
 from collections import OrderedDict
 
-from .errors import *
-from .epics_pvs import *
-from .paths import makedirs, make_dir_tree
-
+from .errors import *  # noqa: F401, F403
+from .epics_pvs import *  # noqa: F401, F403
+from .paths import makedirs, make_dir_tree  # noqa: F401
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())

@@ -3,10 +3,9 @@ import logging
 
 from collections import OrderedDict
 
-from .status import DeviceStatus
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .device import (Device, Component as Cpt, DynamicDeviceComponent as DDC,
-                     Staged, BlueskyInterface, ALL_COMPONENTS, Kind)
+                     BlueskyInterface, Kind)
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 
 

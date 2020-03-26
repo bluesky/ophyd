@@ -9,7 +9,6 @@ from ophyd.flyers import (AreaDetectorTimeseriesCollector,
                           WaveformCollector,
                           MonitorFlyerMixin)
 from ophyd.status import wait
-from ophyd.utils import OrderedDefaultDict
 
 
 @pytest.fixture(scope='function')
