@@ -93,7 +93,7 @@ class EpicsMotor(Device, PositionerBase):
                     self.connected
                     and old_value is not None
                     and value != old_value
-                ):
+                    ):
                 self.user_setpoint._metadata_changed(
                     self.user_setpoint.pvname,
                     self.user_setpoint._read_pv.get_ctrlvars(),
