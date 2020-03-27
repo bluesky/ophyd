@@ -90,8 +90,8 @@ class EpicsMotor(Device, PositionerBase):
             update EpicsSignal object when a limit CA monitor received
             """
             if (
-                self.connected 
-                and old_value is not None 
+                self.connected
+                and old_value is not None
                 and value != old_value
             ):
                 self.user_setpoint._metadata_changed(
@@ -304,11 +304,11 @@ class EpicsMotor(Device, PositionerBase):
     def get_lim(self, flag):
         '''
         Returns the travel limit of motor
-        
+
         * flag > 0: returns high limit
         * flag < 0: returns low limit
         * flag == 0: returns None
-        
+
         Included here for compatibility with similar with SPEC command.
 
         Parameters
@@ -322,15 +322,15 @@ class EpicsMotor(Device, PositionerBase):
             return self.high_limit_travel.get()
         elif flag < 0:
             return self.low_limit_travel.get()
-    
+
     def set_lim(self, low, high):
         '''
         Sets the low and high travel limits of motor
-        
+
         * No action taken if motor is moving.
         * Low limit is set to lesser of (low, high)
         * High limit is set to greater of (low, high)
-        
+
         Included here for compatibility with similar with SPEC command.
 
         Parameters
