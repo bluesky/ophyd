@@ -50,7 +50,7 @@ class PVPositioner(Device, PositionerBase):
         The value sent to stop_signal when a stop is requested
     done : Signal
         A readback value indicating whether motion is finished
-    done_val : any, optional
+    done_value : any, optional
         The value that the done pv should be when motion has completed
     put_complete : bool, optional
         If set, the specified PV should allow for asynchronous put completion
