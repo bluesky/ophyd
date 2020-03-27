@@ -1,11 +1,11 @@
 from enum import IntFlag
 import functools
 from itertools import count
-from logging import LoggerAdapter
+from logging import LoggerAdapter, getLogger
 import time
 import weakref
 
-from .log import control_layer_logger, logger
+from .log import control_layer_logger
 
 
 def select_version(cls, version):
@@ -170,14 +170,7 @@ class OphydObject:
         self._args_cache = {k: None for k in self.subscriptions}
         # count of subscriptions we have handed out, used to give unique ids
         self._cb_count = count()
-        # Create logger name from parent or from module class
-        if self.parent:
-            base_log = self.parent.log.name
-            name = self.name.lstrip(self.parent.name + '_')
-        else:
-            base_log = self.__class__.__module__
-            name = self.name
-        self.log = LoggerAdapter(logger, {'base_log': base_log, 'ophyd_object_name': name})
+        self.log = LoggerAdapter(getLogger('ophyd.objects'), {'ophyd_object_name': name})
         self.control_layer_log = LoggerAdapter(control_layer_logger, {'ophyd_object_name': name})
 
         if not self.__any_instantiated:
@@ -265,7 +258,7 @@ class OphydObject:
                 )
 
         if versions is not None and version in versions:
-            logger.warning(
+            getLogger('ophyd.object').warning(
                 'Redefining %r version %s: old=%r new=%r',
                 version_of, version, versions[version], cls
             )
