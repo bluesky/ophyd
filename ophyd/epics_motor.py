@@ -87,7 +87,7 @@ class EpicsMotor(Device, PositionerBase):
 
         def on_limit_changed(value, old_value, **kwargs):
             """
-            update EpicsSignal object when a limit CA monitor received
+            update EpicsSignal object when a limit CA monitor received from EPICS
             """
             if (
                     self.connected
