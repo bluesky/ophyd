@@ -62,6 +62,8 @@ class EpicsMotor(Device, PositionerBase):
                           auto_monitor=True)
     high_limit_switch = Cpt(EpicsSignal, '.HLS', kind='omitted')
     low_limit_switch = Cpt(EpicsSignal, '.LLS', kind='omitted')
+    high_limit_travel = Cpt(EpicsSignal, ".HLM", kind="omitted")
+    low_limit_travel = Cpt(EpicsSignal, ".LLM", kind="omitted")
     direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
 
     # commands
@@ -82,6 +84,25 @@ class EpicsMotor(Device, PositionerBase):
         # Make the default alias for the user_readback the name of the
         # motor itself.
         self.user_readback.name = self.name
+
+        def on_limit_changed(value, old_value, **kwargs):
+            """
+            update EpicsSignal object when a limit CA monitor received
+            """
+            if (
+                self.connected 
+                and old_value is not None 
+                and value != old_value
+            ):
+                self.user_setpoint._metadata_changed(
+                    self.user_setpoint.pvname,
+                    self.user_setpoint._read_pv.get_ctrlvars(),
+                    from_monitor=True,
+                    update=True,
+                    )
+
+        self.low_limit_travel.subscribe(on_limit_changed)
+        self.high_limit_travel.subscribe(on_limit_changed)
 
     @property
     def precision(self):
@@ -279,6 +300,55 @@ class EpicsMotor(Device, PositionerBase):
             rep = {'position': 'disconnected'}
         rep['pv'] = self.user_readback.pvname
         return rep
+
+    def get_lim(self, flag):
+        '''
+        Returns the travel limit of motor
+        
+        * flag > 0: returns high limit
+        * flag < 0: returns low limit
+        * flag == 0: returns None
+        
+        Included here for compatibility with similar with SPEC command.
+
+        Parameters
+        ----------
+        high : float
+           Limit of travel in the positive direction.
+        low : float
+           Limit of travel in the negative direction.
+        '''
+        if flag > 0:
+            return self.high_limit_travel.get()
+        elif flag < 0:
+            return self.low_limit_travel.get()
+    
+    def set_lim(self, low, high):
+        '''
+        Sets the low and high travel limits of motor
+        
+        * No action taken if motor is moving.
+        * Low limit is set to lesser of (low, high)
+        * High limit is set to greater of (low, high)
+        
+        Included here for compatibility with similar with SPEC command.
+
+        Parameters
+        ----------
+        high : float
+           Limit of travel in the positive direction.
+        low : float
+           Limit of travel in the negative direction.
+        '''
+        if not self.moving:
+            # update EPICS
+            lo = min(low, high)
+            hi = max(low, high)
+            print(lo, self.position, hi)
+            if lo <= self.position <= hi:
+                self.high_limit_travel.put(lo)
+                self.low_limit_travel.put(hi)
+                # and ophyd metadata dictionary will update via CA monitor
 
 
 class MotorBundle(Device):
