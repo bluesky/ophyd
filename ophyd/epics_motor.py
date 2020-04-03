@@ -344,7 +344,6 @@ class EpicsMotor(Device, PositionerBase):
             # update EPICS
             lo = min(low, high)
             hi = max(low, high)
-            print(lo, self.position, hi)
             if lo <= self.position <= hi:
                 self.high_limit_travel.put(lo)
                 self.low_limit_travel.put(hi)
