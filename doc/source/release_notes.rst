@@ -15,6 +15,7 @@ API Changes
 -----------
 
 * Added methods :func:`ophyd.EpicsMotor.set_lim` and :func:`ophyd.EpicsMotor.get_lim` to set and get limits on motors.
+* Added documentation for logging API.
 
 Fixes
 -----
@@ -27,7 +28,7 @@ Internals
 
 * Refactored code to satisfy Flake8 requirements. Maximum line length set to 115 characters.
 * Improved scope of log messages emitted by ``OphydObj``.
-
+* Extended timeouts on some tests to avoid false failures on slow CI workers.
 
 v1.4.0 (2020-03-13)
 ===================
