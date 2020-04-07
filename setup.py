@@ -1,7 +1,28 @@
 #!/usr/bin/env python
 import os
+import sys
+
 from setuptools import (setup, find_packages)
 import versioneer
+
+# NOTE: This file must remain Python 2 compatible for the foreseeable future,
+# to ensure that we error out properly for people with outdated setuptools
+# and/or pip.
+min_version = (3, 6)
+if sys.version_info < min_version:
+    error = """
+ophyd does not support Python {0}.{1}.
+Python {2}.{3} and above is required. Check your Python version like so:
+
+python3 --version
+
+This may be due to an out-of-date pip. Make sure you have pip >= 9.0.1.
+Upgrade pip like so:
+
+pip install --upgrade pip
+""".format(*(sys.version_info[:2] + min_version))
+    sys.exit(error)
+
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -19,7 +40,7 @@ setup(name='ophyd',
       long_description=long_description,
       long_description_content_type='text/markdown',
       license='BSD',
-      python_requires='>=3.6',
+      python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
       install_requires=requirements,
       packages=find_packages(),
       entry_points={
