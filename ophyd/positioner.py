@@ -158,7 +158,15 @@ class PositionerBase(OphydObject):
         moved_cb : callable
             Call this callback when movement has finished. This callback
             must accept one keyword argument: 'obj' which will be set to
-            this positioner instance.
+            this positioner instance. It should also accept a positional
+            argument 'status', the Status object.
+
+            .. versionchanged:: 1.5.0
+
+               The expected signature changed from ``moved_cb(*, obj)`` to
+               ``moved_cb(status, *, obj)``. The old signature is still
+               supported, but a warning will be issued.
+
         timeout : float, optional
             Maximum time to wait for the motion. If None, the default timeout
             for this positioner is used.

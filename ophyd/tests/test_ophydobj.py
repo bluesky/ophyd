@@ -28,7 +28,7 @@ def test_status_callback_deprecated():
         st.finished_cb = None
 
     st._finished()
-    cb.assert_called_once_with()
+    cb.assert_called_once_with(st)
 
 
 def test_status_callback():
@@ -40,7 +40,7 @@ def test_status_callback():
     assert st.callbacks[0] is cb
 
     st._finished()
-    cb.assert_called_once_with()
+    cb.assert_called_once_with(st)
 
 
 def test_status_others():

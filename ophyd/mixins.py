@@ -101,7 +101,7 @@ class SignalPositionerMixin(PositionerBase):
         self._moving = True
         self._run_subs(sub_type=self.SUB_START, timestamp=time.time())
 
-        def finished():
+        def finished(status):
             success = self._internal_status.success
             self._moving = False
             self._done_moving(success=success)
