@@ -273,3 +273,23 @@ def test_synaxis_describe():
     motor1 = SynAxis(name='motor1')
     RE = bs.RunEngine()
     RE(bp.scan([], motor1, -5, 5, 5))
+
+
+def test_describe(hw):
+    # These need to be staged and triggered before they can be described, just
+    # like real area detectors do. We plan to change this approach and remove
+    # this limitation in ophyd 1.6.0, but for now we'll just skip these.
+    SKIP = (
+        'img',
+        'direct_img',
+        'direct_img_list',
+    )
+    for name, obj in hw.__dict__.items():
+        if name in SKIP:
+            continue
+        if hasattr(obj, 'describe'):
+            obj.describe()
+        elif hasattr(obj, 'describe_collect'):
+            obj.describe_collect()
+        else:
+            raise AttributeError("expected describe or describe_collect")

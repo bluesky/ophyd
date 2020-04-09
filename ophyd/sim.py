@@ -122,8 +122,8 @@ class SynSignal(Signal):
         if func is None:
             # When triggered, just put the current value.
             func = self.get
-            # Initialize readback with a None value
-            self._readback = None
+            # Initialize readback with 0.
+            self._readback = 0
         if loop is None:
             loop = asyncio.get_event_loop()
         self._func = func
@@ -344,8 +344,8 @@ class SynAxis(Device):
         used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
         unspecified
     """
-    readback = Cpt(_ReadbackSignal, value=None, kind='hinted')
-    setpoint = Cpt(_SetpointSignal, value=None, kind='normal')
+    readback = Cpt(_ReadbackSignal, value=0, kind='hinted')
+    setpoint = Cpt(_SetpointSignal, value=0, kind='normal')
 
     velocity = Cpt(Signal, value=1, kind='config')
     acceleration = Cpt(Signal, value=1, kind='config')
@@ -441,7 +441,7 @@ class SynAxisEmptyHints(SynAxis):
 
 
 class SynAxisNoHints(SynAxis):
-    readback = Cpt(_ReadbackSignal, value=None, kind='omitted')
+    readback = Cpt(_ReadbackSignal, value=0, kind='omitted')
     @property
     def hints(self):
         raise AttributeError
@@ -640,6 +640,8 @@ class Syn2DGauss(Device):
         self.random_state = random_state
         self.val.name = self.name
         self.val.sim_set_func(self._compute)
+
+        self.trigger()
 
     def trigger(self, *args, **kwargs):
         return self.val.trigger(*args, **kwargs)
