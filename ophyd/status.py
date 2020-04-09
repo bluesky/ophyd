@@ -228,8 +228,13 @@ class StatusBase:
         # Handle func with signature callback() for back-compat.
         callback = adapt_old_callback_signature(callback)
         if self.done:
+            # Call it once and do not hold a reference to it.
             callback(self)
         else:
+            # Hold a strong reference to this. In other contexts we tend to
+            # hold weak references to callbacks, but this is a single-shot
+            # callback, so we will hold a strong reference until we call it,
+            # and then clear this cache to drop the reference(s).
             self._callbacks.append(callback)
 
     @finished_cb.setter
