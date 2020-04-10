@@ -96,8 +96,9 @@ class StatusBase:
         """
         Boolean indicating whether associated operation has completed.
 
-        This is set to True at __init__ time or by calling `_finished()`. Once
-        True, it can never become False.
+        This is set to True at __init__ time or by calling
+        :meth:`set_finished`, :meth:`set_exception`, or (deprecated)
+        :meth:`_finished`. Once True, it can never become False.
         """
         return self._event.is_set()
 
@@ -108,10 +109,12 @@ class StatusBase:
         if bool(self._event.is_set()) != bool(value):
             raise RuntimeError(
                 "The done-ness of a status object cannot be changed by "
-                "setting its `done` attribute directly. Call `_finished()`.")
+                "setting its `done` attribute directly. Call `set_finished()` "
+                "or `set_exception(exc).")
         warn(
             "Do not set the `done` attribute of a status object directly. "
-            "It should only be set indirectly by calling `_finished()`. "
+            "It should only be set indirectly by calling `set_finished()` "
+            "or `set_exception(exc)`. "
             "Direct setting was never intended to be supported and it will be "
             "disallowed in a future release of ophyd, causing this code path "
             "to fail.",
@@ -122,10 +125,9 @@ class StatusBase:
         """
         Boolean indicating whether associated operation has completed.
 
-        The method :meth:`exception` provides more specific information about
-        failure.
-
-        Once it is set to True, it can never change to be False.
+        This is set to True at __init__ time or by calling
+        :meth:`set_finished`, :meth:`set_exception`, or (deprecated)
+        :meth:`_finished`. Once True, it can never become False.
         """
         return self.done and self._exception is None
 
@@ -136,10 +138,12 @@ class StatusBase:
         if bool(self.success) != bool(value):
             raise RuntimeError(
                 "The success state of a status object cannot be changed by "
-                "setting its `success` attribute directly. Call `_finished()`.")
+                "setting its `success` attribute directly. Call "
+                "`set_finished()` or `set_exception(exc)`.")
         warn(
             "Do not set the `success` attribute of a status object directly. "
-            "It should only be set indirectly by calling `_finished()`. "
+            "It should only be set indirectly by calling `set_finished()` "
+            "or `set_exception(exc)`. "
             "Direct setting was never intended to be supported and it will be "
             "disallowed in a future release of ophyd, causing this code path "
             "to fail.",
@@ -236,8 +240,8 @@ class StatusBase:
         """
         Inform the status object that it is done and if it succeeded.
 
-        This method is deprecated. Please use :meth:`set_finished()` or
-        :meth:`set_exception(exc)`.
+        This method is deprecated. Please use :meth:`set_finished` or
+        :meth:`set_exception`.
 
         .. warning::
 
