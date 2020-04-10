@@ -166,7 +166,7 @@ def test_notify_watchers():
 def test_old_signature():
     st = StatusBase()
     state, cb = _setup_state_and_cb(new_signature=False)
-    with pytest.warns(UserWarning, match="signature"):
+    with pytest.warns(DeprecationWarning, match="signature"):
         st.add_callback(cb)
     assert not state
     st._finished()
@@ -177,6 +177,6 @@ def test_old_signature_on_finished_status():
     st = StatusBase()
     state, cb = _setup_state_and_cb(new_signature=False)
     st._finished()
-    with pytest.warns(UserWarning, match="signature"):
+    with pytest.warns(DeprecationWarning, match="signature"):
         st.add_callback(cb)
     assert state
