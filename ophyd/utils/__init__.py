@@ -157,7 +157,7 @@ def adapt_old_callback_signature(callback):
     # Handle callback with signature callback() for back-compat.
     sig = inspect.signature(callback)
     try:
-        # Does this callbacktion accept one positional argument?
+        # Does this callback accept one positional argument?
         sig.bind(None)
     except TypeError:
         warnings.warn(
@@ -168,7 +168,7 @@ def adapt_old_callback_signature(callback):
         raw_callback = callback
 
         def callback(status):
-            # Do nothing with sub because the user-provided callback cannot
+            # Do nothing with status because the user-provided callback cannot
             # accept it.
             raw_callback()
 
