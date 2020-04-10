@@ -41,3 +41,21 @@ class PluginMisconfigurationError(TypeError, OpException):
 
 class UnprimedPlugin(RuntimeError, OpException):
     ...
+
+
+class UnknownStatusFailure(OpException):
+    """
+    Generic error when a Status object is marked success=False without details.
+    """
+    ...
+
+
+class WaitTimeoutError(TimeoutError):
+    """
+    TimeoutError raised when we ware waiting on completion of a task.
+
+    This is distinct from TimeoutError, just as concurrent.futures.TimeoutError
+    is distinct from TimeoutError, to differentiate when the task itself has
+    raised a TimeoutError.
+    """
+    ...

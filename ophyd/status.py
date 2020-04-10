@@ -8,7 +8,11 @@ from warnings import warn
 import numpy as np
 
 from .log import logger
-from .utils import adapt_old_callback_signature
+from .utils import (
+    adapt_old_callback_signature,
+    UnknownStatusFailure,
+    WaitTimeoutError,
+)
 
 
 class UseNewProperty(RuntimeError):
@@ -45,9 +49,9 @@ class StatusBase:
         super().__init__()
         self._tname = None
         self._lock = threading.RLock()
+        self._event = threading.Event()
         self._callbacks = deque()
-        self._done = done
-        self.success = success
+        self._exception = None
         self.timeout = None
 
         self.log = LoggerAdapter(logger=logger, extra={'status': self})
@@ -60,10 +64,26 @@ class StatusBase:
         if timeout is not None:
             self.timeout = float(timeout)
 
-        if self.done:
-            # in the case of a pre-completed status object,
-            # don't handle timeout
+        # It is a unnecessary that we allow setting 'done' and 'success' at
+        # __init__ time. The concurrent.futures.Future class does not allow
+        # that. But we can continue to support it.
+        if done:
+            if success:
+                self.set_finished()
+            else:
+                exc = UnknownStatusFailure(
+                    f"The status {self!r} has failed. To obtain more specific, "
+                    "helpful errors in the future, update the Device to use "
+                    "set_exception(...) instead of setting success=False "
+                    "at __init__ time.")
+                self.set_exception(exc)
+            # In the case of a pre-completed status object,
+            # don't start the timeout thread.
             return
+        elif success:
+            # This is a backward-incompatible change.
+            raise ValueError(
+                "Cannot initialize with done=False but success=True.")
 
         if self.timeout is not None and self.timeout > 0.0:
             thread = threading.Thread(target=self._wait_and_cleanup,
@@ -79,13 +99,13 @@ class StatusBase:
         This is set to True at __init__ time or by calling `_finished()`. Once
         True, it can never become False.
         """
-        return self._done
+        return self._event.is_set()
 
     @done.setter
     def done(self, value):
         # For now, allow this setter to work only if it has no effect.
         # In a future release, make this property not settable.
-        if bool(self._done) != bool(value):
+        if bool(self._event.is_set()) != bool(value):
             raise RuntimeError(
                 "The done-ness of a status object cannot be changed by "
                 "setting its `done` attribute directly. Call `_finished()`.")
@@ -97,15 +117,40 @@ class StatusBase:
             "to fail.",
             UserWarning)
 
+    @property
+    def success(self):
+        """
+        Boolean indicating whether associated operation has completed.
+
+        The method :meth:`exception` provides more specific information about
+        failure.
+
+        Once it is set to True, it can never change to be False.
+        """
+        return self.done and self._exception is None
+
+    @success.setter
+    def success(self, value):
+        # For now, allow this setter to work only if it has no effect.
+        # In a future release, make this property not settable.
+        if bool(self.success) != bool(value):
+            raise RuntimeError(
+                "The success state of a status object cannot be changed by "
+                "setting its `success` attribute directly. Call `_finished()`.")
+        warn(
+            "Do not set the `succcess` attribute of a status object directly. "
+            "It should only be set indirectly by calling `_finished()`. "
+            "Direct setting was never intended to be supported and it will be "
+            "disallowed in a future release of ophyd, causing this code path "
+            "to fail.",
+            UserWarning)
+
     def _wait_and_cleanup(self):
         """Handle timeout"""
-        try:
-            if self.timeout is not None:
-                timeout = self.timeout + self.settle_time
-            else:
-                timeout = None
-            wait(self, timeout=timeout, poll_rate=0.2)
-        except TimeoutError:
+        assert self.timeout is not None
+        assert self.settle_time is not None
+        timeout = self.timeout + self.settle_time
+        if not self._event.wait(timeout):
             with self._lock:
                 if self.done:
                     # Avoid race condition with settling.
@@ -114,11 +159,9 @@ class StatusBase:
                 try:
                     self._handle_failure()
                 finally:
-                    self._finished(success=False)
-        except RuntimeError:
-            pass
-        finally:
-            self._timeout_thread = None
+                    exc = TimeoutError(
+                        "Status {self!r} failed to complete in specified timeout.")
+                    self.set_exception(exc)
 
     def _handle_failure(self):
         pass
@@ -127,25 +170,74 @@ class StatusBase:
         """Hook for when status has completed and settled"""
         pass
 
-    def _settle_then_run_callbacks(self, success=True):
+    def _settle_then_run_callbacks(self):
+        """
+        Sleep for the settle_time, set the Event, run the callbacks.
+        """
         # wait until the settling time is done to mark completion
         if self.settle_time > 0.0:
             time.sleep(self.settle_time)
 
         with self._lock:
-            if self.done:
+            if self._event.is_set():
                 # We timed out while waiting for the settle time.
                 return
-            self.success = success
-            self._done = True
+            self._event.set()
             self._settled()
 
             for cb in self._callbacks:
                 cb(self)
             self._callbacks.clear()
 
+    def set_exception(self, exc):
+        """
+        Mark as finished but failed with the given Exception.
+
+        This method should generally not be caled by the *recipient* of this
+        Status object, but only by the object that created and returned it.
+
+        Parameters
+        ----------
+        exc: Exception
+        """
+        # Since we rely on this being raise-able later, check proactively to
+        # avoid potentially very confusing failures.
+        if not isinstance(exc, Exception):
+            raise ValueError(f"Expected an Exception, got {exc!r}")
+        with self._lock:
+            if self._event.is_set():
+                raise RuntimeError(
+                    f"set_exception was called more than once on {self!r}")
+            self._exception = exc
+            self._event.set()
+
+    def set_finished(self):
+        """
+        Mark as finished successfully.
+
+        This method should generally not be caled by the *recipient* of this
+        Status object, but only by the object that created and returned it.
+        """
+        if self.done:
+            # This is fast path. We do a proper check inside a lock in the call
+            # to self._settle_then_run_callbacks.
+            return
+
+        if self.settle_time > 0:
+            # delay gratification until the settle time is up
+            self._settle_thread = threading.Thread(
+                target=self._settle_then_run_callbacks, daemon=True,
+            )
+            self._settle_thread.start()
+        else:
+            self._settle_then_run_callbacks()
+
     def _finished(self, success=True, **kwargs):
-        """Inform the status object that it is done and if it succeeded
+        """
+        Inform the status object that it is done and if it succeeded.
+
+        This method is deprecated. Please use :meth:`set_finished()` or
+        :meth:`set_exception(exc)`.
 
         .. warning::
 
@@ -161,29 +253,53 @@ class StatusBase:
         success : bool, optional
            if the action succeeded.
         """
-        if self.done:
-            self.log.info('finished')
-            return
-
-        if success and self.settle_time > 0:
-            # delay gratification until the settle time is up
-            self._settle_thread = threading.Thread(
-                target=self._settle_then_run_callbacks, daemon=True,
-                kwargs=dict(success=success),
-            )
-            self._settle_thread.start()
+        if success:
+            self.set_finished()
         else:
-            self._settle_then_run_callbacks(success=success)
+            # success=False does not give any information about *why* it
+            # failed, so set a generic exception.
+            exc = UnknownStatusFailure(
+                f"The status {self!r} has failed. To obtain more specific, "
+                "helpful errors in the future, update the Device to use "
+                "set_exception(...) instead of _finished(success=False).")
+            self.set_exception(exc)
+
+    def exception(self, timeout=None):
+        """
+        Return the exception raised by the action.
+
+        If the action has completed successfully, return ``None``.
+
+        If the action has not completed in *timeout* seconds (starting from
+        when this method is called, not the beginning of the action) raise
+        ``WaitTimeoutError``.
+        """
+        if not self._event.wait(timeout=timeout):
+            raise WaitTimeoutError("Status has not completed yet.")
+        return self._exception
+
+    def wait(self, timeout=None):
+        """
+        Block until the action completes.
+
+        When the action has finished succesfully, return ``None``. If the
+        action has failed, raise the exception.
+
+        If the action has not completed in *timeout* seconds (starting from
+        when this method is called, not the beginning of the action) raise
+        ``WaitTimeoutError``. This is distinct from ``TimeoutError``; a plain
+        ``TimeoutError`` indicates that the action itself raised a
+        ``TimeoutError``.
+        """
+        if not self._event.wait(timeout=timeout):
+            raise WaitTimeoutError("Status has not completed yet.")
+        if self._exception is not None:
+            raise self._exception
 
     @property
     def callbacks(self):
         """
         Callbacks to be run when the status is marked as finished
-
-        The callback has no arguments ::
-
-            def cb() -> None:
-
         """
         return self._callbacks
 
@@ -429,14 +545,23 @@ class SubscriptionStatus(DeviceStatus):
         if success:
             self._finished(success=True)
 
-    def _finished(self, *args, **kwargs):
+    def set_finished(self):
         """
-        Reimplemented finished command to cleanup callback subscription
+        Reimplemented to cleanup callback subscription
         """
         # Clear callback
         self.device.clear_sub(self.check_value)
         # Run completion
-        super()._finished(**kwargs)
+        super().set_finished()
+
+    def set_exception(self, exc):
+        """
+        Reimplemented to cleanup callback subscription
+        """
+        # Clear callback
+        self.device.clear_sub(self.check_value)
+        # Run completion
+        super().set_finished(exc)
 
 
 class MoveStatus(DeviceStatus):
@@ -603,7 +728,7 @@ def wait(status, timeout=None, *, poll_rate=0.05):
         only return when either the status completes or if interrupted by the
         user.
     poll_rate : float, optional
-        Polling rate used to check the status
+        DEPRECATED. Has no effect because this does not poll.
 
     Raises
     ------
@@ -612,19 +737,13 @@ def wait(status, timeout=None, *, poll_rate=0.05):
     RuntimeError
         If the status failed to complete successfully
     """
-    t0 = time.time()
-
-    def time_exceeded():
-        return timeout is not None and (time.time() - t0) > timeout
-
-    while not status.done and not time_exceeded():
-        time.sleep(poll_rate)
-
-    if status.done:
-        if status.success is not None and not status.success:
-            raise RuntimeError('Operation completed but reported an error: {}'
-                               ''.format(status))
-    elif time_exceeded():
-        elapsed = time.time() - t0
-        raise TimeoutError('Operation failed to complete within {} seconds '
-                           '(elapsed {:.2f} sec)'.format(timeout, elapsed))
+    # It would probably be more useful to just return status.wait(timeout)
+    # directly rather than chaining a RuntimeError on the end here. Is it worth
+    # maintaining back-compat on this?
+    try:
+        return status.wait(timeout)
+    except WaitTimeoutError as exc:
+        raise TimeoutError(*exc.args)
+    except Exception as exc:
+        raise RuntimeError('Operation completed but reported an error: {}'
+                           ''.format(status)) from exc
