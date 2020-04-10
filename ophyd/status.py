@@ -138,7 +138,7 @@ class StatusBase:
                 "The success state of a status object cannot be changed by "
                 "setting its `success` attribute directly. Call `_finished()`.")
         warn(
-            "Do not set the `succcess` attribute of a status object directly. "
+            "Do not set the `success` attribute of a status object directly. "
             "It should only be set indirectly by calling `_finished()`. "
             "Direct setting was never intended to be supported and it will be "
             "disallowed in a future release of ophyd, causing this code path "
