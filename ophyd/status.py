@@ -178,10 +178,6 @@ class StatusBase:
         """
         Sleep for the settle_time, set the Event, run the callbacks.
         """
-        # wait until the settling time is done to mark completion
-        if self.settle_time > 0.0:
-            time.sleep(self.settle_time)
-
         with self._lock:
             if self._event.is_set():
                 # We timed out while waiting for the settle time.
@@ -229,8 +225,9 @@ class StatusBase:
 
         if self.settle_time > 0:
             # delay gratification until the settle time is up
-            self._settle_thread = threading.Thread(
-                target=self._settle_then_run_callbacks, daemon=True,
+            self._settle_thread = threading.Timer(
+                self.settle_time,
+                self._settle_then_run_callbacks,
             )
             self._settle_thread.start()
         else:
