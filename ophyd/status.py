@@ -385,7 +385,7 @@ class AndStatus(StatusBase):
         self.left = left
         self.right = right
 
-        def inner():
+        def inner(status):
             with self._lock:
                 with self.left._lock:
                     with self.right._lock:
