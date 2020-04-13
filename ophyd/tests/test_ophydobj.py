@@ -6,6 +6,7 @@ from ophyd.ophydobj import (OphydObject,
                             register_instances_keyed_on_name,
                             register_instances_in_weakset)
 from ophyd.status import (StatusBase, DeviceStatus, wait)
+from ophyd.utils import WaitTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +56,14 @@ def test_status_wait():
 
 def test_wait_status_failed():
     st = StatusBase(timeout=0.05)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TimeoutError):
         wait(st)
 
 
 def test_status_wait_timeout():
     st = StatusBase()
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(WaitTimeoutError):
         wait(st, timeout=0.05)
 
 

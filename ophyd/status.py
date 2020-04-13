@@ -742,27 +742,24 @@ def wait(status, timeout=None, *, poll_rate=0.05):
 
     Parameters
     ----------
-    timeout : float, optional
+    status: StatusBase
+        A Status object
+    timeout: Union[Number, None], optional
         Amount of time in seconds to wait. None disables, such that wait() will
         only return when either the status completes or if interrupted by the
         user.
-    poll_rate : float, optional
+    poll_rate: "DEPRECATED"
         DEPRECATED. Has no effect because this does not poll.
 
     Raises
     ------
-    TimeoutError
-        If time waited exceeds specified timeout
-    RuntimeError
-        If the status failed to complete successfully
+    WaitTimeoutError
+        If the status has not completed within ``timeout`` (starting from
+        when this method was called, not from the beginning of the action).
+    Exception
+        This is ``status.exception()``, raised if the status has finished
+        with an error.  This may include ``TimeoutError``, which
+        indicates that the action itself raised ``TimeoutError``, distinct
+        from ``WaitTimeoutError`` above.
     """
-    # It would probably be more useful to just return status.wait(timeout)
-    # directly rather than chaining a RuntimeError on the end here. Is it worth
-    # maintaining back-compat on this?
-    try:
-        return status.wait(timeout)
-    except WaitTimeoutError as exc:
-        raise TimeoutError(*exc.args)
-    except Exception as exc:
-        raise RuntimeError('Operation completed but reported an error: {}'
-                           ''.format(status)) from exc
+    return status.wait(timeout)
