@@ -132,12 +132,16 @@ def test_and():
     st4.add_callback(cb4)
     st5.add_callback(cb5)
     st1._finished()
+    st1.wait(1)
     assert 'done' in state1
     assert 'done' not in state2
     assert 'done' not in state3
     assert 'done' not in state4
     assert 'done' not in state5
     st2._finished()
+    st3.wait(1)
+    st4.wait(1)
+    st5.wait(1)
     assert 'done' in state3
     assert 'done' in state4
     assert 'done' in state5

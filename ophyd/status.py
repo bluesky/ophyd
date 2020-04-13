@@ -50,6 +50,8 @@ class StatusBase:
         self._tname = None
         self._lock = threading.RLock()
         self._event = threading.Event()
+        self._settling_event = threading.Event()
+        self._settling_lock = threading.RLock()
         self._callbacks = deque()
         self._exception = None
         self.timeout = None
@@ -177,20 +179,20 @@ class StatusBase:
         """Hook for when status has completed and settled"""
         pass
 
-    def _settle_then_run_callbacks(self):
+    def _run_callbacks(self):
         """
-        Sleep for the settle_time, set the Event, run the callbacks.
+        Set the Event and run the callbacks.
         """
         with self._lock:
             if self._event.is_set():
                 # We timed out while waiting for the settle time.
                 return
             self._event.set()
-            self._settled()
+        self._settled()
 
-            for cb in self._callbacks:
-                cb(self)
-            self._callbacks.clear()
+        for cb in self._callbacks:
+            cb(self)
+        self._callbacks.clear()
 
     def set_exception(self, exc):
         """
@@ -221,20 +223,16 @@ class StatusBase:
         This method should generally not be called by the *recipient* of this
         Status object, but only by the object that created and returned it.
         """
-        if self.done:
-            # This is fast path. We do a proper check inside a lock in the call
-            # to self._settle_then_run_callbacks.
-            return
-
-        if self.settle_time > 0:
-            # delay gratification until the settle time is up
-            self._settle_thread = threading.Timer(
-                self.settle_time,
-                self._settle_then_run_callbacks,
-            )
-            self._settle_thread.start()
-        else:
-            self._settle_then_run_callbacks()
+        with self._settling_lock:
+            if self._settling_event.is_set():
+                raise RuntimeError(
+                    f"set_finished was called more than once on {self!r}")
+            self._settling_event.set()
+        self._settle_thread = threading.Timer(
+            self.settle_time,
+            self._run_callbacks,
+        )
+        self._settle_thread.start()
 
     def _finished(self, success=True, **kwargs):
         """
@@ -408,6 +406,8 @@ class AndStatus(StatusBase):
 
         def inner(status):
             with self._lock:
+                if self.done:
+                    return
                 with self.left._lock:
                     with self.right._lock:
                         l_success = self.left.success
