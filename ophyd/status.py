@@ -193,7 +193,7 @@ class StatusBase:
         """
         Mark as finished but failed with the given Exception.
 
-        This method should generally not be caled by the *recipient* of this
+        This method should generally not be called by the *recipient* of this
         Status object, but only by the object that created and returned it.
 
         Parameters
@@ -215,7 +215,7 @@ class StatusBase:
         """
         Mark as finished successfully.
 
-        This method should generally not be caled by the *recipient* of this
+        This method should generally not be called by the *recipient* of this
         Status object, but only by the object that created and returned it.
         """
         if self.done:
@@ -269,11 +269,19 @@ class StatusBase:
         """
         Return the exception raised by the action.
 
-        If the action has completed successfully, return ``None``.
+        If the action has completed successfully, return ``None``. If it has
+        finished in error, return the exception.
 
-        If the action has not completed in *timeout* seconds (starting from
-        when this method is called, not the beginning of the action) raise
-        ``WaitTimeoutError``.
+        Parameters
+        ----------
+        timeout: Union[Number, None], optional
+            If None (default) wait indefinitely until the status finishes.
+
+        Raises
+        ------
+        WaitTimeoutError
+            If the status has not completed within ``timeout`` (starting from
+            when this method was called, not from the beginning of the action).
         """
         if not self._event.wait(timeout=timeout):
             raise WaitTimeoutError("Status has not completed yet.")
@@ -286,11 +294,21 @@ class StatusBase:
         When the action has finished succesfully, return ``None``. If the
         action has failed, raise the exception.
 
-        If the action has not completed in *timeout* seconds (starting from
-        when this method is called, not the beginning of the action) raise
-        ``WaitTimeoutError``. This is distinct from ``TimeoutError``; a plain
-        ``TimeoutError`` indicates that the action itself raised a
-        ``TimeoutError``.
+        Parameters
+        ----------
+        timeout: Union[Number, None], optional
+            If None (default) wait indefinitely until the status finishes.
+
+        Raises
+        ------
+        WaitTimeoutError
+            If the status has not completed within ``timeout`` (starting from
+            when this method was called, not from the beginning of the action).
+        Exception
+            This is ``status.exception()``, raised if the status has finished
+            with an error.  This may include ``TimeoutError``, which
+            indicates that the action itself raised ``TimeoutError``, distinct
+            from ``WaitTimeoutError`` above.
         """
         if not self._event.wait(timeout=timeout):
             raise WaitTimeoutError("Status has not completed yet.")
