@@ -159,6 +159,9 @@ class StatusBase:
                 if self.done:
                     # Avoid race condition with settling.
                     return
+                # If we get here, we are on the "failure by timeout" path.
+                # Hold the lock the whole time to ensure that no one else can
+                # sneak it and call set_exception.
                 self.log.warning('timeout after %.2f seconds', timeout)
                 try:
                     self._handle_failure()
