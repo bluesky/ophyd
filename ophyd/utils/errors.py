@@ -59,3 +59,10 @@ class WaitTimeoutError(TimeoutError):
     raised a TimeoutError.
     """
     ...
+
+
+class InvalidState(RuntimeError):
+    """
+    When Status.set_finished() or Status.set_exception(exc) is called too late
+    """
+    ...

@@ -2,6 +2,7 @@ from unittest.mock import Mock
 from ophyd import Device
 from ophyd.status import (StatusBase, SubscriptionStatus, UseNewProperty,
                           MoveStatus)
+from ophyd.utils import InvalidState, UnknownStatusFailure
 import pytest
 
 
@@ -24,7 +25,7 @@ def test_status_post():
     assert 'done' not in state
     st.add_callback(cb)
     assert 'done' not in state
-    st._finished()
+    st.set_finished()
     assert 'done' in state
     assert state['done']
 
@@ -55,7 +56,7 @@ def test_status_legacy_finished_cb():
 
     assert 'done' not in state1
     assert 'done' not in state2
-    st._finished()
+    st.set_finished()
     assert 'done' in state1
     assert 'done' in state2
 
@@ -64,7 +65,7 @@ def test_status_pre():
     st = StatusBase()
     state, cb = _setup_state_and_cb()
 
-    st._finished()
+    st.set_finished()
 
     assert 'done' not in state
     st.add_callback(cb)
@@ -81,7 +82,7 @@ def test_direct_done_setting():
     with pytest.warns(UserWarning):
         st.done = False  # but for now no-ops warn
 
-    st._finished()
+    st.set_finished()
 
     with pytest.raises(RuntimeError):
         st.done = False  # changing isn't allowed
@@ -131,14 +132,14 @@ def test_and():
     st3.add_callback(cb3)
     st4.add_callback(cb4)
     st5.add_callback(cb5)
-    st1._finished()
+    st1.set_finished()
     st1.wait(1)
     assert 'done' in state1
     assert 'done' not in state2
     assert 'done' not in state3
     assert 'done' not in state4
     assert 'done' not in state5
-    st2._finished()
+    st2.set_finished()
     st3.wait(1)
     st4.wait(1)
     st5.wait(1)
@@ -173,14 +174,81 @@ def test_old_signature():
     with pytest.warns(DeprecationWarning, match="signature"):
         st.add_callback(cb)
     assert not state
-    st._finished()
+    st.set_finished()
     assert state
 
 
 def test_old_signature_on_finished_status():
     st = StatusBase()
     state, cb = _setup_state_and_cb(new_signature=False)
-    st._finished()
+    st.set_finished()
     with pytest.warns(DeprecationWarning, match="signature"):
         st.add_callback(cb)
     assert state
+
+
+def test_old_finished_method_success():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb()
+    st.add_callback(cb)
+    assert not state
+    st._finished()
+    st.wait()
+    assert state
+    assert st.done
+    assert st.success
+
+
+def test_old_finished_method_failure():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb()
+    st.add_callback(cb)
+    assert not state
+    st._finished(success=False)
+    with pytest.raises(UnknownStatusFailure):
+        st.wait()
+    assert state
+    assert st.done
+    assert not st.success
+
+
+def test_set_finished_twice():
+    st = StatusBase()
+    st.set_finished()
+    with pytest.raises(InvalidState):
+        st.set_finished()
+
+
+def test_set_exception_twice():
+    st = StatusBase()
+    exc = Exception()
+    st.set_exception(exc)
+    with pytest.raises(InvalidState):
+        st.set_exception(exc)
+
+
+def test_set_exception_wrong_type():
+    st = StatusBase()
+    NOT_AN_EXCEPTION = object()
+    with pytest.raises(ValueError):
+        st.set_exception(NOT_AN_EXCEPTION)
+
+
+def test_exception_fail_path():
+    st = StatusBase()
+
+    class LocalException(Exception):
+        ...
+
+    exc = LocalException()
+    st.set_exception(exc)
+    assert exc is st.exception()
+    with pytest.raises(LocalException):
+        st.wait()
+
+
+def test_exception_success_path():
+    st = StatusBase()
+    st.set_finished()
+    assert st.wait() is None
+    assert st.exception() is None

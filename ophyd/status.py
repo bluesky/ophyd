@@ -10,6 +10,7 @@ import numpy as np
 from .log import logger
 from .utils import (
     adapt_old_callback_signature,
+    InvalidState,
     UnknownStatusFailure,
     WaitTimeoutError,
 )
@@ -157,20 +158,9 @@ class StatusBase:
         assert self.settle_time is not None
         timeout = self.timeout + self.settle_time
         if not self._event.wait(timeout):
-            with self._lock:
-                if self.done:
-                    # Avoid race condition with settling.
-                    return
-                # If we get here, we are on the "failure by timeout" path.
-                # Hold the lock the whole time to ensure that no one else can
-                # sneak it and call set_exception.
-                self.log.warning('timeout after %.2f seconds', timeout)
-                try:
-                    self._handle_failure()
-                finally:
-                    exc = TimeoutError(
-                        "Status {self!r} failed to complete in specified timeout.")
-                    self.set_exception(exc)
+            exc = TimeoutError(
+                "Status {self!r} failed to complete in specified timeout.")
+            self.set_exception(exc)
 
     def _handle_failure(self):
         pass
@@ -209,12 +199,15 @@ class StatusBase:
         # avoid potentially very confusing failures.
         if not isinstance(exc, Exception):
             raise ValueError(f"Expected an Exception, got {exc!r}")
-        with self._lock:
-            if self._event.is_set():
-                raise RuntimeError(
-                    f"set_exception was called more than once on {self!r}")
-            self._exception = exc
-            self._event.set()
+        with self._settling_lock:
+            if self._settling_event.is_set():
+                raise InvalidState(f"Status {self!r} is already finishing.")
+            self._settling_event.set()
+        self._exception = exc
+        try:
+            self._handle_failure()
+        finally:
+            self._run_callbacks()
 
     def set_finished(self):
         """
@@ -225,9 +218,10 @@ class StatusBase:
         """
         with self._settling_lock:
             if self._settling_event.is_set():
-                raise RuntimeError(
-                    f"set_finished was called more than once on {self!r}")
+                raise InvalidState(f"Status {self!r} is already finishing.")
             self._settling_event.set()
+        # Run the callbacks in another thread after a Timer waits for the
+        # settle_time.
         self._settle_thread = threading.Timer(
             self.settle_time,
             self._run_callbacks,
@@ -406,7 +400,7 @@ class AndStatus(StatusBase):
 
         def inner(status):
             with self._lock:
-                if self.done:
+                if self._settling_event.is_set():
                     return
                 with self.left._lock:
                     with self.right._lock:

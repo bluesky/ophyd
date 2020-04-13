@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def test_status_basic():
     st = StatusBase()
-    st._finished()
+    st.set_finished()
 
 
 def test_status_callback_deprecated():
@@ -28,7 +28,8 @@ def test_status_callback_deprecated():
     with pytest.raises(RuntimeError):
         st.finished_cb = None
 
-    st._finished()
+    st.set_finished()
+    st.wait()
     cb.assert_called_once_with(st)
 
 
@@ -40,7 +41,8 @@ def test_status_callback():
     st.add_callback(cb)
     assert st.callbacks[0] is cb
 
-    st._finished()
+    st.set_finished()
+    st.wait()
     cb.assert_called_once_with(st)
 
 
@@ -50,7 +52,7 @@ def test_status_others():
 
 def test_status_wait():
     st = StatusBase()
-    st._finished()
+    st.set_finished()
     wait(st)
 
 
