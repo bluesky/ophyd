@@ -580,7 +580,7 @@ class SubscriptionStatus(DeviceStatus):
         # Clear callback
         self.device.clear_sub(self.check_value)
         # Run completion
-        super().set_finished(exc)
+        super().set_exception(exc)
 
 
 class MoveStatus(DeviceStatus):
