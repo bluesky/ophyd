@@ -868,6 +868,9 @@ class Device(BlueskyInterface, OphydObject):
     def walk_signals(self, *, include_lazy=False):
         '''Walk all signals in the Device hierarchy
 
+        EXPERIMENTAL: This method is experimental, and there are tentative
+        plans to change its API in a way that may not be backward-compatible.
+
         Parameters
         ----------
         include_lazy : bool, optional
@@ -925,6 +928,9 @@ class Device(BlueskyInterface, OphydObject):
 
     def walk_subdevices(self, *, include_lazy=False):
         '''Walk all sub-Devices in the hierarchy
+
+        EXPERIMENTAL: This method is experimental, and there are tentative
+        plans to change its API in a way that may not be backward-compatible.
 
         Yields
         ------

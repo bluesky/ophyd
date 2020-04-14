@@ -56,6 +56,7 @@ other control systems.
    signals
    status
    area-detector
+   debugging
 
 .. toctree::
    :maxdepth: 1

@@ -20,6 +20,8 @@ DEFAULT_CONNECTION_TIMEOUT = object()
 DEFAULT_TIMEOUT = object()
 DEFAULT_WRITE_TIMEOUT = object()
 
+# Sentinel to identify if we have never turned the crank on updating a PV
+DEFAULT_EPICSSIGNAL_VALUE = object()
 
 class ReadTimeoutError(TimeoutError):
     ...
@@ -151,11 +153,11 @@ class Signal(OphydObject):
         'Yields pairs of (key, value) to generate the Signal repr'
         yield from super()._repr_info()
         try:
-            value = self.value
+            value = self._readback
         except Exception:
             value = None
 
-        if value is not None:
+        if value is not DEFAULT_EPICSSIGNAL_VALUE:
             yield ('value', value)
 
         yield ('timestamp', self._metadata['timestamp'])
@@ -253,22 +255,23 @@ class Signal(OphydObject):
                 set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
                              rtol=self.rtolerance)
             except TimeoutError:
+                success = False
                 self.log.warning(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     value, timeout, self.tolerance, self.rtolerance
                 )
-                success = False
             except Exception as ex:
+                success = False
                 self.log.exception(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     value, timeout, self.tolerance, self.rtolerance
                 )
-                success = False
             else:
+                success = True
                 self.log.info(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
-                    value, timeout, self.tolerance, self.rtolerance, self.value)
-                success = True
+                    value, timeout, self.tolerance, self.rtolerance, self._readback)
+
                 if settle_time is not None:
                     self.log.info('settling for %d seconds', settle_time)
                     time.sleep(settle_time)
@@ -294,11 +297,46 @@ class Signal(OphydObject):
     @property
     def value(self):
         '''The signal's value'''
-        if self._readback is not None:
-            val = self._readback
+        fix_msg = ("We are falling back to calling `.get` and interrogating "
+                   "the underlying control system, however this may cause several "
+                   "other problems:\n"
+                   "   1. This property access may take an arbitrarily long time\n"
+                   "   2. This property access, which you expect to be read only "
+                   "may change other state in the Signal.\n"
+                   "Your options to fix this are:\n"
+                   "  - do not use obj.value.\n"
+                   "    - If you are using this is in a plan you "
+                   "like want to be using bps.read, bps.rd, bpp.reset_positions_decorator, "
+                   "bpp.reset_positions_wrapper, bpp.relative_set_decorator, or "
+                   "bpp.relative_set_wrapper\n"
+                   "    - if you are doing this in an ophyd method use `self.get`\n"
+                   "  - set up the Signal to monitor\n\n"
+                   "This behavior will likely change in the future.")
+
+        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+            # If we are here, then we have never turned the crank on this Signal.  The current
+            # behavior is to fallback to poking the control system to get the value, however this
+            # is problematic and we may want to change in the future so warn verbosely
+            warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
+                          "which has not gotten value from the control system yet.\n" + fix_msg,
+                          stacklevel=2)
+            return self.get()
         else:
-            val = self.get()
-        return val
+            # if we are in here then we have put/get at least once and/or are monitored
+            has_monitors = (hasattr(self, '_monitors') and
+                            all(v is not None for v in self._monitors.values())
+                            )
+            if not has_monitors:
+                # If we are not monitored, then warn that this may change in the future.
+                warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
+                              "which is a non-monitored signal.\n" + fix_msg,
+                              stacklevel=2)
+                return self.get()
+
+            # else return our cached value and assume something else is keeping us up-to-date
+            # so we can trust the latest news
+            return self._readback
+
 
     @value.setter
     def value(self, value):
@@ -332,7 +370,10 @@ class Signal(OphydObject):
             The keys must be strings and the values must be dict-like
             with the ``event_model.event_descriptor.data_key`` schema.
         """
-        val = self.value
+        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+            val = self.get()
+        else:
+            val = self._readback
         return {self.name: {'source': 'SIM:{}'.format(self.name),
                             'dtype': data_type(val),
                             'shape': data_shape(val)}}
@@ -533,8 +574,11 @@ class DerivedSignal(Signal):
 
         self._run_metadata_callbacks()
 
-    def _derived_value_callback(self, value=None, **kwargs):
+    def _derived_value_callback(self, value, **kwargs):
         'Main signal value updated - update the DerivedSignal'
+        # if some how we get cycled with the default value sentinel, just bail
+        if value is DEFAULT_EPICSSIGNAL_VALUE:
+            return
         value = self.inverse(value)
         self._readback = value
         updated_md = self._update_metadata_from_callback(**kwargs)
@@ -706,8 +750,8 @@ class EpicsSignalBase(Signal):
             connected=False,
         )
 
-        kwargs.pop('value', None)
-        super().__init__(name=name, metadata=metadata, value=None, **kwargs)
+        kwargs.setdefault('value', DEFAULT_EPICSSIGNAL_VALUE)
+        super().__init__(name=name, metadata=metadata, **kwargs)
 
         validate_pv_name(read_pv)
 
@@ -834,6 +878,12 @@ class EpicsSignalBase(Signal):
             # Send a notification of disconnection
             self._run_metadata_callbacks()
 
+        if self._auto_monitor:
+            if getattr(self, '_read_pvname', None) == pvname:
+                self._add_callback(pvname, pv, self._read_changed)
+            if getattr(self, '_setpoint_pvname', None) == pvname:
+                self._add_callback(pvname, pv, self._write_changed)
+
     def _set_event_if_ready(self):
         '''If connected and access rights received, set the "ready" event used
         in wait_for_connection.'''
@@ -883,17 +933,20 @@ class EpicsSignalBase(Signal):
         """PV alarm severity"""
         return self._metadata['severity']
 
+    def _add_callback(self, pvname, pv, cb):
+        with self._metadata_lock:
+            if not self._monitors[pvname]:
+                mon = pv.add_callback(cb,
+                                      run_now=pv.connected)
+                self._monitors[pvname] = mon
+
     @doc_annotation_forwarder(Signal)
     def subscribe(self, callback, event_type=None, run=True):
         if event_type is None:
             event_type = self._default_sub
-
-        with self._metadata_lock:
-            if (event_type == self.SUB_VALUE and not
-                    self._monitors[self._read_pvname]):
-                mon = self._read_pv.add_callback(self._read_changed,
-                                                 run_now=self._read_pv.connected)
-                self._monitors[self._read_pvname] = mon
+        if event_type == self.SUB_VALUE:
+            self._add_callback(self._read_pvname, self._read_pv,
+                               self._read_changed)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
@@ -1085,7 +1138,10 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        val = self.value
+        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+            val = self.get()
+        else:
+            val = self._readback
         lower_ctrl_limit, upper_ctrl_limit = self.limits
         desc = dict(
             source='PV:{}'.format(self._read_pvname),
@@ -1323,12 +1379,9 @@ class EpicsSignal(EpicsSignalBase):
         if event_type is None:
             event_type = self._default_sub
 
-        with self._metadata_lock:
-            if (event_type == self.SUB_SETPOINT and not
-                    self._monitors[self._setpoint_pvname]):
-                mon = self._write_pv.add_callback(self._write_changed,
-                                                  run_now=self._write_pv.connected)
-                self._monitors[self._setpoint_pvname] = mon
+        if event_type == self.SUB_SETPOINT:
+            self._add_callback(self._setpoint_pvname, self._write_pv,
+                               self._write_changed)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
@@ -1730,7 +1783,7 @@ class AttributeSignal(Signal):
                        value=value, timestamp=time.time())
 
     def describe(self):
-        value = self.value
+        value = self.get()
         desc = {'source': 'PY:{}.{}'.format(self.parent.name, self.full_attr),
                 'dtype': data_type(value),
                 'shape': data_shape(value),

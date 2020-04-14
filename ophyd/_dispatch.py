@@ -1,5 +1,6 @@
 import time
 import functools
+import logging
 import queue
 import threading
 
@@ -49,15 +50,12 @@ class _CallbackThread(threading.Thread):
                     )
 
         self.detach_context()
-        self.logger.debug('Callback thread %s exiting', self.name)
 
     def attach_context(self):
         self.logger.debug('Callback thread %s attaching to context %s',
                           self.name, self.context)
 
     def detach_context(self):
-        self.logger.debug('Callback thread %s detaching from context %s',
-                          self.name, self.context)
         self.context = None
 
 
@@ -99,9 +97,12 @@ class DispatcherThreadContext:
     __call__ = run
 
 
+debug_monitor_log = logging.getLogger('ophyd.event_dispatcher')
+
+
 class EventDispatcher:
     def __init__(self, *, context, logger, timeout=0.1,
-                 thread_class=_CallbackThread, debug_monitor=False,
+                 thread_class=_CallbackThread,
                  utility_threads=4):
         self._threads = {}
         self._thread_contexts = {}
@@ -112,6 +113,7 @@ class EventDispatcher:
         self._stop_event = threading.Event()
         self.context = context
         self.logger = logger
+        self.debug_monitor_interval = 1
         self._utility_threads = [f'util{i}' for i in range(utility_threads)]
         self._utility_queue = queue.Queue()
 
@@ -122,14 +124,13 @@ class EventDispatcher:
         for name in self._utility_threads:
             self._start_thread(name=name, callback_queue=self._utility_queue)
 
-        if debug_monitor:
-            self._debug_monitor_thread = threading.Thread(
-                target=self._debug_monitor,
-                name='debug_monitor',
-                daemon=True)
-            self._debug_monitor_thread.start()
+        self._debug_monitor_thread = threading.Thread(
+            target=self._debug_monitor,
+            name='debug_monitor',
+            daemon=True)
+        self._debug_monitor_thread.start()
 
-    def _debug_monitor(self, interval=0.01):
+    def _debug_monitor(self):
         while not self._stop_event.is_set():
             queue_sizes = [(name, thread.queue.qsize(), thread.current_callback)
                            for name, thread in sorted(self._threads.items())
@@ -137,11 +138,13 @@ class EventDispatcher:
             status = [
                 '{name}={qsize} ({cb})'.format(name=name, qsize=qsize, cb=cb)
                 for name, qsize, cb in queue_sizes
-                if qsize > 0
+                if qsize
             ]
             if status:
-                print('Dispatcher debug:', ' / '.join(status))
-            time.sleep(interval)
+                debug_monitor_log.debug(' / '.join(status))
+            else:
+                debug_monitor_log.debug('All EventDispatch queues are empty.')
+            time.sleep(self.debug_monitor_interval)
 
     def __repr__(self):
         threads = [repr(thread) for thread in self._threads.values()]
@@ -171,6 +174,7 @@ class EventDispatcher:
                 thread.join()
 
         self._threads.clear()
+        self._debug_monitor_thread.join()
 
     def schedule_utility_task(self, callback, *args, **kwargs):
         'Schedule `callback` with the given args and kwargs in a util thread'

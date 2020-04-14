@@ -45,10 +45,13 @@ def _stderr_supports_color():
 
 class LogFormatter(logging.Formatter):
     """Log formatter used in Tornado, modified for Python3-only ophyd.
+
     Key features of this formatter are:
+
     * Color support when logging to a terminal that supports it.
     * Timestamps on every log line.
     * Robust against str/bytes encoding problems.
+
     This formatter is enabled automatically by
     `tornado.options.parse_command_line` or `tornado.options.parse_config_file`
     (unless ``--logging=none`` is used).
@@ -56,8 +59,11 @@ class LogFormatter(logging.Formatter):
     enabled by use of the colorama__ library. Applications that wish to use
     this must first initialize colorama with a call to ``colorama.init``.
     See the colorama documentation for details.
+
     __ https://pypi.python.org/pypi/colorama
+
     .. versionchanged:: 4.5
+
        Added support for ``colorama``. Changed the constructor
        signature to be compatible with `logging.config.dictConfig`.
     """
@@ -89,7 +95,9 @@ class LogFormatter(logging.Formatter):
           code
         :arg str datefmt: Datetime format.
           Used for formatting ``(asctime)`` placeholder in ``prefix_fmt``.
+
         .. versionchanged:: 3.2
+
            Added ``fmt`` and ``datefmt`` arguments.
         """
         super().__init__(datefmt=datefmt)
