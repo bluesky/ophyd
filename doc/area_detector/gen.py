@@ -4,8 +4,6 @@
 # Started off simple, but as is usually the case with this type of
 # project, it gets cryptic pretty quickly...
 
-
-
 import os
 import re
 import sys
@@ -19,15 +17,15 @@ except IndexError:
     DOC_PATH = 'html'
 
 # PV$(N) (N=1-10)
-n_regex = re.compile('^([a-z0-9_]+\$\(N\)[a-z0-9_]*)\s+\(N=(\d+)-(\d+)\)$',
+n_regex = re.compile(r'^([a-z0-9_]+\$\(N\)[a-z0-9_]*)\s+\(N=(\d+)-(\d+)\)$',
                      flags=re.IGNORECASE)
 
 # PV(1-10)
-n1_regex = re.compile('^[a-z0-9_]+([\(\[](\d+)-(\d+)[\]\)])[a-z0-9_]*$',
+n1_regex = re.compile(r'^[a-z0-9_]+([\(\[](\d+)-(\d+)[\]\)])[a-z0-9_]*$',
                       flags=re.IGNORECASE)
 
 # PV     PV_RBV
-rbv_re = re.compile('^(.*)\s+(.*)_RBV$',
+rbv_re = re.compile(r'^(.*)\s+(.*)_RBV$',
                     flags=re.IGNORECASE)
 
 
@@ -94,7 +92,7 @@ class DocRow(object):
             lines = self.description.split('\n')
             line_count = len(lines)
             if line_count > 1:
-                m = re.match('^(\s+)', lines[1])
+                m = re.match(r'^(\s+)', lines[1])
                 if m:
                     whitespace = m.groups()[0]
                     self.description = '\n%s%s' % (whitespace, self.description.lstrip())
@@ -181,6 +179,7 @@ def parse_doc(fn):
             print('(skipping)', row_text)
 
     return ret
+
 
 print('#!/usr/bin/env python')
 print('# -*- coding: utf-8 -*-')

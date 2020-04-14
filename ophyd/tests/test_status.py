@@ -5,11 +5,15 @@ from ophyd.status import (StatusBase, SubscriptionStatus, UseNewProperty,
 import pytest
 
 
-def _setup_state_and_cb():
+def _setup_state_and_cb(new_signature=True):
     state = {}
 
-    def cb():
-        state['done'] = True
+    if new_signature:
+        def cb(status):
+            state['done'] = True
+    else:
+        def cb():
+            state['done'] = True
     return state, cb
 
 
@@ -149,9 +153,30 @@ def test_notify_watchers():
     from ophyd.sim import hw
     hw = hw()
     mst = MoveStatus(hw.motor, 10)
+
     def callback(*args, **kwargs):
         ...
+
     mst.watch(callback)
     mst.target = 0
     mst.start_pos = 0
     mst._notify_watchers(0)
+
+
+def test_old_signature():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb(new_signature=False)
+    with pytest.warns(DeprecationWarning, match="signature"):
+        st.add_callback(cb)
+    assert not state
+    st._finished()
+    assert state
+
+
+def test_old_signature_on_finished_status():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb(new_signature=False)
+    st._finished()
+    with pytest.warns(DeprecationWarning, match="signature"):
+        st.add_callback(cb)
+    assert state

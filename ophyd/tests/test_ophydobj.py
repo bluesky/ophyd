@@ -28,7 +28,7 @@ def test_status_callback_deprecated():
         st.finished_cb = None
 
     st._finished()
-    cb.assert_called_once_with()
+    cb.assert_called_once_with(st)
 
 
 def test_status_callback():
@@ -40,7 +40,7 @@ def test_status_callback():
     assert st.callbacks[0] is cb
 
     st._finished()
-    cb.assert_called_once_with()
+    cb.assert_called_once_with(st)
 
 
 def test_status_others():
@@ -186,7 +186,7 @@ def test_register_instance():
     test2 = OphydObject(name='test2')
     assert weakdict['test2'] == test2
 
-    assert OphydObject._OphydObject__any_instantiated == True
+    assert OphydObject._OphydObject__any_instantiated is True
     with pytest.raises(RuntimeError):
         register_instances_in_weakset(fail_if_late=True)
     with pytest.raises(RuntimeError):

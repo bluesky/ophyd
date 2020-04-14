@@ -2,6 +2,38 @@
  Release History
 =================
 
+v1.4.1 (2020-04-07)
+===================
+
+Features
+--------
+
+* Update HLM and LLM limits automatically on :class:`ophyd.EpicsMotor` when
+  they are changed externally.
+* Added more descriptive error message when attempting to run setup under
+  unsupported Python versions.
+
+API Changes
+-----------
+
+* Added methods :func:`ophyd.EpicsMotor.set_lim` and
+  :func:`ophyd.EpicsMotor.get_lim` to set and get limits on motors.
+* Added documentation for logging API.
+
+Fixes
+-----
+
+* Improved documentation of :class:`ophyd.PVPositioner`.
+* Corrected path semantics behavior when interacting with an areadetector
+  running on a different OS.
+
+Internals
+---------
+
+* Refactored code to satisfy Flake8 requirements. Maximum line length set to
+  115 characters.
+* Improved scope of log messages emitted by ``OphydObj``.
+
 v1.4.0 (2020-03-13)
 ===================
 

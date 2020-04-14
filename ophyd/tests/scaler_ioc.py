@@ -48,7 +48,6 @@ class EpicsScalerGroup(PVGroup):
 
     channels = SubGroup(ChannelsGroup, prefix='')
 
-
     class NamesGroup(PVGroup):
         name1 = pvproperty(value='name', name='.NM1', dtype=ChannelType.STRING)
         name2 = pvproperty(value='name', name='.NM2', dtype=ChannelType.STRING)
@@ -148,7 +147,6 @@ class EpicsScalerGroup(PVGroup):
         preset32 = pvproperty(name='.PR32', dtype=int)
 
     presets = SubGroup(PresetsGroup, prefix='')
-
 
     class GatesGroup(PVGroup):
         gate1 = pvproperty(name='.G1', dtype=int)

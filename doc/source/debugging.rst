@@ -63,6 +63,8 @@ Logger Names
 Here are the primary loggers used by ophyd.
 
 * ``'ophyd'`` --- the logger to which all ophyd log records propagate
+* ``'ophyd.objects'`` --- logs records from all devices and signals
+  (that is, :class:`~ophyd.OphydObject` subclasses)
 * ``'ophyd.control_layer'`` --- logs requests issued to the underlying control
   layer (e.g. pyepics, caproto)
 * ``'ophyd.event_dispatcher'`` --- issues regular summaries of the backlog of

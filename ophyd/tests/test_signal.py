@@ -253,7 +253,7 @@ def test_epicssignal_waveform(cleanup, signal_test_ioc):
     assert len(signal.get()) > 1
     # force the current thread to allow other threads to run to service
     # subscription
-    time.sleep(0)
+    time.sleep(0.2)
     assert called
     signal.unsubscribe(sub)
 
@@ -500,7 +500,7 @@ def test_epicssignal_sub_setpoint(cleanup, fake_motor_ioc):
 
     pv.put(1, wait=True)
     pv.put(2, wait=True)
-    time.sleep(0.5)
+    time.sleep(1.0)
 
     assert len(setpoint_called) >= 3
     assert len(setpoint_meta_called) >= 3

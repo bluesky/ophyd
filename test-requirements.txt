@@ -1,9 +1,10 @@
-codecov
-matplotlib
-pytest
-databroker>=1.0.0b1
-caproto[standard] >=0.4.2rc1
-h5py
-pytest-faulthandler
-pyepics>=3.4.0
 attrs>=19.3.0
+caproto[standard] >=0.4.2rc1
+codecov
+databroker>=1.0.0b1
+flake8
+h5py
+matplotlib
+pyepics>=3.4.0
+pytest
+pytest-faulthandler

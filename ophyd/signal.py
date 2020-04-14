@@ -23,6 +23,7 @@ DEFAULT_WRITE_TIMEOUT = object()
 # Sentinel to identify if we have never turned the crank on updating a PV
 DEFAULT_EPICSSIGNAL_VALUE = object()
 
+
 class ReadTimeoutError(TimeoutError):
     ...
 
@@ -260,7 +261,7 @@ class Signal(OphydObject):
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     value, timeout, self.tolerance, self.rtolerance
                 )
-            except Exception as ex:
+            except Exception:
                 success = False
                 self.log.exception(
                     'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
@@ -336,7 +337,6 @@ class Signal(OphydObject):
             # else return our cached value and assume something else is keeping us up-to-date
             # so we can trust the latest news
             return self._readback
-
 
     @value.setter
     def value(self, value):
@@ -982,7 +982,7 @@ class EpicsSignalBase(Signal):
         '''Wait for the underlying signals to initialize or connect'''
         try:
             self._ensure_connected(self._read_pv, timeout=timeout)
-        except TimeoutError as ex:
+        except TimeoutError:
             if self._destroyed:
                 raise DestroyedError('Signal has been destroyed')
             raise

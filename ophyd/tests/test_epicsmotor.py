@@ -6,9 +6,6 @@ from numpy.testing import assert_allclose
 
 from ophyd import (
     EpicsMotor,
-    Signal,
-    EpicsSignal,
-    EpicsSignalRO,
     Component as Cpt,
     MotorBundle,
 )
@@ -271,10 +268,13 @@ def test_watchers(motor):
     def collect(fraction, **kwargs):
         collector.append(fraction)
 
+    def callback(status):
+        ev.set()
+
     st = motor.set(1)
     st.watch(collect)
     ev = threading.Event()
-    st.add_callback(ev.set)
+    st.add_callback(callback)
     ev.wait()
     assert collector
     assert collector[-1] == 1

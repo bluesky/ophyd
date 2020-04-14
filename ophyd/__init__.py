@@ -1,7 +1,7 @@
 import logging
 import types
 import os
-from ophyd.log import set_handler
+from ophyd.log import set_handler  # noqa: F401
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -71,34 +71,34 @@ def get_cl():
 
 set_cl()
 
-from .ophydobj import (Kind, select_version,
+from .ophydobj import (Kind, select_version,  # noqa: F401, F402
                        register_instances_in_weakset,
                        register_instances_keyed_on_name)
 
 # Signals
-from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
+from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)  # noqa: F401, F402
 
 # Positioners
-from .positioner import (PositionerBase, SoftPositioner)
-from .epics_motor import EpicsMotor, MotorBundle
-from .pv_positioner import (PVPositioner, PVPositionerPC)
-from .pseudopos import (PseudoPositioner, PseudoSingle)
+from .positioner import (PositionerBase, SoftPositioner)  # noqa: F401, F402
+from .epics_motor import EpicsMotor, MotorBundle  # noqa: F401, F402
+from .pv_positioner import (PVPositioner, PVPositionerPC)  # noqa: F401, F402
+from .pseudopos import (PseudoPositioner, PseudoSingle)  # noqa: F401, F402
 
 # Devices
-from .scaler import EpicsScaler
-from .device import (Device, Component, FormattedComponent,
+from .scaler import EpicsScaler  # noqa: F401, F402
+from .device import (Device, Component, FormattedComponent,  # noqa: F401, F402
                      DynamicDeviceComponent, ALL_COMPONENTS, kind_context,
                      wait_for_lazy_connection, do_not_wait_for_lazy_connection)
-from .indexed_device import IndexedDevice, IndexedComponent
-from .status import StatusBase, wait
-from .mca import EpicsMCA, EpicsDXP
-from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM
+from .indexed_device import IndexedDevice, IndexedComponent  # noqa: F401, F402
+from .status import StatusBase, wait  # noqa: F401, F402
+from .mca import EpicsMCA, EpicsDXP  # noqa: F401, F402
+from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM  # noqa: F401, F402
 
 # Areadetector-related
-from .areadetector import *
-from ._version import get_versions
+from .areadetector import *  # noqa: F401, F402, F403
+from ._version import get_versions  # noqa: F402
 
-from .utils.startup import setup as setup_ophyd
+from .utils.startup import setup as setup_ophyd  # noqa: F401, F402
 
 
 __version__ = get_versions()['version']

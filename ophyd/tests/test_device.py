@@ -4,8 +4,7 @@ from unittest.mock import Mock
 
 import numpy as np
 
-from ophyd import (Device, Component, FormattedComponent,
-                   wait_for_lazy_connection, do_not_wait_for_lazy_connection)
+from ophyd import (Device, Component, FormattedComponent)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
 from ophyd.device import (ComponentWalk, create_device_from_components,

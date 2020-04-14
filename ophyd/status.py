@@ -8,6 +8,7 @@ from warnings import warn
 import numpy as np
 
 from .log import logger
+from .utils import adapt_old_callback_signature
 
 
 class UseNewProperty(RuntimeError):
@@ -140,7 +141,7 @@ class StatusBase:
             self._settled()
 
             for cb in self._callbacks:
-                cb()
+                cb(self)
             self._callbacks.clear()
 
     def _finished(self, success=True, **kwargs):
@@ -203,11 +204,38 @@ class StatusBase:
                                  "property instead.")
 
     @_locked
-    def add_callback(self, cb):
+    def add_callback(self, callback):
+        """
+        Register a callback to be called once when the Status finishes.
+
+        The callback will be called exactly once. If the Status is finished
+        before a callback is added, it will be called immediately. This is
+        threadsafe.
+
+        The callback will be called regardless of success of failure. The
+        callback has access to this status object, so it can distinguish success
+        or failure by inspecting the object.
+
+        Parameters
+        ----------
+        callback: callable
+            Expected signature: ``callback(status)``.
+
+            The signature ``callback()`` is also supported for
+            backward-compatibility but will issue warnings. Support will be
+            removed in a future release of ophyd.
+        """
+        # Handle func with signature callback() for back-compat.
+        callback = adapt_old_callback_signature(callback)
         if self.done:
-            cb()
+            # Call it once and do not hold a reference to it.
+            callback(self)
         else:
-            self._callbacks.append(cb)
+            # Hold a strong reference to this. In other contexts we tend to
+            # hold weak references to callbacks, but this is a single-shot
+            # callback, so we will hold a strong reference until we call it,
+            # and then clear this cache to drop the reference(s).
+            self._callbacks.append(callback)
 
     @finished_cb.setter
     @_locked

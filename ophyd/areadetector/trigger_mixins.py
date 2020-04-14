@@ -57,7 +57,7 @@ class ADTriggerStatus(DeviceStatus):
             fraction = (current - initial) / (target - initial)
         except ZeroDivisionError:
             fraction = 1
-        except Exception as exc:
+        except Exception:
             fraction = None
             time_remaining = None
         else:

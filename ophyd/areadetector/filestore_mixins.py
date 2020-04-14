@@ -24,7 +24,7 @@ import os
 import logging
 import warnings
 import uuid
-from pathlib import PurePath
+from pathlib import PurePath, PurePosixPath, PureWindowsPath
 
 from datetime import datetime
 from collections import defaultdict
@@ -46,7 +46,7 @@ def new_short_uid():
     return '-'.join(new_uid().split('-')[:-1])
 
 
-def _ensure_trailing_slash(path):
+def _ensure_trailing_slash(path, path_semantics=None):
     """
     'a/b/c' -> 'a/b/c/'
 
@@ -54,7 +54,17 @@ def _ensure_trailing_slash(path):
     setpoint filepath to match the readback filepath, we need to add the
     trailing slash ourselves.
     """
-    return os.path.join(path, '')
+    if path_semantics == 'posix':
+        return f'{PurePosixPath(path)}/'
+    elif path_semantics == 'windows':
+        return f'{PureWindowsPath(path)}\\'
+    elif path_semantics is None:
+        # We are forced to guess which path semantics to use.
+        # Guess that the AD driver is running on the same OS as this client.
+        return f'{PurePath(path)}{os.path.sep}'
+    else:
+        # This should never happen, but just for the sake of future-proofing...
+        raise ValueError(f"Cannot handle path_semantics={path_semantics}")
 
 
 def resource_factory(spec, root, resource_path, resource_kwargs,
@@ -276,7 +286,18 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def write_path_template(self):
         rootp = self.reg_root
-        ret = PurePath(self._write_path_template)
+        if self.path_semantics == 'posix':
+            ret = PurePosixPath(self._write_path_template)
+        elif self.path_semantics == 'windows':
+            ret = PureWindowsPath(self._write_path_template)
+        elif self.path_semantics is None:
+            # We are forced to guess which path semantics to use.
+            # Guess that the AD driver is running on the same OS as this client.
+            ret = PurePath(self._write_path_template)
+        else:
+            # This should never happen, but just for the sake of future-proofing...
+            raise ValueError(f"Cannot handle path_semantics={self.path_semantics}")
+
         if self._read_path_template is None and rootp not in ret.parents:
             if not ret.is_absolute():
                 ret = rootp / ret
@@ -285,11 +306,11 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                     ('root: {!r} in not consistent with '
                      'read_path_template: {!r}').format(rootp, ret))
 
-        return _ensure_trailing_slash(str(ret))
+        return _ensure_trailing_slash(str(ret), path_semantics=self.path_semantics)
 
     @write_path_template.setter
     def write_path_template(self, val):
-        self._write_path_template = _ensure_trailing_slash(val)
+        self._write_path_template = _ensure_trailing_slash(val, path_semantics=self.path_semantics)
 
     def stage(self):
         self._locked_key_list = False
@@ -438,8 +459,8 @@ class FileStorePluginBase(FileStoreBase):
         # so we do it redundantly here in Python.
         self._fn = self.file_template.get() % (read_path,
                                                filename,
-                                               self.file_number.get() - 1)
                                                # file_number is *next* iteration
+                                               self.file_number.get() - 1)
         self._fp = read_path
         if not self.file_path_exists.get():
             raise IOError("Path %s does not exist on IOC."
@@ -518,7 +539,7 @@ class FileStoreTIFF(FileStorePluginBase):
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
-    '''Write out 'squashed' tiffs
+    r'''Write out 'squashed' tiffs
 
     .. note::
 

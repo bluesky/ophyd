@@ -50,7 +50,7 @@ class PVPositioner(Device, PositionerBase):
         The value sent to stop_signal when a stop is requested
     done : Signal
         A readback value indicating whether motion is finished
-    done_val : any, optional
+    done_value : any, optional
         The value that the done pv should be when motion has completed
     put_complete : bool, optional
         If set, the specified PV should allow for asynchronous put completion
@@ -214,10 +214,10 @@ class PVPositioner(Device, PositionerBase):
         if not self._started_moving:
             started = self._started_moving = (not was_moving and self._moving)
             self.log.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
-                         self.name, started)
+                           self.name, started)
 
         self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                     self.name, self._moving, value)
+                       self.name, self._moving, value)
 
         if started:
             self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,

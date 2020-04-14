@@ -1,11 +1,12 @@
 # vi: ts=4 sw=4 sts=4 expandtab
+import inspect
 import logging
 from collections import OrderedDict
+import warnings
 
-from .errors import *
-from .epics_pvs import *
-from .paths import makedirs, make_dir_tree
-
+from .errors import *  # noqa: F401, F403
+from .epics_pvs import *  # noqa: F401, F403
+from .paths import makedirs, make_dir_tree  # noqa: F401
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -137,3 +138,38 @@ def getattrs(obj, gen):
 class DO_NOT_USE:
     "sentinel value"
     ...
+
+
+def adapt_old_callback_signature(callback):
+    """
+    If callback has signature callback(), wrap in signature callback(status).
+
+    Parameters
+    ----------
+    callback: callable
+        Expected signature ``callback(status)`` or ``callback()``
+
+    Returns
+    -------
+    callback: callable
+        Signature ``callback(status)``
+    """
+    # Handle callback with signature callback() for back-compat.
+    sig = inspect.signature(callback)
+    try:
+        # Does this callback accept one positional argument?
+        sig.bind(None)
+    except TypeError:
+        warnings.warn(
+            "The signature of a Status callback is now expected to "
+            "be cb(status). The signature cb() is "
+            "supported, but support will be removed in a future release "
+            "of ophyd.", DeprecationWarning)
+        raw_callback = callback
+
+        def callback(status):
+            # Do nothing with status because the user-provided callback cannot
+            # accept it.
+            raw_callback()
+
+    return callback

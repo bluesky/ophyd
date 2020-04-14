@@ -37,52 +37,54 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
-matrix:
+jobs:
   fast_finish: true
   include:
+    - python: 3.7  # Separate build to run flake8 check
+      env:
+        - FLAKE8=true
     - python: 3.6
       env:
         - PUBLISH_DOCS=true
         - TEST_CL=pyepics
     - python: 3.6
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=pyepics
     - python: 3.7
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=pyepics
     - python: nightly
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=caproto
   allow_failures:
     - python: 3.6
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=pyepics
     - python: nightly
       env:
-        - PUBLISH_DOCS=
         - TEST_CL=caproto
 
 before_install:
+  - if [ "$FLAKE8" ]; then
+        pip install flake8;
+        flake8 .;
+        let res=$?;
+        echo "The project code was verified by 'flake8'. Exit code ($res).";
+        exit $res;
+    fi
+
   - export MPLBACKEND=agg
   - git fetch --unshallow
 

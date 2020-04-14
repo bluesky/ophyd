@@ -318,7 +318,7 @@ class GreatEyesDetectorCam(CamBase):
 class Lambda750kCam(CamBase):
     """
     support for X-Spectrum Lambda 750K detector
-    
+
     https://x-spectrum.de/products/lambda-350k750k/
     """
     _html_docs = ['Lambda750kCam.html']
@@ -469,7 +469,7 @@ class PerkinElmerDetectorCam(CamBase):
     pe_num_offset_frames = ADCpt(EpicsSignal, 'PENumOffsetFrames')
     pe_offset_available = ADCpt(EpicsSignal, 'PEOffsetAvailable')
     pe_pixel_correction_available = ADCpt(EpicsSignal,
-                                      'PEPixelCorrectionAvailable')
+                                          'PEPixelCorrectionAvailable')
     pe_pixel_correction_file = ADCpt(EpicsSignal, 'PEPixelCorrectionFile')
     pe_save_gain_file = ADCpt(EpicsSignal, 'PESaveGainFile')
     pe_skip_frames = ADCpt(SignalWithRBV, 'PESkipFrames')

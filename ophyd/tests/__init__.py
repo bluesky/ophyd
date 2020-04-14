@@ -1,1 +1,1 @@
-import logging
+import logging  # noqa: F401
