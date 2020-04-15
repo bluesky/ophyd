@@ -253,7 +253,7 @@ class StatusBase:
             if (isinstance(exc, exc_class)
                     or isinstance(exc, type) and issubclass(exc, exc_class)):
                 raise ValueError(
-                    f"{exc_class} as special significance and cannot be set "
+                    f"{exc_class} has special significance and cannot be set "
                     "as the exception. Use a plain TimeoutError or some other "
                     "subclass thereof.")
 
