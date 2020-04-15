@@ -208,6 +208,14 @@ class StatusBase:
                     exc = StatusTimeoutError(
                         f"Status {self!r} failed to complete in specified timeout.")
                     self._exception = exc
+        # Mark this as "settled".
+        try:
+            self._settled()
+        except Exception:
+            # No alternative but to log this. We can't supersede set_exception,
+            # and we have to continue and run the callbacks.
+            logger.exception(
+                "%r encountered error during _settled()", self)
         # Now we know whether or not we have succeed or failed, either by
         # timeout above or by set_exception(exc), so we can set the Event that
         # will mark this Status as done.
@@ -218,11 +226,9 @@ class StatusBase:
                 self._handle_failure()
             except Exception:
                 logger.exception(
-                    "Failure handling on %r raised an error.", self)
-        # Rain or shine, mark this as "settled" and run the callbacks.
+                    "%r encountered an error during _handle_failure()", self)
         # The callbacks have access to self, from which they can distinguish
         # success or failure.
-        self._settled()
         for cb in self._callbacks:
             cb(self)
         self._callbacks.clear()
