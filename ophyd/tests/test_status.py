@@ -340,3 +340,32 @@ def test_race_settle_time_and_timeout():
         st.wait(1)
     # Now we should be done successfully.
     st.wait(3)
+
+
+def test_set_finished_after_timeout():
+    """
+    If an external callback (e.g. pyepics) calls set_finished after the status
+    has timed out, ignore it.
+    """
+    st = StatusBase(timeout=0)
+    time.sleep(0.1)
+    assert isinstance(st.exception(), StatusTimeoutError)
+    # External callback fires, too late.
+    st.set_finished()
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+def test_set_finished_after_timeout():
+    """
+    If an external callback (e.g. pyepics) calls set_exception after the status
+    has timed out, ignore it.
+    """
+    st = StatusBase(timeout=0)
+    time.sleep(0.1)
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+    class LocalException(Exception):
+        ...
+
+    # External callback reports failure, too late.
+    st.set_exception(LocalException())
+    assert isinstance(st.exception(), StatusTimeoutError)
