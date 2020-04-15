@@ -1,6 +1,8 @@
 import atexit
 import logging
+import threading
 from distutils.version import LooseVersion
+
 import epics
 from epics import ca, caget, caput
 
@@ -115,20 +117,27 @@ class PyepicsShimPV(epics.PV):
 
 
 def release_pvs(*pvs):
-    for pv in pvs:
-        pv._reference_count -= 1
-        if pv._reference_count == 0:
-            pv.clear_callbacks()
-            pv.clear_auto_monitor()
-            if pv.chid is not None:
-                # Clear the channel on the CA-level
-                epics.ca.clear_channel(pv.chid)
+    def _release_pvs():
+        for pv in pvs:
+            pv._reference_count -= 1
+            if pv._reference_count == 0:
+                pv.clear_callbacks()
+                pv.clear_auto_monitor()
+                if pv.chid is not None:
+                    # Clear the channel on the CA-level
+                    epics.ca.clear_channel(pv.chid)
 
-            pv.chid = None
-            pv.context = None
+                pv.chid = None
+                pv.context = None
 
-            # Ensure we don't get this same PV back again
-            epics.pv._PVcache_.pop(pv._cache_key, None)
+                # Ensure we don't get this same PV back again
+                epics.pv._PVcache_.pop(pv._cache_key, None)
+
+        event.set()
+
+    event = threading.Event()
+    _dispatcher.get_thread_context('monitor').run(_release_pvs)
+    event.wait()
 
 
 def setup(logger):
