@@ -282,11 +282,13 @@ class StatusBase:
                     "Either set_finished() or set_exception() has "
                     f"already been called on {self!r}")
             self._externally_initiated_completion.set()
-        self._settle_thread = threading.Timer(
-            self.settle_time,
-            self._settled_event.set,
-        )
-        self._settle_thread.start()
+        # Note that in either case, the callbacks themselves are run from the
+        # same thread. This just sets an Event, either from this thread (the
+        # one calling set_finished) or the thread created below.
+        if self.settle_time > 0:
+            threading.Timer(self.settle_time, self._settled_event.set).start()
+        else:
+            self._settled_event.set()
 
     def _finished(self, success=True, **kwargs):
         """
