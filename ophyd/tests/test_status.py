@@ -407,3 +407,33 @@ def test_set_exception_after_timeout():
 def test_nonsensical_init():
     with pytest.raises(ValueError):
         StatusBase(success=True, done=False)
+
+
+def test_error_in_settled_method():
+    state, cb = _setup_state_and_cb()
+
+    class BrokenStatus(StatusBase):
+        def _settled(self):
+            raise Exception
+
+    st = BrokenStatus()
+    st.add_callback(cb)
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state
+
+
+def test_error_in_handle_failure_method():
+    state, cb = _setup_state_and_cb()
+
+    class BrokenStatus(StatusBase):
+        def _handle_failure(self):
+            raise Exception
+
+    st = BrokenStatus()
+    st.add_callback(cb)
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state
