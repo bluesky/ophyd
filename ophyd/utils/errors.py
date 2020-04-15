@@ -50,7 +50,14 @@ class UnknownStatusFailure(OpException):
     ...
 
 
-class WaitTimeoutError(TimeoutError):
+class StatusTimeoutError(TimeoutError, OpException):
+    """
+    Timeout specified when a Status object was created has expired.
+    """
+    ...
+
+
+class WaitTimeoutError(TimeoutError, OpException):
     """
     TimeoutError raised when we ware waiting on completion of a task.
 
@@ -61,7 +68,7 @@ class WaitTimeoutError(TimeoutError):
     ...
 
 
-class InvalidState(RuntimeError):
+class InvalidState(RuntimeError, OpException):
     """
     When Status.set_finished() or Status.set_exception(exc) is called too late
     """

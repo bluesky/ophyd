@@ -1,5 +1,6 @@
 import logging
 import pytest
+import time
 
 from unittest.mock import Mock
 from ophyd.ophydobj import (OphydObject,
@@ -29,7 +30,8 @@ def test_status_callback_deprecated():
         st.finished_cb = None
 
     st.set_finished()
-    st.wait()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     cb.assert_called_once_with(st)
 
 
@@ -42,7 +44,8 @@ def test_status_callback():
     assert st.callbacks[0] is cb
 
     st.set_finished()
-    st.wait()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     cb.assert_called_once_with(st)
 
 

@@ -12,6 +12,7 @@ from .utils import (
     adapt_old_callback_signature,
     InvalidState,
     UnknownStatusFailure,
+    StatusTimeoutError,
     WaitTimeoutError,
 )
 
@@ -50,9 +51,12 @@ class StatusBase:
         super().__init__()
         self._tname = None
         self._lock = threading.RLock()
-        self._event = threading.Event()
-        self._settling_event = threading.Event()
-        self._settling_lock = threading.RLock()
+        self._event = threading.Event()  # state associated with done-ness
+        self._settled_event = threading.Event()
+        # "Externally initiated" means set_finished() or set_exception(exc) was
+        # called, as opposed to completion via an internal timeout.
+        self._externally_initiated_completion_lock = threading.Lock()
+        self._externally_initiated_completion = threading.Event()
         self._callbacks = deque()
         self._exception = None
         self.timeout = None
@@ -67,6 +71,10 @@ class StatusBase:
         if timeout is not None:
             self.timeout = float(timeout)
 
+        self._callback_thread = threading.Thread(
+            target=self._run_callbacks, daemon=True, name=self._tname)
+        self._callback_thread.start()
+
         # It is a unnecessary that we allow setting 'done' and 'success' at
         # __init__ time. The concurrent.futures.Future class does not allow
         # that. But we can continue to support it.
@@ -80,19 +88,10 @@ class StatusBase:
                     "set_exception(...) instead of setting success=False "
                     "at __init__ time.")
                 self.set_exception(exc)
-            # In the case of a pre-completed status object,
-            # don't start the timeout thread.
-            return
         elif success:
             # This is a backward-incompatible change.
             raise ValueError(
                 "Cannot initialize with done=False but success=True.")
-
-        if self.timeout is not None and self.timeout > 0.0:
-            thread = threading.Thread(target=self._wait_and_cleanup,
-                                      daemon=True, name=self._tname)
-            self._timeout_thread = thread
-            self._timeout_thread.start()
 
     @property
     def done(self):
@@ -152,16 +151,6 @@ class StatusBase:
             "to fail.",
             UserWarning)
 
-    def _wait_and_cleanup(self):
-        """Handle timeout"""
-        assert self.timeout is not None
-        assert self.settle_time is not None
-        timeout = self.timeout + self.settle_time
-        if not self._event.wait(timeout):
-            exc = TimeoutError(
-                "Status {self!r} failed to complete in specified timeout.")
-            self.set_exception(exc)
-
     def _handle_failure(self):
         pass
 
@@ -173,13 +162,41 @@ class StatusBase:
         """
         Set the Event and run the callbacks.
         """
+        if self.timeout is None:
+            timeout = None
+        else:
+            timeout = self.timeout + self.settle_time
+        if not self._settled_event.wait(timeout):
+            # We have timed out. It's possible that set_finished() has already
+            # been called but we got here before the settle_time timer expired.
+            # And it's possible that in this space be between the above
+            # statement timing out grabbing the lock just below,
+            # set_exception(exc) has been called. Both of these possibilties
+            # are accounted for.
+            logger.warning("%r has timed out", self)
+            with self._externally_initiated_completion_lock:
+                # Set the exception and mark the Status as done, unless
+                # set_exception(exc) was called externally before we grabbed
+                # the lock.
+                if self._exception is None:
+                    exc = StatusTimeoutError(
+                        f"Status {self!r} failed to complete in specified timeout.")
+                    self._exception = exc
+        # Now we know whether or not we have succeed or failed, either by
+        # timeout above or by set_exception(exc), so we can set the Event that
+        # will mark this Status as done.
         with self._lock:
-            if self._event.is_set():
-                # We timed out while waiting for the settle time.
-                return
             self._event.set()
+        if self._exception is not None:
+            try:
+                self._handle_failure()
+            except Exception:
+                logger.exception(
+                    "Failure handling on %r raised an error.", self)
+        # Rain or shine, mark this as "settled" and run the callbacks.
+        # The callbacks have access to self, from which they can distinguish
+        # success or failure.
         self._settled()
-
         for cb in self._callbacks:
             cb(self)
         self._callbacks.clear()
@@ -199,15 +216,17 @@ class StatusBase:
         # avoid potentially very confusing failures.
         if not isinstance(exc, Exception):
             raise ValueError(f"Expected an Exception, got {exc!r}")
-        with self._settling_lock:
-            if self._settling_event.is_set():
-                raise InvalidState(f"Status {self!r} is already finishing.")
-            self._settling_event.set()
-        self._exception = exc
-        try:
-            self._handle_failure()
-        finally:
-            self._run_callbacks()
+        with self._externally_initiated_completion_lock:
+            if self._externally_initiated_completion.is_set():
+                raise InvalidState(
+                    "Either set_finished() or set_exception() has "
+                    f"already been called on {self!r}")
+            self._externally_initiated_completion.set()
+            if isinstance(self._exception, StatusTimeoutError):
+                # We have already timed out.
+                return
+            self._exception = exc
+            self._settled_event.set()
 
     def set_finished(self):
         """
@@ -216,15 +235,15 @@ class StatusBase:
         This method should generally not be called by the *recipient* of this
         Status object, but only by the object that created and returned it.
         """
-        with self._settling_lock:
-            if self._settling_event.is_set():
-                raise InvalidState(f"Status {self!r} is already finishing.")
-            self._settling_event.set()
-        # Run the callbacks in another thread after a Timer waits for the
-        # settle_time.
+        with self._externally_initiated_completion_lock:
+            if self._externally_initiated_completion.is_set():
+                raise InvalidState(
+                    "Either set_finished() or set_exception() has "
+                    f"already been called on {self!r}")
+            self._externally_initiated_completion.set()
         self._settle_thread = threading.Timer(
             self.settle_time,
-            self._run_callbacks,
+            self._settled_event.set,
         )
         self._settle_thread.start()
 
@@ -299,6 +318,9 @@ class StatusBase:
         WaitTimeoutError
             If the status has not completed within ``timeout`` (starting from
             when this method was called, not from the beginning of the action).
+        StatusTimeoutError
+            If the status has failed because the *timeout* that it was
+            initialized with has expired.
         Exception
             This is ``status.exception()``, raised if the status has finished
             with an error.  This may include ``TimeoutError``, which
@@ -400,7 +422,7 @@ class AndStatus(StatusBase):
 
         def inner(status):
             with self._lock:
-                if self._settling_event.is_set():
+                if self._externally_initiated_completion.is_set():
                     return
                 with self.left._lock:
                     with self.right._lock:

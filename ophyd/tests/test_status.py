@@ -1,8 +1,14 @@
+import time
 from unittest.mock import Mock
+
 from ophyd import Device
 from ophyd.status import (StatusBase, SubscriptionStatus, UseNewProperty,
                           MoveStatus)
-from ophyd.utils import InvalidState, UnknownStatusFailure
+from ophyd.utils import (
+    InvalidState,
+    UnknownStatusFailure,
+    StatusTimeoutError,
+    WaitTimeoutError)
 import pytest
 
 
@@ -26,6 +32,8 @@ def test_status_post():
     st.add_callback(cb)
     assert 'done' not in state
     st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state
     assert state['done']
 
@@ -57,6 +65,8 @@ def test_status_legacy_finished_cb():
     assert 'done' not in state1
     assert 'done' not in state2
     st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state1
     assert 'done' in state2
 
@@ -66,6 +76,8 @@ def test_status_pre():
     state, cb = _setup_state_and_cb()
 
     st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
 
     assert 'done' not in state
     st.add_callback(cb)
@@ -83,6 +95,8 @@ def test_direct_done_setting():
         st.done = False  # but for now no-ops warn
 
     st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
 
     with pytest.raises(RuntimeError):
         st.done = False  # changing isn't allowed
@@ -107,11 +121,13 @@ def test_subscription_status():
 
     # Run callbacks but do not mark as complete
     d._run_subs(sub_type=d.SUB_ACQ_DONE, done=False)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert m.called
     assert not status.done and not status.success
 
     # Run callbacks and mark as complete
     d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert status.done and status.success
 
 
@@ -134,6 +150,7 @@ def test_and():
     st5.add_callback(cb5)
     st1.set_finished()
     st1.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state1
     assert 'done' not in state2
     assert 'done' not in state3
@@ -143,6 +160,7 @@ def test_and():
     st3.wait(1)
     st4.wait(1)
     st5.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state3
     assert 'done' in state4
     assert 'done' in state5
@@ -175,6 +193,8 @@ def test_old_signature():
         st.add_callback(cb)
     assert not state
     st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert state
 
 
@@ -182,6 +202,7 @@ def test_old_signature_on_finished_status():
     st = StatusBase()
     state, cb = _setup_state_and_cb(new_signature=False)
     st.set_finished()
+    st.wait(1)
     with pytest.warns(DeprecationWarning, match="signature"):
         st.add_callback(cb)
     assert state
@@ -193,7 +214,8 @@ def test_old_finished_method_success():
     st.add_callback(cb)
     assert not state
     st._finished()
-    st.wait()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert state
     assert st.done
     assert st.success
@@ -206,7 +228,8 @@ def test_old_finished_method_failure():
     assert not state
     st._finished(success=False)
     with pytest.raises(UnknownStatusFailure):
-        st.wait()
+        st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert state
     assert st.done
     assert not st.success
@@ -244,11 +267,76 @@ def test_exception_fail_path():
     st.set_exception(exc)
     assert exc is st.exception()
     with pytest.raises(LocalException):
-        st.wait()
+        st.wait(1)
 
 
 def test_exception_success_path():
     st = StatusBase()
     st.set_finished()
-    assert st.wait() is None
+    assert st.wait(1) is None
     assert st.exception() is None
+
+
+def test_wait_timeout():
+    """
+    A WaitTimeoutError is raised when we block on wait(TIMEOUT) or
+    exception(TIMEOUT) and the Status has not finished.
+    """
+    st = StatusBase()
+    with pytest.raises(WaitTimeoutError):
+        st.wait(0.01)
+    with pytest.raises(WaitTimeoutError):
+        st.exception(0.01)
+
+
+def test_status_timeout():
+    """
+    A StatusTimeoutError is raised when the timeout set in __init__ has
+    expired.
+    """
+    st = StatusBase(timeout=0)
+    with pytest.raises(StatusTimeoutError):
+        st.wait(1)
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+
+def test_status_timeout_with_settle_time():
+    """
+    A StatusTimeoutError is raised when the timeout set in __init__ plus the
+    settle_time has expired.
+    """
+    st = StatusBase(timeout=0, settle_time=1)
+    # Not dead yet.
+    with pytest.raises(WaitTimeoutError):
+        st.exception(0.01)
+    # But now we are.
+    with pytest.raises(StatusTimeoutError):
+        st.wait(2)
+
+
+def test_external_timeout():
+    """
+    A TimeoutError is raised, not StatusTimeoutError or WaitTimeoutError,
+    when set_exception(TimeoutError) has been set.
+    """
+    st = StatusBase(timeout=1)
+    st.set_exception(TimeoutError())
+    with pytest.raises(TimeoutError) as exc:
+        st.wait(1)
+    assert not isinstance(exc, WaitTimeoutError)
+    assert not isinstance(exc, StatusTimeoutError)
+
+
+def test_race_settle_time_and_timeout():
+    """
+    A StatusTimeoutError should NOT occur here because that is only invoked
+    after (timeout + settle_time) has elapsed.
+    """
+    st = StatusBase(timeout=1, settle_time=3)
+    st.set_finished()  # starts a threading.Timer with the settle_time
+    time.sleep(1.5)
+    # We should still be settling....
+    with pytest.raises(WaitTimeoutError):
+        st.wait(1)
+    # Now we should be done successfully.
+    st.wait(3)
