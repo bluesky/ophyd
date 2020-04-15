@@ -354,7 +354,8 @@ def test_set_finished_after_timeout():
     st.set_finished()
     assert isinstance(st.exception(), StatusTimeoutError)
 
-def test_set_finished_after_timeout():
+
+def test_set_exception_after_timeout():
     """
     If an external callback (e.g. pyepics) calls set_exception after the status
     has timed out, ignore it.
