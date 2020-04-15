@@ -402,3 +402,8 @@ def test_set_exception_after_timeout():
     # External callback reports failure, too late.
     st.set_exception(LocalException())
     assert isinstance(st.exception(), StatusTimeoutError)
+
+
+def test_nonsensical_init():
+    with pytest.raises(ValueError):
+        StatusBase(success=True, done=False)
