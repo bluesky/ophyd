@@ -240,8 +240,23 @@ class StatusBase:
         """
         # Since we rely on this being raise-able later, check proactively to
         # avoid potentially very confusing failures.
-        if not isinstance(exc, Exception):
+        if not (isinstance(exc, Exception)
+                or isinstance(exc, type) and issubclass(exc, Exception)):
+            # Note that Python allows `raise Exception` or raise Exception()`
+            # so we allow a class or an instance here too.
             raise ValueError(f"Expected an Exception, got {exc!r}")
+
+        # Ban certain Timeout subclasses that have special significance. This
+        # would probably never come up except due to some rare user error, but
+        # if it did it could be very confusing indeed!
+        for exc_class in (StatusTimeoutError, WaitTimeoutError):
+            if (isinstance(exc, exc_class)
+                    or isinstance(exc, type) and issubclass(exc, exc_class)):
+                raise ValueError(
+                    f"{exc_class} as special significance and cannot be set "
+                    "as the exception. Use a plain TimeoutError or some other "
+                    "subclass thereof.")
+
         with self._externally_initiated_completion_lock:
             if self._externally_initiated_completion.is_set():
                 raise InvalidState(

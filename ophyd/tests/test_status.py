@@ -257,6 +257,23 @@ def test_set_exception_wrong_type():
         st.set_exception(NOT_AN_EXCEPTION)
 
 
+def test_set_exception_special_banned_exceptions():
+    """
+    Exceptions with special significant to StatusBase are banned. See comments
+    in set_exception.
+    """
+    st = StatusBase()
+    # Test the class and the instance of each.
+    with pytest.raises(ValueError):
+        st.set_exception(StatusTimeoutError)
+    with pytest.raises(ValueError):
+        st.set_exception(StatusTimeoutError())
+    with pytest.raises(ValueError):
+        st.set_exception(WaitTimeoutError)
+    with pytest.raises(ValueError):
+        st.set_exception(WaitTimeoutError())
+
+
 def test_exception_fail_path():
     st = StatusBase()
 
@@ -266,6 +283,21 @@ def test_exception_fail_path():
     exc = LocalException()
     st.set_exception(exc)
     assert exc is st.exception()
+    with pytest.raises(LocalException):
+        st.wait(1)
+
+
+def test_exception_fail_path_with_class():
+    """
+    Python allows `raise Exception` and `raise Exception()` so we do as well.
+    """
+    st = StatusBase()
+
+    class LocalException(Exception):
+        ...
+
+    st.set_exception(LocalException)
+    assert LocalException is st.exception()
     with pytest.raises(LocalException):
         st.wait(1)
 
