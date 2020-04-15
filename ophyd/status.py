@@ -71,6 +71,11 @@ class StatusBase:
         if timeout is not None:
             self.timeout = float(timeout)
 
+        # We cannot know that we are successful if we are not done.
+        if success and not done:
+            raise ValueError(
+                "Cannot initialize with done=False but success=True.")
+
         self._callback_thread = threading.Thread(
             target=self._run_callbacks, daemon=True, name=self._tname)
         self._callback_thread.start()
@@ -88,10 +93,6 @@ class StatusBase:
                     "set_exception(...) instead of setting success=False "
                     "at __init__ time.")
                 self.set_exception(exc)
-        elif success:
-            # This is a backward-incompatible change.
-            raise ValueError(
-                "Cannot initialize with done=False but success=True.")
 
     @property
     def done(self):
