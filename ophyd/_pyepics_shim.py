@@ -118,9 +118,12 @@ class PyepicsShimPV(epics.PV):
 
 def release_pvs(*pvs):
     def _release_pvs():
-        for pv in pvs:
-            pv._reference_count -= 1
-            if pv._reference_count == 0:
+        try:
+            for pv in pvs:
+                pv._reference_count -= 1
+                if pv._reference_count != 0:
+                    continue
+
                 pv.clear_callbacks()
                 pv.clear_auto_monitor()
                 if pv.chid is not None:
@@ -132,8 +135,8 @@ def release_pvs(*pvs):
 
                 # Ensure we don't get this same PV back again
                 epics.pv._PVcache_.pop(pv._cache_key, None)
-
-        event.set()
+        finally:
+            event.set()
 
     event = threading.Event()
     _dispatcher.get_thread_context('monitor').run(_release_pvs)
