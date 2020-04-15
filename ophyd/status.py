@@ -46,7 +46,32 @@ class StatusBase:
         The amount of time to wait between the caller specifying that the
         status has completed to running callbacks
     """
-    def __init__(self, *, timeout=None, settle_time=None, done=False,
+    # Theory of operation:
+    #
+    # At __init__ time, a timeout and settle_time are specified  A thread is
+    # started, on which user callbacks, registered after __init__ time via the
+    # method add_callback(callback), will eventually be run.  The thread waits
+    # on self._settled_event to be set or (timeout + settle_time) seconds to
+    # pass, whichever happens first.
+    #
+    # If (timeout + settle_time) expires and the self._settled_event has not
+    # been set, self._exception is set to StatusTimeoutError, and self._event
+    # is set, marking the status as done (and failed). The callbacks are run.
+    #
+    # If self._settled_event is set before (timeout + settle_time) expires,
+    # then self._event is set and the callbacks are run.
+    #
+    # There are two methods that directly set self._settled_event. One,
+    # set_exception(exc), calls it directly after setting self._exception.
+    # The other, set_finished(), starts a threading.Timer that will set
+    # self._settled_event after a delay (the settle_time). One of these methods
+    # may be called, and at most once. If one is called twice or if both are
+    # called, InvalidState is raised. If they are called too late to prevent a
+    # StatusTimeoutError, they are ignored but one call is still allowed.
+    # Thus, an external callback, e.g.  pyepics, may reports success or failure
+    # after the Status object has expired, but to no effect because the
+    # callbacks have already been called and the program has moved on.
+    def __init__(self, *, timeout=None, settle_time=0, done=False,
                  success=False):
         super().__init__()
         self._tname = None
