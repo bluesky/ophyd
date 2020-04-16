@@ -1,5 +1,4 @@
 import logging
-import time
 import uuid
 
 import pytest
@@ -64,11 +63,7 @@ def motor(request, cleanup):
     motor.wait_for_connection()
     motor.low_limit_value.put(-100, wait=True)
     motor.high_limit_value.put(100, wait=True)
-    # set the motor to 0
-    motor.set(0)
-    while motor.motor_done_move.get() != 1:
-        print('Waiting for {} to stop moving...'.format(motor))
-        time.sleep(0.5)
+    motor.set(0).wait()
 
     return motor
 

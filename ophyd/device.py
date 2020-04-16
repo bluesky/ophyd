@@ -1298,7 +1298,7 @@ class Device(BlueskyInterface, OphydObject):
                                       'currently supported')
         status = DeviceStatus(self)
         if not signals:
-            status._finished()
+            status.set_finished()
             return status
 
         acq_signal, = signals

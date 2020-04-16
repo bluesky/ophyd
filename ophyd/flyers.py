@@ -124,7 +124,7 @@ class AreaDetectorTimeseriesCollector(Device):
         # make status object
         status = DeviceStatus(self)
         # it always done, the scan should never even try to wait for this
-        status._finished()
+        status.set_finished()
         return status
 
     def pause(self):
@@ -145,7 +145,7 @@ class AreaDetectorTimeseriesCollector(Device):
 
         # Data is ready immediately
         st = DeviceStatus(self)
-        st._finished(success=True)
+        st.set_finished()
         return st
 
     def collect(self):
@@ -213,7 +213,7 @@ class WaveformCollector(Device):
     def complete(self):
         self.pause()
         st = DeviceStatus(self)
-        st._finished(success=True)
+        st.set_finished()
         return st
 
     def kickoff(self):
@@ -226,7 +226,7 @@ class WaveformCollector(Device):
         # make status object
         status = DeviceStatus(self)
         # it always done, the scan should never even try to wait for this
-        status._finished()
+        status.set_finished()
         return status
 
     def collect(self):
@@ -306,7 +306,7 @@ class MonitorFlyerMixin(BlueskyInterface):
         self._paused = False
         self._add_monitors()
         st = DeviceStatus(self)
-        st._finished(success=True)
+        st.set_finished()
         return st
 
     def _add_monitors(self):
@@ -405,7 +405,7 @@ class MonitorFlyerMixin(BlueskyInterface):
 
         # Data is ready immediately
         st = DeviceStatus(self)
-        st._finished(success=True)
+        st.set_finished()
         return st
 
     def collect(self):

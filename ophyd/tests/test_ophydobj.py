@@ -1,18 +1,20 @@
 import logging
 import pytest
+import time
 
 from unittest.mock import Mock
 from ophyd.ophydobj import (OphydObject,
                             register_instances_keyed_on_name,
                             register_instances_in_weakset)
 from ophyd.status import (StatusBase, DeviceStatus, wait)
+from ophyd.utils import WaitTimeoutError
 
 logger = logging.getLogger(__name__)
 
 
 def test_status_basic():
     st = StatusBase()
-    st._finished()
+    st.set_finished()
 
 
 def test_status_callback_deprecated():
@@ -27,7 +29,9 @@ def test_status_callback_deprecated():
     with pytest.raises(RuntimeError):
         st.finished_cb = None
 
-    st._finished()
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     cb.assert_called_once_with(st)
 
 
@@ -39,7 +43,9 @@ def test_status_callback():
     st.add_callback(cb)
     assert st.callbacks[0] is cb
 
-    st._finished()
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     cb.assert_called_once_with(st)
 
 
@@ -49,20 +55,20 @@ def test_status_others():
 
 def test_status_wait():
     st = StatusBase()
-    st._finished()
+    st.set_finished()
     wait(st)
 
 
 def test_wait_status_failed():
     st = StatusBase(timeout=0.05)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TimeoutError):
         wait(st)
 
 
 def test_status_wait_timeout():
     st = StatusBase()
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(WaitTimeoutError):
         wait(st, timeout=0.05)
 
 

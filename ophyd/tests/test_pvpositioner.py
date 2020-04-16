@@ -63,7 +63,7 @@ def test_pvpos(motor):
     m.read()
 
     motor.move(0.1, wait=True)
-    time.sleep(0.1)
+    time.sleep(1)
     assert m.position == 0.1
 
     m.stop()

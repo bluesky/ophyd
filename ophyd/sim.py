@@ -47,7 +47,7 @@ class NullStatus(StatusBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._finished(success=True)
+        self.set_finished()
 
 
 class EnumSignal(Signal):
@@ -157,7 +157,7 @@ class SynSignal(Signal):
                 def update_and_finish():
                     self.log.info('update_and_finish %s', self)
                     self.put(self._func())
-                    st._finished()
+                    st.set_finished()
 
                 self.loop.call_later(delay_time, update_and_finish)
             else:
@@ -166,7 +166,7 @@ class SynSignal(Signal):
                     self.log.info('sleep_and_finish %s', self)
                     ttime.sleep(delay_time)
                     self.put(self._func())
-                    st._finished()
+                    st.set_finished()
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             return st
@@ -413,7 +413,7 @@ class SynAxis(Device):
 
                 def update_and_finish():
                     update_state()
-                    st._finished()
+                    st.set_finished()
 
                 self.loop.call_later(self.delay, update_and_finish)
             else:
@@ -421,7 +421,7 @@ class SynAxis(Device):
                 def sleep_and_finish():
                     ttime.sleep(self.delay)
                     update_state()
-                    st._finished()
+                    st.set_finished()
 
                 threading.Thread(target=sleep_and_finish, daemon=True).start()
             return st
@@ -747,7 +747,7 @@ class MockFlyer:
         self._future = self.loop.run_in_executor(None, self._scan)
         st = DeviceStatus(device=self)
         self._completion_status = st
-        self._future.add_done_callback(lambda x: st._finished())
+        self._future.add_done_callback(lambda x: st.set_finished())
         return st
 
     def collect(self):
