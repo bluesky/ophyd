@@ -30,7 +30,8 @@ def test_single_range():
     assert len(dev.cpt1) == 10
     assert list(dev.cpt1) == list(range(10))
     assert dev.cpt1[:2] == [dev.cpt1.channel_00,
-                            dev.cpt1.channel_01]
+                            dev.cpt1.channel_01,
+                            dev.cpt1.channel_02]
 
 
 def test_formatted_component():
@@ -90,6 +91,7 @@ def test_2d_slice():
     assert len(dev.cpt1[:, 'A':'C']) == 30
     assert len(dev.cpt1[:, 'A':]) == 40
     assert len(dev.cpt1[:, :'C']) == 30
+    assert len(dev.cpt1[0:1, 'A']) == 2  # (0, 'A'), (1, 'A')
 
     assert dev.cpt1[0, 'A'] is dev.cpt1.channel_00A
     assert dev.cpt1[(0, 'A')] is dev.cpt1.channel_00A
@@ -101,6 +103,14 @@ def test_2d_slice():
     with pytest.raises(ValueError):
         # too many slices
         dev.cpt1[:, :, :]
+
+    with pytest.raises(ValueError):
+        # Sorry, weird integer indexing
+        dev.cpt1[-1:, :]
+
+    with pytest.raises(ValueError):
+        # Sorry, weird integer indexing
+        dev.cpt1[1:12, :]
 
 
 def test_3d_slice():

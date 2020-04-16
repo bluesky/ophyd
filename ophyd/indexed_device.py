@@ -30,10 +30,11 @@ class _IndexedChildLevel(collections.abc.Mapping):
     'A mapping helper to allow access of IndexedDevice[idx][idx2...]'
     _top_level = True
 
-    def __init__(self, device, mapping_dict, leaf_depth):
+    def __init__(self, device, mapping_dict, leaf_depth, slice_types):
         self._device = device
         self._d = mapping_dict
         self._leaf_depth = leaf_depth
+        self._slice_types = slice_types
 
     def _get_slice(self, slc):
         if not isinstance(slc, slice):
@@ -42,17 +43,44 @@ class _IndexedChildLevel(collections.abc.Mapping):
         # Check the type of the slice arguments
         slice_type = _summarize_slice_type(slc)
 
+        type_of_values_in_d = self._slice_types[0]
+
         match_list = list(self._d)
-        if slice_type is None or issubclass(slice_type, int):
+        if slice_type is None:
             # slice everything (, :,) or slice indices
             ...
+        elif issubclass(type_of_values_in_d, int):
+            min_idx, max_idx = min(self._d), max(self._d)
+
+            def validate_idx(idx):
+                return idx is None or (idx >= min_idx and idx <= max_idx)
+
+            if not validate_idx(slc.start) or not validate_idx(slc.stop):
+                raise ValueError(
+                    '''
+                    Helpful error message about how slicing indexed devices is
+                    really weird and you shouldn't use them like normal
+                    '''
+                )
+
+            def rewrite_index(idx, offset):
+                if idx is None:
+                    return None
+                return idx + offset
+
+            slc = slice(rewrite_index(slc.start, offset=0),
+                        rewrite_index(slc.stop, offset=1),
+                        slc.step)
         else:
             # Rewrite the slice to be in terms of indices
-            slc = slice(
-                match_list.index(slc.start) if slc.start else None,
-                match_list.index(slc.stop) + 1 if slc.stop else None,
-                slc.step
-            )
+            def rewrite_index(idx, offset):
+                if idx is None:
+                    return None
+                return match_list.index(idx) + offset
+
+            slc = slice(rewrite_index(slc.start, offset=0),
+                        rewrite_index(slc.stop, offset=1),
+                        slc.step)
 
         return {key: self._d[key] for key in match_list[slc]}
 
@@ -64,7 +92,9 @@ class _IndexedChildLevel(collections.abc.Mapping):
             if self._leaf_depth == 1:
                 return getattr(self._device, value)
             return _IndexedChildLevel(device=self._device, mapping_dict=value,
-                                      leaf_depth=self._leaf_depth - 1)
+                                      leaf_depth=self._leaf_depth - 1,
+                                      slice_types=self._slice_types[1:],
+                                      )
 
         full_slice = tuple(item)
         no_slices = all(not isinstance(i, slice) for i in full_slice)
@@ -84,6 +114,7 @@ class _IndexedChildLevel(collections.abc.Mapping):
                     device=self._device,
                     mapping_dict=mapping_dict,
                     leaf_depth=self._leaf_depth - 1,
+                    slice_types=self._slice_types[1:],
                 )[full_slice[1:]]
 
         ret = list(itertools.chain(*get_slices()))
@@ -116,7 +147,8 @@ class IndexedDevice(Device, collections.abc.Mapping):
                  configuration_attrs=None, parent=None, **kwargs):
         self._root_index = _IndexedChildLevel(
             self, mapping_dict=self._mapping_dict,
-            leaf_depth=self._leaf_depth
+            leaf_depth=self._leaf_depth,
+            slice_types=self._slice_types,
         )
         super().__init__(prefix=prefix, name=name, kind=kind,
                          read_attrs=read_attrs,
