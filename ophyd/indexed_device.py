@@ -220,6 +220,26 @@ def _verify_with_formatter(formatter, format_str, num_args):
         )
 
 
+def _verify_slice_type_consistency(ranges):
+    'Verifies that at each level of mapping, there is only one type used'
+    types = tuple(
+        tuple(set(type(value) for value in range_))
+        for range_ in ranges
+    )
+
+    for range_, type_ in zip(ranges, types):
+        if len(type_) == 1:
+            continue
+
+        raise ValueError(
+            f'Found multiple types {type_} in a single range for '
+            f'IndexedComponent, with range={range_}. Types must be consistent '
+            f'for each level.'
+        )
+
+    return tuple(type_[0] for type_ in types)
+
+
 class IndexedComponent(Component):
     '''
     A Device component that dynamically creates a sub Device
@@ -252,6 +272,8 @@ class IndexedComponent(Component):
             for attr, suffix in expand_attr_and_suffix(ranges):
                 attr = Component(SignalClass, _suffix, **keyword_arg_dict)
 
+        Types must not be mixed at each level. For example, (0, 1, 'A') would
+        be invalid whereas ('0', '1', 'A') would be valid.
     clsname : str, optional
         The name of the class to be generated
         This defaults to {parent_name}{this_attribute_name.capitalize()}
@@ -293,8 +315,8 @@ class IndexedComponent(Component):
         self.attr_to_suffix = dict(zip(attrs, suffixes))
         self.mapping_dict = _mapping_dict_from_ranges(ranges, attrs)
         self.attr_to_index = dict(zip(attrs, itertools.product(*ranges)))
-        self.slice_types = tuple(set(type(value) for value in range_)
-                                 for range_ in ranges)
+        # Slice types ends up being: ((int, ), (str, ), ...)
+        self.slice_types = _verify_slice_type_consistency(ranges)
 
         self.attr = attr
         self.base_class = base_class or IndexedDevice
