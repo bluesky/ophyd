@@ -75,7 +75,7 @@ class StatusBase:
 
     """
     def __init__(self, *, timeout=None, settle_time=0,
-                 done=False, success=False):
+                 done=None, success=None):
         super().__init__()
         self._tname = None
         self._lock = threading.RLock()
@@ -103,14 +103,18 @@ class StatusBase:
         if success and not done:
             raise ValueError(
                 "Cannot initialize with done=False but success=True.")
+        if done is not None or success is not None:
+            warn(
+                "The 'done' and 'success' parameters will be removed in a "
+                "future release. Use the methods set_finished() or "
+                "set_exception(exc) to mark success or failure, respectively, "
+                "after the Status has been instantiated.",
+                DeprecationWarning)
 
         self._callback_thread = threading.Thread(
             target=self._run_callbacks, daemon=True, name=self._tname)
         self._callback_thread.start()
 
-        # It is a unnecessary that we allow setting 'done' and 'success' at
-        # __init__ time. The concurrent.futures.Future class does not allow
-        # that. But we can continue to support it.
         if done:
             if success:
                 self.set_finished()
