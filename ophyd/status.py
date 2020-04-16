@@ -81,7 +81,7 @@ class StatusBase:
         # "Externally initiated" means set_finished() or set_exception(exc) was
         # called, as opposed to completion via an internal timeout.
         self._externally_initiated_completion_lock = threading.Lock()
-        self._externally_initiated_completion = threading.Event()
+        self._externally_initiated_completion = False
         self._callbacks = deque()
         self._exception = None
         self.timeout = None
@@ -264,11 +264,11 @@ class StatusBase:
                     "subclass thereof.")
 
         with self._externally_initiated_completion_lock:
-            if self._externally_initiated_completion.is_set():
+            if self._externally_initiated_completion:
                 raise InvalidState(
                     "Either set_finished() or set_exception() has "
                     f"already been called on {self!r}")
-            self._externally_initiated_completion.set()
+            self._externally_initiated_completion = True
             if isinstance(self._exception, StatusTimeoutError):
                 # We have already timed out.
                 return
@@ -283,11 +283,11 @@ class StatusBase:
         Status object, but only by the object that created and returned it.
         """
         with self._externally_initiated_completion_lock:
-            if self._externally_initiated_completion.is_set():
+            if self._externally_initiated_completion:
                 raise InvalidState(
                     "Either set_finished() or set_exception() has "
                     f"already been called on {self!r}")
-            self._externally_initiated_completion.set()
+            self._externally_initiated_completion = True
         # Note that in either case, the callbacks themselves are run from the
         # same thread. This just sets an Event, either from this thread (the
         # one calling set_finished) or the thread created below.
@@ -471,7 +471,7 @@ class AndStatus(StatusBase):
 
         def inner(status):
             with self._lock:
-                if self._externally_initiated_completion.is_set():
+                if self._externally_initiated_completion:
                     return
                 with self.left._lock:
                     with self.right._lock:
