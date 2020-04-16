@@ -21,17 +21,6 @@ class UseNewProperty(RuntimeError):
     ...
 
 
-# This is used below by StatusBase.
-def _locked(func):
-    "an decorator for running a method with the instance's lock"
-    @wraps(func)
-    def f(self, *args, **kwargs):
-        with self._lock:
-            return func(self, *args, **kwargs)
-
-    return f
-
-
 class StatusBase:
     """
     This is a base class that provides a single-slot callback for when the
@@ -407,22 +396,21 @@ class StatusBase:
         return self._callbacks
 
     @property
-    @_locked
     def finished_cb(self):
-        if len(self.callbacks) == 1:
-            warn("The property `finished_cb` is deprecated, and must raise "
-                 "an error if a status object has multiple callbacks. Use "
-                 "the `callbacks` property instead.", stacklevel=2)
-            cb, = self.callbacks
-            assert cb is not None
-            return cb
-        else:
-            raise UseNewProperty("The deprecated `finished_cb` property "
-                                 "cannot be used for status objects that have "
-                                 "multiple callbacks. Use the `callbacks` "
-                                 "property instead.")
+        with self._lock:
+            if len(self.callbacks) == 1:
+                warn("The property `finished_cb` is deprecated, and must raise "
+                    "an error if a status object has multiple callbacks. Use "
+                    "the `callbacks` property instead.", stacklevel=2)
+                cb, = self.callbacks
+                assert cb is not None
+                return cb
+            else:
+                raise UseNewProperty("The deprecated `finished_cb` property "
+                                    "cannot be used for status objects that have "
+                                    "multiple callbacks. Use the `callbacks` "
+                                    "property instead.")
 
-    @_locked
     def add_callback(self, callback):
         """
         Register a callback to be called once when the Status finishes.
@@ -446,29 +434,30 @@ class StatusBase:
         """
         # Handle func with signature callback() for back-compat.
         callback = adapt_old_callback_signature(callback)
-        if self.done:
-            # Call it once and do not hold a reference to it.
-            callback(self)
-        else:
-            # Hold a strong reference to this. In other contexts we tend to
-            # hold weak references to callbacks, but this is a single-shot
-            # callback, so we will hold a strong reference until we call it,
-            # and then clear this cache to drop the reference(s).
-            self._callbacks.append(callback)
+        with self._lock:
+            if self.done:
+                # Call it once and do not hold a reference to it.
+                callback(self)
+            else:
+                # Hold a strong reference to this. In other contexts we tend to
+                # hold weak references to callbacks, but this is a single-shot
+                # callback, so we will hold a strong reference until we call it,
+                # and then clear this cache to drop the reference(s).
+                self._callbacks.append(callback)
 
     @finished_cb.setter
-    @_locked
     def finished_cb(self, cb):
-        if not self.callbacks:
-            warn("The setter `finished_cb` is deprecated, and must raise "
-                 "an error if a status object already has one callback. Use "
-                 "the `add_callback` method instead.", stacklevel=2)
-            self.add_callback(cb)
-        else:
-            raise UseNewProperty("The deprecated `finished_cb` setter cannot "
-                                 "be used for status objects that already "
-                                 "have one callback. Use the `add_callbacks` "
-                                 "method instead.")
+        with self._lock:
+            if not self.callbacks:
+                warn("The setter `finished_cb` is deprecated, and must raise "
+                    "an error if a status object already has one callback. Use "
+                    "the `add_callback` method instead.", stacklevel=2)
+                self.add_callback(cb)
+            else:
+                raise UseNewProperty("The deprecated `finished_cb` setter cannot "
+                                    "be used for status objects that already "
+                                    "have one callback. Use the `add_callbacks` "
+                                    "method instead.")
 
     def __and__(self, other):
         """
