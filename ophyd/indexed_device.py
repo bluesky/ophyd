@@ -36,52 +36,71 @@ class _IndexedChildLevel(collections.abc.Mapping):
         self._leaf_depth = leaf_depth
         self._slice_types = slice_types
 
-    def _get_slice(self, slc):
-        if not isinstance(slc, slice):
-            return {slc: self._d[slc]}
+    @property
+    def _type_of_values_in_d(self):
+        """The type of all values in `self._d` at this level"""
+        return self._slice_types[0]
 
+    def _fix_slice(self, slc):
+        """
+        """
         # Check the type of the slice arguments
         slice_type = _summarize_slice_type(slc)
 
-        type_of_values_in_d = self._slice_types[0]
-
-        match_list = list(self._d)
         if slice_type is None:
             # slice everything (, :,) or slice indices
-            ...
-        elif issubclass(type_of_values_in_d, int):
-            min_idx, max_idx = min(self._d), max(self._d)
+            return slc
 
-            def validate_idx(idx):
-                return idx is None or (idx >= min_idx and idx <= max_idx)
-
-            if not validate_idx(slc.start) or not validate_idx(slc.stop):
-                raise ValueError(
-                    '''
-                    Helpful error message about how slicing indexed devices is
-                    really weird and you shouldn't use them like normal
-                    '''
-                )
+        if not issubclass(self._type_of_values_in_d, int):
+            match_list = list(self._d)
 
             def rewrite_index(idx, offset):
-                if idx is None:
-                    return None
-                return idx + offset
-
-            slc = slice(rewrite_index(slc.start, offset=0),
-                        rewrite_index(slc.stop, offset=1),
-                        slc.step)
-        else:
-            # Rewrite the slice to be in terms of indices
-            def rewrite_index(idx, offset):
+                """Rewrite the slice to be in terms of indices"""
                 if idx is None:
                     return None
                 return match_list.index(idx) + offset
 
-            slc = slice(rewrite_index(slc.start, offset=0),
-                        rewrite_index(slc.stop, offset=1),
-                        slc.step)
+            def validate_idx(idx):
+                if idx is None or idx in match_list:
+                    return
 
+                raise ValueError(f'{idx} is not an option ({match_list})')
+
+        else:
+            min_idx, max_idx = min(self._d), max(self._d)
+
+            def validate_idx(idx):
+                if idx is None or (idx >= min_idx and idx <= max_idx):
+                    return
+
+                raise ValueError(
+                    f'{idx} is not within a valid range of '
+                    f'[{min_idx}, {max_idx}]. Note that both start and stop '
+                    f'are inclusive unlike standard Python slicing. That is, '
+                    f'to get items (0, 1, 2) the correct slice would be 0:2. '
+                    f'(This follows how pandas functionality, allowing for '
+                    f'slicing of non-integer types as well.)'
+                )
+
+            def rewrite_index(idx, offset):
+                """Include offset where applicable"""
+                if idx is None:
+                    return None
+                return idx + offset
+
+        validate_idx(slc.start)
+        validate_idx(slc.stop)
+
+        return slice(rewrite_index(slc.start, offset=0),
+                     rewrite_index(slc.stop, offset=1),
+                     slc.step)
+
+    def _get_slice(self, slc):
+        if not isinstance(slc, slice):
+            return {slc: self._d[slc]}
+
+        match_list = list(self._d)
+        slc = self._fix_slice(slc)
         return {key: self._d[key] for key in match_list[slc]}
 
     def __getitem__(self, item):
@@ -347,7 +366,7 @@ class IndexedComponent(Component):
         self.attr_to_suffix = dict(zip(attrs, suffixes))
         self.mapping_dict = _mapping_dict_from_ranges(ranges, attrs)
         self.attr_to_index = dict(zip(attrs, itertools.product(*ranges)))
-        # Slice types ends up being: ((int, ), (str, ), ...)
+        # Slice types ends up being: (int, str, ...)
         self.slice_types = _verify_slice_type_consistency(ranges)
 
         self.attr = attr
