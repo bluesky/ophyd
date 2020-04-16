@@ -156,7 +156,28 @@ def _apply_range_to_value(ranges, value):
 
 
 def _mapping_dict_from_ranges(ranges, attrs):
-    'Create a dictionary to be used by _IndexedChildLevel'
+    '''
+    Create a dictionary to be used by _IndexedChildLevel
+
+    Parameters
+    ----------
+    ranges : str, range, or list of iterables
+        See the ``ranges`` kwarg in :class:`IndexedComponent`.
+    attrs : str, range, or list of iterables
+        The expanded list of attribute names
+
+    Returns
+    -------
+    mapping_dict : dict
+
+        A single-level dictionary might look like: {index: 'attr'}
+        A two-level dictionary might look like::
+
+            {index0: {index1: 'attr_01'},
+             index1: {index1: 'attr_11'},
+            }
+
+    '''
     mapping_dict = {}
 
     for index, attr in zip(itertools.product(*ranges), attrs):
@@ -207,9 +228,9 @@ class IndexedComponent(Component):
     ----------
     attr : str
         The attribute format to use
-    suffix:
+    suffix :
         The suffix format to use
-    ranges: str, range, or list of iterables
+    ranges : str, range, or list of iterables
         A single range of numbers to expand attr and suffix. For example::
 
             ranges=range(10)
@@ -270,11 +291,10 @@ class IndexedComponent(Component):
         attrs = _apply_range_to_value(ranges, attr)
 
         self.attr_to_suffix = dict(zip(attrs, suffixes))
-
-        self.mapping_dict = _mapping_dict_from_ranges(
-            ranges, attrs)
-
+        self.mapping_dict = _mapping_dict_from_ranges(ranges, attrs)
         self.attr_to_index = dict(zip(attrs, itertools.product(*ranges)))
+        self.slice_types = tuple(set(type(value) for value in range_)
+                                 for range_ in ranges)
 
         self.attr = attr
         self.base_class = base_class or IndexedDevice
@@ -320,6 +340,7 @@ class IndexedComponent(Component):
             _mapping_dict=copy.deepcopy(self.mapping_dict),
             _attr_to_index=dict(self.attr_to_index),
             _leaf_depth=len(self.ranges),
+            _slice_types=self.slice_types,
         )
         self.cls = create_device_from_components(
             self.clsname, default_read_attrs=self.default_read_attrs,
