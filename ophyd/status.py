@@ -1,5 +1,4 @@
 from collections import deque
-from functools import wraps
 from logging import LoggerAdapter
 import threading
 import time
@@ -34,34 +33,49 @@ class StatusBase:
     settle_time : float, optional
         The amount of time to wait between the caller specifying that the
         status has completed to running callbacks
+
+
+    .. note::
+
+       Theory of operation:
+
+       This employs two ``threading.Event`` objects, one thread the runs for
+       (timeout + settle_time) seconds, and one thread that runs for
+       settle_time seconds (if settle_time is nonzero).
+
+       At __init__ time, a *timeout* and *settle_time* are specified. A thread
+       is started, on which user callbacks, registered after __init__ time via
+       :meth:`add_callback`, will eventually be run. The thread waits on an
+       Event be set or (timeout + settle_time) seconds to pass, whichever
+       happens first.
+
+       If (timeout + settle_time) expires and the Event has not
+       been set, an internal Exception is set to ``StatusTimeoutError``, and a
+       second Event is set, marking the Status as done and failed. The
+       callbacks are run.
+
+       If a callback is registered after the Status is done, it will be run
+       immediately.
+
+       If the first Event is set before (timeout + settle_time) expires,
+       then the second Event is set and no internal Exception is set, marking
+       the Status as done and successful. The callbacks are run.
+
+       There are two methods that directly set the first Event. One,
+       :meth:set_exception, sets it directly after setting the internal
+       Exception.  The other, :meth:`set_finished`, starts a
+       ``threading.Timer`` that will set it after a delay (the settle_time).
+       One of these methods may be called, and at most once. If one is called
+       twice or if both are called, ``InvalidState`` is raised. If they are
+       called too late to prevent a ``StatusTimeoutError``, they are ignored
+       but one call is still allowed. Thus, an external callback, e.g. pyepics,
+       may reports success or failure after the Status object has expired, but
+       to no effect because the callbacks have already been called and the
+       program has moved on.
+
     """
-    # Theory of operation:
-    #
-    # At __init__ time, a timeout and settle_time are specified  A thread is
-    # started, on which user callbacks, registered after __init__ time via the
-    # method add_callback(callback), will eventually be run.  The thread waits
-    # on self._settled_event to be set or (timeout + settle_time) seconds to
-    # pass, whichever happens first.
-    #
-    # If (timeout + settle_time) expires and the self._settled_event has not
-    # been set, self._exception is set to StatusTimeoutError, and self._event
-    # is set, marking the status as done (and failed). The callbacks are run.
-    #
-    # If self._settled_event is set before (timeout + settle_time) expires,
-    # then self._event is set and the callbacks are run.
-    #
-    # There are two methods that directly set self._settled_event. One,
-    # set_exception(exc), calls it directly after setting self._exception.
-    # The other, set_finished(), starts a threading.Timer that will set
-    # self._settled_event after a delay (the settle_time). One of these methods
-    # may be called, and at most once. If one is called twice or if both are
-    # called, InvalidState is raised. If they are called too late to prevent a
-    # StatusTimeoutError, they are ignored but one call is still allowed.
-    # Thus, an external callback, e.g.  pyepics, may reports success or failure
-    # after the Status object has expired, but to no effect because the
-    # callbacks have already been called and the program has moved on.
-    def __init__(self, *, timeout=None, settle_time=0, done=False,
-                 success=False):
+    def __init__(self, *, timeout=None, settle_time=0,
+                 done=False, success=False):
         super().__init__()
         self._tname = None
         self._lock = threading.RLock()
@@ -400,16 +414,16 @@ class StatusBase:
         with self._lock:
             if len(self.callbacks) == 1:
                 warn("The property `finished_cb` is deprecated, and must raise "
-                    "an error if a status object has multiple callbacks. Use "
-                    "the `callbacks` property instead.", stacklevel=2)
+                     "an error if a status object has multiple callbacks. Use "
+                     "the `callbacks` property instead.", stacklevel=2)
                 cb, = self.callbacks
                 assert cb is not None
                 return cb
             else:
                 raise UseNewProperty("The deprecated `finished_cb` property "
-                                    "cannot be used for status objects that have "
-                                    "multiple callbacks. Use the `callbacks` "
-                                    "property instead.")
+                                     "cannot be used for status objects that have "
+                                     "multiple callbacks. Use the `callbacks` "
+                                     "property instead.")
 
     def add_callback(self, callback):
         """
@@ -450,14 +464,14 @@ class StatusBase:
         with self._lock:
             if not self.callbacks:
                 warn("The setter `finished_cb` is deprecated, and must raise "
-                    "an error if a status object already has one callback. Use "
-                    "the `add_callback` method instead.", stacklevel=2)
+                     "an error if a status object already has one callback. Use "
+                     "the `add_callback` method instead.", stacklevel=2)
                 self.add_callback(cb)
             else:
                 raise UseNewProperty("The deprecated `finished_cb` setter cannot "
-                                    "be used for status objects that already "
-                                    "have one callback. Use the `add_callbacks` "
-                                    "method instead.")
+                                     "be used for status objects that already "
+                                     "have one callback. Use the `add_callbacks` "
+                                     "method instead.")
 
     def __and__(self, other):
         """
