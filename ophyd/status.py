@@ -84,17 +84,17 @@ class StatusBase:
         self._externally_initiated_completion = False
         self._callbacks = deque()
         self._exception = None
-        self.timeout = None
 
         self.log = LoggerAdapter(logger=logger, extra={'status': self})
 
         if settle_time is None:
             settle_time = 0.0
 
-        self.settle_time = float(settle_time)
+        self._settle_time = float(settle_time)
 
         if timeout is not None:
-            self.timeout = float(timeout)
+            timeout = float(timeout)
+        self._timeout = timeout
 
         # We cannot know that we are successful if we are not done.
         if success and not done:
@@ -118,6 +118,24 @@ class StatusBase:
                     "set_exception(...) instead of setting success=False "
                     "at __init__ time.")
                 self.set_exception(exc)
+
+    @property
+    def timeout(self):
+        """
+        The timeout for this action.
+
+        This is set when the Status is created, and it cannot be changed.
+        """
+        return self._timeout
+
+    @property
+    def settle_time(self):
+        """
+        A delay between when :meth:`set_finished` is when the Status is done.
+
+        This is set when the Status is created, and it cannot be changed.
+        """
+        return self._settle_time
 
     @property
     def done(self):
