@@ -407,6 +407,23 @@ def test_set_exception_after_timeout():
 def test_nonsensical_init():
     with pytest.raises(ValueError):
         StatusBase(success=True, done=False)
+    with pytest.raises(ValueError):
+        StatusBase(success=True, done=None)
+
+
+def test_deprecated_init():
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=True, done=True)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=False, done=True)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=False, done=False)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=False, done=None)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=None, done=True)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=None, done=False)
 
 
 def test_error_in_settled_method():
