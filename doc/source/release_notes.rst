@@ -2,6 +2,50 @@
  Release History
 =================
 
+Unreleased
+==========
+
+The API for Status objects has been reworked to be closer to its generic analog
+in the standard library, :class:`concurrent.futures.Future`. Most of the
+changes are extenions, but there are some deprecations and some minor
+backward-incompatible changes.
+
+Added
+-----
+
+* Status objects can store an exception giving information about why the
+  underlying action failed. This is set by
+  :meth:`~ophyd.StatusBase.set_exception` and can be retrieved by
+  :meth:`~ophyd.StatusBase.exception`. The method
+  :meth:`~ophyd.StatusBase.set_finished` may be used to mark successful
+  completion, in which case :meth:`~ophyd.StatusBase.exception` returns
+  ``None``.
+* Status objects have a new :meth:`~ophyd.StatusBase.wait` method, which blocks
+  until the Status finishes (in success or failure) or until an optional
+  timeout is reached, whichever happens first. If it finishes in success, the
+  method returns ``None``; if failure, the exception captured by
+  :meth:`~ophyd.StatusBase.set_exception` is raised.
+
+Deprecated
+----------
+
+* Status objects take the parameters ``done`` and ``success``. These are
+  deprecated and, if set to anything but ``None`` (the default) issue a
+  warning suggesting a better approach.
+* The method :meth:`~ophyd.StatusBase._finished` is deprecated in favor of
+  :meth:`~ophyd.StatusBase.set_finished` (for success) and
+  :meth:`~ophyd.StatusBase.set_exception` (for failure). There are no plans to
+  *remove* `:meth:`~ophyd.StatusBase._finished`, given its wide use, but it may
+  begin to issue warnings in future releases.
+
+Backward-incompatible Changes
+-----------------------------
+
+* The function :func:`ophyd.status.wait` formerly raised on ``TimeoutError`` or
+  ``RuntimeError``. It can now raise any ``Exception``.
+* The attributes `~ophyd.StatusBase.timeout` and
+  `~ophyd.StatusBase.settle_time` have become read-only properties.
+
 v1.4.1 (2020-04-07)
 ===================
 
