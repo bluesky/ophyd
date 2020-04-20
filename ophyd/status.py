@@ -609,6 +609,9 @@ class DeviceStatus(StatusBase):
                 )
 
     def watch(self, func):
+        """
+        Subscribe to notifications about partial progress.
+        """
         # See MoveStatus.watch for a richer implementation and more info.
         if self.device is not None:
             self._watchers.append(func)
@@ -767,7 +770,9 @@ class MoveStatus(DeviceStatus):
 
     def watch(self, func):
         """
-        Subscribe to notifications about progress. Useful for progress bars.
+        Subscribe to notifications about partial progress.
+
+        This is useful for progress bars.
 
         Parameters
         ----------
