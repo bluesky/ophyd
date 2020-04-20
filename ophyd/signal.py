@@ -2,6 +2,7 @@
 import time
 import threading
 import warnings
+import weakref
 
 import numpy as np
 
@@ -91,6 +92,8 @@ class Signal(OphydObject):
             timestamp = time.time()
 
         self._destroyed = False
+        self._finalizer = weakref.finalize(self, self.destroy)
+
         self._set_thread = None
         self._tolerance = tolerance
         # self.tolerance is a property
@@ -452,14 +455,6 @@ class Signal(OphydObject):
         '''
         self._destroyed = True
         super().destroy()
-
-    def __del__(self):
-        try:
-            # Attempt to destroy the signal, but ignore any possible exceptions
-            # as Python may have already garbage-collected related objects
-            self.destroy()
-        except Exception:
-            ...
 
     def _run_metadata_callbacks(self):
         'Run SUB_META in the appropriate dispatcher thread'
