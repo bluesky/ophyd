@@ -22,56 +22,58 @@ class UseNewProperty(RuntimeError):
 
 class StatusBase:
     """
-    This is a base class that provides a single-slot callback for when the
-    specific operation has finished.
+    Track the status of a potentially-lengthy action like moving or triggering.
 
     Parameters
     ----------
-    timeout : float, optional
-        The default timeout to use for a blocking wait, and the amount of time
-        to wait to mark the operation as failed
-    settle_time : float, optional
+    timeout: float, optional
+        The amount of time to wait before marking the Status as failed.  If
+        ``None`` (default) wait forever. It is strongly encouraged to set a
+        finite timeout.  If settle_time below is set, that time is added to the
+        effective timeout.
+    settle_time: float, optional
         The amount of time to wait between the caller specifying that the
-        status has completed to running callbacks
+        status has completed to running callbacks. Default is 0.
 
 
-    .. note::
+    Notes
+    -----
 
-       Theory of operation:
+    Theory of operation:
 
-       This employs two ``threading.Event`` objects, one thread the runs for
-       (timeout + settle_time) seconds, and one thread that runs for
-       settle_time seconds (if settle_time is nonzero).
+    This employs two ``threading.Event`` objects, one thread the runs for
+    (timeout + settle_time) seconds, and one thread that runs for
+    settle_time seconds (if settle_time is nonzero).
 
-       At __init__ time, a *timeout* and *settle_time* are specified. A thread
-       is started, on which user callbacks, registered after __init__ time via
-       :meth:`add_callback`, will eventually be run. The thread waits on an
-       Event be set or (timeout + settle_time) seconds to pass, whichever
-       happens first.
+    At __init__ time, a *timeout* and *settle_time* are specified. A thread
+    is started, on which user callbacks, registered after __init__ time via
+    :meth:`add_callback`, will eventually be run. The thread waits on an
+    Event be set or (timeout + settle_time) seconds to pass, whichever
+    happens first.
 
-       If (timeout + settle_time) expires and the Event has not
-       been set, an internal Exception is set to ``StatusTimeoutError``, and a
-       second Event is set, marking the Status as done and failed. The
-       callbacks are run.
+    If (timeout + settle_time) expires and the Event has not
+    been set, an internal Exception is set to ``StatusTimeoutError``, and a
+    second Event is set, marking the Status as done and failed. The
+    callbacks are run.
 
-       If a callback is registered after the Status is done, it will be run
-       immediately.
+    If a callback is registered after the Status is done, it will be run
+    immediately.
 
-       If the first Event is set before (timeout + settle_time) expires,
-       then the second Event is set and no internal Exception is set, marking
-       the Status as done and successful. The callbacks are run.
+    If the first Event is set before (timeout + settle_time) expires,
+    then the second Event is set and no internal Exception is set, marking
+    the Status as done and successful. The callbacks are run.
 
-       There are two methods that directly set the first Event. One,
-       :meth:set_exception, sets it directly after setting the internal
-       Exception.  The other, :meth:`set_finished`, starts a
-       ``threading.Timer`` that will set it after a delay (the settle_time).
-       One of these methods may be called, and at most once. If one is called
-       twice or if both are called, ``InvalidState`` is raised. If they are
-       called too late to prevent a ``StatusTimeoutError``, they are ignored
-       but one call is still allowed. Thus, an external callback, e.g. pyepics,
-       may reports success or failure after the Status object has expired, but
-       to no effect because the callbacks have already been called and the
-       program has moved on.
+    There are two methods that directly set the first Event. One,
+    :meth:set_exception, sets it directly after setting the internal
+    Exception.  The other, :meth:`set_finished`, starts a
+    ``threading.Timer`` that will set it after a delay (the settle_time).
+    One of these methods may be called, and at most once. If one is called
+    twice or if both are called, ``InvalidState`` is raised. If they are
+    called too late to prevent a ``StatusTimeoutError``, they are ignored
+    but one call is still allowed. Thus, an external callback, e.g. pyepics,
+    may reports success or failure after the Status object has expired, but
+    to no effect because the callbacks have already been called and the
+    program has moved on.
 
     """
     def __init__(self, *, timeout=None, settle_time=0,
@@ -532,18 +534,34 @@ class AndStatus(StatusBase):
 
 
 class Status(StatusBase):
-    """A basic status object
+    """
+    Track the status of a potentially-lengthy action like moving or triggering.
 
-    Has an optional associated object instance
+    This has room for an option ``obj`` parameter, noting the object associated
+    with action. Status does not use this internally, but it can be useful for
+    external code to keep track of things.
+
+    Parameters
+    ----------
+    timeout: float, optional
+        The amount of time to wait before marking the Status as failed.  If
+        ``None`` (default) wait forever. It is strongly encouraged to set a
+        finite timeout.  If settle_time below is set, that time is added to the
+        effective timeout.
+    settle_time: float, optional
+        The amount of time to wait between the caller specifying that the
+        status has completed to running callbacks. Default is 0.
 
     Attributes
     ----------
     obj : any or None
         The object
     """
-    def __init__(self, obj=None, **kwargs):
+    def __init__(self, obj=None, timeout=None, settle_time=0,
+                 done=None, success=None):
         self.obj = obj
-        super().__init__(**kwargs)
+        super().__init__(timeout=timeout, settle_time=settle_time,
+                         done=done, success=success)
 
     def __str__(self):
         return ('{0}(obj={1.obj}, '
@@ -556,21 +574,23 @@ class Status(StatusBase):
 
 
 class DeviceStatus(StatusBase):
-    """Device status
+    """
+    Track the status of a potentially-lengthy action like moving or triggering.
+
+    This adds the notion of a Device and minimal support for progress bars.
+    (They only get notified of the Device name and the time of completion.)
+    See MoveStatus for a richer implementation of progress bars.
 
     Parameters
     ----------
-    device : obj
-    done : bool, optional
-        Whether or not the motion has already completed
-    success : bool, optional
-        If motion has already completed, the status of that motion
-    timeout : float, optional
-        The default timeout to use for a blocking wait, and the amount of time
-        to wait to mark the motion as failed
-    settle_time : float, optional
-        The amount of time to wait between motion completion and running
-        callbacks
+    timeout: float, optional
+        The amount of time to wait before marking the Status as failed.  If
+        ``None`` (default) wait forever. It is strongly encouraged to set a
+        finite timeout.  If settle_time below is set, that time is added to the
+        effective timeout.
+    settle_time: float, optional
+        The amount of time to wait between the caller specifying that the
+        status has completed to running callbacks. Default is 0.
     """
     def __init__(self, device, **kwargs):
         self.device = device
@@ -677,7 +697,12 @@ class SubscriptionStatus(DeviceStatus):
 
 
 class MoveStatus(DeviceStatus):
-    """Asynchronous movement status
+    """
+    Track the state of a movement from some initial to final "position".
+
+    The position could a physical position, a "position" in a pseudo-space, a
+    temperature, etc. This constraint allows richer support for progress bars,
+    including progress updates and an ETA.
 
     Parameters
     ----------
@@ -830,7 +855,7 @@ class MoveStatus(DeviceStatus):
     __repr__ = __str__
 
 
-def wait(status, timeout=None, *, poll_rate=0.05):
+def wait(status, timeout=None, *, poll_rate="DEPRECATED"):
     """(Blocking) wait for the status object to complete
 
     Parameters
