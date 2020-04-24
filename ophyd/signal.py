@@ -16,6 +16,16 @@ from .status import Status
 from . import get_cl
 
 
+# Catch semi-frequent issue with scripts accidentally run from inside module
+if __name__ != 'ophyd.signal':
+    raise RuntimeError(
+       'A script tried to import ophyd.signal instead of the signal built-in '
+       'module. This usually happens when a script is run from inside the '
+       'ophyd directory and can cause extremely confusing bugs. Please '
+       'run your script elsewhere for better results.'
+    )
+
+
 # Sentinels used for default values; see set_default_timeout below for details.
 DEFAULT_CONNECTION_TIMEOUT = object()
 DEFAULT_TIMEOUT = object()
