@@ -164,7 +164,7 @@ def adapt_old_callback_signature(callback):
             "The signature of a Status callback is now expected to "
             "be cb(status). The signature cb() is "
             "supported, but support will be removed in a future release "
-            "of ophyd.", DeprecationWarning)
+            "of ophyd.", DeprecationWarning, stacklevel=3)
         raw_callback = callback
 
         def callback(status):

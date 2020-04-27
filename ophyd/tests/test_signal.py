@@ -81,7 +81,8 @@ def test_signal_base():
 
     assert signal.connected
     assert signal.name == name
-    assert signal.value == value
+    with pytest.warns(UserWarning):
+        assert signal.value == value
     assert signal.get() == value
     assert signal.timestamp == start_t
 
@@ -148,7 +149,8 @@ def test_signal_copy():
     sig_copy = copy.copy(signal)
 
     assert signal.name == sig_copy.name
-    assert signal.value == sig_copy.value
+    with pytest.warns(UserWarning):
+        assert signal.value == sig_copy.value
     assert signal.get() == sig_copy.get()
     assert signal.timestamp == sig_copy.timestamp
 
@@ -363,7 +365,8 @@ def test_soft_derived():
     assert derived.limits == original.limits
 
     copied = copy.copy(derived)
-    assert copied.derived_from.value == original.value
+    with pytest.warns(UserWarning):
+        assert copied.derived_from.value == original.value
     assert copied.derived_from.timestamp == original.timestamp
     assert copied.derived_from.name == original.name
 

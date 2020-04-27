@@ -127,7 +127,8 @@ class NDDerivedSignal(DerivedSignal):
         return cid
 
     def _array_shape_callback(self, **kwargs):
-        value = self.inverse(self._derived_from.value)
+        # TODO we need a better way to say "latest new is good enough"
+        value = self.inverse(self._derived_from._readback)
         self._readback = value
         self._run_subs(sub_type=self.SUB_VALUE, value=value,
                        **self._metadata)
