@@ -152,11 +152,11 @@ keyword arguments:
 
 The callback may receive a subset of these depending on how much we can know
 about the progress of a particular action. In the case of
-:meth:`ophyd.status.MoveStatus.watch` and
-`ophyd.areadetector.trigger_mixins.ADTriggerStatus`, we know a lot, from which
-one can build a frequently-updating progress bar with a realistic estimated
-time of completion. In the case of a generic
-:meth:`ophyd.status.DeviceStatus.watch`, we only know the name of the assocated
+:obj:`ophyd.status.MoveStatus` and
+:obj:`ophyd.areadetector.trigger_mixins.ADTriggerStatus`, we know a lot, from
+which one can build a frequently-updating progress bar with a realistic
+estimated time of completion. In the case of a generic
+:obj:`ophyd.status.DeviceStatus`, we only know the name of the assocated
 Device, when the action starts, and when the action ends.
 
 Status API details
