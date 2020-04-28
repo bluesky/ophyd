@@ -682,21 +682,15 @@ class SubscriptionStatus(DeviceStatus):
 
     def set_finished(self):
         """
-        Reimplemented to cleanup callback subscription
+        Mark as finished successfully.
+
+        This method should generally not be called by the *recipient* of this
+        Status object, but only by the object that created and returned it.
         """
         # Clear callback
         self.device.clear_sub(self.check_value)
         # Run completion
         super().set_finished()
-
-    def set_exception(self, exc):
-        """
-        Reimplemented to cleanup callback subscription
-        """
-        # If this is called, _handle_exception is always called, and that is
-        # where we clear_sub.
-        # Run completion
-        super().set_exception(exc)
 
     def _handle_failure(self):
         # This is called whether we fail via the timeout thread or via an
