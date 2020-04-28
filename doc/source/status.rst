@@ -186,11 +186,13 @@ additional options.
 Partial Progress Updates
 ------------------------
 
-Status objects provide an additional method named ``watch``, as in
-:meth:`~ophyd.status.MoveStatus.watch`, which can be used to receive
-incremental progress updates suitable for building progress bars. The method
-accepts a callback which must accept the following parameters as optional
-keyword arguments:
+Some Status objects provide an additional method named ``watch``, as in
+:meth:`~ophyd.status.MoveStatus.watch`, which can be used to subscribe to
+*incremental* progress updates suitable for building progress bars. See
+:doc:`bluesky:progress-bar` for one application of this feature.
+
+The ``watch`` method accepts a callback which must accept the following
+parameters as optional keyword arguments:
 
 * ``name``
 * ``current``
