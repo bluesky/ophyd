@@ -131,6 +131,58 @@ this to distinguish success from failure.
        else:
            print(f"{status} has failed with error {error}.")
 
+SubscriptionStatus
+------------------
+
+The :class:`~ophyd.status.SubscriptionStatus` is a special Status object that
+correctly and succinctly handles a common use case, wherein the Status object
+is marked finished based on some ophyd event. It reduces this:
+
+.. code:: python
+
+   from ophyd import Device, Component, DeviceStatus
+
+   class MyToyDetector(Device):
+       ...
+       # When set to 1, acquires, and then goes back to 0.
+       acquire = Component(...)
+
+       def trigger(self):
+           def check_value(old_value, value, **kwargs):
+               if old_value == 1 and value == 0:
+                   status.set_finished()
+                   # Clear the subscription.
+                   sself.acquire.clear_sub(check_value)
+
+           status = DeviceStatus(self.acquire)
+           self.acquire.subscribe(check_value)
+           self.acquire.set(1)
+           return status
+
+to this:
+
+.. code:: python
+
+   from ophyd import Device, Component, SubscriptionStatus
+
+   class MyToyDetector(Device):
+       ...
+       # When set to 1, acquires, and then goes back to 0.
+       acquire = Component(...)
+
+       def trigger(self):
+           def check_value(old_value, value, **kwargs):
+               if old_value == 1 and value == 0:
+                   status.set_finished()
+
+           status = SubscriptionStatus(self.acquire, check_value)
+           self.acquire.set(1)
+           return status
+
+Note that ``subscribe`` and ``clear_sub`` are gone; they are handled
+automatically, internally. See :class:`~ophyd.status.SubscriptionStatus` for
+additional options.
+
 Partial Progress Updates
 ------------------------
 
