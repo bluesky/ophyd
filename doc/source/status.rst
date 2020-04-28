@@ -119,8 +119,8 @@ reference to each callback in a list, ``status.callbacks``. The list is cleared
 when the callback completes. Any callbacks added to a Status object *after*
 completion will be called immediately, and no reference will be held.
 
-Each callback is passed the Status object as an argument, and it can use this
-to distinguish success from failure.
+Each callback is passed to the Status object as an argument, and it can use
+this to distinguish success from failure.
 
 .. code:: python
 
