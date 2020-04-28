@@ -61,6 +61,7 @@ other control systems.
    :maxdepth: 1
    :caption: Developer notes
 
+   api
    release_notes
    OEP/index
    docker
