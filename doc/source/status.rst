@@ -149,6 +149,7 @@ is marked finished based on some ophyd event. It reduces this:
 
        def trigger(self):
            def check_value(old_value, value, **kwargs):
+               "Mark status as finished when the acquisition is complete."
                if old_value == 1 and value == 0:
                    status.set_finished()
                    # Clear the subscription.
@@ -172,16 +173,16 @@ to this:
 
        def trigger(self):
            def check_value(old_value, value, **kwargs):
-               if old_value == 1 and value == 0:
-                   status.set_finished()
+               "Return True when the acquisition is complete, False otherwise."
+               return (old_value == 1 and value == 0)
 
            status = SubscriptionStatus(self.acquire, check_value)
            self.acquire.set(1)
            return status
 
-Note that ``subscribe`` and ``clear_sub`` are gone; they are handled
-automatically, internally. See :class:`~ophyd.status.SubscriptionStatus` for
-additional options.
+Note that ``set_finished``, ``subscribe`` and ``clear_sub`` are gone; they are
+handled automatically, internally. See
+:class:`~ophyd.status.SubscriptionStatus` for additional options.
 
 Partial Progress Updates
 ------------------------
