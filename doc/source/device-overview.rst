@@ -3,6 +3,7 @@
 ======================
 
 .. automodule:: ophyd.device
+   :noindex:
 
 
 Usage

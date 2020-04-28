@@ -128,3 +128,4 @@ Then in an ipython session:
 
 
 .. automodule:: ophyd.signal
+   :noindex:
