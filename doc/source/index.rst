@@ -40,57 +40,28 @@ other control systems.
 
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Standard Devices
-
-   builtin-devices
-
-
-.. toctree::
    :maxdepth: 1
-   :caption: Signals and Devices
+   :caption: Ophyd's Core Functionality
 
    architecture
    device-overview
-   positioners
    signals
    status
-   area-detector
+   positioners
    debugging
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Built-in Device Support
+
+   area-detector
+   builtin-devices
 
 .. toctree::
    :maxdepth: 1
    :caption: Developer notes
 
+   api
    release_notes
    OEP/index
    docker
-
-.. toctree::
-   :maxdepth: 1
-   :caption: API
-
-   api
-
-.. toctree::
-   :hidden:
-   :caption: Data Collection
-
-   bluesky <https://nsls-ii.github.io/bluesky>
-   ophyd <https://nsls-ii.github.io/ophyd>
-   caproto <https://nsls-ii.github.io/caproto>
-
-.. toctree::
-   :hidden:
-   :caption: Data Access and Management
-
-   databroker <https://nsls-ii.github.io/databroker>
-   suitcase <https://nsls-ii.github.io/suitcase>
-
-.. toctree::
-   :hidden:
-   :caption: GitHub Links
-
-   NSLS-II Repositories <https://github.com/NSLS-II/>
-   Bug Reports <https://github.com/NSLS-II/Bug-Reports/issues>
-

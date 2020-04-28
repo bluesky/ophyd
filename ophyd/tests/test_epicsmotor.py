@@ -10,6 +10,7 @@ from ophyd import (
     MotorBundle,
 )
 from ophyd.utils.epics_pvs import AlarmSeverity, AlarmStatus
+from ophyd.utils import UnknownStatusFailure
 import threading
 
 logger = logging.getLogger(__name__)
@@ -119,15 +120,13 @@ def test_calibration(motor):
 def test_high_limit_switch(motor):
     # limit switch status
     motor.direction_of_travel.put(1)
+    motor.high_limit_switch.put(1)
     res = motor.move(1, wait=False)
     repr(res)
     assert res.timeout == 10.0
-    motor.high_limit_switch.put(1)
 
-    while not res.done:
-        time.sleep(0.1)
-
-    assert not res.success
+    with pytest.raises(UnknownStatusFailure):
+        res.wait(11)
     assert motor.high_limit_switch.get() == 1
 
     motor.high_limit_switch.put(0)
@@ -136,13 +135,11 @@ def test_high_limit_switch(motor):
 @pytest.mark.motorsim
 def test_low_limit_switch(motor):
     motor.direction_of_travel.put(0)
-    res = motor.move(0, wait=False)
     motor.low_limit_switch.put(1)
+    res = motor.move(0, wait=False)
 
-    while not res.done:
-        time.sleep(0.1)
-
-    assert not res.success
+    with pytest.raises(UnknownStatusFailure):
+        res.wait(11)
     assert motor.low_limit_switch.get() == 1
     motor.low_limit_switch.put(0)
 
