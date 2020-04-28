@@ -693,10 +693,17 @@ class SubscriptionStatus(DeviceStatus):
         """
         Reimplemented to cleanup callback subscription
         """
-        # Clear callback
-        self.device.clear_sub(self.check_value)
+        # If this is called, _handle_exception is always called, and that is
+        # where we clear_sub.
         # Run completion
         super().set_exception(exc)
+
+    def _handle_failure(self):
+        # This is called whether we fail via the timeout thread or via an
+        # a call to set_exception.
+        # Clear callback
+        self.device.clear_sub(self.check_value)
+        return super()._handle_failure()
 
 
 class MoveStatus(DeviceStatus):
