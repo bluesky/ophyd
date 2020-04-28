@@ -65,7 +65,7 @@ class EpicsMotor(Device, PositionerBase):
     high_limit_travel = Cpt(EpicsSignal, '.HLM', kind='omitted',
                             auto_monitor=True)
     low_limit_travel = Cpt(EpicsSignal, '.LLM', kind='omitted',
-                            auto_monitor=True)
+                           auto_monitor=True)
     direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
 
     # commands
