@@ -1,5 +1,4 @@
 import logging
-import time
 import uuid
 
 import pytest
@@ -9,7 +8,6 @@ from types import SimpleNamespace
 from ophyd import (set_cl, EpicsMotor, Signal, EpicsSignal, EpicsSignalRO,
                    Component as Cpt)
 from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
-from caproto.tests.conftest import run_example_ioc
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,8 @@ def hw(tmpdir):
     return hw(str(tmpdir))
 
 
-@pytest.fixture(params=['caproto', 'pyepics'], autouse=True)
+@pytest.fixture(params=['caproto', 'pyepics'], autouse=True,
+                scope='session')
 def cl_selector(request):
     cl_name = request.param
     if cl_name == 'caproto':
@@ -64,10 +63,7 @@ def motor(request, cleanup):
     motor.wait_for_connection()
     motor.low_limit_value.put(-100, wait=True)
     motor.high_limit_value.put(100, wait=True)
-
-    while motor.motor_done_move.get() != 1:
-        print('Waiting for {} to stop moving...'.format(motor))
-        time.sleep(0.5)
+    motor.set(0).wait()
 
     return motor
 
@@ -109,6 +105,8 @@ def fake_motor_ioc(prefix, request):
                step_size=f'{prefix}step_size',
                )
 
+    pytest.importorskip('caproto.tests.conftest')
+    from caproto.tests.conftest import run_example_ioc
     process = run_example_ioc('ophyd.tests.fake_motor_ioc',
                               request=request,
                               pv_to_check=pvs['setpoint'],
@@ -130,6 +128,8 @@ def signal_test_ioc(prefix, request):
                set_severity=f'{prefix}set_severity',
                )
 
+    pytest.importorskip('caproto.tests.conftest')
+    from caproto.tests.conftest import run_example_ioc
     process = run_example_ioc('ophyd.tests.signal_ioc',
                               request=request,
                               pv_to_check=pvs['read_only'],

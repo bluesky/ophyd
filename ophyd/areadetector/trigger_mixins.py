@@ -57,7 +57,7 @@ class ADTriggerStatus(DeviceStatus):
             fraction = (current - initial) / (target - initial)
         except ZeroDivisionError:
             fraction = 1
-        except Exception as exc:
+        except Exception:
             fraction = None
             time_remaining = None
         else:
@@ -141,7 +141,7 @@ class SingleTrigger(TriggerBase):
             return
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
-            self._status._finished()
+            self._status.set_finished()
 
 
 class MultiTrigger(TriggerBase):
@@ -251,7 +251,7 @@ class MultiTrigger(TriggerBase):
             key, signals_settings = next(self._acq_iter)
         except StopIteration:
             logger.debug("Trigger cycle is complete.")
-            self._status._finished()
+            self._status.set_finished()
             return
         logger.debug('Configuring signals for acquisition labeled %r', key)
         for sig, val in signals_settings.items():

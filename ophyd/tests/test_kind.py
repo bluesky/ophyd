@@ -1,5 +1,5 @@
 from ophyd import (Device, Signal, Kind, Component, ALL_COMPONENTS,
-                   kind_context, DynamicDeviceComponent as DDC)
+                   kind_context, DynamicDeviceComponent as DDCpt)
 import pytest
 
 
@@ -357,8 +357,7 @@ def test_ddc():
         b = Component(Signal)
 
     class ThingHaver(Device):
-        a = DDC({'A': (Thing, '', {})})
-
+        a = DDCpt({'A': (Thing, '', {})})
 
     th = ThingHaver(name='th')
     assert th.a.A.a.kind & Kind.normal

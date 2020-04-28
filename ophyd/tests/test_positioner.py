@@ -28,7 +28,7 @@ def test_positioner_settle():
 def test_soft_positioner():
     p = SoftPositioner(name='test', egu='egu', limits=(-10, 10))
 
-    assert p.connected == True
+    assert p.connected
 
     position_callback = Mock()
     started_motion_callback = Mock()
@@ -63,6 +63,11 @@ def test_soft_positioner():
     target_pos = 1
     res = p.move(target_pos, wait=False)
 
+    # At first, this is not done (because wait=False above) but trying to
+    # confirm that here in the commented out assert below does not always work
+    # because it is race-y.
+    # assert not res.done
+    res.wait(3)  # a generous timeout
     assert res.done
     assert res.error == 0
     assert res.elapsed > 0

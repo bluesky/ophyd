@@ -14,6 +14,11 @@ _dispatcher = None
 name = 'caproto'
 
 
+def get_dispatcher():
+    'The event dispatcher for the caproto control layer'
+    return _dispatcher
+
+
 class CaprotoCallbackThread(_CallbackThread):
     ...
 
@@ -113,6 +118,7 @@ def get_pv(pvname, form='time', connect=False, context=None, timeout=5.0,
     pv = PV(pvname, form=form, connection_callback=connection_callback,
             access_callback=access_callback, callback=callback,
             **kwargs)
+    pv._reference_count = 0
     if connect:
         pv.wait_for_connection(timeout=timeout)
     return pv
@@ -143,9 +149,7 @@ def setup(logger):
 
         pyepics_compat.get_pv = pyepics_compat._get_pv
 
-        logger.debug('Performing ophyd cleanup')
         if _dispatcher.is_alive():
-            logger.debug('Joining the dispatcher thread')
             _dispatcher.stop()
 
         _dispatcher = None

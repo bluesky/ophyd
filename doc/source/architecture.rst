@@ -34,6 +34,38 @@ primitives.  Two terms that will be used throughout are
 Put another way, if a hierarchical device is a tree, **Signals** are the leaves
 and **Devices** are the nodes.
 
+Names
+-----
+
+In ophyd, we can think of a Device as a tree of sub-devices and
+eventually the 'leaf' nodes which are Signals (and map to 1 or 2 PVs).
+At the bottom of the tree, each Signal (leaf-node) has 3 names
+associated with it:
+
+ 1. *The PV name it is going to talk to*.  Typically, this name must
+    be globally unique within the control system you are using.  This
+    can lead to them being both verbose and cryptic.  From
+    ``ophyd``\'s point of view these strings are taken as given and
+    does not require any particular pattern, scheme, rhyme, or reason
+    in the names.
+ 2. *The Python attribute name*.  These are the names of the
+    components of a device and allow attribute-style access to the sub
+    components as ``dev.cpt_name``.  These names are set in the
+    `ophyd.Device` sub-class definitions.  They need to be a valid
+    Python identifiers (which Python enforces) and should be chosen to
+    makes sense to the people directly working with the ophyd instances.
+    They need be unique within a `~ophyd.Device` and hence Python ensures that
+    the fully qualified name will be unique within a namespace.
+ 3. *The ``obj.name`` attribute*.  This name is the one that will be
+    used in the data returned by `~ophyd.Device.read` and will
+    eventually end up in the flowing through `bluesky` and into
+    `databroker` to be eventually exposed to the users at analysis
+    times.  By default, these names are derived from the Python
+    attribute name of the sub-device and the name of it's parent, but
+    can be set at runtime.  These names should be picked to make
+    scientific sense at analysis time and must be unique among devices
+    that will be used simultaneously.
+
 .. _hl_api:
 
 Uniform High-level Interface

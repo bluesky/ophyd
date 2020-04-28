@@ -1,14 +1,16 @@
-import textwrap
+import functools
 import inspect
 import re
 import sys
+import textwrap
+
 from collections import OrderedDict
 import networkx as nx
 import numpy as np
 
-from ..signal import EpicsSignal, DerivedSignal
 from . import docs
-from ..device import (Device, Component)
+from ..signal import (EpicsSignal, DerivedSignal, EpicsSignalRO)
+from ..device import (Device, Component, DynamicDeviceComponent)
 from ..signal import (ArrayAttributeSignal)
 
 
@@ -100,18 +102,21 @@ class NDDerivedSignal(DerivedSignal):
 
     def inverse(self, value):
         """Shape the flat array to send as a result of ``.get``"""
-        print(self.derived_shape, self._shape, self.derived_ndims)
         array_shape = self.derived_shape[:self.derived_ndims]
         if not any(array_shape):
             raise RuntimeError(f"Invalid array size {self.derived_shape}")
 
-        array = self._derived_from.get()
-        return np.array(array).reshape(array_shape)
+        array_len = np.prod(array_shape)
+        if len(value) < array_len:
+            raise RuntimeError(f"cannot reshape array of size {array_len} "
+                               f"into shape {tuple(array_shape)}. Check IOC configuration.")
+
+        return np.asarray(value[:array_len]).reshape(array_shape)
 
     def subscribe(self, callback, event_type=None, run=True):
         cid = super().subscribe(callback, event_type=event_type, run=run)
-        if not self._has_subscribed and (event_type is None
-                                         or event_type == self.SUB_VALUE):
+        if not self._has_subscribed and (event_type is None or
+                                         event_type == self.SUB_VALUE):
             # Ensure callbacks are fired when array is reshaped
             for dim in self._shape + (self._num_dimensions, ):
                 if not isinstance(dim, int):
@@ -121,9 +126,9 @@ class NDDerivedSignal(DerivedSignal):
         self._has_subscribed = True
         return cid
 
-
     def _array_shape_callback(self, **kwargs):
-        value = self.inverse(self._derived_from.value)
+        # TODO we need a better way to say "latest new is good enough"
+        value = self.inverse(self._derived_from._readback)
         self._readback = value
         self._run_subs(sub_type=self.SUB_VALUE, value=value,
                        **self._metadata)
@@ -194,6 +199,19 @@ def ad_group(cls, attr_suffix, **kwargs):
     for attr, suffix in attr_suffix:
         defn[attr] = (cls, suffix, kwargs)
     return defn
+
+
+def _ddc_helper(signal_class, *items, kind='config', doc=None, **kwargs):
+    'DynamicDeviceComponent using one signal class for all components'
+    return DynamicDeviceComponent(
+        ad_group(signal_class, items, kind=kind, **kwargs),
+        doc=doc,
+    )
+
+
+DDC_EpicsSignal = functools.partial(_ddc_helper, EpicsSignal)
+DDC_EpicsSignalRO = functools.partial(_ddc_helper, EpicsSignalRO)
+DDC_SignalWithRBV = functools.partial(_ddc_helper, EpicsSignalWithRBV)
 
 
 class ADBase(Device):
@@ -298,10 +316,9 @@ class ADBase(Device):
             if name == port_name:
                 return self
 
-        for nm in self._sub_devices:
-            cpt = getattr(self, nm)
-            if hasattr(cpt, 'get_plugin_by_asyn_port'):
-                sig = cpt.get_plugin_by_asyn_port(port_name)
+        for name, subdevice in self.walk_subdevices(include_lazy=True):
+            if hasattr(subdevice, 'get_plugin_by_asyn_port'):
+                sig = subdevice.get_plugin_by_asyn_port(port_name)
                 if sig is not None:
                     return sig
         return None
@@ -321,10 +338,9 @@ class ADBase(Device):
         except AttributeError:
             pass
 
-        for nm in self._sub_devices:
-            sig = getattr(self, nm)
-            if hasattr(sig, 'get_asyn_port_dictionary'):
-                ret.update(sig.get_asyn_port_dictionary())
+        for name, subdevice in self.walk_subdevices(include_lazy=True):
+            if hasattr(subdevice, 'get_asyn_port_dictionary'):
+                ret.update(subdevice.get_asyn_port_dictionary())
 
         return ret
 
@@ -366,7 +382,8 @@ class ADBase(Device):
             if None (default) then a new figure is created otherwise it is
             plotted on the specified axes.
         *args, **kwargs : networkx.draw_networkx args and kwargs.
-            For the allowed args and kwargs see the `networkx.draw_networkx documentation <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
+            For the allowed args and kwargs see the `networkx.draw_networkx documentation
+            <https://networkx.github.io/documentation/networkx-1.10/reference/generated/networkx.drawing.nx_pylab.draw_networkx.html>`_
         '''
         # Importing matplotlib.pyplot here as it is not a dependency except for
         # this method.
@@ -417,7 +434,8 @@ class ADBase(Device):
         return ret
 
     configuration_names = Component(ArrayAttributeSignal,
-                                    attr='_configuration_names')
+                                    attr='_configuration_names',
+                                    kind='config')
 
     @property
     def _configuration_names(self):

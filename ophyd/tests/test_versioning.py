@@ -15,6 +15,7 @@ def test_specify_version():
     assert info == {'version': 1,
                     'versions': {1: MyDevice},
                     'version_type': 'ioc',
+                    'version_of': MyDevice,
                     }
 
     # Define a new version of that Device:
@@ -26,6 +27,7 @@ def test_specify_version():
                     'versions': {1: MyDevice,
                                  2: MyDevice_V2},
                     'version_type': 'ioc',
+                    'version_of': MyDevice,
                     }
 
     # Ensure that the original Device has also been updated:
@@ -38,6 +40,7 @@ def test_specify_version():
     assert UserDevice._class_info_ == {'versions': {1: MyDevice, 2: MyDevice_V2},
                                        'version': 2,
                                        'version_type': 'ioc',
+                                       'version_of': MyDevice,
                                        }
 
 

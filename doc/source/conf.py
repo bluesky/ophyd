@@ -28,6 +28,8 @@ import sphinx_rtd_theme
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.doctest', 'sphinx.ext.autosummary',
+              'IPython.sphinxext.ipython_directive',
+              'IPython.sphinxext.ipython_console_highlighting',
               'matplotlib.sphinxext.plot_directive',
               'sphinx.ext.inheritance_diagram',
               'numpydoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx']
@@ -249,10 +251,13 @@ texinfo_documents = [
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
 
-
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/3': None,
-                       'https://nsls-ii.github.io/bluesky/': None}
+                       'https://blueskyproject.io/bluesky/': None,
+                       'https://blueskyproject.io/databroker/': None,
+                       'https://blueskyproject.io/event-model/': None,
+}
+
 #inheritance_graph_attrs = dict(rankdir="LR")
 #inheritance_node_attrs = dict(fontsize=24)
 autosummary_generate = True

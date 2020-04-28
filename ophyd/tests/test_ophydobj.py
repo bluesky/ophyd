@@ -1,29 +1,52 @@
 import logging
 import pytest
+import time
 
 from unittest.mock import Mock
-from ophyd.ophydobj import OphydObject
+from ophyd.ophydobj import (OphydObject,
+                            register_instances_keyed_on_name,
+                            register_instances_in_weakset)
 from ophyd.status import (StatusBase, DeviceStatus, wait)
+from ophyd.utils import WaitTimeoutError
 
 logger = logging.getLogger(__name__)
 
 
 def test_status_basic():
     st = StatusBase()
-    st._finished()
+    st.set_finished()
 
 
-def test_status_callback():
+def test_status_callback_deprecated():
+    "The old way, with finished_cb"
     st = StatusBase()
     cb = Mock()
 
-    st.finished_cb = cb
-    assert st.finished_cb is cb
+    with pytest.warns(UserWarning):
+        st.finished_cb = cb
+    with pytest.warns(UserWarning):
+        assert st.finished_cb is cb
     with pytest.raises(RuntimeError):
         st.finished_cb = None
 
-    st._finished()
-    cb.assert_called_once_with()
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    cb.assert_called_once_with(st)
+
+
+def test_status_callback():
+    "The new way, with add_callback and the callbacks property"
+    st = StatusBase()
+    cb = Mock()
+
+    st.add_callback(cb)
+    assert st.callbacks[0] is cb
+
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    cb.assert_called_once_with(st)
 
 
 def test_status_others():
@@ -32,20 +55,20 @@ def test_status_others():
 
 def test_status_wait():
     st = StatusBase()
-    st._finished()
+    st.set_finished()
     wait(st)
 
 
 def test_wait_status_failed():
     st = StatusBase(timeout=0.05)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TimeoutError):
         wait(st)
 
 
 def test_status_wait_timeout():
     st = StatusBase()
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(WaitTimeoutError):
         wait(st, timeout=0.05)
 
 
@@ -154,3 +177,23 @@ def test_subscribe_no_default():
 
     with pytest.raises(ValueError):
         o.subscribe(lambda *a, **k: None)
+
+
+def test_register_instance():
+    weakset = register_instances_in_weakset()
+    test1 = OphydObject(name='test1')
+    assert test1 in weakset
+    test2 = OphydObject(name='test1')
+    assert test2 in weakset
+
+    weakdict = register_instances_keyed_on_name()
+    test1 = OphydObject(name='test1')
+    assert weakdict['test1'] == test1
+    test2 = OphydObject(name='test2')
+    assert weakdict['test2'] == test2
+
+    assert OphydObject._OphydObject__any_instantiated is True
+    with pytest.raises(RuntimeError):
+        register_instances_in_weakset(fail_if_late=True)
+    with pytest.raises(RuntimeError):
+        register_instances_keyed_on_name(fail_if_late=True)

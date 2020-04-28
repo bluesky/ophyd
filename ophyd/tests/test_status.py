@@ -1,14 +1,26 @@
+import time
 from unittest.mock import Mock
+
 from ophyd import Device
-from ophyd.status import StatusBase, SubscriptionStatus, UseNewProperty
+from ophyd.status import (StatusBase, SubscriptionStatus, UseNewProperty,
+                          MoveStatus)
+from ophyd.utils import (
+    InvalidState,
+    UnknownStatusFailure,
+    StatusTimeoutError,
+    WaitTimeoutError)
 import pytest
 
 
-def _setup_state_and_cb():
+def _setup_state_and_cb(new_signature=True):
     state = {}
 
-    def cb():
-        state['done'] = True
+    if new_signature:
+        def cb(status):
+            state['done'] = True
+    else:
+        def cb():
+            state['done'] = True
     return state, cb
 
 
@@ -19,7 +31,9 @@ def test_status_post():
     assert 'done' not in state
     st.add_callback(cb)
     assert 'done' not in state
-    st._finished()
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state
     assert state['done']
 
@@ -50,7 +64,9 @@ def test_status_legacy_finished_cb():
 
     assert 'done' not in state1
     assert 'done' not in state2
-    st._finished()
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state1
     assert 'done' in state2
 
@@ -59,12 +75,33 @@ def test_status_pre():
     st = StatusBase()
     state, cb = _setup_state_and_cb()
 
-    st._finished()
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
 
     assert 'done' not in state
     st.add_callback(cb)
     assert 'done' in state
     assert state['done']
+
+
+def test_direct_done_setting():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb()
+
+    with pytest.raises(RuntimeError):
+        st.done = True  # changing isn't allowed
+    with pytest.warns(UserWarning):
+        st.done = False  # but for now no-ops warn
+
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+
+    with pytest.raises(RuntimeError):
+        st.done = False  # changing isn't allowed
+    with pytest.warns(UserWarning):
+        st.done = True  # but for now no-ops warn
 
 
 def test_subscription_status():
@@ -84,11 +121,13 @@ def test_subscription_status():
 
     # Run callbacks but do not mark as complete
     d._run_subs(sub_type=d.SUB_ACQ_DONE, done=False)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert m.called
     assert not status.done and not status.success
 
     # Run callbacks and mark as complete
     d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert status.done and status.success
 
 
@@ -109,13 +148,19 @@ def test_and():
     st3.add_callback(cb3)
     st4.add_callback(cb4)
     st5.add_callback(cb5)
-    st1._finished()
+    st1.set_finished()
+    st1.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state1
     assert 'done' not in state2
     assert 'done' not in state3
     assert 'done' not in state4
     assert 'done' not in state5
-    st2._finished()
+    st2.set_finished()
+    st3.wait(1)
+    st4.wait(1)
+    st5.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
     assert 'done' in state3
     assert 'done' in state4
     assert 'done' in state5
@@ -125,3 +170,287 @@ def test_and():
     assert st4.right is st3
     assert st5.left is st3
     assert st5.right is st4
+
+
+def test_notify_watchers():
+    from ophyd.sim import hw
+    hw = hw()
+    mst = MoveStatus(hw.motor, 10)
+
+    def callback(*args, **kwargs):
+        ...
+
+    mst.watch(callback)
+    mst.target = 0
+    mst.start_pos = 0
+    mst._notify_watchers(0)
+
+
+def test_old_signature():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb(new_signature=False)
+    with pytest.warns(DeprecationWarning, match="signature"):
+        st.add_callback(cb)
+    assert not state
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state
+
+
+def test_old_signature_on_finished_status():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb(new_signature=False)
+    st.set_finished()
+    st.wait(1)
+    with pytest.warns(DeprecationWarning, match="signature"):
+        st.add_callback(cb)
+    assert state
+
+
+def test_old_finished_method_success():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb()
+    st.add_callback(cb)
+    assert not state
+    st._finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state
+    assert st.done
+    assert st.success
+
+
+def test_old_finished_method_failure():
+    st = StatusBase()
+    state, cb = _setup_state_and_cb()
+    st.add_callback(cb)
+    assert not state
+    st._finished(success=False)
+    with pytest.raises(UnknownStatusFailure):
+        st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state
+    assert st.done
+    assert not st.success
+
+
+def test_set_finished_twice():
+    st = StatusBase()
+    st.set_finished()
+    with pytest.raises(InvalidState):
+        st.set_finished()
+
+
+def test_set_exception_twice():
+    st = StatusBase()
+    exc = Exception()
+    st.set_exception(exc)
+    with pytest.raises(InvalidState):
+        st.set_exception(exc)
+
+
+def test_set_exception_wrong_type():
+    st = StatusBase()
+    NOT_AN_EXCEPTION = object()
+    with pytest.raises(ValueError):
+        st.set_exception(NOT_AN_EXCEPTION)
+
+
+def test_set_exception_special_banned_exceptions():
+    """
+    Exceptions with special significant to StatusBase are banned. See comments
+    in set_exception.
+    """
+    st = StatusBase()
+    # Test the class and the instance of each.
+    with pytest.raises(ValueError):
+        st.set_exception(StatusTimeoutError)
+    with pytest.raises(ValueError):
+        st.set_exception(StatusTimeoutError())
+    with pytest.raises(ValueError):
+        st.set_exception(WaitTimeoutError)
+    with pytest.raises(ValueError):
+        st.set_exception(WaitTimeoutError())
+
+
+def test_exception_fail_path():
+    st = StatusBase()
+
+    class LocalException(Exception):
+        ...
+
+    exc = LocalException()
+    st.set_exception(exc)
+    assert exc is st.exception()
+    with pytest.raises(LocalException):
+        st.wait(1)
+
+
+def test_exception_fail_path_with_class():
+    """
+    Python allows `raise Exception` and `raise Exception()` so we do as well.
+    """
+    st = StatusBase()
+
+    class LocalException(Exception):
+        ...
+
+    st.set_exception(LocalException)
+    assert LocalException is st.exception()
+    with pytest.raises(LocalException):
+        st.wait(1)
+
+
+def test_exception_success_path():
+    st = StatusBase()
+    st.set_finished()
+    assert st.wait(1) is None
+    assert st.exception() is None
+
+
+def test_wait_timeout():
+    """
+    A WaitTimeoutError is raised when we block on wait(TIMEOUT) or
+    exception(TIMEOUT) and the Status has not finished.
+    """
+    st = StatusBase()
+    with pytest.raises(WaitTimeoutError):
+        st.wait(0.01)
+    with pytest.raises(WaitTimeoutError):
+        st.exception(0.01)
+
+
+def test_status_timeout():
+    """
+    A StatusTimeoutError is raised when the timeout set in __init__ has
+    expired.
+    """
+    st = StatusBase(timeout=0)
+    with pytest.raises(StatusTimeoutError):
+        st.wait(1)
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+
+def test_status_timeout_with_settle_time():
+    """
+    A StatusTimeoutError is raised when the timeout set in __init__ plus the
+    settle_time has expired.
+    """
+    st = StatusBase(timeout=0, settle_time=1)
+    # Not dead yet.
+    with pytest.raises(WaitTimeoutError):
+        st.exception(0.01)
+    # But now we are.
+    with pytest.raises(StatusTimeoutError):
+        st.wait(2)
+
+
+def test_external_timeout():
+    """
+    A TimeoutError is raised, not StatusTimeoutError or WaitTimeoutError,
+    when set_exception(TimeoutError) has been set.
+    """
+    st = StatusBase(timeout=1)
+    st.set_exception(TimeoutError())
+    with pytest.raises(TimeoutError) as exc:
+        st.wait(1)
+    assert not isinstance(exc, WaitTimeoutError)
+    assert not isinstance(exc, StatusTimeoutError)
+
+
+def test_race_settle_time_and_timeout():
+    """
+    A StatusTimeoutError should NOT occur here because that is only invoked
+    after (timeout + settle_time) has elapsed.
+    """
+    st = StatusBase(timeout=1, settle_time=3)
+    st.set_finished()  # starts a threading.Timer with the settle_time
+    time.sleep(1.5)
+    # We should still be settling....
+    with pytest.raises(WaitTimeoutError):
+        st.wait(1)
+    # Now we should be done successfully.
+    st.wait(3)
+
+
+def test_set_finished_after_timeout():
+    """
+    If an external callback (e.g. pyepics) calls set_finished after the status
+    has timed out, ignore it.
+    """
+    st = StatusBase(timeout=0)
+    time.sleep(0.1)
+    assert isinstance(st.exception(), StatusTimeoutError)
+    # External callback fires, too late.
+    st.set_finished()
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+
+def test_set_exception_after_timeout():
+    """
+    If an external callback (e.g. pyepics) calls set_exception after the status
+    has timed out, ignore it.
+    """
+    st = StatusBase(timeout=0)
+    time.sleep(0.1)
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+    class LocalException(Exception):
+        ...
+
+    # External callback reports failure, too late.
+    st.set_exception(LocalException())
+    assert isinstance(st.exception(), StatusTimeoutError)
+
+
+def test_nonsensical_init():
+    with pytest.raises(ValueError):
+        StatusBase(success=True, done=False)
+    with pytest.raises(ValueError):
+        StatusBase(success=True, done=None)
+
+
+def test_deprecated_init():
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=True, done=True)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=False, done=True)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=False, done=False)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=False, done=None)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=None, done=True)
+    with pytest.warns(DeprecationWarning, match="set_finished"):
+        StatusBase(success=None, done=False)
+
+
+def test_error_in_settled_method():
+    state, cb = _setup_state_and_cb()
+
+    class BrokenStatus(StatusBase):
+        def _settled(self):
+            raise Exception
+
+    st = BrokenStatus()
+    st.add_callback(cb)
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state
+
+
+def test_error_in_handle_failure_method():
+    state, cb = _setup_state_and_cb()
+
+    class BrokenStatus(StatusBase):
+        def _handle_failure(self):
+            raise Exception
+
+    st = BrokenStatus()
+    st.add_callback(cb)
+    st.set_finished()
+    st.wait(1)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert state

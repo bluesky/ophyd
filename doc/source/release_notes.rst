@@ -2,6 +2,160 @@
  Release History
 =================
 
+v1.4.1 (2020-04-07)
+===================
+
+Features
+--------
+
+* Update HLM and LLM limits automatically on :class:`ophyd.EpicsMotor` when
+  they are changed externally.
+* Added more descriptive error message when attempting to run setup under
+  unsupported Python versions.
+
+API Changes
+-----------
+
+* Added methods :func:`ophyd.EpicsMotor.set_lim` and
+  :func:`ophyd.EpicsMotor.get_lim` to set and get limits on motors.
+* Added documentation for logging API.
+
+Fixes
+-----
+
+* Improved documentation of :class:`ophyd.PVPositioner`.
+* Corrected path semantics behavior when interacting with an areadetector
+  running on a different OS.
+
+Internals
+---------
+
+* Refactored code to satisfy Flake8 requirements. Maximum line length set to
+  115 characters.
+* Improved scope of log messages emitted by ``OphydObj``.
+
+v1.4.0 (2020-03-13)
+===================
+
+Features
+--------
+
+* Version ophyd classes to support IOCs changing over time. This is currently
+  implemented for AreaDetector plugins (releases 1-9 to 3-4).
+* Added :class:`ophyd.NDDerivedSignal`, which supplies a reshaped version of an
+  input array signal.
+* Added :func:`ophyd.Component.subscriptions` decorator to set up default
+  subscriptions on a component.
+* Added :func:`ophyd.device.create_device_from_components` to aid dynamic
+  device generation.
+* Added :func:`ophyd.device.required_for_connection` decorator to mark the
+  Components that must be connected for the overall Device to be considered
+  connected.
+* Added a hook to be called on all ophyd object creation via the
+  :func:`OphydObj.add_instantiation_callback` class method along with the
+  :func:`.register_instances_keyed_on_name` and
+  :func:`.register_instance_in_weakset` helper functions.
+* Added :attr:`OphydObj.dotted_name` property to get the full attribute name of a
+  child component.
+* Added the properties `read_access`, `write_access`, `metadata` to the base
+  signal class :class:`ophyd.Signal`.
+* Added metadata subscriptions for :class:`ophyd.Signal`.
+* Added :func:`OphydObj.destroy` method to all ophyd objects.
+* Added support for ADLambda X-Spectrum Lambda 750K camera.
+* Improved error message "Another set() call is still in progress" to include
+  the name of the device that raised the error.
+* Allowed `ophyd.FormattedComponent` strings to be written like
+  ``{prefix}{_ch_name}`` as well as the previously-supported and more verbose
+  ``{self.prefix}{self._ch_name}``.
+* Made timeouts more configurable, including separately configurable connection
+  timeout, write timeout, and read timeout. New method
+  `ophyd.EpicsSignal.set_default_timeout` sets class-wide defaults. Timeouts
+  can also be specified per-instance and in a specific action.
+
+API Changes
+-----------
+
+* Dropped support for Python 3.5.
+* The optional dependency pyepics, if installed, must be above version 3.4.0 to
+  be used.
+* If you are holding a reference to a pyepics.pv.PV that is shared with ophyd
+  and all ophyd objects that use that PV are torn down, all callbacks on the PV
+  will be cleared and the channel will be torn down.  If this is a problem for
+  you, please create a bug report.
+* Removed :mod:`ophyd.control_layer`.  The "control layer" used to access EPICS
+  can be controlled via :func:`ophyd.set_cl`.
+* :class:`ophyd.DynamicDeviceComponent` is now an :class:`ophyd.Component`
+  sub-class
+* Changed argument name in :meth:`OphydObj.subscribe` from ``cb`` to
+  ``callback``.
+* Removed :class:`ophyd.tests.conftest.FakeEpicsPV`,
+  :class:`ophyd.tests.conftest.FakeEpicsWaveForm`, and associated helper
+  functions.  If you need this class, please vendor it from a previous version
+  of ophyd - or please consider moving to `make_fake_device` or `caproto`-based
+  simulation IOCs.
+* Removed ``ophyd.tests.AssertTools`` and use standard pytest idioms throughout
+  the test suite.
+* Overhauled objects in `ophyd.sim` to inherit from `ophyd.Signal` and
+  `ophyd.Device` and thus behave more like true hardware-connected devices.
+* The `ophyd.StatusBase.done` attribute was formerly settable, but never
+  intended to be. It should only be set by calling
+  `ophyd.StatusBase._finished()`. Now, if it is set from ``False`` to ``True``
+  is warns, and if it is set from ``True`` to ``False`` (which does not make
+  sense) it raises.
+
+Fixes
+-----
+
+* Skip erroneous limits check on ``EpicsMotor.set_current_position``.
+* Handle bug in dispatcher to allow ``functools.partial`` objects to be
+  registered as callbacks.
+* Before shaping area detector image data, truncate any extra elements that
+  exceed the declares waveform length.
+* Fix clipping in status progress updates.
+* Address numpy pickle CVE.
+
+Internals
+---------
+
+* Switch from :class:`ophyd.Device` using meta-classes to using
+  ``__init__subclass__``.  There are now no meta-classes used in ophyd!
+* Completely overhauled how we connect to PVs at initialization and tear them
+  down on destruction of the ophyd objects.
+* Completely overhauled how PV meta-data is handled.
+* Completely overhauled the dispatcher thread mechanism.
+* Removed our backport of ``enum``, as it is available on the minimum Python
+  3.6.
+* Refactor simulated text object ``SynAxisNoHints`` to be more realistic.
+
+v1.3.3 (2019-05-02)
+===================
+
+Features
+--------
+* Provide way to select all channels of ScalarCH.
+
+Bug Fixes
+---------
+* Ensure that ScalarCH channels with empty names are not selected.
+
+v1.3.2 (2019-03-11)
+===================
+
+Bug Fixes
+---------
+
+* Update usage of ``collections`` module for Python 3.7.
+* Improve documentation of "hints".
+* Fix ``ophyd.log.logger`` which had erroneous name ``'bluesky'`` instead of
+  ``'ophyd'``.
+* Fix typos in definition of area detector devices wherein ``BrukerDetector``
+  and ``PerkinElmerDetector`` had ``cam`` components from cameras of different
+  brands than their own.
+* In area detector file plugins, do not touch 'Capture' PV if image mode is
+  'Single'. Doing so has no effect, and it generates an error (that should be a
+  warning) from area detector noting that it has no effect.
+* Fix a typo in ``ScalerCH`` definition of its ``name_map``.
+
 v1.3.1 (2019-01-03)
 ===================
 

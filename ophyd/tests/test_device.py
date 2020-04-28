@@ -4,12 +4,12 @@ from unittest.mock import Mock
 
 import numpy as np
 
-from ophyd import (Device, Component, FormattedComponent,
-                   wait_for_lazy_connection, do_not_wait_for_lazy_connection)
+from ophyd import (Device, Component, FormattedComponent)
 from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
                           ReadOnlyError)
 from ophyd.device import (ComponentWalk, create_device_from_components,
-                          required_for_connection)
+                          required_for_connection, wait_for_lazy_connection,
+                          do_not_wait_for_lazy_connection)
 from ophyd.utils import ExceptionBundle
 
 
@@ -391,7 +391,7 @@ def test_lazy_do_not_wait_for_connect():
     assert not d.cpt._waited_for_connection
 
 
-def test_sub_decorator(motor):
+def test_sub_decorator():
     class MyDevice(Device):
         cpt = Component(FakeSignal, 'suffix', lazy=True)
 
@@ -407,10 +407,17 @@ def test_sub_decorator(motor):
         def metadata(self, **kw):
             pass
 
+        @cpt.sub_default
+        @cpt.sub_value
+        @cpt.sub_meta
+        def multi(self, **kw):
+            pass
+
     d = MyDevice('', name='test')
 
     subs = set(event_type for method, event_type, kw in d.cpt._subscriptions)
     assert subs == {None, 'value', 'meta'}
+    assert len(MyDevice.multi._subscriptions) == 3
 
 
 def test_walk_components():
@@ -510,8 +517,9 @@ def test_walk_signals(include_lazy):
     print(MyDevice.sub1.cls.cpt1)
 
     dev = MyDevice('', name='mydev')
-    dev.summary()
+    walked_list = list(dev.walk_signals(include_lazy=include_lazy))
 
+    dev.summary()
     expected = [
         ComponentWalk(ancestors=(dev, dev.sub1, ),
                       dotted_name='sub1.cpt1',
@@ -559,7 +567,7 @@ def test_walk_signals(include_lazy):
                     if 'cpt4' not in item.dotted_name
                     ]
 
-    assert list(dev.walk_signals(include_lazy=include_lazy)) == expected
+    assert walked_list == expected
 
 
 def test_walk_subdevice_classes():
@@ -726,3 +734,42 @@ def test_required_for_connection_in_init():
     # Call and expect no timeout:
     dev.call_to_connect()
     dev.wait_for_connection(timeout=0.01)
+
+
+def test_noneified_component():
+    class SubDevice(Device):
+        cpt1 = Component(FakeSignal, '1')
+
+    class MyDevice(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = Component(SubDevice, 'sub2')
+
+    class MyDeviceWithoutSub2(Device):
+        sub1 = Component(SubDevice, 'sub1')
+        sub2 = None
+
+    assert MyDevice.component_names == ('sub1', 'sub2')
+    assert MyDevice._sub_devices == ['sub1', 'sub2']
+
+    assert MyDeviceWithoutSub2.component_names == ('sub1', )
+    assert MyDeviceWithoutSub2._sub_devices == ['sub1']
+
+
+@pytest.mark.parametrize('lazy_state, cntx',
+                         [(False, wait_for_lazy_connection),
+                          (True, do_not_wait_for_lazy_connection)])
+def test_lazy_wait_context(lazy_state, cntx):
+    class LocalExcepton(Exception):
+        ...
+
+    d = Device(name='d')
+    d.lazy_wait_for_connection = lazy_state
+
+    try:
+        with cntx(d):
+            assert d.lazy_wait_for_connection == (not lazy_state)
+            raise LocalExcepton
+    except LocalExcepton:
+        ...
+
+    assert d.lazy_wait_for_connection is lazy_state

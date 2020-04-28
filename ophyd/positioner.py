@@ -44,9 +44,9 @@ class PositionerBase(OphydObject):
 
     # High level
     def set(self, new_position: Any, *,
-            timeout: float=None,
-            moved_cb: Callable =None,
-            wait: bool =False) -> StatusBase:
+            timeout: float = None,
+            moved_cb: Callable = None,
+            wait: bool = False) -> StatusBase:
         """Set a value and return a Status object
 
 
@@ -87,7 +87,7 @@ class PositionerBase(OphydObject):
         return self.move(new_position, wait=wait, moved_cb=moved_cb,
                          timeout=timeout)
 
-    def stop(self, *, success: bool =False):
+    def stop(self, *, success: bool = False):
         '''Stops motion.
 
         Sub-classes must extend this method to _actually_ stop the device.
@@ -158,7 +158,15 @@ class PositionerBase(OphydObject):
         moved_cb : callable
             Call this callback when movement has finished. This callback
             must accept one keyword argument: 'obj' which will be set to
-            this positioner instance.
+            this positioner instance. It should also accept a positional
+            argument 'status', the Status object.
+
+            .. versionchanged:: 1.5.0
+
+               The expected signature changed from ``moved_cb(*, obj)`` to
+               ``moved_cb(status, *, obj)``. The old signature is still
+               supported, but a warning will be issued.
+
         timeout : float, optional
             Maximum time to wait for the motion. If None, the default timeout
             for this positioner is used.

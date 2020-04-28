@@ -175,11 +175,11 @@ def test_clear_fake_device():
     my_fake = FakeSample('KITCHEN', name='kitchen')
     clear_fake_device(my_fake, default_value=49,
                       default_string_value='string')
-    assert my_fake.butter.value == 49
-    assert my_fake.flour.value == 49
-    assert my_fake.sink.value == 49
-    assert my_fake.egg.yolk.value == 'string'
-    assert my_fake.egg.whites.value == 49
+    assert my_fake.butter.get() == 49
+    assert my_fake.flour.get() == 49
+    assert my_fake.sink.get() == 49
+    assert my_fake.egg.yolk.get() == 'string'
+    assert my_fake.egg.whites.get() == 49
 
 
 def test_instantiate_fake_device():
@@ -265,3 +265,31 @@ def test_SynSignalWithRegistry():
     d1 = img.read()
     assert int(d1['img']['value'][-1]) == 1  # increased by 1
     shutil.rmtree(tempdirname)
+
+
+def test_synaxis_describe():
+    bs = pytest.importorskip('bluesky')
+    import bluesky.plans as bp
+    motor1 = SynAxis(name='motor1')
+    RE = bs.RunEngine()
+    RE(bp.scan([], motor1, -5, 5, 5))
+
+
+def test_describe(hw):
+    # These need to be staged and triggered before they can be described, just
+    # like real area detectors do. We plan to change this approach and remove
+    # this limitation in ophyd 1.6.0, but for now we'll just skip these.
+    SKIP = (
+        'img',
+        'direct_img',
+        'direct_img_list',
+    )
+    for name, obj in hw.__dict__.items():
+        if name in SKIP:
+            continue
+        if hasattr(obj, 'describe'):
+            obj.describe()
+        elif hasattr(obj, 'describe_collect'):
+            obj.describe_collect()
+        else:
+            raise AttributeError("expected describe or describe_collect")

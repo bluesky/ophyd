@@ -2,7 +2,9 @@ import logging
 import time
 import copy
 import pytest
+import threading
 
+from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
@@ -79,7 +81,8 @@ def test_signal_base():
 
     assert signal.connected
     assert signal.name == name
-    assert signal.value == value
+    with pytest.warns(UserWarning):
+        assert signal.value == value
     assert signal.get() == value
     assert signal.timestamp == start_t
 
@@ -146,7 +149,8 @@ def test_signal_copy():
     sig_copy = copy.copy(signal)
 
     assert signal.name == sig_copy.name
-    assert signal.value == sig_copy.value
+    with pytest.warns(UserWarning):
+        assert signal.value == sig_copy.value
     assert signal.get() == sig_copy.get()
     assert signal.timestamp == sig_copy.timestamp
 
@@ -156,7 +160,7 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
     cleanup.add(signal)
     signal.wait_for_connection()
     print('EpicsSignalRO.metadata=', signal.metadata)
-    signal.value
+    signal.get()
 
     assert not signal.write_access
     assert signal.read_access
@@ -212,13 +216,13 @@ def test_epicssignal_readwrite(signal_test_ioc, pair_signal):
 
     assert signal.setpoint_pvname == signal_test_ioc.pvs['pair_set']
     assert signal.pvname == signal_test_ioc.pvs['pair_rbv']
-    signal.value
+    signal.get()
 
     time.sleep(0.2)
 
     value = 10
     signal.value = value
-    signal.setpoint = value
+    signal.put(value)
     assert signal.setpoint == value
     signal.setpoint_ts
 
@@ -236,15 +240,23 @@ def test_epicssignal_readwrite(signal_test_ioc, pair_signal):
 
 
 def test_epicssignal_waveform(cleanup, signal_test_ioc):
+    called = False
+
     def update_cb(value=None, **kwargs):
+        nonlocal called
         assert len(value) > 1
+        called = True
 
     signal = EpicsSignal(signal_test_ioc.pvs['waveform'], string=True)
     cleanup.add(signal)
     signal.wait_for_connection()
 
     sub = signal.subscribe(update_cb, event_type=signal.SUB_VALUE)
-    assert len(signal.value) > 1
+    assert len(signal.get()) > 1
+    # force the current thread to allow other threads to run to service
+    # subscription
+    time.sleep(0.2)
+    assert called
     signal.unsubscribe(sub)
 
 
@@ -353,7 +365,8 @@ def test_soft_derived():
     assert derived.limits == original.limits
 
     copied = copy.copy(derived)
-    assert copied.derived_from.value == original.value
+    with pytest.warns(UserWarning):
+        assert copied.derived_from.value == original.value
     assert copied.derived_from.timestamp == original.timestamp
     assert copied.derived_from.name == original.name
 
@@ -362,13 +375,18 @@ def test_soft_derived():
 
     called = []
 
+    event = threading.Event()
+
     def meta_callback(*, connected, read_access, write_access, **kw):
         called.append(('meta', connected, read_access, write_access))
+        event.set()
 
     derived.subscribe(meta_callback, event_type=derived.SUB_META, run=False)
 
     original._metadata['write_access'] = False
     original._run_subs(sub_type='meta', **original._metadata)
+
+    event.wait(1)
 
     assert called == [('meta', True, True, False)]
 
@@ -386,9 +404,10 @@ def test_epics_signal_derived(ro_signal):
     assert not derived.write_access
 
     assert derived.timestamp == ro_signal.timestamp
-    assert derived.get() == ro_signal.value
+    assert derived.get() == ro_signal.get()
 
 
+@pytest.mark.motorsim
 @pytest.mark.parametrize('put_complete', [True, False])
 def test_epicssignal_set(motor_pair_signal, put_complete):
     sim_pv = motor_pair_signal
@@ -456,7 +475,86 @@ def test_epicssignalro_alarm_status(set_severity_signal, alarm_status_signal, ro
     assert ro_signal.alarm_severity == severity
 
 
-def test_hints(cleanup, motor):
-    sig = EpicsSignalRO(motor.user_readback.pvname)
+def test_hints(cleanup, fake_motor_ioc):
+    sig = EpicsSignalRO(fake_motor_ioc.pvs['setpoint'])
     cleanup.add(sig)
     assert sig.hints == {'fields': [sig.name]}
+
+
+def test_epicssignal_sub_setpoint(cleanup, fake_motor_ioc):
+    pvs = fake_motor_ioc.pvs
+    pv = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                     name='pv')
+    cleanup.add(pv)
+
+    setpoint_called = []
+    setpoint_meta_called = []
+
+    def sub_setpoint(old_value, value, **kwargs):
+        setpoint_called.append((old_value, value))
+
+    def sub_setpoint_meta(timestamp, **kwargs):
+        setpoint_meta_called.append(timestamp)
+
+    pv.subscribe(sub_setpoint, event_type=pv.SUB_SETPOINT)
+    pv.subscribe(sub_setpoint_meta, event_type=pv.SUB_SETPOINT_META)
+
+    pv.wait_for_connection()
+
+    pv.put(1, wait=True)
+    pv.put(2, wait=True)
+    time.sleep(1.0)
+
+    assert len(setpoint_called) >= 3
+    assert len(setpoint_meta_called) >= 3
+
+
+def test_epicssignal_get_in_callback(fake_motor_ioc, cleanup):
+    pvs = fake_motor_ioc.pvs
+    sig = EpicsSignal(write_pv=pvs['setpoint'], read_pv=pvs['readback'],
+                      name='motor')
+    cleanup.add(sig)
+
+    called = []
+
+    def generic_sub(sub_type, **kwargs):
+        called.append((sub_type, sig.get(), sig.get_setpoint()))
+
+    for event_type in (sig.SUB_VALUE, sig.SUB_META,
+                       sig.SUB_SETPOINT, sig.SUB_SETPOINT_META):
+        sig.subscribe(generic_sub, event_type=event_type)
+
+    sig.wait_for_connection()
+
+    sig.put(1, wait=True)
+    sig.put(2, wait=True)
+    time.sleep(0.5)
+
+    print(called)
+    # Arbitrary threshold, but if @klauer screwed something up again, this will
+    # blow up
+    assert len(called) < 20
+    print('total', len(called))
+    sig.unsubscribe_all()
+
+
+@pytest.mark.motorsim
+@pytest.mark.parametrize('pvname, count',
+                         [('sim:mtr1.RBV', 10),
+                          ('sim:mtr2.RBV', 10),
+                          ('sim:mtr1.RBV', 100),
+                          ('sim:mtr2.RBV', 100),
+                          ]
+                         )
+def test_epicssignal_pv_reuse(cleanup, pvname, count):
+    signals = [EpicsSignal(pvname, name='sig')
+               for i in range(count)]
+
+    for sig in signals:
+        cleanup.add(sig)
+        sig.wait_for_connection()
+        assert sig.connected
+        assert sig.get() is not None
+
+    if get_cl().name == 'pyepics':
+        assert len(set(id(sig._read_pv) for sig in signals)) == 1

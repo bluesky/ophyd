@@ -697,7 +697,7 @@ class PseudoPositioner(Device, SoftPositioner):
         del self._real_waiting[:]
         super()._done_moving(success=success)
 
-    def _real_finished(self, obj=None):
+    def _real_finished(self, status=None, *, obj=None):
         '''Callback: A single real positioner has finished moving.
 
         Used for asynchronous motion, if all have finished moving then fire a
@@ -745,7 +745,7 @@ class PseudoPositioner(Device, SoftPositioner):
         pending_status = []
         t0 = time.time()
 
-        def move_next(obj=None):
+        def move_next(status=None, obj=None):
             # last motion complete message came from 'obj'
             self.log.debug('[%s:sequential] move_next called', self.name)
             with self._finished_lock:

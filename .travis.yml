@@ -5,6 +5,8 @@ env:
   global:
     # Doctr deploy key for NSLS-II/NSLS-II.github.io
     - secure: "jUZbT6RuZCGVKEvBCsK22mvXDvGIN10zlHRqj7Q6cl6lf2KaaXnOKb6azCQRJhbvgi9IUkJzjT3ghqeNhjsWOdxzbX4qzTh6jooySP0nyAY+iOQ/F9Q62RdRwM+N5y/t++1Cv2n5BVAYEnGIrE3SyZbeaYLTvNveJnVdeTIKif4="
+    # Doctr deploy key for bluesky/bluesky.github.io
+    - secure: "EAGsD6kh+3wm4zxcAaEiz1OhXbWJ8fYqrMhneTf/ruHjZTdYLzafbFgo+kjNeh8kPa/9eKpt8BoRvHETsUltxGqgHvo1qubbpJIfZOPz+FdpJo4Yz+q3cqU0ce2lPaE9wirR1LfAx0UNlKi7vlmACVGyRochBQKTFOtpcNLrWsA="
     - ETH0_BCAST: "172.17.255.255"
     - ETH0_IP: "172.17.0.1"
     - BASE_VER: "R7.0.1.1"
@@ -35,72 +37,54 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
 
-matrix:
+jobs:
   fast_finish: true
   include:
+    - python: 3.7  # Separate build to run flake8 check
+      env:
+        - FLAKE8=true
     - python: 3.6
       env:
-        - BUILD_DOCS=true
+        - PUBLISH_DOCS=true
         - TEST_CL=pyepics
     - python: 3.6
       env:
-        - BUILD_DOCS=
         - TEST_CL=caproto
-    - python: 3.6
-      env:
-        - BUILD_DOCS=
-        - TEST_CL=p4p
     - python: 3.7
       env:
-        - BUILD_DOCS=
         - TEST_CL=pyepics
     - python: 3.7
       env:
-        - BUILD_DOCS=
         - TEST_CL=caproto
-    - python: 3.7
-      env:
-        - BUILD_DOCS=
-        - TEST_CL=p4p
     - python: nightly
       env:
-        - BUILD_DOCS=
         - TEST_CL=pyepics
     - python: nightly
       env:
-        - BUILD_DOCS=
         - TEST_CL=caproto
-    - python: nightly
-      env:
-        - BUILD_DOCS=
-        - TEST_CL=p4p
   allow_failures:
     - python: 3.6
       env:
-        - BUILD_DOCS=
-        - TEST_CL=caproto
-    - python: 3.6
-      env:
-        - BUILD_DOCS=
-        - TEST_CL=p4p
-    - python: 3.7
-      env:
-        - BUILD_DOCS=
         - TEST_CL=caproto
     - python: 3.7
       env:
-        - BUILD_DOCS=
-        - TEST_CL=p4p
-    - python: nightly
-      env:
-        - BUILD_DOCS=
         - TEST_CL=caproto
     - python: nightly
       env:
-        - BUILD_DOCS=
-        - TEST_CL=p4p
+        - TEST_CL=pyepics
+    - python: nightly
+      env:
+        - TEST_CL=caproto
 
 before_install:
+  - if [ "$FLAKE8" ]; then
+        pip install flake8;
+        flake8 .;
+        let res=$?;
+        echo "The project code was verified by 'flake8'. Exit code ($res).";
+        exit $res;
+    fi
+
   - export MPLBACKEND=agg
   - git fetch --unshallow
 
@@ -123,9 +107,14 @@ before_install:
   - bash "${CI_SCRIPTS}/run-epics-iocs-on-procserv.sh"
 
 install:
-  - python -mpip install -Ur requirements.txt
-  - python -mpip install -Ur test-requirements.txt
-  - python -mpip install -e .
+  # record installed packages before ophyd is installed
+  - pip freeze
+  - python -m pip install -e .
+  - python -m pip install -r test-requirements.txt
+  # Avoid incompatibility issues between third-party dependencies and numpy.
+  - pip install --upgrade numpy
+  # record installed packages after ophyd is installed
+  - pip freeze
 
   - echo "PATH=$PATH"
   - echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
@@ -136,23 +125,22 @@ script:
   - echo "Checking if the areaDetector IOC is running:"
   - caproto-get -v 13SIM1:cam1:Acquire
 
-  - coverage run --concurrency=thread --parallel-mode run_tests.py -v -k "${TEST_CL}"
+  - coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
   - coverage combine
   - coverage report
   # Make sure only the primary build uploads to codecov
   - |
-    if [ $BUILD_DOCS ]; then
+    if [ ! -z "$PUBLISH_DOCS" ]; then
       codecov
     fi
 
   - set -e
   # Build docs.
+  - pip install -r docs-requirements.txt
+  - make -C doc html
   - |
-    if [ $BUILD_DOCS ]; then
-      pip install -r docs-requirements.txt
-      pushd doc
-      make html
-      popd
-      # Publish docs.
+    if [ ! -z "$PUBLISH_DOCS" ]; then
+      # Push built documentation to GH pages.
       doctr deploy --deploy-repo NSLS-II/NSLS-II.github.io --deploy-branch-name master ophyd
+      doctr deploy --deploy-repo bluesky/bluesky.github.io --deploy-branch-name master ophyd
     fi
