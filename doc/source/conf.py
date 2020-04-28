@@ -252,10 +252,11 @@ texinfo_documents = [
 #texinfo_show_urls = 'footnote'
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/3': None,
-                       'https://blueskyproject.io/bluesky/': None,
-                       'https://blueskyproject.io/databroker/': None,
-                       'https://blueskyproject.io/event-model/': None,
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'bluesky': ('https://blueskyproject.io/bluesky/', None),
+    'databroker': ('https://blueskyproject.io/databroker/', None),
+    'event-model': ('https://blueskyproject.io/event-model/', None),
 }
 
 #inheritance_graph_attrs = dict(rankdir="LR")
