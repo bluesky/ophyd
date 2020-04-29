@@ -36,10 +36,10 @@ class Kind(IntFlag):
     traverse it in read(), read_configuration(), or neither. Additionally, if
     decides whether to include its name in `hints['fields']`.
     """
-    omitted = 0b000
-    normal = 0b001
-    config = 0b010
-    hinted = 0b101  # Notice that bool(hinted & normal) is True.
+    omitted = 0b1000
+    normal = 0b0001
+    config = 0b0010
+    hinted = 0b0101  # Notice that bool(hinted & normal) is True.
 
 
 class UnknownSubscription(KeyError):
