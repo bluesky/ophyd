@@ -35,7 +35,7 @@ Deprecated
 * The method :meth:`~ophyd.StatusBase._finished` is deprecated in favor of
   :meth:`~ophyd.StatusBase.set_finished` (for success) and
   :meth:`~ophyd.StatusBase.set_exception` (for failure). There are no plans to
-  *remove* `:meth:`~ophyd.StatusBase._finished`, given its wide use, but it may
+  *remove* :meth:`~ophyd.StatusBase._finished`, given its wide use, but it may
   begin to issue warnings in future releases.
 
 Backward-incompatible Changes
