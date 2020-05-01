@@ -2,8 +2,8 @@
  Release History
 =================
 
-Unreleased
-==========
+1.5.0 (2020-05-01)
+==================
 
 The API for Status objects has been reworked to be closer to its generic analog
 in the standard library, :class:`concurrent.futures.Future`. Most of the
@@ -43,8 +43,18 @@ Backward-incompatible Changes
 
 * The function :func:`ophyd.status.wait` formerly raised on ``TimeoutError`` or
   ``RuntimeError``. It can now raise any ``Exception``.
-* The attributes `~ophyd.StatusBase.timeout` and
-  `~ophyd.StatusBase.settle_time` have become read-only properties.
+* The attributes :obj:`~ophyd.StatusBase.timeout` and
+  :obj:`~ophyd.StatusBase.settle_time` have become read-only properties.
+
+Additionally, some unrelated bug fixes are included in this release.
+
+Fixed
+-----
+
+* Fix a regression that broke ``describe()`` on some simulated hardware in
+  ``ophyd.sim`` in certain circumstances.
+* Handle teardown more gracefully, avoiding error messages at shutdown time
+  that arose in certain installations.
 
 v1.4.1 (2020-04-07)
 ===================
