@@ -62,7 +62,6 @@ class NDDerivedSignal(DerivedSignal):
     """
     def __init__(self, derived_from, *, shape, num_dimensions=None,
                  parent=None, **kwargs):
-        super().__init__(derived_from=derived_from, parent=parent, **kwargs)
         # Assemble our shape of signals
         self._shape = []
         self._has_subscribed = False
@@ -77,6 +76,7 @@ class NDDerivedSignal(DerivedSignal):
         if isinstance(num_dimensions, str):
             num_dimensions = getattr(parent, num_dimensions)
         self._num_dimensions = num_dimensions
+        super().__init__(derived_from=derived_from, parent=parent, **kwargs)
 
     @property
     def derived_shape(self):
