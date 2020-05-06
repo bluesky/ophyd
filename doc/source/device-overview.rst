@@ -332,6 +332,15 @@ There are three classes
 Trigger, Read and Describe
 --------------------------
 
+The :meth:`~ophyd.device.BlueskyInterface.trigger()` method is responsible for
+implementing 'trigger' or 'acquire' functionality of the Device.
+
+The :meth:`~ophyd.device.BlueskyInterface.read()` method is responsible for
+for returning the data from the Device.
+
+The :meth:`~ophyd.device.BlueskyInterface.describe()` method is responsible for
+providing schema and meta-data for the `read()` method.
+
 .. _cfg_and_f:
 
 
