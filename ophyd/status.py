@@ -257,7 +257,12 @@ class StatusBase:
         # The callbacks have access to self, from which they can distinguish
         # success or failure.
         for cb in self._callbacks:
-            cb(self)
+            try:
+                cb(self)
+            except Exception:
+                self.log.exception(
+                    "An error was raised on a background thread while "
+                    "running the callback %r(%r).", cb, self)
         self._callbacks.clear()
 
     def set_exception(self, exc):
