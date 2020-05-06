@@ -56,6 +56,12 @@ jobs:
     - python: 3.7
       env:
         - TEST_CL=caproto
+    - python: 3.8
+      env:
+        - TEST_CL=pyepics
+    - python: 3.8
+      env:
+        - TEST_CL=caproto
     - python: nightly
       env:
         - TEST_CL=pyepics
@@ -67,6 +73,9 @@ jobs:
       env:
         - TEST_CL=caproto
     - python: 3.7
+      env:
+        - TEST_CL=caproto
+    - python: 3.8
       env:
         - TEST_CL=caproto
     - python: nightly
