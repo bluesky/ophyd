@@ -2,6 +2,26 @@
  Release History
 =================
 
+Unreleased
+==========
+
+Added
+------
+
+* The method ``wait_for_connection()`` on various Signal classes now returns
+  the Signal instance. The enables shortening
+
+  .. code:: python
+
+     x = Signal(...)
+     x.wait_for_connection()
+
+  to
+
+  .. code:: python
+
+     x = Signal(...).wait_for_connection()
+
 1.5.0 (2020-05-01)
 ==================
 
