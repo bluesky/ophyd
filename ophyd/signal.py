@@ -141,8 +141,14 @@ class Signal(OphydObject):
         return d
 
     def wait_for_connection(self, timeout=0.0):
-        '''Wait for the underlying signals to initialize or connect'''
-        pass
+        '''
+        Wait for the original signal to connect
+
+        This method returns the Signal to facilitate the usage::
+
+            signal = SomeSignalClass(...).wait_for_connection()
+        '''
+        return self
 
     @property
     def metadata_keys(self):
@@ -614,7 +620,13 @@ class DerivedSignal(Signal):
         return value
 
     def wait_for_connection(self, timeout=0.0):
-        '''Wait for the original signal to connect'''
+        '''
+        Wait for the original signal to connect
+
+        This method returns the Signal to facilitate the usage::
+
+            signal = SomeSignalClass(...).wait_for_connection()
+        '''
         return self._derived_from.wait_for_connection(timeout=timeout)
 
     @property
@@ -984,13 +996,20 @@ class EpicsSignalBase(Signal):
                                f'access rights information within {float(timeout):.1f} sec')
 
     def wait_for_connection(self, timeout=1.0):
-        '''Wait for the underlying signals to initialize or connect'''
+        '''
+        Wait for the underlying signals to initialize or connect
+
+        This method returns the Signal to facilitate the usage::
+
+            signal = SomeSignalClass(...).wait_for_connection()
+        '''
         try:
             self._ensure_connected(self._read_pv, timeout=timeout)
         except TimeoutError:
             if self._destroyed:
                 raise DestroyedError('Signal has been destroyed')
             raise
+        return self
 
     @property
     def timestamp(self):
@@ -1391,8 +1410,15 @@ class EpicsSignal(EpicsSignalBase):
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=1.0):
-        '''Wait for the underlying signals to initialize or connect'''
+        '''
+        Wait for the original signal to connect
+
+        This method returns the Signal to facilitate the usage::
+
+            signal = SomeSignalClass(...).wait_for_connection()
+        '''
         self._ensure_connected(self._read_pv, self._write_pv, timeout=timeout)
+        return self
 
     @property
     def tolerance(self):
