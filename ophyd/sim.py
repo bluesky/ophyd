@@ -121,9 +121,9 @@ class SynSignal(Signal):
             func = self.get
             # Initialize readback with 0.
             self._readback = 0
-        sentinal = object()
-        loop = kwargs.pop('loop', sentinal)
-        if loop is not sentinal:
+        sentinel = object()
+        loop = kwargs.pop('loop', sentinel)
+        if loop is not sentinel:
             warnings.warn(
                 f"{self.__class__} no longer takes a loop as input.  "
                 "Your input will be ignored and may raise in the future",
@@ -351,9 +351,9 @@ class SynAxis(Device):
         if readback_func is None:
             def readback_func(x):
                 return x
-        sentinal = object()
-        loop = kwargs.pop('loop', sentinal)
-        if loop is not sentinal:
+        sentinel = object()
+        loop = kwargs.pop('loop', sentinel)
+        if loop is not sentinel:
             warnings.warn(
                 f"{self.__class__} no longer takes a loop as input.  "
                 "Your input will be ignored and may raise in the future",
@@ -685,9 +685,9 @@ class MockFlyer:
         self._steps = np.linspace(start, stop, num)
         self._data = deque()
         self._completion_status = None
-        sentinal = object()
-        loop = kwargs.pop('loop', sentinal)
-        if loop is not sentinal:
+        sentinel = object()
+        loop = kwargs.pop('loop', sentinel)
+        if loop is not sentinel:
             warnings.warn(
                 f"{self.__class__} no longer takes a loop as input.  "
                 "Your input will be ignored and may raise in the future",
