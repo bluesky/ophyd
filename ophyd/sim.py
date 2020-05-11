@@ -1,4 +1,3 @@
-import asyncio
 import copy
 import inspect
 import itertools
@@ -11,6 +10,7 @@ import threading
 import time as ttime
 import uuid
 import weakref
+import warnings
 
 from collections import deque, OrderedDict
 from tempfile import mkdtemp
