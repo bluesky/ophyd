@@ -358,4 +358,4 @@ def fmt_time(tstamp=None):
     tstamp, frac = divmod(tstamp, 1)
     return "%s.%5.5i" % (ttime.strftime("%Y-%m-%d %H:%M:%S",
                                         ttime.localtime(tstamp)),
-                         round(1.e5*frac))
+                         round(1.e5 * frac))
