@@ -421,6 +421,7 @@ class SynAxisEmptyHints(SynAxis):
 
 class SynAxisNoHints(SynAxis):
     readback = Cpt(_ReadbackSignal, value=0, kind='omitted')
+
     @property
     def hints(self):
         raise AttributeError
@@ -732,6 +733,7 @@ class MockFlyer:
         self._data = deque()
         st = DeviceStatus(device=self)
         self._completion_status = st
+
         def flyer_worker():
             self._scan()
             st.set_finished()
