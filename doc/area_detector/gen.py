@@ -31,7 +31,7 @@ rbv_re = re.compile(r'^(.*)\s+(.*)_RBV$',
 
 class DocRow(object):
     __slots__ = ['param_idx_var', 'asyn_interface',
-                 'access',  'description',
+                 'access', 'description',
                  'drvinfo', 'record', 'record_type']
 
     def __init__(self, row):

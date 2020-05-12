@@ -567,11 +567,11 @@ def test_many_connect(ad_prefix, cleanup):
         det = MyDetector(ad_prefix, name='det')
         print('made detector')
         try:
-            print('*'*25)
+            print('*' * 25)
             print('about to murder socket')
             det.cam.acquire._read_pv._caproto_pv.circuit_manager._disconnected()
             print('murdered socket')
-            print('*'*25)
+            print('*' * 25)
         except AttributeError:
             # must be pyepics
             pass

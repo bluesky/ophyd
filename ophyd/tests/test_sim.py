@@ -115,7 +115,7 @@ def test_synaxis_timestamps():
     orig_time = tester(motor, orig_time)
 
     motor.setpoint.put(3)
-    time.sleep(2*motor.delay)
+    time.sleep(2 * motor.delay)
     orig_time = tester(motor, orig_time)
 
 

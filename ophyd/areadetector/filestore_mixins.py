@@ -227,9 +227,9 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         self._datum_uids = defaultdict(list)
         if reg is None and fs is not PH:
             reg = fs
-            warnings.warn("The device is provided with fs not reg"
-                          .format(self),
-                          stacklevel=2)
+            warnings.warn(
+                f"The device {self} is provided with fs not reg",
+                stacklevel=2)
 
         self._reg = reg
 

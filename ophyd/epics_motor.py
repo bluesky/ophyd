@@ -92,16 +92,16 @@ class EpicsMotor(Device, PositionerBase):
             update EpicsSignal object when a limit CA monitor received from EPICS
             """
             if (
-                    self.connected
-                    and old_value is not None
-                    and value != old_value
-                    ):
+                self.connected
+                and old_value is not None
+                and value != old_value
+            ):
                 self.user_setpoint._metadata_changed(
                     self.user_setpoint.pvname,
                     self.user_setpoint._read_pv.get_ctrlvars(),
                     from_monitor=True,
                     update=True,
-                    )
+                )
 
         self.low_limit_travel.subscribe(on_limit_changed)
         self.high_limit_travel.subscribe(on_limit_changed)
