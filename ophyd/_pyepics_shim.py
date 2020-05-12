@@ -6,6 +6,9 @@ from epics import ca, caget, caput
 
 from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
+import atexit
+atexit.register(lambda: ca = None)
+
 _min_pyepics = '3.4.0'
 
 if LooseVersion(epics.__version__) < LooseVersion(_min_pyepics):
@@ -115,6 +118,9 @@ class PyepicsShimPV(epics.PV):
 
 
 def release_pvs(*pvs):
+    if ca is None:
+        return
+
     for pv in pvs:
         pv._reference_count -= 1
         if pv._reference_count == 0:
