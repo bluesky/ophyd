@@ -2,6 +2,19 @@
  Release History
 =================
 
+1.5.1 (2020-05-13)
+==================
+
+Fixed
+-----
+
+* The objects in ``ophyd.sim`` use threads to simulate delays due to movement,
+  instead of conditionally attempting to integrate with the asyncio event loop.
+* During process shutdown, ophyd's pyepics-integration layer avoids attempting
+  to interact with libca because it may already be torn down. This is a
+  workaround that is intended to be temporary while a fix is pursued upstream
+  in pyepics.
+
 1.5.0 (2020-05-01)
 ==================
 
