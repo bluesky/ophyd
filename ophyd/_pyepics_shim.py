@@ -7,7 +7,14 @@ from epics import ca, caget, caput
 from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
 import atexit
-atexit.register(lambda: ca = None)
+
+
+def invalidate_ca():
+    global ca
+    ca = None
+
+
+atexit.register(invalidate_ca)
 
 _min_pyepics = '3.4.0'
 
