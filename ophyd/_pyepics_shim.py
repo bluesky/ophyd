@@ -1,20 +1,11 @@
 import atexit
 import logging
-from distutils.version import LooseVersion
+
 import epics
 from epics import ca, caget, caput
 
+from distutils.version import LooseVersion
 from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
-
-import atexit
-
-
-def invalidate_ca():
-    global ca
-    ca = None
-
-
-atexit.register(invalidate_ca)
 
 _min_pyepics = '3.4.0'
 
@@ -31,6 +22,15 @@ else:
     thread_class = ca.CAThread
 
 
+def invalidate_ca():
+    global _ca_valid
+    _ca_valid = False
+
+
+# LibCA is not safe to use once Python begins shutting down
+_ca_valid = True
+atexit.register(invalidate_ca)
+
 module_logger = logging.getLogger(__name__)
 name = 'pyepics'
 _dispatcher = None
@@ -38,7 +38,7 @@ get_pv = epics.get_pv
 
 
 def get_dispatcher():
-    'The event dispatcher for the pyepics control layer'
+    """The event dispatcher for the pyepics control layer"""
     return _dispatcher
 
 
@@ -125,7 +125,7 @@ class PyepicsShimPV(epics.PV):
 
 
 def release_pvs(*pvs):
-    if ca is None:
+    if not _ca_valid:
         return
 
     for pv in pvs:
