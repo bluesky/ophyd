@@ -21,15 +21,16 @@ except ca.ChannelAccessException:
 else:
     thread_class = ca.CAThread
 
-
-def invalidate_ca():
-    global _ca_valid
-    _ca_valid = False
-
-
 # LibCA is not safe to use once Python begins shutting down
-_ca_valid = True
-atexit.register(invalidate_ca)
+_ca_valid = [object()]
+
+
+@atexit.register
+def invalidate_ca():
+    """Make _ca_valid evaluate to False once Python begins shutting down"""
+    global _ca_valid
+    _ca_valid.clear()
+
 
 module_logger = logging.getLogger(__name__)
 name = 'pyepics'
