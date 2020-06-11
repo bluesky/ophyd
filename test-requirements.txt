@@ -6,6 +6,6 @@ epics-pypdb
 flake8
 h5py
 matplotlib
-pyepics>=3.4.0
+pyepics>=3.4.2
 pytest
 pytest-faulthandler
