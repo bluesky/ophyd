@@ -2,6 +2,32 @@
  Release History
 =================
 
+
+1.5.1 (2020-06-11)
+==================
+
+Fixes
+-----
+
+* Updated required version of ``pyepics`` to ``3.4.2``, to ensure the included
+  fix to libca shutdown is available, preventing crashes on Python shutdown.
+* The objects in ``ophyd.sim`` use threads to simulate delays due to movement,
+  instead of conditionally attempting to integrate with the asyncio event loop.
+* Set attributes before invoking super in
+  :class:`~ophyd.areadetector.base.NDDerivedSignal` to ensure describe method
+  returns correct results.
+* Improved documentation of :class:`~ophyd.device.BlueskyInterface`.
+* Fixed intended ordering of areadetector plugins provided by
+  ``component_names``.
+
+Internals
+---------
+
+* Formatting fixes in Sphinx documentation.
+* Added epics-pypdb to test requirements.
+* Added Python 3.8 builds to continuous integration.
+
+
 1.5.0 (2020-05-01)
 ==================
 
