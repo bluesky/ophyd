@@ -3,7 +3,7 @@
 =================
 
 
-1.5.1 (2020-06-11)
+1.5.1 (2020-06-12)
 ==================
 
 Fixes
@@ -26,7 +26,7 @@ Internals
 * Formatting fixes in Sphinx documentation.
 * Added epics-pypdb to test requirements.
 * Added Python 3.8 builds to continuous integration.
-
+* Added log message when an exception occurs in status callback threads.
 
 1.5.0 (2020-05-01)
 ==================
