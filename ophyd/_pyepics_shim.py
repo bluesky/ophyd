@@ -6,7 +6,7 @@ from epics import ca, caget, caput
 
 from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
 
-_min_pyepics = '3.4.0'
+_min_pyepics = '3.4.2'
 
 if LooseVersion(epics.__version__) < LooseVersion(_min_pyepics):
     raise ImportError('Version of pyepics too old. '
