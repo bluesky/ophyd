@@ -226,7 +226,7 @@ class StatusBase:
             # statement timing out grabbing the lock just below,
             # set_exception(exc) has been called. Both of these possibilties
             # are accounted for.
-            logger.warning("%r has timed out", self)
+            self.log.warning("%r has timed out", self)
             with self._externally_initiated_completion_lock:
                 # Set the exception and mark the Status as done, unless
                 # set_exception(exc) was called externally before we grabbed
@@ -241,7 +241,7 @@ class StatusBase:
         except Exception:
             # No alternative but to log this. We can't supersede set_exception,
             # and we have to continue and run the callbacks.
-            logger.exception(
+            self.log.exception(
                 "%r encountered error during _settled()", self)
         # Now we know whether or not we have succeed or failed, either by
         # timeout above or by set_exception(exc), so we can set the Event that
@@ -252,12 +252,17 @@ class StatusBase:
             try:
                 self._handle_failure()
             except Exception:
-                logger.exception(
+                self.log.exception(
                     "%r encountered an error during _handle_failure()", self)
         # The callbacks have access to self, from which they can distinguish
         # success or failure.
         for cb in self._callbacks:
-            cb(self)
+            try:
+                cb(self)
+            except Exception:
+                self.log.exception(
+                    "An error was raised on a background thread while "
+                    "running the callback %r(%r).", cb, self)
         self._callbacks.clear()
 
     def set_exception(self, exc):
@@ -599,7 +604,7 @@ class DeviceStatus(StatusBase):
 
     def _handle_failure(self):
         super()._handle_failure()
-        logger.debug('Trying to stop %s', repr(self.device))
+        self.log.debug('Trying to stop %s', repr(self.device))
         self.device.stop()
 
     def __str__(self):
@@ -673,7 +678,7 @@ class SubscriptionStatus(DeviceStatus):
 
         # Do not fail silently
         except Exception as e:
-            logger.error(e)
+            self.log.error(e)
             raise
 
         # If successfull indicate completion
