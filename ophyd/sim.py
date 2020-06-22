@@ -237,7 +237,11 @@ class SynPeriodicSignal(SynSignal):
         self.__thread = None
 
     def start_simulation(self):
-
+        """
+        Start background thread that performs periodic PV updates. The method
+        should be called at least once before the beginning of simulation. Multiple
+        calls to the method are ignored.
+        """
         if self.__thread is None:
 
             def periodic_update(ref, period, period_jitter):
@@ -260,28 +264,39 @@ class SynPeriodicSignal(SynSignal):
                                                    self._period_jitter))
             self.__thread.start()
 
+    def _start_simulation_deprecated(self):
+        """Call `start_simulation` and print deprecation warning"""
+        if self.__thread is None:
+            msg = ("Deprecated API: Objects of SynPeriodicSignal must be initialized before simulation\n"
+                   "by calling 'start_simulation()' method. Two such objects ('rand' and 'rand2') are\n"
+                   "created by 'ophyd.sim' module. Call\n"
+                   "    rand.start_simulation() or rand2.start_simulation()\n"
+                   "before the object is used.")
+            logger.warning(msg)
+            self.start_simulation()
+
     def trigger(self):
-        self.start_simulation()
+        self._start_simulation_deprecated()
         return super().trigger()
 
     def get(self, **kwargs):
-        self.start_simulation()
+        self._start_simulation_deprecated()
         return super().get(**kwargs)
 
     def put(self, *args, **kwargs):
-        self.start_simulation()
+        self._start_simulation_deprecated()
         super().put(*args, **kwargs)
 
     def set(self, *args, **kwargs):
-        self.start_simulation()
+        self._start_simulation_deprecated()
         return super().set(*args, **kwargs)
 
     def read(self):
-        self.start_simulation()
+        self._start_simulation_deprecated()
         return super().read()
 
     def subscribe(self, *args, **kwargs):
-        self.start_simulation()
+        self._start_simulation_deprecated()
         return super().subscribe()
 
 
