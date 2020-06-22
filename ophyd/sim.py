@@ -297,7 +297,7 @@ class SynPeriodicSignal(SynSignal):
 
     def subscribe(self, *args, **kwargs):
         self._start_simulation_deprecated()
-        return super().subscribe()
+        return super().subscribe(*args, **kwargs)
 
 
 class _ReadbackSignal(Signal):
