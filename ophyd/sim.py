@@ -230,26 +230,55 @@ class SynPeriodicSignal(SynSignal):
                          exposure_time=exposure_time,
                          parent=parent, labels=labels, kind=kind,
                          **kwargs)
+        self.__thread = None
 
-        def periodic_update(ref, period, period_jitter):
-            while True:
-                signal = ref()
-                if not signal:
-                    # Our target Signal has been garbage collected. Shut
-                    # down the Thread.
-                    return
-                signal.put(signal._func())
-                del signal
-                # Sleep for period +/- period_jitter.
-                ttime.sleep(
-                    max(period + period_jitter * np.random.randn(), 0))
+    def start_simulation(self):
 
-        self.__thread = threading.Thread(target=periodic_update,
-                                         daemon=True,
-                                         args=(weakref.ref(self),
-                                               period,
-                                               period_jitter))
-        self.__thread.start()
+        if self.__thread is None:
+
+            def periodic_update(ref, period, period_jitter):
+                while True:
+                    signal = ref()
+                    if not signal:
+                        # Our target Signal has been garbage collected. Shut
+                        # down the Thread.
+                        return
+                    signal.put(signal._func())
+                    del signal
+                    # Sleep for period +/- period_jitter.
+                    ttime.sleep(
+                        max(period + period_jitter * np.random.randn(), 0))
+
+            self.__thread = threading.Thread(target=periodic_update,
+                                             daemon=True,
+                                             args=(weakref.ref(self),
+                                                   period,
+                                                   period_jitter))
+            self.__thread.start()
+
+    def trigger(self):
+        self.start_simulation()
+        return super().trigger()
+
+    def get(self, **kwargs):
+        self.start_simulation()
+        return super().get(**kwargs)
+
+    def put(self, *args, **kwargs):
+        self.start_simulation()
+        super().put(*args, **kwargs)
+
+    def set(self, *args, **kwargs):
+        self.start_simulation()
+        return super().set(*args, **kwargs)
+
+    def read(self):
+        self.start_simulation()
+        return super().read()
+
+    def subscribe(self, *args, **kwargs):
+        self.start_simulation()
+        return super().subscribe()
 
 
 class _ReadbackSignal(Signal):
