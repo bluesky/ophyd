@@ -1227,16 +1227,6 @@ class EpicsSignalRO(EpicsSignalBase):
                          name=name, **kwargs)
         self._metadata['write_access'] = False
 
-        def finalize(write_pv, cl):
-            cl.release_pvs(write_pv)
-
-        self._write_pv_finalizer = weakref.finalize(self, finalize, self._write_pv, self.cl)
-
-    def destroy(self):
-        super().destroy()
-        self._write_pv_finalizer()
-
-
     def put(self, *args, **kwargs):
         'Disabled for a read-only signal'
         raise ReadOnlyError('Cannot write to read-only EpicsSignal')
@@ -1389,6 +1379,15 @@ class EpicsSignal(EpicsSignalBase):
         #  (1) the same as read_pv
         #  (2) a completely separate PV instance
         # It will not be None, until destroy() is called.
+
+        def finalize(write_pv, cl):
+            cl.release_pvs(write_pv)
+
+        self._write_pv_finalizer = weakref.finalize(self, finalize, self._write_pv, self.cl)
+
+    def destroy(self):
+        super().destroy()
+        self._write_pv_finalizer()
 
     @doc_annotation_forwarder(EpicsSignalBase)
     def subscribe(self, callback, event_type=None, run=True):
