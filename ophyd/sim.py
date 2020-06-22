@@ -226,6 +226,10 @@ class SynPeriodicSignal(SynSignal):
                  **kwargs):
         if func is None:
             func = np.random.rand
+
+        self._period = period
+        self._period_jitter = period_jitter
+
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
                          parent=parent, labels=labels, kind=kind,
@@ -247,13 +251,13 @@ class SynPeriodicSignal(SynSignal):
                     del signal
                     # Sleep for period +/- period_jitter.
                     ttime.sleep(
-                        max(period + period_jitter * np.random.randn(), 0))
+                        max(self._period + self._period_jitter * np.random.randn(), 0))
 
             self.__thread = threading.Thread(target=periodic_update,
                                              daemon=True,
                                              args=(weakref.ref(self),
-                                                   period,
-                                                   period_jitter))
+                                                   self._period,
+                                                   self._period_jitter))
             self.__thread.start()
 
     def trigger(self):
