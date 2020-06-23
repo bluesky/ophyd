@@ -9,7 +9,6 @@ from .epics_pvs import *  # noqa: F401, F403
 from .paths import makedirs, make_dir_tree  # noqa: F401
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
 
 
 def enum(**enums):
