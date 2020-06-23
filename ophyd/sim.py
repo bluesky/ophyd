@@ -272,7 +272,7 @@ class SynPeriodicSignal(SynSignal):
                    "created by 'ophyd.sim' module. Call\n"
                    "    rand.start_simulation() or rand2.start_simulation()\n"
                    "before the object is used.")
-            logger.warning(msg)
+            self.log.warning(msg)
             self.start_simulation()
 
     def trigger(self):
