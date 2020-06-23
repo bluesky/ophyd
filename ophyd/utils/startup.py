@@ -1,7 +1,6 @@
 import logging
 import warnings
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
 
 __all__ = ['setup', 'logger']
 
