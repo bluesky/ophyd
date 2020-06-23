@@ -3,7 +3,6 @@
 import logging
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
 
 from .base import *  # noqa: F401, F402, E402, F403
 from .cam import *  # noqa: F401, F402, E402, F403
