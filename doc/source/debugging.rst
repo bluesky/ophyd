@@ -24,7 +24,7 @@ This is the recommended standard setup.
 
 .. code-block:: python
 
-   from ophyd import config_ophyd_logging
+   from ophyd.log import config_ophyd_logging
    config_ophyd_logging()
 
 It will display ``'ophyd'`` log records of ``WARNING`` level or higher in the
@@ -38,7 +38,7 @@ error, increasing the logging verbosity can help identify the underlying issue.
 
 .. code-block:: python
 
-   from ophyd import config_ophyd_logging
+   from ophyd.log import config_ophyd_logging
    config_ophyd_logging(level='DEBUG')
 
 Log to a file
@@ -49,7 +49,7 @@ out).
 
 .. code-block:: python
 
-    from ophyd import config_ophyd_logging
+    from ophyd.log import config_ophyd_logging
     config_ophyd_logging(file='/tmp/ophyd.log', level='DEBUG')
 
 .. _logger_api:
