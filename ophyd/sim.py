@@ -195,6 +195,8 @@ class SynSignalRO(SynSignal):
 class SynPeriodicSignal(SynSignal):
     """
     A synthetic Signal that evaluates a Python function periodically.
+    The signal value is updated in a background thread. To start the thread,
+    call the `start_simulation()` method before the beginning of simulation.
 
     Parameters
     ----------
@@ -238,7 +240,7 @@ class SynPeriodicSignal(SynSignal):
 
     def start_simulation(self):
         """
-        Start background thread that performs periodic PV updates. The method
+        Start background thread that performs periodic value updates. The method
         should be called at least once before the beginning of simulation. Multiple
         calls to the method are ignored.
         """
@@ -265,7 +267,7 @@ class SynPeriodicSignal(SynSignal):
             self.__thread.start()
 
     def _start_simulation_deprecated(self):
-        """Call `start_simulation` and print deprecation warning"""
+        """Call `start_simulation` and print deprecation warning."""
         if self.__thread is None:
             msg = ("Deprecated API: Objects of SynPeriodicSignal must be initialized before simulation\n"
                    "by calling 'start_simulation()' method. Two such objects ('rand' and 'rand2') are\n"
