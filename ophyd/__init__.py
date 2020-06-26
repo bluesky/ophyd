@@ -4,7 +4,6 @@ import os
 from ophyd.log import set_handler  # noqa: F401
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.NullHandler())
 
 cl = None
 
