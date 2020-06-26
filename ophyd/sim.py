@@ -195,6 +195,8 @@ class SynSignalRO(SynSignal):
 class SynPeriodicSignal(SynSignal):
     """
     A synthetic Signal that evaluates a Python function periodically.
+    The signal value is updated in a background thread. To start the thread,
+    call the `start_simulation()` method before the beginning of simulation.
 
     Parameters
     ----------
@@ -226,30 +228,78 @@ class SynPeriodicSignal(SynSignal):
                  **kwargs):
         if func is None:
             func = np.random.rand
+
+        self._period = period
+        self._period_jitter = period_jitter
+
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
                          parent=parent, labels=labels, kind=kind,
                          **kwargs)
+        self.__thread = None
 
-        def periodic_update(ref, period, period_jitter):
-            while True:
-                signal = ref()
-                if not signal:
-                    # Our target Signal has been garbage collected. Shut
-                    # down the Thread.
-                    return
-                signal.put(signal._func())
-                del signal
-                # Sleep for period +/- period_jitter.
-                ttime.sleep(
-                    max(period + period_jitter * np.random.randn(), 0))
+    def start_simulation(self):
+        """
+        Start background thread that performs periodic value updates. The method
+        should be called at least once before the beginning of simulation. Multiple
+        calls to the method are ignored.
+        """
+        if self.__thread is None:
 
-        self.__thread = threading.Thread(target=periodic_update,
-                                         daemon=True,
-                                         args=(weakref.ref(self),
-                                               period,
-                                               period_jitter))
-        self.__thread.start()
+            def periodic_update(ref, period, period_jitter):
+                while True:
+                    signal = ref()
+                    if not signal:
+                        # Our target Signal has been garbage collected. Shut
+                        # down the Thread.
+                        return
+                    signal.put(signal._func())
+                    del signal
+                    # Sleep for period +/- period_jitter.
+                    ttime.sleep(
+                        max(self._period + self._period_jitter * np.random.randn(), 0))
+
+            self.__thread = threading.Thread(target=periodic_update,
+                                             daemon=True,
+                                             args=(weakref.ref(self),
+                                                   self._period,
+                                                   self._period_jitter))
+            self.__thread.start()
+
+    def _start_simulation_deprecated(self):
+        """Call `start_simulation` and print deprecation warning."""
+        if self.__thread is None:
+            msg = ("Deprecated API: Objects of SynPeriodicSignal must be initialized before simulation\n"
+                   "by calling 'start_simulation()' method. Two such objects ('rand' and 'rand2') are\n"
+                   "created by 'ophyd.sim' module. Call\n"
+                   "    rand.start_simulation() or rand2.start_simulation()\n"
+                   "before the object is used.")
+            self.log.warning(msg)
+            self.start_simulation()
+
+    def trigger(self):
+        self._start_simulation_deprecated()
+        return super().trigger()
+
+    def get(self, **kwargs):
+        self._start_simulation_deprecated()
+        return super().get(**kwargs)
+
+    def put(self, *args, **kwargs):
+        self._start_simulation_deprecated()
+        super().put(*args, **kwargs)
+
+    def set(self, *args, **kwargs):
+        self._start_simulation_deprecated()
+        return super().set(*args, **kwargs)
+
+    def read(self):
+        self._start_simulation_deprecated()
+        return super().read()
+
+    def subscribe(self, *args, **kwargs):
+        self._start_simulation_deprecated()
+        return super().subscribe(*args, **kwargs)
 
 
 class _ReadbackSignal(Signal):
