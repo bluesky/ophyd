@@ -4,7 +4,8 @@ import pytest
 from types import SimpleNamespace
 
 from ophyd import EpicsMCA, EpicsDXP
-from ophyd.mca import add_rois
+from ophyd.mca import add_rois, Mercury1, SoftDXPTrigger
+
 from ophyd.utils import enum, ReadOnlyError
 
 from caproto.tests.conftest import run_example_ioc
@@ -142,3 +143,10 @@ def test_dxp_signals(dxp):
         dxp.input_count_rate.put(2)
     with pytest.raises(ReadOnlyError):
         dxp.output_count_rate.put(2)
+
+
+def test_mixin_signals():
+    class Mercury(Mercury1, SoftDXPTrigger):
+        pass
+    mercury = Mercury('Will_Not_Try_To_connect', name='mercury')
+    assert 'count_time' in mercury.component_names

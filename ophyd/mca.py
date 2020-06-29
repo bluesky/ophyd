@@ -356,7 +356,7 @@ class Mercury1(EpicsDXPMultiElementSystem):
     mca = Cpt(EpicsMCARecord, 'mca1')
 
 
-class SoftDXPTrigger(BlueskyInterface):
+class SoftDXPTrigger(Device):
     '''Simple soft trigger for DXP devices
 
     Parameters
