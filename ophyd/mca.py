@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .device import (Device, Component as Cpt, DynamicDeviceComponent as DDC,
-                     BlueskyInterface, Kind)
+                     Kind)
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 
 
