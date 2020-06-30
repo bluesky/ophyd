@@ -1206,10 +1206,10 @@ class Device(BlueskyInterface, OphydObject):
             cpt = self._sig_attrs[attr]
         except KeyError:
             raise RuntimeError(
-                f'Component {attr!r} exists at the Python level and '
-                'the has triggered the `_instantiate_component` '
+                f'The Component {attr!r} exists at the Python level and '
+                'has triggered the `_instantiate_component` '
                 'code path on Device, but has not been registered with '
-                'the Component management machinery.  This maybe due to '
+                'the Component management machinery in Device.  This maybe due to '
                 'using multiple inheritance with a mix-in class that defines '
                 'a Component but does not inherent from Device.'
             ) from None
