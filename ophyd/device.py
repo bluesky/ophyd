@@ -1205,7 +1205,14 @@ class Device(BlueskyInterface, OphydObject):
             # Initial access of signal
             cpt = self._sig_attrs[attr]
         except KeyError:
-            raise AttributeError(f'Component does not exist: {attr}') from None
+            raise RuntimeError(
+                f'The Component {attr!r} exists at the Python level and '
+                'has triggered the `_instantiate_component` '
+                'code path on Device, but has not been registered with '
+                'the Component management machinery in Device.  This may be due to '
+                'using multiple inheritance with a mix-in class that defines '
+                'a Component but does not inherent from Device.'
+            ) from None
 
         try:
             self._signals[attr] = cpt.create_component(self)
