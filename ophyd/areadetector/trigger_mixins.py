@@ -144,6 +144,7 @@ class SingleTrigger(TriggerBase):
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
             self._status.set_finished()
+            self._status = None
 
 
 class MultiTrigger(TriggerBase):
