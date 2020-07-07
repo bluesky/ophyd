@@ -2,24 +2,35 @@
  Release History
 =================
 
-Unreleased
-==========
+1.5.2 (2020-07-07)
+==================
 
 Changes
 -------
 
+* Default logging behavior will now be to print all log messages with level
+  ``warning`` and higher.
+* ``ophyd.mca.SoftDXPTrigger`` now inherits from ``Device`` instead of
+  ``BlueskyInterface``. This is to satisfy the requirement that classes which
+  have Components must also inherit Device.
 * It was formerly the case that :meth:`~ophyd.signal.Signal.destroy` was always
   called at teardown---either manually by the user or automatically using one
   of Python mechanisms for running cleanup during garbage collection or process
   teardown. Now, *automatic* teardown only involves internal weakref
   finalizers and it does not call ``destroy``. The method is now only a
   user-facing hook for manually invoking those finalizers. It should not be
-  used an extension point for adding more code to be run at teardown; rather,
-  additional finalizers should be set up in ``__init__`` and invoked in
+  used as an extension point for adding more code to be run at teardown;
+  rather, additional finalizers should be set up in ``__init__`` and invoked in
   ``destroy``. See https://github.com/bluesky/ophyd/pull/865 for an example.
   This changed is in accordance with best practices recommended by the Python
   weakref documentation.
 
+Internals
+---------
+
+* Fixed logging imports in debugging documentation.
+* Reset the internal ``_status`` in ``SingleTrigger`` to ``None`` when the
+  trigger is completed.
 
 1.5.1 (2020-06-12)
 ==================
