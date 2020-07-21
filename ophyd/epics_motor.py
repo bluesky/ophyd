@@ -347,8 +347,8 @@ class EpicsMotor(Device, PositionerBase):
             lo = min(low, high)
             hi = max(low, high)
             if lo <= self.position <= hi:
-                self.high_limit_travel.put(lo)
-                self.low_limit_travel.put(hi)
+                self.high_limit_travel.put(hi)
+                self.low_limit_travel.put(lo)
                 # and ophyd metadata dictionary will update via CA monitor
 
 
