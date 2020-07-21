@@ -120,16 +120,16 @@ class ScalerCH(Device):
         for s in self.channels.component_names:
             getattr(self.channels, s).match_name()
 
-    def select_channels(self, chan_names):
+    def select_channels(self, chan_names=None):
         '''Select channels based on the EPICS name PV
 
         Parameters
         ----------
         chan_names : Iterable[str] or None
 
-            The names (as reported by the channel.chname signal)
+            The names (as reported by the ``channel.chname`` signal)
             of the channels to select.
-            If *None*, select all channels named in the EPICS scaler.
+            If ``None``, select **all** channels named in the EPICS scaler.
         '''
         self.match_names()
         name_map = {}
