@@ -350,7 +350,13 @@ class EpicsMotor(Device, PositionerBase):
                 self.high_limit_travel.put(hi)
                 self.low_limit_travel.put(lo)
                 # and ophyd metadata dictionary will update via CA monitor
-
+            else:
+                self.log.debug(
+                    "Could not set motor limits to (%f, %f) at position %g", 
+                    low,
+                    high,
+                    self.position
+                    ) 
 
 class MotorBundle(Device):
     """Sub-class this to device a bundle of motors
