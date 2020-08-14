@@ -356,7 +356,8 @@ class EpicsMotor(Device, PositionerBase):
                     low,
                     high,
                     self.position
-                    )
+                )
+
 
 class MotorBundle(Device):
     """Sub-class this to device a bundle of motors
