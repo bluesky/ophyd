@@ -42,6 +42,7 @@ class CamBase(ADBase):
     _default_configuration_attrs = (ADBase._default_configuration_attrs +
                                     ('acquire_time', 'acquire_period',
                                      'model', 'num_exposures', 'image_mode',
+                                     'num_images',
                                      'manufacturer', 'trigger_mode'))
 
     ImageMode = enum(SINGLE=0, MULTIPLE=1, CONTINUOUS=2)
