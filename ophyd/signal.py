@@ -210,7 +210,7 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-        self.log.info(
+        self.log.debug(
             'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
             value, timestamp, force, metadata
         )
