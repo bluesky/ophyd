@@ -15,6 +15,7 @@ __all__ = ['CamBase',
            'AndorDetectorCam',
            'BrukerDetectorCam',
            'DexelaDetectorCam',
+           'EmergentVisionDetectorCam',
            'FirewireLinDetectorCam',
            'FirewireWinDetectorCam',
            'GreatEyesDetectorCam',
@@ -279,6 +280,20 @@ class DexelaDetectorCam(CamBase):
     use_defect_map = ADCpt(EpicsSignal, 'DEXUseDefectMap')
     use_gain = ADCpt(EpicsSignal, 'DEXUseGain')
     use_offset = ADCpt(EpicsSignal, 'DEXUseOffset')
+
+
+class EmergentVisionDetectorCam(CamBase):
+
+    _html_docs = ['EVTDoc.html']
+    pixel_format = ADCpt(SignalWithRBV, 'EVTPixelFormat')
+    framerate = ADCpt(SignalWithRBV, 'EVTFramerate')
+    offset_x = ADCpt(SignalWithRBV, 'EVTOffsetX')
+    offset_y = ADCpt(SignalWithRBV, 'EVTOffsetY')
+    buff_mode = ADCpt(SignalWithRBV, 'EVTBuffMode')
+    buff_num = ADCpt(SignalWithRBV, 'EVTBuffNum')
+    packet_size = ADCpt(SignalWithRBV, 'EVTPacketSize')
+    lut_enable = ADCpt(SignalWithRBV, 'EVTLUTEnable')
+    auto_gain = ADCpt(SignalWithRBV, 'EVTAutoGain')
 
 
 class FirewireLinDetectorCam(CamBase):
@@ -747,3 +762,4 @@ class URLDetectorCam(CamBase):
     url_select = ADCpt(EpicsSignal, 'URLSelect')
     url_seq = ADCpt(EpicsSignal, 'URLSeq')
     url = ADCpt(EpicsSignalRO, 'URL_RBV')
+

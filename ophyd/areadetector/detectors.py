@@ -17,6 +17,7 @@ __all__ = ['DetectorBase',
            'AndorDetector',
            'BrukerDetector',
            'DexelaDetector',
+           'EmergentVisionDetector',
            'FirewireLinDetector',
            'FirewireWinDetector',
            'GreatEyesDetector',
@@ -116,6 +117,11 @@ class DexelaDetector(DetectorBase):
     cam = C(cam.DexelaDetectorCam, 'cam1:')
 
 
+class EmergentVisionDetector(DetectorBase):
+    _html_docs = ['EVTDoc.html']
+    cam = C(cam.EmergentVisionDetectorCam, 'cam1:')
+
+
 class FirewireLinDetector(DetectorBase):
     _html_docs = ['FirewireWinDoc.html']
     cam = C(cam.FirewireLinDetectorCam, 'cam1:')
@@ -189,3 +195,4 @@ class RoperDetector(DetectorBase):
 class URLDetector(DetectorBase):
     _html_docs = ['URLDoc.html']
     cam = C(cam.URLDetectorCam, 'cam1:')
+
