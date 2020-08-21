@@ -285,6 +285,9 @@ class DexelaDetectorCam(CamBase):
 class EmergentVisionDetectorCam(CamBase):
 
     _html_docs = ['EVTDoc.html']
+    _default_configuration_attrs = (CamBase._default_configuration_attrs +
+                                    ('pixel_format', 'auto_gain', 'framerate'))
+
     pixel_format = ADCpt(SignalWithRBV, 'EVTPixelFormat')
     framerate = ADCpt(SignalWithRBV, 'EVTFramerate')
     offset_x = ADCpt(SignalWithRBV, 'EVTOffsetX')
@@ -762,4 +765,3 @@ class URLDetectorCam(CamBase):
     url_select = ADCpt(EpicsSignal, 'URLSelect')
     url_seq = ADCpt(EpicsSignal, 'URLSeq')
     url = ADCpt(EpicsSignalRO, 'URL_RBV')
-

@@ -195,4 +195,3 @@ class RoperDetector(DetectorBase):
 class URLDetector(DetectorBase):
     _html_docs = ['URLDoc.html']
     cam = C(cam.URLDetectorCam, 'cam1:')
-
