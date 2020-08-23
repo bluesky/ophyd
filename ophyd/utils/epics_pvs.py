@@ -217,10 +217,10 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         how soon to check whether the value has been successfully set
     timeout : float, optional
         maximum time to wait for value to be successfully set
-    atol : float, optional
-        allowed absolute tolerance between the readback and setpoint values
     rtol : float, optional
         allowed relative tolerance between the readback and setpoint values
+    atol : float, optional
+        allowed absolute tolerance between the readback and setpoint values
 
     Raises
     ------
