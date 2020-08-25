@@ -2,6 +2,24 @@
  Release History
 =================
 
+1.5.3 (2020-08-24)
+==================
+
+Changes
+-------
+
+* Add a default value for ``ScalerCH.select_channels`` such that calling it
+  without arguments selects all named channels.
+* Change a particularly verbose ophyd logger from INFO-level to DEBUG-level.
+
+
+Fixes
+-----
+
+* Critical bug in EpicsMotor limits set low to high and high to low.
+* For area detector cameras, add ``num_images`` to the set of components
+  recorded as configuration by default.
+
 1.5.2 (2020-07-07)
 ==================
 
