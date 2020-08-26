@@ -2637,6 +2637,50 @@ badX2,badY2 replacementX2,replacementY2
           NELM=80 so that they can be longer than the 40 character string limit in EPICS.''',
         ),  # end of RoperDoc.html
 
+    'EVTDoc.html': dict(
+        EVTPixelFormat=u'''[EVTPixelFormat r/w mbbo]
+          Selects one of the supported camera pixel modes. Used to select data type of image taken from 
+          the camera. Includes 8, 10, and 12 bit modes for all color modes, and 10 and 12 bit packed
+          modes for Mono and Bayer Modes (RGB does not support packed. The AreaDetector NDDataType is still
+          used in determining the data type of the output NDArray, which is created by either upconverting or
+          down converting the image recieved from the camera. Ex. NDUInt8 Mono with 10 bit pixel format
+          selected will give a downconverted 8 bit output NDArray, while a NDUInt16 with 12 bit output will give
+          a 16 bit image output converted from the 12 bit one recieved from the camera.
+        ''',
+        EVTFramerate=u'''[EVTFramerate r/w ao]
+          Sets the output framerate of the camera. If the selected framerate is slower than the rate specified by
+          the exposure time, the camera will wait before taking additional frames.
+        ''',
+        EVTOffsetX=u'''[EVTOffsetX r/w ao]
+          Sets the Camera offset for returned images. Instead of returning the full image, the camera will only return the
+          image starting from OffsetX. Allows for a hardware based ROI
+        ''',
+        EVTOffsetY=u'''[EVTOffsetY r/w ao]
+          Sets the Camera offset for returned images. Instead of returning the full image, the camera will only return the
+          image starting from OffsetY. Allows for a hardware based ROI
+        ''',
+        EVTBuffMode=u'''[EVTBuffMode r/w bo]
+          Toggles buffer mode for EVT device. In this mode the camera will buffer several images at a time before
+          in camera internal memory before outputting. Can slightly improve performance when running fast scans
+          with under ~100 images. Internal buffer size is limited to 500 images, but if buffer is filled without
+          being cleared the camera will lock up and need a power cycle.
+        ''',
+        EVTBuffNum=u'''[EVTBuffNum r/w ao]
+          Specifies the number of images buffered by the camera before being sent out. Must be less than the size
+          of the internal memory buffer of the camera. Will only be applicable if EVTBuffMode = On.
+        ''',
+        EVTPacketSize=u'''[EVTPacketSize r/w ao]
+          Specifies the packet size of the packets transferred over fiber from the camera to the server over fiber. A higher
+          value will increase 
+        ''',
+        EVTLUTEnable=u'''[EVTLUTEnable r/w bo]
+          Toggles the use of the Look Up Table for colors by the camera. This can be used to always target a pre-set color space.
+        ''',
+        EVTAutoGain=u'''[EVTAutoGain r/w bo]
+          Toggles AutoGain mode for EVT camera. This will have the camera automatically adjust the gain rather than using the 
+          user adjustable Gain value.
+        ''',
+    ),  # end of EVTDoc.html
 
     'NDFileNexus.html': dict(
         TemplateFilePath=u'[TemplateFilePath r/w waveform] Path to XML template file',

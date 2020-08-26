@@ -8,6 +8,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+venv/
 build/
 develop-eggs/
 dist/
@@ -59,9 +60,10 @@ target/
 *.swp
 *.bak
 
-# PyCharm
+# IDE Configs
 .idea/
 .ropeproject
+.vscode/
 
 # notebook checkpoints
 .ipynb_checkpoints
