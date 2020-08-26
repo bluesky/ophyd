@@ -19,10 +19,10 @@ from . import get_cl
 # Catch semi-frequent issue with scripts accidentally run from inside module
 if __name__ != 'ophyd.signal':
     raise RuntimeError(
-       'A script tried to import ophyd.signal instead of the signal built-in '
-       'module. This usually happens when a script is run from inside the '
-       'ophyd directory and can cause extremely confusing bugs. Please '
-       'run your script elsewhere for better results.'
+        'A script tried to import ophyd.signal instead of the signal built-in '
+        'module. This usually happens when a script is run from inside the '
+        'ophyd directory and can cause extremely confusing bugs. Please '
+        'run your script elsewhere for better results.'
     )
 
 
@@ -102,7 +102,6 @@ class Signal(OphydObject):
             timestamp = time.time()
 
         self._destroyed = False
-        self._finalizer = weakref.finalize(self, self.destroy)
 
         self._set_thread = None
         self._tolerance = tolerance
@@ -211,7 +210,7 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-        self.log.info(
+        self.log.debug(
             'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
             value, timestamp, force, metadata
         )
@@ -786,6 +785,15 @@ class EpicsSignalBase(Signal):
                            "name={self.name}, id={id(self)}")
             EpicsSignalBase._mark_as_instantiated()
 
+        def finalize(read_pv, cl):
+            cl.release_pvs(read_pv)
+
+        self._read_pv_finalizer = weakref.finalize(self, finalize, self._read_pv, self.cl)
+
+    def destroy(self):
+        super().destroy()
+        self._read_pv_finalizer()
+
     @classmethod
     def _mark_as_instantiated(cls):
         "Update state indicated that this class has been instantiated."
@@ -1165,13 +1173,6 @@ class EpicsSignalBase(Signal):
 
         return {self.name: desc}
 
-    def destroy(self):
-        '''Disconnect the EpicsSignal from the underlying PV instance'''
-        super().destroy()
-        if self._read_pv is not None:
-            self.cl.release_pvs(self._read_pv)
-            self._read_pv = None
-
 
 class EpicsSignalRO(EpicsSignalBase):
     '''A read-only EpicsSignal -- that is, one with no `write_pv`
@@ -1378,6 +1379,15 @@ class EpicsSignal(EpicsSignalBase):
         #  (1) the same as read_pv
         #  (2) a completely separate PV instance
         # It will not be None, until destroy() is called.
+
+        def finalize(write_pv, cl):
+            cl.release_pvs(write_pv)
+
+        self._write_pv_finalizer = weakref.finalize(self, finalize, self._write_pv, self.cl)
+
+    def destroy(self):
+        super().destroy()
+        self._write_pv_finalizer()
 
     @doc_annotation_forwarder(EpicsSignalBase)
     def subscribe(self, callback, event_type=None, run=True):
@@ -1710,13 +1720,6 @@ class EpicsSignal(EpicsSignalBase):
     @use_limits.setter
     def use_limits(self, value):
         self._use_limits = bool(value)
-
-    def destroy(self):
-        '''Destroy the EpicsSignal from the underlying PV instance'''
-        super().destroy()
-        if self._write_pv is not None:
-            self.cl.release_pvs(self._write_pv)
-            self._write_pv = None
 
 
 class AttributeSignal(Signal):

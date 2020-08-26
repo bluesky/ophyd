@@ -773,3 +773,20 @@ def test_lazy_wait_context(lazy_state, cntx):
         ...
 
     assert d.lazy_wait_for_connection is lazy_state
+
+
+def test_non_Divice_mixin_with_components():
+
+    class Host(Device):
+        a = Component(Signal)
+
+    class MixIn:
+        b = Component(Signal)
+
+    class Target(Host, MixIn):
+        ...
+
+    t = Target(name='target')
+
+    with pytest.raises(RuntimeError):
+        t.b

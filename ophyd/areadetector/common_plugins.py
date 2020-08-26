@@ -112,7 +112,7 @@ for version in versions:
     _make_common_gather(f'CommonGatherPlugin_V{ver_string}', version)
 
 
-all_plugins = {
+all_plugins = [
     ('attr1', CommonAttributePlugin, 'Attr1:'),
     ('cb1', plugins.CircularBuffPlugin, 'CB1:'),
     ('cc1', plugins.ColorConvPlugin, 'CC1:'),
@@ -147,7 +147,7 @@ all_plugins = {
     ('stats5_ts', plugins.TimeSeriesPlugin, 'Stats5:TS:'),
     ('tiff1', plugins.TIFFPlugin, 'TIFF1:'),
     ('trans1', plugins.TransformPlugin, 'Trans1:')
-}
+]
 
 
 common_plugins = {}

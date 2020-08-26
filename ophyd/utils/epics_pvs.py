@@ -218,9 +218,9 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     timeout : float, optional
         maximum time to wait for value to be successfully set
     rtol : float, optional
-        allowed absolute tolerance between the readback and setpoint values
-    atol : float, optional
         allowed relative tolerance between the readback and setpoint values
+    atol : float, optional
+        allowed absolute tolerance between the readback and setpoint values
 
     Raises
     ------
@@ -358,4 +358,4 @@ def fmt_time(tstamp=None):
     tstamp, frac = divmod(tstamp, 1)
     return "%s.%5.5i" % (ttime.strftime("%Y-%m-%d %H:%M:%S",
                                         ttime.localtime(tstamp)),
-                         round(1.e5*frac))
+                         round(1.e5 * frac))

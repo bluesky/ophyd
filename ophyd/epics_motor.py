@@ -62,8 +62,10 @@ class EpicsMotor(Device, PositionerBase):
                           auto_monitor=True)
     high_limit_switch = Cpt(EpicsSignal, '.HLS', kind='omitted')
     low_limit_switch = Cpt(EpicsSignal, '.LLS', kind='omitted')
-    high_limit_travel = Cpt(EpicsSignal, ".HLM", kind="omitted")
-    low_limit_travel = Cpt(EpicsSignal, ".LLM", kind="omitted")
+    high_limit_travel = Cpt(EpicsSignal, '.HLM', kind='omitted',
+                            auto_monitor=True)
+    low_limit_travel = Cpt(EpicsSignal, '.LLM', kind='omitted',
+                           auto_monitor=True)
     direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
 
     # commands
@@ -90,16 +92,16 @@ class EpicsMotor(Device, PositionerBase):
             update EpicsSignal object when a limit CA monitor received from EPICS
             """
             if (
-                    self.connected
-                    and old_value is not None
-                    and value != old_value
-                    ):
+                self.connected
+                and old_value is not None
+                and value != old_value
+            ):
                 self.user_setpoint._metadata_changed(
                     self.user_setpoint.pvname,
                     self.user_setpoint._read_pv.get_ctrlvars(),
                     from_monitor=True,
                     update=True,
-                    )
+                )
 
         self.low_limit_travel.subscribe(on_limit_changed)
         self.high_limit_travel.subscribe(on_limit_changed)
@@ -345,9 +347,16 @@ class EpicsMotor(Device, PositionerBase):
             lo = min(low, high)
             hi = max(low, high)
             if lo <= self.position <= hi:
-                self.high_limit_travel.put(lo)
-                self.low_limit_travel.put(hi)
+                self.high_limit_travel.put(hi)
+                self.low_limit_travel.put(lo)
                 # and ophyd metadata dictionary will update via CA monitor
+            else:
+                self.log.debug(
+                    "Could not set motor limits to (%f, %f) at position %g",
+                    low,
+                    high,
+                    self.position
+                )
 
 
 class MotorBundle(Device):

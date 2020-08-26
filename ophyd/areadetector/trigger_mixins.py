@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 class ADTriggerStatus(DeviceStatus):
     """
+    A Status for AreaDetector triggers
+
     A special status object that notifies watches (progress bars)
     based on comparing device.cam.array_counter to  device.cam.num_images.
     """
@@ -142,6 +144,7 @@ class SingleTrigger(TriggerBase):
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
             self._status.set_finished()
+            self._status = None
 
 
 class MultiTrigger(TriggerBase):

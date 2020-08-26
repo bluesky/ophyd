@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .signal import (Signal, EpicsSignal, EpicsSignalRO)
 from .device import (Device, Component as Cpt, DynamicDeviceComponent as DDC,
-                     BlueskyInterface, Kind)
+                     Kind)
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
 
 
@@ -356,7 +356,7 @@ class Mercury1(EpicsDXPMultiElementSystem):
     mca = Cpt(EpicsMCARecord, 'mca1')
 
 
-class SoftDXPTrigger(BlueskyInterface):
+class SoftDXPTrigger(Device):
     '''Simple soft trigger for DXP devices
 
     Parameters

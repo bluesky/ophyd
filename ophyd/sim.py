@@ -1,4 +1,3 @@
-import asyncio
 import copy
 import inspect
 import itertools
@@ -11,6 +10,7 @@ import threading
 import time as ttime
 import uuid
 import weakref
+import warnings
 
 from collections import deque, OrderedDict
 from tempfile import mkdtemp
@@ -104,9 +104,7 @@ class SynSignal(Signal):
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
-    loop : asyncio.EventLoop, optional
-        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
-        unspecified
+
     """
     # This signature is arranged to mimic the signature of EpicsSignal, where
     # the Python function (func) takes the place of the PV.
@@ -117,19 +115,23 @@ class SynSignal(Signal):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None,
                  **kwargs):
         if func is None:
             # When triggered, just put the current value.
             func = self.get
             # Initialize readback with 0.
             self._readback = 0
-        if loop is None:
-            loop = asyncio.get_event_loop()
+        sentinel = object()
+        loop = kwargs.pop('loop', sentinel)
+        if loop is not sentinel:
+            warnings.warn(
+                f"{self.__class__} no longer takes a loop as input.  "
+                "Your input will be ignored and may raise in the future",
+                stacklevel=2
+            )
         self._func = func
         self.exposure_time = exposure_time
         self.precision = precision
-        self.loop = loop
         super().__init__(value=self._func(), timestamp=ttime.time(), name=name,
                          parent=parent, labels=labels, kind=kind, **kwargs)
         self._metadata.update(
@@ -148,31 +150,21 @@ class SynSignal(Signal):
     def trigger(self):
         self.log.info('trigger %s', self)
 
+        st = DeviceStatus(device=self)
         delay_time = self.exposure_time
         if delay_time:
             self.log.info('%s delay_time is %d', self, delay_time)
-            st = DeviceStatus(device=self)
-            if self.loop.is_running():
 
-                def update_and_finish():
-                    self.log.info('update_and_finish %s', self)
-                    self.put(self._func())
-                    st.set_finished()
-
-                self.loop.call_later(delay_time, update_and_finish)
-            else:
-
-                def sleep_and_finish():
-                    self.log.info('sleep_and_finish %s', self)
-                    ttime.sleep(delay_time)
-                    self.put(self._func())
-                    st.set_finished()
-
-                threading.Thread(target=sleep_and_finish, daemon=True).start()
-            return st
+            def sleep_and_finish():
+                self.log.info('sleep_and_finish %s', self)
+                ttime.sleep(delay_time)
+                self.put(self._func())
+                st.set_finished()
+            threading.Thread(target=sleep_and_finish, daemon=True).start()
         else:
             self.put(self._func())
-            return NullStatus()
+            st.set_finished()
+        return st
 
     def sim_set_func(self, func):
         """
@@ -203,6 +195,8 @@ class SynSignalRO(SynSignal):
 class SynPeriodicSignal(SynSignal):
     """
     A synthetic Signal that evaluates a Python function periodically.
+    The signal value is updated in a background thread. To start the thread,
+    call the `start_simulation()` method before the beginning of simulation.
 
     Parameters
     ----------
@@ -223,9 +217,6 @@ class SynPeriodicSignal(SynSignal):
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
-    loop : asyncio.EventLoop, optional
-        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
-        unspecified
     """
     def __init__(self, func=None, *,
                  name,  # required, keyword-only
@@ -234,34 +225,81 @@ class SynPeriodicSignal(SynSignal):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None,
                  **kwargs):
         if func is None:
             func = np.random.rand
+
+        self._period = period
+        self._period_jitter = period_jitter
+
         super().__init__(name=name, func=func,
                          exposure_time=exposure_time,
-                         parent=parent, labels=labels, kind=kind, loop=loop,
+                         parent=parent, labels=labels, kind=kind,
                          **kwargs)
+        self.__thread = None
 
-        def periodic_update(ref, period, period_jitter):
-            while True:
-                signal = ref()
-                if not signal:
-                    # Our target Signal has been garbage collected. Shut
-                    # down the Thread.
-                    return
-                signal.put(signal._func())
-                del signal
-                # Sleep for period +/- period_jitter.
-                ttime.sleep(
-                    max(period + period_jitter * np.random.randn(), 0))
+    def start_simulation(self):
+        """
+        Start background thread that performs periodic value updates. The method
+        should be called at least once before the beginning of simulation. Multiple
+        calls to the method are ignored.
+        """
+        if self.__thread is None:
 
-        self.__thread = threading.Thread(target=periodic_update,
-                                         daemon=True,
-                                         args=(weakref.ref(self),
-                                               period,
-                                               period_jitter))
-        self.__thread.start()
+            def periodic_update(ref, period, period_jitter):
+                while True:
+                    signal = ref()
+                    if not signal:
+                        # Our target Signal has been garbage collected. Shut
+                        # down the Thread.
+                        return
+                    signal.put(signal._func())
+                    del signal
+                    # Sleep for period +/- period_jitter.
+                    ttime.sleep(
+                        max(self._period + self._period_jitter * np.random.randn(), 0))
+
+            self.__thread = threading.Thread(target=periodic_update,
+                                             daemon=True,
+                                             args=(weakref.ref(self),
+                                                   self._period,
+                                                   self._period_jitter))
+            self.__thread.start()
+
+    def _start_simulation_deprecated(self):
+        """Call `start_simulation` and print deprecation warning."""
+        if self.__thread is None:
+            msg = ("Deprecated API: Objects of SynPeriodicSignal must be initialized before simulation\n"
+                   "by calling 'start_simulation()' method. Two such objects ('rand' and 'rand2') are\n"
+                   "created by 'ophyd.sim' module. Call\n"
+                   "    rand.start_simulation() or rand2.start_simulation()\n"
+                   "before the object is used.")
+            self.log.warning(msg)
+            self.start_simulation()
+
+    def trigger(self):
+        self._start_simulation_deprecated()
+        return super().trigger()
+
+    def get(self, **kwargs):
+        self._start_simulation_deprecated()
+        return super().get(**kwargs)
+
+    def put(self, *args, **kwargs):
+        self._start_simulation_deprecated()
+        super().put(*args, **kwargs)
+
+    def set(self, *args, **kwargs):
+        self._start_simulation_deprecated()
+        return super().set(*args, **kwargs)
+
+    def read(self):
+        self._start_simulation_deprecated()
+        return super().read()
+
+    def subscribe(self, *args, **kwargs):
+        self._start_simulation_deprecated()
+        return super().subscribe(*args, **kwargs)
 
 
 class _ReadbackSignal(Signal):
@@ -340,9 +378,6 @@ class SynAxis(Device):
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
-    loop : asyncio.EventLoop, optional
-        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
-        unspecified
     """
     readback = Cpt(_ReadbackSignal, value=0, kind='hinted')
     setpoint = Cpt(_SetpointSignal, value=0, kind='normal')
@@ -362,18 +397,22 @@ class SynAxis(Device):
                  parent=None,
                  labels=None,
                  kind=None,
-                 loop=None,
                  **kwargs):
         if readback_func is None:
             def readback_func(x):
                 return x
-        if loop is None:
-            loop = asyncio.get_event_loop()
+        sentinel = object()
+        loop = kwargs.pop('loop', sentinel)
+        if loop is not sentinel:
+            warnings.warn(
+                f"{self.__class__} no longer takes a loop as input.  "
+                "Your input will be ignored and may raise in the future",
+                stacklevel=2
+            )
         self.sim_state = {}
         self._readback_func = readback_func
         self.delay = delay
         self.precision = precision
-        self.loop = loop
 
         # initialize values
         self.sim_state['setpoint'] = value
@@ -407,27 +446,17 @@ class SynAxis(Device):
                            value=self.sim_state['readback'],
                            timestamp=self.sim_state['readback_ts'])
 
+        st = DeviceStatus(device=self)
         if self.delay:
-            st = DeviceStatus(device=self)
-            if self.loop.is_running():
-
-                def update_and_finish():
-                    update_state()
-                    st.set_finished()
-
-                self.loop.call_later(self.delay, update_and_finish)
-            else:
-
-                def sleep_and_finish():
-                    ttime.sleep(self.delay)
-                    update_state()
-                    st.set_finished()
-
-                threading.Thread(target=sleep_and_finish, daemon=True).start()
-            return st
+            def sleep_and_finish():
+                ttime.sleep(self.delay)
+                update_state()
+                st.set_finished()
+            threading.Thread(target=sleep_and_finish, daemon=True).start()
         else:
             update_state()
-            return NullStatus()
+            st.set_finished()
+        return st
 
     @property
     def position(self):
@@ -442,6 +471,7 @@ class SynAxisEmptyHints(SynAxis):
 
 class SynAxisNoHints(SynAxis):
     readback = Cpt(_ReadbackSignal, value=0, kind='omitted')
+
     @property
     def hints(self):
         raise AttributeError
@@ -697,7 +727,7 @@ class MockFlyer:
     Class for mocking a flyscan API implemented with stepper motors.
     """
 
-    def __init__(self, name, detector, motor, start, stop, num, loop=None):
+    def __init__(self, name, detector, motor, start, stop, num, **kwargs):
         self.name = name
         self.parent = None
         self._mot = motor
@@ -705,9 +735,18 @@ class MockFlyer:
         self._steps = np.linspace(start, stop, num)
         self._data = deque()
         self._completion_status = None
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self.loop = loop
+        sentinel = object()
+        loop = kwargs.pop('loop', sentinel)
+        if loop is not sentinel:
+            warnings.warn(
+                f"{self.__class__} no longer takes a loop as input.  "
+                "Your input will be ignored and may raise in the future",
+                stacklevel=2
+            )
+        if kwargs:
+            raise TypeError(
+                f'{self.__class__}.__init__ got unexpected '
+                f'keyword arguments {list(kwargs)}')
 
     def __setstate__(self, val):
         name, detector, motor, steps = val
@@ -717,7 +756,6 @@ class MockFlyer:
         self._detector = detector
         self._steps = steps
         self._completion_status = None
-        self.loop = asyncio.get_event_loop()
 
     def __getstate__(self):
         return (self.name, self._detector, self._mot, self._steps)
@@ -743,11 +781,15 @@ class MockFlyer:
         if self._completion_status is not None:
             raise RuntimeError("Already kicked off.")
         self._data = deque()
-
-        self._future = self.loop.run_in_executor(None, self._scan)
         st = DeviceStatus(device=self)
         self._completion_status = st
-        self._future.add_done_callback(lambda x: st.set_finished())
+
+        def flyer_worker():
+            self._scan()
+            st.set_finished()
+
+        threading.Thread(target=flyer_worker, daemon=True).start()
+
         return st
 
     def collect(self):
@@ -762,15 +804,10 @@ class MockFlyer:
         ttime.sleep(.1)
         for p in self._steps:
             stat = self._mot.set(p)
-            while True:
-                if stat.done:
-                    break
-                ttime.sleep(0.01)
+            stat.wait()
+
             stat = self._detector.trigger()
-            while True:
-                if stat.done:
-                    break
-                ttime.sleep(0.01)
+            stat.wait()
 
             event = dict()
             event['time'] = ttime.time()
@@ -803,9 +840,6 @@ class SynSignalWithRegistry(SynSignal):
         0.
     parent : Device, optional
         Used internally if this Signal is made part of a larger Device.
-    loop : asyncio.EventLoop, optional
-        used for ``subscribe`` updates; uses ``asyncio.get_event_loop()`` if
-        unspecified
     reg : Registry, optional
         DEPRECATED. If used, this is ignored and a warning is issued. In a
         future release, this parameter will be removed.

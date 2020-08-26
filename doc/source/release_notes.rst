@@ -2,6 +2,133 @@
  Release History
 =================
 
+1.5.3 (2020-08-24)
+==================
+
+Changes
+-------
+
+* Add a default value for ``ScalerCH.select_channels`` such that calling it
+  without arguments selects all named channels.
+* Change a particularly verbose ophyd logger from INFO-level to DEBUG-level.
+
+
+Fixes
+-----
+
+* Critical bug in EpicsMotor limits set low to high and high to low.
+* For area detector cameras, add ``num_images`` to the set of components
+  recorded as configuration by default.
+
+1.5.2 (2020-07-07)
+==================
+
+Changes
+-------
+
+* Default logging behavior will now be to print all log messages with level
+  ``warning`` and higher.
+* ``ophyd.mca.SoftDXPTrigger`` now inherits from ``Device`` instead of
+  ``BlueskyInterface``. This is to satisfy the requirement that classes which
+  have Components must also inherit Device.
+* It was formerly the case that :meth:`~ophyd.signal.Signal.destroy` was always
+  called at teardown---either manually by the user or automatically using one
+  of Python mechanisms for running cleanup during garbage collection or process
+  teardown. Now, *automatic* teardown only involves internal weakref
+  finalizers and it does not call ``destroy``. The method is now only a
+  user-facing hook for manually invoking those finalizers. It should not be
+  used as an extension point for adding more code to be run at teardown;
+  rather, additional finalizers should be set up in ``__init__`` and invoked in
+  ``destroy``. See https://github.com/bluesky/ophyd/pull/865 for an example.
+  This changed is in accordance with best practices recommended by the Python
+  weakref documentation.
+
+Internals
+---------
+
+* Fixed logging imports in debugging documentation.
+* Reset the internal ``_status`` in ``SingleTrigger`` to ``None`` when the
+  trigger is completed.
+
+1.5.1 (2020-06-12)
+==================
+
+Fixes
+-----
+
+* Updated required version of ``pyepics`` to ``3.4.2``, to ensure the included
+  fix to libca shutdown is available, preventing crashes on Python shutdown.
+* The objects in ``ophyd.sim`` use threads to simulate delays due to movement,
+  instead of conditionally attempting to integrate with the asyncio event loop.
+* Set attributes before invoking super in
+  :class:`~ophyd.areadetector.base.NDDerivedSignal` to ensure describe method
+  returns correct results.
+* Improved documentation of :class:`~ophyd.device.BlueskyInterface`.
+* Fixed intended ordering of areadetector plugins provided by
+  ``component_names``.
+
+Internals
+---------
+
+* Formatting fixes in Sphinx documentation.
+* Added epics-pypdb to test requirements.
+* Added Python 3.8 builds to continuous integration.
+* Added log message when an exception occurs in status callback threads.
+
+1.5.0 (2020-05-01)
+==================
+
+The API for Status objects has been reworked to be closer to its generic analog
+in the standard library, :class:`concurrent.futures.Future`. Most of the
+changes are extenions, but there are some deprecations and some minor
+backward-incompatible changes.
+
+Added
+-----
+
+* Status objects can store an exception giving information about why the
+  underlying action failed. This is set by
+  :meth:`~ophyd.StatusBase.set_exception` and can be retrieved by
+  :meth:`~ophyd.StatusBase.exception`. The method
+  :meth:`~ophyd.StatusBase.set_finished` may be used to mark successful
+  completion, in which case :meth:`~ophyd.StatusBase.exception` returns
+  ``None``.
+* Status objects have a new :meth:`~ophyd.StatusBase.wait` method, which blocks
+  until the Status finishes (in success or failure) or until an optional
+  timeout is reached, whichever happens first. If it finishes in success, the
+  method returns ``None``; if failure, the exception captured by
+  :meth:`~ophyd.StatusBase.set_exception` is raised.
+
+Deprecated
+----------
+
+* Status objects take the parameters ``done`` and ``success``. These are
+  deprecated and, if set to anything but ``None`` (the default) issue a
+  warning suggesting a better approach.
+* The method :meth:`~ophyd.StatusBase._finished` is deprecated in favor of
+  :meth:`~ophyd.StatusBase.set_finished` (for success) and
+  :meth:`~ophyd.StatusBase.set_exception` (for failure). There are no plans to
+  *remove* :meth:`~ophyd.StatusBase._finished`, given its wide use, but it may
+  begin to issue warnings in future releases.
+
+Backward-incompatible Changes
+-----------------------------
+
+* The function :func:`ophyd.status.wait` formerly raised on ``TimeoutError`` or
+  ``RuntimeError``. It can now raise any ``Exception``.
+* The attributes :obj:`~ophyd.StatusBase.timeout` and
+  :obj:`~ophyd.StatusBase.settle_time` have become read-only properties.
+
+Additionally, some unrelated bug fixes are included in this release.
+
+Fixed
+-----
+
+* Fix a regression that broke ``describe()`` on some simulated hardware in
+  ``ophyd.sim`` in certain circumstances.
+* Handle teardown more gracefully, avoiding error messages at shutdown time
+  that arose in certain installations.
+
 v1.4.1 (2020-04-07)
 ===================
 
