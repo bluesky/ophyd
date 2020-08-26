@@ -2,7 +2,7 @@
  Release History
 =================
 
-1.5.3 (2020-08-24)
+1.5.3 (2020-08-26)
 ==================
 
 Changes
@@ -19,6 +19,11 @@ Fixes
 * Critical bug in EpicsMotor limits set low to high and high to low.
 * For area detector cameras, add ``num_images`` to the set of components
   recorded as configuration by default.
+
+Added
+-----
+
+* Support for Emergent Vision detecectors
 
 1.5.2 (2020-07-07)
 ==================
