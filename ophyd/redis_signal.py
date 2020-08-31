@@ -41,8 +41,12 @@ class RedisSignal(OphydObject):
     '''
 
     SUB_VALUE = 'value'
+    SUB_META = 'meta'
+    _default_sub = SUB_VALUE
+    _metadata_keys = None
+    _core_metadata_keys = ('connected', 'timestamp')
 
-    def __init__(self, key, *, r, initial_value=None, serializer_deserializer=None, name=None, **kwargs):
+    def __init__(self, key, *, r, initial_value=None, serializer_deserializer=None, name=None, timestamp=None, **kwargs):
         if name is None:
             name = key
         super().__init__(name=name, **kwargs)
@@ -66,6 +70,34 @@ class RedisSignal(OphydObject):
         if initial_value is not None:
             if not self._r.exists(self._key):
                 self.set(initial_value)
+
+        if timestamp is None:
+            timestamp = time.time()
+
+        try:
+            connected = self._r.ping()
+        except redis.ConnectionError:
+            connected = False
+
+        self._metadata = dict(
+            connected=connected,
+            # read_access=True,
+            # write_access=True,
+            timestamp=timestamp,
+            # status=None,
+            # severity=None,
+            # precision=None,
+        )
+
+    @property
+    def timestamp(self):
+        '''Timestamp of the readback value'''
+        return self._metadata['timestamp']
+
+    @property
+    def connected(self):
+        'Is the signal connected to its associated hardware, and ready to use?'
+        return self._metadata['connected'] # and not self._destroyed
 
     def set(self, value):
         '''Set value of signal. Sets value of redis key to the serialized dictionary of value and timestamp.
@@ -108,7 +140,6 @@ class RedisSignal(OphydObject):
         val = self.read()
         return {
             k: {
-                # TODO make this better?
                 "source": f"redis://{self._r.connection_pool.connection_kwargs['host']}:{self._key}",
                 "dtype": data_type(v["value"]),
                 "shape": data_shape(v["value"]),
