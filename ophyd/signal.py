@@ -377,8 +377,10 @@ class Signal(OphydObject):
 
         if self._set_thread is not None:
             raise RuntimeError(
-                "Another set() call is still in progress " f"for {self.name}"
-            )
+                f"Another set() call is still in progress for {self.name}. "
+                "If this is due to some transient failure, verify that the "
+                "device is configured the way you expect, and use clear_set() "
+                "to ignore and abandon the previous set() operation.")
 
         st = Status(self)
         self._status = st
@@ -386,6 +388,15 @@ class Signal(OphydObject):
         self._set_thread.daemon = True
         self._set_thread.start()
         return self._status
+
+    def clear_set(self):
+        """
+        Escape 'Another set in progress'.
+        """
+        warnings.warn(
+            "A previous set() operaiton is being ignored. Only this do this "
+            "when debugging or recovering from a hardware failure.")
+        self._set_thread = None
 
     @property
     def value(self):
