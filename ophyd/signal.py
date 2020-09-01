@@ -404,7 +404,7 @@ class Signal(OphydObject):
         self._poison_pill.set()  # Break the polling loop in set_and_wait.
         self._set_thread.join()  # Wait for that to take effect.
         warnings.warn(
-            "A previous set() operaiton is being ignored. Only this do this "
+            "A previous set() operation is being ignored. Only this do this "
             "when debugging or recovering from a hardware failure.")
 
     @property
