@@ -207,8 +207,13 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
+class AbandonedSet(OpException):
+    ...
+
+
 def _set_and_wait(
-    signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None, **kwargs
+    signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None,
+        *, poison_pill=None, **kwargs
 ):
     """Set a signal to a value and wait until it reads correctly.
 
@@ -228,6 +233,8 @@ def _set_and_wait(
         allowed relative tolerance between the readback and setpoint values
     atol : float, optional
         allowed absolute tolerance between the readback and setpoint values
+    poison_pill : threading.Event
+        When set, give up and raise AbandonedSet.
     kwargs :
         additional keyword arguments will be passed directly into the
         underlying "signal.put" call.
@@ -238,11 +245,14 @@ def _set_and_wait(
     """
     signal.put(val, **kwargs)
     _wait_for_value(
-        signal, val, poll_time=poll_time, timeout=timeout, rtol=rtol, atol=atol
+        signal, val, poll_time=poll_time, timeout=timeout, rtol=rtol, atol=atol,
+        poison_pill=poison_pill
     )
 
 
-def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None):
+def _wait_for_value(
+        signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None, *, poison_pill
+):
     """Wait for a signal to match a value.
 
     For floating point values, it is strongly recommended to set a tolerance.
@@ -296,16 +306,16 @@ def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=Non
         within_str = ""
 
     while (val is not None and current_value is None) or not _compare_maybe_enum(
-        val, current_value, enum_strings, atol, rtol
+            val, current_value, enum_strings, atol, rtol
     ):
-        logger.debug(
-            "Waiting for %s to be set from %r to %r%s...",
-            signal.name,
-            current_value,
-            val,
-            within_str,
-        )
-        ttime.sleep(poll_time)
+        logger.debug("Waiting for %s to be set from %r to %r%s...",
+                     signal.name, current_value, val, within_str)
+        # Sleep.
+        if poison_pill is None:
+            ttime.sleep(poll_time)
+        elif poison_pill.wait(poll_time):
+            # This set operation has been abandoned.
+            raise AbandonedSet
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get(**get_kwargs)

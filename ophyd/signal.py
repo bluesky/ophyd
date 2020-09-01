@@ -124,6 +124,7 @@ class Signal(OphydObject):
         self._destroyed = False
 
         self._set_thread = None
+        self._poison_pill = None
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
@@ -326,9 +327,11 @@ class Signal(OphydObject):
             kwargs,
         )
 
+        poison_pill = threading.Event()
+
         def set_thread():
             try:
-                self._set_and_wait(value, timeout, **kwargs)
+                self._set_and_wait(value, timeout, poison_pill=poison_pill, **kwargs)
             except TimeoutError:
                 success = False
                 self.log.warning(
@@ -372,6 +375,7 @@ class Signal(OphydObject):
                 th = self._set_thread
                 # these two must be in this order to avoid a race condition
                 self._set_thread = None
+                self._poison_pill = None
                 st._finished(success=success)
                 del th
 
@@ -387,16 +391,21 @@ class Signal(OphydObject):
         self._set_thread = self.cl.thread_class(target=set_thread)
         self._set_thread.daemon = True
         self._set_thread.start()
+        self._poison_pill = poison_pill
         return self._status
 
     def clear_set(self):
         """
         Escape 'Another set in progress'.
         """
+        if self._poison_pill is None:
+            # Nothing to do
+            return
+        self._poison_pill.set()  # Break the polling loop in set_and_wait.
+        self._set_thread.join()  # Wait for that to take effect.
         warnings.warn(
             "A previous set() operaiton is being ignored. Only this do this "
             "when debugging or recovering from a hardware failure.")
-        self._set_thread = None
 
     @property
     def value(self):
