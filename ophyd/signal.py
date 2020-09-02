@@ -125,6 +125,8 @@ class Signal(OphydObject):
 
         self._set_thread = None
         self._poison_pill = None
+        self._set_thread_finalizer = None
+
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
@@ -375,6 +377,7 @@ class Signal(OphydObject):
                 th = self._set_thread
                 # these two must be in this order to avoid a race condition
                 self._set_thread = None
+                self._set_thread_finalizer = None
                 self._poison_pill = None
                 st._finished(success=success)
                 del th
@@ -392,6 +395,10 @@ class Signal(OphydObject):
         self._set_thread.daemon = True
         self._set_thread.start()
         self._poison_pill = poison_pill
+        self._set_thread_finalizer = None
+        # If we get gc-ed, stop the thread. This helps ensure that the process
+        # exits cleanly without dangling threads.
+        self._set_thread_finalizer = weakref.finalize(self, poison_pill.set)
         return self._status
 
     def clear_set(self):

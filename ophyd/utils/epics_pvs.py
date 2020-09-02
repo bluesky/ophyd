@@ -315,7 +315,9 @@ def _wait_for_value(
             ttime.sleep(poll_time)
         elif poison_pill.wait(poll_time):
             # This set operation has been abandoned.
-            raise AbandonedSet
+            raise AbandonedSet(
+                f"The signal {signal} was set to {val} but it does not seem "
+                "to have finished. We are no longer watching for it.")
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get(**get_kwargs)
