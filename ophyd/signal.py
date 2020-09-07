@@ -1044,7 +1044,7 @@ class EpicsSignalBase(Signal):
         except TimeoutError as err:
             raise ConnectionTimeoutError(
                 f"Failed to connect to {pv.pvname} "
-                f"within {connection_timeout:.2} sec") from err
+                f"within {connection_timeout:.2f} sec") from err
         # Pyepics returns None when a read request times out.  Raise a
         # TimeoutError on its behalf.
         self.control_layer_log.info(
@@ -1057,7 +1057,7 @@ class EpicsSignalBase(Signal):
         if info is None:
             raise ReadTimeoutError(
                 f"Failed to read {pv.pvname} "
-                f"within {timeout:.2} sec")
+                f"within {timeout:.2f} sec")
 
         return info
 
