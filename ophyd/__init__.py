@@ -76,6 +76,11 @@ from .ophydobj import (Kind, select_version,  # noqa: F401, F402, E402
 
 # Signals
 from .signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)  # noqa: F401, F402, E402
+try:
+    from .redis_signal import RedisSignal
+except ImportError:
+    pass
+
 
 # Positioners
 from .positioner import (PositionerBase, SoftPositioner)  # noqa: F401, F402, E402

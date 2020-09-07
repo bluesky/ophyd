@@ -13,10 +13,10 @@ def test_redis_signal():
     value = 'test_value'
     new_value = 10
 
-    signal = RedisSignal(name, r=r, timestamp=start_t)
+    signal = RedisSignal(key, r=r, initial_value=value, timestamp=start_t)
 
     assert signal.connected
-    assert signal.name == name
+    assert signal.name == key
     assert signal.get() == value
     assert signal.timestamp == start_t
 
@@ -25,7 +25,7 @@ def test_redis_signal():
     assert signal.get() == new_value
     # reset value
     signal.put(value)
-    assert signal.read()['value'] == value
+    assert signal.read()[key]["value"] == value
     # signal.describe()
     # signal.read_configuration()
     # signal.describe_configuration()

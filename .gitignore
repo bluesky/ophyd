@@ -63,6 +63,10 @@ target/
 .idea/
 .ropeproject
 
+# VSCode
+.devcontainer/
+.vscode/
+
 # notebook checkpoints
 .ipynb_checkpoints
 

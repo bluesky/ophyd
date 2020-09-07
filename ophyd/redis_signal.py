@@ -17,13 +17,13 @@ class NoEventNotifications(EnvironmentError):
 
 
 class RedisSignal(OphydObject):
-    '''Redis backed Ophyd Signal
+    """Redis backed Ophyd Signal
 
     Handles:
 
       * Store and retrieving from redis database.
       * Setting up subscription thread.
-      
+
 
     Parameters
     ----------
@@ -34,11 +34,11 @@ class RedisSignal(OphydObject):
     name : str, optional
         The name of the object. Default name is the key.
     inital_value : serializable, optional
-        Value to set redis signal if not already initialised in Redis. If 
+        Value to set redis signal if not already initialised in Redis. If
     serializer_deserializer : tuple of callables, optional
         A pair of serializer/deserializer callables. Default is json.dumps/json.loads.
 
-    '''
+    """
 
     SUB_VALUE = 'value'
     SUB_META = 'meta'
@@ -46,7 +46,9 @@ class RedisSignal(OphydObject):
     _metadata_keys = None
     _core_metadata_keys = ('connected', 'timestamp')
 
-    def __init__(self, key, *, r, initial_value=None, serializer_deserializer=None, name=None, timestamp=None, **kwargs):
+    def __init__(
+        self, key, *, r, initial_value=None, serializer_deserializer=None, name=None, timestamp=None, **kwargs
+    ):
         if name is None:
             name = key
         super().__init__(name=name, **kwargs)
@@ -97,22 +99,23 @@ class RedisSignal(OphydObject):
     @property
     def connected(self):
         'Is the signal connected to its associated hardware, and ready to use?'
-        return self._metadata['connected'] # and not self._destroyed
+        return self._metadata['connected']  # and not self._destroyed
 
     def set(self, value):
-        '''Set value of signal. Sets value of redis key to the serialized dictionary of value and timestamp.
+        """Set value of signal. Sets value of redis key to the serialized dictionary of value and timestamp.
 
         Returns
         -------
         st : Status
             The status object is set to finished on successful write to redis, or an exception is set if redis.ConnectionError is raised.
-        '''
+        """
         st = Status(self)
         try:
             server_time = self._r.time()
             ts = server_time[0] + server_time[1] / 1000000
             self._r.set(
-                self._key, self._serializer({"value": value, "timestamp": ts}),
+                self._key,
+                self._serializer({"value": value, "timestamp": ts}),
             )
         except redis.ConnectionError as e:
             st.set_exception(e)
@@ -161,23 +164,23 @@ class RedisSignal(OphydObject):
             return {}
 
     def subscribe(self, *args, **kwargs):
-        ''' Subscribe to redis signal. If key is updated in redis, subscription callback(s) will be fired.
+        """Subscribe to redis signal. If key is updated in redis, subscription callback(s) will be fired.
 
         Handles:
-            
+
             * Starting subscription thread if not already running.
-        
+
         Raises
         -------
         NoEventNotifications
             If notify-keyspace-events is not set to AK or $K on the redis server.
-        
+
         Returns
         -------
         cid : int
             id of callback, can be passed to `unsubscribe` to remove the
             callback
-        '''
+        """
         events = self._r.config_get()["notify-keyspace-events"]
         if not search("^(?=.*(A|\$))(?=.*K)", events):
             raise NoEventNotifications
@@ -224,8 +227,7 @@ class RedisSignal(OphydObject):
 
 
 class RedisSignalFactory:
-    ''' Factory to return RedisSignals
-    '''
+    """Factory to return RedisSignals"""
 
     def __init__(self, r):
         if not isinstance(r, redis.StrictRedis):
@@ -239,8 +241,7 @@ class RedisSignalFactory:
         return self.__getattr__(key, initial_value)
 
     def get_signals_pattern(self, pattern: str):
-        ''' Returns dictionary of signals with keys matching pattern
-        '''
+        """Returns dictionary of signals with keys matching pattern"""
         return {k.decode('utf-8'): self.get(k.decode('utf-8')) for k in self._redis.scan_iter(pattern)}
 
 
