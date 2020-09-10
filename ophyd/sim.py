@@ -477,7 +477,7 @@ class SynAxisNoHints(SynAxis):
         raise AttributeError
 
 
-class SynGauss(Device):
+class Gauss(Device):
     """
     Evaluate a point on a Gaussian based on the value of a motor.
 
@@ -505,8 +505,9 @@ class SynGauss(Device):
     motor = SynAxis(name='motor')
     det = SynGauss('det', motor, 'motor', center=0, Imax=1, sigma=1)
     """
+
     def _compute(self):
-        m = self._motor.read()[self._motor_field]['value']
+        m = self._get_motor()
         # we need to do this one at a time because
         #   - self.read() may be screwed with by the user
         #   - self.get() would cause infinite recursion
@@ -531,9 +532,11 @@ class SynGauss(Device):
                 enum_strings=('none', 'poisson', 'uniform'))
     noise_multiplier = Cpt(Signal, value=1, kind='config')
 
-    def __init__(self, name, motor, motor_field, center, Imax,
-                 *, random_state=None,
+    def _get_motor(self):
+        return self.parent.motor.get()
 
+    def __init__(self, name, center=0, Imax=1,
+                 *, random_state=None,
                  **kwargs):
         set_later = {}
         for k in ('sigma', 'noise', 'noise_multiplier'):
@@ -541,8 +544,6 @@ class SynGauss(Device):
             if v is not None:
                 set_later[k] = v
         super().__init__(name=name, **kwargs)
-        self._motor = motor
-        self._motor_field = motor_field
         self.center.put(center)
         self.Imax.put(Imax)
 
@@ -584,6 +585,32 @@ class SynGauss(Device):
     @exposure_time.setter
     def exposure_time(self, v):
         self.val.exposure_time = v
+
+class SynGauss(Gauss):
+    motor = None
+
+    def __init__(self, name, motor, motor_field, center, Imax,
+                 *, random_state=None,
+
+                 **kwargs):
+        self._motor = motor
+        self._motor_field = motor_field
+        super().__init__(name=name, **kwargs)
+
+    def _get_motor(self):
+        return self._motor.read()[self._motor_field]['value']
+
+class MotorGauss(Device):
+    motor = Cpt(SynAxis)
+    det = Cpt(Gauss)
+
+    def __init__(self, name, center=0, Imax=1,
+                 *, random_state=None,
+                 **kwargs):
+        super().__init__(name=name, **kwargs)
+        self.det.center.put(center)
+        self.det.Imake.put(Imax)
+
 
 
 class Syn2DGauss(Device):
