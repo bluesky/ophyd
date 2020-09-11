@@ -787,7 +787,8 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_
     capture = Cpt(SignalWithRBV, 'Capture')
     delete_driver_file = Cpt(SignalWithRBV, 'DeleteDriverFile', kind='config')
     file_format = Cpt(SignalWithRBV, 'FileFormat', kind='config')
-    file_name = Cpt(EpicsPathSignal, 'FileName', string=True, kind='config')
+    file_name = Cpt(EpicsPathSignal, 'FileName', string=True, kind='config',
+                    path_semantics='posix')
     file_number = Cpt(SignalWithRBV, 'FileNumber')
     file_number_sync = Cpt(EpicsSignal, 'FileNumber_Sync')
     file_number_write = Cpt(EpicsSignal, 'FileNumber_write')
