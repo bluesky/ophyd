@@ -1,9 +1,9 @@
 import pytest
 
 from ..areadetector.paths import EpicsPathSignal
-from ..areadetector.plugins import FilePlugin
-from .. import wait, SingleTrigger, SimDetector
-from ..device import (Component as Cpt,)
+# from ..areadetector.plugins import FilePlugin
+# from .. import wait, SingleTrigger, SimDetector
+# from ..device import (Component as Cpt,)
 
 
 def test_path_semantics_exception():
