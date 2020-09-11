@@ -17,7 +17,8 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         ColorConvPlugin, ProcessPlugin,
                                         OverlayPlugin, ROIPlugin,
                                         TransformPlugin, NetCDFPlugin,
-                                        TIFFPlugin, JPEGPlugin, HDF5Plugin)
+                                        TIFFPlugin, JPEGPlugin, HDF5Plugin,
+                                        FilePlugin)
 from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite,
@@ -615,3 +616,27 @@ def test_ndderivedsignal_with_parent():
     det.height.put(2)
     assert cb.called
     assert det.shaped_image._readback.shape == (6, 2)
+
+
+@pytest.mark.adsim
+@pytest.mark.parametrize('paths',
+                         [('/some/path/here'),
+                          ('/here/is/another/')
+                          ])
+def test_posix_path(paths, cleanup, ad_prefix):
+    class MyDetector(SingleTrigger, SimDetector):
+        fp1 = Cpt(FilePlugin, '')
+
+    det = MyDetector(ad_prefix, name='test')
+    print(det.fp1.plugin_type)
+    cleanup.add(det)
+
+    det.wait_for_connection()
+
+    # det.cam.path_semantics = 'posix'
+    print(det.cam.path_semantics)
+    det.cam.file_path.put(paths)
+    det.stage()
+    st = det.trigger()
+    wait(st, timeout=5)
+    det.unstage()

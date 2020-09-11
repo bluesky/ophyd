@@ -8,6 +8,7 @@ from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
+from ophyd.areadetector.paths import EpicsPathSignal
 
 logger = logging.getLogger(__name__)
 
@@ -558,3 +559,21 @@ def test_epicssignal_pv_reuse(cleanup, pvname, count):
 
     if get_cl().name == 'pyepics':
         assert len(set(id(sig._read_pv) for sig in signals)) == 1
+
+
+@pytest.mark.parametrize('path',
+                         [('C:\\some\\path\\here'),
+                          ('D:\\here\\is\\another\\')
+                          ])
+def test_windows_paths(path):
+    signal_nt = EpicsPathSignal('TEST', path_semantics='nt')
+    signal_nt.set(path).wait(3)
+
+
+@pytest.mark.parametrize('path',
+                         [('/some/path/here'),
+                          ('/here/is/another/')
+                          ])
+def test_posix_paths(path):
+    signal_nt = EpicsPathSignal('TEST', path_semantics='posix')
+    signal_nt.set(path).wait(3)
