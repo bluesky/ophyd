@@ -103,14 +103,14 @@ class EpicsPathSignal(EpicsSignal):
 
     @property
     def path_semantics(self):
-        return self.path_semantics
+        return self._path_semantics
 
     @path_semantics.setter
     def path_semantics(self, value):
         if value not in OS_NAME_TO_PATH_CLASS:
             raise ValueError(f'Unknown path semantics: {value}. '
                              f'Options: {OS_NAME_TO_PATH_CLASS}')
-        self.path_semantics = value
+        self._path_semantics = value
 
     def _repr_info(self):
         yield from super()._repr_info()
