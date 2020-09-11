@@ -95,14 +95,22 @@ class EpicsPathSignal(EpicsSignal):
         if string is not True:
             raise ValueError('Specifying an EpicsPathSignal with string=False'
                              ' does not make sense')
-        if path_semantics not in OS_NAME_TO_PATH_CLASS:
-            raise ValueError(f'Unknown path semantics: {path_semantics}. '
-                             f'Options: {OS_NAME_TO_PATH_CLASS}')
 
         super().__init__(write_pv=write_pv,
                          read_pv=f'{write_pv}_RBV',
                          string=True,
                          **kwargs)
+
+    @property
+    def path_semantics(self):
+        return self.path_semantics
+
+    @path_semantics.setter
+    def path_semantics(self, value):
+        if value not in OS_NAME_TO_PATH_CLASS:
+            raise ValueError(f'Unknown path semantics: {value}. '
+                             f'Options: {OS_NAME_TO_PATH_CLASS}')
+        self.path_semantics = value
 
     def _repr_info(self):
         yield from super()._repr_info()
