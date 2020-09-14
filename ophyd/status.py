@@ -640,7 +640,9 @@ class SubscriptionStatus(DeviceStatus):
 
     callback : callable
         Callback that takes event information and returns a boolean. Signature
-        should be `f(*args, **kwargs)`
+        should be ``f(*, old_value, value, **kwargs)``. The arguments
+        old_value and value will be passed in by keyword, so their order does
+        not matter.
 
     event_type : str, optional
         Name of event type to check whether the device has finished succesfully
