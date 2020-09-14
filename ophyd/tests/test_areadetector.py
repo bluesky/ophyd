@@ -18,7 +18,8 @@ from ophyd.areadetector.plugins import (ImagePlugin, StatsPlugin,
                                         OverlayPlugin, ROIPlugin,
                                         TransformPlugin, NetCDFPlugin,
                                         TIFFPlugin, JPEGPlugin, HDF5Plugin,
-                                        FilePlugin)
+                                        # FilePlugin
+                                        )
 from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF, FileStoreIterativeWrite,
@@ -633,8 +634,6 @@ def test_posix_path(paths, cleanup, ad_prefix):
 
     det.wait_for_connection()
 
-    # det.tiff1.file_semantics = 'posix'
-    print(det.tiff1.path_semantics)
     det.tiff1.file_path.put(paths)
     # det.cam.file_path.put(paths)
     det.stage()
