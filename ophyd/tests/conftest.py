@@ -126,6 +126,7 @@ def signal_test_ioc(prefix, request):
                bool_enum=f'{prefix}bool_enum',
                alarm_status=f'{prefix}alarm_status',
                set_severity=f'{prefix}set_severity',
+               path=f'{prefix}path',
                )
 
     pytest.importorskip('caproto.tests.conftest')

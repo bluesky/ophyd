@@ -30,6 +30,8 @@ class SignalTestIOC(PVGroup):
         await self.read_only.alarm.write(
             severity=severity, status=self.alarm_status.value)
 
+    path = pvproperty(value='/path/here')
+
 
 if __name__ == '__main__':
     ioc_options, run_options = ioc_arg_parser(

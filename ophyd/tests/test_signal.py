@@ -561,19 +561,34 @@ def test_epicssignal_pv_reuse(cleanup, pvname, count):
         assert len(set(id(sig._read_pv) for sig in signals)) == 1
 
 
-@pytest.mark.parametrize('path',
+@pytest.fixture(scope='function')
+def path_signal(cleanup, signal_test_ioc):
+    sig = EpicsPathSignal(signal_test_ioc.pvs['path'], name='path',
+                          path_semantics='posix')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.mark.parametrize('paths',
                          [('C:\\some\\path\\here'),
-                          ('D:\\here\\is\\another\\')
+                          ('D:\\here\\is\\another\\'),
+                          ('C:/yet/another/path'),
+                          ('D:/more/paths/here/')
                           ])
-def test_windows_paths(path):
-    signal_nt = EpicsPathSignal('TEST', path_semantics='nt')
-    signal_nt.set(path).wait(3)
+def test_windows_paths(paths, cleanup, signal_test_ioc):
+    sig = EpicsPathSignal(signal_test_ioc.pvs['path'], name='path',
+                          path_semantics='nt')
+    cleanup.add(sig)
+    sig.set(paths).wait(3)
 
 
-@pytest.mark.parametrize('path',
+@pytest.mark.parametrize('paths',
                          [('/some/path/here'),
                           ('/here/is/another/')
                           ])
-def test_posix_paths(path):
-    signal_nt = EpicsPathSignal('TEST', path_semantics='posix')
-    signal_nt.set(path).wait(3)
+def test_posix_paths(paths, cleanup, signal_test_ioc):
+    sig = EpicsPathSignal(signal_test_ioc.pvs['path'], name='path',
+                          path_semantics='posix')
+    cleanup.add(sig)
+    sig.set(paths).wait(3)
