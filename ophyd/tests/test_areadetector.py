@@ -633,9 +633,10 @@ def test_posix_path(paths, cleanup, ad_prefix):
 
     det.wait_for_connection()
 
-    # det.cam.path_semantics = 'posix'
-    print(det.cam.path_semantics)
-    det.cam.file_path.put(paths)
+    # det.tiff1.file_semantics = 'posix'
+    print(det.tiff1.path_semantics)
+    det.tiff1.file_path.put(paths)
+    # det.cam.file_path.put(paths)
     det.stage()
     st = det.trigger()
     wait(st, timeout=5)
