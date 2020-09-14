@@ -625,10 +625,10 @@ def test_ndderivedsignal_with_parent():
                           ])
 def test_posix_path(paths, cleanup, ad_prefix):
     class MyDetector(SingleTrigger, SimDetector):
-        fp1 = Cpt(FilePlugin, '')
+        tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
 
     det = MyDetector(ad_prefix, name='test')
-    print(det.fp1.plugin_type)
+    print(det.tiff1.plugin_type)
     cleanup.add(det)
 
     det.wait_for_connection()
