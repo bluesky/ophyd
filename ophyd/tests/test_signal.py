@@ -576,19 +576,14 @@ def path_signal(cleanup, signal_test_ioc):
                           ('C:/yet/another/path'),
                           ('D:/more/paths/here/')
                           ])
-def test_windows_paths(paths, cleanup, signal_test_ioc):
-    sig = EpicsPathSignal(signal_test_ioc.pvs['path'], name='path',
-                          path_semantics='nt')
-    cleanup.add(sig)
-    sig.set(paths).wait(3)
+def test_windows_paths(paths, path_signal):
+    path_signal.path_semantics = 'nt'
+    path_signal.set(paths).wait(3)
 
 
 @pytest.mark.parametrize('paths',
                          [('/some/path/here'),
                           ('/here/is/another/')
                           ])
-def test_posix_paths(paths, cleanup, signal_test_ioc):
-    sig = EpicsPathSignal(signal_test_ioc.pvs['path'], name='path',
-                          path_semantics='posix')
-    cleanup.add(sig)
-    sig.set(paths).wait(3)
+def test_posix_paths(paths, path_signal):
+    path_signal.set(paths).wait(3)
