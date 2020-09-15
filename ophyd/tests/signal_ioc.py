@@ -30,7 +30,13 @@ class SignalTestIOC(PVGroup):
         await self.read_only.alarm.write(
             severity=severity, status=self.alarm_status.value)
 
-    path = pvproperty(value='/path/here')
+    INITIAL_PATH = '/path/here'
+    path = pvproperty(value=INITIAL_PATH, max_length=255)
+    path_RBV = pvproperty(value=INITIAL_PATH, max_length=255)
+
+    @path.putter
+    async def path(self, instance, value):
+        await self.path_RBV.write(value=value)
 
 
 if __name__ == '__main__':
