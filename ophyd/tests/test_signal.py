@@ -587,3 +587,8 @@ def test_windows_paths(paths, path_signal):
                           ])
 def test_posix_paths(paths, path_signal):
     path_signal.set(paths).wait(3)
+
+
+def test_path_semantics_exception():
+    with pytest.raises(ValueError):
+        EpicsPathSignal('TEST', path_semantics='not_a_thing')
