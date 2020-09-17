@@ -10,6 +10,11 @@ OS_NAME_TO_PATH_CLASS = {
     'posix': pathlib.PurePosixPath,
 }
 
+OS_SEPARATORS = {
+    'nt': '\\',
+    'posix': '/'
+}
+
 
 def path_compare(path_a, path_b, semantics):
     '''
@@ -59,6 +64,9 @@ def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
     ------
     TimeoutError if timeout is exceeded
     """
+    # Make sure val has trailing separator before it's set
+    if not any(str(val).endswith(sep) for sep in OS_SEPARATORS.values()):
+        val = str(val) + OS_SEPARATORS[path_semantics]
     signal.put(val)
     deadline = ttime.time() + timeout if timeout is not None else None
     current_value = signal.get()
