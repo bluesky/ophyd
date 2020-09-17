@@ -427,7 +427,7 @@ class FileStorePluginBase(FileStoreBase):
         # These must be set before parent is staged (specifically
         # before capture mode is turned on. They will not be reset
         # on 'unstage' anyway.
-        set_and_wait(self.file_path, write_path)
+        self.file_path.set(write_path).wait()
         set_and_wait(self.file_name, filename)
         set_and_wait(self.file_number, 0)
         super().stage()
