@@ -258,7 +258,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @read_path_template.setter
     def read_path_template(self, val):
-        self._read_path_template = val
+        self._read_path_template = os.path.join(val, "")
 
     @property
     def write_path_template(self):
