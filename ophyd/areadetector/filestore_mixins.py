@@ -253,12 +253,14 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                 raise ValueError(
                     ('root: {!r} in not consistent with '
                      'read_path_template: {!r}').format(rootp, ret))
-
+        ret = os.path.join(ret, "")
         return str(ret)
 
     @read_path_template.setter
     def read_path_template(self, val):
-        self._read_path_template = os.path.join(val, "")
+        if val is not None:
+            val = os.path.join(val, "")
+        self._read_path_template = val
 
     @property
     def write_path_template(self):
