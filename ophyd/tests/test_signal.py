@@ -8,6 +8,7 @@ from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
+from ophyd.areadetector.paths import EpicsPathSignal
 
 logger = logging.getLogger(__name__)
 
@@ -558,3 +559,36 @@ def test_epicssignal_pv_reuse(cleanup, pvname, count):
 
     if get_cl().name == 'pyepics':
         assert len(set(id(sig._read_pv) for sig in signals)) == 1
+
+
+@pytest.fixture(scope='function')
+def path_signal(cleanup, signal_test_ioc):
+    sig = EpicsPathSignal(signal_test_ioc.pvs['path'], name='path',
+                          path_semantics='posix')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.mark.parametrize('paths',
+                         [('C:\\some\\path\\here'),
+                          ('D:\\here\\is\\another\\'),
+                          ('C:/yet/another/path'),
+                          ('D:/more/paths/here/')
+                          ])
+def test_windows_paths(paths, path_signal):
+    path_signal.path_semantics = 'nt'
+    path_signal.set(paths).wait(3)
+
+
+@pytest.mark.parametrize('paths',
+                         [('/some/path/here'),
+                          ('/here/is/another/')
+                          ])
+def test_posix_paths(paths, path_signal):
+    path_signal.set(paths).wait(3)
+
+
+def test_path_semantics_exception():
+    with pytest.raises(ValueError):
+        EpicsPathSignal('TEST', path_semantics='not_a_thing')

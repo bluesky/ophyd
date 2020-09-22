@@ -46,27 +46,6 @@ def new_short_uid():
     return '-'.join(new_uid().split('-')[:-1])
 
 
-def _ensure_trailing_slash(path, path_semantics=None):
-    """
-    'a/b/c' -> 'a/b/c/'
-
-    EPICS adds the trailing slash itself if we do not, so in order for the
-    setpoint filepath to match the readback filepath, we need to add the
-    trailing slash ourselves.
-    """
-    if path_semantics == 'posix':
-        return f'{PurePosixPath(path)}/'
-    elif path_semantics == 'windows':
-        return f'{PureWindowsPath(path)}\\'
-    elif path_semantics is None:
-        # We are forced to guess which path semantics to use.
-        # Guess that the AD driver is running on the same OS as this client.
-        return f'{PurePath(path)}{os.path.sep}'
-    else:
-        # This should never happen, but just for the sake of future-proofing...
-        raise ValueError(f"Cannot handle path_semantics={path_semantics}")
-
-
 def resource_factory(spec, root, resource_path, resource_kwargs,
                      path_semantics):
     """Helper to create resource document and datum factory.
@@ -274,13 +253,13 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                 raise ValueError(
                     ('root: {!r} in not consistent with '
                      'read_path_template: {!r}').format(rootp, ret))
-
-        return _ensure_trailing_slash(str(ret))
+        ret = os.path.join(ret, "")
+        return str(ret)
 
     @read_path_template.setter
     def read_path_template(self, val):
         if val is not None:
-            val = _ensure_trailing_slash(val)
+            val = os.path.join(val, "")
         self._read_path_template = val
 
     @property
@@ -306,11 +285,11 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                     ('root: {!r} in not consistent with '
                      'read_path_template: {!r}').format(rootp, ret))
 
-        return _ensure_trailing_slash(str(ret), path_semantics=self.path_semantics)
+        return str(ret)
 
     @write_path_template.setter
     def write_path_template(self, val):
-        self._write_path_template = _ensure_trailing_slash(val, path_semantics=self.path_semantics)
+        self._write_path_template = val
 
     def stage(self):
         self._locked_key_list = False
@@ -450,7 +429,7 @@ class FileStorePluginBase(FileStoreBase):
         # These must be set before parent is staged (specifically
         # before capture mode is turned on. They will not be reset
         # on 'unstage' anyway.
-        set_and_wait(self.file_path, write_path)
+        self.file_path.set(write_path).wait()
         set_and_wait(self.file_name, filename)
         set_and_wait(self.file_number, 0)
         super().stage()

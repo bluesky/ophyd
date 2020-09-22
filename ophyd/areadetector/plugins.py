@@ -37,7 +37,7 @@ from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import GenerateDatumInterface
 from ..utils import enum, set_and_wait
 from ..utils.errors import (PluginMisconfigurationError, DestroyedError, UnprimedPlugin)
-
+from .paths import EpicsPathSignal
 
 logger = logging.getLogger(__name__)
 
@@ -791,7 +791,8 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_
     file_number = Cpt(SignalWithRBV, 'FileNumber')
     file_number_sync = Cpt(EpicsSignal, 'FileNumber_Sync')
     file_number_write = Cpt(EpicsSignal, 'FileNumber_write')
-    file_path = Cpt(SignalWithRBV, 'FilePath', string=True, kind='config')
+    file_path = Cpt(EpicsPathSignal, 'FilePath', string=True, kind='config',
+                    path_semantics='posix')
     file_path_exists = Cpt(EpicsSignalRO, 'FilePathExists_RBV', kind='config')
     file_template = Cpt(SignalWithRBV, 'FileTemplate', string=True, kind='config')
     file_write_mode = Cpt(SignalWithRBV, 'FileWriteMode', kind='config')
