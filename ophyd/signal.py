@@ -1,4 +1,5 @@
 # vi: ts=4 sw=4
+import os
 import time
 import threading
 import warnings
@@ -346,9 +347,11 @@ class Signal(OphydObject):
             # If we are here, then we have never turned the crank on this Signal.  The current
             # behavior is to fallback to poking the control system to get the value, however this
             # is problematic and we may want to change in the future so warn verbosely
-            warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
-                          "which has not gotten value from the control system yet.\n" + fix_msg,
-                          stacklevel=2)
+            if not os.getenv("OPHYD_SILENCE_VALUE_WARNING") == "1":
+                warnings.warn(f"You have called obj.value on {self} "
+                              f"({self.name}.{self.dotted_name}) "
+                              "which has not gotten value from the control system yet.\n" + fix_msg,
+                              stacklevel=2)
             return self.get()
         else:
             # if we are in here then we have put/get at least once and/or are monitored
@@ -357,9 +360,11 @@ class Signal(OphydObject):
                             )
             if not has_monitors:
                 # If we are not monitored, then warn that this may change in the future.
-                warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
-                              "which is a non-monitored signal.\n" + fix_msg,
-                              stacklevel=2)
+                if not os.getenv("OPHYD_SILENCE_VALUE_WARNING") == "1":
+                    warnings.warn(f"You have called obj.value on {self} "
+                                  f"({self.name}.{self.dotted_name}) "
+                                  "which is a non-monitored signal.\n" + fix_msg,
+                                  stacklevel=2)
                 return self.get()
 
             # else return our cached value and assume something else is keeping us up-to-date
