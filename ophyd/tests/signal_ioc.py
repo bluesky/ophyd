@@ -37,6 +37,7 @@ class SignalTestIOC(PVGroup):
     @path.putter
     async def path(self, instance, value):
         await self.path_RBV.write(value=value)
+        return value
 
 
 if __name__ == '__main__':
