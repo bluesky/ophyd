@@ -11,32 +11,44 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import os
+import pathlib
+import sys
+from datetime import datetime
+
 import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, pathlib.Path(__file__).parents[2])
+
+import ophyd  # noqa  # isort: skip
+import ophyd.docs  # noqa  # isort: skip
 
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.0'
+needs_sphinx = '3.2.1'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.doctest', 'sphinx.ext.autosummary',
-              'IPython.sphinxext.ipython_directive',
-              'IPython.sphinxext.ipython_console_highlighting',
-              'matplotlib.sphinxext.plot_directive',
-              'sphinx.ext.inheritance_diagram',
-              'numpydoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx']
+extensions = [
+    'IPython.sphinxext.ipython_console_highlighting',
+    'IPython.sphinxext.ipython_directive',
+    'matplotlib.sphinxext.plot_directive',
+    'numpydoc',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.inheritance_diagram',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.mathjax',
+]
 
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = [ophyd.docs.templates.PATH]
 
 # The suffix of source filenames.
 source_suffix = '.rst'
@@ -48,15 +60,16 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'ophyd'
-copyright = u'2014, Brookhaven National Lab'
+project = 'ophyd'
+author = 'Brookhaven National Laboratory'
+copyright = f'{datetime.now().year}, {author}'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-import ophyd
+
 version = ophyd.__version__
 # The full version, including alpha/beta/rc tags.
 
@@ -193,8 +206,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'ophyd.tex', u'ophyd Documentation',
-   u'Brookhaven National Lab', 'manual'),
+  ('index', 'ophyd.tex', 'ophyd Documentation',
+   'Brookhaven National Lab', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -223,8 +236,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'ophyd', u'ophyd Documentation',
-     [u'Brookhaven National Lab'], 1)
+    ('index', 'ophyd', 'ophyd Documentation',
+     ['Brookhaven National Lab'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -237,8 +250,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'ophyd', u'ophyd Documentation',
-   u'Brookhaven National Lab', 'ophyd', 'One line description of project.',
+  ('index', 'ophyd', 'ophyd Documentation',
+   'Brookhaven National Lab', 'ophyd', '',
    'Miscellaneous'),
 ]
 
@@ -261,9 +274,19 @@ intersphinx_mapping = {
 
 #inheritance_graph_attrs = dict(rankdir="LR")
 #inheritance_node_attrs = dict(fontsize=24)
-autosummary_generate = True
 autodoc_docstring_signature = True
 autoclass_content = 'both'
 # numpydoc config
 
+autodoc_default_options = ophyd.docs.autodoc_default_options
+autosummary_generate = True
+autoclass_content = 'init'  # otherwise duplicates will be generated
+autosummary_context = {
+    **ophyd.docs.autosummary_context
+}
+html_context = autosummary_context
 numpydoc_show_class_members = False
+
+
+def setup(app):
+    ophyd.docs.setup(app)

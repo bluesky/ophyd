@@ -3,5 +3,5 @@ ipython
 ipywidgets
 matplotlib
 numpydoc
-sphinx==1.6.7
+sphinx >=3.2.1
 sphinx_rtd_theme
