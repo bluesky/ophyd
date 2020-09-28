@@ -61,6 +61,7 @@ __all__ = [
     'Overlay',
     'OverlayPlugin',
     'PluginBase',
+    'FileBase',
     'PosPlugin',
     'ProcessPlugin',
     'PvaPlugin',
@@ -776,10 +777,8 @@ class TransformPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     )
 
 
-class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_type='ADCore'):
+class FileBase:
     _default_suffix = ''
-    _html_docs = ['NDPluginFile.html']
-    _plugin_type = 'NDPluginFile'
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
     auto_increment = Cpt(SignalWithRBV, 'AutoIncrement', kind='config')
@@ -803,6 +802,12 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_
     write_file = Cpt(SignalWithRBV, 'WriteFile')
     write_message = Cpt(EpicsSignal, 'WriteMessage', string=True)
     write_status = Cpt(EpicsSignal, 'WriteStatus')
+
+
+class FilePlugin(PluginBase, FileBase, GenerateDatumInterface, version=(1, 9, 1), version_type='ADCore'):
+    _default_suffix = ''
+    _html_docs = ['NDPluginFile.html']
+    _plugin_type = 'NDPluginFile'
 
 
 @register_plugin
