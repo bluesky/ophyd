@@ -1,5 +1,6 @@
 import inspect
 import os.path
+import textwrap
 from typing import Dict, List, Type
 
 import ophyd
@@ -168,6 +169,10 @@ def _component_to_row(base_attrs, cls, attr, cpt):
     if doc.startswith(f'{cpt.__class__.__name__} attribute'):
         doc = ''
 
+    if doc.startswith('AreaDetector Component') and '::' in doc:
+        _, doc = doc.split('::', 1)
+        doc = textwrap.dedent(doc).strip()
+
     return dict(
         component=cpt,  # access to the component instance itself
         attr=attr if not cpt_type else f'{attr} ({cpt_type})',
@@ -315,6 +320,9 @@ autosummary_context = {
     'path': os.path,
     # Where is your project root, relative to conf.py?
     'project_root': '..',
+    # To change where generated source files go, change the following in
+    # conf.py:
+    'generated_toctree': 'generated',
 }
 
 autodoc_default_options = {

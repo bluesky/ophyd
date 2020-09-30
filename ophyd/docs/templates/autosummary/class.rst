@@ -68,9 +68,11 @@
     .. rubric:: {{ _('Methods') }}
 
     .. autosummary::
-        :toctree: generated
+        :toctree: {{generated_toctree}}
     {% for item in methods %}
+    {%- if item not in inherited_members %}
         ~{{ name }}.{{ item }}
+    {%- endif %}
     {%- endfor %}
     {% endif %}
     {% endblock %}

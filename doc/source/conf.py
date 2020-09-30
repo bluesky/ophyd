@@ -274,15 +274,18 @@ intersphinx_mapping = {
 
 # inheritance_graph_attrs = dict(rankdir="LR")
 # inheritance_node_attrs = dict(fontsize=24)
-autodoc_docstring_signature = True
-autoclass_content = 'both'
-# numpydoc config
 
-autodoc_default_options = ophyd.docs.autodoc_default_options
-autosummary_generate = True
 autoclass_content = 'init'  # otherwise duplicates will be generated
+autodoc_default_options = ophyd.docs.autodoc_default_options
+autodoc_docstring_signature = True
+autosummary_generate = True
 autosummary_context = {
-    **ophyd.docs.autosummary_context
+    **ophyd.docs.autosummary_context,
+    # Nesting of ``:toctree: generated`` caused ``generated/generated/...`` to
+    # be created. Specify an absolute path here:
+    'generated_toctree': str(
+        pathlib.Path(__file__).parent.resolve() / 'generated'
+    ),
 }
 html_context = autosummary_context
 numpydoc_show_class_members = False
