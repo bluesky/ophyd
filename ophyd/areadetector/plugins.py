@@ -777,7 +777,7 @@ class TransformPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     )
 
 
-class FileBase:
+class FileBase(Device):
     _default_suffix = ''
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
