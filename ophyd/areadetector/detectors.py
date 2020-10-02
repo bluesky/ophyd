@@ -3,7 +3,7 @@
 
 `areaDetector`_ detector abstractions
 
-.. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
+.. _areaDetector: https://areadetector.github.io/master/index.html
 '''
 
 from .base import (ADBase, ADComponent as C)
