@@ -2,7 +2,8 @@
 import os
 import sys
 
-from setuptools import (setup, find_packages)
+from setuptools import find_packages, setup
+
 import versioneer
 
 # NOTE: This file must remain Python 2 compatible for the foreseeable future,
@@ -47,6 +48,14 @@ setup(name='ophyd',
           'databroker.handlers': [
               'NPY_SEQ = ophyd.sim:NumpySeqHandler',
           ]},
+      include_package_data=True,
+      package_data={
+          # NOTE: this is required in addition to MANIFEST.in, as that only
+          # applies to source distributions
+
+          # Include our documentation helpers:
+          '': ['*.rst'],
+      },
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Programming Language :: Python :: 3.6",
