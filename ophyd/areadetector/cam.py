@@ -377,9 +377,6 @@ class EigerDetectorCam(CamBase, FileBase):
     dcu_buff_free = ADCpt(EpicsSignalRO, 'DCUBufferFree_RBV')
 
 
-
-
-
 class FirewireLinDetectorCam(CamBase):
     _html_docs = []
 
