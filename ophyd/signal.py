@@ -828,6 +828,20 @@ class EpicsSignalBase(Signal):
         This may only be called before any instances of EpicsSignalBase are
         made.
 
+        This setting applies to the class it is called on and all its
+        subclasses. For example,
+
+        >>> EpicsSignalBase.set_default_timeout(...)
+
+        will apply to ``EpicsSignalRO`` and ``EpicsSignal``, which are both
+        subclasses of ``EpicsSignalBase``.
+
+        but
+
+        >>> EpicsSignal.set_default_timeout(...)
+
+        will not apply to ``EpicsSignalRO``.
+
         Parameters
         ----------
         timeout: float, optional
