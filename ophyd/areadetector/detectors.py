@@ -125,7 +125,7 @@ class EmergentVisionDetector(DetectorBase):
 
 class EigerDetector(DetectorBase):
     _html_docs = ['EigerDoc.html']
-    cam = C(cam.EigerDetectorCam, 'cam:1')
+    cam = C(cam.EigerDetectorCam, 'cam1:')
 
 
 class FirewireLinDetector(DetectorBase):
