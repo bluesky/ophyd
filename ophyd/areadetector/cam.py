@@ -36,6 +36,7 @@ __all__ = ['CamBase',
            'RoperDetectorCam',
            'SimDetectorCam',
            'URLDetectorCam',
+           'Xspress3DetectorCam'
            ]
 
 
@@ -765,3 +766,32 @@ class URLDetectorCam(CamBase):
     url_select = ADCpt(EpicsSignal, 'URLSelect')
     url_seq = ADCpt(EpicsSignal, 'URLSeq')
     url = ADCpt(EpicsSignalRO, 'URL_RBV')
+
+
+class Xspress3DetectorCam(CamBase):
+    _html_docs = ['Xspress3Doc.html']
+
+    """
+    trigger modes
+        0 - Software
+        1 - Internal
+        2 - IDC
+        3 - TTL Veto Only
+        4 - TTL Both
+        5 - LVDS Veto Only
+        6 - LVDS Both
+    """
+
+    # these CamBase PVs do not exist on the xspress3
+    acquire_period = None
+    bin_x = None
+    bin_y = None
+    color_mode = None
+    data_type = None
+    gain = None
+    image_mode = None
+    min_x = None
+    min_y = None
+    num_exposures = None
+    reverse = None
+    size = None
