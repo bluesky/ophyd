@@ -1,3 +1,4 @@
+from enum import IntEnum, unique
 import logging
 
 from ..utils import enum
@@ -771,16 +772,23 @@ class URLDetectorCam(CamBase):
 class Xspress3DetectorCam(CamBase):
     _html_docs = ['Xspress3Doc.html']
 
-    """
-    trigger modes
-        0 - Software
-        1 - Internal
-        2 - IDC
-        3 - TTL Veto Only
-        4 - TTL Both
-        5 - LVDS Veto Only
-        6 - LVDS Both
-    """
+    @unique
+    class TriggerMode(IntEnum):
+        """
+        These are the allowed trigger modes for the xspress3.
+
+        usage:
+          xs3 = Xspress3Detector(...)
+          xs3.cam.trigger_mode.set(Xspress3DetectorCam.TriggerMode.TTL_VETO_ONLY)
+        """
+
+        SOFTWARE = 0
+        INTERNAL = 1
+        IDC = 2
+        TTL_VETO_ONLY = 3
+        TTL_BOTH = 4
+        LVDS_VETO_ONLY = 5
+        LVDS_BOTH = 6
 
     # these CamBase PVs do not exist on the xspress3
     acquire_period = None
