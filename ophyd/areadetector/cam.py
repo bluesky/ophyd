@@ -791,15 +791,12 @@ class Xspress3DetectorCam(CamBase):
         LVDS_BOTH = 6
 
     # these CamBase PVs do not exist on the xspress3
-    acquire_period = None
     bin_x = None
     bin_y = None
     color_mode = None
     data_type = None
     gain = None
-    image_mode = None
     min_x = None
     min_y = None
-    num_exposures = None
     reverse = None
     size = None
