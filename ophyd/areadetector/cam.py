@@ -790,7 +790,14 @@ class Xspress3DetectorCam(CamBase):
         LVDS_VETO_ONLY = 5
         LVDS_BOTH = 6
 
-    # these CamBase PVs do not exist on the xspress3
+    """
+    The ERASE PV takes two integer values:
+        0 - Done
+        1 - Erase
+    """
+    erase = ADCpt(EpicsSignal, "ERASE")
+
+    # these CamBase PVs are disabled on the xspress3
     bin_x = None
     bin_y = None
     color_mode = None
