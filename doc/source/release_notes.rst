@@ -2,6 +2,29 @@
  Release History
 =================
 
+
+1.5.4 (2020-10-19)
+==================
+
+Changes
+-------
+
+* NDFile PVs implemented in FileBase instead of FilePlugin.
+
+
+Fixes
+-----
+
+* Various doc fixes and improvements.
+
+
+Added
+-----
+
+* ``OPHYD_SILENCE_VALUE_WARNING`` environment variable to silence ``.value`` warning.
+
+
+
 1.5.3 (2020-08-26)
 ==================
 
@@ -23,7 +46,7 @@ Fixes
 Added
 -----
 
-* Support for Emergent Vision detecectors
+* Support for Emergent Vision detectors.
 
 1.5.2 (2020-07-07)
 ==================
