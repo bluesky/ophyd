@@ -21,7 +21,7 @@ Fixes
 Added
 -----
 
-* OPHYD_SILENCE_VALUE_WARNING environment variable to silence .value warning.
+* ``OPHYD_SILENCE_VALUE_WARNING`` environment variable to silence ``.value`` warning.
 
 
 
