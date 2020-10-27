@@ -1685,7 +1685,7 @@ class EpicsSignal(EpicsSignalBase):
             self._run_subs(sub_type=self.SUB_SETPOINT, old_value=old_value,
                            value=value, timestamp=timestamp)
 
-    def set(self, value, *, timeout=None, settle_time=None):
+    def set(self, value, *, timeout=DEFAULT_WRITE_TIMEOUT, settle_time=None):
         '''Set is like `EpicsSignal.put`, but is here for bluesky compatibility
 
         If put completion is used for this EpicsSignal, the status object will
