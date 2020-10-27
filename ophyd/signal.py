@@ -287,19 +287,19 @@ class Signal(OphydObject):
             except TimeoutError:
                 success = False
                 self.log.warning(
-                    'set_and_wait(name=%s, value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     self.name, value, timeout, self.tolerance, self.rtolerance
                 )
             except Exception:
                 success = False
                 self.log.exception(
-                    'set_and_wait(name=%s, value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     self.name, value, timeout, self.tolerance, self.rtolerance
                 )
             else:
                 success = True
                 self.log.info(
-                    'set_and_wait(name=%s, value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
+                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
                     self.name, value, timeout, self.tolerance, self.rtolerance, self._readback)
 
                 if settle_time is not None:
