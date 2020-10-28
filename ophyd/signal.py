@@ -816,7 +816,7 @@ class EpicsSignalBase(Signal):
 
     @classmethod
     def set_default_timeout(cls, *, timeout=2.0, connection_timeout=1.0,
-                            write_timeout=None):):
+                            write_timeout=None):
         """
         Set the class-wide defaults for timeouts
 
