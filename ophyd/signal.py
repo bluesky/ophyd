@@ -1716,8 +1716,6 @@ class EpicsSignal(EpicsSignalBase):
         '''
         if timeout is DEFAULT_WRITE_TIMEOUT:
             timeout = self.write_timeout
-            if timeout is None:
-                timeout = self.timeout
 
         if not self._put_complete:
             return super().set(value, timeout=timeout, settle_time=settle_time)
