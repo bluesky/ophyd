@@ -714,7 +714,8 @@ class EpicsSignalBase(Signal):
 
     # See set_default_timeout for more on these.
     __default_connection_timeout = 1.0
-    __default_timeout = 2.0
+    __default_timeout = 2.0         # *read* timeout
+    __default_write_timeout = None  # Wait forever.
 
     _read_pv_metadata_key_map = dict(
         status=('status', AlarmStatus),
@@ -755,14 +756,7 @@ class EpicsSignalBase(Signal):
             timeout = self.__default_timeout
         self._timeout = timeout
         if write_timeout is DEFAULT_WRITE_TIMEOUT:
-            # This is very different than the connection and read timeouts
-            # above. It relates to how long an action takes to complete. Any
-            # default value we choose here is likely to cause problems---either
-            # by being too short and giving up too early on a lengthy action or
-            # being too long and delaying the report of a failure.
-            # The important thing it is that it is configurable at per-Signal
-            # level via the write_timeout parameter.
-            write_timeout = None  # Wait forever.
+            write_timeout = self.__default_write_timeout
         self._write_timeout = write_timeout
 
         if name is None:
@@ -821,7 +815,8 @@ class EpicsSignalBase(Signal):
         cls.__any_instantiated = True
 
     @classmethod
-    def set_default_timeout(cls, *, timeout=2.0, connection_timeout=1.0):
+    def set_default_timeout(cls, *, timeout=2.0, connection_timeout=1.0,
+                            write_timeout=None):):
         """
         Set the class-wide defaults for timeouts
 
@@ -849,6 +844,8 @@ class EpicsSignalBase(Signal):
         connection_timeout: float, optional
             Time (seconds) allocated for establishing a connection with the
             IOC.
+        write_timeout: float, optional
+            Time (seconds) allocated for writing, not including connection time.
 
         Raises
         ------
@@ -864,6 +861,12 @@ class EpicsSignalBase(Signal):
                 "with the same default retry setting in place.")
         cls.__default_connection_timeout = connection_timeout
         cls.__default_timeout = timeout
+        # The write_timeout is very different than the connection and read timeouts
+        # above. It relates to how long an action takes to complete. Any
+        # default value we choose here is likely to cause problems---either
+        # by being too short and giving up too early on a lengthy action or
+        # being too long and delaying the report of a failure.
+        cls.__default_write_timeout = write_timeout
 
     # TODO Is there a good reason to prohibit setting these three timeout
     # properties?
