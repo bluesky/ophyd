@@ -887,6 +887,10 @@ class EpicsSignalBase(Signal):
         # TODO Is there a good reason to prohibit setting these three timeout
         # properties?
 
+    @classmethod
+    def set_default_timeout(cls, *, **kwargs):
+        warnings.warn('Use set_defaults() instead.  Command ignored.')
+
     @property
     def connection_timeout(self):
         return self._connection_timeout
