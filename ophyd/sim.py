@@ -147,12 +147,9 @@ class SynSignal(Signal):
         return res
 
     def trigger(self):
-        self.log.info('trigger %s', self)
-
         st = DeviceStatus(device=self)
         delay_time = self.exposure_time
         if delay_time:
-            self.log.info('%s delay_time is %d', self, delay_time)
 
             def sleep_and_finish():
                 self.log.info('sleep_and_finish %s', self)
