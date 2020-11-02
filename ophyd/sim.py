@@ -138,7 +138,6 @@ class SynSignal(Signal):
             connected=True,
         )
 
-        self.log.info(self)
 
     def describe(self):
         res = super().describe()
