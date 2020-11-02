@@ -211,7 +211,7 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-        self.log.debug(
+        self.control_layer_log.debug(
             'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
             value, timestamp, force, metadata
         )
