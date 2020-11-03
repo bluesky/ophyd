@@ -888,8 +888,12 @@ class EpicsSignalBase(Signal):
         # properties?
 
     @classmethod
-    def set_default_timeout(cls, *, **kwargs):
-        warnings.warn('Use set_defaults() instead.  Command ignored.')
+    def set_default_timeout(cls, **kwargs):
+        warnings.warn(
+            "set_default_timeout() will be removed "
+            "in a future release. Use set_defaults() instead."
+        )
+        cls.set_defaults(**kwargs)
 
     @property
     def connection_timeout(self):
