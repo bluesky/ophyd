@@ -138,7 +138,6 @@ class SynSignal(Signal):
             connected=True,
         )
 
-
     def describe(self):
         res = super().describe()
         # There should be only one key here, but for the sake of generality....
