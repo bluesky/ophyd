@@ -212,7 +212,7 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-        self.log.debug(
+        self.control_layer_log.debug(
             'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
             value, timestamp, force, metadata
         )
@@ -1109,12 +1109,12 @@ class EpicsSignalBase(Signal):
                 f"within {connection_timeout:.2f} sec") from err
         # Pyepics returns None when a read request times out.  Raise a
         # TimeoutError on its behalf.
-        self.control_layer_log.info(
+        self.control_layer_log.debug(
             'pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)',
             pv.pvname, as_string, form, timeout
         )
         info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
-        self.control_layer_log.info('pv[%s].get_with_metadata(...) returned', pv.pvname)
+        self.control_layer_log.debug('pv[%s].get_with_metadata(...) returned', pv.pvname)
 
         if info is None:
             raise ReadTimeoutError(
@@ -1694,7 +1694,7 @@ class EpicsSignal(EpicsSignalBase):
         if not self.write_access:
             raise ReadOnlyError('No write access to underlying EPICS PV')
 
-        self.control_layer_log.info(
+        self.control_layer_log.debug(
             '_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)',
             value, use_complete, callback, kwargs
         )
