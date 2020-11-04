@@ -5,10 +5,37 @@
 v1.6.0 (2020-XX-XX)
 ===================
 
-Added
+Fixes
 -----
 
+* The ``write_timeout`` specified for an :class:`EpicsSignalBase` is respected
+  by its ``set()`` method unless overridden with ``set(.., timeout=TIMEOUT)``.
+
+Added
+-----
 * Support for Emergent Vision detectors.
+* The class-wide default for ``write_timeout`` is now configurable via
+  :meth:`EpicsSignalBase.set_defaults`. It was previously only configurable on
+  a per-instance basis at initialization time, with the class-wide default
+  hard-coded to ``None``. The class-wide default is still ``None``, unchanged
+  from the previous release.
+* The class-wide default for ``auto_monitor`` is now configurable via
+  :meth:`EpicsSignalBase.set_defaults`. It was previously configurable on a
+  per-instance basis at initialization time. The default value, ``False``, has
+  not changed.
+
+Changes
+-------
+
+* The logging has been tweaked to be less noisy, particularly at import time.
+  Some log messages have been moved from ``'ophyd.object'`` to
+  ``'ophyd.control_layer'``, and the level of messages emitted to
+  ``'ophyd.control_layer'`` have been reduced from INFO to DEBUG. Some log
+  messages have been removed entirely.
+* The method :meth:`EpicsSignalBase.set_default_timeout` has been renamed to
+  :meth:`EpicsSignalBase.set_defaults` because it has been extended to include
+  more than timeouts, as described above. The old name is still supported but
+  issues a warning that it may be removed in the future.
 
 1.5.4 (2020-10-19)
 ==================
@@ -29,8 +56,6 @@ Added
 -----
 
 * ``OPHYD_SILENCE_VALUE_WARNING`` environment variable to silence ``.value`` warning.
-
-
 
 1.5.3 (2020-08-26)
 ==================
