@@ -306,10 +306,11 @@ class EmergentVisionDetectorCam(CamBase):
 class EigerDetectorCam(CamBase, FileBase):
 
     _html_docs = ['EigerDoc.html']
-    _default_configuration_attrs = (CamBase._default_configuration_attrs + 
-                                    ('shutter_mode', 'num_triggers', 'beam_center_x', 'beam_center_y',
-                                    'wavelength', 'det_distance', 'threshold_energy', 'photon_energy', 'manual_trigger',
-                                    'special_trigger_button'))
+    _default_configuration_attrs = (
+        CamBase._default_configuration_attrs +
+        ('shutter_mode', 'num_triggers', 'beam_center_x', 'beam_center_y',
+         'wavelength', 'det_distance', 'threshold_energy', 'photon_energy', 'manual_trigger',
+         'special_trigger_button'))
 
     shutter_mode = ADCpt(SignalWithRBV, 'ShutterMode')
     num_triggers = ADCpt(SignalWithRBV, 'NumTriggers')
