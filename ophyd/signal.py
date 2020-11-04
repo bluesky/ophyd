@@ -824,10 +824,10 @@ class EpicsSignalBase(Signal):
     @classmethod
     def set_defaults(cls,
                      *,
-                     timeout=2.0,
-                     connection_timeout=1.0,
-                     write_timeout=2,
-                     auto_monitor=False):
+                     timeout=__default_timeout,
+                     connection_timeout=__default_connection_timeout,
+                     write_timeout=__default_write_timeout,
+                     auto_monitor=__default_auto_monitor):
         """
         Set class-wide defaults for EPICS CA communications
 
@@ -860,6 +860,12 @@ class EpicsSignalBase(Signal):
             Total time budget (seconds) for reading, not including connection time.
         write_timeout: float, optional
             Time (seconds) allocated for writing, not including connection time.
+            The write_timeout is very different than the connection and read timeouts
+            above. It relates to how long an action takes to complete. Any
+            default value we choose here is likely to cause problems---either
+            by being too short and giving up too early on a lengthy action or
+            being too long and delaying the report of a failure. The default,
+            None, waits forever.
 
         Raises
         ------
