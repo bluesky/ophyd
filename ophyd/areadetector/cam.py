@@ -6,6 +6,9 @@ from .base import (ADBase, ADComponent as ADCpt, ad_group,
 from ..signal import (EpicsSignalRO, EpicsSignal)
 from ..device import DynamicDeviceComponent as DDC
 
+# Import FileBase class for cameras that use File PVs in their drivers
+from .plugins import FileBase
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +19,7 @@ __all__ = ['CamBase',
            'BrukerDetectorCam',
            'DexelaDetectorCam',
            'EmergentVisionDetectorCam',
+           'EigerDetectorCam',
            'FirewireLinDetectorCam',
            'FirewireWinDetectorCam',
            'GreatEyesDetectorCam',
@@ -297,6 +301,81 @@ class EmergentVisionDetectorCam(CamBase):
     packet_size = ADCpt(SignalWithRBV, 'EVTPacketSize')
     lut_enable = ADCpt(SignalWithRBV, 'EVTLUTEnable')
     auto_gain = ADCpt(SignalWithRBV, 'EVTAutoGain')
+
+
+class EigerDetectorCam(CamBase, FileBase):
+
+    _html_docs = ['EigerDoc.html']
+    _default_configuration_attrs = (
+        CamBase._default_configuration_attrs +
+        ('shutter_mode', 'num_triggers', 'beam_center_x', 'beam_center_y',
+         'wavelength', 'det_distance', 'threshold_energy', 'photon_energy', 'manual_trigger',
+         'special_trigger_button'))
+
+    shutter_mode = ADCpt(SignalWithRBV, 'ShutterMode')
+    num_triggers = ADCpt(SignalWithRBV, 'NumTriggers')
+    beam_center_x = ADCpt(SignalWithRBV, 'BeamX')
+    beam_center_y = ADCpt(SignalWithRBV, 'BeamY')
+    wavelength = ADCpt(SignalWithRBV, 'Wavelength')
+    det_distance = ADCpt(SignalWithRBV, 'DetDist')
+    threshold_energy = ADCpt(SignalWithRBV, 'ThresholdEnergy')
+    photon_energy = ADCpt(SignalWithRBV, 'PhotonEnergy')
+    manual_trigger = ADCpt(SignalWithRBV, 'ManualTrigger')  # the checkbox
+    special_trigger_button = ADCpt(EpicsSignal, 'Trigger')  # the button next to 'Start' and 'Stop'
+    trigger_exposure = ADCpt(SignalWithRBV, 'TriggerExposure')
+    data_source = ADCpt(SignalWithRBV, 'DataSource')
+    stream_decompress = ADCpt(SignalWithRBV, 'StreamDecompress')
+    fw_enable = ADCpt(SignalWithRBV, 'FWEnable')
+    fw_clear = ADCpt(EpicsSignal, 'FWClear')
+    fw_compression = ADCpt(SignalWithRBV, 'FWCompression')
+    fw_name_pattern = ADCpt(SignalWithRBV, 'FWNamePattern', string=True)
+    fw_num_images_per_file = ADCpt(SignalWithRBV, 'FWNImagesPerFile')
+    fw_autoremove = ADCpt(SignalWithRBV, 'FWAutoRemove')
+    fw_free = ADCpt(EpicsSignalRO, 'FWFree_RBV')
+    fw_state = ADCpt(EpicsSignalRO, 'FWState_RBV')
+    description = ADCpt(EpicsSignalRO, 'Description_RBV', string=True)
+    sensor_thickness = ADCpt(EpicsSignalRO, 'SensorThickness_RBV')
+    sensor_material = ADCpt(EpicsSignalRO, 'SensorMaterial_RBV')
+    count_cutoff = ADCpt(EpicsSignalRO, 'CountCutoff_RBV')
+    x_pixel_size = ADCpt(EpicsSignalRO, 'XPixelSize_RBV')
+    y_pixel_size = ADCpt(EpicsSignalRO, 'YPixelSize_RBV')
+    roi_mode = ADCpt(SignalWithRBV, 'ROIMode')
+    dead_time = ADCpt(EpicsSignalRO, 'DeadTime_RBV')
+    compression_algo = ADCpt(SignalWithRBV, 'CompressionAlgo')
+    stream_enable = ADCpt(SignalWithRBV, 'StreamEnable')
+    stream_dropped = ADCpt(EpicsSignalRO, 'StreamDropped_RBV')
+    stream_state = ADCpt(EpicsSignalRO, 'StreamState_RBV')
+    stream_hdr_detail = ADCpt(SignalWithRBV, 'StreamHdrDetail')
+    stream_hdr_appendix = ADCpt(EpicsSignal, 'StreamHdrAppendix')
+    stream_img_appendix = ADCpt(EpicsSignal, 'StreamImgAppendix')
+    save_files = ADCpt(SignalWithRBV, 'SaveFiles')
+    file_owner = ADCpt(SignalWithRBV, 'FileOwner')
+    file_owner_grp = ADCpt(SignalWithRBV, 'FileOwnerGrp')
+    file_perms = ADCpt(EpicsSignal, 'FilePerms')
+    flatfield_applied = ADCpt(SignalWithRBV, 'FlatfieldApplied')
+    sequence_id = ADCpt(EpicsSignalRO, 'SequenceId')
+    photon_energy = ADCpt(SignalWithRBV, 'PhotonEngery')
+    armed = ADCpt(EpicsSignalRO, 'Armed')
+    chi_start = ADCpt(SignalWithRBV, 'ChiStart')
+    chi_incr = ADCpt(SignalWithRBV, 'ChiIncr')
+    kappa_start = ADCpt(SignalWithRBV, 'KappaStart')
+    kappa_incr = ADCpt(SignalWithRBV, 'KappaIncr')
+    omega_start = ADCpt(SignalWithRBV, 'OmegaStart')
+    omega_incr = ADCpt(SignalWithRBV, 'OmegaIncr')
+    phi_start = ADCpt(SignalWithRBV, 'PhiStart')
+    phi_incr = ADCpt(SignalWithRBV, 'PhiIncr')
+    two_theta_start = ADCpt(SignalWithRBV, 'TwoThetaStart')
+    two_theta_incr = ADCpt(SignalWithRBV, 'TwoThetaIncr')
+    monitor_enable = ADCpt(SignalWithRBV, 'MonitorEnable')
+    monitor_timeout = ADCpt(SignalWithRBV, 'MonitorTimeout')
+    monitor_state = ADCpt(EpicsSignalRO, 'MonitorState_RBV')
+    temp_0 = ADCpt(EpicsSignalRO, 'Temp0_RBV')
+    humid_0 = ADCpt(EpicsSignalRO, 'Humid0_RBV')
+    link_0 = ADCpt(EpicsSignalRO, 'Link0_RBV')
+    link_1 = ADCpt(EpicsSignalRO, 'Link1_RBV')
+    link_2 = ADCpt(EpicsSignalRO, 'Link2_RBV')
+    link_3 = ADCpt(EpicsSignalRO, 'Link3_RBV')
+    dcu_buff_free = ADCpt(EpicsSignalRO, 'DCUBufferFree_RBV')
 
 
 class FirewireLinDetectorCam(CamBase):

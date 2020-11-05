@@ -2,6 +2,13 @@
  Release History
 =================
 
+v1.6.0 (2020-XX-XX)
+===================
+
+Added
+-----
+
+* Support for Emergent Vision detectors.
 
 1.5.4 (2020-10-19)
 ==================
@@ -42,11 +49,6 @@ Fixes
 * Critical bug in EpicsMotor limits set low to high and high to low.
 * For area detector cameras, add ``num_images`` to the set of components
   recorded as configuration by default.
-
-Added
------
-
-* Support for Emergent Vision detectors.
 
 1.5.2 (2020-07-07)
 ==================
