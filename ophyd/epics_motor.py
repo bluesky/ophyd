@@ -2,11 +2,11 @@ import logging
 
 from .utils.epics_pvs import fmt_time
 
-from .signal import (EpicsSignal, EpicsSignalRO)
+from .signal import EpicsSignal, EpicsSignalRO
 from .utils import DisconnectedError
-from .utils.epics_pvs import (raise_if_disconnected, AlarmSeverity)
+from .utils.epics_pvs import raise_if_disconnected, AlarmSeverity
 from .positioner import PositionerBase
-from .device import (Device, Component as Cpt, required_for_connection)
+from .device import Device, Component as Cpt, required_for_connection
 from .status import wait as status_wait
 from enum import Enum
 
@@ -20,7 +20,7 @@ class HomeEnum(str, Enum):
 
 
 class EpicsMotor(Device, PositionerBase):
-    '''An EPICS motor record, wrapped in a :class:`Positioner`
+    """An EPICS motor record, wrapped in a :class:`Positioner`
 
     Keyword arguments are passed through to the base class, Positioner
 
@@ -39,34 +39,31 @@ class EpicsMotor(Device, PositionerBase):
         The amount of time to wait after moves to report status completion
     timeout : float, optional
         The default timeout to use for motion requests, in seconds.
-    '''
+    """
+
     # position
-    user_readback = Cpt(EpicsSignalRO, '.RBV', kind='hinted',
-                        auto_monitor=True)
-    user_setpoint = Cpt(EpicsSignal, '.VAL', limits=True)
+    user_readback = Cpt(EpicsSignalRO, ".RBV", kind="hinted", auto_monitor=True)
+    user_setpoint = Cpt(EpicsSignal, ".VAL", limits=True, auto_monitor=True)
 
     # calibration dial <-> user
-    user_offset = Cpt(EpicsSignal, '.OFF', kind='config')
-    user_offset_dir = Cpt(EpicsSignal, '.DIR', kind='config')
-    offset_freeze_switch = Cpt(EpicsSignal, '.FOFF', kind='omitted')
-    set_use_switch = Cpt(EpicsSignal, '.SET', kind='omitted')
+    user_offset = Cpt(EpicsSignal, ".OFF", kind="config", auto_monitor=True)
+    user_offset_dir = Cpt(EpicsSignal, ".DIR", kind="config", auto_monitor=True)
+    offset_freeze_switch = Cpt(EpicsSignal, ".FOFF", kind="omitted", auto_monitor=True)
+    set_use_switch = Cpt(EpicsSignal, ".SET", kind="omitted", auto_monitor=True)
 
     # configuration
-    velocity = Cpt(EpicsSignal, '.VELO', kind='config')
-    acceleration = Cpt(EpicsSignal, '.ACCL', kind='config')
-    motor_egu = Cpt(EpicsSignal, '.EGU', kind='config')
+    velocity = Cpt(EpicsSignal, ".VELO", kind="config", auto_monitor=True)
+    acceleration = Cpt(EpicsSignal, ".ACCL", kind="config", auto_monitor=True)
+    motor_egu = Cpt(EpicsSignal, ".EGU", kind="config", auto_monitor=True)
 
     # motor status
-    motor_is_moving = Cpt(EpicsSignalRO, '.MOVN', kind='omitted')
-    motor_done_move = Cpt(EpicsSignalRO, '.DMOV', kind='omitted',
-                          auto_monitor=True)
-    high_limit_switch = Cpt(EpicsSignal, '.HLS', kind='omitted')
-    low_limit_switch = Cpt(EpicsSignal, '.LLS', kind='omitted')
-    high_limit_travel = Cpt(EpicsSignal, '.HLM', kind='omitted',
-                            auto_monitor=True)
-    low_limit_travel = Cpt(EpicsSignal, '.LLM', kind='omitted',
-                           auto_monitor=True)
-    direction_of_travel = Cpt(EpicsSignal, '.TDIR', kind='omitted')
+    motor_is_moving = Cpt(EpicsSignalRO, ".MOVN", kind="omitted", auto_monitor=True)
+    motor_done_move = Cpt(EpicsSignalRO, ".DMOV", kind="omitted", auto_monitor=True)
+    high_limit_switch = Cpt(EpicsSignal, ".HLS", kind="omitted", auto_monitor=True)
+    low_limit_switch = Cpt(EpicsSignal, ".LLS", kind="omitted", auto_monitor=True)
+    high_limit_travel = Cpt(EpicsSignal, ".HLM", kind="omitted", auto_monitor=True)
+    low_limit_travel = Cpt(EpicsSignal, ".LLM", kind="omitted", auto_monitor=True)
+    direction_of_travel = Cpt(EpicsSignal, ".TDIR", kind="omitted", auto_monitor=True)
 
     # commands
     motor_stop = Cpt(EpicsSignal, '.STOP', kind='omitted')
@@ -267,11 +264,11 @@ class EpicsMotor(Device, PositionerBase):
             success = True
             # Check if we are moving towards the low limit switch
             if self.direction_of_travel.get() == 0:
-                if self.low_limit_switch.get() == 1:
+                if self.low_limit_switch.get(use_monitor=False) == 1:
                     success = False
             # No, we are going to the high limit switch
             else:
-                if self.high_limit_switch.get() == 1:
+                if self.high_limit_switch.get(use_monitor=False) == 1:
                     success = False
 
             # Check the severity of the alarm field after motion is complete.

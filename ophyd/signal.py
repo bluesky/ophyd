@@ -737,10 +737,12 @@ class EpicsSignalBase(Signal):
                        )
                       )
 
-    def __init__(self, read_pv, *, string=False,
+    def __init__(self, read_pv, *,
+                 string=False,
                  auto_monitor=DEFAULT_AUTO_MONITOR,
                  name=None,
-                 metadata=None, all_pvs=None,
+                 metadata=None,
+                 all_pvs=None,
                  timeout=DEFAULT_TIMEOUT,
                  write_timeout=DEFAULT_WRITE_TIMEOUT,
                  connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
@@ -1092,7 +1094,7 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def _get_with_timeout(self, pv, timeout, connection_timeout, as_string, form):
+    def _get_with_timeout(self, pv, timeout, connection_timeout, as_string, form, use_monitor):
         """
         Utility method implementing a retry loop for get and get_setpoint
 
@@ -1119,7 +1121,9 @@ class EpicsSignalBase(Signal):
             'pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)',
             pv.pvname, as_string, form, timeout
         )
-        info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
+        info = pv.get_with_metadata(
+            as_string=as_string, form=form, timeout=timeout, use_monitor=use_monitor
+        )
         self.control_layer_log.debug('pv[%s].get_with_metadata(...) returned', pv.pvname)
 
         if info is None:
@@ -1129,12 +1133,14 @@ class EpicsSignalBase(Signal):
 
         return info
 
-    def get(self, *, as_string=None,
+    def get(self, *,
+            as_string=None,
             timeout=DEFAULT_TIMEOUT,
             connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
             form='time',
+            use_monitor=None,
             **kwargs):
-        '''Get the readback value through an explicit call to EPICS
+        '''Get the readback value through an explicit call to EPICS.
 
         Parameters
         ----------
@@ -1156,12 +1162,21 @@ class EpicsSignalBase(Signal):
             for the connection to complete.
         form : {'time', 'ctrl'}
             PV form to request
+
         '''
+        if kwargs:
+            warnings.warn('Signal.get no longer takes keyword arguments; '
+                          'These are ignored and will be deprecated.',
+                          DeprecationWarning)
         if as_string is None:
             as_string = self._string
 
+        if use_monitor is None:
+            use_monitor = self._auto_monitor
+
         info = self._get_with_timeout(
-            self._read_pv, timeout, connection_timeout, as_string, form)
+            self._read_pv, timeout, connection_timeout, as_string, form, use_monitor
+        )
 
         value = info.pop('value')
         if as_string:
@@ -1546,10 +1561,13 @@ class EpicsSignal(EpicsSignalBase):
             raise LimitError('Value {} outside of range: [{}, {}]'
                              .format(value, low_limit, high_limit))
 
-    def get_setpoint(self, *, as_string=None,
+    def get_setpoint(self, *,
+                     as_string=None,
                      timeout=DEFAULT_TIMEOUT,
                      connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
-                     form='time', **kwargs):
+                     use_monitor=None,
+                     form='time',
+                     **kwargs):
         '''Get the setpoint value (if setpoint PV and readback PV differ)
 
         Parameters
@@ -1573,11 +1591,19 @@ class EpicsSignal(EpicsSignalBase):
         form : {'time', 'ctrl'}
             PV form to request
         '''
+        if kwargs:
+            warnings.warn('Signal.get_setpoint no longer takes keyword arguments; '
+                          'These are ignored and will be deprecated.',
+                          DeprecationWarning)
         if as_string is None:
             as_string = self._string
 
+        if use_monitor is None:
+            use_monitor = self._auto_monitor
+
         info = self._get_with_timeout(
-            self._write_pv, timeout, connection_timeout, as_string, form)
+            self._write_pv, timeout, connection_timeout, as_string, form, use_monitor
+        )
 
         value = info.pop('value')
         if as_string:
