@@ -1166,7 +1166,8 @@ class EpicsSignalBase(Signal):
         '''
         if kwargs:
             warnings.warn('Signal.get no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated.')
+                          'These are ignored and will be deprecated.',
+                          DeprecationWarning)
         if as_string is None:
             as_string = self._string
 
@@ -1592,7 +1593,8 @@ class EpicsSignal(EpicsSignalBase):
         '''
         if kwargs:
             warnings.warn('Signal.get_setpoint no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated.')
+                          'These are ignored and will be deprecated.',
+                          DeprecationWarning)
         if as_string is None:
             as_string = self._string
 
