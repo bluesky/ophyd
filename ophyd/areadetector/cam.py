@@ -73,9 +73,9 @@ class CamBase(ADBase):
 
     array_callbacks = ADCpt(SignalWithRBV, 'ArrayCallbacks')
     array_size = DDC(ad_group(EpicsSignalRO,
-                              (('array_size_x', 'ArraySizeX_RBV'),
+                              (('array_size_z', 'ArraySizeZ_RBV'),
                                ('array_size_y', 'ArraySizeY_RBV'),
-                               ('array_size_z', 'ArraySizeZ_RBV'))),
+                               ('array_size_x', 'ArraySizeX_RBV'))),
                      doc='Size of the array in the XYZ dimensions')
 
     array_size_bytes = ADCpt(EpicsSignalRO, 'ArraySize_RBV')
