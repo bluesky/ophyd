@@ -237,9 +237,9 @@ class PluginBase(ADBase, version=(1, 9, 1), version_type='ADCore'):
     height = Cpt(EpicsSignalRO, 'ArraySize1_RBV')
     depth = Cpt(EpicsSignalRO, 'ArraySize2_RBV')
     array_size = DDC_EpicsSignalRO(
+        ('depth', 'ArraySize2_RBV'),
         ('height', 'ArraySize1_RBV'),
         ('width', 'ArraySize0_RBV'),
-        ('depth', 'ArraySize2_RBV'),
         doc='The array size'
     )
 
@@ -314,9 +314,9 @@ class ImagePlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
 
     array_data = Cpt(EpicsSignal, 'ArrayData')
     shaped_image = Cpt(NDDerivedSignal, derived_from='array_data',
-                       shape=('array_size.height',
-                              'array_size.width',
-                              'array_size.depth'),
+                       shape=('array_size.depth',
+                              'array_size.height',
+                              'array_size.width'),
                        num_dimensions='ndimensions',
                        kind='omitted')
 
@@ -326,8 +326,8 @@ class ImagePlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
         if array_size == (0, 0, 0):
             raise RuntimeError('Invalid image; ensure array_callbacks are on')
 
-        if array_size[-1] == 0:
-            array_size = array_size[:-1]
+        if array_size[0] == 0:
+            array_size = array_size[1:]
 
         pixel_count = self.array_pixels
         image = self.array_data.get(count=pixel_count)
@@ -619,9 +619,9 @@ class ROIPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _plugin_type = 'NDPluginROI'
 
     array_size = DDC_EpicsSignalRO(
-        ('x', 'ArraySizeX_RBV'),
-        ('y', 'ArraySizeY_RBV'),
         ('z', 'ArraySizeZ_RBV'),
+        ('y', 'ArraySizeY_RBV'),
+        ('x', 'ArraySizeX_RBV'),
         doc='Size of the ROI data in XYZ',
     )
 
@@ -732,9 +732,9 @@ class TransformPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     height = Cpt(SignalWithRBV, 'ArraySize1')
     depth = Cpt(SignalWithRBV, 'ArraySize2')
     array_size = DDC_SignalWithRBV(
+        ('depth', 'ArraySize2'),
         ('height', 'ArraySize1'),
         ('width', 'ArraySize0'),
-        ('depth', 'ArraySize2'),
         doc='Array size',
     )
 

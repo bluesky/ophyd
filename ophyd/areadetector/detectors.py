@@ -73,7 +73,10 @@ class DetectorBase(ADBase):
 
     def make_data_key(self):
         source = 'PV:{}'.format(self.prefix)
-        shape = tuple(self.cam.array_size.get())
+        # This shape is expected to match arr.shape for the array.
+        shape = (self.cam.num_images.get(),
+                 self.cam.array_size.array_size_y.get(),
+                 self.cam.array_size.array_size_x.get())
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 
