@@ -2,14 +2,22 @@
  Release History
 =================
 
-v1.6.0 (2020-XX-XX)
-===================
+1.6.0 (2020-11-09)
+==================
 
 Fixes
 -----
 
 * The ``write_timeout`` specified for an :class:`EpicsSignalBase` is respected
   by its ``set()`` method unless overridden with ``set(.., timeout=TIMEOUT)``.
+* Area Detector PVs related to array shape have been given an order compatible
+  with the numpy array index ordering of the array itself.
+* Thread the keyword ``EpicsSignal.get(..., use_monitor=True)`` down to the
+  control system. This setting was previously supported but support was removed
+  (years ago). We now view its removal as a mistake.
+* When area detector takes a series of images and ``num_capture`` is set to
+  ``0``, this is now interpreted to mean "however many images the detector is
+  configured to acquire" rather than "0 images".
 
 Added
 -----
@@ -36,6 +44,16 @@ Changes
   :meth:`EpicsSignalBase.set_defaults` because it has been extended to include
   more than timeouts, as described above. The old name is still supported but
   issues a warning that it may be removed in the future.
+* Use auto-monitoring in more places in ``EpicsMotor``. This should drastically
+  speed up ``motor.read_conifiguration()``.
+
+Deprecations
+------------
+
+* :class:`EpicsSignalBase` previously ignored unrecognized keyword arguments
+  passed to its method ``get()`` or ``get_setpoint()``. Now, any unrecognized
+  keyword arguments will issue a ``DeprecationWarning``. In the future they
+  will issue a ``UserWarning`` and eventually an error.
 
 1.5.4 (2020-10-19)
 ==================
