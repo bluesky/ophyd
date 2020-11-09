@@ -8,7 +8,7 @@ on:
 jobs:
   build:
 
-    if: github.repository == 'bluesky/bluesky-queueserver'
+    if: github.repository == 'bluesky/ophyd'
     runs-on: ubuntu-latest
     strategy:
       matrix:
