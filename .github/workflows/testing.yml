@@ -18,14 +18,16 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        sudo apt install redis
-        python -m pip install --upgrade pip
+        sudo apt install graphviz procserv libhdf5-dev
+        # These packages are installed in the base environment but may be older
+        # versions. Explicitly upgrade them because they often create
+        # installation problems if out of date.
+        python -m pip install --upgrade pip setuptools numpy
         pip install .
-        pip install -r requirements-dev.txt
-        pip install scikit-image
-        pip install pytest
+        pip install -r requirements-test.txt
         pip list
     - name: Test with pytest
       run: |
-        coverage run -m pytest -vv
-        coverage report -m
+        coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
+        coverage combine
+        coverage report
