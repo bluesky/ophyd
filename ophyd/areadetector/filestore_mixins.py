@@ -456,7 +456,15 @@ class FileStoreHDF5(FileStorePluginBase):
                                 ])
 
     def get_frames_per_point(self):
-        return self.num_capture.get()
+        num_capture = self.num_capture.get()
+        # If num_capture is 0, then the plugin will capture however many frames
+        # it is sent. We can get how frames it will be sent (unless
+        # interrupted) by consulting num_images on the detector's camera.
+        if num_capture == 0:
+            return self.parent.cam.num_images.get()
+        # Otherwise, a nonzero num_capture will cut off capturing at the
+        # specified number.
+        return num_capture
 
     def stage(self):
         super().stage()
