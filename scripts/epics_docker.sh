@@ -6,7 +6,8 @@ if ! [ $? -eq 0 ]; then
     systemctl restart docker.service
 fi
 
-source epics_exports.sh
+SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $SCRIPTS_DIR/epics_exports.sh
 
 DOCKERIMAGE="klauer/epics-docker"
 PE_DOCKERIMAGE="klauer/simioc-docker"
