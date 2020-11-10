@@ -23,11 +23,11 @@ jobs:
       SSCAN_VER: "2-11-1"
       MOTOR_VER: "6-10"
       AREADETECTOR_VER: "3-2"
-      CI_TOP: '${TRAVIS_BUILD_DIR}/.ci'
-      CI_SCRIPTS: '${TRAVIS_BUILD_DIR}/.ci/ci-scripts'
+      CI_TOP: '${GITHUB_WORKSPACE}/.ci'
+      CI_SCRIPTS: '${GITHUB_WORKSPACE}/.ci/ci-scripts'
       EPICS_ON_TRAVIS_VERSION: "0.8.1"
       EPICS_ON_TRAVIS_PKG: "0.8.1/epics-ci-0.8.1_R7.0.1.1_pva_areadetector3-2_motor6-10.tar.bz2"
-      EPICS_ON_TRAVIS_URL: 'https://github.com/klauer/epics-on-travis/releases/download/${EPICS_ON_TRAVIS_PKG}'
+      EPICS_ON_TRAVIS_URL: 'https://github.com/klauer/epics-on-travis/releases/download/0.8.1/epics-ci-0.8.1_R7.0.1.1_pva_areadetector3-2_motor6-10.tar.bz2'
       TEST_CL: pyepics
     steps:
     - uses: actions/checkout@v2
