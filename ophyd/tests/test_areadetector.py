@@ -384,8 +384,8 @@ def test_default_configuration_attrs(plugin):
 @pytest.fixture(scope='function')
 def data_paths(request):
     def clean_dirs():
-        shutil.rmtree('/tmp/data1')
-        os.unlink('/tmp/data2')
+        shutil.rmtree('/tmp/ophyd_AD_test/data1')
+        os.unlink('/tmp/ophyd_AD_test/data2')
 
     try:
         clean_dirs()
@@ -396,20 +396,20 @@ def data_paths(request):
 
     for year_offset in [-1, 0, 1]:
         make_dir_tree(now.year + year_offset,
-                      base_path='/tmp/data1')
+                      base_path='/tmp/ophyd_AD_test/data1')
 
-    os.symlink('/tmp/data1', '/tmp/data2')
+    os.symlink('/tmp/ophyd_AD_test/data1', '/tmp/ophyd_AD_test/data2')
     request.addfinalizer(clean_dirs)
 
 
 @pytest.mark.adsim
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
-                          (None, '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data1', '%Y/%m/%d', None, False),
-                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data2', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
 def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, cleanup):
     fs = DummyFS()
@@ -473,12 +473,12 @@ def h5py():
 
 @pytest.mark.adsim
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
-                          (None, '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data1', '%Y/%m/%d', None, False),
-                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data2', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
 def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
                       check_files, cleanup):
