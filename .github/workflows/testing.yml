@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8]
     env:
       TEST_CL: pyepics
     steps:
@@ -35,6 +35,6 @@ jobs:
         source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
     - name: Test with pytest
       run: |
-        coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
+        coverage run --concurrency=thread --parallel-mode -m pytest ophyd/tests/test_areadetector.py -v -k "${TEST_CL}"
         coverage combine
         coverage report

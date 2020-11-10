@@ -525,7 +525,7 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
     if check_files:
-        time.sleep(.1)
+        time.sleep(5)  # Give AD some time to finish writing.
         path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
         handler = fh.AreaDetectorHDF5Handler(str(path),
                                              **res_doc['resource_kwargs'])
