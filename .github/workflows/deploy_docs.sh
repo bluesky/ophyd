@@ -8,9 +8,11 @@ echo "====================================================================="
 echo "SCRIPT: PUBLISHING DOCUMENTATION TO GITHUB PAGES"
 set -eu
 
+TARGET_REPOSITORY="bluesky.github.io"
+TARGET_BRANCH="master"
 REPO_URI="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+TARGET_URI="https://x-access-token:${GITHUB_TOKEN}@github.com/${TARGET_REPOSITORY}.git"
 REMOTE_NAME="origin"
-TARGET_BRANCH="gh-pages"
 
 # Get the repository name: if repository is 'bluesky/some-repo', the name is 'some-repo'
 REPO_NAME=$(echo $GITHUB_REPOSITORY | awk -F '/' '{print $2}')
@@ -37,12 +39,6 @@ echo "====================================================================="
 echo "Setting up Git user name and email ... (${GITHUB_ACTOR})"
 git config user.name "$GITHUB_ACTOR"
 git config user.email "${GITHUB_ACTOR}@bots.github.com"
-
-# Remove all files and directories except hidden directories.
-#   -f - exits with 0 if there is not files to delete
-echo "====================================================================="
-echo "Removing the all files ('${TARGET_BRANCH}' branch) ..."
-rm -rf !\(.*\)
 
 echo "====================================================================="
 echo "Copying files from build directory: ${BUILD_DIR}"
