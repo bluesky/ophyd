@@ -527,6 +527,8 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
     if check_files:
         time.sleep(5)  # Give AD some time to finish writing.
         path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
+        import os
+        print("PATH", path, os.stat(path))
         handler = fh.AreaDetectorHDF5Handler(str(path),
                                              **res_doc['resource_kwargs'])
         for fn in handler.get_file_list(datum['datum_kwargs'] for datum in
