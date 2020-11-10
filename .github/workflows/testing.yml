@@ -27,7 +27,7 @@ jobs:
         # installation problems if out of date.
         python -m pip install --upgrade pip setuptools numpy
         pip install .
-        pip install -r test-requirements.txt
+        pip install -r requirements-test.txt
         pip list
     - name: Start IOCs in containers.
       run: |
