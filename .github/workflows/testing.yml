@@ -20,10 +20,6 @@ jobs:
     - name: Install system dependencies.
       run: |
         sudo apt install libhdf5-dev
-    - name: Start IOCs in containers.
-      run: |
-        source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
-        source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
     - name: Install Python dependencies
       run: |
         # These packages are installed in the base environment but may be older
@@ -33,6 +29,10 @@ jobs:
         pip install .
         pip install -r test-requirements.txt
         pip list
+    - name: Start IOCs in containers.
+      run: |
+        source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
+        source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
     - name: Test with pytest
       run: |
         coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
