@@ -9,7 +9,7 @@ def main(args):
     now = datetime.datetime.now()
     # Make YYYY/MM/DD/ directories for yesterday, today, and tomorrow.
     for offset in (-1, 0, 1):
-        make_dir_tree(now.year + j, base_path=base_path)
+        make_dir_tree(now.year + offset, base_path=base_path)
 
 
 if __name__ == "__main__":
