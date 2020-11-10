@@ -24,7 +24,7 @@ jobs:
         # installation problems if out of date.
         python -m pip install --upgrade pip setuptools numpy
         pip install .
-        pip install -r requirements-test.txt
+        pip install -r test-requirements.txt
         pip list
     - name: Test with pytest
       run: |
