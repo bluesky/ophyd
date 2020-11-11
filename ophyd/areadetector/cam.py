@@ -1,4 +1,3 @@
-from enum import IntEnum, unique
 import logging
 
 from ..utils import enum
@@ -772,32 +771,67 @@ class URLDetectorCam(CamBase):
 class Xspress3DetectorCam(CamBase):
     _html_docs = ['Xspress3Doc.html']
 
-    @unique
-    class TriggerMode(IntEnum):
-        """
-        These are the allowed trigger modes for the xspress3.
+    def __init__(self, prefix, *, read_attrs=None, configuration_attrs=None,
+                 **kwargs):
+        if read_attrs is None:
+            read_attrs = []
+        if configuration_attrs is None:
+            configuration_attrs = ['config_path', 'config_save_path']
 
-        usage:
-          xs3 = Xspress3Detector(...)
-          xs3.cam.trigger_mode.set(Xspress3DetectorCam.TriggerMode.TTL_VETO_ONLY)
-        """
+        super().__init__(
+            prefix,
+            read_attrs=read_attrs,
+            configuration_attrs=configuration_attrs,
+            **kwargs
+        )
 
-        SOFTWARE = 0
-        INTERNAL = 1
-        IDC = 2
-        TTL_VETO_ONLY = 3
-        TTL_BOTH = 4
-        LVDS_VETO_ONLY = 5
-        LVDS_BOTH = 6
+    config_path = ADCpt(SignalWithRBV, 'CONFIG_PATH', string=True, doc="configuration file path")
+    config_save_path = ADCpt(
+        SignalWithRBV, 'CONFIG_SAVE_PATH', string=True, doc="path to save configuration file"
+    )
+    connect = ADCpt(EpicsSignal, 'CONNECT', doc="connect to the Xspress3")
+    connected = ADCpt(EpicsSignal, 'CONNECTED', doc="show the connected status")
+    ctrl_dtc = ADCpt(
+        SignalWithRBV,
+        'CTRL_DTC',
+        doc="enable or disable DTC calculations: 0='Disable' 1='Enable'"
+    )
 
-    """
-    The ERASE PV takes two integer values:
-        0 - Done
-        1 - Erase
-    """
-    erase = ADCpt(EpicsSignal, "ERASE")
+    debounce = ADCpt(SignalWithRBV, 'DEBOUNCE', doc="set trigger debounce time in 80 MHz cycles")
+    disconnect = ADCpt(EpicsSignal, 'DISCONNECT', doc="disconnect from the Xspress3")
+    erase = ADCpt(EpicsSignal, "ERASE", kind="omitted", doc="erase MCA data: 0='Done' 1='Erase'")
+    frame_count = ADCpt(
+        EpicsSignalRO, 'FRAME_COUNT_RBV', doc="read number of frames acquired in an acquisition"
+    )
+    invert_f0 = ADCpt(SignalWithRBV, 'INVERT_F0', doc="invert F0 in modes LVDS_BOTH and TTL_BOTH")
+    invert_veto = ADCpt(
+        SignalWithRBV, 'INVERT_VETO', doc="invert VETO in modes LVDS, LVDS_BOTH, TTL, and TTL_BOTH"
+    )
+    max_frames = ADCpt(EpicsSignalRO, 'MAX_FRAMES_RBV', doc="maximum number of frames")
+    max_frames_driver = ADCpt(
+        EpicsSignalRO,
+        'MAX_FRAMES_DRIVER_RBV',
+        doc="maximum number of frames for a single acquisition"
+    )
+    max_num_channels = ADCpt(
+        EpicsSignalRO,
+        'MAX_NUM_CHANNELS_RBV',
+        doc="maximum number of channels supported"
+    )
+    max_spectra = ADCpt(SignalWithRBV, 'MAX_SPECTRA', doc="maximum number of elements in a spectrum")
+    xsp_name = ADCpt(EpicsSignal, 'NAME', doc="detector name")
+    num_cards = ADCpt(EpicsSignalRO, 'NUM_CARDS_RBV', doc="number of xspress3 cards to set up")
+    num_channels = ADCpt(SignalWithRBV, 'NUM_CHANNELS', doc="number of channels to read out")
+    num_frames_config = ADCpt(
+        SignalWithRBV, 'NUM_FRAMES_CONFIG', doc="number of frames to configure the system with"
+    )
+    reset = ADCpt(EpicsSignal, 'RESET', doc="reset the device")
+    restore_settings = ADCpt(EpicsSignal, 'RESTORE_SETTINGS', doc="restore settings from a file")
+    run_flags = ADCpt(SignalWithRBV, 'RUN_FLAGS', doc="set the run flags, only at connect time")
+    save_settings = ADCpt(EpicsSignal, 'SAVE_SETTINGS', doc="save current settings to a file")
+    trigger_signal = ADCpt(EpicsSignal, 'TRIGGER', doc="0='Do Nothing', 1='Trigger'")
 
-    # these CamBase PVs are disabled on the xspress3
+    # these CamBase PVs are disabled by the xspress3 IOC
     bin_x = None
     bin_y = None
     color_mode = None
