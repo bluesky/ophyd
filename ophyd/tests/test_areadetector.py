@@ -136,7 +136,6 @@ def test_detector(ad_prefix, cleanup):
     # det.image1.enable.put('Enable')
     cam.array_callbacks.put('Enable')
 
-    det.get()
     st = det.trigger()
     repr(st)
     det.read()
