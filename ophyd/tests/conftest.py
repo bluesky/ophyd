@@ -72,7 +72,7 @@ def motor(request, cleanup):
 def ad_prefix():
     'AreaDetector prefix'
     # prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
-    prefixes = ['AD_SIM:']
+    prefixes = ['ADSIM:']
 
     for prefix in prefixes:
         test_pv = prefix + 'TIFF1:PluginType_RBV'
