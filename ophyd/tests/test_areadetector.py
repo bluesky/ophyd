@@ -500,6 +500,7 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
     det.read_attrs = ['hdf1']
     det.hdf1.read_attrs = []
     det.cam.acquire_time.put(.1)
+    det.cam.num_images.put(5)
     det.hdf1.warmup()
     time.sleep(3)
 
