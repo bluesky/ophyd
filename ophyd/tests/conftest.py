@@ -71,7 +71,8 @@ def motor(request, cleanup):
 @pytest.fixture(scope='module')
 def ad_prefix():
     'AreaDetector prefix'
-    prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
+    # prefixes = ['13SIM1:', 'XF:31IDA-BI{Cam:Tbl}']
+    prefixes = ['AD_SIM:']
 
     for prefix in prefixes:
         test_pv = prefix + 'TIFF1:PluginType_RBV'

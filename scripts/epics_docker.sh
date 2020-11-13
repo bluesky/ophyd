@@ -9,11 +9,13 @@ fi
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $SCRIPTS_DIR/epics_exports.sh
 
-DOCKERIMAGE="nsls2/epics-docker:latest"
+MOTOR_DOCKERIMAGE="nsls2/epics-docker:latest"
 PE_DOCKERIMAGE="nsls2/pyepics-docker:latest"
+AD_DOCKERIMAGE="prjemian/synapps-6.1-ad-3.7:latest"
 
-docker pull ${DOCKERIMAGE}
+docker pull ${MOTOR_DOCKERIMAGE}
 docker pull ${PE_DOCKERIMAGE}
+docker pull ${AD_DOCKERIMAGE}
 
 mkdir -p /tmp/ophyd_AD_test/
 
@@ -22,6 +24,7 @@ mkdir -p /tmp/ophyd_AD_test/
 # does not create missing directories.
 python $SCRIPTS_DIR/create_directories.py /tmp/ophyd_AD_test/data1
 
-docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ ${DOCKERIMAGE}
-docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}
+docker run --rm -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ ${MOTOR_DOCKERIMAGE}
+docker run --rm -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ -e AD_PREFIX="ADSIM:" ${AD_DOCKERIMAGE}
+docker run --rm -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}
 
