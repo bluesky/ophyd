@@ -25,6 +25,6 @@ mkdir -p /tmp/ophyd_AD_test/
 python $SCRIPTS_DIR/create_directories.py /tmp/ophyd_AD_test/data1
 
 docker run --rm -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ ${MOTOR_DOCKERIMAGE}
-docker run --rm -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ -e AD_PREFIX="ADSIM:" ${AD_DOCKERIMAGE}
+docker run --rm -dit -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ -e AD_PREFIX="ADSIM:" ${AD_DOCKERIMAGE} iocSimDetector/simDetector.sh start
 docker run --rm -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}
 
