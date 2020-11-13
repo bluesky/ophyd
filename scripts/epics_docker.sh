@@ -1,11 +1,5 @@
 #!/bin/bash
 
-systemctl status docker.service > /dev/null
-if ! [ $? -eq 0 ]; then
-    echo $?
-    systemctl restart docker.service
-fi
-
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $SCRIPTS_DIR/epics_exports.sh
 
