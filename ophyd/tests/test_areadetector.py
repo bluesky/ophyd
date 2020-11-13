@@ -136,7 +136,6 @@ def test_detector(ad_prefix, cleanup):
     # det.image1.enable.put('Enable')
     cam.array_callbacks.put('Enable')
 
-    det.get()
     st = det.trigger()
     repr(st)
     det.read()
@@ -384,8 +383,8 @@ def test_default_configuration_attrs(plugin):
 @pytest.fixture(scope='function')
 def data_paths(request):
     def clean_dirs():
-        shutil.rmtree('/tmp/data1')
-        os.unlink('/tmp/data2')
+        shutil.rmtree('/tmp/ophyd_AD_test/data1')
+        os.unlink('/tmp/ophyd_AD_test/data2')
 
     try:
         clean_dirs()
@@ -396,20 +395,20 @@ def data_paths(request):
 
     for year_offset in [-1, 0, 1]:
         make_dir_tree(now.year + year_offset,
-                      base_path='/tmp/data1')
+                      base_path='/tmp/ophyd_AD_test/data1')
 
-    os.symlink('/tmp/data1', '/tmp/data2')
+    os.symlink('/tmp/ophyd_AD_test/data1', '/tmp/ophyd_AD_test/data2')
     request.addfinalizer(clean_dirs)
 
 
 @pytest.mark.adsim
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
-                          (None, '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data1', '%Y/%m/%d', None, False),
-                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data2', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
 def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, cleanup):
     fs = DummyFS()
@@ -473,12 +472,12 @@ def h5py():
 
 @pytest.mark.adsim
 @pytest.mark.parametrize('root,wpath,rpath,check_files',
-                         ((None, '/tmp/data1/%Y/%m/%d', None, False),
-                          (None, '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data1', '%Y/%m/%d', None, False),
-                          ('/tmp/data1', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', False),
-                          ('/', '/tmp/data1/%Y/%m/%d', None, False),
-                          ('/tmp/data2', '/tmp/data1/%Y/%m/%d', '%Y/%m/%d', True)
+                         ((None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          (None, '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data1', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', False),
+                          ('/', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', None, False),
+                          ('/tmp/ophyd_AD_test/data2', '/tmp/ophyd_AD_test/data1/%Y/%m/%d', '%Y/%m/%d', True)
                           ))
 def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
                       check_files, cleanup):
@@ -501,6 +500,7 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
     det.read_attrs = ['hdf1']
     det.hdf1.read_attrs = []
     det.cam.acquire_time.put(.1)
+    det.cam.num_images.put(5)
     det.hdf1.warmup()
     time.sleep(3)
 
@@ -525,7 +525,7 @@ def test_fshdf_plugin(h5py, data_paths, ad_prefix, root, wpath, rpath,
     assert res_doc['root'] == target_root
     assert not PurePath(res_doc['resource_path']).is_absolute()
     if check_files:
-        time.sleep(.1)
+        time.sleep(5)  # Give AD some time to finish writing.
         path = PurePath(res_doc['root']) / PurePath(res_doc['resource_path'])
         handler = fh.AreaDetectorHDF5Handler(str(path),
                                              **res_doc['resource_kwargs'])

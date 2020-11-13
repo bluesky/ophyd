@@ -1,23 +1,26 @@
 #!/bin/bash
 
-systemctl status docker.service > /dev/null
-if ! [ $? -eq 0 ]; then
-    echo $?
-    systemctl restart docker.service
-fi
+SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $SCRIPTS_DIR/epics_exports.sh
 
-source epics_exports.sh
+MOTOR_DOCKERIMAGE="nsls2/epics-docker:latest"
+PE_DOCKERIMAGE="nsls2/pyepics-docker:latest"
+AD_DOCKERIMAGE="prjemian/synapps-6.1-ad-3.7:latest"
 
-DOCKERIMAGE="klauer/epics-docker"
-PE_DOCKERIMAGE="klauer/simioc-docker"
-PE_DOCKERTAG="pyepics-docker"
+docker pull ${MOTOR_DOCKERIMAGE}
+docker pull ${PE_DOCKERIMAGE}
+docker pull ${AD_DOCKERIMAGE}
 
-docker pull ${DOCKERIMAGE}
-docker pull ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
-mkdir -p /tmp/data
-# this is required because the images use a version of AD which
+mkdir -p /tmp/ophyd_AD_test/
+
+# Create YYYY/MM/DD subdirectories.
+# This is required because the images use a version of AD which
 # does not create missing directories.
-python -c "import ophyd.utils.paths as oup; import datetime; now = datetime.datetime.now(); [oup.make_dir_tree(now.year + j, base_path='/tmp/data') for j in [-1, 0, 1]]"
-docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp -v /tmp/data:/data ${DOCKERIMAGE}
-docker run -d -p $DOCKER0_IP:7000-9000:5064/tcp ${PE_DOCKERIMAGE}:${PE_DOCKERTAG}
+python $SCRIPTS_DIR/create_directories.py /tmp/ophyd_AD_test/data1
+
+docker run --rm -d -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ ${MOTOR_DOCKERIMAGE}
+docker run --name=area-detector --rm -dit -v /tmp/ophyd_AD_test:/tmp/ophyd_AD_test/ -e AD_PREFIX="ADSIM:" ${AD_DOCKERIMAGE} /bin/bash
+sleep 1  # Probably not needed?
+docker exec area-detector iocSimDetector/simDetector.sh start
+docker run --rm -d ${PE_DOCKERIMAGE}
 
