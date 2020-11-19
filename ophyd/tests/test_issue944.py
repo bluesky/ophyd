@@ -1,4 +1,15 @@
-"""Issue 944:  TypeError: No conversion path for dtype: dtype('<U1')."""
+"""
+Issue 944:  TypeError: No conversion path for dtype: dtype('<U1').
+
+Since the tests include different configurations of
+EpicsSignalBase.set_defaults(), and that code must be called
+before creating any instance of EpicsSignalBase (or subclasses),
+most tests need to be run as a separate process.
+
+Needs this set in the top-most conftest.py file to enable 'testdir':
+
+    echo "pytest_plugins = 'pytester'" >> conftest.py
+"""
 
 from .config import motor_recs
 
