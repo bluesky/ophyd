@@ -11,7 +11,6 @@ from ophyd.utils.epics_pvs import (AlarmSeverity, AlarmStatus)
 
 logger = logging.getLogger(__name__)
 
-pytest_plugins = 'pytester'
 
 @pytest.fixture()
 def hw(tmpdir):
