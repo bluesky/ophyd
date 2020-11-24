@@ -59,8 +59,8 @@ class EpicsMotor(Device, PositionerBase):
     # motor status
     motor_is_moving = Cpt(EpicsSignalRO, ".MOVN", kind="omitted", auto_monitor=True)
     motor_done_move = Cpt(EpicsSignalRO, ".DMOV", kind="omitted", auto_monitor=True)
-    high_limit_switch = Cpt(EpicsSignal, ".HLS", kind="omitted", auto_monitor=True)
-    low_limit_switch = Cpt(EpicsSignal, ".LLS", kind="omitted", auto_monitor=True)
+    high_limit_switch = Cpt(EpicsSignalRO, ".HLS", kind="omitted", auto_monitor=True)
+    low_limit_switch = Cpt(EpicsSignalRO, ".LLS", kind="omitted", auto_monitor=True)
     high_limit_travel = Cpt(EpicsSignal, ".HLM", kind="omitted", auto_monitor=True)
     low_limit_travel = Cpt(EpicsSignal, ".LLM", kind="omitted", auto_monitor=True)
     direction_of_travel = Cpt(EpicsSignal, ".TDIR", kind="omitted", auto_monitor=True)
