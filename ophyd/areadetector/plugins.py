@@ -784,7 +784,6 @@ class FileBase(Device):
     auto_increment = Cpt(SignalWithRBV, 'AutoIncrement', kind='config')
     auto_save = Cpt(SignalWithRBV, 'AutoSave', kind='config')
     capture = Cpt(SignalWithRBV, 'Capture')
-    create_directory = Cpt(SignalWithRBV, "CreateDirectory")
     delete_driver_file = Cpt(SignalWithRBV, 'DeleteDriverFile', kind='config')
     file_format = Cpt(SignalWithRBV, 'FileFormat', kind='config')
     file_name = Cpt(SignalWithRBV, 'FileName', string=True, kind='config')
@@ -1047,7 +1046,7 @@ class FilePlugin_V21(FilePlugin_V20, version=(2, 1), version_of=FilePlugin):
 
 
 class FilePlugin_V22(PluginBase_V22, FilePlugin_V21, version=(2, 2), version_of=FilePlugin):
-    create_directory = Cpt(SignalWithRBV, "CreateDirectory")
+    create_directory = Cpt(SignalWithRBV, "CreateDirectory", kind="config")
     file_number = Cpt(SignalWithRBV, "FileNumber")
     file_number_sync = None  # REMOVED
     file_number_write = None  # REMOVED
