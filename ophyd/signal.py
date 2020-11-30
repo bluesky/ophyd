@@ -1222,6 +1222,10 @@ class EpicsSignalBase(Signal):
         metadata = self._metadata_changed(self.pvname, kwargs, update=False,
                                           require_timestamp=True,
                                           from_monitor=True)
+
+        if self._string and "char_value" in kwargs:
+            value = kwargs["char_value"]
+
         # super().put updates self._readback and runs SUB_VALUE
         super().put(value=value, timestamp=metadata.pop('timestamp'),
                     metadata=metadata, force=True)
