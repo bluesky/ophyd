@@ -66,7 +66,7 @@ class ScalerChannel(Device):
     chname = FCpt(EpicsSignal, '{self.prefix}.NM{self._ch_num}',
                   kind=Kind.config)
     s = FCpt(EpicsSignalRO, '{self.prefix}.S{self._ch_num}',
-             kind=Kind.hinted)
+             kind=Kind.hinted, auto_monitor=False)
     preset = FCpt(EpicsSignal, '{self.prefix}.PR{self._ch_num}',
                   kind=Kind.config)
     gate = FCpt(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True,
