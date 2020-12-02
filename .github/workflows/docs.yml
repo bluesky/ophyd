@@ -40,4 +40,4 @@ jobs:
         external_repository: bluesky/bluesky.github.io
         destination_dir: ophyd
         keep_files: true  # Keep old files.
-        force_ophan: false  # Keep git history.
+        force_orphan: false  # Keep git history.
