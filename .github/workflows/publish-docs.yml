@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    if: github.repository == 'bluesky/bluesky-queueserver'
+    if: github.repository_owner == 'bluesky'
     runs-on: ubuntu-latest
     strategy:
       matrix:
