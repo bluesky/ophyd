@@ -765,7 +765,7 @@ class MockFlyer:
         dd = dict()
         dd.update(self._mot.describe())
         dd.update(self._detector.describe())
-        return {'stream_name': dd}
+        return {self.name: dd}
 
     def complete(self):
         if self._completion_status is None:
