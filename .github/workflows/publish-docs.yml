@@ -24,7 +24,6 @@ jobs:
       run: source continuous_integration/scripts/install.sh
     - name: Build Docs
       run: |
-        git fetch --tags
         make -C docs/ html
     - name: Deploy documentation to blueskyproject.io.
       # We pin to the SHA, not the tag, for security reasons.
