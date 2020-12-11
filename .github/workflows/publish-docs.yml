@@ -42,6 +42,6 @@ jobs:
         publish_branch: master
         publish_dir: ./docs/build/html
         external_repository: bluesky/bluesky.github.io
-        destination_dir: ophyd
+        destination_dir: ${GITHUB_REPOSITORY#*/}  # just the repo name, without the "bluesky/"
         keep_files: true  # Keep old files.
         force_orphan: false  # Keep git history.
