@@ -10,5 +10,6 @@ python -m pip install --upgrade pip setuptools numpy
 # in the published documentation.
 git fetch --tags
 pip install .
+pip install -r requirements-test.txt
 pip install -r requirements-docs.txt
 pip list
