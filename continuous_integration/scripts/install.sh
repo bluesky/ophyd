@@ -6,7 +6,7 @@ sudo apt-get install graphviz procserv libhdf5-dev
 # versions. Explicitly upgrade them because they often create
 # installation problems if out of date.
 python -m pip install --upgrade pip setuptools wheel numpy
-# Verioneer uses the most recent git tag to generate __version__, which appears
+# Versioneer uses the most recent git tag to generate __version__, which appears
 # in the published documentation.
 git fetch --tags
 python -m pip install .
