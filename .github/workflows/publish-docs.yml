@@ -15,6 +15,12 @@ jobs:
 
     steps:
 
+    - name: Set env.REPOSITORY_NAME  # just the repo, as opposed to org/repo
+      shell: bash -l {0}
+      run: |
+        export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
+        echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
+
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1000  # should be enough to reach the most recent tag
@@ -38,12 +44,6 @@ jobs:
       shell: bash -l {0}
       run: |
         make -C docs/ html
-
-    - name: Set env.REPOSITORY_NAME  # just the repo, as opposed to org/repo
-      shell: bash -l {0}
-      run: |
-        export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
-        echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
 
     - name: Deploy documentation to blueskyproject.io.
       # We pin to the SHA, not the tag, for security reasons.
