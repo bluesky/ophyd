@@ -14,27 +14,34 @@ jobs:
         python-version: [3.8]
 
     steps:
+
     - uses: actions/checkout@v2
       with:
         fetch-depth: 1000  # should be enough to reach the most recent tag
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install
       shell: bash -l {0}
       run: source continuous_integration/scripts/install.sh
+
     - name: Install documentation-building requirements
       run: |
         python -m pip install -r requirements-docs.txt
         python -m pip list
+
     - name: Build Docs
       run: |
         make -C docs/ html
+
     - name: Set env.REPOSITORY_NAME  # just the repo, as opposed to org/repo
       run: |
         export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
         echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
+
     - name: Deploy documentation to blueskyproject.io.
       # We pin to the SHA, not the tag, for security reasons.
       # https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
