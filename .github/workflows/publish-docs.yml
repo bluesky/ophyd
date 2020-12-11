@@ -25,6 +25,10 @@ jobs:
     - name: Build Docs
       run: |
         make -C docs/ html
+    - name: Set env.REPOSITORY_NAME  # just the repo, as opposed to org/repo
+      run: |
+        export REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}
+        echo "REPOSITORY_NAME=${REPOSITORY_NAME}" >> $GITHUB_ENV
     - name: Deploy documentation to blueskyproject.io.
       # We pin to the SHA, not the tag, for security reasons.
       # https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
@@ -34,6 +38,6 @@ jobs:
         publish_branch: master
         publish_dir: ./docs/build/html
         external_repository: bluesky/bluesky.github.io
-        destination_dir: ${GITHUB_REPOSITORY#*/}  # just the repo name, without the "bluesky/"
+        destination_dir: ${{ env.REPOSITORY_NAME }}  # just the repo name, without the "bluesky/"
         keep_files: true  # Keep old files.
         force_orphan: false  # Keep git history.
