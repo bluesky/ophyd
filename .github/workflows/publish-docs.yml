@@ -31,6 +31,7 @@ jobs:
         pip list
     - name: Build Docs
       run: |
+        git fetch --tags
         make -C docs/ html
     - name: Deploy documentation to blueskyproject.io.
       # We pin to the SHA, not the tag, for security reasons.
