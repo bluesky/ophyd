@@ -29,16 +29,19 @@ jobs:
       run: source continuous_integration/scripts/install.sh
 
     - name: Install test requirements
+      shell: bash -l {0}
       run: |
         python -m pip install -r requirements-test.txt
         python -m pip list
 
     - name: Start IOCs in containers.
+      shell: bash -l {0}
       run: |
         source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
         source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
 
     - name: Test with pytest
+      shell: bash -l {0}
       run: |
         coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
         coverage combine
