@@ -24,6 +24,10 @@ jobs:
     - name: Install
       shell: bash -l {0}
       run: source continuous_integration/scripts/install.sh
+    - name: Install test requirements
+      run: |
+        python -m pip install -r requirements-test.txt
+        python -m pip list
     - name: Start IOCs in containers.
       run: |
         source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh

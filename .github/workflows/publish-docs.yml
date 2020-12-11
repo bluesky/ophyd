@@ -24,6 +24,10 @@ jobs:
     - name: Install
       shell: bash -l {0}
       run: source continuous_integration/scripts/install.sh
+    - name: Install documentation-building requirements
+      run: |
+        python -m pip install -r requirements-docs.txt
+        python -m pip list
     - name: Build Docs
       run: |
         make -C docs/ html
