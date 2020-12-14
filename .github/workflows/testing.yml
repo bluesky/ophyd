@@ -1,6 +1,10 @@
 name: Unit Tests
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+      - cron: '00 4 * * *'  # daily at 4AM
 
 jobs:
   build:
@@ -9,31 +13,36 @@ jobs:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
+      fail-fast: false
     env:
       TEST_CL: pyepics
     steps:
+
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install system dependencies.
+
+    - name: Install
+      shell: bash -l {0}
+      run: source continuous_integration/scripts/install.sh
+
+    - name: Install test requirements
+      shell: bash -l {0}
       run: |
-        sudo apt install libhdf5-dev
-    - name: Install Python dependencies
-      run: |
-        # These packages are installed in the base environment but may be older
-        # versions. Explicitly upgrade them because they often create
-        # installation problems if out of date.
-        python -m pip install --upgrade pip setuptools numpy
-        pip install .
-        pip install -r requirements-test.txt
-        pip list
+        python -m pip install -r requirements-test.txt
+        python -m pip list
+
     - name: Start IOCs in containers.
+      shell: bash -l {0}
       run: |
         source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
         source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
+
     - name: Test with pytest
+      shell: bash -l {0}
       run: |
         coverage run --concurrency=thread --parallel-mode -m pytest -v -k "${TEST_CL}"
         coverage combine
