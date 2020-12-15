@@ -4,8 +4,8 @@
 | --- | --- | --- | --- |
 | [![Conda Recipe](https://img.shields.io/badge/recipe-ophyd-green.svg)](https://anaconda.org/nsls2forge/ophyd) | [![Conda Downloads](https://img.shields.io/conda/dn/nsls2forge/ophyd.svg)](https://anaconda.org/nsls2forge/ophyd) | [![Conda Version](https://img.shields.io/conda/vn/nsls2forge/ophyd.svg)](https://anaconda.org/nsls2forge/ophyd) | [![Conda Platforms](https://img.shields.io/conda/pn/nsls2forge/ophyd.svg)](https://anaconda.org/nsls2forge/ophyd) |
 
-Ophyd - EPICS Client Abstractions
-=================================
+Ophyd: Python Hardware Abstractions
+===================================
 
 [Documentation](https://blueskyproject.io/ophyd/)
 
