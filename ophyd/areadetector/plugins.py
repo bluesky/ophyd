@@ -1046,7 +1046,7 @@ class FilePlugin_V21(FilePlugin_V20, version=(2, 1), version_of=FilePlugin):
 
 
 class FilePlugin_V22(PluginBase_V22, FilePlugin_V21, version=(2, 2), version_of=FilePlugin):
-    create_directory = Cpt(SignalWithRBV, "CreateDirectory")
+    create_directory = Cpt(SignalWithRBV, "CreateDirectory", kind="config")
     file_number = Cpt(SignalWithRBV, "FileNumber")
     file_number_sync = None  # REMOVED
     file_number_write = None  # REMOVED
