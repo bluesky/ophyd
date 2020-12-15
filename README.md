@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/bluesky/ophyd.svg)](https://travis-ci.org/bluesky/ophyd)
+[![Build Status](https://img.shields.io/github/workflow/status/bluesky/ophyd/Unit%20Tests)](https://github.com/bluesky/ophyd/actions?query=workflow%3A%22Unit+Tests%22+branch%3Amaster)
 
 | Name | Downloads | Version | Platforms |
 | --- | --- | --- | --- |
