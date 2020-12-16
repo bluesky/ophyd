@@ -2,7 +2,7 @@
  Release History
 =================
 
-1.6.0 (2020-11-09)
+1.6.0 (2020-12-16)
 ==================
 
 Fixes
@@ -18,6 +18,11 @@ Fixes
 * When area detector takes a series of images and ``num_capture`` is set to
   ``0``, this is now interpreted to mean "however many images the detector is
   configured to acquire" rather than "0 images".
+* Fixed EigerDetectorCam's photon_energy component's PV suffix spelling.
+* Motor limits HLS and LLS used ``EpicsSignal`` when they should be using
+  ``EpicsSignalRO``.
+* ``EpicsSignal`` with ``string=True`` kwarg now correctly results in
+  ``dtype='string'`` from ``.describe()`` method
 
 Added
 -----
@@ -46,6 +51,9 @@ Changes
   issues a warning that it may be removed in the future.
 * Use auto-monitoring in more places in ``EpicsMotor``. This should drastically
   speed up ``motor.read_configuration()``.
+* Update ``ophyd.sim.MockFlyer`` to use its name as its stream name.
+* Capture the ``create_directory`` signal on Area Detector ``FilePlugin`` as
+  configuration.
 
 Deprecations
 ------------
