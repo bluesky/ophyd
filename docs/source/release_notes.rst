@@ -9,7 +9,7 @@ Fixes
 -----
 
 * The ``write_timeout`` specified for an :class:`EpicsSignalBase` is respected
-  by its ``set()`` method unless overridden with ``set(.., timeout=TIMEOUT)``.
+  by its ``set()`` method unless overridden with ``set(..., timeout=TIMEOUT)``.
 * Area Detector PVs related to array shape have been given an order compatible
   with the numpy array index ordering of the array itself.
 * Thread the keyword ``EpicsSignal.get(..., use_monitor=True)`` down to the
@@ -45,7 +45,7 @@ Changes
   more than timeouts, as described above. The old name is still supported but
   issues a warning that it may be removed in the future.
 * Use auto-monitoring in more places in ``EpicsMotor``. This should drastically
-  speed up ``motor.read_conifiguration()``.
+  speed up ``motor.read_configuration()``.
 
 Deprecations
 ------------
