@@ -2,13 +2,66 @@
  Release History
 =================
 
-v1.6.0 (2020-XX-XX)
-===================
+1.6.0 (2020-12-16)
+==================
+
+Fixes
+-----
+
+* The ``write_timeout`` specified for an :class:`EpicsSignalBase` is respected
+  by its ``set()`` method unless overridden with ``set(..., timeout=TIMEOUT)``.
+* Area Detector PVs related to array shape have been given an order compatible
+  with the numpy array index ordering of the array itself.
+* Thread the keyword ``EpicsSignal.get(..., use_monitor=True)`` down to the
+  control system. This setting was previously supported but support was removed
+  (years ago). We now view its removal as a mistake.
+* When area detector takes a series of images and ``num_capture`` is set to
+  ``0``, this is now interpreted to mean "however many images the detector is
+  configured to acquire" rather than "0 images".
+* Fixed EigerDetectorCam's ``photon_energy`` component's PV suffix spelling.
+* Motor limits HLS and LLS used ``EpicsSignal`` when they should be using
+  ``EpicsSignalRO``.
+* ``EpicsSignal`` with ``string=True`` kwarg now correctly results in
+  ``dtype='string'`` from ``.describe()`` method
 
 Added
 -----
-
 * Support for Emergent Vision detectors.
+* The class-wide default for ``write_timeout`` is now configurable via
+  :meth:`EpicsSignalBase.set_defaults`. It was previously only configurable on
+  a per-instance basis at initialization time, with the class-wide default
+  hard-coded to ``None``. The class-wide default is still ``None``, unchanged
+  from the previous release.
+* The class-wide default for ``auto_monitor`` is now configurable via
+  :meth:`EpicsSignalBase.set_defaults`. It was previously configurable on a
+  per-instance basis at initialization time. The default value, ``False``, has
+  not changed.
+
+Changes
+-------
+
+* The logging has been tweaked to be less noisy, particularly at import time.
+  Some log messages have been moved from ``'ophyd.object'`` to
+  ``'ophyd.control_layer'``, and the level of messages emitted to
+  ``'ophyd.control_layer'`` have been reduced from INFO to DEBUG. Some log
+  messages have been removed entirely.
+* The method :meth:`EpicsSignalBase.set_default_timeout` has been renamed to
+  :meth:`EpicsSignalBase.set_defaults` because it has been extended to include
+  more than timeouts, as described above. The old name is still supported but
+  issues a warning that it may be removed in the future.
+* Use auto-monitoring in more places in ``EpicsMotor``. This should drastically
+  speed up ``motor.read_configuration()``.
+* Update ``ophyd.sim.MockFlyer`` to use its name as its stream name.
+* Capture the ``create_directory`` signal on Area Detector ``FilePlugin`` as
+  configuration.
+
+Deprecations
+------------
+
+* :class:`EpicsSignalBase` previously ignored unrecognized keyword arguments
+  passed to its method ``get()`` or ``get_setpoint()``. Now, any unrecognized
+  keyword arguments will issue a ``DeprecationWarning``. In the future they
+  will issue a ``UserWarning`` and eventually an error.
 
 1.5.4 (2020-10-19)
 ==================
@@ -29,8 +82,6 @@ Added
 -----
 
 * ``OPHYD_SILENCE_VALUE_WARNING`` environment variable to silence ``.value`` warning.
-
-
 
 1.5.3 (2020-08-26)
 ==================
