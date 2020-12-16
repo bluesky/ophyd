@@ -18,7 +18,7 @@ Fixes
 * When area detector takes a series of images and ``num_capture`` is set to
   ``0``, this is now interpreted to mean "however many images the detector is
   configured to acquire" rather than "0 images".
-* Fixed EigerDetectorCam's photon_energy component's PV suffix spelling.
+* Fixed EigerDetectorCam's ``photon_energy`` component's PV suffix spelling.
 * Motor limits HLS and LLS used ``EpicsSignal`` when they should be using
   ``EpicsSignalRO``.
 * ``EpicsSignal`` with ``string=True`` kwarg now correctly results in
