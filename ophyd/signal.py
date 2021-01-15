@@ -1061,8 +1061,10 @@ class EpicsSignalBase(Signal):
             raise TimeoutError(f'Control layer {self.cl.name} failed to send connection and '
                                f'access rights information within {float(timeout):.1f} sec')
 
-    def wait_for_connection(self, timeout=1.0):
+    def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
         '''Wait for the underlying signals to initialize or connect'''
+        if timeout is DEFAULT_CONNECTION_TIMEOUT:
+            timeout = self.connection_timeout
         try:
             self._ensure_connected(self._read_pv, timeout=timeout)
         except TimeoutError:
@@ -1485,8 +1487,10 @@ class EpicsSignal(EpicsSignalBase):
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
-    def wait_for_connection(self, timeout=1.0):
+    def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
         '''Wait for the underlying signals to initialize or connect'''
+        if timeout is DEFAULT_CONNECTION_TIMEOUT:
+            timeout = self.connection_timeout
         self._ensure_connected(self._read_pv, self._write_pv, timeout=timeout)
 
     @property
