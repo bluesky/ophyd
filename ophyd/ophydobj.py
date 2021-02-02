@@ -156,7 +156,8 @@ class OphydObject:
                  kind=None):
 
         if OPHYD_DEBUG_WITH_INSPECT:
-            self._stack_init = inspect.stack()
+            stack = inspect.stack()
+            self._stack_init = [f'{s.filename}:{s.lineno}' for s in stack]
 
         if labels is None:
             labels = set()
@@ -241,7 +242,8 @@ class OphydObject:
 
         if OPHYD_DEBUG_WITH_INSPECT:
             print(f'Subclassing {cls.__name__}...')
-            cls._stack_subclass = inspect.stack()
+            stack = inspect.stack()
+            cls._stack_subclass = [f'{s.filename}:{s.lineno}' for s in stack]
 
         super().__init_subclass__(**kwargs)
 
