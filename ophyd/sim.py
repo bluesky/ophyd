@@ -730,18 +730,20 @@ class MockFlyer:
         self._steps = np.linspace(start, stop, num)
         self._data = deque()
         self._completion_status = None
+        self._lock = threading.RLock()
         sentinel = object()
-        loop = kwargs.pop('loop', sentinel)
+        loop = kwargs.pop("loop", sentinel)
         if loop is not sentinel:
             warnings.warn(
                 f"{self.__class__} no longer takes a loop as input.  "
                 "Your input will be ignored and may raise in the future",
-                stacklevel=2
+                stacklevel=2,
             )
         if kwargs:
             raise TypeError(
-                f'{self.__class__}.__init__ got unexpected '
-                f'keyword arguments {list(kwargs)}')
+                f"{self.__class__}.__init__ got unexpected "
+                f"keyword arguments {list(kwargs)}"
+            )
 
     def __setstate__(self, val):
         name, detector, motor, steps = val
@@ -756,10 +758,10 @@ class MockFlyer:
         return (self.name, self._detector, self._mot, self._steps)
 
     def read_configuration(self):
-        return OrderedDict()
+        return {}
 
     def describe_configuration(self):
-        return OrderedDict()
+        return {}
 
     def describe_collect(self):
         dd = dict()
@@ -773,8 +775,8 @@ class MockFlyer:
         return self._completion_status
 
     def kickoff(self):
-        if self._completion_status is not None:
-            raise RuntimeError("Already kicked off.")
+        if self._completion_status is not None and not self._completion_status.done:
+            raise RuntimeError("Kicking off a second time?!")
         self._data = deque()
         st = DeviceStatus(device=self)
         self._completion_status = st
@@ -784,36 +786,37 @@ class MockFlyer:
             st.set_finished()
 
         threading.Thread(target=flyer_worker, daemon=True).start()
-
-        return st
+        kickoff_st = DeviceStatus(device=self)
+        kickoff_st.set_finished()
+        return kickoff_st
 
     def collect(self):
-        if self._completion_status is None or not self._completion_status.done:
-            raise RuntimeError("No reading until done!")
-        self._completion_status = None
 
-        yield from self._data
+        with self._lock:
+            data = list(self._data)
+            self._data.clear()
+        yield from data
 
     def _scan(self):
         "This will be run on a separate thread, started in self.kickoff()"
-        ttime.sleep(.1)
+        ttime.sleep(0.1)
         for p in self._steps:
             stat = self._mot.set(p)
             stat.wait()
-
             stat = self._detector.trigger()
             stat.wait()
 
             event = dict()
-            event['time'] = ttime.time()
-            event['data'] = dict()
-            event['timestamps'] = dict()
+            event["time"] = ttime.time()
+            event["data"] = dict()
+            event["timestamps"] = dict()
             for r in [self._mot, self._detector]:
                 d = r.read()
                 for k, v in d.items():
-                    event['data'][k] = v['value']
-                    event['timestamps'][k] = v['timestamp']
-            self._data.append(event)
+                    event["data"][k] = v["value"]
+                    event["timestamps"][k] = v["timestamp"]
+            with self._lock:
+                self._data.append(event)
 
     def stop(self, *, success=False):
         pass
