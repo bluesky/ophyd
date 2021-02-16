@@ -32,14 +32,13 @@ with open(os.path.join(here, 'requirements.txt'), 'rt') as f:
     requirements = f.read().split()
 
 # Get the long description from the README file
-with open(os.path.join(here, 'README.md'), 'rt', encoding='utf-8') as f:
+with open(os.path.join(here, 'README.rst'), 'rt', encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ophyd',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
       long_description=long_description,
-      long_description_content_type='text/markdown',
       license='BSD',
       python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
       install_requires=requirements,
