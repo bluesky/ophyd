@@ -44,30 +44,17 @@ About the documentation
    :maxdepth: 1
 
    tutorials/install
-   tutorials/search-and-lookup
-   tutorials/get-data
-   tutorials/get-metadata
-   tutorials/export
+   tutorials/epics/single-PV
 
 .. toctree::
    :caption: How-to Guides
    :name: how-to
    :maxdepth: 1
 
-   how-to/download-data-samples
-   how-to/file-backed-catalog
-   how-to/store-data-from-run-engine
-   how-to/store-analysis-results
-   how-to/mongo-backed-catalog
-
 .. toctree::
    :caption: Explanations
    :name: explanations
    :maxdepth: 1
-
-   explanations/v2-transition
-   explanations/local-and-remote-use-cases
-   explanations/relationship-to-intake
 
 .. rst-class:: no-margin-after-ul
 
@@ -75,11 +62,6 @@ About the documentation
    :caption: Reference
    :name: reference
    :maxdepth: 1
-
-   reference/v2
-   reference/v1
-   reference/configuration
-   reference/changelog
 
 * :ref:`genindex`
 
