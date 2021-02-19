@@ -34,8 +34,8 @@ walker.
 Start your favorite interactive Python environment, such as ``ipython`` or
 ``jupyter lab``.
 
-Create an ophyd ``EpicsSignal``
--------------------------------
+Connect to a PV from Ophyd
+--------------------------
 
 Let's connect to the PV ``random_walk:dt`` from Ophyd. We need two pieces of
 information:
@@ -68,10 +68,24 @@ information:
       a = EpicsSignal("...", name="some name with spaces in it")
       a = b = EpicsSignal("...", name="b")  # two local variables
 
+Next let's connect to ``random_walk:x``. It happens that this PV is not
+writable---any writes would be rejected by EPICS---so we should use a read-only
+EpicsSignal, `~ophyd.signal.EPICSSignalRO`, to represent it in in ophyd. In
+EPICS, you just have to "know" this about your hardware. Fortunately if, in our
+ignorance,  we used writable `~ophyd.signal.EpicsSignal` instead, we could
+still use it to read the PV. It would just have a vestigial ``set()`` method
+that wouldn't work.
+
+.. ipython:: python
+
+   from ophyd.signal import EpicsSignalRO
+
+   x = EpicsSignalRO("random_walk:x", name="x")
+
 Use it with the Bluesky RunEngine
 ---------------------------------
 
-The signal can be used by the Bluesky RunEngine. Let's set up a RunEngine to
+The signal can be used by the Bluesky RunEngine. Let's configure a RunEngine to
 print a table.
 
 .. ipython:: python
@@ -90,22 +104,139 @@ be read like a "detector". (In Bluesky, all things that are "motors" are also
    from bluesky.plans import count, list_scan
 
    RE(count([time_delta]))  # Use as a "detector".
-   RE(list_scan([], time_delta, [0.1, 0.3, 1, 3]))  # Use as "motor'.
+   RE(list_scan([], time_delta, [0.1, 0.3, 1, 3]))  # Use as "motor".
 
 Use it directly
 ---------------
+
+Read
+^^^^
+
+The signal can be read. It return a dictionary with one item. The key is the
+human-friendly ``name`` we specified. The value is another dictionary,
+containing the ``value`` and the ``timestamp`` of the reading from the control
+system (in this case, EPICS).
 
 .. ipython:: python
 
    time_delta.read()
 
-* EpicsSignal
-* EpicsSignalRO
-* Emphasize that if you want to use it with the RunEngine, you should stop here
-  and let the RunEngine worry about read/write/subscribe.
-* read
-* write
-* subscribe
+Describe
+^^^^^^^^
+
+Additional metadata is available. This always includes the data type, shape,
+and source (e.g.  PV). It may also include units and other metadata.
+
+.. ipython:: python
+
+   time_delta.describe()
+
+Set
+^^^
+
+This signal is writable, so it can also be set.
+
+.. ipython:: python
+
+   time_delta.set(10).wait()  # Set it to 10 and wait for it to get there.
+
+Sometimes hardware gets stuck or does not do what it is told, and so it is good
+practice to put a timeout on how long you are willing to wait until deciding
+that there is an error that needs to be handled somehow.
+
+.. ipython:: python
+
+   time_delta.set(10).wait(timeout=1)  # Set it to 10 and wait up to 1 second.
+
+If the signal fails to arrive, a ``TimeoutError`` will be raised.
+
+Note that ``set(...)`` starts the motion but does *not* wait for it to
+complete. It is a fast, "non-blocking" operation. This enables you to run
+code between starting a motion and completing it.
+
+.. ipython:: python
+
+   status = time_delta.set(5)
+   print("Moving to 5...")
+   status.wait(timeout=1)
+   print("Moved to 5.")
+
+.. note::
+
+   To move more than one signal in parallel, use the `ophyd.status.wait`
+   *function*.
+
+   .. code:: python
+
+   from ophyd.status import wait
+
+   # Given signals a and b, set both in motion.
+   status1 = a.set(1)
+   status2 = b.set(1)
+   # Wait for both to complete.
+   wait(status1, status2, timeout=1)
+
+For more on what you can do with ``status``, see [...].
+
+Subscribe
+^^^^^^^^^
+
+What's the best way to read a signal that changes over time, like our ``x``
+signal?
+
+First, set ``time_delta`` to a reasonable value like ``1``. This controls the
+update rate of ``x`` in our random walk simulation.
+
+.. ipython:: python
+
+   time_delta.set(1).wait()
+
+We could poll the signal in a loop and collect N readings spaced T seconds
+apart.
+
+.. code:: python
+
+   # Don't do this.
+   N = 5
+   T = 0.5
+   readings = []
+   for _ in range(N):
+       time.sleep(T)
+       reading = x.read()
+       readings.append(reading)
+
+There are two problems with this counterexample.
+
+1. We might not know how often we need to check for updates.
+2. We often want to watch *multiple* signals with different update rates, and
+   this pattern would quickly become messy.
+
+Alternatively, we can use *subscription*.
+
+.. ipython:: python
+
+   from collections import deque
+
+   readings = deque(maxlen=5)
+   x.subscribe(readings.append)
+
+When the controls sytem has a new ``reading`` for us, it calls
+``readings.append(reading)`` from a background thread. If we do other work or
+sleep for awhile and then check back on ``readings`` we'll see that it has some
+items in it.
+
+.. ipython:: python
+   :suppress:
+
+   import time; time.sleep(3)
+
+.. ipython:: python
+
+   readings
+
+It will keep the last ``5``. We used a `~collections.deque` instead of a
+plain `list` here because a `list` would grow without bound and, if left to
+run long enough, consume all available memory, crashing the program.
 
 .. ipython:: python
    :suppress:
