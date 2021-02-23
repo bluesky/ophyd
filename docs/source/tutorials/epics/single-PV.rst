@@ -85,19 +85,19 @@ that wouldn't work.
 Use it with the Bluesky RunEngine
 ---------------------------------
 
-The signal can be used by the Bluesky RunEngine. Let's configure a RunEngine to
-print a table.
+The signals can be used by the Bluesky RunEngine. Let's configure a RunEngine
+to print a table.
 
 .. ipython:: python
 
    from bluesky import RunEngine
    from bluesky.callbacks import LiveTable
    RE = RunEngine()
-   RE.subscribe(LiveTable(["time_delta"]))
+   token = RE.subscribe(LiveTable(["time_delta", "x"]))
 
-Because the signal is writable, it can be scanned like a "motor". It can also
-be read like a "detector". (In Bluesky, all things that are "motors" are also
-"detectors".)
+Because ``time_delta`` is writable, it can be scanned like a "motor". It can
+also be read like a "detector". (In Bluesky, all things that are "motors" are
+also "detectors".)
 
 .. ipython:: python
 
@@ -106,8 +106,53 @@ be read like a "detector". (In Bluesky, all things that are "motors" are also
    RE(count([time_delta]))  # Use as a "detector".
    RE(list_scan([], time_delta, [0.1, 0.3, 1, 3]))  # Use as "motor".
 
+For the following example, set ``time_delta`` to ``1``.
+
+.. ipython:: python
+
+   from bluesky.plan_stubs import mv
+
+   RE(mv(time_delta, 1))
+
+We know that ``x`` represents a time-dependent variable. We can "poll" it at
+regular intervals
+
+.. ipython:: python
+
+   RE(count([x], num=5, delay=0.5))  # Read every 0.5 seconds.
+
+but this required us to choose an update frequency (``0.5``). It's often better
+to rely on the control system to *tell* us when a new value is available. In
+this example, we accumulate updates for ``x`` whenever it changes.
+
+.. ipython:: python
+
+   from bluesky.plan_stubs import monitor, unmonitor, open_run, close_run, sleep
+
+   def monitor_x_for(duration, md=None):
+       yield from open_run(md)  # optional metadata
+       yield from monitor(x, name="x_monitor")
+       yield from sleep(duration)  # Wait for readings to accumulate.
+       yield from unmonitor(x)
+       yield from close_run()
+
+.. ipython:: python
+
+   RE.unsubscribe(token)  # Remove the old table.
+   RE(monitor_x_for(3), LiveTable(["x"], stream_name="x_monitor"))
+
+If you are a scientist aiming to use Ophyd with the Bluesky Run Engine, you may
+stop at this point or read on to learn more about how the Run Engine interacts
+with these signals. If you are a controls engineer, the details that follow are
+likely important to you.
+
 Use it directly
 ---------------
+
+.. note::
+
+   These methods should *not* be called inside a Bluesky plan.
+   See [TODO link to explanation.]
 
 Read
 ^^^^
@@ -168,13 +213,13 @@ code between starting a motion and completing it.
 
    .. code:: python
 
-   from ophyd.status import wait
+      from ophyd.status import wait
 
-   # Given signals a and b, set both in motion.
-   status1 = a.set(1)
-   status2 = b.set(1)
-   # Wait for both to complete.
-   wait(status1, status2, timeout=1)
+      # Given signals a and b, set both in motion.
+      status1 = a.set(1)
+      status2 = b.set(1)
+      # Wait for both to complete.
+      wait(status1, status2, timeout=1)
 
 For more on what you can do with ``status``, see [...].
 
@@ -217,8 +262,10 @@ Alternatively, we can use *subscription*.
 
    from collections import deque
 
+   def accumulate(value, old_value, timestamp, **kwargs):
+       readings.append({"x": {"value": value, "timestamp": timestamp}})
    readings = deque(maxlen=5)
-   x.subscribe(readings.append)
+   x.subscribe(accumulate)
 
 When the controls sytem has a new ``reading`` for us, it calls
 ``readings.append(reading)`` from a background thread. If we do other work or
