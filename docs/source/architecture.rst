@@ -186,6 +186,76 @@ The flyable interface provides four methods
    ~flyers.FlyerInterface.describe_collect
    ~flyers.FlyerInterface.collect
 
+The expected sequencing of the commands is
+
+- ``kickoff`` and wait
+- ``complete`` and wait
+- ``collect``
+
+Optionally, devices my implement "partial collection" so that they can
+be incrementally collected during acquisition.  While this may not be
+technically possible in every situation, it can be used to get partial
+results and allow the fly scan to look more like a step scan from the
+point of view of the data consumers.
+
+- ``kickoff`` and wait
+- 0 or more calls to ``collect``
+- ``complete`` and wait
+- ``collect``
+
+
+::
+
+  import bluesky.preprocessors as bpp
+  import bluesky.plan_stubs as bps
+  from bluesky import RunEngine
+  from bluesky.callbacks.best_effort import BestEffortCallback
+  from ophyd.sim import SynAxis, SynGauss, MockFlyer
+
+
+  motor = SynAxis(name="motor", labels={"motors"}, value=0.0)
+  det = SynGauss("det", motor, "motor", center=0, Imax=1, sigma=1, labels={"detectors"})
+  flyer1 = MockFlyer("primary", det, motor, -3, 5, 200)
+
+  motor.delay = .1
+
+
+  def single_collect(flyer, *, md=None):
+      _md = {}
+      _md.update(md or {})
+      @bpp.run_decorator(md=_md)
+      def single_collect(flyer):
+          yield from bps.kickoff(flyer, wait=True)
+          yield from bps.complete(flyer, wait=True)
+          yield from bps.collect(flyer)
+
+      return (yield from single_collect(flyer))
+
+
+  def multi_collect(flyer, *, md=None):
+      _md = {}
+      _md.update(md or {})
+      @bpp.run_decorator(md=_md)
+      def multi_collect(flyer):
+
+          yield from bps.kickoff(flyer, wait=True)
+          st = yield from bps.complete(flyer)
+          while st is not None and not st.done:
+              yield from bps.collect(flyer, stream=True)
+              yield from bps.sleep(1)
+
+          yield from bps.collect(flyer, stream=True)
+
+      return (yield from multi_collect(flyer))
+
+
+  RE = RunEngine()
+  bec = BestEffortCallback()
+
+  # RE(multi_collect(flyer1), bec)
+  # RE(single_collect(flyer1), bec)
+
+
 Asynchronous status
 ===================
 
