@@ -2,6 +2,24 @@
  Release History
 =================
 
+1.6.1 (2021-02-26)
+==================
+
+Fixes
+-----
+
+* Added a missing name argument to AreaDetector documentation.
+* Correctly propagate changes to the default ``connection_timeout`` setting
+  via ``set_defaults``, instead of always defaulting to 1 second.
+
+Changes
+-------
+
+* Expanded documentation for Fly-able Interface to include code examples and
+  updated MockFlyer sim.
+* Changed ``update_rate`` and ``auto_count_update_rate`` signals in
+  ``EpicsScalar`` to default to ``Kind.omitted`` instead of ``Kind.config``.
+
 1.6.0 (2020-12-16)
 ==================
 
