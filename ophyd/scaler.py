@@ -48,8 +48,8 @@ class EpicsScaler(Device):
     gates = DDCpt(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
                                  kind=Kind.omitted))
 
-    update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.config)
-    auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.config)
+    update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.omitted)
+    auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.omitted)
 
     egu = Cpt(EpicsSignal, '.EGU', kind=Kind.config)
 
