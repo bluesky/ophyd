@@ -190,7 +190,7 @@ The expected sequencing of the commands is
 
 - ``kickoff`` and wait
 - ``complete`` and wait
-- a to ``collect``
+- ``collect``
 
 Optionally, devices my implement "partial collection" so that they can
 be incrementally collected during acquisition.  While this may not be
@@ -201,7 +201,7 @@ point of view of the data consumers.
 - ``kickoff`` and wait
 - 0 or more calls to ``collect``
 - ``complete`` and wait
-- a to ``collect``
+- ``collect``
 
 
 ::
