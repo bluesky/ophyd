@@ -10,7 +10,7 @@ Fixes
 
 * Added a missing name argument to AreaDetector documentation
 * Correctly propagate changes to the default ``connection_timeout`` setting
-  via ``set_defaults``, instead of always defaulting to 1.0 seconds.
+  via ``set_defaults``, instead of always defaulting to 1 second.
 
 1.6.0 (2020-12-16)
 ==================
