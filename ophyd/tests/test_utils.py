@@ -107,3 +107,19 @@ def test_array_into_softsignal():
     s = Signal(name='np.array')
     set_and_wait(s, data)
     assert np.all(s.get() == data)
+
+
+def test_none_signal():
+    import itertools
+
+    class CycleSignal(Signal):
+        def __init__(self, *args, value_cycle, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._value_cycle = itertools.cycle(value_cycle)
+
+        def get(self):
+            return next(self._value_cycle)
+
+    cs = CycleSignal(name='cycle', value_cycle=[0, 1, 2, None, 4])
+
+    set_and_wait(cs, 4, rtol=.01, atol=.01)
