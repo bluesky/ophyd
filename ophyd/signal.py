@@ -220,7 +220,8 @@ class Signal(OphydObject):
         # TODO: consider adding set_and_wait here as a kwarg
         if kwargs:
             warnings.warn('Signal.put no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated.')
+                          'These are ignored and will be deprecated. '
+                          f'Received kwargs={kwargs}')
 
         if not force:
             if not self.write_access:
