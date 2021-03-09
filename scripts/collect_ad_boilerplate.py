@@ -10,7 +10,7 @@ import logging
 def write_detector_class(tempfile, dev_name, det_name, cam_name):
 
     tempfile.write(
-f'''
+        f'''
 class {det_name}(DetectorBase):
     _html_docs = ['{dev_name}Doc.html']
     cam = C(cam.{cam_name}, 'cam1:')
@@ -24,7 +24,7 @@ def parse_pv_structure(driver_dir):
             template_dir = os.path.join(template_dir, dir, 'Db')
             break
     logging.debug(f'Found template dir: {template_dir}')
-    
+
     template_files = []
     for file in os.listdir(template_dir):
         if file.endswith('.template'):
@@ -36,7 +36,7 @@ def parse_pv_structure(driver_dir):
     for file in template_files:
         logging.debug(f'Collecting pv info from {os.path.basename(file)}')
         fp = open(file, 'r')
-        
+
         lines = fp.readlines()
         for line in lines:
             if line.startswith('include "NDFile.template"'):
@@ -66,7 +66,7 @@ def write_cam_class(tempfile, driver_template, include_file, dev_name, det_name,
     if include_file:
         file = ', FileBase'
     tempfile.write(
-f'''
+        f'''
 class {cam_name}(CamBase{file}):
     _html_docs = ['{dev_name}Doc.html']
     _default_configuration_attrs = (
@@ -75,15 +75,18 @@ class {cam_name}(CamBase{file}):
 ''')
 
     for pv in driver_template.keys():
-        pv_var_name = re.sub( '(?<!^)(?=[A-Z])', '_', pv ).lower()
+        pv_name = pv
+        if pv_name.endswith('_RBV'):
+            pv_name = pv[:-4]
+        pv_var_name = re.sub('(?<!^)(?=[A-Z])', '_', pv_name).lower()
         tempfile.write(f"    {pv_var_name} = ADCpt({driver_template[pv]}, '{pv}')\n")
-
 
 
 def parse_args():
 
     parser = argparse.ArgumentParser(description='Utility for creating boilerplate ophyd classes')
-    parser.add_argument('-t', '--target', help='Location of locally installed areaDetector driver folder structure.')
+    parser.add_argument(
+        '-t', '--target', help='Location of locally installed areaDetector driver folder structure.')
     parser.add_argument('-d', '--debug', action='store_true', help='Enable debug loogging for the script.')
 
     args = vars(parser.parse_args())
@@ -110,7 +113,8 @@ if __name__ == '__main__':
 
     driver_name = os.path.basename(driver_dir)
     if not driver_name.startswith('AD'):
-        logging.error(f'Specified driver directory {driver_name} could not be identified as an areaDetector driver!')
+        logging.error(
+            f'Specified driver directory {driver_name} could not be identified as an areaDetector driver!')
         exit(-1)
 
     dev_name = driver_name[2:]
