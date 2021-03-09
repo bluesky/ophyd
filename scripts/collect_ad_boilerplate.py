@@ -96,7 +96,7 @@ def write_cam_class(boilerplate_file, pv_to_signal_mapping, include_file_base, d
     This works in most cases, but may require minor edits to certain names.
 
     Examples:
-    
+
     EnableCallbacks -> enable_callbacks
     EVTLoadGainFile -> e_v_t_load_gain_file
     """
@@ -116,7 +116,7 @@ class {cam_name}(CamBase{file_base}):
     )
 ''')
 
-    # Write appropriate attribute for 
+    # Write appropriate attribute for
     for pv in pv_to_signal_mapping.keys():
         pv_name = pv
         if pv_name.endswith('_RBV'):
