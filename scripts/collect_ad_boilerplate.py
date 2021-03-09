@@ -100,6 +100,7 @@ def parse_args():
 
 if __name__ == '__main__':
 
+    print()
     driver_dir, log_level = parse_args()
     if not os.path.exists(driver_dir) or not os.path.isdir(driver_dir):
         logging.error(f'Input {driver_dir} does not exist or is not a directory!')
@@ -122,3 +123,5 @@ if __name__ == '__main__':
     driver_template, include_file = parse_pv_structure(driver_dir)
     write_cam_class(tempfile, driver_template, include_file, dev_name, det_name, cam_name)
     tempfile.close()
+
+    print(f'Done. Temporary boilerplate file saved to {det_name}_boilerplate.py')
