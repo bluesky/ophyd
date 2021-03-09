@@ -590,7 +590,7 @@ class PSLDetectorCam(CamBase):
 class PICamDetectorCam(CamBase):
     _html_docs = ['PICamDoc.html']
     _default_configuration_attrs = (
-        CamBase._default_configuration_attrs + 
+        CamBase._default_configuration_attrs
     )
     version_number = ADCpt(EpicsSignal, 'VersionNumber')
     camera_interface = ADCpt(EpicsSignal, 'CameraInterface')
