@@ -2,8 +2,6 @@
 
 import argparse
 import os
-import re
-import sys
 import inflection
 import logging
 
@@ -88,7 +86,7 @@ def parse_pv_structure(driver_dir):
                 # identify any lines that start with 'record'
                 if line.startswith('record'):
                     # Get the name of the PV.
-                    # Ex: 
+                    # Ex:
                     # record(stringin, "$(P)$(R)Description_RBV") Splits into
                     # ['record(stringin, "$(P', '$(R', 'Description_RBV"', '']
                     # The PV name is the 3rd element, so array index 2, and we remove the last character, '"'
@@ -166,7 +164,7 @@ class {cam_name}(CamBase{file_base}):
 
         # Generate attribute name from PV name. Uses inflection library
         attribute_name = inflection.underscore(pv_name)
-        #attribute_name = re.sub('(?<!^)(?=[A-Z])', '_', pv_name).lower()
+        # attribute_name = re.sub('(?<!^)(?=[A-Z])', '_', pv_name).lower()
         boilerplate_file.write(f"    {attribute_name} = ADCpt({pv_to_signal_mapping[pv]}, '{pv}')\n")
 
 
