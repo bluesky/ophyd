@@ -38,6 +38,18 @@ def parse_pv_structure(driver_dir):
     to the appropriate EPICS signal class in ophyd
 
     Also determines if the Cam class should extend the FileBase class as well.
+
+    Parameters
+    ----------
+    driver_dir : PathLike
+        Path to the areaDetector driver
+
+    Returns
+    -------
+    pv_to_signal_mapping : dict
+        Dict mapping PVs to the EPICS signal they fall under
+    include_file_base : bool
+        True if the NDFile.template file is included, otherwise False
     """
 
     # Find the template directory following the standard areaDetector project format
@@ -107,15 +119,28 @@ def write_cam_class(boilerplate_file, pv_to_signal_mapping, include_file_base, d
     Function that writes the boilerplate cam class. This includes the default configuration
     attributes, along with all the attributes extracted from the template file.
 
-    This function is not perfect, as extracting a good attribute name from a PV name is not
-    always straightforward, since PV names are far from standard. Currently, the solution simply
-    adds an _ character before any capital letter, and then makes everything lowercase.
-    This works in most cases, but may require minor edits to certain names.
+    This function uses the inflection library's `underscore` function to convert a PV name
+    into an attribute name
 
     Examples:
 
     EnableCallbacks -> enable_callbacks
-    EVTLoadGainFile -> e_v_t_load_gain_file
+    EVTLoadGainFile -> evt_load_gain_file
+
+    Parameters
+    ----------
+    boilerplate_file : io.TextIOWrapper
+        Open boilerplate file
+    pv_to_signal_mapping : dict
+        Dictionary mapping PVs to the EPICS signal they fall under
+    include_file_base : bool
+        If true, we extend the FileBase class, otherwise we don't
+    dev_name : str
+        Name of device type/make. Ex. PICam, Eiger, etc.
+    det_name : str
+        Name of detector class, ex. PICamDetector, EigerDetector, etc.
+    cam_name : str
+        Name of cam class, ex. PICamDetectorCam, EigerDetectorCam, etc.
     """
 
     # Extend from FileBase class as well if necessary
