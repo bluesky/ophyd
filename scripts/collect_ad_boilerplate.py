@@ -223,10 +223,11 @@ if __name__ == '__main__':
     cam_name = f'{det_name}Cam'
     logging.debug(f'Creating boilerplate for {dev_name}, with classes {det_name} and {cam_name}')
 
-    boilerplate_file_name = f'{det_name}_boilerplate'
+    # Create boilerplate file with .py extension for syntax highlighting
+    boilerplate_file_name = f'{det_name}_boilerplate.py'
 
     # Create boilerplate temp file
-    with open(f'{det_name}_boilerplate', 'w') as boilerplate_file:
+    with open(boilerplate_file_name, 'w') as boilerplate_file:
 
         # Create the detector class for ophyd/areadetector/detectors
         write_detector_class(boilerplate_file, dev_name, det_name, cam_name)
