@@ -27,6 +27,7 @@ __all__ = ['DetectorBase',
            'MarCCDDetector',
            'PSLDetector',
            'PerkinElmerDetector',
+           'PICamDetector',
            'PilatusDetector',
            'PixiradDetector',
            'PointGreyDetector',
@@ -170,6 +171,11 @@ class PerkinElmerDetector(DetectorBase):
 class PSLDetector(DetectorBase):
     _html_docs = ['PSLDoc.html']
     cam = C(cam.PSLDetectorCam, 'cam1:')
+
+
+class PICamDetector(DetectorBase):
+    _html_docs = ['PICamDoc.html']
+    cam = C(cam.PICamDetectorCam, 'cam1:')
 
 
 class PilatusDetector(DetectorBase):
