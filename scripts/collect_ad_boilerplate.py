@@ -12,7 +12,7 @@ def write_detector_class(boilerplate_file, dev_name, det_name, cam_name):
 
     Parameters
     ----------
-    boilerplate_file : TextIOWrapper
+    boilerplate_file : io.TextIOWrapper
         Open temporary file for writing boilerplate
     dev_name : str
         Name of device type/make. Ex. PICam, Eiger, etc.
