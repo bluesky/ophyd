@@ -123,3 +123,8 @@ def test_none_signal():
     cs = CycleSignal(name='cycle', value_cycle=[0, 1, 2, None, 4])
 
     set_and_wait(cs, 4, rtol=.01, atol=.01)
+
+
+def test_set_signal_to_None():
+    s = Signal(value='0', name='bob')
+    set_and_wait(s, None, timeout=1)
