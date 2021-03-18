@@ -1212,6 +1212,9 @@ class FakeEpicsSignal(SynSignal):
     We can emulate EpicsSignal features here. We currently emulate the put
     limits and some enum handling.
     """
+
+    _metadata_keys = EpicsSignal._metadata_keys
+
     def __init__(self, read_pv, write_pv=None, *, put_complete=False,
                  string=False, limits=False, auto_monitor=False, name=None,
                  **kwargs):
@@ -1334,7 +1337,7 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
     """
     Read-only FakeEpicsSignal
     """
-    pass
+    _metadata_keys = EpicsSignalRO._metadata_keys
 
 
 class FakeEpicsSignalWithRBV(FakeEpicsSignal):
@@ -1342,6 +1345,9 @@ class FakeEpicsSignalWithRBV(FakeEpicsSignal):
     FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming
     scheme
     """
+
+    _metadata_keys = EpicsSignalWithRBV._metadata_keys
+
     def __init__(self, prefix, **kwargs):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 
