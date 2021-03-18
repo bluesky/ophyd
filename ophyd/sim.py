@@ -1261,9 +1261,22 @@ class FakeEpicsSignal(SynSignal):
                 return str(value)
         return value
 
-    def put(self, value, *args, **kwargs):
+    def put(self, value, *args,
+            connection_timeout=0.0,
+            callback=None,
+            use_complete=None,
+            timeout=0.0,
+            wait=True,
+            **kwargs):
         """
         Implement putting as enum strings and put functions
+
+        Notes
+        -----
+        FakeEpicsSignal varies in subtle ways from the real class.
+
+        * put-completion callback will _not_ be called.
+        * connection_timeout, use_complete, wait, and timeout are ignored.
         """
         if self.enum_strs is not None:
             if value in self.enum_strs:
