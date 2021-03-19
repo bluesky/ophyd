@@ -116,14 +116,18 @@ class UnitConversionDerivedSignal(DerivedSignal):
     def forward(self, value):
         '''Compute derived signal value -> original signal value'''
         if self.user_offset is None:
-            raise ValueError(f'{self.name} must be set to a non-None value.')
+            raise ValueError(
+                f'{self.name}.user_offset must be set to a non-None value.'
+            )
         return convert_unit(value - self.user_offset,
                             self.derived_units, self.original_units)
 
     def inverse(self, value):
         '''Compute original signal value -> derived signal value'''
         if self.user_offset is None:
-            raise ValueError(f'{self.name} must be set to a non-None value.')
+            raise ValueError(
+                f'{self.name}.user_offset must be set to a non-None value.'
+            )
         return convert_unit(value, self.original_units,
                             self.derived_units) + self.user_offset
 
