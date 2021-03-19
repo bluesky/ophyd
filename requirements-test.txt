@@ -9,3 +9,4 @@ matplotlib
 pyepics>=3.4.2
 pytest
 pytest-faulthandler
+pytest-rerunfailures
