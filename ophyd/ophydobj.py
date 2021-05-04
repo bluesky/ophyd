@@ -1,12 +1,10 @@
 import functools
-import sys
 import time
 import weakref
 
 from enum import IntFlag
 from itertools import count
 from logging import LoggerAdapter, getLogger
-
 
 
 from .log import control_layer_logger
@@ -32,7 +30,17 @@ def select_version(cls, version):
     return all_versions[matched_version]
 
 
-class Kind(IntFlag):
+try:
+    from enum import KEEP
+
+    class IFBase(IntFlag, boundary=KEEP):
+        ...
+except ImportError:
+
+    IFBase = IntFlag
+
+
+class Kind(IFBase):
     """
     This is used in the .kind attribute of all OphydObj (Signals, Devices).
 
