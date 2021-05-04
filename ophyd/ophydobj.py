@@ -8,7 +8,6 @@ from itertools import count
 from logging import LoggerAdapter, getLogger
 
 
-
 from .log import control_layer_logger
 
 
@@ -36,7 +35,6 @@ if sys.version_info < (3, 10, 0, 'alpha', 5):
     IFBase = IntFlag
 else:
     from enum import KEEP
-
 
     class IFBase(IntFlag, boundary=KEEP):
         ...
