@@ -1,9 +1,13 @@
-from enum import IntFlag
 import functools
-from itertools import count
-from logging import LoggerAdapter, getLogger
+import sys
 import time
 import weakref
+
+from enum import IntFlag
+from itertools import count
+from logging import LoggerAdapter, getLogger
+
+
 
 from .log import control_layer_logger
 
