@@ -32,7 +32,17 @@ def select_version(cls, version):
     return all_versions[matched_version]
 
 
-class Kind(IntFlag):
+if sys.version_info < (3, 10, 0, 'alpha', 5):
+    IFBase = IntFlag
+else:
+    from enum import KEEP
+
+
+    class IFBase(IntFlag, boundary=KEEP):
+        ...
+
+
+class Kind(IFBase):
     """
     This is used in the .kind attribute of all OphydObj (Signals, Devices).
 
