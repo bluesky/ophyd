@@ -592,3 +592,21 @@ def test_posix_paths(paths, path_signal):
 def test_path_semantics_exception():
     with pytest.raises(ValueError):
         EpicsPathSignal('TEST', path_semantics='not_a_thing')
+
+        
+@pytest.fixture(scope="module")
+def imported_ro_signal_class_from_pkg():
+    from ophyd import SignalRO
+    return SignalRO
+
+
+@pytest.fixture(scope="module")
+def imported_ro_signal_class_from_module():
+    from ophyd.signal import SignalRO
+    return SignalRO
+
+
+def test_import_ro_signal_class(
+        imported_ro_signal_class_from_pkg, 
+        imported_ro_signal_class_from_module):
+    assert imported_ro_signal_class_from_pkg == imported_ro_signal_class_from_module
