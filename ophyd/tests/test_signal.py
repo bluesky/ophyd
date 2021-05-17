@@ -593,9 +593,9 @@ def test_path_semantics_exception():
     with pytest.raises(ValueError):
         EpicsPathSignal('TEST', path_semantics='not_a_thing')
 
-        
+
 def test_import_ro_signal_class():
     from ophyd import SignalRO as SignalRoFromPkg
     from ophyd.signal import SignalRO as SignalRoFromModule
-    
+
     assert SignalRoFromPkg is SignalRoFromModule
