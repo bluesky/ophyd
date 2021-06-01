@@ -845,18 +845,18 @@ class KafkaPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _html_docs = ['NDPluginKafka.html']
     _plugin_type = 'NDPluginKafka'
 
-    source_name = Cpt(SignalWithRBV, 'SourceName')
-    reconnect_flush = Cpt(SignalWithRBV, 'ReconnectFlush')
-    reconnect_flush_time = Cpt(SignalWithRBV, 'ReconnectFlushTime')
+    connection_message = Cpt(EpicsSignalRO, 'ConnectionMessage_RBV')
+    connection_status = Cpt(EpicsSignalRO, 'ConnectionStatus_RBV')
+    kafka_broker_address = Cpt(SignalWithRBV, 'KafkaBrokerAddress')
     kafka_buffer_size = Cpt(SignalWithRBV, 'KafkaBufferSize')
     kafka_max_message_size = Cpt(SignalWithRBV, 'KafkaMaxMessageSize')
-    unsent_packets = Cpt(EpicsSignalRO, 'UnsentPackets_RBV')
-    connection_status = Cpt(EpicsSignalRO, 'ConnectionStatus_RBV')
-    connection_message = Cpt(EpicsSignalRO, 'ConnectionMessage_RBV')
-    kafka_topic = Cpt(SignalWithRBV, 'KafkaTopic')
-    kafka_broker_address = Cpt(SignalWithRBV, 'KafkaBrokerAddress')
-    kafka_stats_interval_time = Cpt(SignalWithRBV, 'KafkaStatsIntervalTime')
     kafka_max_queue_size = Cpt(SignalWithRBV, 'KafkaMaxQueueSize')
+    kafka_stats_interval_time = Cpt(SignalWithRBV, 'KafkaStatsIntervalTime')
+    kafka_topic = Cpt(SignalWithRBV, 'KafkaTopic')
+    reconnect_flush = Cpt(SignalWithRBV, 'ReconnectFlush')
+    reconnect_flush_time = Cpt(SignalWithRBV, 'ReconnectFlushTime')
+    source_name = Cpt(SignalWithRBV, 'SourceName')
+    unsent_packets = Cpt(EpicsSignalRO, 'UnsentPackets_RBV')
 
 
 @register_plugin
