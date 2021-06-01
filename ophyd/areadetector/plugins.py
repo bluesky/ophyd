@@ -55,6 +55,7 @@ __all__ = [
     'HDF5Plugin',
     'ImagePlugin',
     'JPEGPlugin',
+    'KafkaPlugin',
     'MagickPlugin',
     'NetCDFPlugin',
     'NexusPlugin',
@@ -837,6 +838,28 @@ class JPEGPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
 
 
 @register_plugin
+class KafkaPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
+
+    _default_suffix = 'KAFKA1:'
+    _suffix_re = r'KAFKA\d:'
+    _html_docs = ['NDPluginKafka.html']
+    _plugin_type = 'NDPluginKafka'
+
+    source_name = Cpt(SignalWithRBV, 'SourceName')
+    reconnect_flush = Cpt(SignalWithRBV, 'ReconnectFlush')
+    reconnect_flush_time = Cpt(SignalWithRBV, 'ReconnectFlushTime')
+    kafka_buffer_size = Cpt(SignalWithRBV, 'KafkaBufferSize')
+    kafka_max_message_size = Cpt(SignalWithRBV, 'KafkaMaxMessageSize')
+    unsent_packets = Cpt(EpicsSignalRO, 'UnsentPackets_RBV')
+    connection_status = Cpt(EpicsSignalRO, 'ConnectionStatus_RBV')
+    connection_message = Cpt(EpicsSignalRO, 'ConnectionMessage_RBV')
+    kafka_topic = Cpt(SignalWithRBV, 'KafkaTopic')
+    kafka_broker_address = Cpt(SignalWithRBV, 'KafkaBrokerAddress')
+    kafka_stats_interval_time = Cpt(SignalWithRBV, 'KafkaStatsIntervalTime')
+    kafka_max_queue_size = Cpt(SignalWithRBV, 'KafkaMaxQueueSize')
+
+
+@register_plugin
 class NexusPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _default_suffix = 'Nexus1:'
     _suffix_re = r'Nexus\d:'
@@ -1289,6 +1312,37 @@ class JPEGPlugin_V33(FilePlugin_V33, JPEGPlugin_V31, version=(3, 3), version_of=
 
 
 class JPEGPlugin_V34(FilePlugin_V34, JPEGPlugin_V33, version=(3, 4), version_of=JPEGPlugin):
+    ...
+
+
+# --- Kafka Plugin ---
+
+
+class KafkaPlugin_V20(PluginBase_V20, KafkaPlugin, version=(2, 0), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V22(PluginBase_V22, KafkaPlugin_V20, version=(2, 2), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V25(PluginBase_V25, KafkaPlugin_V22, version=(2, 5), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V26(PluginBase_V26, KafkaPlugin_V25, version=(2, 6), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V31(PluginBase_V31, KafkaPlugin_V26, version=(3, 1), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V33(PluginBase_V33, KafkaPlugin_V31, version=(3, 3), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V34(PluginBase_V34, KafkaPlugin_V33, version=(3, 4), version_of=KafkaPlugin):
     ...
 
 
