@@ -601,13 +601,13 @@ def test_import_ro_signal_class():
     assert SignalRoFromPkg is SignalRoFromModule
 
 
-def test_last_status_object():
+def test_signal_last_status_object():
     signal = Signal(name="signal", value=1)
     assert not hasattr(signal, "_status")
     assert signal.last_status_object is None
 
     signal.put(0)
-    assert hasattr(signal, "_status")
+    assert not hasattr(signal, "_status")
 
     signal.set(2)
     assert hasattr(signal, "_status")
