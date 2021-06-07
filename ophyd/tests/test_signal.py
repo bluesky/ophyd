@@ -599,3 +599,14 @@ def test_import_ro_signal_class():
     from ophyd.signal import SignalRO as SignalRoFromModule
 
     assert SignalRoFromPkg is SignalRoFromModule
+
+
+def test_last_status_object():
+    signal = Signal(name="signal", value=1)
+    assert not hasattr(signal, "_status")
+    assert signal.last_status_object is None
+
+    signal.put(0)
+    assert hasattr(signal, "_status")
+    assert signal.last_status_object is not None
+    assert signal.last_status_object == signal._status
