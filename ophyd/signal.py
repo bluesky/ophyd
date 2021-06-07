@@ -85,7 +85,6 @@ class Signal(OphydObject):
     _default_sub = SUB_VALUE
     _metadata_keys = None
     _core_metadata_keys = ('connected', 'read_access', 'write_access', 'timestamp')
-    _status = None
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
                  labels=None, kind=Kind.hinted, tolerance=None,
@@ -326,6 +325,11 @@ class Signal(OphydObject):
         self._set_thread.daemon = True
         self._set_thread.start()
         return self._status
+
+    @property
+    def last_status_object(self):
+        '''The most recent status object, if available, or ``None``.'''
+        return getattr(self, "_status", None)
 
     @property
     def value(self):
