@@ -608,5 +608,8 @@ def test_last_status_object():
 
     signal.put(0)
     assert hasattr(signal, "_status")
+
+    signal.set(2)
+    assert hasattr(signal, "_status")
     assert signal.last_status_object is not None
     assert signal.last_status_object == signal._status
