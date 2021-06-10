@@ -7,6 +7,7 @@ import pytest
 
 from ophyd import get_cl
 from ophyd.areadetector.paths import EpicsPathSignal
+from ophyd.utils.epics_pvs import AbandonedSet
 from ophyd.signal import (
     DerivedSignal,
     EpicsSignal,
@@ -17,7 +18,7 @@ from ophyd.signal import (
     Signal,
 )
 from ophyd.status import wait
-from ophyd.utils import AlarmSeverity, AlarmStatus, ReadOnlyError, AbandonedSet
+from ophyd.utils import AlarmSeverity, AlarmStatus, ReadOnlyError
 
 logger = logging.getLogger(__name__)
 
