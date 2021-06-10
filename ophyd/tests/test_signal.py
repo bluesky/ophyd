@@ -6,7 +6,8 @@ import threading
 
 from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
-from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity, AbandonedSet)
+from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
+from ophyd.utils.epics_pvs import AbandonedSet
 from ophyd.status import wait
 from ophyd.areadetector.paths import EpicsPathSignal
 
