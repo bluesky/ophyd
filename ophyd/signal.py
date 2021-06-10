@@ -395,7 +395,7 @@ class Signal(OphydObject):
         self._set_thread.daemon = True
         self._set_thread.start()
         self._poison_pill = poison_pill
-        self._set_thread_finalizer = None
+        self._set_thread_finalizer = None  # TODO: superceded with next line?
         # If we get gc-ed, stop the thread. This helps ensure that the process
         # exits cleanly without dangling threads.
         self._set_thread_finalizer = weakref.finalize(self, poison_pill.set)
@@ -411,7 +411,7 @@ class Signal(OphydObject):
         self._poison_pill.set()  # Break the polling loop in set_and_wait.
         self._set_thread.join()  # Wait for that to take effect.
         warnings.warn(
-            "A previous set() operation is being ignored. Only this do this "
+            "A previous set() operation is being ignored. Only do this "
             "when debugging or recovering from a hardware failure.")
 
     @property
