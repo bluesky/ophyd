@@ -6,7 +6,7 @@ import threading
 
 from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
-from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
+from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity, AbandonedSet)
 from ophyd.status import wait
 from ophyd.areadetector.paths import EpicsPathSignal
 
@@ -671,3 +671,11 @@ def test_signal_clear_set():
     wait(st1)
 
     assert sig.get() == 28
+
+
+def test_epicssignal_abandonedset():
+    # TODO: test for raises AbandonedSet() : How to trigger this?
+    sig = Signal(name="sig", value=1)
+    sig.wait_for_connection()
+
+    # TODO: set_and_wait(sig, 28, ...)
