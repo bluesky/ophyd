@@ -756,7 +756,7 @@ def test_signal_clear_set():
     st1 = sig.set(28, settle_time=.2)
     with pytest.raises(RuntimeError):
         assert not st1.done
-        st2 = sig.set(-1)
+        sig.set(-1)
 
     # call SIGNAL.clear_set() and trap the warning after RuntimeError is raised
     with pytest.warns(UserWarning):
@@ -775,3 +775,5 @@ def test_epicssignal_abandonedset():
     sig.wait_for_connection()
 
     # TODO: set_and_wait(sig, 28, ...)
+    with pytest.raises(AbandonedSet):
+        raise AbandonedSet("TODO:")
