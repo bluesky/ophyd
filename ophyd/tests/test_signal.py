@@ -7,7 +7,7 @@ import pytest
 
 from ophyd import get_cl
 from ophyd.areadetector.paths import EpicsPathSignal
-from ophyd.utils.epics_pvs import AbandonedSet
+from ophyd.utils.epics_pvs import AbandonedSet, _set_and_wait
 from ophyd.signal import (
     DerivedSignal,
     EpicsSignal,
@@ -721,7 +721,6 @@ def test_signal_set_thread_finalizer():
 
     st = sig.set(28, settle_time=0.1)  # give it a brief time to finish
     assert not st.done
-    # self._set_thread_finalizer = weakref.finalize during SIGNAL.set()
     assert sig._set_thread_finalizer is not None
     wait(st)
     # set_thread_finalizer = None when SIGNAL.set() finalizes
@@ -766,15 +765,28 @@ def test_signal_clear_set():
     assert not st1.success
 
     wait(st1)
-
     assert sig.get() == 28
 
 
 def test_epicssignal_abandonedset():
-    # TODO: test for raises AbandonedSet() : How to trigger this?
-    sig = Signal(name="sig", value=1)
+    class BrokenPutSignal(Signal):
+        """put(value) ends with same ._readback value as before."""
+        def put(self, value, **kwargs):
+            previous_value = self._readback
+            super().put(value, **kwargs)
+            self._readback = previous_value
+
+    sig = BrokenPutSignal(name="sig", value=1)
     sig.wait_for_connection()
 
-    # TODO: set_and_wait(sig, 28, ...)
     with pytest.raises(AbandonedSet):
-        raise AbandonedSet("TODO:")
+        pill = threading.Event()
+
+        def cb():
+            time.sleep(0.1)
+            sig.clear_set()
+            pill.set()
+
+        threading.Thread(group=None, target=cb).start()
+        _set_and_wait(sig, sig.get() + 1, timeout=20, poison_pill=pill)
+    assert sig.get() == 1
