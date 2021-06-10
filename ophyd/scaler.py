@@ -48,8 +48,8 @@ class EpicsScaler(Device):
     gates = DDCpt(_scaler_fields(EpicsSignal, 'gate', '.G', range(1, 33),
                                  kind=Kind.omitted))
 
-    update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.config)
-    auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.config)
+    update_rate = Cpt(EpicsSignal, '.RATE', kind=Kind.omitted)
+    auto_count_update_rate = Cpt(EpicsSignal, '.RAT1', kind=Kind.omitted)
 
     egu = Cpt(EpicsSignal, '.EGU', kind=Kind.config)
 
@@ -66,7 +66,7 @@ class ScalerChannel(Device):
     chname = FCpt(EpicsSignal, '{self.prefix}.NM{self._ch_num}',
                   kind=Kind.config)
     s = FCpt(EpicsSignalRO, '{self.prefix}.S{self._ch_num}',
-             kind=Kind.hinted)
+             kind=Kind.hinted, auto_monitor=False)
     preset = FCpt(EpicsSignal, '{self.prefix}.PR{self._ch_num}',
                   kind=Kind.config)
     gate = FCpt(EpicsSignal, '{self.prefix}.G{self._ch_num}', string=True,

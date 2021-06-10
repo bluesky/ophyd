@@ -69,5 +69,5 @@ target/
 .ipynb_checkpoints
 
 # generated docs
-doc/source/generated
-doc/source/_as_gen
+docs/source/generated
+docs/source/_as_gen

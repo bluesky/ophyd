@@ -2680,7 +2680,11 @@ badX2,badY2 replacementX2,replacementY2
           Toggles AutoGain mode for EVT camera. This will have the camera automatically adjust the gain rather than using the 
           user adjustable Gain value.
         ''',
-    ),  # end of EVTDoc.html
+        ),  # end of EVTDoc.html
+
+    'EigerDoc.html' : dict(
+        
+        ), # end of EigerDoc.html
 
     'NDFileNexus.html': dict(
         TemplateFilePath=u'[TemplateFilePath r/w waveform] Path to XML template file',

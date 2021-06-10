@@ -142,8 +142,7 @@ class EventDispatcher:
             ]
             if status:
                 debug_monitor_log.debug(' / '.join(status))
-            else:
-                debug_monitor_log.debug('All EventDispatch queues are empty.')
+            # Else, all EventDispatch queues are empty.
             time.sleep(self.debug_monitor_interval)
 
     def __repr__(self):

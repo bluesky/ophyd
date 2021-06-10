@@ -1,4 +1,5 @@
 # vi: ts=4 sw=4
+import os
 import time
 import threading
 import warnings
@@ -26,7 +27,8 @@ if __name__ != 'ophyd.signal':
     )
 
 
-# Sentinels used for default values; see set_default_timeout below for details.
+# Sentinels used for default values; see set_defaults() below for details.
+DEFAULT_AUTO_MONITOR = object()
 DEFAULT_CONNECTION_TIMEOUT = object()
 DEFAULT_TIMEOUT = object()
 DEFAULT_WRITE_TIMEOUT = object()
@@ -213,7 +215,7 @@ class Signal(OphydObject):
             Check the value prior to setting it, defaults to False
 
         '''
-        self.log.debug(
+        self.control_layer_log.debug(
             'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
             value, timestamp, force, metadata
         )
@@ -221,7 +223,8 @@ class Signal(OphydObject):
         # TODO: consider adding set_and_wait here as a kwarg
         if kwargs:
             warnings.warn('Signal.put no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated.')
+                          'These are ignored and will be deprecated. '
+                          f'Received kwargs={kwargs}')
 
         if not force:
             if not self.write_access:
@@ -252,6 +255,23 @@ class Signal(OphydObject):
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, **md_for_callback)
 
+    def _set_and_wait(self, value, timeout):
+        '''
+        Overridable hook for subclasses to override :meth:`.set` functionality.
+
+        This will be called in a separate thread (`_set_thread`), but will not
+        be called in parallel.
+
+        Parameters
+        ----------
+        value : any
+            The value
+        timeout : float, optional
+            Maximum time to wait for value to be successfully set, or None
+        '''
+        return set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
+                            rtol=self.rtolerance)
+
     def set(self, value, *, timeout=None, settle_time=None):
         '''Set is like `put`, but is here for bluesky compatibility
 
@@ -275,20 +295,20 @@ class Signal(OphydObject):
             except TimeoutError:
                 success = False
                 self.log.warning(
-                    'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
-                    value, timeout, self.tolerance, self.rtolerance
+                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    self.name, value, timeout, self.tolerance, self.rtolerance
                 )
             except Exception:
                 success = False
                 self.log.exception(
-                    'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
-                    value, timeout, self.tolerance, self.rtolerance
+                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    self.name, value, timeout, self.tolerance, self.rtolerance
                 )
             else:
                 success = True
                 self.log.info(
-                    'set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
-                    value, timeout, self.tolerance, self.rtolerance, self._readback)
+                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
+                    self.name, value, timeout, self.tolerance, self.rtolerance, self._readback)
 
                 if settle_time is not None:
                     self.log.info('settling for %d seconds', settle_time)
@@ -358,9 +378,11 @@ class Signal(OphydObject):
             # If we are here, then we have never turned the crank on this Signal.  The current
             # behavior is to fallback to poking the control system to get the value, however this
             # is problematic and we may want to change in the future so warn verbosely
-            warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
-                          "which has not gotten value from the control system yet.\n" + fix_msg,
-                          stacklevel=2)
+            if not os.getenv("OPHYD_SILENCE_VALUE_WARNING") == "1":
+                warnings.warn(f"You have called obj.value on {self} "
+                              f"({self.name}.{self.dotted_name}) "
+                              "which has not gotten value from the control system yet.\n" + fix_msg,
+                              stacklevel=2)
             return self.get()
         else:
             # if we are in here then we have put/get at least once and/or are monitored
@@ -369,9 +391,11 @@ class Signal(OphydObject):
                             )
             if not has_monitors:
                 # If we are not monitored, then warn that this may change in the future.
-                warnings.warn(f"You have called obj.value on {self} ({self.name}.{self.dotted_name}) "
-                              "which is a non-monitored signal.\n" + fix_msg,
-                              stacklevel=2)
+                if not os.getenv("OPHYD_SILENCE_VALUE_WARNING") == "1":
+                    warnings.warn(f"You have called obj.value on {self} "
+                                  f"({self.name}.{self.dotted_name}) "
+                                  "which is a non-monitored signal.\n" + fix_msg,
+                                  stacklevel=2)
                 return self.get()
 
             # else return our cached value and assume something else is keeping us up-to-date
@@ -688,7 +712,7 @@ class EpicsSignalBase(Signal):
         only applied if the PV is connected within connection_timeout (below).
 
         The default value DEFAULT_TIMEOUT means, "Fall back to class-wide
-        default." See EpicsSignalBase.set_default_timeout to configure class
+        default." See EpicsSignalBase.set_defaults to configure class
         defaults.
 
         Explicitly passing None means, "Wait forever."
@@ -709,7 +733,7 @@ class EpicsSignalBase(Signal):
         a channel.
 
         The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
-        class-wide default." See EpicsSignalBase.set_default_timeout to
+        class-wide default." See EpicsSignalBase.set_defaults to
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
@@ -719,9 +743,11 @@ class EpicsSignalBase(Signal):
     # instantiation.
     __any_instantiated = False
 
-    # See set_default_timeout for more on these.
+    # See set_defaults() for more on these.
     __default_connection_timeout = 1.0
-    __default_timeout = 2.0
+    __default_timeout = 2.0         # *read* timeout
+    __default_write_timeout = None  # Wait forever.
+    __default_auto_monitor = False
 
     _read_pv_metadata_key_map = dict(
         status=('status', AlarmStatus),
@@ -741,8 +767,12 @@ class EpicsSignalBase(Signal):
                        )
                       )
 
-    def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
-                 metadata=None, all_pvs=None,
+    def __init__(self, read_pv, *,
+                 string=False,
+                 auto_monitor=DEFAULT_AUTO_MONITOR,
+                 name=None,
+                 metadata=None,
+                 all_pvs=None,
                  timeout=DEFAULT_TIMEOUT,
                  write_timeout=DEFAULT_WRITE_TIMEOUT,
                  connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
@@ -751,10 +781,13 @@ class EpicsSignalBase(Signal):
         self._read_pv = None
         self._read_pvname = read_pv
         self._string = bool(string)
-        self._auto_monitor = auto_monitor
+
         self._signal_is_ready = threading.Event()
         self._first_connection = True
 
+        if auto_monitor is DEFAULT_AUTO_MONITOR:
+            auto_monitor = self.__default_auto_monitor
+        self._auto_monitor = auto_monitor
         if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
             connection_timeout = self.__default_connection_timeout
         self._connection_timeout = connection_timeout
@@ -762,14 +795,7 @@ class EpicsSignalBase(Signal):
             timeout = self.__default_timeout
         self._timeout = timeout
         if write_timeout is DEFAULT_WRITE_TIMEOUT:
-            # This is very different than the connection and read timeouts
-            # above. It relates to how long an action takes to complete. Any
-            # default value we choose here is likely to cause problems---either
-            # by being too short and giving up too early on a lengthy action or
-            # being too long and delaying the report of a failure.
-            # The important thing it is that it is configurable at per-Signal
-            # level via the write_timeout parameter.
-            write_timeout = None  # Wait forever.
+            write_timeout = self.__default_write_timeout
         self._write_timeout = write_timeout
 
         if name is None:
@@ -828,20 +854,50 @@ class EpicsSignalBase(Signal):
         cls.__any_instantiated = True
 
     @classmethod
-    def set_default_timeout(cls, *, timeout=2.0, connection_timeout=1.0):
+    def set_defaults(cls,
+                     *,
+                     timeout=__default_timeout,
+                     connection_timeout=__default_connection_timeout,
+                     write_timeout=__default_write_timeout,
+                     auto_monitor=__default_auto_monitor):
         """
-        Set the class-wide defaults for timeouts
+        Set class-wide defaults for EPICS CA communications
 
-        This may only be called before any instances of EpicsSignalBase are
+        This may be called only before any instances of EpicsSignalBase are
         made.
+
+        This setting applies to the class it is called on and all its
+        subclasses. For example,
+
+        >>> EpicsSignalBase.set_defaults(...)
+
+        will apply to ``EpicsSignalRO`` and ``EpicsSignal``, which are both
+        subclasses of ``EpicsSignalBase``.
+
+        but
+
+        >>> EpicsSignal.set_defaults(...)
+
+        will not apply to ``EpicsSignalRO``.
 
         Parameters
         ----------
-        timeout: float, optional
-            Total time budget (seconds) for reading, not including connection time.
+        auto_monitor: bool, optional
+            If ``True``, update cached value from EPICS CA monitor callbacks.
+            If ``False``, request new value from EPICS each time get() is called.
         connection_timeout: float, optional
             Time (seconds) allocated for establishing a connection with the
             IOC.
+        timeout: float, optional
+            Total time budget (seconds) for reading, not including connection time.
+        write_timeout: float, optional
+            Time (seconds) allocated for writing, not including connection time.
+            The write_timeout is very different than the connection and read timeouts
+            above. It relates to how long an action takes to complete. Any
+            default value we choose here is likely to cause problems---either
+            by being too short and giving up too early on a lengthy action or
+            being too long and delaying the report of a failure. The default,
+            None, waits forever.
 
         Raises
         ------
@@ -851,15 +907,31 @@ class EpicsSignalBase(Signal):
         """
         if EpicsSignalBase.__any_instantiated:
             raise RuntimeError(
-                "The method EpicsSignalBase.set_default_timeout may only "
+                "The method EpicsSignalBase.set_defaults may only "
                 "be called before the first instance of EpicsSignalBase is "
                 "created. This is to ensure that all instances are created "
-                "with the same default retry setting in place.")
+                "with the same default settings in place.")
+
+        cls.__default_auto_monitor = auto_monitor
         cls.__default_connection_timeout = connection_timeout
         cls.__default_timeout = timeout
+        # The write_timeout is very different than the connection and read timeouts
+        # above. It relates to how long an action takes to complete. Any
+        # default value we choose here is likely to cause problems---either
+        # by being too short and giving up too early on a lengthy action or
+        # being too long and delaying the report of a failure.
+        cls.__default_write_timeout = write_timeout
 
-    # TODO Is there a good reason to prohibit setting these three timeout
-    # properties?
+        # TODO Is there a good reason to prohibit setting these three timeout
+        # properties?
+
+    @classmethod
+    def set_default_timeout(cls, **kwargs):
+        warnings.warn(
+            "set_default_timeout() will be removed "
+            "in a future release. Use set_defaults() instead."
+        )
+        cls.set_defaults(**kwargs)
 
     @property
     def connection_timeout(self):
@@ -1019,8 +1091,10 @@ class EpicsSignalBase(Signal):
             raise TimeoutError(f'Control layer {self.cl.name} failed to send connection and '
                                f'access rights information within {float(timeout):.1f} sec')
 
-    def wait_for_connection(self, timeout=1.0):
+    def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
         '''Wait for the underlying signals to initialize or connect'''
+        if timeout is DEFAULT_CONNECTION_TIMEOUT:
+            timeout = self.connection_timeout
         try:
             self._ensure_connected(self._read_pv, timeout=timeout)
         except TimeoutError:
@@ -1052,7 +1126,7 @@ class EpicsSignalBase(Signal):
         return (self._metadata['lower_ctrl_limit'],
                 self._metadata['upper_ctrl_limit'])
 
-    def _get_with_timeout(self, pv, timeout, connection_timeout, as_string, form):
+    def _get_with_timeout(self, pv, timeout, connection_timeout, as_string, form, use_monitor):
         """
         Utility method implementing a retry loop for get and get_setpoint
 
@@ -1072,29 +1146,33 @@ class EpicsSignalBase(Signal):
         except TimeoutError as err:
             raise ConnectionTimeoutError(
                 f"Failed to connect to {pv.pvname} "
-                f"within {connection_timeout:.2} sec") from err
+                f"within {connection_timeout:.2f} sec") from err
         # Pyepics returns None when a read request times out.  Raise a
         # TimeoutError on its behalf.
-        self.control_layer_log.info(
+        self.control_layer_log.debug(
             'pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)',
             pv.pvname, as_string, form, timeout
         )
-        info = pv.get_with_metadata(as_string=as_string, form=form, timeout=timeout)
-        self.control_layer_log.info('pv[%s].get_with_metadata(...) returned', pv.pvname)
+        info = pv.get_with_metadata(
+            as_string=as_string, form=form, timeout=timeout, use_monitor=use_monitor
+        )
+        self.control_layer_log.debug('pv[%s].get_with_metadata(...) returned', pv.pvname)
 
         if info is None:
             raise ReadTimeoutError(
                 f"Failed to read {pv.pvname} "
-                f"within {timeout:.2} sec")
+                f"within {timeout:.2f} sec")
 
         return info
 
-    def get(self, *, as_string=None,
+    def get(self, *,
+            as_string=None,
             timeout=DEFAULT_TIMEOUT,
             connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
             form='time',
+            use_monitor=None,
             **kwargs):
-        '''Get the readback value through an explicit call to EPICS
+        '''Get the readback value through an explicit call to EPICS.
 
         Parameters
         ----------
@@ -1116,12 +1194,21 @@ class EpicsSignalBase(Signal):
             for the connection to complete.
         form : {'time', 'ctrl'}
             PV form to request
+
         '''
+        if kwargs:
+            warnings.warn('Signal.get no longer takes keyword arguments; '
+                          'These are ignored and will be deprecated.',
+                          DeprecationWarning)
         if as_string is None:
             as_string = self._string
 
+        if use_monitor is None:
+            use_monitor = self._auto_monitor
+
         info = self._get_with_timeout(
-            self._read_pv, timeout, connection_timeout, as_string, form)
+            self._read_pv, timeout, connection_timeout, as_string, form, use_monitor
+        )
 
         value = info.pop('value')
         if as_string:
@@ -1167,6 +1254,10 @@ class EpicsSignalBase(Signal):
         metadata = self._metadata_changed(self.pvname, kwargs, update=False,
                                           require_timestamp=True,
                                           from_monitor=True)
+
+        if self._string and "char_value" in kwargs:
+            value = kwargs["char_value"]
+
         # super().put updates self._readback and runs SUB_VALUE
         super().put(value=value, timestamp=metadata.pop('timestamp'),
                     metadata=metadata, force=True)
@@ -1222,7 +1313,7 @@ class EpicsSignalRO(EpicsSignalBase):
         only applied if the PV is connected within connection_timeout (below).
 
         The default value DEFAULT_TIMEOUT means, "Fall back to class-wide
-        default." See EpicsSignalBase.set_default_timeout to configure class
+        default." See EpicsSignalBase.set_defaults to configure class
         defaults.
 
         Explicitly passing None means, "Wait forever."
@@ -1243,16 +1334,14 @@ class EpicsSignalRO(EpicsSignalBase):
         a channel.
 
         The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
-        class-wide default." See EpicsSignalBase.set_default_timeout to
+        class-wide default." See EpicsSignalBase.set_defaults to
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
     '''
 
-    def __init__(self, read_pv, *, string=False, auto_monitor=False, name=None,
-                 **kwargs):
-        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
-                         name=name, **kwargs)
+    def __init__(self, read_pv, *, string=False, name=None, **kwargs):
+        super().__init__(read_pv, string=string, name=name, **kwargs)
         self._metadata['write_access'] = False
 
     def put(self, *args, **kwargs):
@@ -1313,7 +1402,7 @@ class EpicsSignal(EpicsSignalBase):
         only applied if the PV is connected within connection_timeout (below).
 
         The default value DEFAULT_TIMEOUT means, "Fall back to class-wide
-        default." See EpicsSignalBase.set_default_timeout to configure class
+        default." See EpicsSignalBase.set_defaults to configure class
         defaults.
 
         Explicitly passing None means, "Wait forever."
@@ -1334,7 +1423,7 @@ class EpicsSignal(EpicsSignalBase):
         a channel.
 
         The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
-        class-wide default." See EpicsSignalBase.set_default_timeout to
+        class-wide default." See EpicsSignalBase.set_defaults to
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
@@ -1358,7 +1447,7 @@ class EpicsSignal(EpicsSignalBase):
                       )
 
     def __init__(self, read_pv, write_pv=None, *, put_complete=False,
-                 string=False, limits=False, auto_monitor=False, name=None,
+                 string=False, limits=False, name=None,
                  **kwargs):
 
         self._write_pv = None
@@ -1379,7 +1468,7 @@ class EpicsSignal(EpicsSignalBase):
 
         self._setpoint_pvname = write_pv
 
-        super().__init__(read_pv, string=string, auto_monitor=auto_monitor,
+        super().__init__(read_pv, string=string,
                          name=name, metadata=metadata,
                          all_pvs={read_pv, write_pv}, **kwargs)
 
@@ -1428,8 +1517,10 @@ class EpicsSignal(EpicsSignalBase):
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
-    def wait_for_connection(self, timeout=1.0):
+    def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
         '''Wait for the underlying signals to initialize or connect'''
+        if timeout is DEFAULT_CONNECTION_TIMEOUT:
+            timeout = self.connection_timeout
         self._ensure_connected(self._read_pv, self._write_pv, timeout=timeout)
 
     @property
@@ -1508,10 +1599,13 @@ class EpicsSignal(EpicsSignalBase):
             raise LimitError('Value {} outside of range: [{}, {}]'
                              .format(value, low_limit, high_limit))
 
-    def get_setpoint(self, *, as_string=None,
+    def get_setpoint(self, *,
+                     as_string=None,
                      timeout=DEFAULT_TIMEOUT,
                      connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
-                     form='time', **kwargs):
+                     use_monitor=None,
+                     form='time',
+                     **kwargs):
         '''Get the setpoint value (if setpoint PV and readback PV differ)
 
         Parameters
@@ -1535,11 +1629,19 @@ class EpicsSignal(EpicsSignalBase):
         form : {'time', 'ctrl'}
             PV form to request
         '''
+        if kwargs:
+            warnings.warn('Signal.get_setpoint no longer takes keyword arguments; '
+                          'These are ignored and will be deprecated.',
+                          DeprecationWarning)
         if as_string is None:
             as_string = self._string
 
+        if use_monitor is None:
+            use_monitor = self._auto_monitor
+
         info = self._get_with_timeout(
-            self._write_pv, timeout, connection_timeout, as_string, form)
+            self._write_pv, timeout, connection_timeout, as_string, form, use_monitor
+        )
 
         value = info.pop('value')
         if as_string:
@@ -1662,7 +1764,7 @@ class EpicsSignal(EpicsSignalBase):
         if not self.write_access:
             raise ReadOnlyError('No write access to underlying EPICS PV')
 
-        self.control_layer_log.info(
+        self.control_layer_log.debug(
             '_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)',
             value, use_complete, callback, kwargs
         )
@@ -1678,7 +1780,7 @@ class EpicsSignal(EpicsSignalBase):
             self._run_subs(sub_type=self.SUB_SETPOINT, old_value=old_value,
                            value=value, timestamp=timestamp)
 
-    def set(self, value, *, timeout=None, settle_time=None):
+    def set(self, value, *, timeout=DEFAULT_WRITE_TIMEOUT, settle_time=None):
         '''Set is like `EpicsSignal.put`, but is here for bluesky compatibility
 
         If put completion is used for this EpicsSignal, the status object will
@@ -1704,6 +1806,9 @@ class EpicsSignal(EpicsSignalBase):
         --------
         Signal.set
         '''
+        if timeout is DEFAULT_WRITE_TIMEOUT:
+            timeout = self.write_timeout
+
         if not self._put_complete:
             return super().set(value, timeout=timeout, settle_time=settle_time)
 

@@ -56,7 +56,7 @@ class NDDerivedSignal(DerivedSignal):
             flat_array = Cpt(EpicsSignal, ':Array')
             width = Cpt(EpicsSignalRO, ':Width')
             height = Cpt(EpicsSignalRO, ':Height')
-            shaped_array = Cpt(NDDerivedSignal('flat_array',
+            shaped_array = Cpt(NDDerivedSignal, 'flat_array',
                                                shape=('height', 'width'),
                                                num_dimensions=2)
     """

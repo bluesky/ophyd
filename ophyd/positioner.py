@@ -271,6 +271,8 @@ class SoftPositioner(PositionerBase):
     source : str, optional
         Metadata indicating the source of this positioner's position. Defaults
         to 'computed'
+    init_pos : float, optional
+        Create the positioner with this starting position.  Defaults to ``None``.
     '''
 
     def __init__(self, *, egu='', limits=None, source='computed',

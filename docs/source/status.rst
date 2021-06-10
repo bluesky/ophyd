@@ -148,7 +148,7 @@ is marked finished based on some ophyd event. It reduces this:
        acquire = Component(...)
 
        def trigger(self):
-           def check_value(old_value, value, **kwargs):
+           def check_value(*, old_value, value, **kwargs):
                "Mark status as finished when the acquisition is complete."
                if old_value == 1 and value == 0:
                    status.set_finished()
@@ -172,7 +172,7 @@ to this:
        acquire = Component(...)
 
        def trigger(self):
-           def check_value(old_value, value, **kwargs):
+           def check_value(*, old_value, value, **kwargs):
                "Return True when the acquisition is complete, False otherwise."
                return (old_value == 1 and value == 0)
 

@@ -15,7 +15,7 @@ possible configuration.
         pass
 
     prefix = 'XF:23ID1-ES{Tst-Cam:1}'
-    det = MyDetector(prefix)
+    det = MyDetector(prefix, name="det")
 
 The above should work correctly with any EPICS `Area Detector
 <http://cars.uchicago.edu/software/epics/areaDetector.html#Overview>`_. We test

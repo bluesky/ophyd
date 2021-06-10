@@ -138,8 +138,6 @@ class SynSignal(Signal):
             connected=True,
         )
 
-        self.log.info(self)
-
     def describe(self):
         res = super().describe()
         # There should be only one key here, but for the sake of generality....
@@ -148,12 +146,9 @@ class SynSignal(Signal):
         return res
 
     def trigger(self):
-        self.log.info('trigger %s', self)
-
         st = DeviceStatus(device=self)
         delay_time = self.exposure_time
         if delay_time:
-            self.log.info('%s delay_time is %d', self, delay_time)
 
             def sleep_and_finish():
                 self.log.info('sleep_and_finish %s', self)
@@ -735,18 +730,20 @@ class MockFlyer:
         self._steps = np.linspace(start, stop, num)
         self._data = deque()
         self._completion_status = None
+        self._lock = threading.RLock()
         sentinel = object()
-        loop = kwargs.pop('loop', sentinel)
+        loop = kwargs.pop("loop", sentinel)
         if loop is not sentinel:
             warnings.warn(
                 f"{self.__class__} no longer takes a loop as input.  "
                 "Your input will be ignored and may raise in the future",
-                stacklevel=2
+                stacklevel=2,
             )
         if kwargs:
             raise TypeError(
-                f'{self.__class__}.__init__ got unexpected '
-                f'keyword arguments {list(kwargs)}')
+                f"{self.__class__}.__init__ got unexpected "
+                f"keyword arguments {list(kwargs)}"
+            )
 
     def __setstate__(self, val):
         name, detector, motor, steps = val
@@ -761,16 +758,16 @@ class MockFlyer:
         return (self.name, self._detector, self._mot, self._steps)
 
     def read_configuration(self):
-        return OrderedDict()
+        return {}
 
     def describe_configuration(self):
-        return OrderedDict()
+        return {}
 
     def describe_collect(self):
         dd = dict()
         dd.update(self._mot.describe())
         dd.update(self._detector.describe())
-        return {'stream_name': dd}
+        return {self.name: dd}
 
     def complete(self):
         if self._completion_status is None:
@@ -778,8 +775,8 @@ class MockFlyer:
         return self._completion_status
 
     def kickoff(self):
-        if self._completion_status is not None:
-            raise RuntimeError("Already kicked off.")
+        if self._completion_status is not None and not self._completion_status.done:
+            raise RuntimeError("Kicking off a second time?!")
         self._data = deque()
         st = DeviceStatus(device=self)
         self._completion_status = st
@@ -789,36 +786,37 @@ class MockFlyer:
             st.set_finished()
 
         threading.Thread(target=flyer_worker, daemon=True).start()
-
-        return st
+        kickoff_st = DeviceStatus(device=self)
+        kickoff_st.set_finished()
+        return kickoff_st
 
     def collect(self):
-        if self._completion_status is None or not self._completion_status.done:
-            raise RuntimeError("No reading until done!")
-        self._completion_status = None
 
-        yield from self._data
+        with self._lock:
+            data = list(self._data)
+            self._data.clear()
+        yield from data
 
     def _scan(self):
         "This will be run on a separate thread, started in self.kickoff()"
-        ttime.sleep(.1)
+        ttime.sleep(0.1)
         for p in self._steps:
             stat = self._mot.set(p)
             stat.wait()
-
             stat = self._detector.trigger()
             stat.wait()
 
             event = dict()
-            event['time'] = ttime.time()
-            event['data'] = dict()
-            event['timestamps'] = dict()
+            event["time"] = ttime.time()
+            event["data"] = dict()
+            event["timestamps"] = dict()
             for r in [self._mot, self._detector]:
                 d = r.read()
                 for k, v in d.items():
-                    event['data'][k] = v['value']
-                    event['timestamps'][k] = v['timestamp']
-            self._data.append(event)
+                    event["data"][k] = v["value"]
+                    event["timestamps"][k] = v["timestamp"]
+            with self._lock:
+                self._data.append(event)
 
     def stop(self, *, success=False):
         pass
@@ -1214,6 +1212,9 @@ class FakeEpicsSignal(SynSignal):
     We can emulate EpicsSignal features here. We currently emulate the put
     limits and some enum handling.
     """
+
+    _metadata_keys = EpicsSignal._metadata_keys
+
     def __init__(self, read_pv, write_pv=None, *, put_complete=False,
                  string=False, limits=False, auto_monitor=False, name=None,
                  **kwargs):
@@ -1260,9 +1261,22 @@ class FakeEpicsSignal(SynSignal):
                 return str(value)
         return value
 
-    def put(self, value, *args, **kwargs):
+    def put(self, value, *args,
+            connection_timeout=0.0,
+            callback=None,
+            use_complete=None,
+            timeout=0.0,
+            wait=True,
+            **kwargs):
         """
         Implement putting as enum strings and put functions
+
+        Notes
+        -----
+        FakeEpicsSignal varies in subtle ways from the real class.
+
+        * put-completion callback will _not_ be called.
+        * connection_timeout, use_complete, wait, and timeout are ignored.
         """
         if self.enum_strs is not None:
             if value in self.enum_strs:
@@ -1336,7 +1350,7 @@ class FakeEpicsSignalRO(SynSignalRO, FakeEpicsSignal):
     """
     Read-only FakeEpicsSignal
     """
-    pass
+    _metadata_keys = EpicsSignalRO._metadata_keys
 
 
 class FakeEpicsSignalWithRBV(FakeEpicsSignal):
@@ -1344,6 +1358,9 @@ class FakeEpicsSignalWithRBV(FakeEpicsSignal):
     FakeEpicsSignal with PV and PV_RBV; used in the AreaDetector PV naming
     scheme
     """
+
+    _metadata_keys = EpicsSignalWithRBV._metadata_keys
+
     def __init__(self, prefix, **kwargs):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 

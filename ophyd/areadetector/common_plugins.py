@@ -123,6 +123,7 @@ all_plugins = [
     ('gather1', CommonGatherPlugin, 'Gather1:'),
     ('hdf1', plugins.HDF5Plugin, 'HDF1:'),
     ('jpeg1', plugins.JPEGPlugin, 'JPEG1:'),
+    ('kafka1', plugins.KafkaPlugin, 'KAFKA1:'),
     ('magick1', plugins.MagickPlugin, 'Magick1:'),
     ('netcdf1', plugins.NetCDFPlugin, 'netCDF1:'),
     ('nexus1', plugins.NexusPlugin, 'Nexus1:'),

@@ -37,7 +37,7 @@ from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import GenerateDatumInterface
 from ..utils import enum, set_and_wait
 from ..utils.errors import (PluginMisconfigurationError, DestroyedError, UnprimedPlugin)
-
+from .paths import EpicsPathSignal
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,14 @@ __all__ = [
     'HDF5Plugin',
     'ImagePlugin',
     'JPEGPlugin',
+    'KafkaPlugin',
     'MagickPlugin',
     'NetCDFPlugin',
     'NexusPlugin',
     'Overlay',
     'OverlayPlugin',
     'PluginBase',
+    'FileBase',
     'PosPlugin',
     'ProcessPlugin',
     'PvaPlugin',
@@ -236,9 +238,9 @@ class PluginBase(ADBase, version=(1, 9, 1), version_type='ADCore'):
     height = Cpt(EpicsSignalRO, 'ArraySize1_RBV')
     depth = Cpt(EpicsSignalRO, 'ArraySize2_RBV')
     array_size = DDC_EpicsSignalRO(
+        ('depth', 'ArraySize2_RBV'),
         ('height', 'ArraySize1_RBV'),
         ('width', 'ArraySize0_RBV'),
-        ('depth', 'ArraySize2_RBV'),
         doc='The array size'
     )
 
@@ -313,9 +315,9 @@ class ImagePlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
 
     array_data = Cpt(EpicsSignal, 'ArrayData')
     shaped_image = Cpt(NDDerivedSignal, derived_from='array_data',
-                       shape=('array_size.height',
-                              'array_size.width',
-                              'array_size.depth'),
+                       shape=('array_size.depth',
+                              'array_size.height',
+                              'array_size.width'),
                        num_dimensions='ndimensions',
                        kind='omitted')
 
@@ -325,8 +327,8 @@ class ImagePlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
         if array_size == (0, 0, 0):
             raise RuntimeError('Invalid image; ensure array_callbacks are on')
 
-        if array_size[-1] == 0:
-            array_size = array_size[:-1]
+        if array_size[0] == 0:
+            array_size = array_size[1:]
 
         pixel_count = self.array_pixels
         image = self.array_data.get(count=pixel_count)
@@ -618,9 +620,9 @@ class ROIPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     _plugin_type = 'NDPluginROI'
 
     array_size = DDC_EpicsSignalRO(
-        ('x', 'ArraySizeX_RBV'),
-        ('y', 'ArraySizeY_RBV'),
         ('z', 'ArraySizeZ_RBV'),
+        ('y', 'ArraySizeY_RBV'),
+        ('x', 'ArraySizeX_RBV'),
         doc='Size of the ROI data in XYZ',
     )
 
@@ -731,9 +733,9 @@ class TransformPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     height = Cpt(SignalWithRBV, 'ArraySize1')
     depth = Cpt(SignalWithRBV, 'ArraySize2')
     array_size = DDC_SignalWithRBV(
+        ('depth', 'ArraySize2'),
         ('height', 'ArraySize1'),
         ('width', 'ArraySize0'),
-        ('depth', 'ArraySize2'),
         doc='Array size',
     )
 
@@ -776,10 +778,8 @@ class TransformPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
     )
 
 
-class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_type='ADCore'):
+class FileBase(Device):
     _default_suffix = ''
-    _html_docs = ['NDPluginFile.html']
-    _plugin_type = 'NDPluginFile'
     FileWriteMode = enum(SINGLE=0, CAPTURE=1, STREAM=2)
 
     auto_increment = Cpt(SignalWithRBV, 'AutoIncrement', kind='config')
@@ -791,7 +791,8 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_
     file_number = Cpt(SignalWithRBV, 'FileNumber')
     file_number_sync = Cpt(EpicsSignal, 'FileNumber_Sync')
     file_number_write = Cpt(EpicsSignal, 'FileNumber_write')
-    file_path = Cpt(SignalWithRBV, 'FilePath', string=True, kind='config')
+    file_path = Cpt(EpicsPathSignal, 'FilePath', string=True, kind='config',
+                    path_semantics='posix')
     file_path_exists = Cpt(EpicsSignalRO, 'FilePathExists_RBV', kind='config')
     file_template = Cpt(SignalWithRBV, 'FileTemplate', string=True, kind='config')
     file_write_mode = Cpt(SignalWithRBV, 'FileWriteMode', kind='config')
@@ -802,6 +803,12 @@ class FilePlugin(PluginBase, GenerateDatumInterface, version=(1, 9, 1), version_
     write_file = Cpt(SignalWithRBV, 'WriteFile')
     write_message = Cpt(EpicsSignal, 'WriteMessage', string=True)
     write_status = Cpt(EpicsSignal, 'WriteStatus')
+
+
+class FilePlugin(PluginBase, FileBase, GenerateDatumInterface, version=(1, 9, 1), version_type='ADCore'):
+    _default_suffix = ''
+    _html_docs = ['NDPluginFile.html']
+    _plugin_type = 'NDPluginFile'
 
 
 @register_plugin
@@ -828,6 +835,28 @@ class JPEGPlugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
     _plugin_type = 'NDFileJPEG'
 
     jpeg_quality = Cpt(SignalWithRBV, 'JPEGQuality', kind='config')
+
+
+@register_plugin
+class KafkaPlugin(PluginBase, version=(1, 9, 1), version_type='ADCore'):
+
+    _default_suffix = 'KAFKA1:'
+    _suffix_re = r'KAFKA\d:'
+    _html_docs = ['NDPluginKafka.html']
+    _plugin_type = 'NDPluginKafka'
+
+    connection_message = Cpt(EpicsSignalRO, 'ConnectionMessage_RBV')
+    connection_status = Cpt(EpicsSignalRO, 'ConnectionStatus_RBV')
+    kafka_broker_address = Cpt(SignalWithRBV, 'KafkaBrokerAddress')
+    kafka_buffer_size = Cpt(SignalWithRBV, 'KafkaBufferSize')
+    kafka_max_message_size = Cpt(SignalWithRBV, 'KafkaMaxMessageSize')
+    kafka_max_queue_size = Cpt(SignalWithRBV, 'KafkaMaxQueueSize')
+    kafka_stats_interval_time = Cpt(SignalWithRBV, 'KafkaStatsIntervalTime')
+    kafka_topic = Cpt(SignalWithRBV, 'KafkaTopic')
+    reconnect_flush = Cpt(SignalWithRBV, 'ReconnectFlush')
+    reconnect_flush_time = Cpt(SignalWithRBV, 'ReconnectFlushTime')
+    source_name = Cpt(SignalWithRBV, 'SourceName')
+    unsent_packets = Cpt(EpicsSignalRO, 'UnsentPackets_RBV')
 
 
 @register_plugin
@@ -1040,7 +1069,7 @@ class FilePlugin_V21(FilePlugin_V20, version=(2, 1), version_of=FilePlugin):
 
 
 class FilePlugin_V22(PluginBase_V22, FilePlugin_V21, version=(2, 2), version_of=FilePlugin):
-    create_directory = Cpt(SignalWithRBV, "CreateDirectory")
+    create_directory = Cpt(SignalWithRBV, "CreateDirectory", kind="config")
     file_number = Cpt(SignalWithRBV, "FileNumber")
     file_number_sync = None  # REMOVED
     file_number_write = None  # REMOVED
@@ -1283,6 +1312,37 @@ class JPEGPlugin_V33(FilePlugin_V33, JPEGPlugin_V31, version=(3, 3), version_of=
 
 
 class JPEGPlugin_V34(FilePlugin_V34, JPEGPlugin_V33, version=(3, 4), version_of=JPEGPlugin):
+    ...
+
+
+# --- Kafka Plugin ---
+
+
+class KafkaPlugin_V20(PluginBase_V20, KafkaPlugin, version=(2, 0), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V22(PluginBase_V22, KafkaPlugin_V20, version=(2, 2), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V25(PluginBase_V25, KafkaPlugin_V22, version=(2, 5), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V26(PluginBase_V26, KafkaPlugin_V25, version=(2, 6), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V31(PluginBase_V31, KafkaPlugin_V26, version=(3, 1), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V33(PluginBase_V33, KafkaPlugin_V31, version=(3, 3), version_of=KafkaPlugin):
+    ...
+
+
+class KafkaPlugin_V34(PluginBase_V34, KafkaPlugin_V33, version=(3, 4), version_of=KafkaPlugin):
     ...
 
 

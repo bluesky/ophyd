@@ -3,7 +3,7 @@
 
 `areaDetector`_ detector abstractions
 
-.. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html
+.. _areaDetector: https://areadetector.github.io/master/index.html
 '''
 
 from .base import (ADBase, ADComponent as C)
@@ -18,6 +18,7 @@ __all__ = ['DetectorBase',
            'BrukerDetector',
            'DexelaDetector',
            'EmergentVisionDetector',
+           'EigerDetector',
            'FirewireLinDetector',
            'FirewireWinDetector',
            'GreatEyesDetector',
@@ -26,6 +27,7 @@ __all__ = ['DetectorBase',
            'MarCCDDetector',
            'PSLDetector',
            'PerkinElmerDetector',
+           'PICamDetector',
            'PilatusDetector',
            'PixiradDetector',
            'PointGreyDetector',
@@ -34,6 +36,7 @@ __all__ = ['DetectorBase',
            'RoperDetector',
            'SimDetector',
            'URLDetector',
+           'Xspress3Detector'
            ]
 
 
@@ -72,7 +75,10 @@ class DetectorBase(ADBase):
 
     def make_data_key(self):
         source = 'PV:{}'.format(self.prefix)
-        shape = tuple(self.cam.array_size.get())
+        # This shape is expected to match arr.shape for the array.
+        shape = (self.cam.num_images.get(),
+                 self.cam.array_size.array_size_y.get(),
+                 self.cam.array_size.array_size_x.get())
         return dict(shape=shape, source=source, dtype='array',
                     external='FILESTORE:')
 
@@ -122,6 +128,11 @@ class EmergentVisionDetector(DetectorBase):
     cam = C(cam.EmergentVisionDetectorCam, 'cam1:')
 
 
+class EigerDetector(DetectorBase):
+    _html_docs = ['EigerDoc.html']
+    cam = C(cam.EigerDetectorCam, 'cam1:')
+
+
 class FirewireLinDetector(DetectorBase):
     _html_docs = ['FirewireWinDoc.html']
     cam = C(cam.FirewireLinDetectorCam, 'cam1:')
@@ -162,6 +173,11 @@ class PSLDetector(DetectorBase):
     cam = C(cam.PSLDetectorCam, 'cam1:')
 
 
+class PICamDetector(DetectorBase):
+    _html_docs = ['PICamDoc.html']
+    cam = C(cam.PICamDetectorCam, 'cam1:')
+
+
 class PilatusDetector(DetectorBase):
     _html_docs = ['pilatusDoc.html']
     cam = C(cam.PilatusDetectorCam, 'cam1:')
@@ -195,3 +211,8 @@ class RoperDetector(DetectorBase):
 class URLDetector(DetectorBase):
     _html_docs = ['URLDoc.html']
     cam = C(cam.URLDetectorCam, 'cam1:')
+
+
+class Xspress3Detector(DetectorBase):
+    _html_docs = ['Xspress3Doc.html']
+    cam = C(cam.Xspress3DetectorCam, 'det1:')

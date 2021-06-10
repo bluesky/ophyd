@@ -5,7 +5,7 @@ exclude =
     build,
     dist,
     versioneer.py,
-    doc/source,
+    docs/source,
     ophyd/areadetector/docs.py
 max-line-length = 115
 ignore: W504,W503

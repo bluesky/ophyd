@@ -19,3 +19,4 @@ from .plugins import (ColorConvPlugin, FilePlugin, HDF5Plugin, ImagePlugin,  # n
 
 from .common_plugins import *  # noqa: F401, F402, E402, F403
 from .trigger_mixins import *  # noqa: F401, F402, E402, F403
+from .paths import EpicsPathSignal  # noqa: F401, F402, E402, F403
