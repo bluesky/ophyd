@@ -17,7 +17,7 @@ from ophyd.signal import (
     Signal,
 )
 from ophyd.status import wait
-from ophyd.utils import AlarmSeverity, AlarmStatus, ReadOnlyError
+from ophyd.utils import AlarmSeverity, AlarmStatus, ReadOnlyError, AbandonedSet
 
 logger = logging.getLogger(__name__)
 
@@ -767,3 +767,11 @@ def test_signal_clear_set():
     wait(st1)
 
     assert sig.get() == 28
+
+
+def test_epicssignal_abandonedset():
+    # TODO: test for raises AbandonedSet() : How to trigger this?
+    sig = Signal(name="sig", value=1)
+    sig.wait_for_connection()
+
+    # TODO: set_and_wait(sig, 28, ...)
