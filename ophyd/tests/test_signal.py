@@ -695,3 +695,75 @@ def test_import_ro_signal_class():
     from ophyd.signal import SignalRO as SignalRoFromModule
 
     assert SignalRoFromPkg is SignalRoFromModule
+
+
+def test_signal_poison_pill():
+    sig = Signal(name="sig", value=1)
+    sig.wait_for_connection()
+
+    assert sig._poison_pill is None
+
+    st = sig.set(28, settle_time=0.1)  # give it a brief time to finish
+    # poison_pill = threading.Event() when SIGNAL.set() starts
+    assert sig._poison_pill is not None
+    assert isinstance(sig._poison_pill, threading.Event)
+    wait(st)
+    # poison_pill = None when SIGNAL.set() finalizes
+    assert sig._poison_pill is None
+
+
+def test_signal_set_thread_finalizer():
+    sig = Signal(name="sig", value=1)
+    sig.wait_for_connection()
+
+    assert sig._set_thread_finalizer is None
+
+    st = sig.set(28, settle_time=0.1)  # give it a brief time to finish
+    assert not st.done
+    # self._set_thread_finalizer = weakref.finalize during SIGNAL.set()
+    assert sig._set_thread_finalizer is not None
+    wait(st)
+    # set_thread_finalizer = None when SIGNAL.set() finalizes
+    assert sig._set_thread_finalizer is None
+
+
+def test_signal_another_call_to_set_in_progress():
+    sig = Signal(name="sig", value=1)
+    sig.wait_for_connection()
+
+    st1 = sig.set(28, settle_time=.2)
+    # trap the RuntimeError when "Another set() call " ...
+    with pytest.raises(RuntimeError):
+        # TODO: verify the message text startswith?
+        assert not st1.done
+        st2 = sig.set(-1)
+
+    assert not st1.done
+    assert not st1.success
+
+    wait(st1)
+    assert st1.done
+    assert st1.success
+
+    with pytest.raises(NameError):
+        assert st2 is not None
+
+
+def test_signal_clear_set():
+    sig = Signal(name="sig", value=1)
+    sig.wait_for_connection()
+
+    st1 = sig.set(28, settle_time=.2)
+    with pytest.raises(RuntimeError):
+        assert not st1.done
+        st2 = sig.set(-1)
+
+    # call SIGNAL.clear_set() and trap the warning after RuntimeError is raised
+    with pytest.warns(UserWarning):
+        sig.clear_set()
+    assert not st1.done
+    assert not st1.success
+
+    wait(st1)
+
+    assert sig.get() == 28
