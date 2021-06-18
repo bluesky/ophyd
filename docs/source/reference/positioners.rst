@@ -3,9 +3,6 @@
 Positioners
 ***********
 
-Positioners other than ``EpicsMotor`` and ``SoftPositioner`` are not
-"ready-to-use". They require some customization.
-
 PVPositioner
 ------------
 

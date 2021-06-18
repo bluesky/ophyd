@@ -61,6 +61,7 @@ About the documentation
    :maxdepth: 1
 
    explanations/relationship-to-epics
+   explanations/area-detector
    explanations/status
    explanations/staging
 
@@ -73,6 +74,9 @@ About the documentation
 
    reference/core
    reference/builtin-devices
+   reference/area-detector
+   reference/signals
+   reference/positioners
    reference/logging
    reference/release_notes
 
