@@ -1,3 +1,4 @@
+bluesky
 caproto[standard]
 doctr
 ipython
