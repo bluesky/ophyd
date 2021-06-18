@@ -2,6 +2,7 @@ doctr
 ipython
 ipywidgets
 matplotlib
+myst-parser
 numpydoc
 sphinx>=1.8.1,!=2.0.0
 sphinx_rtd_theme

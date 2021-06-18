@@ -208,7 +208,7 @@ code between starting a motion and completing it.
 
 .. note::
 
-   To move more than one signal in parallel, use the `ophyd.status.wait`
+   To move more than one signal in parallel, use the :func:`ophyd.status.wait`
    *function*.
 
    .. code:: python
@@ -267,7 +267,7 @@ Alternatively, we can use *subscription*.
    readings = deque(maxlen=5)
    x.subscribe(accumulate)
 
-When the controls sytem has a new ``reading`` for us, it calls
+When the control system has a new ``reading`` for us, it calls
 ``readings.append(reading)`` from a background thread. If we do other work or
 sleep for awhile and then check back on ``readings`` we'll see that it has some
 items in it.
@@ -281,7 +281,7 @@ items in it.
 
    readings
 
-It will keep the last ``5``. We used a `~collections.deque` instead of a
+It will keep the last ``5``. We used a :class:`~collections.deque` instead of a
 plain `list` here because a `list` would grow without bound and, if left to
 run long enough, consume all available memory, crashing the program.
 

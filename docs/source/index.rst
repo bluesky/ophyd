@@ -29,7 +29,7 @@ Explanation of how the library works and why it works that way.
 :ref:`reference`
 ~~~~~~~~~~~~~~~~
 
-Technically detailed API documenation.
+Technically detailed API documentation.
 
 .. rst-class:: endcolumns
 
@@ -51,10 +51,16 @@ About the documentation
    :name: how-to
    :maxdepth: 1
 
+   how-to/docker
+
 .. toctree::
    :caption: Explanations
    :name: explanations
    :maxdepth: 1
+
+   explanations/architecture
+   explanations/relationship-to-epics
+   explanations/status
 
 .. rst-class:: no-margin-after-ul
 
@@ -62,6 +68,11 @@ About the documentation
    :caption: Reference
    :name: reference
    :maxdepth: 1
+
+   reference/core
+   reference/builtin-devices
+   reference/logging
+   reference/release_notes
 
 * :ref:`genindex`
 

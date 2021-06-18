@@ -1,5 +1,5 @@
-Ready-to-Use Devices
-********************
+Devices with Built-in Support
+=============================
 
 These devices are have ready-made classes in Python. To configure them, the
 user need only provide a PV prefix and a name.
