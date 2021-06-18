@@ -70,4 +70,5 @@ target/
 
 # generated docs
 docs/source/generated
+docs/source/explanations/generated
 docs/source/_as_gen
