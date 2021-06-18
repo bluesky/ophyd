@@ -62,6 +62,7 @@ About the documentation
 
    explanations/relationship-to-epics
    explanations/status
+   explanations/staging
 
 .. rst-class:: no-margin-after-ul
 

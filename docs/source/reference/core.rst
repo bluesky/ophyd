@@ -11,7 +11,7 @@ subclasses that know more about the object they are tied to.
    :parts: 2
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ophyd.status.StatusBase
    ophyd.status.Status
