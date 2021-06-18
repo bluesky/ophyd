@@ -44,13 +44,15 @@ About the documentation
    :maxdepth: 1
 
    tutorials/install
-   tutorials/epics/single-PV
+   tutorials/single-PV
+   tutorials/device
 
 .. toctree::
    :caption: How-to Guides
    :name: how-to
    :maxdepth: 1
 
+   how-to/pseudopositioner
    how-to/docker
 
 .. toctree::
