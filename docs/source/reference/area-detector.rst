@@ -1,4 +1,0 @@
-Area Detector
-=============
-
-TO DO

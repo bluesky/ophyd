@@ -74,7 +74,6 @@ About the documentation
 
    reference/core
    reference/builtin-devices
-   reference/area-detector
    reference/signals
    reference/positioners
    reference/logging

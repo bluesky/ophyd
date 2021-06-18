@@ -24,7 +24,7 @@ on versions 1.9.1 and 2.2.  For preliminary support for AD33 see the
 
 .. warning
 
-   When making new detector classes the ``Trigger`` class must come first in the inheretance
+   When making new detector classes the ``Trigger`` class must come first in the inheritance
    or the default ``Device`` trigger method will be used instead of the trigger method from
    the trigger mix in.
 
@@ -44,7 +44,7 @@ allocated out of a shared pool when they are created (typically by the
 plugin is done with them.  Each plugin can trigger its children in
 two ways:
 
-- *blocking* : The next plugin is called syncronously, blocking the
+- *blocking* : The next plugin is called synchronously, blocking the
   parent plugin until all of the (blocking) children are finished.
   This is single-threaded.
 - *non-blocking* : The pointer is put on a queue that the child
@@ -456,7 +456,7 @@ The Areadetector device should then be instantiated using:
 Custom Plugins or Cameras
 =========================
 
-For custom hardware based on area-detector it may be necesary to add a
+For custom hardware based on area-detector it may be necessary to add a
 custom plugin or camera class, this section will cover what is
 required. Both 'plugins' and 'cameras' act in the same way, but have
 slightly different 'base' attributes, hence they have different 'base
