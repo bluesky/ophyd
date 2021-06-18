@@ -1,5 +1,5 @@
-A single EPICS PV
-=================
+Single EPICS PVs
+================
 
 In this tutorial we will read, write, and monitor an EPICS PV in ophyd.
 
