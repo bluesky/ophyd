@@ -60,7 +60,6 @@ About the documentation
    :name: explanations
    :maxdepth: 1
 
-   explanations/architecture
    explanations/relationship-to-epics
    explanations/status
 
