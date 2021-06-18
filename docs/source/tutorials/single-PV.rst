@@ -89,6 +89,12 @@ The signals can be used by the Bluesky RunEngine. Let's configure a RunEngine
 to print a table.
 
 .. ipython:: python
+   :suppress:
+
+   time_delta.wait_for_connection()
+   x.wait_for_connection()
+
+.. ipython:: python
 
    from bluesky import RunEngine
    from bluesky.callbacks import LiveTable
