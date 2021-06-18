@@ -27,7 +27,7 @@ separate CI harnesses and releases.
 One of the problems that Ophyd solves is particular to Channel Access ("EPICS
 V3"). On the server side, in an IOC, there are explicit groupings and
 relationships among various parts of a device. The Channel Access protocol
-has to now way to express this grouping, so the information is not available
+has no way to express this grouping, so the information is not available
 to the client. There is *implicit* grouping information in the nested structure
 of PV names, but there are no technical guarantees, only soft conventions.
 Ophyd addresses this but re-encoding this structure on the client side.
