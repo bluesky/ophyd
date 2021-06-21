@@ -64,8 +64,7 @@ or, as a convenient shortcut (eliminates the import)
   camera.stats2.total.kind = 'hinted'
 
 With ophyd v1.2.0 or higher, use :attr:`kind` instead of setting
-the :attr:`hints` attribute of the :class:`~device.Device`.  See
-:ref:`hints_fields` for more details.
+the :attr:`hints` attribute of the :class:`~device.Device`.
 
 .. index:: labels attribute
 .. _labels:

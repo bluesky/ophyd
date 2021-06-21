@@ -211,34 +211,5 @@ about the progress of a particular action. In the case of
 :obj:`ophyd.areadetector.trigger_mixins.ADTriggerStatus`, we know a lot, from
 which one can build a frequently-updating progress bar with a realistic
 estimated time of completion. In the case of a generic
-:obj:`ophyd.status.DeviceStatus`, we only know the name of the assocated
+:obj:`ophyd.status.DeviceStatus`, we only know the name of the associated
 Device, when the action starts, and when the action ends.
-
-Status API details
-------------------
-
-.. autoclass:: ophyd.status.StatusBase
-   :members:
-
-In addition we provide specialized subclasses that know more about the object
-they are tied to.
-
-.. inheritance-diagram:: ophyd.status.StatusBase ophyd.status.MoveStatus ophyd.status.DeviceStatus ophyd.status.Status ophyd.status.SubscriptionStatus
-   :parts: 2
-
-.. autoclass:: ophyd.status.Status
-   :members:
-
-.. autoclass:: ophyd.status.DeviceStatus
-   :members:
-
-.. autoclass:: ophyd.status.MoveStatus
-   :members:
-
-.. autoclass:: ophyd.areadetector.trigger_mixins.ADTriggerStatus
-   :members:
-
-.. autoclass:: ophyd.status.SubscriptionStatus
-   :members:
-
-.. autofunction:: ophyd.status.wait

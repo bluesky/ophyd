@@ -33,6 +33,7 @@ extensions = ['sphinx.ext.autodoc',
               'IPython.sphinxext.ipython_directive',
               'IPython.sphinxext.ipython_console_highlighting',
               'matplotlib.sphinxext.plot_directive',
+              'myst_parser',
               'sphinx.ext.inheritance_diagram',
               'numpydoc', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx']
 
@@ -132,8 +133,9 @@ html_short_title = 'ophyd'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
-html_static_path = []
+html_static_path = ['_static']
+
+html_css_files = ["theme_overrides.css"]
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

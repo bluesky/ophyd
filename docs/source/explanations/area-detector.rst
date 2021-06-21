@@ -24,7 +24,7 @@ on versions 1.9.1 and 2.2.  For preliminary support for AD33 see the
 
 .. warning
 
-   When making new detector classes the ``Trigger`` class must come first in the inheretance
+   When making new detector classes the ``Trigger`` class must come first in the inheritance
    or the default ``Device`` trigger method will be used instead of the trigger method from
    the trigger mix in.
 
@@ -44,7 +44,7 @@ allocated out of a shared pool when they are created (typically by the
 plugin is done with them.  Each plugin can trigger its children in
 two ways:
 
-- *blocking* : The next plugin is called syncronously, blocking the
+- *blocking* : The next plugin is called synchronously, blocking the
   parent plugin until all of the (blocking) children are finished.
   This is single-threaded.
 - *non-blocking* : The pointer is put on a queue that the child
@@ -120,7 +120,7 @@ The top-level `~base.ADBase` class has several helper methods for
 walking and validating the plugin network.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~base.ADBase
    ~base.ADBase.visualize_asyn_digraph
@@ -149,7 +149,7 @@ detector.
 The base classes (which may be merged in the future)
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~filestore_mixins.FileStoreBase
    ~filestore_mixins.FileStorePluginBase
@@ -159,7 +159,7 @@ provide the basic methods required for integrating AreaDetector file plugins wit
 :mod:`filestore`
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~filestore_mixins.FileStoreBase.generate_datum
 
@@ -175,7 +175,7 @@ each file plugin and take care of inserting the correct meta-data into
 `FileStore` and configuring the file plugin.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~filestore_mixins.FileStoreTIFF
    ~filestore_mixins.FileStoreHDF5
@@ -189,7 +189,7 @@ saved image.
 To create a functioning class you must also mixin
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~filestore_mixins.FileStoreIterativeWrite
 
@@ -200,7 +200,7 @@ For convenience we provide
 
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~filestore_mixins.FileStoreHDF5IterativeWrite
    ~filestore_mixins.FileStoreTIFFIterativeWrite
@@ -220,7 +220,7 @@ Area Detector Trigger dispatching
 
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~detectors.DetectorBase
    ~detectors.DetectorBase.dispatch
@@ -230,7 +230,7 @@ The translation between the :meth:`~ophyd.device.BlueskyInterface.trigger` and t
 the underlying camera is mediated by the trigger mix-ins.
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~trigger_mixins.TriggerBase
    ~trigger_mixins.SingleTrigger
@@ -244,7 +244,7 @@ Plugins
 
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~plugins.PluginBase
    ~plugins.ColorConvPlugin
@@ -261,7 +261,7 @@ Plugins
 File Plugins
 ============
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~plugins.FilePlugin
    ~plugins.HDF5Plugin
@@ -298,7 +298,7 @@ To use these model-specific classes, swap out ``AreaDetector`` like so:
         pass
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~detectors.AreaDetector
    ~detectors.AdscDetector
@@ -331,7 +331,7 @@ Cams
 The vendor specific details are embedded in the cams
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~cam.CamBase
    ~cam.AdscDetectorCam
@@ -456,7 +456,7 @@ The Areadetector device should then be instantiated using:
 Custom Plugins or Cameras
 =========================
 
-For custom hardware based on area-detector it may be necesary to add a
+For custom hardware based on area-detector it may be necessary to add a
 custom plugin or camera class, this section will cover what is
 required. Both 'plugins' and 'cameras' act in the same way, but have
 slightly different 'base' attributes, hence they have different 'base
@@ -558,7 +558,7 @@ Helpers
 =======
 
 .. autosummary::
-   :toctree: generated
+   :toctree: ../generated
 
    ~base.EpicsSignalWithRBV
    ~base.ADComponent

@@ -14,12 +14,12 @@ Docker links to install and configure Docker:
 
 To communicate with the Docker you have set up some environmental variables:
 
-.. literalinclude:: ../../scripts/epics_exports.sh
+.. literalinclude:: ../../../scripts/epics_exports.sh
 
 and to run docker with the correct images (assuming the preceding code block is
 saved in :file:`epics_exports.sh`):
 
-.. literalinclude:: ../../scripts/epics_docker.sh
+.. literalinclude:: ../../../scripts/epics_docker.sh
 
 Running this multiple times will lead to multiple instances of the
 images running.

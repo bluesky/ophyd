@@ -1,0 +1,33 @@
+/* override table width restrictions */
+@media screen and (min-width: 639px) {
+    .wy-table-responsive table td {
+        /* !important prevents the common CSS stylesheets from
+           overriding this as on RTD they are loaded after this stylesheet */
+        white-space: normal !important;
+    }
+}
+
+/* override table padding */
+.rst-content table.docutils th, .rst-content table.docutils td {
+    padding: 4px 6px;
+}
+
+/* allow us to stop margin after list so we can add to it */
+.no-margin-after-ul ul {
+    margin-bottom: 0 !important;
+}
+
+/* Add two-column option */
+@media only screen and (min-width: 1000px),
+       only screen and (min-width: 500px) and (max-width: 768px){
+    .columns {
+        padding-left: 5px;
+        padding-right: 5px;
+        float: left;
+        width: 50%;
+    }
+}
+
+.endcolumns {
+    clear: both
+}
