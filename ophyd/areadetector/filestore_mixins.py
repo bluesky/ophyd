@@ -390,6 +390,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 class FileStorePluginBase(FileStoreBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if hasattr(self, "create_directory"):
+            self.stage_sigs.update({"create_directory": -3})
         self.stage_sigs.update([('auto_increment', 'Yes'),
                                 ('array_counter', 0),
                                 ('auto_save', 'Yes'),
