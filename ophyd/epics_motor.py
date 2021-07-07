@@ -199,8 +199,10 @@ class EpicsMotor(Device, PositionerBase):
 
         '''
         self.set_use_switch.put(1, wait=True)
-        self.user_setpoint.put(pos, wait=True, force=True)
-        self.set_use_switch.put(0, wait=True)
+        try:
+            self.user_setpoint.put(pos, wait=True, force=True)
+        finally:
+            self.set_use_switch.put(0, wait=True)
 
     @raise_if_disconnected
     def home(self, direction, wait=True, **kwargs):
