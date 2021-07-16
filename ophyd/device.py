@@ -1079,7 +1079,7 @@ class Device(BlueskyInterface, OphydObject):
         "Return a string summarizing the structure of the Device."
         read_attrs = self.read_attrs
         config_attrs = self.configuration_attrs
-        used_attrs = set(read_attrs) and set(config_attrs)
+        used_attrs = set(read_attrs + config_attrs)
         extra_attrs = [a for a in self.component_names
                        if a not in used_attrs]
         hints = getattr(self, 'hints', {}).get('fields', [])
@@ -1495,6 +1495,9 @@ class Device(BlueskyInterface, OphydObject):
             return repr(list(self))
 
         def __add__(self, other):
+            return list(self) + list(other)
+
+        def __radd__(self, other):
             return list(self) + list(other)
 
 
