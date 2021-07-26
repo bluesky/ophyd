@@ -355,7 +355,7 @@ class EigerDetectorCam(CamBase, FileBase):
     file_owner_grp = ADCpt(SignalWithRBV, 'FileOwnerGrp')
     file_perms = ADCpt(EpicsSignal, 'FilePerms')
     flatfield_applied = ADCpt(SignalWithRBV, 'FlatfieldApplied')
-    sequence_id = ADCpt(EpicsSignalRO, 'SequenceId')
+    sequence_id = ADCpt(EpicsSignal, 'SequenceId')
     photon_energy = ADCpt(SignalWithRBV, 'PhotonEnergy')
     armed = ADCpt(EpicsSignalRO, 'Armed')
     chi_start = ADCpt(SignalWithRBV, 'ChiStart')
