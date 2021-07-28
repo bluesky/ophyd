@@ -1497,6 +1497,9 @@ class Device(BlueskyInterface, OphydObject):
         def __add__(self, other):
             return list(self) + list(other)
 
+        def __radd__(self, other):
+            return list(self) + list(other)
+
 
 # Device can be used on its own in trivial cases; ensure that it is ready
 # out-of-the-box for this scenario.
