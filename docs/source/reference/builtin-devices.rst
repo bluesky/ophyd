@@ -44,17 +44,50 @@ EpicsScaler
 -----------
 
 Create an ``EpicsScaler`` to control an EPICS `scaler record
-<http://www.aps.anl.gov/bcda/synApps/std/scalerRecord.html>`_:
+<https://htmlpreview.github.io/?https://github.com/epics-modules/scaler/blob/master/documentation/scalerRecord.html>`_:
 
 .. code-block:: python
 
     from ophyd import EpicsScaler
     scaler = EpicsScaler('XF:28IDC-ES:1{Sclr:1}', name='tth')
 
+Note that :ref:`ScalerCH` is an alternative ``ophyd`` representation of
+the EPICS `scaler record.
+
 .. autosummary::
    :toctree: ../generated
 
    ophyd.scaler.EpicsScaler
+
+ScalerCH
+--------
+
+Create a ``ScalerCH`` to control an EPICS `scaler record
+<https://htmlpreview.github.io/?https://github.com/epics-modules/scaler/blob/master/documentation/scalerRecord.html>`_:
+
+.. code-block:: python
+
+    from ophyd import ScalerCH
+    scaler = ScalerCH('XF:28IDC-ES:1{Sclr:1}', name='tth')
+
+Note that :ref:`EpicsScaler` is an alternative ``ophyd`` representation of
+the EPICS `scaler record.
+
+An important difference between the `ScalerCH` and the `EpicsScaler` is
+in how the channels names are represented.  See this table for a
+comparison:
+
+==================  =======================================  ====================================================
+class               channel naming                           examples
+==================  =======================================  ====================================================
+:ref:`EpicsScaler`  numbered                                 ``scaler_channels_chan2``, ``scaler_channels_chan3``
+:ref:`ScalerCH`     EPICS scaler record channel name fields  ``I0``, ``diode``
+==================  =======================================  ====================================================
+
+.. autosummary::
+   :toctree: ../generated
+
+   ophyd.scaler.ScalerCH
 
 
 EpicsMCA and EpicsDXP
