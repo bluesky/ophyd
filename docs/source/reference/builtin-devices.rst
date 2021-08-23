@@ -48,7 +48,7 @@ EPICS Scaler
 The EPICS ``scaler`` record ([#scaler]_) is supported by two alternative
 ``ophyd`` Devices.  (You need only choose one of these two.)  An important
 difference between the :ref:`built_in.EpicsScaler` and the :ref:`built_in.ScalerCH`
-Devices is in how each channel's names is represented, as summarized 
+Devices is in how each channel's name is represented, as summarized 
 in the next table:
 
 ===========================  =======================================  ====================================================
