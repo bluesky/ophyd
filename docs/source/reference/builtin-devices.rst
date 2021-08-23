@@ -40,6 +40,8 @@ This must be sub-classed (like :class:`~ophyd.device.Device`) to be useful.
    ophyd.epics_motor.EpicsMotor
    ophyd.epics_motor.MotorBundle
 
+.. _built_in.EpicsScaler:
+
 EpicsScaler
 -----------
 
@@ -51,13 +53,16 @@ Create an ``EpicsScaler`` to control an EPICS `scaler record
     from ophyd import EpicsScaler
     scaler = EpicsScaler('XF:28IDC-ES:1{Sclr:1}', name='tth')
 
-Note that :ref:`ScalerCH` is an alternative ``ophyd`` representation of
-the EPICS `scaler record.
+Note that :ref:`built_in.ScalerCH` is an alternative ``ophyd`` representation of
+the EPICS `scaler record
+<https://htmlpreview.github.io/?https://github.com/epics-modules/scaler/blob/master/documentation/scalerRecord.html>`_.
 
 .. autosummary::
    :toctree: ../generated
 
    ophyd.scaler.EpicsScaler
+
+.. _built_in.ScalerCH:
 
 ScalerCH
 --------
@@ -77,12 +82,12 @@ An important difference between the `ScalerCH` and the `EpicsScaler` is
 in how the channels names are represented.  See this table for a
 comparison:
 
-==================  =======================================  ====================================================
-class               channel naming                           examples
-==================  =======================================  ====================================================
-:ref:`EpicsScaler`  numbered                                 ``scaler_channels_chan2``, ``scaler_channels_chan3``
-:ref:`ScalerCH`     EPICS scaler record channel name fields  ``I0``, ``diode``
-==================  =======================================  ====================================================
+===========================  =======================================  ====================================================
+class                        channel naming                           examples
+===========================  =======================================  ====================================================
+:ref:`built_in.EpicsScaler`  numbered                                 ``scaler_channels_chan2``, ``scaler_channels_chan3``
+:ref:`built_in.ScalerCH`     EPICS scaler record channel name fields  ``I0``, ``diode``
+===========================  =======================================  ====================================================
 
 .. autosummary::
    :toctree: ../generated
