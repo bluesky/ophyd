@@ -8,7 +8,7 @@ EPICS motor
 -----------
 
 The EPICS `motor record <http://www.aps.anl.gov/bcda/synApps/motor/>`_
-is supported by the ``EpicsMotor`` object in ``ophyd``:
+is supported by the :class:`~ophyd.epics_motor.EpicsMotor` Device in ``ophyd``:
 
 .. code-block:: python
 
@@ -66,7 +66,7 @@ class                        channel naming                           examples
 EpicsScaler
 +++++++++++
 
-Create an ``EpicsScaler`` object to control an EPICS ``scaler`` record ([#scaler]_).
+Create an :class:`~ophyd.scaler.EpicsScaler` object to control an EPICS ``scaler`` record ([#scaler]_).
 
 .. code-block:: python
 
@@ -83,7 +83,7 @@ Create an ``EpicsScaler`` object to control an EPICS ``scaler`` record ([#scaler
 ScalerCH
 ++++++++
 
-Create a ``ScalerCH`` object to control an EPICS ``scaler`` record ([#scaler]_).
+Create a :class:`~ophyd.scaler.ScalerCH` object to control an EPICS ``scaler`` record ([#scaler]_).
 
 .. code-block:: python
 
