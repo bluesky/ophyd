@@ -1,14 +1,14 @@
 Devices with Built-in Support
 =============================
 
-These devices are have ready-made classes in Python. To configure them, the
+These devices have ready-made classes in Python. To configure them, the
 user need only provide a PV prefix and a name.
 
-EpicsMotor
-----------
+EPICS motor
+-----------
 
-Create an ``EpicsMotor`` to communicate with a single `EPICS motor record
-<http://www.aps.anl.gov/bcda/synApps/motor/>`_:
+The EPICS `motor record <http://www.aps.anl.gov/bcda/synApps/motor/>`_
+is supported by the :class:`~ophyd.epics_motor.EpicsMotor` Device in ``ophyd``:
 
 .. code-block:: python
 
@@ -40,27 +40,66 @@ This must be sub-classed (like :class:`~ophyd.device.Device`) to be useful.
    ophyd.epics_motor.EpicsMotor
    ophyd.epics_motor.MotorBundle
 
-EpicsScaler
------------
+.. _built_in.Epics.Scaler.record:
 
-Create an ``EpicsScaler`` to control an EPICS `scaler record
-<http://www.aps.anl.gov/bcda/synApps/std/scalerRecord.html>`_:
+EPICS Scaler
+------------
+
+The EPICS ``scaler`` record ([#scaler]_) is supported by two alternative
+``ophyd`` Devices.  (You need only choose one of these two.)  An important
+difference between the :ref:`built_in.EpicsScaler` and the :ref:`built_in.ScalerCH`
+Devices is in how each channel's name is represented, as summarized 
+in the next table:
+
+===========================  =======================================  ====================================================
+class                        channel naming                           examples
+===========================  =======================================  ====================================================
+:ref:`built_in.EpicsScaler`  numbered                                 ``scaler_channels_chan2``, ``scaler_channels_chan3``
+:ref:`built_in.ScalerCH`     EPICS scaler record channel name fields  ``I0``, ``diode``
+===========================  =======================================  ====================================================
+
+.. [#scaler] EPICS ``scaler`` documentation:
+   https://htmlpreview.github.io/?https://github.com/epics-modules/scaler/blob/master/documentation/scalerRecord.html
+
+.. _built_in.EpicsScaler:
+
+EpicsScaler
++++++++++++
+
+Create an :class:`~ophyd.scaler.EpicsScaler` object to control an EPICS ``scaler`` record ([#scaler]_).
 
 .. code-block:: python
 
     from ophyd import EpicsScaler
-    scaler = EpicsScaler('XF:28IDC-ES:1{Sclr:1}', name='tth')
+    scaler = EpicsScaler('XF:28IDC-ES:1{Sclr:1}', name='scaler')
 
 .. autosummary::
    :toctree: ../generated
 
    ophyd.scaler.EpicsScaler
 
+.. _built_in.ScalerCH:
+
+ScalerCH
+++++++++
+
+Create a :class:`~ophyd.scaler.ScalerCH` object to control an EPICS ``scaler`` record ([#scaler]_).
+
+.. code-block:: python
+
+    from ophyd.scaler import ScalerCH
+    scaler = ScalerCH('XF:28IDC-ES:1{Sclr:1}', name='scaler')
+
+.. autosummary::
+   :toctree: ../generated
+
+   ophyd.scaler.ScalerCH
+
 
 EpicsMCA and EpicsDXP
 ---------------------
 
-`MCA records <http://cars9.uchicago.edu/software/epics/mcaRecord.html>`_ and
+EPICS `MCA records <http://cars9.uchicago.edu/software/epics/mcaRecord.html>`_ and
 DXP-based devices are also supported, through the ``EpicsMCA`` and ``EpicsDXP``
 devices.
 
