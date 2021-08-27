@@ -41,6 +41,7 @@ __all__ = ['CamBase',
            'RoperDetectorCam',
            'SimDetectorCam',
            'URLDetectorCam',
+           'UVCDetectorCam',
            'Xspress3DetectorCam'
            ]
 
@@ -1228,6 +1229,38 @@ class URLDetectorCam(CamBase):
     url_select = ADCpt(EpicsSignal, 'URLSelect')
     url_seq = ADCpt(EpicsSignal, 'URLSeq')
     url = ADCpt(EpicsSignalRO, 'URL_RBV')
+
+
+class UVCDetectorCam(CamBase):
+    _html_docs = ['UVCDoc.html']
+    _default_configuration_attrs = (
+        CamBase._default_configuration_attrs
+    )
+    uvc_framerate = ADCpt(SignalWithRBV, 'UVCFramerate')
+    uvc_compliance_level = ADCpt(SignalWithRBV, 'UVCComplianceLevel')
+    uvc_reference_count = ADCpt(SignalWithRBV, 'UVCReferenceCount')
+    uvc_image_format = ADCpt(SignalWithRBV, 'UVCImageFormat')
+    uvc_camera_format = ADCpt(SignalWithRBV, 'UVCCameraFormat')
+    uvc_format_description = ADCpt(EpicsSignalRO, 'UVCFormatDescription_RBV')
+    uvc_apply_format = ADCpt(SignalWithRBV, 'UVCApplyFormat')
+    uvc_auto_adjust = ADCpt(SignalWithRBV, 'UVCAutoAdjust')
+    uvc_gamma = ADCpt(SignalWithRBV, 'UVCGamma')
+    uvc_backlight_compensation = ADCpt(SignalWithRBV, 'UVCBacklightCompensation')
+    uvc_brightness = ADCpt(SignalWithRBV, 'UVCBrightness')
+    uvc_contrast = ADCpt(SignalWithRBV, 'UVCContrast')
+    uvc_power_line = ADCpt(SignalWithRBV, 'UVCPowerLine')
+    uvc_hue = ADCpt(SignalWithRBV, 'UVCHue')
+    uvc_saturation = ADCpt(SignalWithRBV, 'UVCSaturation')
+    uvc_sharpness = ADCpt(SignalWithRBV, 'UVCSharpness')
+    uvc_pan_left = ADCpt(EpicsSignal, 'UVCPanLeft')
+    uvc_pan_right = ADCpt(EpicsSignal, 'UVCPanRight')
+    uvc_pan_speed = ADCpt(SignalWithRBV, 'UVCPanSpeed')
+    uvc_tilt_up = ADCpt(EpicsSignal, 'UVCTiltUp')
+    uvc_tilt_down = ADCpt(EpicsSignal, 'UVCTiltDown')
+    uvc_tilt_speed = ADCpt(SignalWithRBV, 'UVCTiltSpeed')
+    uvc_pan_tilt_step = ADCpt(SignalWithRBV, 'UVCPanTiltStep')
+    uvc_zoom_in = ADCpt(EpicsSignal, 'UVCZoomIn')
+    uvc_zoom_out = ADCpt(EpicsSignal, 'UVCZoomOut')
 
 
 class Xspress3DetectorCam(CamBase):
