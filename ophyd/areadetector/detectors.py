@@ -218,6 +218,7 @@ class UVCDetector(DetectorBase):
     _html_docs = ['UVCDoc.html']
     cam = C(cam.UVCDetectorCam, 'cam1:')
 
+
 class Xspress3Detector(DetectorBase):
     _html_docs = ['Xspress3Doc.html']
     cam = C(cam.Xspress3DetectorCam, 'det1:')

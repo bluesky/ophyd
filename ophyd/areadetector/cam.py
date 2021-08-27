@@ -1262,7 +1262,7 @@ class UVCDetectorCam(CamBase):
     uvc_zoom_in = ADCpt(EpicsSignal, 'UVCZoomIn')
     uvc_zoom_out = ADCpt(EpicsSignal, 'UVCZoomOut')
 
-    
+
 class Xspress3DetectorCam(CamBase):
     _html_docs = ['Xspress3Doc.html']
 
