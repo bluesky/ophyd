@@ -36,6 +36,7 @@ __all__ = ['DetectorBase',
            'RoperDetector',
            'SimDetector',
            'URLDetector',
+           'UVCDetector',
            'Xspress3Detector'
            ]
 
@@ -212,6 +213,10 @@ class URLDetector(DetectorBase):
     _html_docs = ['URLDoc.html']
     cam = C(cam.URLDetectorCam, 'cam1:')
 
+
+class UVCDetector(DetectorBase):
+    _html_docs = ['UVCDoc.html']
+    cam = C(cam.UVCDetectorCam, 'cam1:')
 
 class Xspress3Detector(DetectorBase):
     _html_docs = ['Xspress3Doc.html']
