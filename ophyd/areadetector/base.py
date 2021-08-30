@@ -108,7 +108,7 @@ class NDDerivedSignal(DerivedSignal):
 
         array_len = np.prod(array_shape)
         if len(value) < array_len:
-            raise RuntimeError(f"cannot reshape array of size {array_len} "
+            raise RuntimeError(f"cannot reshape array of size {len(value)} "
                                f"into shape {tuple(array_shape)}. Check IOC configuration.")
 
         return np.asarray(value[:array_len]).reshape(array_shape)
