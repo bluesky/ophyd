@@ -13,14 +13,15 @@ Fixes
   mimick EpicsSignal.
 * EpicsMotor will now restore the ``SET`` field back to 0 if an error occurs
   during ``set_current_position``.
-* ``SequenceId`` PV on EigerDetectorCam is now correctly read and write.
+* ``SequenceId`` PV on EigerDetectorCam is no longer read-only.
 * Fixed error message text in ``NDDerivedSignal.inverse``.
 
 Changes
 -------
 
 * Improved error message in Signal.put when unsupported kwargs are passed in.
-* Added script to generate boilerplate code new AD Detector and Cam classes.
+* Added script to generate boilerplate code for new AD Detector and Cam
+  classes.
 * Added Detector and Cam classes for ADPICam driver for Princeton Instruments
   detectors.
 * Added UnitConversionDerivedSignal class, which can automatically apply unit
