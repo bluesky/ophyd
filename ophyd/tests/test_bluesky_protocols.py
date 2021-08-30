@@ -8,7 +8,9 @@ imports += "hw = sim.hw();"
 
 
 def run(cmd):
-    normal_report, error_report, exit_status = api.run(["--command", cmd])
+    normal_report, error_report, exit_status = api.run(
+        ["--command", cmd, "--follow-imports=skip"]
+    )
     print(cmd.split(";")[-1])
     print("  ", normal_report)
     print("  ", error_report)
