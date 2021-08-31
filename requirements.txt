@@ -1,4 +1,4 @@
 inflection
-networkx>=2.0
+networkx>=2.5
 numpy
 pint
