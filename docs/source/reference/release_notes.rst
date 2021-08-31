@@ -2,6 +2,38 @@
  Release History
 =================
 
+1.6.2 (2021-08-31)
+==================
+
+Fixes
+-----
+
+* Prevent set_and_wait from accepting a failed read when tolerances are set.
+* Added missing _metadata_keys and kwargs to FakeEpicsSignal, to better 
+  mimick EpicsSignal.
+* EpicsMotor will now restore the ``SET`` field back to 0 if an error occurs
+  during ``set_current_position``.
+* ``SequenceId`` PV on EigerDetectorCam is no longer read-only.
+* Fixed error message text in ``NDDerivedSignal.inverse``.
+
+Changes
+-------
+
+* Improved error message in Signal.put when unsupported kwargs are passed in.
+* Added script to generate boilerplate code for new AD Detector and Cam
+  classes.
+* Added Detector and Cam classes for ADPICam driver for Princeton Instruments
+  detectors.
+* Added UnitConversionDerivedSignal class, which can automatically apply unit
+  conversions when reading and writing.
+* Added documentation for ``init_pos`` parameter on SoftPositioner.
+* SignalRO now also directly exposed by top level ophyd package.
+* Added classes to support areaDetector Kafka plugin.
+* Added ``create_directory`` support to FileStorePluginBase, to control the
+  directory creation behavior of AreaDetectors.
+* Improved documentation around ScalarCH, EpicsScalar and EpicsMotor.
+* Added classes to support ADUVC driver.
+
 1.6.1 (2021-02-26)
 ==================
 
