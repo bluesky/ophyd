@@ -1567,8 +1567,8 @@ class EpicsSignal(EpicsSignalBase):
             return
 
         if not (low_limit <= value <= high_limit):
-            raise LimitError('Value {} outside of range: [{}, {}]'
-                             .format(value, low_limit, high_limit))
+            raise LimitError('{}: value {} outside of range: [{}, {}]'
+                             .format(self.name, value, low_limit, high_limit))
 
     def get_setpoint(self, *,
                      as_string=None,
