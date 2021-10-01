@@ -5,6 +5,7 @@ databroker>=1.0.0b1
 epics-pypdb
 flake8
 h5py
+inflection
 matplotlib
 pyepics>=3.4.2
 pytest
