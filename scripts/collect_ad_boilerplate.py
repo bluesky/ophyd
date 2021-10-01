@@ -8,7 +8,11 @@ import logging
 
 def write_detector_class(boilerplate_file, dev_name, det_name, cam_name):
     """
-    Writes boilerplater 'Detector' class for ophyd/areadetector/detectors
+    Writes boilerplate 'Detector' class for ophyd/areadetector/detectors.
+
+    This script automates the creation of ophyd classes for areaDetector
+    drivers by scraping their *.template files. It is called by developers as
+    needed.
 
     Parameters
     ----------
