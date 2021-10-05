@@ -1,4 +1,5 @@
 attrs>=19.3.0
+bluesky>=1.7.0
 caproto[standard] >=0.4.2rc1
 codecov
 databroker>=1.0.0b1
@@ -6,6 +7,7 @@ epics-pypdb
 flake8
 h5py
 matplotlib
+mypy
 pyepics>=3.4.2
 pytest
 pytest-faulthandler
