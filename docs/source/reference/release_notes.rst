@@ -2,6 +2,18 @@
  Release History
 =================
 
+1.6.3 (2021-10-08)
+==================
+
+Changes
+-------
+
+* In case of a LimitError being raised by the ``mv()`` command, the error
+  message will now specify which setpoint PV triggered the limit condition.
+* Added tests which check Ophyd objects against the new Bluesky protocols.
+* The requirement for the ``inflection`` package has been removed from
+  general requirements and moved to ``requirements-dev.txt``.
+
 1.6.2 (2021-08-31)
 ==================
 
