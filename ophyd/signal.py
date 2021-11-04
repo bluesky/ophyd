@@ -409,9 +409,14 @@ class Signal(OphydObject):
             val = self.get()
         else:
             val = self._readback
-        return {self.name: {'source': 'SIM:{}'.format(self.name),
+        try:
+            return {self.name: {'source': 'SIM:{}'.format(self.name),
                             'dtype': data_type(val),
                             'shape': data_shape(val)}}
+        except ValueError as ve:
+            # data_type(val) raises ValueError if type(val) is not bluesky-friendly
+            # help the humans by reporting self.name in the exception chain
+            raise ValueError(f"failed to describe '{self.name}' with value '{val}'") from ve
 
     def read_configuration(self):
         'Dictionary mapping names to value dicts with keys: value, timestamp'

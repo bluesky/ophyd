@@ -156,6 +156,17 @@ def test_signal_copy():
     assert signal.timestamp == sig_copy.timestamp
 
 
+def test_signal_describe_fail():
+    """
+    Test Signal.describe() exception handling in the
+    case where a Signal's value is not bluesky-friendly.
+    """
+    signal = Signal(name="the_none_signal", value=None)
+    with pytest.raises(ValueError) as excinfo:
+        signal.describe()
+    assert "failed to describe 'the_none_signal' with value 'None'" in str(excinfo.value)
+
+
 def test_epicssignal_readonly(cleanup, signal_test_ioc):
     signal = EpicsSignalRO(signal_test_ioc.pvs['read_only'])
     cleanup.add(signal)
