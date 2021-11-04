@@ -410,9 +410,13 @@ class Signal(OphydObject):
         else:
             val = self._readback
         try:
-            return {self.name: {'source': 'SIM:{}'.format(self.name),
-                            'dtype': data_type(val),
-                            'shape': data_shape(val)}}
+            return {
+                self.name: {
+                    'source': 'SIM:{}'.format(self.name),
+                    'dtype': data_type(val),
+                    'shape': data_shape(val)
+                }
+            }
         except ValueError as ve:
             # data_type(val) raises ValueError if type(val) is not bluesky-friendly
             # help the humans by reporting self.name in the exception chain
