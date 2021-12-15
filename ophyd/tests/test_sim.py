@@ -127,7 +127,7 @@ class SampleNested(Device):
 
 class Sample(Device):
     egg = Cpt(SampleNested, ':EGG')
-    butter = Cpt(EpicsSignal, ':BUTTER')
+    butter = Cpt(EpicsSignal, ':BUTTER', timeout=10.0, write_timeout=10.0, connection_timeout=10.0)
     flour = Cpt(EpicsSignalRO, ':FLOUR')
     baster = FCpt(EpicsSignal, '{self.drawer}:BASTER')
     sink = FCpt(EpicsSignal, '{self.sink_location}:SINK')
