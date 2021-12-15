@@ -1217,6 +1217,7 @@ class FakeEpicsSignal(SynSignal):
 
     def __init__(self, read_pv, write_pv=None, *, put_complete=False,
                  string=False, limits=False, auto_monitor=False, name=None,
+                 timeout=None, write_timeout=None, connection_timeout=None,
                  **kwargs):
         """
         Mimic EpicsSignal signature
