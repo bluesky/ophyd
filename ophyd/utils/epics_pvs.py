@@ -201,8 +201,12 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
+class AbandonedSet(OpException):
+    ...
+
+
 def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
-                 atol=None):
+                 atol=None, *, poison_pill=None):
     """Set a signal to a value and wait until it reads correctly.
 
     For floating point values, it is strongly recommended to set a tolerance.
@@ -221,6 +225,8 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         allowed relative tolerance between the readback and setpoint values
     atol : float, optional
         allowed absolute tolerance between the readback and setpoint values
+    poison_pill : threading.Event
+        When set, give up and raise AbandonedSet.
 
     Raises
     ------
@@ -259,7 +265,14 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     ):
         logger.debug("Waiting for %s to be set from %r to %r%s...",
                      signal.name, current_value, val, within_str)
-        ttime.sleep(poll_time)
+        # Sleep.
+        if poison_pill is None:
+            ttime.sleep(poll_time)
+        elif poison_pill.wait(poll_time):
+            # This set operation has been abandoned.
+            raise AbandonedSet(
+                f"The signal {signal} was set to {val} but it does not seem "
+                "to have finished. We are no longer watching for it.")
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
