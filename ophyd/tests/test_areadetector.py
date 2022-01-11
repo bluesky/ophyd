@@ -30,8 +30,6 @@ from ophyd.areadetector.filestore_mixins import (
     FileStoreTIFF,
 )
 
-from ophyd.sim import make_fake_device
-
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
 from ophyd.areadetector.plugins import (  # FilePlugin
@@ -51,6 +49,7 @@ from ophyd.areadetector.plugins import (  # FilePlugin
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import Component as Cpt
 from ophyd.signal import Signal
+from ophyd.sim import make_fake_device
 from ophyd.utils.paths import make_dir_tree
 
 logger = logging.getLogger(__name__)
@@ -961,7 +960,7 @@ def test_ADTriggerStatus_gives_correct_fraction():
 
     FakeMyDetector = make_fake_device(MyDetector)
 
-    det : MyDetector = FakeMyDetector("", name='test')
+    det: MyDetector = FakeMyDetector("", name="test")
     det.cam.num_images.put(5)
     det.cam.array_counter.put(0)
 
@@ -976,4 +975,4 @@ def test_ADTriggerStatus_gives_correct_fraction():
     assert mock_called_kwargs["initial"] == 0
     assert mock_called_kwargs["target"] == 5
     assert mock_called_kwargs["current"] == 1
-    assert mock_called_kwargs["fraction"] == 4/5
+    assert mock_called_kwargs["fraction"] == 4 / 5
