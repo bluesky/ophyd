@@ -14,7 +14,7 @@ class BusyStatus(DeviceStatus):
     Parameters
     ----------
     device : Device
-        This object this status object belongs to
+        The object this status object belongs to
 
     delay : float
         Total delay in seconds
@@ -36,10 +36,10 @@ class BusyStatus(DeviceStatus):
                 for w in self._watchers:
                     w(
                         name=self.device.name,
-                        curent=elapsed,
+                        current=elapsed,
                         initial=0,
                         target=delay,
-                        units="s",
+                        unit="s",
                         fraction=(1 - elapsed / delay),
                         time_elapsed=elapsed,
                         time_remaining=delay - elapsed,
@@ -48,7 +48,7 @@ class BusyStatus(DeviceStatus):
                 current = time.monotonic()
             w(
                 name=self.device.name,
-                curent=delay,
+                current=delay,
                 initial=0,
                 target=delay,
                 unit="s",
