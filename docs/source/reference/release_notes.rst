@@ -13,6 +13,9 @@ Changes
   determine if the signal is set as requested when used in a plan (via
   ``yield from bps.abs_set(...)`` or ``yield from bps.mv(...)``) as from
   within ophyd methods.
+* Deprecate ``DetectorBase.dispatch`` in favor of newly added
+  ``DetectorBase.generate_datum``
+
 
 
 1.6.4 (2022-04-08)

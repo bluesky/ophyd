@@ -5,6 +5,7 @@
 
 .. _areaDetector: https://areadetector.github.io/master/index.html
 '''
+import warnings
 
 from .base import (ADBase, ADComponent as C)
 from . import cam
@@ -89,6 +90,11 @@ class DetectorBase(ADBase):
                 p.generate_datum(key, timestamp, datum_kwargs)
 
     def dispatch(self, key, timestamp):
+        warnings.warn(
+            ".dispatch is deprecated, use .generate_datum instead",
+            stacklevel=2
+        )
+
         return self.generate_datum(key, timestamp, {})
 
     dispatch.__doc__ = generate_datum.__doc__
