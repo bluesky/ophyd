@@ -224,6 +224,7 @@ Area Detector Trigger dispatching
 
    ~detectors.DetectorBase
    ~detectors.DetectorBase.dispatch
+   ~detectors.DetectorBase.generate_datum
    ~detectors.DetectorBase.make_data_key
 
 The translation between the :meth:`~ophyd.device.BlueskyInterface.trigger` and triggering
