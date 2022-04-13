@@ -1134,7 +1134,7 @@ class HDF5Plugin_V20(FilePlugin_V20, HDF5Plugin, version=(2, 0), version_of=HDF5
 
 class HDF5Plugin_V21(FilePlugin_V21, HDF5Plugin_V20, version=(2, 1), version_of=HDF5Plugin):
     xml_error_msg = Cpt(EpicsSignalRO, "XMLErrorMsg_RBV")
-    xml_file_name = Cpt(SignalWithRBV, "XMLFileName")
+    xml_file_name = Cpt(SignalWithRBV, "XMLFileName", string=True, kind="config")
     xml_valid = Cpt(EpicsSignalRO, "XMLValid_RBV", string=True, doc="0='No' 1='Yes'")
 
 
