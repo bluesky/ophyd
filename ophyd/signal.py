@@ -7,11 +7,11 @@ import weakref
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError, DestroyedError, set_and_wait,
+from .utils import (ReadOnlyError, LimitError, DestroyedError,
                     doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
-                              AlarmStatus, AlarmSeverity, validate_pv_name)
+                              AlarmStatus, AlarmSeverity, validate_pv_name, _set_and_wait)
 from .ophydobj import OphydObject, Kind
 from .status import Status
 from . import get_cl
@@ -64,7 +64,7 @@ class Signal(OphydObject):
         The absolute tolerance associated with the value
     rtolerance : any, optional
         The relative tolerance associated with the value, used in
-        set_and_wait as follows
+        set as follows
 
         .. math::
 
@@ -191,7 +191,8 @@ class Signal(OphydObject):
 
     def put(self, value, *, timestamp=None, force=False, metadata=None,
             timeout=DEFAULT_WRITE_TIMEOUT, **kwargs):
-        '''Put updates the internal readback value
+        '''
+        Low-level method for writing to a Signal.
 
         The value is optionally checked first, depending on the value of force.
         In addition, VALUE subscriptions are run.
@@ -217,7 +218,6 @@ class Signal(OphydObject):
             value, timestamp, force, metadata
         )
 
-        # TODO: consider adding set_and_wait here as a kwarg
         if kwargs:
             warnings.warn('Signal.put no longer takes keyword arguments; '
                           'These are ignored and will be deprecated. '
@@ -266,11 +266,14 @@ class Signal(OphydObject):
         timeout : float, optional
             Maximum time to wait for value to be successfully set, or None
         '''
-        return set_and_wait(self, value, timeout=timeout, atol=self.tolerance,
-                            rtol=self.rtolerance)
+        return _set_and_wait(self, value,
+                             timeout=timeout,
+                             atol=self.tolerance,
+                             rtol=self.rtolerance)
 
     def set(self, value, *, timeout=None, settle_time=None):
-        '''Set is like `put`, but is here for bluesky compatibility
+        '''
+        Set the value of the Signal and return a Status object.
 
         Returns
         -------
@@ -289,19 +292,19 @@ class Signal(OphydObject):
             except TimeoutError:
                 success = False
                 self.log.warning(
-                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     self.name, value, timeout, self.tolerance, self.rtolerance
                 )
             except Exception:
                 success = False
                 self.log.exception(
-                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
+                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
                     self.name, value, timeout, self.tolerance, self.rtolerance
                 )
             else:
                 success = True
                 self.log.info(
-                    '%s: set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
+                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
                     self.name, value, timeout, self.tolerance, self.rtolerance, self._readback)
 
                 if settle_time is not None:
@@ -1709,7 +1712,8 @@ class EpicsSignal(EpicsSignalBase):
             use_complete=None,
             timeout=DEFAULT_WRITE_TIMEOUT,
             **kwargs):
-        '''Using channel access, set the write PV to `value`.
+        '''
+        Using channel access, set the write PV to `value`.
 
         Keyword arguments are passed on to callbacks
 
@@ -1761,19 +1765,20 @@ class EpicsSignal(EpicsSignalBase):
                            value=value, timestamp=timestamp)
 
     def set(self, value, *, timeout=DEFAULT_WRITE_TIMEOUT, settle_time=None):
-        '''Set is like `EpicsSignal.put`, but is here for bluesky compatibility
+        '''
+        Set the value of the Signal and return a Status object.
 
         If put completion is used for this EpicsSignal, the status object will
         complete once EPICS reports the put has completed.
 
-        Otherwise, set_and_wait will be used (as in `Signal.set`)
+        Otherwise the readback will be polled until equal to the set point (as
+        in `Signal.set`)
 
         Parameters
         ----------
         value : any
         timeout : float, optional
-            Maximum time to wait. Note that set_and_wait does not support
-            an infinite timeout.
+            Maximum time to wait.
         settle_time: float, optional
             Delay after the set() has completed to indicate completion
             to the caller
@@ -1785,6 +1790,7 @@ class EpicsSignal(EpicsSignalBase):
         See Also
         --------
         Signal.set
+
         '''
         if timeout is DEFAULT_WRITE_TIMEOUT:
             timeout = self.write_timeout

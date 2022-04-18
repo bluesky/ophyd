@@ -15,7 +15,7 @@ from collections import (OrderedDict, namedtuple)
 from .ophydobj import OphydObject, Kind
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
-from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
+from .utils import (ExceptionBundle, RedundantStaging,
                     doc_annotation_forwarder, underscores_to_camel_case,
                     getattrs)
 
@@ -547,7 +547,7 @@ class BlueskyInterface:
                 self.log.debug("Setting %s to %r (original value: %r)",
                                self.name,
                                val, original_vals[sig])
-                set_and_wait(sig, val)
+                sig.set(val).wait()
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
             devices_staged.append(self)
@@ -603,7 +603,7 @@ class BlueskyInterface:
             self.log.debug("Setting %s back to its original value: %r)",
                            self.name,
                            val)
-            set_and_wait(sig, val)
+            sig.set(val).wait()
             self._original_vals.pop(sig)
         devices_unstaged.append(self)
 
@@ -1422,7 +1422,7 @@ class Device(BlueskyInterface, OphydObject):
                     raise ValueError("%s is not one of the "
                                      "configuration_fields, so it cannot be "
                                      "changed using configure" % key)
-            set_and_wait(getattr(self, key), val)
+            getattr(self, key).set(val).wait()
         new = self.read_configuration()
         return old, new
 

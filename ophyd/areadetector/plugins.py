@@ -35,7 +35,7 @@ from .base import (ADBase, ADComponent as Cpt,
 from .. import (Device, Component, FormattedComponent as FCpt)
 from ..signal import (EpicsSignalRO, EpicsSignal, ArrayAttributeSignal)
 from ..device import GenerateDatumInterface
-from ..utils import enum, set_and_wait
+from ..utils import enum
 from ..utils.errors import (PluginMisconfigurationError, DestroyedError, UnprimedPlugin)
 from .paths import EpicsPathSignal
 
@@ -922,7 +922,7 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
         The plugin has to 'see' one acquisition before it is ready to capture.
         This sets the array size, etc.
         """
-        set_and_wait(self.enable, 1)
+        self.enable.set(1).wait()
         sigs = OrderedDict([(self.parent.cam.array_callbacks, 1),
                             (self.parent.cam.image_mode, 'Single'),
                             (self.parent.cam.trigger_mode, 'Internal'),
@@ -935,13 +935,13 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type='ADCore'):
 
         for sig, val in sigs.items():
             ttime.sleep(0.1)  # abundance of caution
-            set_and_wait(sig, val)
+            sig.set(val).wait()
 
         ttime.sleep(2)  # wait for acquisition
 
         for sig, val in reversed(list(original_vals.items())):
             ttime.sleep(0.1)
-            set_and_wait(sig, val)
+            sig.set(val).wait()
 
     def stage(self):
         if np.array(self.array_size.get()).sum() == 0:

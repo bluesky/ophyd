@@ -6,6 +6,8 @@ import functools
 import numpy as np
 import typing
 
+import warnings
+
 from .errors import DisconnectedError, OpException
 
 
@@ -201,8 +203,8 @@ def raise_if_disconnected(fcn):
     return wrapper
 
 
-def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
-                 atol=None):
+def _set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
+                  atol=None):
     """Set a signal to a value and wait until it reads correctly.
 
     For floating point values, it is strongly recommended to set a tolerance.
@@ -267,6 +269,16 @@ def set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
             raise TimeoutError("Attempted to set %r to value %r and timed "
                                "out after %r seconds. Current value is %r." %
                                (signal, val, timeout, current_value))
+
+
+@functools.wraps(_set_and_wait)
+def set_and_wait(*args, **kwargs):
+    warnings.warn(
+        "The function `set_and_wait` has been made private, prefer to use"
+        "`obj.set(value).wait(timeout)` rather than "
+        "`set_and_wait(obj, value)`",
+        stacklevel=2)
+    return _set_and_wait(*args, **kwargs)
 
 
 def _compare_maybe_enum(a, b, enums, atol, rtol):
