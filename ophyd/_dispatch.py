@@ -88,7 +88,7 @@ class DispatcherThreadContext:
         if self.event_thread is None:
             self.event_thread = self.dispatcher._threads[self.event_type]
 
-        current_thread = threading.currentThread()
+        current_thread = threading.current_thread()
         if current_thread is self.event_thread:
             func(*args, **kwargs)
         else:
