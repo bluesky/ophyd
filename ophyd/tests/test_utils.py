@@ -5,7 +5,7 @@ import numpy as np
 import tempfile
 
 from ophyd.utils import epics_pvs as epics_utils
-from ophyd.utils import (make_dir_tree, makedirs, set_and_wait)
+from ophyd.utils import make_dir_tree, makedirs
 from ophyd import Signal
 
 
@@ -105,7 +105,7 @@ def test_valid_pvname():
 def test_array_into_softsignal():
     data = np.array([1, 2, 3])
     s = Signal(name='np.array')
-    set_and_wait(s, data)
+    s.set(data).wait()
     assert np.all(s.get() == data)
 
 
@@ -120,11 +120,15 @@ def test_none_signal():
         def get(self):
             return next(self._value_cycle)
 
-    cs = CycleSignal(name='cycle', value_cycle=[0, 1, 2, None, 4])
+    cs = CycleSignal(
+        name='cycle',
+        value_cycle=[0, 1, 2, None, 4],
+        tolerance=.01, rtolerance=0.1
+    )
 
-    set_and_wait(cs, 4, rtol=.01, atol=.01)
+    cs.set(4).wait()
 
 
 def test_set_signal_to_None():
     s = Signal(value='0', name='bob')
-    set_and_wait(s, None, timeout=1)
+    s.set(None).wait(timeout=1)

@@ -31,7 +31,6 @@ from collections import defaultdict
 from itertools import count
 
 from ..device import GenerateDatumInterface, BlueskyInterface, Staged
-from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
 
@@ -427,13 +426,13 @@ class FileStorePluginBase(FileStoreBase):
 
         # Ensure we do not have an old file open.
         if self.file_write_mode != 'Single':
-            set_and_wait(self.capture, 0)
+            self.capture.set(0).wait()
         # These must be set before parent is staged (specifically
         # before capture mode is turned on. They will not be reset
         # on 'unstage' anyway.
         self.file_path.set(write_path).wait()
-        set_and_wait(self.file_name, filename)
-        set_and_wait(self.file_number, 0)
+        self.file_name.set(filename).wait()
+        self.file_number.set(0).wait()
         super().stage()
 
         # AD does this same templating in C, but we can't access it

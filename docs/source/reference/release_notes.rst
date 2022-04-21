@@ -2,6 +2,18 @@
  Release History
 =================
 
+1.7.0 (????-??-??)
+==================
+
+Changes
+-------
+
+* Deprecated ``ophyd.utils.epics_pv.set_and_wait(obj, val)`` in favor of
+  ``obj.set(val).wait()``.  This ensures that the same logic is used to
+  determine if the signal is set as requested when used in a plan (via
+  ``yield from bps.abs_set(...)`` or ``yield from bps.mv(...)``) as from
+  within ophyd methods.
+
 
 1.6.4 (2022-04-08)
 ==================
