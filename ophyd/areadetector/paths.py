@@ -64,9 +64,11 @@ def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
     ------
     TimeoutError if timeout is exceeded
     """
+    # ensure a Path object is converted to a string before setting
+    val = str(val)
     # Make sure val has trailing separator before it's set
-    if not any(str(val).endswith(sep) for sep in OS_SEPARATORS.values()):
-        val = str(val) + OS_SEPARATORS[path_semantics]
+    if not any(val.endswith(sep) for sep in OS_SEPARATORS.values()):
+        val = val + OS_SEPARATORS[path_semantics]
     signal.put(val)
     deadline = ttime.time() + timeout if timeout is not None else None
     current_value = signal.get()
