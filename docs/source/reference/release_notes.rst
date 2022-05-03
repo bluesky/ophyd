@@ -2,6 +2,33 @@
  Release History
 =================
 
+1.7.0 (????-??-??)
+==================
+
+Changes
+-------
+
+* Deprecated ``ophyd.utils.epics_pv.set_and_wait(obj, val)`` in favor of
+  ``obj.set(val).wait()``.  This ensures that the same logic is used to
+  determine if the signal is set as requested when used in a plan (via
+  ``yield from bps.abs_set(...)`` or ``yield from bps.mv(...)``) as from
+  within ophyd methods.
+
+
+1.6.4 (2022-04-08)
+==================
+
+Changes
+-------
+
+* Improve ``ValueError`` from ``Signal.describe()`` to report signal name.
+* Added timeout arguments to FakeEpicsSignal.
+
+Fixes
+-----
+
+* Fix versioneer compatability with python 3.11.
+
 1.6.3 (2021-10-11)
 ==================
 
@@ -21,7 +48,7 @@ Fixes
 -----
 
 * Prevent set_and_wait from accepting a failed read when tolerances are set.
-* Added missing _metadata_keys and kwargs to FakeEpicsSignal, to better 
+* Added missing _metadata_keys and kwargs to FakeEpicsSignal, to better
   mimick EpicsSignal.
 * EpicsMotor will now restore the ``SET`` field back to 0 if an error occurs
   during ``set_current_position``.

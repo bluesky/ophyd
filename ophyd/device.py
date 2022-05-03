@@ -15,7 +15,7 @@ from collections import (OrderedDict, namedtuple)
 from .ophydobj import OphydObject, Kind
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
-from .utils import (ExceptionBundle, set_and_wait, RedundantStaging,
+from .utils import (ExceptionBundle, RedundantStaging,
                     doc_annotation_forwarder, underscores_to_camel_case,
                     getattrs)
 
@@ -547,7 +547,7 @@ class BlueskyInterface:
                 self.log.debug("Setting %s to %r (original value: %r)",
                                self.name,
                                val, original_vals[sig])
-                set_and_wait(sig, val)
+                sig.set(val).wait()
                 # It worked -- now add it to this list of sigs to unstage.
                 self._original_vals[sig] = original_vals[sig]
             devices_staged.append(self)
@@ -603,7 +603,7 @@ class BlueskyInterface:
             self.log.debug("Setting %s back to its original value: %r)",
                            self.name,
                            val)
-            set_and_wait(sig, val)
+            sig.set(val).wait()
             self._original_vals.pop(sig)
         devices_unstaged.append(self)
 
@@ -1422,7 +1422,7 @@ class Device(BlueskyInterface, OphydObject):
                     raise ValueError("%s is not one of the "
                                      "configuration_fields, so it cannot be "
                                      "changed using configure" % key)
-            set_and_wait(getattr(self, key), val)
+            getattr(self, key).set(val).wait()
         new = self.read_configuration()
         return old, new
 
@@ -1632,26 +1632,7 @@ def required_for_connection(func=None, *, description=None, device=None):
 def _wait_for_connection_context(value, doc):
     @contextlib.contextmanager
     def wrapped(dev):
-        f'''Context manager which changes the wait behavior of lazy signal instantiation
 
-        By default, upon instantiation of a lazy signal, `wait_for_connection`
-        is called.  While a common source of confusion, this is done
-        intentionally and for good reason: without this functionality in place,
-        any new lazy signal will generally take a finite amount of time to
-        connect. This then requires that the user manually call
-        `wait_for_connection` each time before using the signal.
-
-        In certain cases, it can be desirable to override this behavior. For
-        instance, when instantiating multiple lazy signals or instantiating a
-        signal just so that a subscription can be added.
-
-        {doc}
-
-        Parameters
-        ----------
-        dev : Device
-            The device to temporarily change
-        '''
         orig = dev.lazy_wait_for_connection
         dev.lazy_wait_for_connection = value
         try:
@@ -1659,6 +1640,26 @@ def _wait_for_connection_context(value, doc):
         finally:
             dev.lazy_wait_for_connection = orig
 
+    wrapped.__doc__ = f'''Context manager which changes the wait behavior of lazy signal instantiation
+
+By default, upon instantiation of a lazy signal, `wait_for_connection`
+is called.  While a common source of confusion, this is done
+intentionally and for good reason: without this functionality in place,
+any new lazy signal will generally take a finite amount of time to
+connect. This then requires that the user manually call
+`wait_for_connection` each time before using the signal.
+
+In certain cases, it can be desirable to override this behavior. For
+instance, when instantiating multiple lazy signals or instantiating a
+signal just so that a subscription can be added.
+
+{doc}
+
+Parameters
+----------
+dev : Device
+    The device to temporarily change
+'''
     return wrapped
 
 

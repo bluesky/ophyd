@@ -15,7 +15,6 @@ import itertools
 
 from ..status import DeviceStatus
 from ..device import BlueskyInterface, Staged
-from ..utils import set_and_wait
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +257,7 @@ class MultiTrigger(TriggerBase):
             return
         logger.debug('Configuring signals for acquisition labeled %r', key)
         for sig, val in signals_settings.items():
-            set_and_wait(sig, val)
+            sig.set(val).wait()
         self.dispatch(key, ttime.time())
         self._acquisition_signal.put(1, wait=False)
 
