@@ -17,6 +17,7 @@ from tempfile import mkdtemp
 
 from .signal import Signal, EpicsSignal, EpicsSignalRO
 from .areadetector.base import EpicsSignalWithRBV
+from .areadetector.paths import EpicsPathSignal
 from .status import DeviceStatus, StatusBase
 from .device import (Device, Component as Cpt,
                      DynamicDeviceComponent as DDCpt, Kind)
@@ -1366,9 +1367,21 @@ class FakeEpicsSignalWithRBV(FakeEpicsSignal):
         super().__init__(prefix + '_RBV', write_pv=prefix, **kwargs)
 
 
+class FakeEpicsPathSignal(FakeEpicsSignal):
+    """
+    FakeEpicsPathSignal; used in AreaDetector for interacting with paths
+    """
+
+    _metadata_keys = EpicsPathSignal._metadata_keys
+
+    def __init__(self, prefix, path_semantics, **kwargs):
+        super().__init__(prefix + "_RBV", write_pv=prefix, **kwargs)
+
+
 fake_device_cache = {EpicsSignal: FakeEpicsSignal,
                      EpicsSignalRO: FakeEpicsSignalRO,
                      EpicsSignalWithRBV: FakeEpicsSignalWithRBV,
+                     EpicsPathSignal: FakeEpicsPathSignal,
                      }
 
 
