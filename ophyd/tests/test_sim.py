@@ -1,11 +1,13 @@
 from ophyd.sim import (SynGauss, Syn2DGauss, SynAxis, make_fake_device,
                        FakeEpicsSignal, FakeEpicsSignalRO,
-                       FakeEpicsSignalWithRBV, clear_fake_device,
-                       instantiate_fake_device, SynSignalWithRegistry)
+                       FakeEpicsSignalWithRBV, FakeEpicsPathSignal,
+                       clear_fake_device, instantiate_fake_device,
+                       SynSignalWithRegistry)
 from ophyd.device import (Device, Component as Cpt, FormattedComponent as FCpt,
                           DynamicDeviceComponent as DDCpt)
 from ophyd.signal import Signal, EpicsSignal, EpicsSignalRO
 from ophyd.areadetector.base import EpicsSignalWithRBV
+from ophyd.areadetector.paths import EpicsPathSignal
 from ophyd.utils import ReadOnlyError, LimitError, DisconnectedError
 import numpy as np
 import pytest
@@ -146,6 +148,7 @@ def test_make_fake_device():
     assert make_fake_device(EpicsSignal) == FakeEpicsSignal
     assert make_fake_device(EpicsSignalRO) == FakeEpicsSignalRO
     assert make_fake_device(EpicsSignalWithRBV) == FakeEpicsSignalWithRBV
+    assert make_fake_device(EpicsPathSignal) == FakeEpicsPathSignal
 
     FakeSample = make_fake_device(Sample)
     my_fake = FakeSample('KITCHEN', name='kitchen')
