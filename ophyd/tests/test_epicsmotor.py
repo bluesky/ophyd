@@ -274,7 +274,7 @@ def test_watchers(motor):
     st.add_callback(callback)
     ev.wait()
     assert collector
-    assert collector[-1] == 1
+    assert collector[-1] == 0.
     assert len(collector) > 1
 
 

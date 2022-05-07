@@ -625,7 +625,7 @@ class DeviceStatus(StatusBase):
     def _settled(self):
         '''Hook for when status has completed and settled'''
         for watcher in self._watchers:
-            watcher(name=self.device.name, fraction=1)
+            watcher(name=self.device.name, fraction=0.)
 
     __repr__ = __str__
 
