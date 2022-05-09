@@ -324,13 +324,13 @@ class PVPositionerComparator(PVPositioner):
     done_value = 1
 
     def __init__(self, prefix: str, *, name: str, **kwargs):
+        self._last_readback = None
+        self._last_setpoint = None
+        super().__init__(prefix, name=name, **kwargs)
         if None in (self.setpoint, self.readback):
             raise NotImplementedError('PVPositionerComparator requires both '
                                       'a setpoint and a readback signal to '
                                       'compare!')
-        self._last_readback = None
-        self._last_setpoint = None
-        super().__init__(prefix, name=name, **kwargs)
 
     def __init_subclass__(cls, **kwargs):
         """Set up callbacks in subclass."""
