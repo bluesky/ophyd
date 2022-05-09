@@ -24,7 +24,7 @@ def ro_signal(cleanup, signal_test_ioc):
 
 @pytest.fixture(scope='function')
 def wo_signal(cleanup, signal_test_ioc):
-    sig = EpicsSignalWO(signal_test_ioc.pvs['pair_rbv'], name='pair_rbv')
+    sig = EpicsSignalWO(signal_test_ioc.pvs['pair_set'], name='pair_set')
     cleanup.add(sig)
     sig.wait_for_connection()
     return sig
@@ -236,7 +236,7 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
 
 
 def test_epicssignal_writeonly(cleanup, signal_test_ioc):
-    signal = EpicsSignalWO(signal_test_ioc.pvs['pair_rbv'])
+    signal = EpicsSignalWO(signal_test_ioc.pvs['pair_set'])
     cleanup.add(signal)
     signal.wait_for_connection()
     print('EpicsSignalWO.metadata=', signal.metadata)
