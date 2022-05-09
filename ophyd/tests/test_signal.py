@@ -23,6 +23,14 @@ def ro_signal(cleanup, signal_test_ioc):
 
 
 @pytest.fixture(scope='function')
+def wo_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignalWO(signal_test_ioc.pvs['pair_rbv'], name='pair_rbv')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
 def bool_enum_signal(cleanup, signal_test_ioc):
     sig = EpicsSignal(signal_test_ioc.pvs['bool_enum'], name='bool_enum')
     cleanup.add(sig)
@@ -225,6 +233,14 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
 
     eval(repr(signal))
     time.sleep(0.2)
+
+
+def test_epicssignal_writeonly(cleanup, signal_test_ioc):
+    signal = EpicsSignalWO(signal_test_ioc.pvs['write_only'])
+    cleanup.add(signal)
+    signal.wait_for_connection()
+    print('EpicsSignalRO.metadata=', signal.metadata)
+    signal.get()
 
 
 def test_epicssignal_readwrite_limits(pair_signal):
