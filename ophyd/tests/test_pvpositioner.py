@@ -4,7 +4,9 @@ import time
 from copy import copy
 
 from ophyd import (PVPositioner, PVPositionerPC, EpicsSignal, EpicsSignalRO,
-                   Component as Cpt, get_cl, Kind)
+                   Component as Cpt, get_cl, Kind, PVPositionerIsClose,
+                   PVPositionerDone)
+from ophyd.utils import wait_for_value
 
 logger = logging.getLogger(__name__)
 
@@ -257,3 +259,38 @@ def test_hints(fake_motor_ioc):
     assert motor.hints == {'fields': ['pv_pos_fake_mtr_readback']}
 
     assert motor.hints['fields'] == f_hints
+
+
+def test_pv_positioner_is_close(fake_motor_ioc):
+    class MyPositioner(PVPositionerIsClose):
+        setpoint = Cpt(EpicsSignal, fake_motor_ioc.pvs['setpoint'])
+        readback = Cpt(EpicsSignal, fake_motor_ioc.pvs['readback'])
+
+        atol = 0.1
+
+    motor = MyPositioner('', name='pv_pos_is_close_fake_motor')
+    goal = motor.position + 10
+    status = motor.set(goal)
+    wait_for_value(motor.setpoint, goal, atol=0.01)
+    with pytest.raises(TimeoutError):
+        wait_for_value(motor.done, 1, timeout=0.5)
+    motor.readback.put(goal / 2)
+    with pytest.raises(TimeoutError):
+        wait_for_value(motor.done, 1, timeout=0.5)
+    motor.readback.put(goal + motor.atol / 2)
+    status.wait(timeout=1)
+    assert status.done
+    assert status.success
+    assert motor.done.get() == 1
+
+
+def test_pv_positioner_done(fake_motor_ioc):
+    # Catch done going to 0 and back to 1
+    motor = PVPositionerDone(fake_motor_ioc.pvs['setpoint'], name='pv_pos_done_fake_motor')
+    done_values = []
+
+    def accumulate_done_values(value, **kwargs):
+        done_values.append(value)
+
+    motor.set(motor.position + 10).wait()
+    assert done_values == [0, 1]
