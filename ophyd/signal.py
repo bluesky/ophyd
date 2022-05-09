@@ -1466,7 +1466,7 @@ class EpicsSignalWO(EpicsSignalBase):
 
     def __init__(self, write_pv, *, string=False, name=None, **kwargs):
         super().__init__(write_pv, string=string, name=name, **kwargs)
-        self._metadata['write_access'] = False
+        self._metadata['read_access'] = False
 
     def read(self, *args, **kwargs):
         'Disabled for a write-only signal'
