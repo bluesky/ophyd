@@ -8,7 +8,7 @@ import weakref
 import numpy as np
 
 from .utils import (ReadOnlyError, LimitError, DestroyedError,
-                    doc_annotation_forwarder)
+                    WriteOnlyError, doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name, _set_and_wait)
@@ -1417,6 +1417,74 @@ class EpicsSignalRO(EpicsSignalBase):
         self._metadata.update(
             read_access=read_access,
             write_access=False,
+        )
+
+        was_connected = self.connected
+        super()._pv_access_callback(read_access, write_access, pv)
+        self._set_event_if_ready()
+
+        if was_connected:
+            # _set_event_if_ready, above, will run metadata callbacks
+            self._run_metadata_callbacks()
+
+
+class EpicsSignalWO(EpicsSignalBase):
+    '''A write-only EpicsSignal -- that is, one with no `read_pv`
+
+    Keyword arguments are passed on to the base class (Signal) initializer
+
+    Parameters
+    ----------
+    write_pv : str
+        The PV to write to
+    auto_monitor : bool, optional
+        Use automonitor with epics.PV
+    name : str, optional
+        Name of signal.  If not given defaults to write_pv
+    write_timeout : float or None, optional
+        The timeout for a reply when put completion is used. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        This is very different than the connection and read timeouts
+        above. It relates to how long an action takes to complete, such motor
+        motion or data acquisition. Any default value we choose here is likely
+        to cause problems---either by being too short and giving up too early
+        on a lengthy action or being too long and delaying the report of a
+        failure. A finite value can be injected here or, perhaps more usefully,
+        via `set` at the Device level, where a context-appropriate value can be
+        chosen.
+    connection_timeout : float or None, optional
+        Timeout for connection. This includes the time to search and establish
+        a channel.
+
+        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
+        class-wide default." See EpicsSignalBase.set_defaults to
+        configure class defaults.
+
+        Explicitly passing None means, "Wait forever."
+    '''
+
+    def __init__(self, write_pv, *, string=False, name=None, **kwargs):
+        super().__init__(write_pv, string=string, name=name, **kwargs)
+        self._metadata['write_access'] = False
+
+    def read(self, *args, **kwargs):
+        'Disabled for a write-only signal'
+        raise WriteOnlyError('Cannot read write-only EpicsSignal')
+
+    def get(self, *args, **kwargs):
+        'Disabled for a write-only signal'
+        raise WriteOnlyError('Cannot get write-only signals')
+
+    def _pv_access_callback(self, read_access, write_access, pv):
+        'Control-layer callback: write PV access rights have changed'
+        # Tweak read access here - this is a write-only signal!
+        if self._destroyed:
+            return
+
+        self._metadata.update(
+            read_access=False,
+            write_access=write_access,
         )
 
         was_connected = self.connected

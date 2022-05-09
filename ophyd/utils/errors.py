@@ -8,6 +8,11 @@ class ReadOnlyError(OpException):
     pass
 
 
+class WriteOnlyError(OpException):
+    '''Signal is write-only'''
+    pass
+
+
 class LimitError(ValueError, OpException):
     '''Value is outside of defined limits'''
     pass
