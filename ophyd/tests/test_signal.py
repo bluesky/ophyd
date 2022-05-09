@@ -236,11 +236,30 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
 
 
 def test_epicssignal_writeonly(cleanup, signal_test_ioc):
-    signal = EpicsSignalWO(signal_test_ioc.pvs['write_only'])
+    signal = EpicsSignalWO(signal_test_ioc.pvs['pair_rbv'])
     cleanup.add(signal)
     signal.wait_for_connection()
-    print('EpicsSignalRO.metadata=', signal.metadata)
-    signal.get()
+    print('EpicsSignalWO.metadata=', signal.metadata)
+
+    signal.value = 10
+
+    assert signal.write_access
+    assert not signal.read_access
+    
+    with pytest.raises(WriteOnlyError):
+        signal.get()
+
+    with pytest.raises(WriteOnlyError):
+        signal.read()
+
+    with pytest.raises(WriteOnlyError):
+        signal.describe()
+
+    with pytest.raises(WriteOnlyError):
+        signal.describe_configuration()
+    
+    with pytest.raises(WriteOnlyError):
+        signal.read_configuration()
 
 
 def test_epicssignal_readwrite_limits(pair_signal):
@@ -439,7 +458,7 @@ def test_soft_derived():
     assert called == [('meta', True, True, False)]
 
 
-def test_epics_signal_derived(ro_signal):
+def test_epics_signal_derived_ro(ro_signal):
     assert ro_signal.connected
     assert ro_signal.read_access
     assert not ro_signal.write_access
@@ -453,6 +472,21 @@ def test_epics_signal_derived(ro_signal):
 
     assert derived.timestamp == ro_signal.timestamp
     assert derived.get() == ro_signal.get()
+
+
+def test_epics_signal_derived_wo(wo_signal):
+    assert wo_signal.connected
+    assert not wo_signal.read_access
+    assert wo_signal.write_access
+
+    derived = DerivedSignal(derived_from=wo_signal, name='derived')
+    derived.wait_for_connection()
+
+    assert derived.connected
+    assert not derived.read_access
+    assert derived.write_access
+
+    assert derived.timestamp == wo_signal.timestamp
 
 
 @pytest.mark.motorsim

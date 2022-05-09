@@ -120,7 +120,6 @@ def fake_motor_ioc(prefix, request):
 def signal_test_ioc(prefix, request):
     name = 'test_signal IOC'
     pvs = dict(read_only=f'{prefix}read_only',
-               write_only=f'{prefix}write_only',
                read_write=f'{prefix}read_write',
                pair_set=f'{prefix}pair_set',
                pair_rbv=f'{prefix}pair_rbv',
