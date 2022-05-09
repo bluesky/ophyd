@@ -670,20 +670,76 @@ class DerivedSignal(Signal):
             yield ('derived_from', self._derived_from)
 
 
-class InternalSignal(SignalRO):
+class InternalSignalMixin:
     """
-    Class Signal that stores info but should only be updated by the class.
-    SignalRO can be updated with _readback, but this does not process
-    callbacks. For the signal to behave normally, we need to bypass the put
-    override.
-    To put to one of these signals, simply call put with force=True
+    Mix-in class for adding the `InternalSignal` behavior to any signal class.
+
+    A signal class with this mixin will reject all sets and puts unless
+    force=True is passed as an argument.
+
+    The intended use for this is to signify that a signal is for internal use
+    by the class only. That is, it would be a mistake to try to cause puts to
+    this signal by code external to the Device class.
+
+    Some more concrete use-cases would be things like soft "status" type
+    signals that should be read-only except that the class needs to edit it,
+    or EPICS signals that should be written to by the class but are likely to
+    cause issues for external writes due to behavior complexity.
+    """
+    def put(self, *args, force: bool = False, **kwargs):
+        """
+        Write protection for an internal signal.
+
+        This method is not intended to be used from outside of the device
+        that defined this signal. All writes must be done with force=True.
+        """
+        if not force:
+            raise InternalSignalError()
+        return super().put(*args, force=force, **kwargs)
+
+    def set(self, *args, force: bool = False, **kwargs):
+        """
+        Write protection for an internal signal.
+
+        This method is not intended to be used from outside of the device
+        that defined this signal. All writes must be done with force=True.
+        """
+        if not force:
+            raise InternalSignalError()
+        return super().set(*args, force=force, **kwargs)
+
+
+class InternalSignal(InternalSignalMixin, Signal):
+    """
+    A soft Signal that stores data but should only be updated by the Device.
+
+    Unlike SignalRO, which will unilaterally block all writes, this will
+    allow writes with force=True.
+
+    The intended use for this is to signify that a signal is for internal use
+    by the class only. That is, it would be a mistake to try to cause puts to
+    this signal by code external to the Device class.
+
+    Some more concrete use-cases would be things like soft "status" type
+    signals that should be read-only except that the class needs to edit it,
+    or EPICS signals that should be written to by the class but are likely to
+    cause issues for external writes due to behavior complexity.
     """
 
-    def put(self, value, *, timestamp=None, force=False):
-        return Signal.put(self, value, timestamp=timestamp, force=force)
 
-    def set(self, value, *, timestamp=None, force=False):
-        return Signal.set(self, value, timestamp=timestamp, force=force)
+class InternalSignalError(ReadOnlyError):
+    """
+    A read-only error sourced from trying to write to an internal signal.
+    """
+    def __init__(self, message=None):
+        if message is None:
+            message = (
+                'This signal is for internal use only. '
+                'You should not be writing to it from outside '
+                'the parent class. If you do need to write to '
+                'this signal, you can use force=True.'
+            )
+        super().__init__(message)
 
 
 class EpicsSignalBase(Signal):
