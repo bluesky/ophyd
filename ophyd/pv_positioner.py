@@ -435,6 +435,9 @@ class PVPositionerDone(PVPositioner):
 
     This is for the case where you'd like a PV to look like a
     positioner, but the truth is that it is just a PV.
+
+    When the user asks for a move, set done to 0 and then back to 1.
+    This simluates the normal positioner behavior.
     """
     setpoint = Cpt(EpicsSignal, '', kind='hinted')
 
