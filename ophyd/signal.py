@@ -723,8 +723,7 @@ class InternalSignal(InternalSignalMixin, Signal):
 
     Some more concrete use-cases would be things like soft "status" type
     signals that should be read-only except that the class needs to edit it,
-    or EPICS signals that should be written to by the class but are likely to
-    cause issues for external writes due to behavior complexity.
+    or calculated "done" signals for positioner classes.
     """
 
 
