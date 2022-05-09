@@ -15,6 +15,7 @@ __all__ = ['split_record_field',
            'strip_field',
            'record_field',
            'set_and_wait',
+           'wait_for_value',
            'AlarmStatus',
            'AlarmSeverity',
            'fmt_time'
@@ -232,6 +233,34 @@ def _set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     TimeoutError if timeout is exceeded
     """
     signal.put(val, **kwargs)
+    wait_for_value(signal, val, poll_time=poll_time, timeout=timeout, rtol=rtol, atol=atol)
+
+
+def wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None,
+                   atol=None):
+    """Wait for a signal to match a value.
+
+    For floating point values, it is strongly recommended to set a tolerance.
+    If tolerances are unset, the values will be compared exactly.
+
+    Parameters
+    ----------
+    signal : EpicsSignal (or any object with `get` and `put`)
+    val : object
+        value to wait for
+    poll_time : float, optional
+        how soon to check whether the value matches
+    timeout : float, optional
+        maximum time to wait for value to match
+    rtol : float, optional
+        allowed relative tolerance between the readback and setpoint values
+    atol : float, optional
+        allowed absolute tolerance between the readback and setpoint values
+
+    Raises
+    ------
+    TimeoutError if timeout is exceeded
+    """
     expiration_time = ttime.time() + timeout if timeout is not None else None
     current_value = signal.get()
 
