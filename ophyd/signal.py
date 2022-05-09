@@ -675,7 +675,7 @@ class InternalSignalMixin:
     Mix-in class for adding the `InternalSignal` behavior to any signal class.
 
     A signal class with this mixin will reject all sets and puts unless
-    force=True is passed as an argument.
+    internal=True is passed as an argument.
 
     The intended use for this is to signify that a signal is for internal use
     by the class only. That is, it would be a mistake to try to cause puts to
@@ -686,27 +686,27 @@ class InternalSignalMixin:
     or EPICS signals that should be written to by the class but are likely to
     cause issues for external writes due to behavior complexity.
     """
-    def put(self, *args, force: bool = False, **kwargs):
+    def put(self, *args, internal: bool = False, **kwargs):
         """
         Write protection for an internal signal.
 
         This method is not intended to be used from outside of the device
-        that defined this signal. All writes must be done with force=True.
+        that defined this signal. All writes must be done with internal=True.
         """
-        if not force:
+        if not internal:
             raise InternalSignalError()
-        return super().put(*args, force=force, **kwargs)
+        return super().put(*args, **kwargs)
 
-    def set(self, *args, force: bool = False, **kwargs):
+    def set(self, *args, internal: bool = False, **kwargs):
         """
         Write protection for an internal signal.
 
         This method is not intended to be used from outside of the device
-        that defined this signal. All writes must be done with force=True.
+        that defined this signal. All writes must be done with internal=True.
         """
-        if not force:
+        if not internal:
             raise InternalSignalError()
-        return super().set(*args, force=force, **kwargs)
+        return super().set(*args, **kwargs)
 
 
 class InternalSignal(InternalSignalMixin, Signal):
@@ -714,7 +714,7 @@ class InternalSignal(InternalSignalMixin, Signal):
     A soft Signal that stores data but should only be updated by the Device.
 
     Unlike SignalRO, which will unilaterally block all writes, this will
-    allow writes with force=True.
+    allow writes with internal=True.
 
     The intended use for this is to signify that a signal is for internal use
     by the class only. That is, it would be a mistake to try to cause puts to
@@ -737,7 +737,7 @@ class InternalSignalError(ReadOnlyError):
                 'This signal is for internal use only. '
                 'You should not be writing to it from outside '
                 'the parent class. If you do need to write to '
-                'this signal, you can use force=True.'
+                'this signal, you can use signal.put(value, internal=True).'
             )
         super().__init__(message)
 

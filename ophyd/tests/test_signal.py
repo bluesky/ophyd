@@ -168,13 +168,13 @@ def test_signal_describe_fail():
     assert "failed to describe 'the_none_signal' with value 'None'" in str(excinfo.value)
 
 
-def test_internalsignal_write_with_force():
+def test_internalsignal_write_from_internal():
     test_signal = InternalSignal(name='test_signal')
     for value in range(10):
-        test_signal.put(value, force=True)
+        test_signal.put(value, internal=True)
         assert test_signal.get() == value
     for value in range(10):
-        test_signal.set(value, force=True)
+        test_signal.set(value, internal=True).wait()
         assert test_signal.get() == value
 
 
