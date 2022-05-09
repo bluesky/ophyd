@@ -245,7 +245,7 @@ def test_epicssignal_writeonly(cleanup, signal_test_ioc):
 
     assert signal.write_access
     assert not signal.read_access
-    
+
     with pytest.raises(WriteOnlyError):
         signal.get()
 
@@ -257,7 +257,7 @@ def test_epicssignal_writeonly(cleanup, signal_test_ioc):
 
     with pytest.raises(WriteOnlyError):
         signal.describe_configuration()
-    
+
     with pytest.raises(WriteOnlyError):
         signal.read_configuration()
 
