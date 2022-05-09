@@ -5,7 +5,8 @@ import pytest
 import threading
 
 from ophyd import get_cl
-from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal)
+from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal,
+                          InternalSignal, InternalSignalError)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
 from ophyd.areadetector.paths import EpicsPathSignal
@@ -165,6 +166,25 @@ def test_signal_describe_fail():
     with pytest.raises(ValueError) as excinfo:
         signal.describe()
     assert "failed to describe 'the_none_signal' with value 'None'" in str(excinfo.value)
+
+
+def test_internalsignal_write_with_force():
+    test_signal = InternalSignal(name='test_signal')
+    for value in range(10):
+        test_signal.put(value, force=True)
+        assert test_signal.get() == value
+    for value in range(10):
+        test_signal.set(value, force=True)
+        assert test_signal.get() == value
+
+
+def test_internalsignal_write_protection():
+    test_signal = InternalSignal(name='test_signal')
+    for value in range(10):
+        with pytest.raises(InternalSignalError):
+            test_signal.put(value)
+        with pytest.raises(InternalSignalError):
+            test_signal.set(value)
 
 
 def test_epicssignal_readonly(cleanup, signal_test_ioc):
