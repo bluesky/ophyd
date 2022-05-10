@@ -242,6 +242,7 @@ def test_epicssignal_novalidation(nv_signal):
     nv_signal.put(10)
     st = nv_signal.set(11)
 
+    time.sleep(0.05)
     assert st.done
 
     nv_signal.get()
