@@ -8,7 +8,7 @@ import weakref
 import numpy as np
 
 from .utils import (ReadOnlyError, LimitError, DestroyedError,
-                    WriteOnlyError, doc_annotation_forwarder)
+                    doc_annotation_forwarder)
 from .utils.epics_pvs import (waveform_to_string,
                               raise_if_disconnected, data_type, data_shape,
                               AlarmStatus, AlarmSeverity, validate_pv_name, _set_and_wait)
@@ -1428,8 +1428,10 @@ class EpicsSignalRO(EpicsSignalBase):
             self._run_metadata_callbacks()
 
 
-class EpicsSignalWO(EpicsSignalBase):
-    '''A write-only EpicsSignal -- that is, one with no `read_pv`
+class EpicsSignalNoValidation(EpicsSignalBase):
+    '''An EpicsSignal that does not verify values on set.
+    This signal does support readback, but does not guarantee that
+    the readback will match the set value.
 
     Keyword arguments are passed on to the base class (Signal) initializer
 
@@ -1461,19 +1463,6 @@ class EpicsSignalWO(EpicsSignalBase):
 
         Explicitly passing None means, "Wait forever."
     '''
-
-    def __init__(self, write_pv, *, string=False, name=None, **kwargs):
-        super().__init__(write_pv, string=string, name=name, **kwargs)
-        self._metadata['read_access'] = False
-
-    def read(self, *args, **kwargs):
-        'Disabled for a write-only signal'
-        raise WriteOnlyError('Cannot read write-only EpicsSignal')
-
-    def get(self, *args, **kwargs):
-        'Disabled for a write-only signal'
-        raise WriteOnlyError('Cannot get write-only signals')
-
     def set(self, value, *args, **kwargs):
         '''
         Set the value of this signal, and return a completed Status
@@ -1489,25 +1478,6 @@ class EpicsSignalWO(EpicsSignalBase):
         st = Status()
         st.set_finished()
         return st
-
-    def _pv_access_callback(self, read_access, write_access, pv):
-        'Control-layer callback: write PV access rights have changed'
-        # Tweak read access here - this is a write-only signal!
-        if self._destroyed:
-            return
-
-        self._metadata.update(
-            read_access=False,
-            write_access=write_access,
-        )
-
-        was_connected = self.connected
-        super()._pv_access_callback(read_access, write_access, pv)
-        self._set_event_if_ready()
-
-        if was_connected:
-            # _set_event_if_ready, above, will run metadata callbacks
-            self._run_metadata_callbacks()
 
 
 class EpicsSignal(EpicsSignalBase):
