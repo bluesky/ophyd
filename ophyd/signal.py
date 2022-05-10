@@ -1477,6 +1477,7 @@ class EpicsSignalNoValidation(EpicsSignalBase):
 
         st = Status()
         st.set_finished()
+        st.wait()
         return st
 
 
