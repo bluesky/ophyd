@@ -241,7 +241,8 @@ def test_epicssignal_writeonly(cleanup, signal_test_ioc):
     signal.wait_for_connection()
     print('EpicsSignalWO.metadata=', signal.metadata)
 
-    signal.value = 10
+    signal.value.put(10)
+    signal.value.set(11)
 
     assert signal.write_access
     assert not signal.read_access
