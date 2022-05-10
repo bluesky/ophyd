@@ -133,7 +133,7 @@ class SingleTrigger(TriggerBase):
 
         self._status = self._status_type(self)
         self._acquisition_signal.put(1, wait=False)
-        self.dispatch(self._image_name, ttime.time())
+        self.generate_datum(self._image_name, ttime.time(), {})
         return self._status
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
@@ -258,7 +258,7 @@ class MultiTrigger(TriggerBase):
         logger.debug('Configuring signals for acquisition labeled %r', key)
         for sig, val in signals_settings.items():
             sig.set(val).wait()
-        self.dispatch(key, ttime.time())
+        self.generate_datum(key, ttime.time(), {})
         self._acquisition_signal.put(1, wait=False)
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):

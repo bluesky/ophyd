@@ -5,6 +5,7 @@
 
 .. _areaDetector: https://areadetector.github.io/master/index.html
 '''
+import warnings
 
 from .base import (ADBase, ADComponent as C)
 from . import cam
@@ -48,11 +49,13 @@ class DetectorBase(ADBase):
     Note that Plugin also inherits from ADBase.
     This adds some AD-specific methods that are not shared by the plugins.
     """
+
     _default_configuration_attrs = (ADBase._default_configuration_attrs +
                                     ('cam', ))
 
-    def dispatch(self, key, timestamp):
-        """Notify plugins of acquisition being complete.
+    def generate_datum(self, key, timestamp, datum_kwargs=None):
+        """
+        Notify plugins of acquisition being complete.
 
         When a new acquisition is started, this method is called with a
         key which is a label like 'light', 'dark', or 'gain8'.
@@ -67,12 +70,34 @@ class DetectorBase(ADBase):
            def generate_datum(key: str, timestamp: float, datum_kwargs: dict):
               ...
 
+        Parameters
+        ----------
+        key : str
+            The label for the datum that should be generated
+
+        timestamp : float
+            The time of the trigger
+
+        datum_kwargs : Dict[str, Any], optional
+            Any datum kwargs that should go to all children.
         """
+        if datum_kwargs is None:
+            datum_kwargs = {}
         file_plugins = [s for s in self._signals.values() if
                         hasattr(s, 'generate_datum')]
         for p in file_plugins:
             if p.enable.get():
-                p.generate_datum(key, timestamp, {})
+                p.generate_datum(key, timestamp, datum_kwargs)
+
+    def dispatch(self, key, timestamp):
+        warnings.warn(
+            ".dispatch is deprecated, use .generate_datum instead",
+            stacklevel=2
+        )
+
+        return self.generate_datum(key, timestamp, {})
+
+    dispatch.__doc__ = generate_datum.__doc__
 
     def make_data_key(self):
         source = 'PV:{}'.format(self.prefix)
