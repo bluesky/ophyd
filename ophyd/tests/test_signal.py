@@ -252,11 +252,8 @@ def test_epicssignal_writeonly(cleanup, signal_test_ioc):
     with pytest.raises(WriteOnlyError):
         signal.read()
 
-    with pytest.raises(WriteOnlyError):
-        signal.describe()
-
-    with pytest.raises(WriteOnlyError):
-        signal.describe_configuration()
+    signal.describe()
+    signal.describe_configuration()
 
     with pytest.raises(WriteOnlyError):
         signal.read_configuration()
