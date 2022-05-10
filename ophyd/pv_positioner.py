@@ -367,7 +367,9 @@ class PVPositionerComparator(PVPositioner):
         if None not in (self._last_readback, self._last_setpoint):
             is_done = self.done_comparator(self._last_readback,
                                            self._last_setpoint)
-            self.done.put(int(is_done), internal=True)
+            done_value = int(is_done)
+            if done_value != self.done.get():
+                self.done.put(done_value, internal=True)
 
 
 class PVPositionerIsClose(PVPositionerComparator):
