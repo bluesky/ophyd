@@ -282,7 +282,7 @@ class Signal(OphydObject):
             This status object will be finished upon return in the
             case of basic soft Signals
         '''
-        self.log.info(
+        self.log.debug(
             'set(value=%s, timeout=%s, settle_time=%s, kwargs=%s)',
             value, timeout, settle_time, kwargs
         )
@@ -304,12 +304,12 @@ class Signal(OphydObject):
                 )
             else:
                 success = True
-                self.log.info(
+                self.log.debug(
                     '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s) succeeded => %s',
                     self.name, value, timeout, self.tolerance, self.rtolerance, kwargs, self._readback)
 
                 if settle_time is not None:
-                    self.log.info('settling for %d seconds', settle_time)
+                    self.log.debug('settling for %d seconds', settle_time)
                     time.sleep(settle_time)
             finally:
                 # keep a local reference to avoid any GC shenanigans

@@ -186,7 +186,7 @@ class OphydObject:
         self.control_layer_log = LoggerAdapter(control_layer_logger, {'ophyd_object_name': name})
 
         if not self.__any_instantiated:
-            self.log.info("first instance of OphydObject: id=%s", id(self))
+            self.log.debug("first instance of OphydObject: id=%s", id(self))
             OphydObject._mark_as_instantiated()
         self.__register_instance(self)
 
