@@ -470,15 +470,13 @@ def test_epics_signal_derived_ro(ro_signal):
 
 def test_epics_signal_derived_nv(nv_signal):
     assert nv_signal.connected
-    assert not nv_signal.read_access
+    assert nv_signal.read_access
     assert nv_signal.write_access
 
     derived = DerivedSignal(derived_from=nv_signal, name='derived')
     derived.wait_for_connection()
 
     assert derived.connected
-    assert not derived.read_access
-    assert derived.write_access
 
     assert derived.timestamp == nv_signal.timestamp
 
