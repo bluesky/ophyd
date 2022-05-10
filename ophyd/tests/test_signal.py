@@ -236,18 +236,16 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
     time.sleep(0.2)
 
 
-def test_epicssignal_writeonly(cleanup, signal_test_ioc):
+def test_epicssignal_novalidation(cleanup, signal_test_ioc):
     signal = EpicsSignalNoValidation(signal_test_ioc.pvs['pair_set'])
     cleanup.add(signal)
     signal.wait_for_connection()
-    print('EpicsSignalWO.metadata=', signal.metadata)
+    print('EpicsSignalNoValidation.metadata=', signal.metadata)
 
     signal.value.put(10)
     st = signal.value.set(11)
 
     assert st.done
-    assert signal.write_access
-    assert not signal.read_access
 
     signal.get()
     signal.read()
@@ -255,8 +253,7 @@ def test_epicssignal_writeonly(cleanup, signal_test_ioc):
     signal.describe()
     signal.describe_configuration()
 
-    with pytest.raises(WriteOnlyError):
-        signal.read_configuration()
+    signal.read_configuration()
 
 
 def test_epicssignal_readwrite_limits(pair_signal):
@@ -471,7 +468,7 @@ def test_epics_signal_derived_ro(ro_signal):
     assert derived.get() == ro_signal.get()
 
 
-def test_epics_signal_derived_wo(nv_signal):
+def test_epics_signal_derived_nv(nv_signal):
     assert nv_signal.connected
     assert not nv_signal.read_access
     assert nv_signal.write_access
