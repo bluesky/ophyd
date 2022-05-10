@@ -1473,7 +1473,7 @@ class EpicsSignalNoValidation(EpicsSignalBase):
         st : Status
             This status object will be finished
         '''
-        super().set(self, value)
+        super().set(value)
 
         st = Status()
         st.set_finished()
