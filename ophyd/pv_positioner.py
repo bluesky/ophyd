@@ -309,8 +309,7 @@ class PVPositionerComparator(PVPositioner):
 
     The done state is set by a comparison function defined in the class body.
     The comparison function takes two arguments, readback and setpoint,
-    returning True if we are close enough to be considered done or False if we
-    are too far away.
+    returning True if we are considered done or False if we are not.
 
     This class is intended to support `PVPositionerIsClose`, but exists to
     allow some flexibility if we want to use other metrics for deciding if
