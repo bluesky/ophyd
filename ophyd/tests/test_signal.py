@@ -239,8 +239,8 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
 def test_epicssignal_novalidation(nv_signal):
     print('EpicsSignalNoValidation.metadata=', nv_signal.metadata)
 
-    nv_signal.value.put(10)
-    st = nv_signal.value.set(11)
+    nv_signal.put(10)
+    st = nv_signal.set(11)
 
     assert st.done
 
