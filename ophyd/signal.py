@@ -1478,18 +1478,17 @@ class EpicsSignalWO(EpicsSignalBase):
         '''
         Set the value of this signal, and return a completed Status
         object, bypassing any readback verification
-        
+ 
         Returns
         -------
         st : Status
             This status object will be finished
         '''
-
         super().set(self, value)
 
         st = Status()
         st.set_finished()
-        return st 
+        return st
 
     def _pv_access_callback(self, read_access, write_access, pv):
         'Control-layer callback: write PV access rights have changed'
