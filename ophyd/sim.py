@@ -152,7 +152,7 @@ class SynSignal(Signal):
         if delay_time:
 
             def sleep_and_finish():
-                self.log.info('sleep_and_finish %s', self)
+                self.log.debug('sleep_and_finish %s', self)
                 ttime.sleep(delay_time)
                 self.put(self._func())
                 st.set_finished()
