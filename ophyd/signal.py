@@ -252,7 +252,7 @@ class Signal(OphydObject):
         self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
                        value=value, **md_for_callback)
 
-    def _set_and_wait(self, value, timeout):
+    def _set_and_wait(self, value, timeout, **kwargs):
         '''
         Overridable hook for subclasses to override :meth:`.set` functionality.
 
@@ -269,9 +269,10 @@ class Signal(OphydObject):
         return _set_and_wait(self, value,
                              timeout=timeout,
                              atol=self.tolerance,
-                             rtol=self.rtolerance)
+                             rtol=self.rtolerance,
+                             **kwargs)
 
-    def set(self, value, *, timeout=None, settle_time=None):
+    def set(self, value, *, timeout=None, settle_time=None, **kwargs):
         '''
         Set the value of the Signal and return a Status object.
 
@@ -282,30 +283,30 @@ class Signal(OphydObject):
             case of basic soft Signals
         '''
         self.log.info(
-            'set(value=%s, timeout=%s, settle_time=%s)',
-            value, timeout, settle_time
+            'set(value=%s, timeout=%s, settle_time=%s, kwargs=%s)',
+            value, timeout, settle_time, kwargs
         )
 
         def set_thread():
             try:
-                self._set_and_wait(value, timeout)
+                self._set_and_wait(value, timeout, **kwargs)
             except TimeoutError:
                 success = False
                 self.log.warning(
-                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
-                    self.name, value, timeout, self.tolerance, self.rtolerance
+                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)',
+                    self.name, value, timeout, self.tolerance, self.rtolerance, kwargs
                 )
             except Exception:
                 success = False
                 self.log.exception(
-                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s)',
-                    self.name, value, timeout, self.tolerance, self.rtolerance
+                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)',
+                    self.name, value, timeout, self.tolerance, self.rtolerance, kwargs
                 )
             else:
                 success = True
                 self.log.info(
-                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s) succeeded => %s',
-                    self.name, value, timeout, self.tolerance, self.rtolerance, self._readback)
+                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s) succeeded => %s',
+                    self.name, value, timeout, self.tolerance, self.rtolerance, kwargs, self._readback)
 
                 if settle_time is not None:
                     self.log.info('settling for %d seconds', settle_time)
@@ -668,6 +669,78 @@ class DerivedSignal(Signal):
             yield ('derived_from', self._derived_from.dotted_name)
         else:
             yield ('derived_from', self._derived_from)
+
+
+class InternalSignalMixin:
+    """
+    Mix-in class for adding the `InternalSignal` behavior to any signal class.
+
+    A signal class with this mixin will reject all sets and puts unless
+    internal=True is passed as an argument.
+
+    The intended use for this is to signify that a signal is for internal use
+    by the class only. That is, it would be a mistake to try to cause puts to
+    this signal by code external to the Device class.
+
+    Some more concrete use-cases would be things like soft "status" type
+    signals that should be read-only except that the class needs to edit it,
+    or EPICS signals that should be written to by the class but are likely to
+    cause issues for external writes due to behavior complexity.
+    """
+    def put(self, *args, internal: bool = False, **kwargs):
+        """
+        Write protection for an internal signal.
+
+        This method is not intended to be used from outside of the device
+        that defined this signal. All writes must be done with internal=True.
+        """
+        if not internal:
+            raise InternalSignalError()
+        return super().put(*args, **kwargs)
+
+    def set(self, *args, internal: bool = False, **kwargs):
+        """
+        Write protection for an internal signal.
+
+        This method is not intended to be used from outside of the device
+        that defined this signal. All writes must be done with internal=True.
+        """
+        if not internal:
+            raise InternalSignalError()
+        return super().set(*args, internal=internal, **kwargs)
+
+
+class InternalSignal(InternalSignalMixin, Signal):
+    """
+    A soft Signal that stores data but should only be updated by the Device.
+
+    Unlike SignalRO, which will unilaterally block all writes, this will
+    allow writes with internal=True.
+
+    The intended use for this is to signify that a signal is for internal use
+    by the class only. That is, it would be a mistake to try to cause puts to
+    this signal by code external to the Device class.
+
+    Some more concrete use-cases would be things like soft "status" type
+    signals that should be read-only except that the class needs to edit it,
+    or EPICS signals that should be written to by the class but are likely to
+    cause issues for external writes due to behavior complexity.
+    """
+
+
+class InternalSignalError(ReadOnlyError):
+    """
+    A read-only error sourced from trying to write to an internal signal.
+    """
+    def __init__(self, message=None):
+        if message is None:
+            message = (
+                'This signal is for internal use only. '
+                'You should not be writing to it from outside '
+                'the parent class. If you do need to write to '
+                'this signal, you can use signal.put(value, internal=True).'
+            )
+        super().__init__(message)
 
 
 class EpicsSignalBase(Signal):

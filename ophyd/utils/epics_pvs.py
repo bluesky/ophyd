@@ -204,7 +204,7 @@ def raise_if_disconnected(fcn):
 
 
 def _set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
-                  atol=None):
+                  atol=None, **kwargs):
     """Set a signal to a value and wait until it reads correctly.
 
     For floating point values, it is strongly recommended to set a tolerance.
@@ -223,12 +223,15 @@ def _set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
         allowed relative tolerance between the readback and setpoint values
     atol : float, optional
         allowed absolute tolerance between the readback and setpoint values
+    kwargs :
+        additional keyword arguments will be passed directly into the
+        underlying "signal.put" call.
 
     Raises
     ------
     TimeoutError if timeout is exceeded
     """
-    signal.put(val)
+    signal.put(val, **kwargs)
     expiration_time = ttime.time() + timeout if timeout is not None else None
     current_value = signal.get()
 
