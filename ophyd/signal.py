@@ -1478,7 +1478,7 @@ class EpicsSignalWO(EpicsSignalBase):
         '''
         Set the value of this signal, and return a completed Status
         object, bypassing any readback verification
- 
+
         Returns
         -------
         st : Status
