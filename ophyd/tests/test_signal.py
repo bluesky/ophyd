@@ -236,24 +236,21 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
     time.sleep(0.2)
 
 
-def test_epicssignal_novalidation(cleanup, signal_test_ioc):
-    signal = EpicsSignalNoValidation(signal_test_ioc.pvs['pair_set'])
-    cleanup.add(signal)
-    signal.wait_for_connection()
-    print('EpicsSignalNoValidation.metadata=', signal.metadata)
+def test_epicssignal_novalidation(nv_signal):
+    print('EpicsSignalNoValidation.metadata=', nv_signal.metadata)
 
-    signal.value.put(10)
-    st = signal.value.set(11)
+    nv_signal.value.put(10)
+    st = nv_signal.value.set(11)
 
     assert st.done
 
-    signal.get()
-    signal.read()
+    nv_signal.get()
+    nv_signal.read()
 
-    signal.describe()
-    signal.describe_configuration()
+    nv_signal.describe()
+    nv_signal.describe_configuration()
 
-    signal.read_configuration()
+    nv_signal.read_configuration()
 
 
 def test_epicssignal_readwrite_limits(pair_signal):
