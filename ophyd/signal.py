@@ -1437,8 +1437,6 @@ class EpicsSignalWO(EpicsSignalBase):
     ----------
     write_pv : str
         The PV to write to
-    auto_monitor : bool, optional
-        Use automonitor with epics.PV
     name : str, optional
         Name of signal.  If not given defaults to write_pv
     write_timeout : float or None, optional
