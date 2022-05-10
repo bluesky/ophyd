@@ -271,16 +271,17 @@ def test_pv_positioner_is_close(signal_test_ioc):
     motor = MyPositioner('', name='pv_pos_is_close_fake_motor')
     setpoint_status = motor.setpoint.set(0)
     readback_status = motor.readback.set(0)
-    setpoint_status.wait(timeout=0.5)
-    readback_status.wait(timeout=0.5)
+    setpoint_status.wait(timeout=1)
+    readback_status.wait(timeout=1)
     goal = motor.position + 10
     status = motor.set(goal)
-    wait_for_value(motor.setpoint, goal, atol=0.01)
+    wait_for_value(motor.setpoint, goal, atol=0.01, timeout=1)
+    wait_for_value(motor.done, 0, timeout=1)
     with pytest.raises(TimeoutError):
-        wait_for_value(motor.done, 1, timeout=0.5)
+        wait_for_value(motor.done, 1, timeout=1)
     motor.readback.put(goal / 2)
     with pytest.raises(TimeoutError):
-        wait_for_value(motor.done, 1, timeout=0.5)
+        wait_for_value(motor.done, 1, timeout=1)
     motor.readback.put(goal + motor.atol / 2)
     status.wait(timeout=1)
     assert status.done
@@ -291,7 +292,7 @@ def test_pv_positioner_is_close(signal_test_ioc):
 def test_pv_positioner_done(signal_test_ioc):
     # Catch done going to 0 and back to 1
     motor = PVPositionerDone(signal_test_ioc.pvs['read_write'], name='pv_pos_done_fake_motor')
-    motor.setpoint.set(0).wait(timeout=0.5)
+    motor.setpoint.set(0).wait(timeout=1)
     done_values = []
 
     def accumulate_done_values(value, **kwargs):
