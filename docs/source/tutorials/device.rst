@@ -14,8 +14,8 @@ We'll start two simulated devices that implement a `random walk`_.
 
 .. code:: bash
 
-   python -m caproto.ioc_examples_random_walk --prefix="random-walk:horiz:" --list-pvs
-   python -m caproto.ioc_examples_random_walk --prefix="random-walk:vert:" --list-pvs
+   python -m caproto.ioc_examples.random_walk --prefix="random-walk:horiz:" --list-pvs
+   python -m caproto.ioc_examples.random_walk --prefix="random-walk:vert:" --list-pvs
 
 .. ipython:: python
    :suppress:
