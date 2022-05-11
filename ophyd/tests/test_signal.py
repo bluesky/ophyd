@@ -6,7 +6,8 @@ import threading
 
 from ophyd import get_cl
 from ophyd.signal import (Signal, EpicsSignal, EpicsSignalRO, DerivedSignal,
-                          InternalSignal, InternalSignalError)
+                          InternalSignal, InternalSignalError,
+                          EpicsSignalNoValidation)
 from ophyd.utils import (ReadOnlyError, AlarmStatus, AlarmSeverity)
 from ophyd.status import wait
 from ophyd.areadetector.paths import EpicsPathSignal
@@ -17,6 +18,14 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope='function')
 def ro_signal(cleanup, signal_test_ioc):
     sig = EpicsSignalRO(signal_test_ioc.pvs['pair_rbv'], name='pair_rbv')
+    cleanup.add(sig)
+    sig.wait_for_connection()
+    return sig
+
+
+@pytest.fixture(scope='function')
+def nv_signal(cleanup, signal_test_ioc):
+    sig = EpicsSignalNoValidation(signal_test_ioc.pvs['pair_set'], name='pair_set')
     cleanup.add(sig)
     sig.wait_for_connection()
     return sig
@@ -227,6 +236,23 @@ def test_epicssignal_readonly(cleanup, signal_test_ioc):
     time.sleep(0.2)
 
 
+def test_epicssignal_novalidation(nv_signal):
+    print('EpicsSignalNoValidation.metadata=', nv_signal.metadata)
+
+    nv_signal.put(10)
+    st = nv_signal.set(11)
+
+    assert st.done
+
+    nv_signal.get()
+    nv_signal.read()
+
+    nv_signal.describe()
+    nv_signal.describe_configuration()
+
+    nv_signal.read_configuration()
+
+
 def test_epicssignal_readwrite_limits(pair_signal):
     signal = pair_signal
     signal.use_limits = True
@@ -423,7 +449,7 @@ def test_soft_derived():
     assert called == [('meta', True, True, False)]
 
 
-def test_epics_signal_derived(ro_signal):
+def test_epics_signal_derived_ro(ro_signal):
     assert ro_signal.connected
     assert ro_signal.read_access
     assert not ro_signal.write_access
@@ -437,6 +463,19 @@ def test_epics_signal_derived(ro_signal):
 
     assert derived.timestamp == ro_signal.timestamp
     assert derived.get() == ro_signal.get()
+
+
+def test_epics_signal_derived_nv(nv_signal):
+    assert nv_signal.connected
+    assert nv_signal.read_access
+    assert nv_signal.write_access
+
+    derived = DerivedSignal(derived_from=nv_signal, name='derived')
+    derived.wait_for_connection()
+
+    assert derived.connected
+
+    assert derived.timestamp == nv_signal.timestamp
 
 
 @pytest.mark.motorsim

@@ -75,7 +75,8 @@ from .ophydobj import (Kind, select_version,  # noqa: F401, F402, E402
                        register_instances_keyed_on_name)
 
 # Signals
-from .signal import (Signal, SignalRO, EpicsSignal, EpicsSignalRO, DerivedSignal)  # noqa: F401, F402, E402
+from .signal import (Signal, SignalRO, EpicsSignal, EpicsSignalRO,  # noqa: F401, F402, E402
+                     EpicsSignalNoValidation, DerivedSignal)
 
 # Positioners
 from .positioner import (PositionerBase, SoftPositioner)  # noqa: F401, F402, E402
