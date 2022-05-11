@@ -16,7 +16,7 @@ walker.
 
 .. code:: bash
 
-   python -m caproto.ioc_examples_random_walk --list-pvs
+   python -m caproto.ioc_examples.random_walk --list-pvs
 
 .. ipython:: python
    :suppress:
