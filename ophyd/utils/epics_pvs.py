@@ -15,7 +15,6 @@ __all__ = ['split_record_field',
            'strip_field',
            'record_field',
            'set_and_wait',
-           'wait_for_value',
            'AlarmStatus',
            'AlarmSeverity',
            'fmt_time'
@@ -233,11 +232,11 @@ def _set_and_wait(signal, val, poll_time=0.01, timeout=10, rtol=None,
     TimeoutError if timeout is exceeded
     """
     signal.put(val, **kwargs)
-    wait_for_value(signal, val, poll_time=poll_time, timeout=timeout, rtol=rtol, atol=atol)
+    _wait_for_value(signal, val, poll_time=poll_time, timeout=timeout, rtol=rtol, atol=atol)
 
 
-def wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None,
-                   atol=None):
+def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None,
+                    atol=None):
     """Wait for a signal to match a value.
 
     For floating point values, it is strongly recommended to set a tolerance.

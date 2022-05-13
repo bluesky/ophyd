@@ -6,7 +6,7 @@ from copy import copy
 from ophyd import (PVPositioner, PVPositionerPC, EpicsSignal, EpicsSignalRO,
                    Component as Cpt, get_cl, Kind, PVPositionerIsClose,
                    PVPositionerDone)
-from ophyd.utils import wait_for_value
+from ophyd.utils.epics_pvs import _wait_for_value
 
 logger = logging.getLogger(__name__)
 
@@ -275,13 +275,13 @@ def test_pv_positioner_is_close(signal_test_ioc):
     readback_status.wait(timeout=1)
     goal = motor.position + 10
     status = motor.set(goal)
-    wait_for_value(motor.setpoint, goal, atol=0.01, timeout=1)
-    wait_for_value(motor.done, 0, timeout=1)
+    _wait_for_value(motor.setpoint, goal, atol=0.01, timeout=1)
+    _wait_for_value(motor.done, 0, timeout=1)
     with pytest.raises(TimeoutError):
-        wait_for_value(motor.done, 1, timeout=1)
+        _wait_for_value(motor.done, 1, timeout=1)
     motor.readback.put(goal / 2)
     with pytest.raises(TimeoutError):
-        wait_for_value(motor.done, 1, timeout=1)
+        _wait_for_value(motor.done, 1, timeout=1)
     motor.readback.put(goal + motor.atol / 2)
     status.wait(timeout=1)
     assert status.done
