@@ -156,6 +156,7 @@ class OphydObject:
                  kind=None):
 
         if OPHYD_DEBUG_WITH_INSPECT:
+            print(f"Initializing {self.__class__.__name__}...")
             stack = inspect.stack()
             self._stack_init = [f'{s.filename}:{s.lineno}' for s in stack]
 
