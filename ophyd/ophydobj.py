@@ -242,9 +242,10 @@ class OphydObject:
         'This is called automatically in Python for all subclasses of OphydObject'
 
         if OPHYD_DEBUG_WITH_INSPECT:
-            print(f'Subclassing {cls.__name__}...')
-            stack = inspect.stack()
-            cls._stack_subclass = [f'{s.filename}:{s.lineno}' for s in stack]
+            if not cls.__module__.startswith("ophyd."):
+                print(f'Subclassing {cls.__name__}...')
+                stack = inspect.stack()
+                cls._stack_subclass = [f'{s.filename}:{s.lineno}' for s in stack]
 
         super().__init_subclass__(**kwargs)
 
