@@ -1,12 +1,17 @@
 # vi: ts=4 sw=4
 
 import logging
+from typing import Any, Optional
+
+import numpy as np
 
 from .utils.epics_pvs import fmt_time
 
+from .device import Component as Cpt
 from .device import (Device, required_for_connection)
 from .ophydobj import Kind
 from .positioner import PositionerBase
+from .signal import EpicsSignal, InternalSignal
 from .status import wait as status_wait
 
 logger = logging.getLogger(__name__)
@@ -296,3 +301,270 @@ class PVPositionerPC(PVPositioner):
         else:
             self.setpoint.put(position, wait=False,
                               callback=done_moving)
+
+
+class PVPositionerComparator(PVPositioner):
+    """
+    PV Positioner with a software done signal.
+
+    The done state is set by a comparison function defined in the class body.
+    The comparison function takes two arguments, readback and setpoint,
+    returning True if we are considered done or False if we are not.
+
+    This class is intended to support `PVPositionerIsClose`, but exists to
+    allow some flexibility if we want to use other metrics for deciding if
+    the PVPositioner is done.
+
+    Internally, this will subscribe to both the `setpoint` and `readback`
+    signals, updating `done` as appropriate.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        The device prefix used for all sub-positioners. This is optional as it
+        may be desirable to specify full PV names for PVPositioners.
+    limits : 2-element sequence, optional
+        (low_limit, high_limit)
+    name : str
+        The device name
+    egu : str, optional
+        The engineering units (EGU) for the position
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
+
+    Attributes
+    ----------
+    setpoint : Signal
+        The setpoint (request) signal
+    readback : Signal or None
+        The readback PV (e.g., encoder position PV)
+    actuate : Signal or None
+        The actuation PV to set when movement is requested
+    actuate_value : any, optional
+        The actuation value, sent to the actuate signal when motion is
+        requested
+    stop_signal : Signal or None
+        The stop PV to set when motion should be stopped
+    stop_value : any, optional
+        The value sent to stop_signal when a stop is requested
+    put_complete : bool, optional
+        If set, the specified PV should allow for asynchronous put completion
+        to indicate motion has finished.  If `actuate` is specified, it will be
+        used for put completion.  Otherwise, the `setpoint` will be used.  See
+        the `-c` option from `caput` for more information.
+    """
+
+    done = Cpt(InternalSignal, value=0)
+    done_value = 1
+
+    def __init__(self, prefix: str, *, name: str, **kwargs):
+        self._last_readback = None
+        self._last_setpoint = None
+        super().__init__(prefix, name=name, **kwargs)
+        if None in (self.setpoint, self.readback):
+            raise NotImplementedError('PVPositionerComparator requires both '
+                                      'a setpoint and a readback signal to '
+                                      'compare!')
+
+    def __init_subclass__(cls, **kwargs):
+        """Set up callbacks in subclass."""
+        super().__init_subclass__(**kwargs)
+        if None not in (cls.setpoint, cls.readback):
+            cls.setpoint.sub_value(cls._update_setpoint)
+            cls.readback.sub_value(cls._update_readback)
+
+    def done_comparator(self, readback: Any, setpoint: Any) -> bool:
+        """
+        Override done_comparator in your subclass.
+
+        This method should return True if we are done moving
+        and False otherwise.
+        """
+        raise NotImplementedError('Must implement a done comparator!')
+
+    def _update_setpoint(self, *args, value: Any, **kwargs) -> None:
+        """Callback to cache the setpoint and update done state."""
+        self._last_setpoint = value
+        # Always set done to False when a move is requested
+        # This means we always get a rising edge when finished moving
+        # Even if the move distance is under our done moving tolerance
+        self.done.put(0, internal=True)
+        self._update_done()
+
+    def _update_readback(self, *args, value: Any, **kwargs) -> None:
+        """Callback to cache the readback and update done state."""
+        self._last_readback = value
+        self._update_done()
+
+    def _update_done(self) -> None:
+        """Update our status to done if we pass the comparator."""
+        if None not in (self._last_readback, self._last_setpoint):
+            is_done = self.done_comparator(self._last_readback,
+                                           self._last_setpoint)
+            done_value = int(is_done)
+            if done_value != self.done.get():
+                self.done.put(done_value, internal=True)
+
+
+class PVPositionerIsClose(PVPositionerComparator):
+    """
+    PV Positioner that updates done state based on np.isclose.
+
+    Effectively, this will treat our move as complete if the readback is
+    sufficiently close to the setpoint. This is generically helpful for
+    PV positioners that don't have a `done` signal built into the hardware.
+
+    The arguments atol and rtol can be set as class attributes or passed as
+    initialization arguments.
+
+    atol is a measure of absolute tolerance. If atol is 0.1, then you'd be
+    able to be up to 0.1 units away and still count as done. This is
+    typically the most useful parameter for calibrating done tolerance.
+
+    rtol is a measure of relative tolerance. If rtol is 0.1, then you'd be
+    able to deviate from the goal position by up to 10% of its value. This
+    is useful for small quantities. For example, defining an atol for a
+    positioner that ranges from 1e-8 to 2e-8 could be somewhat awkward.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        The device prefix used for all sub-positioners. This is optional as it
+        may be desirable to specify full PV names for PVPositioners.
+    limits : 2-element sequence, optional
+        (low_limit, high_limit)
+    name : str
+        The device name
+    egu : str, optional
+        The engineering units (EGU) for the position
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
+    atol : float, optional
+        A measure of absolute tolerance. If atol is 0.1, then you'd be
+        able to be up to 0.1 units away and still count as done.
+    rtol : float, optional
+        A measure of relative tolerance. If rtol is 0.1, then you'd be
+        able to deviate from the goal position by up to 10% of its value
+
+    Attributes
+    ----------
+    setpoint : Signal
+        The setpoint (request) signal
+    readback : Signal or None
+        The readback PV (e.g., encoder position PV)
+    actuate : Signal or None
+        The actuation PV to set when movement is requested
+    actuate_value : any, optional
+        The actuation value, sent to the actuate signal when motion is
+        requested
+    stop_signal : Signal or None
+        The stop PV to set when motion should be stopped
+    stop_value : any, optional
+        The value sent to stop_signal when a stop is requested
+    put_complete : bool, optional
+        If set, the specified PV should allow for asynchronous put completion
+        to indicate motion has finished.  If `actuate` is specified, it will be
+        used for put completion.  Otherwise, the `setpoint` will be used.  See
+        the `-c` option from `caput` for more information.
+    atol : float, optional
+        A measure of absolute tolerance. If atol is 0.1, then you'd be
+        able to be up to 0.1 units away and still count as done.
+    rtol : float, optional
+        A measure of relative tolerance. If rtol is 0.1, then you'd be
+        able to deviate from the goal position by up to 10% of its value
+    """
+
+    atol: Optional[float] = None
+    rtol: Optional[float] = None
+
+    def __init__(
+        self,
+        prefix: str,
+        *,
+        name: str,
+        atol: Optional[float] = None,
+        rtol: Optional[float] = None,
+        **kwargs,
+    ):
+        if atol is not None:
+            self.atol = atol
+        if rtol is not None:
+            self.rtol = rtol
+        super().__init__(prefix, name=name, **kwargs)
+
+    def done_comparator(self, readback: float, setpoint: float) -> bool:
+        """
+        Check if the readback is close to the setpoint value.
+
+        Uses numpy.isclose to make the comparison. Tolerance values
+        atol and rtol for numpy.isclose are taken from the attributes
+        self.atol and self.rtol, which can be defined as class attributes
+        or passed in as init parameters.
+
+        If atol or rtol are omitted, the default values from numpy are
+        used instead.
+        """
+        kwargs = {}
+        if self.atol is not None:
+            kwargs['atol'] = self.atol
+        if self.rtol is not None:
+            kwargs['rtol'] = self.rtol
+        return np.isclose(readback, setpoint, **kwargs)
+
+
+class PVPositionerDone(PVPositioner):
+    """
+    PV Positioner with no readback that reports done immediately.
+
+    This is for the case where you'd like a PV to look like a
+    positioner, but the truth is that it is just a PV.
+
+    When the user asks for a move, set done to 0 and then back to 1.
+    This simulates the normal positioner behavior.
+
+    Parameters
+    ----------
+    prefix : str, optional
+        The device prefix used for all sub-positioners. This is optional as it
+        may be desirable to specify full PV names for PVPositioners.
+    limits : 2-element sequence, optional
+        (low_limit, high_limit)
+    name : str
+        The device name
+    egu : str, optional
+        The engineering units (EGU) for the position
+    settle_time : float, optional
+        The amount of time to wait after moves to report status completion
+    timeout : float, optional
+        The default timeout to use for motion requests, in seconds.
+
+    Attributes
+    ----------
+    actuate : Signal or None
+        The actuation PV to set when movement is requested
+    actuate_value : any, optional
+        The actuation value, sent to the actuate signal when motion is
+        requested
+    stop_signal : Signal or None
+        The stop PV to set when motion should be stopped
+    stop_value : any, optional
+        The value sent to stop_signal when a stop is requested
+    put_complete : bool, optional
+        If set, the specified PV should allow for asynchronous put completion
+        to indicate motion has finished.  If `actuate` is specified, it will be
+        used for put completion.  Otherwise, the `setpoint` will be used.  See
+        the `-c` option from `caput` for more information.
+    """
+    setpoint = Cpt(EpicsSignal, '', kind='hinted')
+
+    done = Cpt(InternalSignal, value=0)
+    done_value = 1
+
+    def _setup_move(self, position: Any) -> None:
+        super()._setup_move(position)
+        self.done.put(0, internal=True)
+        self.done.put(1, internal=True)

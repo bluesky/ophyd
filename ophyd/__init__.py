@@ -81,7 +81,8 @@ from .signal import (Signal, SignalRO, EpicsSignal, EpicsSignalRO,  # noqa: F401
 # Positioners
 from .positioner import (PositionerBase, SoftPositioner)  # noqa: F401, F402, E402
 from .epics_motor import EpicsMotor, MotorBundle  # noqa: F401, F402, E402
-from .pv_positioner import (PVPositioner, PVPositionerPC)  # noqa: F401, F402, E402
+from .pv_positioner import (PVPositioner, PVPositionerPC,  # noqa: F401, F402, E402
+                            PVPositionerIsClose, PVPositionerDone)  # noqa: F401, F402, E402
 from .pseudopos import (PseudoPositioner, PseudoSingle)  # noqa: F401, F402, E402
 
 # Devices
