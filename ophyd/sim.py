@@ -412,6 +412,10 @@ class SynAxis(Device):
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
+    events_per_move: number of events to push to a Status object for each move. 
+        Must be at least 1, more than one will give "moving" statuses that can be
+        used for progress bars etc.
+        Default is 6.
     """
 
     readback = Cpt(_ReadbackSignal, value=0, kind="hinted")
