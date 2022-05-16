@@ -470,7 +470,7 @@ class SynAxis(Device):
         self._events_per_move = events_per_move
         self.egu = egu
 
-    def set(self, value: float) -> StatusBase:
+    def set(self, value: float) -> MoveStatus:
         old_setpoint = self.sim_state["setpoint"]
         distance = value - old_setpoint
         self.sim_state["setpoint"] = value
