@@ -1,4 +1,3 @@
-
 import shutil
 import tempfile
 
@@ -101,7 +100,7 @@ def test_random_state_gauss2d():
 
 @pytest.mark.parametrize("events_per_move", [0, -1, -10])
 def test_synaxis_requires_at_least_1_event_per_move(events_per_move):
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         SynAxis(name="motor1", events_per_move=0)
 
 

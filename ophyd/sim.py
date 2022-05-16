@@ -466,7 +466,7 @@ class SynAxis(Device):
         super().__init__(name=name, parent=parent, labels=labels, kind=kind, **kwargs)
         self.readback.name = self.name
         if events_per_move < 1:
-            raise KeyError("At least 1 event per move is required")
+            raise ValueError("At least 1 event per move is required")
         self._events_per_move = events_per_move
         self.egu = egu
 
