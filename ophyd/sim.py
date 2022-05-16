@@ -11,11 +11,6 @@ import weakref
 from collections import OrderedDict, deque
 from functools import partial
 from tempfile import mkdtemp
-
-from .signal import Signal, EpicsSignal, EpicsSignalRO
-from .areadetector.base import EpicsSignalWithRBV
-from .status import DeviceStatus, MoveStatus, StatusBase
-from .device import Device, Component as Cpt, DynamicDeviceComponent as DDCpt, Kind
 from types import SimpleNamespace
 
 import numpy as np
@@ -35,7 +30,7 @@ from .pseudopos import (
     real_position_argument,
 )
 from .signal import EpicsSignal, EpicsSignalRO, Signal
-from .status import DeviceStatus, StatusBase
+from .status import DeviceStatus, MoveStatus, StatusBase
 from .utils import LimitError, ReadOnlyError
 
 # two convenience functions 'vendored' from bluesky.utils
