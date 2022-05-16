@@ -1,6 +1,19 @@
+
 import shutil
 import tempfile
 
+
+from ophyd.sim import (SynGauss, Syn2DGauss, SynAxis, make_fake_device,
+                       FakeEpicsSignal, FakeEpicsSignalRO,
+                       FakeEpicsSignalWithRBV, FakeEpicsPathSignal,
+                       clear_fake_device, instantiate_fake_device,
+                       SynSignalWithRegistry)
+from ophyd.device import (Device, Component as Cpt, FormattedComponent as FCpt,
+                          DynamicDeviceComponent as DDCpt)
+from ophyd.signal import Signal, EpicsSignal, EpicsSignalRO
+from ophyd.areadetector.base import EpicsSignalWithRBV
+from ophyd.areadetector.paths import EpicsPathSignal
+from ophyd.utils import ReadOnlyError, LimitError, DisconnectedError
 import numpy as np
 import pytest
 
@@ -98,15 +111,18 @@ def test_random_state_gauss2d():
     assert dlist[0] == dlist[1]
 
 
-def test_synaxis_subcribe():
-    hits = dict.fromkeys(["r", "s", "a"], 0)
-    vals = dict.fromkeys(["r", "s", "a"], None)
+
+@pytest.mark.parametrize("events_per_move", [1, 2, 6, 20])
+def test_synaxis_subcribe(events_per_move: int):
+    hits = dict.fromkeys(['r', 's', 'a'], 0)
+    vals = dict.fromkeys(['r', 's', 'a'], None)
 
     def p1(tar, value):
         hits[tar] += 1
         vals[tar] = value
 
-    motor = SynAxis(name="motor1")
+
+    motor = SynAxis(name='motor1', events_per_move=events_per_move)
     # prime the cb cache so these run an subscription
     motor.set(0)
     motor.subscribe(lambda *, value, _tar="a", **kwargs: p1(_tar, value))
@@ -125,7 +141,9 @@ def test_synaxis_subcribe():
     assert vals["a"] == motor.readback.get()
     assert vals["s"] == motor.setpoint.get()
 
-    assert all(v == 2 for v in hits.values())
+    assert hits["r"] == 1 + events_per_move
+    assert hits["a"] == 1 + events_per_move
+    assert hits["s"] == 2
 
 
 def test_synaxis_timestamps():
