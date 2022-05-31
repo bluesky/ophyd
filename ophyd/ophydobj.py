@@ -1,4 +1,6 @@
+import os
 import functools
+import inspect
 import time
 import weakref
 
@@ -8,6 +10,9 @@ from logging import LoggerAdapter, getLogger
 
 
 from .log import control_layer_logger
+
+
+OPHYD_DEBUG = os.getenv("OPHYD_DEBUG", "").lower() in ("y", "yes", "1")
 
 
 def select_version(cls, version):
@@ -148,6 +153,12 @@ class OphydObject:
 
     def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
+
+        if OPHYD_DEBUG:
+            print(f"Initializing {self.__class__.__name__}...")
+            stack = inspect.stack()
+            self._stack_init = [f'{s.filename}:{s.lineno}' for s in stack]
+
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
@@ -228,6 +239,13 @@ class OphydObject:
     def __init_subclass__(cls, version=None, version_of=None,
                           version_type=None, **kwargs):
         'This is called automatically in Python for all subclasses of OphydObject'
+
+        if OPHYD_DEBUG:
+            if not cls.__module__.startswith("ophyd."):
+                print(f'Subclassing {cls.__name__}...')
+                stack = inspect.stack()
+                cls._stack_subclass = [f'{s.filename}:{s.lineno}' for s in stack]
+
         super().__init_subclass__(**kwargs)
 
         if version is None:
