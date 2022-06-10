@@ -7,9 +7,9 @@
 '''
 import warnings
 
-from .base import (ADBase, ADComponent as C)
 from . import cam
-
+from .base import ADBase
+from .base import ADComponent as C
 
 __all__ = ['DetectorBase',
            'AreaDetector',

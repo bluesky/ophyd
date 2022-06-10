@@ -1,11 +1,12 @@
 import logging
 
-from ..utils import enum
-from .base import (ADBase, ADComponent as ADCpt, ad_group,
-                   EpicsSignalWithRBV as SignalWithRBV)
-from ..signal import (EpicsSignalRO, EpicsSignal)
 from ..device import DynamicDeviceComponent as DDC
-
+from ..signal import EpicsSignal, EpicsSignalRO
+from ..utils import enum
+from .base import ADBase
+from .base import EpicsSignalWithRBV as SignalWithRBV
+from .base import ADComponent as ADCpt
+from .base import ad_group
 # Import FileBase class for cameras that use File PVs in their drivers
 from .plugins import FileBase
 

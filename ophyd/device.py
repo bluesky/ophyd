@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import contextlib
 import functools
@@ -7,20 +9,20 @@ import logging
 import operator
 import textwrap
 import time as ttime
+import typing
 import warnings
-
+from collections import OrderedDict, namedtuple
+from collections.abc import Iterable, MutableSequence
 from enum import Enum
-from collections import (OrderedDict, namedtuple)
+from typing import (Any, Callable, ClassVar, DefaultDict, Dict, List, Optional,
+                    Sequence, Tuple, Type, TypeVar, Union)
 
-from .ophydobj import OphydObject, Kind
+from .ophydobj import Kind, OphydObject
 from .signal import Signal
 from .status import DeviceStatus, StatusBase
 from .utils import (ExceptionBundle, RedundantStaging,
-                    doc_annotation_forwarder, underscores_to_camel_case,
-                    getattrs)
-
-from typing import Dict, List, Any, TypeVar, Tuple
-from collections.abc import MutableSequence, Iterable
+                    doc_annotation_forwarder, getattrs,
+                    underscores_to_camel_case)
 
 A, B = TypeVar('A'), TypeVar('B')
 ALL_COMPONENTS = object()
@@ -59,7 +61,10 @@ ComponentWalk = namedtuple('ComponentWalk',
                            'ancestors dotted_name item')
 
 
-class Component:
+K = TypeVar("K", bound=OphydObject)
+
+
+class Component(typing.Generic[K]):
     '''A descriptor representing a device component (or signal)
 
     Unrecognized keyword arguments will be passed directly to the component
@@ -87,7 +92,8 @@ class Component:
 
     lazy : bool, optional
         Lazily instantiate the signal. If ``False``, the signal will be
-        instantiated upon component instantiation
+        instantiated upon component instantiation.  Defaults to
+        ``component.lazy_default``.
 
     trigger_value : any, optional
         Mark as a signal to be set on trigger. The value is sent to the signal
@@ -102,13 +108,46 @@ class Component:
         string to attach to component DvcClass.component.__doc__
     '''
 
-    def __init__(self, cls, suffix=None, *, lazy=False, trigger_value=None,
-                 add_prefix=None, doc=None, kind=Kind.normal, **kwargs):
+    #: Default laziness for the component class.
+    lazy_default: ClassVar[bool] = False
+
+    #: The attribute name of the component.
+    attr: Optional[str]
+    #: The class to instantiate when the device is created.
+    cls: Type[K]
+    #: Keyword arguments for the device creation.
+    kwargs: Dict[str, Any]
+    #: Lazily create components on access.
+    lazy: bool
+    #: PV or identifier suffix.
+    suffix: Optional[str]
+    #: Documentation string.
+    doc: Optional[str]
+    #: Value to send on ``trigger()``
+    trigger_value: Optional[Any]
+    #: The data acquisition kind.
+    kind: Kind
+    #: Names of kwarg keys to prepend the device PV prefix to.
+    add_prefix: Tuple[str, ...]
+    #: Subscription name -> subscriptions marked by decorator.
+    _subscriptions: DefaultDict[str, List[Callable]]
+
+    def __init__(
+        self,
+        cls: Type[K],
+        suffix: Optional[str] = None,
+        *,
+        lazy: Optional[bool] = None,
+        trigger_value: Optional[Any] = None,
+        add_prefix: Optional[Sequence[str]] = None,
+        doc: Optional[str] = None,
+        kind: Union[str, Kind] = Kind.normal,
+        **kwargs
+    ):
         self.attr = None  # attr is set later by the device when known
-        self.parent = None  # parent is also to be set later when known
         self.cls = cls
         self.kwargs = kwargs
-        self.lazy = lazy  # False if self.is_device else lazy  (TODO)
+        self.lazy = lazy if lazy is not None else self.lazy_default
         self.suffix = suffix
         self.doc = doc
         self.trigger_value = trigger_value  # TODO discuss
@@ -119,7 +158,18 @@ class Component:
         self.add_prefix = tuple(add_prefix)
         self._subscriptions = collections.defaultdict(list)
 
-    def __set_name__(self, owner, attr_name):
+    def _get_class_from_annotation(self) -> Optional[Type[K]]:
+        """Get a class from the Component[cls] annotation."""
+        annotation = getattr(self, "__orig_class__", None)
+        if not annotation:
+            return None
+
+        args = typing.get_args(annotation)
+        if not args or not len(args) == 1:
+            return None
+        return args[0]
+
+    def __set_name__(self, owner, attr_name: str):
         self.attr = attr_name
         if self.doc is None:
             self.doc = self.make_docstring(owner)
@@ -215,7 +265,19 @@ class Component:
 
     __str__ = __repr__
 
-    def __get__(self, instance, owner):
+    @typing.overload
+    def __get__(self, instance: None, owner: type) -> Component[K]:
+        ...
+
+    @typing.overload
+    def __get__(self, instance: Device, owner: type) -> K:
+        ...
+
+    def __get__(
+        self,
+        instance: Optional[Device],
+        owner: type,
+    ) -> Union[Component, K]:
         if instance is None:
             return self
 
@@ -265,7 +327,7 @@ class Component:
         return self.subscriptions('value')(func)
 
 
-class FormattedComponent(Component):
+class FormattedComponent(Component[K]):
     '''A Component which takes a dynamic format string
 
     This differs from Component in that the parent prefix is not automatically
@@ -303,7 +365,7 @@ class FormattedComponent(Component):
         return suffix.format(**format_dict)
 
 
-class DynamicDeviceComponent(Component):
+class DynamicDeviceComponent(Component["Device"]):
     '''An Device component that dynamically creates an ophyd Device
 
     Parameters

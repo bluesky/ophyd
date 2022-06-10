@@ -3,15 +3,18 @@ import inspect
 import re
 import sys
 import textwrap
-
 from collections import OrderedDict
+from typing import (Any, Callable, ClassVar, DefaultDict, Dict, List, Optional,
+                    Tuple, Type, TypeVar)
+
 import networkx as nx
 import numpy as np
 
+from ..device import Component, Device, DynamicDeviceComponent
+from ..ophydobj import Kind, OphydObject
+from ..signal import (ArrayAttributeSignal, DerivedSignal, EpicsSignal,
+                      EpicsSignalRO)
 from . import docs
-from ..signal import (EpicsSignal, DerivedSignal, EpicsSignalRO)
-from ..device import (Device, Component, DynamicDeviceComponent)
-from ..signal import (ArrayAttributeSignal)
 
 
 class EpicsSignalWithRBV(EpicsSignal):
@@ -134,9 +137,35 @@ class NDDerivedSignal(DerivedSignal):
                        **self._metadata)
 
 
-class ADComponent(Component):
-    def __init__(self, cls, suffix=None, *, lazy=True, **kwargs):
-        super().__init__(cls, suffix=suffix, lazy=lazy, **kwargs)
+K = TypeVar("K", bound=OphydObject)
+
+
+class ADComponent(Component[K]):
+    #: Default laziness for the component.  All AreaDetector components are
+    #: by default lazy - as they contain thousands of PVs that aren't
+    #: necesssary for everyday functionality.
+    lazy_default: ClassVar[bool] = True
+
+    #: The attribute name of the component.
+    attr: Optional[str]
+    #: The class to instantiate when the device is created.
+    cls: Type[K]
+    #: Keyword arguments for the device creation.
+    kwargs: Dict[str, Any]
+    #: Lazily create components on access.
+    lazy: bool
+    #: PV or identifier suffix.
+    suffix: Optional[str]
+    #: Documentation string.
+    doc: Optional[str]
+    #: Value to send on ``trigger()``
+    trigger_value: Optional[Any]
+    #: The data acquisition kind.
+    kind: Kind
+    #: Names of kwarg keys to prepend the device PV prefix to.
+    add_prefix: Tuple[str, ...]
+    #: Subscription name -> subscriptions marked by decorator.
+    _subscriptions: DefaultDict[str, List[Callable]]
 
     def find_docs(self, parent_class):
         '''Find all the documentation related to this class, all the way up the
