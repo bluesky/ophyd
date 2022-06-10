@@ -1,11 +1,10 @@
 import functools
 import time
 import weakref
-
 from enum import IntFlag
 from itertools import count
 from logging import LoggerAdapter, getLogger
-
+from typing import ClassVar, FrozenSet
 
 from .log import control_layer_logger
 
@@ -145,6 +144,7 @@ class OphydObject:
     # of interest to code that adds something to instantiation_callbacks, which
     # may want to know whether it has already "missed" any instances.
     __any_instantiated = False
+    subscriptions: ClassVar[FrozenSet[str]] = frozenset()
 
     def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
                  kind=None):
@@ -165,11 +165,6 @@ class OphydObject:
             raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
-
-        self.subscriptions = {getattr(self, k)
-                              for k in dir(type(self))
-                              if (k.startswith('SUB') or
-                                  k.startswith('_SUB'))}
 
         # dictionary of wrapped callbacks
         self._callbacks = {k: {} for k in self.subscriptions}
@@ -229,6 +224,14 @@ class OphydObject:
                           version_type=None, **kwargs):
         'This is called automatically in Python for all subclasses of OphydObject'
         super().__init_subclass__(**kwargs)
+
+        cls.subscriptions = frozenset(
+            {
+                getattr(cls, key)
+                for key in dir(cls)
+                if key.startswith('SUB') or key.startswith('_SUB')
+            }
+        )
 
         if version is None:
             if version_of is not None:
