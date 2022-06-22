@@ -1,17 +1,16 @@
 import logging
-import pytest
 from unittest.mock import Mock
 
 import numpy as np
+import pytest
 
-from ophyd import (Device, Component, FormattedComponent)
-from ophyd.signal import (Signal, AttributeSignal, ArrayAttributeSignal,
-                          ReadOnlyError)
+from ophyd import Component, Device, FormattedComponent
 from ophyd.device import (ComponentWalk, create_device_from_components,
-                          required_for_connection, wait_for_lazy_connection,
-                          do_not_wait_for_lazy_connection)
+                          do_not_wait_for_lazy_connection,
+                          required_for_connection, wait_for_lazy_connection)
+from ophyd.signal import (ArrayAttributeSignal, AttributeSignal, ReadOnlyError,
+                          Signal, SignalRO)
 from ophyd.utils import ExceptionBundle
-
 
 logger = logging.getLogger(__name__)
 
@@ -624,7 +623,8 @@ def test_walk_subdevices():
 
 
 def test_dotted_name():
-    from ophyd import Device, Component as Cpt
+    from ophyd import Component as Cpt
+    from ophyd import Device
     from ophyd.sim import SynSignal
 
     class Inner(Device):
@@ -790,3 +790,21 @@ def test_non_Divice_mixin_with_components():
 
     with pytest.raises(RuntimeError):
         t.b
+
+
+def test_annotated_device():
+
+    class MyDevice(Device):
+        cpt1 = Component[Signal](Signal)
+        cpt2 = Component[SignalRO](SignalRO)
+        cpt3 = Component[SignalRO](SignalRO)
+        cpt4 = Component(SignalRO)
+
+    dev = MyDevice(name="dev")
+    assert isinstance(dev.cpt1, Signal)
+    assert isinstance(dev.cpt2, SignalRO)
+    assert MyDevice.cpt1._get_class_from_annotation() is Signal
+    assert MyDevice.cpt2._get_class_from_annotation() is SignalRO
+    assert MyDevice.cpt3._get_class_from_annotation() is SignalRO
+    assert MyDevice.cpt3.cls is SignalRO
+    assert MyDevice.cpt4._get_class_from_annotation() is None

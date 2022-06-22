@@ -1090,7 +1090,7 @@ def make_fake_device(cls):
             if isinstance(cpt, DDCpt):
                 # Make a regular Cpt out of the DDC, as it already has
                 # been generated
-                fake_cpt = Cpt(cls=cpt.cls, suffix=cpt.suffix,
+                fake_cpt = Cpt(cpt.cls, suffix=cpt.suffix,
                                lazy=cpt.lazy,
                                trigger_value=cpt.trigger_value,
                                kind=cpt.kind, add_prefix=cpt.add_prefix,

@@ -269,6 +269,9 @@ def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
     assert det.cam is det.get_plugin_by_asyn_port(det.cam.port_name.get())
     assert det.roi1 is det.get_plugin_by_asyn_port(det.roi1.port_name.get())
 
+
+@pytest.mark.adsim
+def test_get_plugin_by_asyn_port_nested(ad_prefix, cleanup):
     # Support nested plugins
     class PluginGroup(Device):
         tiff1 = Cpt(TIFFPlugin, 'TIFF1:')
@@ -279,13 +282,14 @@ def test_get_plugin_by_asyn_port(ad_prefix, cleanup):
         stats1 = Cpt(StatsPlugin, 'Stats1:')
 
     nested_det = MyDetector(ad_prefix, name='nested_test')
+    cleanup.add(nested_det)
 
     nested_det.stats1.nd_array_port.put(nested_det.roi1.port_name.get())
     nested_det.plugins.tiff1.nd_array_port.put(nested_det.cam.port_name.get())
     nested_det.roi1.nd_array_port.put(nested_det.cam.port_name.get())
     nested_det.stats1.nd_array_port.put(nested_det.roi1.port_name.get())
 
-    det.validate_asyn_ports()
+    nested_det.validate_asyn_ports()
 
     tiff = nested_det.plugins.tiff1
     assert tiff is nested_det.get_plugin_by_asyn_port(tiff.port_name.get())
