@@ -437,11 +437,14 @@ def test_fstiff_plugin(data_paths, ad_prefix, root, wpath, rpath, check_files, c
 
     det.stage()
     st = det.trigger()
-    while not st.done:
-        time.sleep(.1)
+    st.wait()
     reading = det.read()
+    doc_count = 0
     for name, d in det.collect_asset_docs():
+        doc_count += 1
         getattr(fs2, 'insert_{name}'.format(name=name))(**d)
+    assert doc_count > 0
+
     det.describe()
     det.unstage()
 

@@ -1299,6 +1299,11 @@ class Device(BlueskyInterface, OphydObject):
             res.update(component.read())
         return res
 
+    def collect_asset_docs(self):
+        for _, component in self._get_components_of_kind(Kind.normal):
+            if hasattr(component, 'collect_asset_docs'):
+                yield from component.collect_asset_docs()
+
     def read_configuration(self) -> OrderedDictType[str, Dict[str, Any]]:
         """Dictionary mapping names to value dicts with keys: value, timestamp
 

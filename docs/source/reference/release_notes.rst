@@ -15,7 +15,8 @@ Changes
   within ophyd methods.
 * Deprecate ``DetectorBase.dispatch`` in favor of newly added
   ``DetectorBase.generate_datum``
-
+* ``obj.collect_asset_docs`` will now recurse to children by default at the
+  Device level
 
 
 1.6.4 (2022-04-08)
