@@ -34,6 +34,7 @@ __all__ = [
     "PixiradDetector",
     "PointGreyDetector",
     "ProsilicaDetector",
+    "PvaDetector",
     "PvcamDetector",
     "RoperDetector",
     "SimDetector",
@@ -224,6 +225,11 @@ class PointGreyDetector(DetectorBase):
 class ProsilicaDetector(DetectorBase):
     _html_docs = ["prosilicaDoc.html"]
     cam = C(cam.ProsilicaDetectorCam, "cam1:")
+
+
+class PvaDetector(DetectorBase):
+    _html_docs = ['pvaDoc.html']
+    cam = C(cam.PvaDetectorCam, 'cam1:')
 
 
 class PvcamDetector(DetectorBase):
