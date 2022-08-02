@@ -17,9 +17,6 @@ def test_validate_level():
     log.validate_level("DEBUG")
     log.validate_level("NOTSET")
 
-    with pytest.raises(ValueError):
-        log.validate_level("TRACE")
-
 
 def test_default_config_ophyd_logging():
     log.config_ophyd_logging()
