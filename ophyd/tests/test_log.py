@@ -2,8 +2,6 @@ import io
 import logging
 import logging.handlers
 
-import pytest
-
 import ophyd.log as log
 from ophyd.ophydobj import OphydObject
 from ophyd.status import Status
