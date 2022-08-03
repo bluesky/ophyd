@@ -11,15 +11,15 @@ from .detectors import *  # noqa: F401, F402, E402, F403
 # NOTE: the following imports are here for backward compatibility with
 # previous ophyd versions. This does not represent all available plugins
 # in ophyd. For that, import directly from ophyd.areadetector.plugins.
-from .plugins import (
+from .plugins import (  # noqa: F401, F402, E402
     ColorConvPlugin,
     FilePlugin,
     HDF5Plugin,
-    ImagePlugin,  # noqa: F401, F402, E402
+    ImagePlugin,
     JPEGPlugin,
     MagickPlugin,
     NetCDFPlugin,
-    NexusPlugin,  # noqa: F401
+    NexusPlugin,
     OverlayPlugin,
     ProcessPlugin,
     ROIPlugin,

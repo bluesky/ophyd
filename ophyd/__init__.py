@@ -77,19 +77,19 @@ def get_cl():
 
 set_cl()
 
-from .ophydobj import (
+from .ophydobj import (  # noqa: F401, F402, E402
     Kind,
-    select_version,  # noqa: F401, F402, E402
+    select_version,
     register_instances_in_weakset,
     register_instances_keyed_on_name,
 )
 
 # Signals
-from .signal import (
+from .signal import (  # noqa: F401, F402, E402
     Signal,
     SignalRO,
     EpicsSignal,
-    EpicsSignalRO,  # noqa: F401, F402, E402
+    EpicsSignalRO,
     EpicsSignalNoValidation,
     DerivedSignal,
 )
@@ -97,20 +97,20 @@ from .signal import (
 # Positioners
 from .positioner import PositionerBase, SoftPositioner  # noqa: F401, F402, E402
 from .epics_motor import EpicsMotor, MotorBundle  # noqa: F401, F402, E402
-from .pv_positioner import (
+from .pv_positioner import (  # noqa: F401, F402, E402
     PVPositioner,
-    PVPositionerPC,  # noqa: F401, F402, E402
+    PVPositionerPC,
     PVPositionerIsClose,
     PVPositionerDone,
-)  # noqa: F401, F402, E402
+)
 from .pseudopos import PseudoPositioner, PseudoSingle  # noqa: F401, F402, E402
 
 # Devices
 from .scaler import EpicsScaler  # noqa: F401, F402, E402
-from .device import (
+from .device import (  # noqa: F401, F402, E402
     Device,
     Component,
-    FormattedComponent,  # noqa: F401, F402, E402
+    FormattedComponent,
     DynamicDeviceComponent,
     ALL_COMPONENTS,
     kind_context,
