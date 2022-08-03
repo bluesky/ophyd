@@ -2,8 +2,6 @@ import io
 import logging
 import logging.handlers
 
-import pytest
-
 import ophyd.log as log
 from ophyd.ophydobj import OphydObject
 from ophyd.status import Status
@@ -16,9 +14,6 @@ def test_validate_level():
     log.validate_level("INFO")
     log.validate_level("DEBUG")
     log.validate_level("NOTSET")
-
-    with pytest.raises(ValueError):
-        log.validate_level("TRACE")
 
 
 def test_default_config_ophyd_logging():
