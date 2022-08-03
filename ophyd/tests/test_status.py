@@ -2,13 +2,13 @@ import time
 from unittest.mock import Mock
 
 from ophyd import Device
-from ophyd.status import (StatusBase, SubscriptionStatus, UseNewProperty,
-                          MoveStatus)
+from ophyd.status import StatusBase, SubscriptionStatus, UseNewProperty, MoveStatus
 from ophyd.utils import (
     InvalidState,
     UnknownStatusFailure,
     StatusTimeoutError,
-    WaitTimeoutError)
+    WaitTimeoutError,
+)
 import pytest
 
 
@@ -16,11 +16,15 @@ def _setup_state_and_cb(new_signature=True):
     state = {}
 
     if new_signature:
+
         def cb(status):
-            state['done'] = True
+            state["done"] = True
+
     else:
+
         def cb():
-            state['done'] = True
+            state["done"] = True
+
     return state, cb
 
 
@@ -28,14 +32,14 @@ def test_status_post():
     st = StatusBase()
     state, cb = _setup_state_and_cb()
 
-    assert 'done' not in state
+    assert "done" not in state
     st.add_callback(cb)
-    assert 'done' not in state
+    assert "done" not in state
     st.set_finished()
     st.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
-    assert 'done' in state
-    assert state['done']
+    assert "done" in state
+    assert state["done"]
 
 
 def test_status_legacy_finished_cb():
@@ -62,13 +66,13 @@ def test_status_legacy_finished_cb():
     # But the new getter does.
     st.callbacks == set([cb1, cb2])
 
-    assert 'done' not in state1
-    assert 'done' not in state2
+    assert "done" not in state1
+    assert "done" not in state2
     st.set_finished()
     st.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
-    assert 'done' in state1
-    assert 'done' in state2
+    assert "done" in state1
+    assert "done" in state2
 
 
 def test_status_pre():
@@ -79,10 +83,10 @@ def test_status_pre():
     st.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
 
-    assert 'done' not in state
+    assert "done" not in state
     st.add_callback(cb)
-    assert 'done' in state
-    assert state['done']
+    assert "done" in state
+    assert state["done"]
 
 
 def test_direct_done_setting():
@@ -106,7 +110,7 @@ def test_direct_done_setting():
 
 def test_subscription_status():
     # Arbitrary device
-    d = Device("Tst:Prefix", name='test')
+    d = Device("Tst:Prefix", name="test")
     # Mock callback
     m = Mock()
 
@@ -151,19 +155,19 @@ def test_and():
     st1.set_finished()
     st1.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
-    assert 'done' in state1
-    assert 'done' not in state2
-    assert 'done' not in state3
-    assert 'done' not in state4
-    assert 'done' not in state5
+    assert "done" in state1
+    assert "done" not in state2
+    assert "done" not in state3
+    assert "done" not in state4
+    assert "done" not in state5
     st2.set_finished()
     st3.wait(1)
     st4.wait(1)
     st5.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
-    assert 'done' in state3
-    assert 'done' in state4
-    assert 'done' in state5
+    assert "done" in state3
+    assert "done" in state4
+    assert "done" in state5
     assert st3.left is st1
     assert st3.right is st2
     assert st4.left is st1
@@ -174,6 +178,7 @@ def test_and():
 
 def test_notify_watchers():
     from ophyd.sim import hw
+
     hw = hw()
     mst = MoveStatus(hw.motor, 10)
 

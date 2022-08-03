@@ -33,7 +33,9 @@ def test_local_without_defaults_no_string(testdir):
 
 
 def test_without_defaults_no_string(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
 
     pv_base = "%s"
@@ -44,11 +46,15 @@ def test_without_defaults_no_string(testdir):
         desc = signal.describe()
         assert not signal.as_string
         assert desc["signal"]["dtype"] == "integer"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_without_defaults_as_string(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
 
     pv_base = "%s"
@@ -59,11 +65,15 @@ def test_without_defaults_as_string(testdir):
         desc = signal.describe()
         assert signal.as_string
         assert desc["signal"]["dtype"] == "string"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_with_all_defaults_no_string(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
     from ophyd.signal import EpicsSignalBase
 
@@ -81,11 +91,15 @@ def test_with_all_defaults_no_string(testdir):
         desc = signal.describe()
         assert not signal.as_string
         assert desc["signal"]["dtype"] == "integer"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_with_all_defaults_as_string(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
     from ophyd.signal import EpicsSignalBase
 
@@ -104,11 +118,15 @@ def test_with_all_defaults_as_string(testdir):
         desc = signal.describe()
         assert signal.as_string
         assert desc["signal"]["dtype"] == "string"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_with_all_defaults_auto_monitor(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
     from ophyd.signal import EpicsSignalBase
 
@@ -124,11 +142,15 @@ def test_with_all_defaults_auto_monitor(testdir):
         desc = signal.describe()
         assert signal.as_string
         assert desc["signal"]["dtype"] == "string"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_with_all_defaults_connection_timeout(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
     from ophyd.signal import EpicsSignalBase
 
@@ -144,11 +166,15 @@ def test_with_all_defaults_connection_timeout(testdir):
         desc = signal.describe()
         assert signal.as_string
         assert desc["signal"]["dtype"] == "string"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_with_all_defaults_timeout(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
     from ophyd.signal import EpicsSignalBase
 
@@ -164,11 +190,15 @@ def test_with_all_defaults_timeout(testdir):
         desc = signal.describe()
         assert signal.as_string
         assert desc["signal"]["dtype"] == "string"
-    """ % pv_base)
+    """
+        % pv_base,
+    )
 
 
 def test_with_all_defaults_write_timeout(testdir):
-    run_test_code(testdir, """
+    run_test_code(
+        testdir,
+        """
     from ophyd import EpicsSignal
     from ophyd.signal import EpicsSignalBase
 
@@ -184,4 +214,6 @@ def test_with_all_defaults_write_timeout(testdir):
         desc = signal.describe()
         assert signal.as_string
         assert desc["signal"]["dtype"] == "string"
-    """ % pv_base)
+    """
+        % pv_base,
+    )

@@ -27,11 +27,12 @@ def write_detector_class(boilerplate_file, dev_name, det_name, cam_name):
     """
 
     boilerplate_file.write(
-        f'''
+        f"""
 class {det_name}(DetectorBase):
     _html_docs = ['{dev_name}Doc.html']
     cam = C(cam.{cam_name}, 'cam1:')
-''')
+"""
+    )
 
 
 def parse_pv_structure(driver_dir):
@@ -57,18 +58,18 @@ def parse_pv_structure(driver_dir):
     # Find the template directory following the standard areaDetector project format
     template_dir = driver_dir
     for dir in os.listdir(driver_dir):
-        if os.path.isdir(os.path.join(driver_dir, dir)) and dir.endswith('App'):
-            template_dir = os.path.join(template_dir, dir, 'Db')
+        if os.path.isdir(os.path.join(driver_dir, dir)) and dir.endswith("App"):
+            template_dir = os.path.join(template_dir, dir, "Db")
             break
-    logging.debug(f'Found template dir: {template_dir}')
+    logging.debug(f"Found template dir: {template_dir}")
 
     # Create a list of file paths to all template files.
     template_files = []
     for file in os.listdir(template_dir):
         file_path = os.path.join(template_dir, file)
-        if os.path.isfile(file_path) and file.endswith('.template'):
+        if os.path.isfile(file_path) and file.endswith(".template"):
             template_files.append(file_path)
-            logging.debug(f'Found template file {file}')
+            logging.debug(f"Found template file {file}")
 
     # Dict mapping pv name to appropriate EPICS signal, based on typical
     # PV and PV_RBV format for areaDetector
@@ -76,47 +77,56 @@ def parse_pv_structure(driver_dir):
     include_file_base = False
 
     for file in template_files:
-        logging.debug(f'Collecting pv info from {os.path.basename(file)}')
-        with open(file, 'r') as fp:
+        logging.debug(f"Collecting pv info from {os.path.basename(file)}")
+        with open(file, "r") as fp:
 
             lines = fp.readlines()
             for line in lines:
 
                 # If NDFile.template is included, we need to extend FileBase as well.
                 if line.startswith('include "NDFile.template"'):
-                    logging.debug(f'Driver AD{dev_name} uses the NDFile.template file.')
+                    logging.debug(f"Driver AD{dev_name} uses the NDFile.template file.")
                     include_file_base = True
 
                 # identify any lines that start with 'record'
-                if line.startswith('record'):
+                if line.startswith("record"):
                     # Get the name of the PV.
                     # Ex:
                     # record(stringin, "$(P)$(R)Description_RBV") Splits into
                     # ['record(stringin, "$(P', '$(R', 'Description_RBV"', '']
                     # The PV name is the 3rd element, so array index 2, and we remove the last character, '"'
-                    pv_name = line.split(')')[2][:-1]
+                    pv_name = line.split(")")[2][:-1]
 
                     # Check if it is a readback PV
-                    if pv_name.endswith('_RBV'):
+                    if pv_name.endswith("_RBV"):
 
-                        pv_name_without_rbv = pv_name[:-len('_RBV')]
+                        pv_name_without_rbv = pv_name[: -len("_RBV")]
                         # If it has a partner PV, switch the signal to SignalWithRBV
                         if pv_name_without_rbv in pv_to_signal_mapping.keys():
-                            logging.debug(f'Identified {pv_name_without_rbv} as a record w/ RBV')
-                            pv_to_signal_mapping[pv_name_without_rbv] = 'SignalWithRBV'
+                            logging.debug(
+                                f"Identified {pv_name_without_rbv} as a record w/ RBV"
+                            )
+                            pv_to_signal_mapping[pv_name_without_rbv] = "SignalWithRBV"
                         # Otherwise, it is a read only PV, so use EpicsSignalRO
                         else:
-                            logging.debug(f'Identified read-only record {pv_name}')
-                            pv_to_signal_mapping[pv_name] = 'EpicsSignalRO'
+                            logging.debug(f"Identified read-only record {pv_name}")
+                            pv_to_signal_mapping[pv_name] = "EpicsSignalRO"
                     else:
                         # Otherwise, use the default EpicsSignal
-                        logging.debug(f'Found record {pv_name}')
-                        pv_to_signal_mapping[pv_name] = 'EpicsSignal'
+                        logging.debug(f"Found record {pv_name}")
+                        pv_to_signal_mapping[pv_name] = "EpicsSignal"
 
     return pv_to_signal_mapping, include_file_base
 
 
-def write_cam_class(boilerplate_file, pv_to_signal_mapping, include_file_base, dev_name, det_name, cam_name):
+def write_cam_class(
+    boilerplate_file,
+    pv_to_signal_mapping,
+    include_file_base,
+    dev_name,
+    det_name,
+    cam_name,
+):
     """
     Function that writes the boilerplate cam class. This includes the default configuration
     attributes, along with all the attributes extracted from the template file.
@@ -146,30 +156,33 @@ def write_cam_class(boilerplate_file, pv_to_signal_mapping, include_file_base, d
     """
 
     # Extend from FileBase class as well if necessary
-    file_base = ''
+    file_base = ""
     if include_file_base:
-        file_base = ', FileBase'
+        file_base = ", FileBase"
 
     # Write class boilerplate
     boilerplate_file.write(
-        f'''
+        f"""
 class {cam_name}(CamBase{file_base}):
     _html_docs = ['{dev_name}Doc.html']
     _default_configuration_attrs = (
         CamBase._default_configuration_attrs
     )
-''')
+"""
+    )
 
     # Write attribute for each discovered PV, with appropriate EPICS signal class
     for pv in pv_to_signal_mapping.keys():
         pv_name = pv
-        if pv_name.endswith('_RBV'):
-            pv_name = pv[:-len('_RBV')]
+        if pv_name.endswith("_RBV"):
+            pv_name = pv[: -len("_RBV")]
 
         # Generate attribute name from PV name. Uses inflection library
         attribute_name = inflection.underscore(pv_name)
         # attribute_name = re.sub('(?<!^)(?=[A-Z])', '_', pv_name).lower()
-        boilerplate_file.write(f"    {attribute_name} = ADCpt({pv_to_signal_mapping[pv]}, '{pv}')\n")
+        boilerplate_file.write(
+            f"    {attribute_name} = ADCpt({pv_to_signal_mapping[pv]}, '{pv}')\n"
+        )
 
 
 def parse_args():
@@ -186,52 +199,65 @@ def parse_args():
       -d, --debug           Enable debug logging for the script.
     """
 
-    parser = argparse.ArgumentParser(description='Utility for creating boilerplate areaDetector ophyd classes')
+    parser = argparse.ArgumentParser(
+        description="Utility for creating boilerplate areaDetector ophyd classes"
+    )
     parser.add_argument(
-        '-t', '--target', help='Location of locally installed areaDetector driver folder structure.')
-    parser.add_argument('-d', '--debug', action='store_true', help='Enable debug logging for the script.')
+        "-t",
+        "--target",
+        help="Location of locally installed areaDetector driver folder structure.",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Enable debug logging for the script.",
+    )
 
     args = vars(parser.parse_args())
 
     # Set logging level
     log_level = logging.ERROR
-    if args['debug']:
+    if args["debug"]:
         log_level = logging.DEBUG
 
-    if args['target'] is None:
-        return os.path.abspath('.'), log_level
+    if args["target"] is None:
+        return os.path.abspath("."), log_level
     else:
-        return args['target'], log_level
+        return args["target"], log_level
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Check if input is valid
     driver_dir, log_level = parse_args()
     if not os.path.exists(driver_dir) or not os.path.isdir(driver_dir):
-        logging.error(f'Input {driver_dir} does not exist or is not a directory!')
+        logging.error(f"Input {driver_dir} does not exist or is not a directory!")
         exit(1)
 
     logging.basicConfig(level=log_level)
 
     # Check if specified target is an areaDetector driver
     driver_name = os.path.basename(driver_dir)
-    if not driver_name.startswith('AD'):
+    if not driver_name.startswith("AD"):
         logging.error(
-            f'Specified driver directory {driver_name} could not be identified as an areaDetector driver!')
+            f"Specified driver directory {driver_name} could not be identified as an areaDetector driver!"
+        )
         exit(1)
 
     # Collect device, detector, and cam names
     dev_name = driver_name[2:]
-    det_name = f'{dev_name}Detector'
-    cam_name = f'{det_name}Cam'
-    logging.debug(f'Creating boilerplate for {dev_name}, with classes {det_name} and {cam_name}')
+    det_name = f"{dev_name}Detector"
+    cam_name = f"{det_name}Cam"
+    logging.debug(
+        f"Creating boilerplate for {dev_name}, with classes {det_name} and {cam_name}"
+    )
 
     # Create boilerplate file with .py extension for syntax highlighting
-    boilerplate_file_name = f'{det_name}_boilerplate.py'
+    boilerplate_file_name = f"{det_name}_boilerplate.py"
 
     # Create boilerplate temp file
-    with open(boilerplate_file_name, 'w') as boilerplate_file:
+    with open(boilerplate_file_name, "w") as boilerplate_file:
 
         # Create the detector class for ophyd/areadetector/detectors
         write_detector_class(boilerplate_file, dev_name, det_name, cam_name)
@@ -240,6 +266,13 @@ if __name__ == '__main__':
         driver_template, include_file_base = parse_pv_structure(driver_dir)
 
         # Create boilerplate cam class for ophyd/areadetector/cam
-        write_cam_class(boilerplate_file, driver_template, include_file_base, dev_name, det_name, cam_name)
+        write_cam_class(
+            boilerplate_file,
+            driver_template,
+            include_file_base,
+            dev_name,
+            det_name,
+            cam_name,
+        )
 
-    print(f'Done. Temporary boilerplate file saved to {boilerplate_file_name}')
+    print(f"Done. Temporary boilerplate file saved to {boilerplate_file_name}")

@@ -6,18 +6,15 @@ from .. import EpicsSignal
 
 logger = logging.getLogger(__name__)
 OS_NAME_TO_PATH_CLASS = {
-    'nt': pathlib.PureWindowsPath,
-    'posix': pathlib.PurePosixPath,
+    "nt": pathlib.PureWindowsPath,
+    "posix": pathlib.PurePosixPath,
 }
 
-OS_SEPARATORS = {
-    'nt': '\\',
-    'posix': '/'
-}
+OS_SEPARATORS = {"nt": "\\", "posix": "/"}
 
 
 def path_compare(path_a, path_b, semantics):
-    '''
+    """
     Compare paths, given OS-specific semantics
 
     Parameters
@@ -33,17 +30,16 @@ def path_compare(path_a, path_b, semantics):
     -------
     result : bool
         Whether the paths are equal or not
-    '''
+    """
     try:
         path_class = OS_NAME_TO_PATH_CLASS[semantics]
     except KeyError:
-        raise ValueError(f'Unknown path semantics: {semantics}') from None
+        raise ValueError(f"Unknown path semantics: {semantics}") from None
 
     return path_class(path_a) == path_class(path_b)
 
 
-def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
-                      timeout=10):
+def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01, timeout=10):
     """
     Set a path signal to a value and wait until it reads back correctly.
 
@@ -74,21 +70,24 @@ def set_and_wait_path(signal, val, *, path_semantics, poll_time=0.01,
     current_value = signal.get()
 
     while not path_compare(current_value, val, semantics=path_semantics):
-        logger.debug("Waiting for %s to be set from %r to %r...",
-                     signal.name, current_value, val)
+        logger.debug(
+            "Waiting for %s to be set from %r to %r...", signal.name, current_value, val
+        )
         ttime.sleep(poll_time)
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get()
         if deadline is not None and ttime.time() > deadline:
-            raise TimeoutError("Attempted to set %r to value %r and timed "
-                               "out after %r seconds. Current value is %r." %
-                               (signal, val, timeout, current_value))
+            raise TimeoutError(
+                "Attempted to set %r to value %r and timed "
+                "out after %r seconds. Current value is %r."
+                % (signal, val, timeout, current_value)
+            )
 
 
 class EpicsPathSignal(EpicsSignal):
     def __init__(self, write_pv, *, path_semantics, string=True, **kwargs):
-        '''
+        """
         An areaDetector-compatible EpicsSignal expecting 2 PVs holding a path
 
         That is, an EpicsPathSignal uses the areaDetector convention of
@@ -96,20 +95,20 @@ class EpicsPathSignal(EpicsSignal):
 
         Operating system-specific path semantics are respected when confirming
         that a :meth:`.set()` operation has completed.
-        '''
-        if write_pv.endswith('_RBV'):
+        """
+        if write_pv.endswith("_RBV"):
             # Strip off _RBV if it was passed in erroneously
             write_pv = write_pv[:-4]
 
         self.path_semantics = path_semantics
         if string is not True:
-            raise ValueError('Specifying an EpicsPathSignal with string=False'
-                             ' does not make sense')
+            raise ValueError(
+                "Specifying an EpicsPathSignal with string=False" " does not make sense"
+            )
 
-        super().__init__(write_pv=write_pv,
-                         read_pv=f'{write_pv}_RBV',
-                         string=True,
-                         **kwargs)
+        super().__init__(
+            write_pv=write_pv, read_pv=f"{write_pv}_RBV", string=True, **kwargs
+        )
 
     @property
     def path_semantics(self):
@@ -118,16 +117,17 @@ class EpicsPathSignal(EpicsSignal):
     @path_semantics.setter
     def path_semantics(self, value):
         if value not in OS_NAME_TO_PATH_CLASS:
-            raise ValueError(f'Unknown path semantics: {value}. '
-                             f'Options: {OS_NAME_TO_PATH_CLASS}')
+            raise ValueError(
+                f"Unknown path semantics: {value}. " f"Options: {OS_NAME_TO_PATH_CLASS}"
+            )
         self._path_semantics = value
 
     def _repr_info(self):
         yield from super()._repr_info()
-        yield ('path_semantics', self.path_semantics)
+        yield ("path_semantics", self.path_semantics)
 
     def _set_and_wait(self, value, timeout):
-        '''
+        """
         Overridable hook for subclasses to override :meth:`.set` functionality.
 
         This will be called in a separate thread (`_set_thread`), but will not
@@ -139,6 +139,7 @@ class EpicsPathSignal(EpicsSignal):
             The value
         timeout : float, optional
             Maximum time to wait for value to be successfully set, or None
-        '''
-        return set_and_wait_path(self, value, timeout=timeout,
-                                 path_semantics=self.path_semantics)
+        """
+        return set_and_wait_path(
+            self, value, timeout=timeout, path_semantics=self.path_semantics
+        )

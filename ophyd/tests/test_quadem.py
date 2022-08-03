@@ -2,36 +2,35 @@ import logging
 import pytest
 
 from ophyd import QuadEM, Kind
-from ophyd.sim import (make_fake_device, clear_fake_device)
+from ophyd.sim import make_fake_device, clear_fake_device
 from ophyd.areadetector.plugins import ImagePlugin, StatsPlugin
 
 
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def quadem():
     FakeQuadEM = make_fake_device(QuadEM)
-    em = FakeQuadEM('quadem:', name='quadem')
+    em = FakeQuadEM("quadem:", name="quadem")
     clear_fake_device(em)
 
-    em.conf.port_name.put('NSLS_EM')
+    em.conf.port_name.put("NSLS_EM")
 
-    for k in ['image', 'current1', 'current2', 'current3', 'current4',
-              'sum_all']:
+    for k in ["image", "current1", "current2", "current3", "current4", "sum_all"]:
         cc = getattr(em, k)
 
         if isinstance(cc, ImagePlugin):
             cc.plugin_type.sim_put(ImagePlugin._plugin_type)
-            cc.nd_array_port.sim_put('NSLS_EM')
+            cc.nd_array_port.sim_put("NSLS_EM")
         elif isinstance(cc, StatsPlugin):
             cc.plugin_type.sim_put(StatsPlugin._plugin_type)
-            cc.nd_array_port.sim_put('NSLS_EM')
+            cc.nd_array_port.sim_put("NSLS_EM")
         else:
-            cc.plugin_type.sim_put('unknown')
+            cc.plugin_type.sim_put("unknown")
 
-        cc.enable.sim_set_enum_strs(['Disabled', 'Enabled'])
-        cc.enable.put('Enabled')
+        cc.enable.sim_set_enum_strs(["Disabled", "Enabled"])
+        cc.enable.put("Enabled")
         cc.port_name.sim_put(k.upper())
 
     em.wait_for_connection()
@@ -44,23 +43,22 @@ def test_connected(quadem):
 
 
 def test_scan_point(quadem):
-    assert quadem._staged.value == 'no'
+    assert quadem._staged.value == "no"
 
     quadem.stage()
-    assert quadem._staged.value == 'yes'
+    assert quadem._staged.value == "yes"
 
     quadem.trigger()
     quadem.unstage()
-    assert quadem._staged.value == 'no'
+    assert quadem._staged.value == "no"
 
 
 def test_reading(quadem):
-    assert 'current1.mean_value' in quadem.read_attrs
+    assert "current1.mean_value" in quadem.read_attrs
 
     vals = quadem.read()
-    assert 'quadem_current1_mean_value' in vals
-    assert (set(('value', 'timestamp')) ==
-            set(vals['quadem_current1_mean_value'].keys()))
+    assert "quadem_current1_mean_value" in vals
+    assert set(("value", "timestamp")) == set(vals["quadem_current1_mean_value"].keys())
 
     rc = quadem.read_configuration()
     dc = quadem.describe_configuration()
@@ -74,7 +72,7 @@ def test_reading(quadem):
 def test_hints(quadem):
 
     desc = quadem.describe()
-    f_hints = quadem.hints['fields']
+    f_hints = quadem.hints["fields"]
     assert len(f_hints) > 0
     for k in f_hints:
         assert k in desc
@@ -83,11 +81,11 @@ def test_hints(quadem):
         for c in dev.component_names:
             c = getattr(dev, c)
             c.kind &= ~(Kind.hinted & ~Kind.normal)
-            if hasattr(c, 'component_names'):
+            if hasattr(c, "component_names"):
                 clear_hints(c)
 
     clear_hints(quadem)
 
     quadem.current1.mean_value.kind = Kind.hinted
 
-    assert quadem.hints == {'fields': ['quadem_current1_mean_value']}
+    assert quadem.hints == {"fields": ["quadem_current1_mean_value"]}

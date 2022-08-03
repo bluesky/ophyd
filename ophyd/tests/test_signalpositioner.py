@@ -16,19 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 def setUpModule():
-    logging.getLogger('ophyd.mixins').setLevel(logging.DEBUG)
+    logging.getLogger("ophyd.mixins").setLevel(logging.DEBUG)
 
 
 def tearDownModule():
-    logger.debug('Cleaning up')
+    logger.debug("Cleaning up")
 
 
 @pytest.mark.motorsim
 def test_epics_signal_positioner():
-    readback = record_field(motor_recs[0], 'RBV')
-    setpoint = record_field(motor_recs[0], 'VAL')
-    p = EpicsSignalPositioner(readback, write_pv=setpoint, name='p', egu='egu',
-                              tolerance=0.005)
+    readback = record_field(motor_recs[0], "RBV")
+    setpoint = record_field(motor_recs[0], "VAL")
+    p = EpicsSignalPositioner(
+        readback, write_pv=setpoint, name="p", egu="egu", tolerance=0.005
+    )
     p.wait_for_connection()
     assert p.connected
 
@@ -36,7 +37,7 @@ def test_epics_signal_positioner():
     started_motion_callback = Mock()
     finished_motion_callback = Mock()
     moved_cb = Mock()
-    assert p.egu == 'egu'
+    assert p.egu == "egu"
 
     p.subscribe(position_callback, event_type=p.SUB_READBACK)
     p.subscribe(started_motion_callback, event_type=p.SUB_START)
@@ -48,14 +49,17 @@ def test_epics_signal_positioner():
     logger.debug(str(p))
     assert not p.moving
     assert abs(p.position - target_pos) <= p.tolerance
-    time.sleep(.5)
+    time.sleep(0.5)
     moved_cb.assert_called_with(obj=p)
     position_callback.assert_called_with(
-        obj=p, value=mock.ANY, sub_type=p.SUB_READBACK, timestamp=mock.ANY)
+        obj=p, value=mock.ANY, sub_type=p.SUB_READBACK, timestamp=mock.ANY
+    )
     started_motion_callback.assert_called_once_with(
-        obj=p, sub_type=p.SUB_START, timestamp=mock.ANY)
+        obj=p, sub_type=p.SUB_START, timestamp=mock.ANY
+    )
     finished_motion_callback.assert_called_once_with(
-        obj=p, sub_type=p.SUB_DONE, value=None, timestamp=mock.ANY)
+        obj=p, sub_type=p.SUB_DONE, value=None, timestamp=mock.ANY
+    )
 
     st = p.set(start_pos)
 

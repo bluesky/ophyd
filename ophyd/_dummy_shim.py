@@ -30,8 +30,8 @@ class DummyDispatcher:
 
 
 thread_class = threading.Thread
-pv_form = 'time'
-name = 'dummy'
+pv_form = "time"
+name = "dummy"
 _dispatcher = DummyDispatcher()
 
 

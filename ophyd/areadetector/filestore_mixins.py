@@ -42,11 +42,10 @@ def new_uid():
 
 def new_short_uid():
     "uuid4, skipping the last stanza because of AD length restrictions."
-    return '-'.join(new_uid().split('-')[:-1])
+    return "-".join(new_uid().split("-")[:-1])
 
 
-def resource_factory(spec, root, resource_path, resource_kwargs,
-                     path_semantics):
+def resource_factory(spec, root, resource_path, resource_kwargs, path_semantics):
     """Helper to create resource document and datum factory.
 
     Parameters
@@ -69,21 +68,25 @@ def resource_factory(spec, root, resource_path, resource_kwargs,
         What the path separator is.
     """
     resource_uid = new_uid()
-    resource_doc = {'spec': spec,
-                    'root': str(root),
-                    'resource_path': str(resource_path),
-                    'resource_kwargs': resource_kwargs,
-                    'path_semantics': path_semantics,
-                    'uid': resource_uid}
+    resource_doc = {
+        "spec": spec,
+        "root": str(root),
+        "resource_path": str(resource_path),
+        "resource_kwargs": resource_kwargs,
+        "path_semantics": path_semantics,
+        "uid": resource_uid,
+    }
 
     datum_count = count()
 
     def datum_factory(datum_kwargs):
         i = next(datum_count)
-        datum_id = '{}/{}'.format(resource_uid, i)
-        datum = {'resource': resource_uid,
-                 'datum_id': datum_id,
-                 'datum_kwargs': datum_kwargs}
+        datum_id = "{}/{}".format(resource_uid, i)
+        datum = {
+            "resource": resource_uid,
+            "datum_id": datum_id,
+            "datum_kwargs": datum_kwargs,
+        }
 
         return datum
 
@@ -180,15 +183,19 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     This class may be collapsed with :class:`FileStorePluginBase`
 
     """
-    def __init__(self, *args,
-                 write_path_template,
-                 root=os.path.sep,
-                 path_semantics='posix',
-                 read_path_template=None,
-                 reg=None,
-                 **kwargs):
+
+    def __init__(
+        self,
+        *args,
+        write_path_template,
+        root=os.path.sep,
+        path_semantics="posix",
+        read_path_template=None,
+        reg=None,
+        **kwargs,
+    ):
         PH = object()
-        fs = kwargs.pop('fs', PH)
+        fs = kwargs.pop("fs", PH)
         super().__init__(*args, **kwargs)
 
         if write_path_template is None:
@@ -206,8 +213,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         if reg is None and fs is not PH:
             reg = fs
             warnings.warn(
-                f"The device {self} is provided with fs not reg",
-                stacklevel=2)
+                f"The device {self} is provided with fs not reg", stacklevel=2
+            )
 
         self._reg = reg
 
@@ -225,14 +232,12 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def fs_root(self):
         "DEPRECATED: The 'root' put into the Asset registry, use reg_root"
-        warnings.warn("fs_root is deprecated, use reg_root instead",
-                      stacklevel=2)
+        warnings.warn("fs_root is deprecated, use reg_root instead", stacklevel=2)
         return self.reg_root
 
     @fs_root.setter
     def fs_root(self, val):
-        warnings.warn("fs_root is deprecated, use reg_root instead",
-                      stacklevel=2)
+        warnings.warn("fs_root is deprecated, use reg_root instead", stacklevel=2)
         self.reg_root = val
 
     @property
@@ -250,8 +255,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                 ret = rootp / ret
             else:
                 raise ValueError(
-                    ('root: {!r} in not consistent with '
-                     'read_path_template: {!r}').format(rootp, ret))
+                    (
+                        "root: {!r} in not consistent with " "read_path_template: {!r}"
+                    ).format(rootp, ret)
+                )
         ret = os.path.join(ret, "")
         return str(ret)
 
@@ -264,9 +271,9 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def write_path_template(self):
         rootp = self.reg_root
-        if self.path_semantics == 'posix':
+        if self.path_semantics == "posix":
             ret = PurePosixPath(self._write_path_template)
-        elif self.path_semantics == 'windows':
+        elif self.path_semantics == "windows":
             ret = PureWindowsPath(self._write_path_template)
         elif self.path_semantics is None:
             # We are forced to guess which path semantics to use.
@@ -281,8 +288,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
                 ret = rootp / ret
             else:
                 raise ValueError(
-                    ('root: {!r} in not consistent with '
-                     'read_path_template: {!r}').format(rootp, ret))
+                    (
+                        "root: {!r} in not consistent with " "read_path_template: {!r}"
+                    ).format(rootp, ret)
+                )
 
         return str(ret)
 
@@ -304,7 +313,8 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             root=str(self.reg_root),
             resource_path=str(fn),
             resource_kwargs=resource_kwargs,
-            path_semantics=self.path_semantics)
+            path_semantics=self.path_semantics,
+        )
 
         # If a Registry is set, we need to allow it to generate the uid for us.
         # this code path will eventually be removed
@@ -312,17 +322,18 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             logger.debug("Inserting resource with filename %s", self._fn)
             # register_resource has accidentally different parameter names...
             self._resource_uid = self._reg.register_resource(
-                rpath=resource['resource_path'],
-                rkwargs=resource['resource_kwargs'],
-                root=resource['root'],
-                spec=resource['spec'],
-                path_semantics=resource['path_semantics'])
-            resource['uid'] = self._resource_uid
+                rpath=resource["resource_path"],
+                rkwargs=resource["resource_kwargs"],
+                root=resource["root"],
+                spec=resource["spec"],
+                path_semantics=resource["path_semantics"],
+            )
+            resource["uid"] = self._resource_uid
         # If a Registry is not set, we need to generate the uid.
 
-        self._resource_uid = resource['uid']
+        self._resource_uid = resource["uid"]
 
-        self._asset_docs_cache.append(('resource', resource))
+        self._asset_docs_cache.append(("resource", resource))
 
     def generate_datum(self, key, timestamp, datum_kwargs):
         "Generate a uid and cache it with its key for later insertion."
@@ -339,18 +350,17 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             # datum_id for us.
             if self._resource_uid is None:
                 raise ValueError("Error, no resource for given object.")
-            datum = {'resource': self._resource_uid,
-                     'datum_kwargs': datum_kwargs}
+            datum = {"resource": self._resource_uid, "datum_kwargs": datum_kwargs}
             datum_id = self._reg.register_datum(
-                datum_kwargs=datum['datum_kwargs'],
-                resource_uid=datum['resource'])
-            datum['datum_id'] = datum_id
+                datum_kwargs=datum["datum_kwargs"], resource_uid=datum["resource"]
+            )
+            datum["datum_id"] = datum_id
         else:
             datum = self._datum_factory(datum_kwargs)
-            datum_id = datum['datum_id']
+            datum_id = datum["datum_id"]
 
-        self._asset_docs_cache.append(('datum', datum))
-        reading = {'value': datum_id, 'timestamp': timestamp}
+        self._asset_docs_cache.append(("datum", datum))
+        reading = {"value": datum_id, "timestamp": timestamp}
         # datum_uids looks like {'dark': [reading1, reading2], ...}
         self._datum_uids[key].append(reading)
         return datum_id
@@ -358,7 +368,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def describe(self):
         # One object has been 'described' once, no new keys can be added
         # during this stage/unstage cycle.
-        self._locked_key_list = (self._staged == Staged.yes)
+        self._locked_key_list = self._staged == Staged.yes
         res = super().describe()
         for k in self._datum_uids:
             res[k] = self.parent.make_data_key()  # this is on DetectorBase
@@ -367,7 +377,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def read(self):
         # One object has been 'read' once, no new keys can be added
         # during this stage/unstage cycle.
-        self._locked_key_list = (self._staged == Staged.yes)
+        self._locked_key_list = self._staged == Staged.yes
         res = super().read()
         for k, v in self._datum_uids.items():
             res[k] = v[-1]
@@ -391,16 +401,19 @@ class FileStorePluginBase(FileStoreBase):
         super().__init__(*args, **kwargs)
         if hasattr(self, "create_directory"):
             self.stage_sigs.update({"create_directory": -3})
-        self.stage_sigs.update([('auto_increment', 'Yes'),
-                                ('array_counter', 0),
-                                ('auto_save', 'Yes'),
-                                ('num_capture', 0),
-                                ])
+        self.stage_sigs.update(
+            [
+                ("auto_increment", "Yes"),
+                ("array_counter", 0),
+                ("auto_save", "Yes"),
+                ("num_capture", 0),
+            ]
+        )
         self._fn = None
         self._fp = None
 
     def make_filename(self):
-        '''Make a filename.
+        """Make a filename.
 
         This is a hook so that the read and write paths can either be modified
         or created on disk prior to configuring the areaDetector plugin.
@@ -413,7 +426,7 @@ class FileStorePluginBase(FileStoreBase):
             Path that ophyd can read from
         write_path : str
             Path that the IOC can write to
-        '''
+        """
         filename = new_short_uid()
         formatter = datetime.now().strftime
         write_path = formatter(self.write_path_template)
@@ -425,7 +438,7 @@ class FileStorePluginBase(FileStoreBase):
         filename, read_path, write_path = self.make_filename()
 
         # Ensure we do not have an old file open.
-        if self.file_write_mode != 'Single':
+        if self.file_write_mode != "Single":
             self.capture.set(0).wait()
         # These must be set before parent is staged (specifically
         # before capture mode is turned on. They will not be reset
@@ -437,24 +450,28 @@ class FileStorePluginBase(FileStoreBase):
 
         # AD does this same templating in C, but we can't access it
         # so we do it redundantly here in Python.
-        self._fn = self.file_template.get() % (read_path,
-                                               filename,
-                                               # file_number is *next* iteration
-                                               self.file_number.get() - 1)
+        self._fn = self.file_template.get() % (
+            read_path,
+            filename,
+            # file_number is *next* iteration
+            self.file_number.get() - 1,
+        )
         self._fp = read_path
         if not self.file_path_exists.get():
-            raise IOError("Path %s does not exist on IOC."
-                          "" % self.file_path.get())
+            raise IOError("Path %s does not exist on IOC." "" % self.file_path.get())
 
 
 class FileStoreHDF5(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.filestore_spec = 'AD_HDF5'  # spec name stored in resource doc
-        self.stage_sigs.update([('file_template', '%s%s_%6.6d.h5'),
-                                ('file_write_mode', 'Stream'),
-                                ('capture', 1)
-                                ])
+        self.filestore_spec = "AD_HDF5"  # spec name stored in resource doc
+        self.stage_sigs.update(
+            [
+                ("file_template", "%s%s_%6.6d.h5"),
+                ("file_write_mode", "Stream"),
+                ("capture", 1),
+            ]
+        )
 
     def get_frames_per_point(self):
         num_capture = self.num_capture.get()
@@ -469,22 +486,26 @@ class FileStoreHDF5(FileStorePluginBase):
 
     def stage(self):
         super().stage()
-        res_kwargs = {'frame_per_point': self.get_frames_per_point()}
+        res_kwargs = {"frame_per_point": self.get_frames_per_point()}
         self._generate_resource(res_kwargs)
 
 
 class FileStoreHDF5Single(FileStorePluginBase):
-    '''This FileStore mixin is used when running the AreaDetector hdf5 plugin
+    """This FileStore mixin is used when running the AreaDetector hdf5 plugin
     in `Single` mode (ie. one hdf5 file per trigger).
 
-    '''
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.filestore_spec = 'AD_HDF5_SINGLE'  # spec name stored in res. doc
+        self.filestore_spec = "AD_HDF5_SINGLE"  # spec name stored in res. doc
 
-        self.stage_sigs.update([('file_template', '%s%s_%6.6d.h5'),
-                                ('file_write_mode', 'Single'),
-                                ])
+        self.stage_sigs.update(
+            [
+                ("file_template", "%s%s_%6.6d.h5"),
+                ("file_write_mode", "Single"),
+            ]
+        )
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.
 
@@ -496,19 +517,24 @@ class FileStoreHDF5Single(FileStorePluginBase):
         # this over-rides the behavior is the base stage
         self._fn = self._fp
 
-        resource_kwargs = {'template': self.file_template.get(),
-                           'filename': self.file_name.get(),
-                           'frame_per_point': self.get_frames_per_point()}
+        resource_kwargs = {
+            "template": self.file_template.get(),
+            "filename": self.file_name.get(),
+            "frame_per_point": self.get_frames_per_point(),
+        }
         self._generate_resource(resource_kwargs)
 
 
 class FileStoreTIFF(FileStorePluginBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.filestore_spec = 'AD_TIFF'  # spec name stored in resource doc
-        self.stage_sigs.update([('file_template', '%s%s_%6.6d.tiff'),
-                                ('file_write_mode', 'Single'),
-                                ])
+        self.filestore_spec = "AD_TIFF"  # spec name stored in resource doc
+        self.stage_sigs.update(
+            [
+                ("file_template", "%s%s_%6.6d.tiff"),
+                ("file_write_mode", "Single"),
+            ]
+        )
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.
 
@@ -520,14 +546,16 @@ class FileStoreTIFF(FileStorePluginBase):
         # this over-rides the behavior is the base stage
         self._fn = self._fp
 
-        resource_kwargs = {'template': self.file_template.get(),
-                           'filename': self.file_name.get(),
-                           'frame_per_point': self.get_frames_per_point()}
+        resource_kwargs = {
+            "template": self.file_template.get(),
+            "filename": self.file_name.get(),
+            "frame_per_point": self.get_frames_per_point(),
+        }
         self._generate_resource(resource_kwargs)
 
 
 class FileStoreTIFFSquashing(FileStorePluginBase):
-    r'''Write out 'squashed' tiffs
+    r"""Write out 'squashed' tiffs
 
     .. note::
 
@@ -572,31 +600,38 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
     inheritance, all ``*args`` and extra ``**kwargs`` are passed up the
     MRO chain.
 
-    '''
+    """
 
-    def __init__(self, *args,
-                 images_per_set_name='images_per_set',
-                 number_of_sets_name="number_of_sets",
-                 cam_name='cam', proc_name='proc1',
-                 **kwargs):
+    def __init__(
+        self,
+        *args,
+        images_per_set_name="images_per_set",
+        number_of_sets_name="number_of_sets",
+        cam_name="cam",
+        proc_name="proc1",
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self.filestore_spec = 'AD_TIFF'  # spec name stored in resource doc
+        self.filestore_spec = "AD_TIFF"  # spec name stored in resource doc
         self._ips_name = images_per_set_name
         self._num_sets_name = number_of_sets_name
         self._cam_name = cam_name
         self._proc_name = proc_name
         cam = getattr(self.parent, self._cam_name)
         proc = getattr(self.parent, self._proc_name)
-        self.stage_sigs.update([('file_template', '%s%s_%6.6d.tiff'),
-                                ('file_write_mode', 'Single'),
-                                (proc.nd_array_port, cam.port_name.get()),
-                                (proc.reset_filter, 1),
-                                (proc.enable_filter, 1),
-                                (proc.filter_type, 'Average'),
-                                (proc.auto_reset_filter, 1),
-                                (proc.filter_callbacks, 1),
-                                ('nd_array_port', proc.port_name.get())
-                                ])
+        self.stage_sigs.update(
+            [
+                ("file_template", "%s%s_%6.6d.tiff"),
+                ("file_write_mode", "Single"),
+                (proc.nd_array_port, cam.port_name.get()),
+                (proc.reset_filter, 1),
+                (proc.enable_filter, 1),
+                (proc.filter_type, "Average"),
+                (proc.auto_reset_filter, 1),
+                (proc.filter_callbacks, 1),
+                ("nd_array_port", proc.port_name.get()),
+            ]
+        )
         # 'Single' file_write_mode means one image : one file.
         # It does NOT mean that 'num_images' is ignored.
 
@@ -609,14 +644,20 @@ class FileStoreTIFFSquashing(FileStorePluginBase):
         images_per_set = getattr(self.parent, self._ips_name).get()
         num_sets = getattr(self.parent, self._num_sets_name).get()
 
-        self.stage_sigs.update([(proc.num_filter, images_per_set),
-                                (cam.num_images, images_per_set * num_sets)])
+        self.stage_sigs.update(
+            [
+                (proc.num_filter, images_per_set),
+                (cam.num_images, images_per_set * num_sets),
+            ]
+        )
         super().stage()
         # this over-rides the behavior is the base stage
         self._fn = self._fp
-        resource_kwargs = {'template': self.file_template.get(),
-                           'filename': self.file_name.get(),
-                           'frame_per_point': self.get_frames_per_point()}
+        resource_kwargs = {
+            "template": self.file_template.get(),
+            "filename": self.file_name.get(),
+            "frame_per_point": self.get_frames_per_point(),
+        }
         self._generate_resource(resource_kwargs)
 
 
@@ -624,6 +665,7 @@ class FileStoreIterativeWrite(FileStoreBase):
     """
     This adds 'point_number' to datum_kwargs.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._point_counter = None
@@ -639,22 +681,23 @@ class FileStoreIterativeWrite(FileStoreBase):
     def generate_datum(self, key, timestamp, datum_kwargs):
         i = next(self._point_counter)
         datum_kwargs = datum_kwargs or {}
-        datum_kwargs.update({'point_number': i})
+        datum_kwargs.update({"point_number": i})
         return super().generate_datum(key, timestamp, datum_kwargs)
 
 
 # ready-to-use combinations
 
+
 class FileStoreHDF5IterativeWrite(FileStoreHDF5, FileStoreIterativeWrite):
     pass
 
 
-class FileStoreHDF5SingleIterativeWrite(FileStoreHDF5Single,
-                                        FileStoreIterativeWrite):
-    '''
+class FileStoreHDF5SingleIterativeWrite(FileStoreHDF5Single, FileStoreIterativeWrite):
+    """
     Used for running Areadetectors hdf5 plugin in `Single` mode, with
     `point_number` in the kwargs.
-    '''
+    """
+
     pass
 
 

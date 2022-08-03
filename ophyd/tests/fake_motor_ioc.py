@@ -36,9 +36,9 @@ class FakeMotorIOC(PVGroup):
                 await self.readback.write(readback + np.sign(delta) * step_size)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ioc_options, run_options = ioc_arg_parser(
-        default_prefix='fake_motor:',
-        desc="An IOC which mocks a simple motor")
+        default_prefix="fake_motor:", desc="An IOC which mocks a simple motor"
+    )
     ioc = FakeMotorIOC(**ioc_options)
     run(ioc.pvdb, **run_options)

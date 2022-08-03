@@ -24,7 +24,7 @@ def select_version(cls, version):
         Must be the same type as used to define the class versions.
 
     """
-    all_versions = cls._class_info_['versions']
+    all_versions = cls._class_info_["versions"]
     matched_version = max(ver for ver in all_versions if ver <= version)
     return all_versions[matched_version]
 
@@ -34,6 +34,7 @@ try:
 
     class IFBase(IntFlag, boundary=KEEP):
         ...
+
 except ImportError:
 
     IFBase = IntFlag
@@ -47,6 +48,7 @@ class Kind(IFBase):
     traverse it in read(), read_configuration(), or neither. Additionally, if
     decides whether to include its name in `hints['fields']`.
     """
+
     omitted = 0b000
     normal = 0b001
     config = 0b010
@@ -111,7 +113,7 @@ def register_instances_in_weakset(fail_if_late=False):
 
 
 class OphydObject:
-    '''The base class for all objects in Ophyd
+    """The base class for all objects in Ophyd
 
     Handles:
 
@@ -133,7 +135,7 @@ class OphydObject:
     Attributes
     ----------
     name
-    '''
+    """
 
     # Any callables appended to this mutable class variable will be notified
     # one time when a new instance of OphydObj is instantiated. See
@@ -146,8 +148,7 @@ class OphydObject:
     __any_instantiated = False
     subscriptions: ClassVar[FrozenSet[str]] = frozenset()
 
-    def __init__(self, *, name=None, attr_name='', parent=None, labels=None,
-                 kind=None):
+    def __init__(self, *, name=None, attr_name="", parent=None, labels=None, kind=None):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
@@ -159,7 +160,7 @@ class OphydObject:
 
         # base name and ref to parent, these go with properties
         if name is None:
-            name = ''
+            name = ""
         self._attr_name = attr_name
         if not isinstance(name, str):
             raise ValueError("name must be a string.")
@@ -177,8 +178,12 @@ class OphydObject:
         self._args_cache = {k: None for k in self.subscriptions}
         # count of subscriptions we have handed out, used to give unique ids
         self._cb_count = count()
-        self.log = LoggerAdapter(getLogger('ophyd.objects'), {'ophyd_object_name': name})
-        self.control_layer_log = LoggerAdapter(control_layer_logger, {'ophyd_object_name': name})
+        self.log = LoggerAdapter(
+            getLogger("ophyd.objects"), {"ophyd_object_name": name}
+        )
+        self.control_layer_log = LoggerAdapter(
+            control_layer_logger, {"ophyd_object_name": name}
+        )
 
         if not self.__any_instantiated:
             self.log.debug("first instance of OphydObject: id=%s", id(self))
@@ -208,7 +213,8 @@ class OphydObject:
                 "OphydObject has already been instantiated at least once, and "
                 "this callback will not be notified of those instances that "
                 "have already been created. If that is acceptable for this "
-                "application, set fail_if_false=False.")
+                "application, set fail_if_false=False."
+            )
         # This is a class variable.
         cls.__instantiation_callbacks.append(callback)
 
@@ -220,23 +226,25 @@ class OphydObject:
         for callback in cls.__instantiation_callbacks:
             callback(instance)
 
-    def __init_subclass__(cls, version=None, version_of=None,
-                          version_type=None, **kwargs):
-        'This is called automatically in Python for all subclasses of OphydObject'
+    def __init_subclass__(
+        cls, version=None, version_of=None, version_type=None, **kwargs
+    ):
+        "This is called automatically in Python for all subclasses of OphydObject"
         super().__init_subclass__(**kwargs)
 
         cls.subscriptions = frozenset(
             {
                 getattr(cls, key)
                 for key in dir(cls)
-                if key.startswith('SUB') or key.startswith('_SUB')
+                if key.startswith("SUB") or key.startswith("_SUB")
             }
         )
 
         if version is None:
             if version_of is not None:
-                raise RuntimeError('Must specify a version if `version_of` '
-                                   'is specified')
+                raise RuntimeError(
+                    "Must specify a version if `version_of` " "is specified"
+                )
             if version_type is None:
                 return
             # Allow specification of version_type without specifying a version,
@@ -246,7 +254,7 @@ class OphydObject:
                 versions={},
                 version=None,
                 version_type=version_type,
-                version_of=version_of
+                version_of=version_of,
             )
             return
 
@@ -254,28 +262,32 @@ class OphydObject:
             versions = {}
             version_of = cls
         else:
-            versions = version_of._class_info_['versions']
+            versions = version_of._class_info_["versions"]
             if version_type is None:
-                version_type = version_of._class_info_['version_type']
+                version_type = version_of._class_info_["version_type"]
 
-            elif version_type != version_of._class_info_['version_type']:
+            elif version_type != version_of._class_info_["version_type"]:
                 raise RuntimeError(
                     "version_type with in a family must be consistent, "
                     f"you passed in {version_type}, to {cls.__name__} "
                     f"but {version_of.__name__} has version_type "
-                    f"{version_of._class_info_['version_type']}")
+                    f"{version_of._class_info_['version_type']}"
+                )
 
             if not issubclass(cls, version_of):
                 raise RuntimeError(
-                    f'Versions are only valid for classes in the same '
-                    f'hierarchy. {cls.__name__} is not a subclass of '
-                    f'{version_of.__name__}.'
+                    f"Versions are only valid for classes in the same "
+                    f"hierarchy. {cls.__name__} is not a subclass of "
+                    f"{version_of.__name__}."
                 )
 
         if versions is not None and version in versions:
-            getLogger('ophyd.object').warning(
-                'Redefining %r version %s: old=%r new=%r',
-                version_of, version, versions[version], cls
+            getLogger("ophyd.object").warning(
+                "Redefining %r version %s: old=%r new=%r",
+                version_of,
+                version,
+                versions[version],
+                cls,
             )
 
         versions[version] = cls
@@ -284,7 +296,7 @@ class OphydObject:
             versions=versions,
             version=version,
             version_type=version_type,
-            version_of=version_of
+            version_of=version_of,
         )
 
     def _validate_kind(self, val):
@@ -302,19 +314,17 @@ class OphydObject:
 
     @property
     def dotted_name(self) -> str:
-        """Return the dotted name
-
-        """
+        """Return the dotted name"""
         names = []
         obj = self
         while obj.parent is not None:
             names.append(obj.attr_name)
             obj = obj.parent
-        return '.'.join(names[::-1])
+        return ".".join(names[::-1])
 
     @property
     def name(self):
-        '''name of the device'''
+        """name of the device"""
         return self._name
 
     @name.setter
@@ -327,21 +337,21 @@ class OphydObject:
 
     @property
     def connected(self):
-        '''If the device is connected.
+        """If the device is connected.
 
-        Subclasses should override this'''
+        Subclasses should override this"""
         return True
 
     def destroy(self):
-        '''Disconnect the object from the underlying control layer'''
+        """Disconnect the object from the underlying control layer"""
         self.unsubscribe_all()
 
     @property
     def parent(self):
-        '''The parent of the ophyd object.
+        """The parent of the ophyd object.
 
         If at the top of its hierarchy, `parent` will be None
-        '''
+        """
         return self._parent
 
     @property
@@ -355,17 +365,16 @@ class OphydObject:
 
     @property
     def report(self):
-        '''A report on the object.'''
+        """A report on the object."""
         return {}
 
     @property
     def event_types(self):
-        '''Events that can be subscribed to via `obj.subscribe`
-        '''
+        """Events that can be subscribed to via `obj.subscribe`"""
         return tuple(self.subscriptions)
 
     def _run_subs(self, *args, sub_type, **kwargs):
-        '''Run a set of subscription callbacks
+        """Run a set of subscription callbacks
 
         Only the kwarg ``sub_type`` is required, indicating
         the type of callback to perform. All other positional arguments
@@ -378,20 +387,22 @@ class OphydObject:
         time.
 
         No exceptions are raised if the callback functions fail.
-        '''
+        """
         if sub_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {!r}, must be one of {!r}"
-                .format(sub_type, self.subscriptions))
+                "Unknown subscription {!r}, must be one of {!r}".format(
+                    sub_type, self.subscriptions
+                )
+            )
 
-        kwargs['sub_type'] = sub_type
+        kwargs["sub_type"] = sub_type
         # Guarantee that the object will be in the kwargs
-        kwargs.setdefault('obj', self)
+        kwargs.setdefault("obj", self)
 
         # And if a timestamp key exists, but isn't filled -- supply it with
         # a new timestamp
-        if 'timestamp' in kwargs and kwargs['timestamp'] is None:
-            kwargs['timestamp'] = time.time()
+        if "timestamp" in kwargs and kwargs["timestamp"] is None:
+            kwargs["timestamp"] = time.time()
 
         # Shallow-copy the callback arguments for replaying the
         # callback at a later time (e.g., when a new subscription is made)
@@ -401,7 +412,7 @@ class OphydObject:
             cb(*args, **kwargs)
 
     def subscribe(self, callback, event_type=None, run=True):
-        '''Subscribe to events this event_type generates.
+        """Subscribe to events this event_type generates.
 
         The callback will be called as ``cb(*args, **kwargs)`` with
         the values passed to `_run_subs` with the following additional keys:
@@ -448,7 +459,7 @@ class OphydObject:
             id of callback, can be passed to `unsubscribe` to remove the
             callback
 
-        '''
+        """
         if not callable(callback):
             raise ValueError("callback must be callable")
         # do default event type
@@ -459,15 +470,19 @@ class OphydObject:
             event_type = self._default_sub
 
         if event_type is None:
-            raise ValueError('Subscription type not set and object {} of class'
-                             ' {} has no default subscription set'
-                             ''.format(self.name, self.__class__.__name__))
+            raise ValueError(
+                "Subscription type not set and object {} of class"
+                " {} has no default subscription set"
+                "".format(self.name, self.__class__.__name__)
+            )
 
         # check that this is a valid event type
         if event_type not in self.subscriptions:
             raise UnknownSubscription(
-                "Unknown subscription {!r}, must be one of {!r}"
-                .format(event_type, self.subscriptions))
+                "Unknown subscription {!r}, must be one of {!r}".format(
+                    event_type, self.subscriptions
+                )
+            )
 
         # wrapper for callback to snarf exceptions
         def wrap_cb(cb):
@@ -476,11 +491,13 @@ class OphydObject:
                 try:
                     cb(*args, **kwargs)
                 except Exception:
-                    sub_type = kwargs['sub_type']
+                    sub_type = kwargs["sub_type"]
                     self.log.exception(
-                        'Subscription %s callback exception (%s)',
-                        sub_type, self)
+                        "Subscription %s callback exception (%s)", sub_type, self
+                    )
+
             return inner
+
         # get next cid
         cid = next(self._cb_count)
         wrapped = wrap_cb(callback)
@@ -497,12 +514,12 @@ class OphydObject:
         return cid
 
     def _reset_sub(self, event_type):
-        '''Remove all subscriptions in an event type'''
+        """Remove all subscriptions in an event type"""
         self._callbacks[event_type].clear()
         self._unwrapped_callbacks[event_type].clear()
 
     def clear_sub(self, cb, event_type=None):
-        '''Remove a subscription, given the original callback function
+        """Remove a subscription, given the original callback function
 
         See also :meth:`subscribe`, :meth:`unsubscribe`
 
@@ -513,7 +530,7 @@ class OphydObject:
         event_type : str, optional
             The event to unsubscribe from (if None, removes it from all event
             types)
-        '''
+        """
         if event_type is None:
             event_types = self.event_types
         else:
@@ -547,7 +564,7 @@ class OphydObject:
             self._reset_sub(ev_type)
 
     def check_value(self, value, **kwargs):
-        '''Check if the value is valid for this object
+        """Check if the value is valid for this object
 
         This function does no normalization, but may raise if the
         value is invalid.
@@ -555,39 +572,39 @@ class OphydObject:
         Raises
         ------
         ValueError
-        '''
+        """
         pass
 
     def __repr__(self):
         info = self._repr_info()
-        info = ', '.join('{}={!r}'.format(key, value) for key, value in info)
-        return '{}({})'.format(self.__class__.__name__, info)
+        info = ", ".join("{}={!r}".format(key, value) for key, value in info)
+        return "{}({})".format(self.__class__.__name__, info)
 
     def _repr_info(self):
-        'Yields pairs of (key, value) to generate the object repr'
+        "Yields pairs of (key, value) to generate the object repr"
         if self.name is not None:
-            yield ('name', self.name)
+            yield ("name", self.name)
 
         if self._parent is not None:
-            yield ('parent', self.parent.name)
+            yield ("parent", self.parent.name)
 
     def __copy__(self):
-        '''Copy the ophyd object
+        """Copy the ophyd object
 
         Shallow copying ophyd objects uses the repr information from the
         _repr_info method to create a new object.
-        '''
+        """
         kwargs = dict(self._repr_info())
         return self.__class__(**kwargs)
 
     def __getnewargs_ex__(self):
-        '''Used by pickle to serialize an ophyd object
+        """Used by pickle to serialize an ophyd object
 
         Returns
         -------
         (args, kwargs)
             Arguments to be passed to __init__, necessary to recreate this
             object
-        '''
+        """
         kwargs = dict(self._repr_info())
         return ((), kwargs)
