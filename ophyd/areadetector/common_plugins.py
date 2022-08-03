@@ -1,6 +1,5 @@
-from .. import Component as Cpt
-from .. import Device
-from ..device import create_device_from_components
+from ..device import Component as Cpt
+from ..device import Device, create_device_from_components
 from ..ophydobj import OphydObject, select_version
 from . import plugins
 

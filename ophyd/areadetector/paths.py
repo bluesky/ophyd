@@ -2,7 +2,7 @@ import logging
 import pathlib
 import time as ttime
 
-from .. import EpicsSignal
+from ..signal import EpicsSignal
 
 logger = logging.getLogger(__name__)
 OS_NAME_TO_PATH_CLASS = {

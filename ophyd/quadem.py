@@ -1,8 +1,5 @@
 from collections import OrderedDict
 
-from . import Component as Cpt
-from . import DynamicDeviceComponent as DDCpt
-from . import EpicsSignal, EpicsSignalRO, Kind, Signal, kind_context
 from .areadetector import (
     ADBase,
     DetectorBase,
@@ -11,6 +8,10 @@ from .areadetector import (
     SingleTrigger,
     StatsPlugin,
 )
+from .device import Component as Cpt
+from .device import DynamicDeviceComponent as DDCpt
+from .device import kind_context
+from .signal import EpicsSignal, EpicsSignalRO, Kind, Signal
 from .status import DeviceStatus
 
 

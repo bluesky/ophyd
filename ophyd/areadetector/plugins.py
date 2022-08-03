@@ -28,8 +28,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from .. import Component, Device
-from .. import FormattedComponent as FCpt
+from ..device import Component, Device
+from ..device import FormattedComponent as FCpt
 from ..device import GenerateDatumInterface
 from ..signal import ArrayAttributeSignal, EpicsSignal, EpicsSignalRO
 from ..utils import enum
