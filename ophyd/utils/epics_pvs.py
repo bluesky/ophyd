@@ -1,15 +1,14 @@
 # vi: ts=4 sw=4 sts=4 expandtab
-from enum import IntEnum
-import time as ttime
-import logging
 import functools
-import numpy as np
+import logging
+import time as ttime
 import typing
-
 import warnings
+from enum import IntEnum
+
+import numpy as np
 
 from .errors import DisconnectedError, OpException
-
 
 __all__ = [
     "split_record_field",

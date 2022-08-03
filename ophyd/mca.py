@@ -1,11 +1,12 @@
 import logging
-
 from collections import OrderedDict
 
-from .signal import Signal, EpicsSignal, EpicsSignalRO
-from .device import Device, Component as Cpt, DynamicDeviceComponent as DDC, Kind
 from .areadetector import EpicsSignalWithRBV as SignalWithRBV
-
+from .device import Component as Cpt
+from .device import Device
+from .device import DynamicDeviceComponent as DDC
+from .device import Kind
+from .signal import EpicsSignal, EpicsSignalRO, Signal
 
 logger = logging.getLogger(__name__)
 

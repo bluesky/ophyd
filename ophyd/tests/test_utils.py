@@ -1,13 +1,13 @@
-import pytest
-import os
 import logging
-import numpy as np
+import os
 import tempfile
 
+import numpy as np
+import pytest
+
+from ophyd import Signal
 from ophyd.utils import epics_pvs as epics_utils
 from ophyd.utils import make_dir_tree, makedirs
-from ophyd import Signal
-
 
 logger = logging.getLogger(__name__)
 

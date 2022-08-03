@@ -1,27 +1,26 @@
 # vi: ts=4 sw=4
 import os
-import time
 import threading
+import time
 import warnings
 import weakref
 
 import numpy as np
 
-from .utils import ReadOnlyError, LimitError, DestroyedError, doc_annotation_forwarder
-from .utils.epics_pvs import (
-    waveform_to_string,
-    raise_if_disconnected,
-    data_type,
-    data_shape,
-    AlarmStatus,
-    AlarmSeverity,
-    validate_pv_name,
-    _set_and_wait,
-)
-from .ophydobj import OphydObject, Kind
-from .status import Status
 from . import get_cl
-
+from .ophydobj import Kind, OphydObject
+from .status import Status
+from .utils import DestroyedError, LimitError, ReadOnlyError, doc_annotation_forwarder
+from .utils.epics_pvs import (
+    AlarmSeverity,
+    AlarmStatus,
+    _set_and_wait,
+    data_shape,
+    data_type,
+    raise_if_disconnected,
+    validate_pv_name,
+    waveform_to_string,
+)
 
 # Catch semi-frequent issue with scripts accidentally run from inside module
 if __name__ != "ophyd.signal":

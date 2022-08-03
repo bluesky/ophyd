@@ -1,15 +1,16 @@
 import time
 from unittest.mock import Mock
 
+import pytest
+
 from ophyd import Device
-from ophyd.status import StatusBase, SubscriptionStatus, UseNewProperty, MoveStatus
+from ophyd.status import MoveStatus, StatusBase, SubscriptionStatus, UseNewProperty
 from ophyd.utils import (
     InvalidState,
-    UnknownStatusFailure,
     StatusTimeoutError,
+    UnknownStatusFailure,
     WaitTimeoutError,
 )
-import pytest
 
 
 def _setup_state_and_cb(new_signature=True):

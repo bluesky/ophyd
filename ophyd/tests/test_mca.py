@@ -1,14 +1,12 @@
 import logging
-import pytest
-
 from types import SimpleNamespace
 
-from ophyd import EpicsMCA, EpicsDXP
-from ophyd.mca import add_rois, Mercury1, SoftDXPTrigger
-
-from ophyd.utils import enum, ReadOnlyError
-
+import pytest
 from caproto.tests.conftest import run_example_ioc
+
+from ophyd import EpicsDXP, EpicsMCA
+from ophyd.mca import Mercury1, SoftDXPTrigger, add_rois
+from ophyd.utils import ReadOnlyError, enum
 
 MCAMode = enum(PHA="PHA", MCS="MCS", List="List")
 DxpPresetMode = enum(

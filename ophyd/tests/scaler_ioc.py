@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from caproto.server import pvproperty, PVGroup, ioc_arg_parser, run, SubGroup
 from caproto import ChannelType
+from caproto.server import PVGroup, SubGroup, ioc_arg_parser, pvproperty, run
 
 
 class EpicsScalerGroup(PVGroup):

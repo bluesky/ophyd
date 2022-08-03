@@ -1,13 +1,8 @@
-from ophyd import (
-    Device,
-    Signal,
-    Kind,
-    Component,
-    ALL_COMPONENTS,
-    kind_context,
-    DynamicDeviceComponent as DDCpt,
-)
 import pytest
+
+from ophyd import ALL_COMPONENTS, Component, Device
+from ophyd import DynamicDeviceComponent as DDCpt
+from ophyd import Kind, Signal, kind_context
 
 
 def test_standalone_signals():

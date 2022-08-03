@@ -3,53 +3,50 @@ import logging
 import os
 import shutil
 import time
+import uuid
+from io import StringIO
+from pathlib import Path, PurePath
 from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from io import StringIO
-from pathlib import PurePath, Path
 
-from ophyd.utils.paths import make_dir_tree
 from ophyd import (
-    SimDetector,
-    SingleTrigger,
     Component,
     Device,
     DynamicDeviceComponent,
     Kind,
+    SimDetector,
+    SingleTrigger,
     wait,
-)
-from ophyd.areadetector.plugins import (
-    ImagePlugin,
-    StatsPlugin,
-    ColorConvPlugin,
-    ProcessPlugin,
-    OverlayPlugin,
-    ROIPlugin,
-    TransformPlugin,
-    NetCDFPlugin,
-    TIFFPlugin,
-    JPEGPlugin,
-    HDF5Plugin,
-    # FilePlugin
 )
 from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.filestore_mixins import (
-    FileStoreTIFF,
-    FileStoreIterativeWrite,
     FileStoreHDF5,
+    FileStoreIterativeWrite,
+    FileStoreTIFF,
 )
 
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
-from ophyd.areadetector.plugins import PluginBase
-from ophyd.areadetector.util import stub_templates
-from ophyd.device import (
-    Component as Cpt,
+from ophyd.areadetector.plugins import (  # FilePlugin
+    ColorConvPlugin,
+    HDF5Plugin,
+    ImagePlugin,
+    JPEGPlugin,
+    NetCDFPlugin,
+    OverlayPlugin,
+    PluginBase,
+    ProcessPlugin,
+    ROIPlugin,
+    StatsPlugin,
+    TIFFPlugin,
+    TransformPlugin,
 )
+from ophyd.areadetector.util import stub_templates
+from ophyd.device import Component as Cpt
 from ophyd.signal import Signal
-import uuid
+from ophyd.utils.paths import make_dir_tree
 
 logger = logging.getLogger(__name__)
 ad_path = "/epics/support/areaDetector/1-9-1/ADApp/Db/"

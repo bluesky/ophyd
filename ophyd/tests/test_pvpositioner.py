@@ -1,18 +1,19 @@
 import logging
-import pytest
 import time
 from copy import copy
 
+import pytest
+
+from ophyd import Component as Cpt
 from ophyd import (
-    PVPositioner,
-    PVPositionerPC,
     EpicsSignal,
     EpicsSignalRO,
-    Component as Cpt,
-    get_cl,
     Kind,
-    PVPositionerIsClose,
+    PVPositioner,
     PVPositionerDone,
+    PVPositionerIsClose,
+    PVPositionerPC,
+    get_cl,
 )
 from ophyd.utils.epics_pvs import _wait_for_value
 

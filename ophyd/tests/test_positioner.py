@@ -1,10 +1,10 @@
 import logging
-import pytest
 import unittest
-
 from copy import copy
 from unittest import mock
 from unittest.mock import Mock
+
+import pytest
 
 from .. import SoftPositioner
 from ..utils import LimitError

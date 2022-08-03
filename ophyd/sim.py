@@ -1,36 +1,37 @@
 import copy
 import inspect
 import itertools
-from functools import partial
-
-import numpy as np
 import os
 import random
 import threading
 import time as ttime
 import uuid
-import weakref
 import warnings
-
-from collections import deque, OrderedDict
+import weakref
+from collections import OrderedDict, deque
+from functools import partial
 from tempfile import mkdtemp
+from types import SimpleNamespace
 
-from .signal import Signal, EpicsSignal, EpicsSignalRO
+import numpy as np
+
 from .areadetector.base import EpicsSignalWithRBV
 from .areadetector.paths import EpicsPathSignal
-from .status import DeviceStatus, StatusBase
-from .device import Device, Component as Cpt, DynamicDeviceComponent as DDCpt, Kind
-from types import SimpleNamespace
+from .device import Component as Cpt
+from .device import Device
+from .device import DynamicDeviceComponent as DDCpt
+from .device import Kind
+from .log import logger
+from .positioner import SoftPositioner
 from .pseudopos import (
     PseudoPositioner,
     PseudoSingle,
-    real_position_argument,
     pseudo_position_argument,
+    real_position_argument,
 )
-from .positioner import SoftPositioner
-from .utils import ReadOnlyError, LimitError
-from .log import logger
-
+from .signal import EpicsSignal, EpicsSignalRO, Signal
+from .status import DeviceStatus, StatusBase
+from .utils import LimitError, ReadOnlyError
 
 # two convenience functions 'vendored' from bluesky.utils
 

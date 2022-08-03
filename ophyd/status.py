@@ -1,18 +1,18 @@
-from collections import deque
-from logging import LoggerAdapter
 import threading
 import time
+from collections import deque
+from logging import LoggerAdapter
 from warnings import warn
 
 import numpy as np
 
 from .log import logger
 from .utils import (
-    adapt_old_callback_signature,
     InvalidState,
-    UnknownStatusFailure,
     StatusTimeoutError,
+    UnknownStatusFailure,
     WaitTimeoutError,
+    adapt_old_callback_signature,
 )
 
 

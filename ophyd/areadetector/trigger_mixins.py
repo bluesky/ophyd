@@ -9,12 +9,12 @@ To be used like so ::
         pass
 """
 
-import time as ttime
-import logging
 import itertools
+import logging
+import time as ttime
 
-from ..status import DeviceStatus
 from ..device import BlueskyInterface, Staged
+from ..status import DeviceStatus
 
 logger = logging.getLogger(__name__)
 

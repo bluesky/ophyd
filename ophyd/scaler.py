@@ -1,15 +1,12 @@
 import logging
-
 from collections import OrderedDict
 
+from .device import Component as Cpt
+from .device import Device
+from .device import DynamicDeviceComponent as DDCpt
+from .device import FormattedComponent as FCpt
 from .ophydobj import Kind
 from .signal import EpicsSignal, EpicsSignalRO
-from .device import Device
-from .device import (
-    Component as Cpt,
-    DynamicDeviceComponent as DDCpt,
-    FormattedComponent as FCpt,
-)
 
 logger = logging.getLogger(__name__)
 

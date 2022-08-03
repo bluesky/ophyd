@@ -1,15 +1,15 @@
-import time as ttime
 import functools
 import logging
+import time as ttime
 from collections import OrderedDict
+from typing import Any, Dict, Generator, Iterable
 
-from .signal import Signal, EpicsSignal, EpicsSignalRO
+from .device import BlueskyInterface
+from .device import Component as Cpt
+from .device import Device
+from .signal import EpicsSignal, EpicsSignalRO, Signal
 from .status import DeviceStatus, StatusBase
-from .device import Device, Component as Cpt, BlueskyInterface
 from .utils import OrderedDefaultDict
-
-from typing import Generator, Dict, Iterable, Any
-
 
 logger = logging.getLogger(__name__)
 

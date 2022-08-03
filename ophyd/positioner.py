@@ -1,13 +1,14 @@
+import functools
 import logging
 import time
 from collections import OrderedDict
-import functools
-from .ophydobj import OphydObject, Kind
-from .status import MoveStatus, wait as status_wait, StatusBase
-from .utils.epics_pvs import data_type, data_shape
-from .utils.errors import LimitError
 from typing import Any, Callable
 
+from .ophydobj import Kind, OphydObject
+from .status import MoveStatus, StatusBase
+from .status import wait as status_wait
+from .utils.epics_pvs import data_shape, data_type
+from .utils.errors import LimitError
 
 logger = logging.getLogger(__name__)
 

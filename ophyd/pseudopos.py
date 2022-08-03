@@ -1,20 +1,19 @@
 # vi: ts=4 sw=4
 
 
-import logging
-import time
-import threading
 import functools
+import logging
 import math
-
+import threading
+import time
 from collections import OrderedDict, namedtuple
-from collections.abc import Sequence, Mapping
+from collections.abc import Mapping, Sequence
 
-from .utils import DisconnectedError, ExceptionBundle
+from .device import Component as Cpt
+from .device import Device, Kind, required_for_connection
 from .positioner import PositionerBase, SoftPositioner
-from .device import Device, Component as Cpt, Kind, required_for_connection
 from .signal import AttributeSignal
-
+from .utils import DisconnectedError, ExceptionBundle
 
 logger = logging.getLogger(__name__)
 

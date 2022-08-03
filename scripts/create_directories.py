@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 "Create directories where Area Detector will save its data during tests."
-from ophyd.utils.paths import make_dir_tree
 import datetime
+
+from ophyd.utils.paths import make_dir_tree
 
 
 def main(args):

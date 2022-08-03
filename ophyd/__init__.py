@@ -1,6 +1,7 @@
 import logging
-import types
 import os
+import types
+
 from ophyd.log import set_handler  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -52,8 +53,8 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     # this sets the module level value
     cl = types.SimpleNamespace(**{k: getattr(shim, k) for k in exports})
     if pv_telemetry:
-        from functools import wraps
         from collections import Counter
+        from functools import wraps
 
         def decorate_get_pv(func):
             c = Counter()
@@ -77,56 +78,54 @@ def get_cl():
 
 set_cl()
 
+from ._version import get_versions  # noqa: F402, E402
+
+# Areadetector-related
+from .areadetector import *  # noqa: F401, F402, E402, F403
+from .device import (  # noqa: F401, F402, E402
+    ALL_COMPONENTS,
+    Component,
+    Device,
+    DynamicDeviceComponent,
+    FormattedComponent,
+    do_not_wait_for_lazy_connection,
+    kind_context,
+    wait_for_lazy_connection,
+)
+from .epics_motor import EpicsMotor, MotorBundle  # noqa: F401, F402, E402
+from .mca import EpicsDXP, EpicsMCA  # noqa: F401, F402, E402
 from .ophydobj import (  # noqa: F401, F402, E402
     Kind,
-    select_version,
     register_instances_in_weakset,
     register_instances_keyed_on_name,
-)
-
-# Signals
-from .signal import (  # noqa: F401, F402, E402
-    Signal,
-    SignalRO,
-    EpicsSignal,
-    EpicsSignalRO,
-    EpicsSignalNoValidation,
-    DerivedSignal,
+    select_version,
 )
 
 # Positioners
 from .positioner import PositionerBase, SoftPositioner  # noqa: F401, F402, E402
-from .epics_motor import EpicsMotor, MotorBundle  # noqa: F401, F402, E402
+from .pseudopos import PseudoPositioner, PseudoSingle  # noqa: F401, F402, E402
 from .pv_positioner import (  # noqa: F401, F402, E402
     PVPositioner,
-    PVPositionerPC,
-    PVPositionerIsClose,
     PVPositionerDone,
+    PVPositionerIsClose,
+    PVPositionerPC,
 )
-from .pseudopos import PseudoPositioner, PseudoSingle  # noqa: F401, F402, E402
+from .quadem import APS_EM, NSLS_EM, QuadEM, TetrAMM  # noqa: F401, F402, E402
 
 # Devices
 from .scaler import EpicsScaler  # noqa: F401, F402, E402
-from .device import (  # noqa: F401, F402, E402
-    Device,
-    Component,
-    FormattedComponent,
-    DynamicDeviceComponent,
-    ALL_COMPONENTS,
-    kind_context,
-    wait_for_lazy_connection,
-    do_not_wait_for_lazy_connection,
+
+# Signals
+from .signal import (  # noqa: F401, F402, E402
+    DerivedSignal,
+    EpicsSignal,
+    EpicsSignalNoValidation,
+    EpicsSignalRO,
+    Signal,
+    SignalRO,
 )
 from .status import StatusBase, wait  # noqa: F401, F402, E402
-from .mca import EpicsMCA, EpicsDXP  # noqa: F401, F402, E402
-from .quadem import QuadEM, NSLS_EM, TetrAMM, APS_EM  # noqa: F401, F402, E402
-
-# Areadetector-related
-from .areadetector import *  # noqa: F401, F402, E402, F403
-from ._version import get_versions  # noqa: F402, E402
-
 from .utils.startup import setup as setup_ophyd  # noqa: F401, F402, E402
-
 
 __version__ = get_versions()["version"]
 del get_versions

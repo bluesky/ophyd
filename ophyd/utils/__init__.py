@@ -1,12 +1,12 @@
 # vi: ts=4 sw=4 sts=4 expandtab
 import inspect
 import logging
-from collections import OrderedDict
 import warnings
+from collections import OrderedDict
 
-from .errors import *  # noqa: F401, F403
 from .epics_pvs import *  # noqa: F401, F403
-from .paths import makedirs, make_dir_tree  # noqa: F401
+from .errors import *  # noqa: F401, F403
+from .paths import make_dir_tree, makedirs  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

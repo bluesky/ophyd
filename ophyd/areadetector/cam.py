@@ -4,8 +4,8 @@ from ..device import DynamicDeviceComponent as DDC
 from ..signal import EpicsSignal, EpicsSignalRO
 from ..utils import enum
 from .base import ADBase
-from .base import EpicsSignalWithRBV as SignalWithRBV
 from .base import ADComponent as ADCpt
+from .base import EpicsSignalWithRBV as SignalWithRBV
 from .base import ad_group
 
 # Import FileBase class for cameras that use File PVs in their drivers

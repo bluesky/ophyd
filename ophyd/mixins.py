@@ -1,10 +1,10 @@
-import time
 import logging
+import time
 
-from .signal import EpicsSignal
 from .positioner import PositionerBase
-from .status import MoveStatus, wait as status_wait
-
+from .signal import EpicsSignal
+from .status import MoveStatus
+from .status import wait as status_wait
 
 logger = logging.getLogger(__name__)
 

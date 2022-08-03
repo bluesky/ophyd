@@ -1,13 +1,12 @@
 import inspect
 import os
-import sys
 import re
+import sys
 from collections import namedtuple
 
 from ..utils.epics_pvs import records_from_db
-from .detectors import AreaDetector
 from .base import EpicsSignalWithRBV
-
+from .detectors import AreaDetector
 
 StubInfo = namedtuple("StubInfo", ("signal_type", "record"))
 

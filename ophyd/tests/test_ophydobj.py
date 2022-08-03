@@ -1,14 +1,15 @@
 import logging
-import pytest
 import time
-
 from unittest.mock import Mock
+
+import pytest
+
 from ophyd.ophydobj import (
     OphydObject,
-    register_instances_keyed_on_name,
     register_instances_in_weakset,
+    register_instances_keyed_on_name,
 )
-from ophyd.status import StatusBase, DeviceStatus, wait
+from ophyd.status import DeviceStatus, StatusBase, wait
 from ophyd.utils import WaitTimeoutError
 
 logger = logging.getLogger(__name__)

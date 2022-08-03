@@ -1,10 +1,10 @@
 import logging
+
 import pytest
 
-from ophyd import QuadEM, Kind
-from ophyd.sim import make_fake_device, clear_fake_device
+from ophyd import Kind, QuadEM
 from ophyd.areadetector.plugins import ImagePlugin, StatsPlugin
-
+from ophyd.sim import clear_fake_device, make_fake_device
 
 logger = logging.getLogger(__name__)
 

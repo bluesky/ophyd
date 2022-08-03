@@ -1,15 +1,15 @@
 import logging
-import pytest
 import time
-
 from copy import copy
 from types import SimpleNamespace
 
+import pytest
+from caproto.tests.conftest import run_example_ioc
+
 from ophyd.scaler import EpicsScaler, ScalerCH
 from ophyd.utils import enum
-from .test_utils import assert_OD_equal_ignore_ts
 
-from caproto.tests.conftest import run_example_ioc
+from .test_utils import assert_OD_equal_ignore_ts
 
 ScalerMode = enum(ONE_SHOT=0, AUTO_COUNT=1)
 

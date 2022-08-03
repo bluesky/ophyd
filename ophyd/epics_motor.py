@@ -1,15 +1,13 @@
 import logging
-
-from .utils.epics_pvs import fmt_time
-
-from .signal import EpicsSignal, EpicsSignalRO
-from .utils import DisconnectedError
-from .utils.epics_pvs import raise_if_disconnected, AlarmSeverity
-from .positioner import PositionerBase
-from .device import Device, Component as Cpt, required_for_connection
-from .status import wait as status_wait
 from enum import Enum
 
+from .device import Component as Cpt
+from .device import Device, required_for_connection
+from .positioner import PositionerBase
+from .signal import EpicsSignal, EpicsSignalRO
+from .status import wait as status_wait
+from .utils import DisconnectedError
+from .utils.epics_pvs import AlarmSeverity, fmt_time, raise_if_disconnected
 
 logger = logging.getLogger(__name__)
 
