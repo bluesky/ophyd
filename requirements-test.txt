@@ -1,4 +1,5 @@
 attrs>=19.3.0
+black==22.3.0
 bluesky>=1.7.0
 caproto[standard] >=0.4.2rc1
 codecov
@@ -8,6 +9,7 @@ flake8
 h5py
 matplotlib
 mypy
+pre-commit
 pyepics>=3.4.2
 pytest
 pytest-faulthandler
