@@ -55,7 +55,7 @@ def test_read_pv_timestamp_monitor(motor):
     rbv = EpicsSignalRO(motor.user_readback.pvname, auto_monitor=True,
                         name='test')
 
-    rbv_value0 = rbv.value
+    rbv_value0 = rbv.get()
     ts0 = rbv.timestamp
     sp.put(rbv_value0 + 0.1, wait=True)
     time.sleep(0.2)
@@ -74,7 +74,7 @@ def test_write_pv_timestamp_monitor(motor):
     sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
                      name='test')
 
-    sp_value0 = sp.value
+    sp_value0 = sp.get()
     ts0 = sp.timestamp
     sp.put(sp_value0 + 0.1, wait=True)
     time.sleep(0.1)

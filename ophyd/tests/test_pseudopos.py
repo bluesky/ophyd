@@ -190,8 +190,8 @@ def test_read_describe():
 
 @pytest.mark.motorsim
 def test_multi_concurrent():
-    def done(**kwargs):
-        logger.debug("** Finished moving (%s)", kwargs)
+    def done(status, **kwargs):
+        logger.debug("** Finished moving (%s, %s)", status, kwargs)
 
     pseudo = Pseudo3x3(
         "", name="mypseudo", concurrent=True, settle_time=0.1, timeout=25.0
