@@ -2,20 +2,45 @@
  Release History
 =================
 
-1.7.0 (????-??-??)
+1.7.0 (2022-08-04)
 ==================
+
+Added
+-----
+
+* ``ophyd.utils.epics_pvs._wait_for_value``
+* ``ophyd.pv_positioner.PVPositionerDone``
+* ``ophyd.pv_positioner.PVPositionerIsClose``
+* ``ophyd.signal.InternalSignal``
+* ``ophyd.signal.EpicsSignalNoValidation``
+* ``ophyd.sim.FakeEpicsPathSignal``
+
 
 Changes
 -------
 
+* Made ``Component`` a generic user-defined type ``Component[T]``, with the type parameter bound to ``OphydObject``
+  to allow for static analysis of ``Device`` classes and instantiated devices.
+* Set subscriptions only once per class to improve performance.
+* Reduced log level from INFO to DEBUG in ``ophyd.ophydobj``, ``ophyd.signal``, and ``ophyd.sim``.
 * Deprecated ``ophyd.utils.epics_pv.set_and_wait(obj, val)`` in favor of
   ``obj.set(val).wait()``.  This ensures that the same logic is used to
   determine if the signal is set as requested when used in a plan (via
   ``yield from bps.abs_set(...)`` or ``yield from bps.mv(...)``) as from
   within ophyd methods.
-* Deprecate ``DetectorBase.dispatch`` in favor of newly added
-  ``DetectorBase.generate_datum``
+* Deprecated ``DetectorBase.dispatch`` in favor of newly added
+  ``DetectorBase.generate_datum``.
 
+Fixes
+-----
+
+* Resolved some warnings from tests in preparation for treating warnings as errors.
+* Removed test for removal of ``TRACE`` logging.
+* Tweaked DEBUG log output in ``ophyd.device.BlueskyInterface.stage()`` and ``ophyd.device.BlueskyInterface.unstage()``.
+* Fixed tutorial typos.
+* Wait for ``ophyd.sim.NullStatus`` to mark itself as finished.
+* Convert ``ophyd.areadetector.paths.EpicsPathSignal.set_and_wait_path(..., val, ...)`` input to string.
+* ``ophyd.areadetector.plugins.HDF5Plugin_V21.xml_file_name`` must be a string.
 
 
 1.6.4 (2022-04-08)
