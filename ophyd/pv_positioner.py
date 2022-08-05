@@ -8,7 +8,7 @@ import numpy as np
 from .utils.epics_pvs import fmt_time
 
 from .device import Component as Cpt
-from .device import (Device, required_for_connection)
+from .device import Device, required_for_connection
 from .ophydobj import Kind
 from .positioner import PositionerBase
 from .signal import EpicsSignal, InternalSignal
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class PVPositioner(Device, PositionerBase):
-    '''A Positioner which is controlled using multiple user-defined signals
+    """A Positioner which is controlled using multiple user-defined signals
 
     Keyword arguments are passed through to the base class, Positioner
 
@@ -62,7 +62,7 @@ class PVPositioner(Device, PositionerBase):
         to indicate motion has finished.  If `actuate` is specified, it will be
         used for put completion.  Otherwise, the `setpoint` will be used.  See
         the `-c` option from `caput` for more information.
-    '''
+    """
 
     setpoint = None  # TODO: should add limits=True
     readback = None
@@ -76,15 +76,32 @@ class PVPositioner(Device, PositionerBase):
     done_value = 1
     put_complete = False
 
-    def __init__(self, prefix='', *, limits=None, name=None, read_attrs=None,
-                 configuration_attrs=None, parent=None, egu='', **kwargs):
-        super().__init__(prefix=prefix, read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         name=name, parent=parent, **kwargs)
+    def __init__(
+        self,
+        prefix="",
+        *,
+        limits=None,
+        name=None,
+        read_attrs=None,
+        configuration_attrs=None,
+        parent=None,
+        egu="",
+        **kwargs,
+    ):
+        super().__init__(
+            prefix=prefix,
+            read_attrs=read_attrs,
+            configuration_attrs=configuration_attrs,
+            name=name,
+            parent=parent,
+            **kwargs,
+        )
 
         if self.__class__ is PVPositioner:
-            raise TypeError('PVPositioner must be subclassed with the correct '
-                            'signals set in the class definition.')
+            raise TypeError(
+                "PVPositioner must be subclassed with the correct "
+                "signals set in the class definition."
+            )
 
         self._egu = egu
 
@@ -99,13 +116,15 @@ class PVPositioner(Device, PositionerBase):
         elif self.setpoint is not None:
             self.setpoint.subscribe(self._pos_changed)
         else:
-            raise ValueError('A setpoint or a readback must be specified')
+            raise ValueError("A setpoint or a readback must be specified")
 
         if self.done is None and not self.put_complete:
-            msg = ('PVPositioner {} is mis-configured. A "done" Signal must be'
-                   ' provided or use PVPositionerPC (which uses put completion'
-                   ' to determine when motion has completed).'
-                   ''.format(self.name))
+            msg = (
+                'PVPositioner {} is mis-configured. A "done" Signal must be'
+                " provided or use PVPositionerPC (which uses put completion"
+                " to determine when motion has completed)."
+                "".format(self.name)
+            )
             raise ValueError(msg)
 
         if self.done is not None:
@@ -117,7 +136,7 @@ class PVPositioner(Device, PositionerBase):
 
     @property
     def egu(self):
-        '''The engineering units (EGU) for a position'''
+        """The engineering units (EGU) for a position"""
         return self._egu
 
     @property
@@ -125,18 +144,17 @@ class PVPositioner(Device, PositionerBase):
         return isinstance(self, PVPositionerPC)
 
     def check_value(self, pos):
-        '''Check that the position is within the soft limits'''
+        """Check that the position is within the soft limits"""
         if self.limits is not None:
             low, high = self.limits
             if low != high and not (low <= pos <= high):
-                raise ValueError('{} outside of user-specified limits'
-                                 ''.format(pos))
+                raise ValueError("{} outside of user-specified limits" "".format(pos))
         else:
             self.setpoint.check_value(pos)
 
     @property
     def moving(self):
-        '''Whether or not the motor is moving
+        """Whether or not the motor is moving
 
         If a `done` PV is specified, it will be read directly to get the motion
         status. If not, it determined from the internal state of PVPositioner.
@@ -144,23 +162,23 @@ class PVPositioner(Device, PositionerBase):
         Returns
         -------
         bool
-        '''
+        """
         if self.done is not None:
             dval = self.done.get(use_monitor=False)
-            return (dval != self.done_value)
+            return dval != self.done_value
         else:
             return self._moving
 
     def _setup_move(self, position):
-        '''Move and do not wait until motion is complete (asynchronous)'''
-        self.log.debug('%s.setpoint = %s', self.name, position)
+        """Move and do not wait until motion is complete (asynchronous)"""
+        self.log.debug("%s.setpoint = %s", self.name, position)
         self.setpoint.put(position, wait=True)
         if self.actuate is not None:
-            self.log.debug('%s.actuate = %s', self.name, self.actuate_value)
+            self.log.debug("%s.actuate = %s", self.name, self.actuate_value)
             self.actuate.put(self.actuate_value, wait=False)
 
     def move(self, position, wait=True, timeout=None, moved_cb=None):
-        '''Move to a specified position, optionally waiting for motion to
+        """Move to a specified position, optionally waiting for motion to
         complete.
 
         Parameters
@@ -187,7 +205,7 @@ class PVPositioner(Device, PositionerBase):
             On invalid positions
         RuntimeError
             If motion fails other than timing out
-        '''
+        """
         # Before moving, ensure we can stop (if a stop_signal is configured).
         if self.stop_signal is not None:
             self.stop_signal.wait_for_connection()
@@ -210,33 +228,38 @@ class PVPositioner(Device, PositionerBase):
         return status
 
     @required_for_connection
-    def _move_changed(self, timestamp=None, value=None, sub_type=None,
-                      **kwargs):
+    def _move_changed(self, timestamp=None, value=None, sub_type=None, **kwargs):
         was_moving = self._moving
-        self._moving = (value != self.done_value)
+        self._moving = value != self.done_value
 
         started = False
         if not self._started_moving:
-            started = self._started_moving = (not was_moving and self._moving)
-            self.log.debug('[ts=%s] %s started moving: %s', fmt_time(timestamp),
-                           self.name, started)
+            started = self._started_moving = not was_moving and self._moving
+            self.log.debug(
+                "[ts=%s] %s started moving: %s", fmt_time(timestamp), self.name, started
+            )
 
-        self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                       self.name, self._moving, value)
+        self.log.debug(
+            "[ts=%s] %s moving: %s (value=%s)",
+            fmt_time(timestamp),
+            self.name,
+            self._moving,
+            value,
+        )
 
         if started:
-            self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
-                           value=value, **kwargs)
+            self._run_subs(
+                sub_type=self.SUB_START, timestamp=timestamp, value=value, **kwargs
+            )
 
         if not self.put_complete:
             # In the case of put completion, motion complete
             if was_moving and not self._moving:
-                self._done_moving(success=True, timestamp=timestamp,
-                                  value=value)
+                self._done_moving(success=True, timestamp=timestamp, value=value)
 
     @required_for_connection
     def _pos_changed(self, timestamp=None, value=None, **kwargs):
-        '''Callback from EPICS, indicating a change in position'''
+        """Callback from EPICS, indicating a change in position"""
         self._set_position(value)
 
     def stop(self, *, success=False):
@@ -247,7 +270,7 @@ class PVPositioner(Device, PositionerBase):
     @property
     def report(self):
         rep = super().report
-        rep['pv'] = self.readback.pvname
+        rep["pv"] = self.readback.pvname
         return rep
 
     @property
@@ -260,8 +283,8 @@ class PVPositioner(Device, PositionerBase):
     def _repr_info(self):
         yield from super()._repr_info()
 
-        yield ('limits', self._limits)
-        yield ('egu', self._egu)
+        yield ("limits", self._limits)
+        yield ("egu", self._egu)
 
     def _done_moving(self, **kwargs):
         has_done = self.done is not None
@@ -274,15 +297,18 @@ class PVPositioner(Device, PositionerBase):
 class PVPositionerPC(PVPositioner):
     def __init__(self, *args, **kwargs):
         if self.__class__ is PVPositionerPC:
-            raise TypeError('PVPositionerPC must be subclassed with the '
-                            'correct signals set in the class definition.')
+            raise TypeError(
+                "PVPositionerPC must be subclassed with the "
+                "correct signals set in the class definition."
+            )
 
         super().__init__(*args, **kwargs)
 
     def _setup_move(self, position):
-        '''Move and do not wait until motion is complete (asynchronous)'''
+        """Move and do not wait until motion is complete (asynchronous)"""
+
         def done_moving(**kwargs):
-            self.log.debug('%s async motion done', self.name)
+            self.log.debug("%s async motion done", self.name)
             self._done_moving(success=True)
 
         if self.done is None:
@@ -290,17 +316,15 @@ class PVPositionerPC(PVPositioner):
             moving_val = 1 - self.done_value
             self._move_changed(value=moving_val)
 
-        self.log.debug('%s.setpoint = %s', self.name, position)
+        self.log.debug("%s.setpoint = %s", self.name, position)
 
         if self.actuate is not None:
             self.setpoint.put(position, wait=True)
 
-            self.log.debug('%s.actuate = %s', self.name, self.actuate_value)
-            self.actuate.put(self.actuate_value, wait=False,
-                             callback=done_moving)
+            self.log.debug("%s.actuate = %s", self.name, self.actuate_value)
+            self.actuate.put(self.actuate_value, wait=False, callback=done_moving)
         else:
-            self.setpoint.put(position, wait=False,
-                              callback=done_moving)
+            self.setpoint.put(position, wait=False, callback=done_moving)
 
 
 class PVPositionerComparator(PVPositioner):
@@ -364,9 +388,11 @@ class PVPositionerComparator(PVPositioner):
         self._last_setpoint = None
         super().__init__(prefix, name=name, **kwargs)
         if None in (self.setpoint, self.readback):
-            raise NotImplementedError('PVPositionerComparator requires both '
-                                      'a setpoint and a readback signal to '
-                                      'compare!')
+            raise NotImplementedError(
+                "PVPositionerComparator requires both "
+                "a setpoint and a readback signal to "
+                "compare!"
+            )
 
     def __init_subclass__(cls, **kwargs):
         """Set up callbacks in subclass."""
@@ -382,7 +408,7 @@ class PVPositionerComparator(PVPositioner):
         This method should return True if we are done moving
         and False otherwise.
         """
-        raise NotImplementedError('Must implement a done comparator!')
+        raise NotImplementedError("Must implement a done comparator!")
 
     def _update_setpoint(self, *args, value: Any, **kwargs) -> None:
         """Callback to cache the setpoint and update done state."""
@@ -401,8 +427,7 @@ class PVPositionerComparator(PVPositioner):
     def _update_done(self) -> None:
         """Update our status to done if we pass the comparator."""
         if None not in (self._last_readback, self._last_setpoint):
-            is_done = self.done_comparator(self._last_readback,
-                                           self._last_setpoint)
+            is_done = self.done_comparator(self._last_readback, self._last_setpoint)
             done_value = int(is_done)
             if done_value != self.done.get():
                 self.done.put(done_value, internal=True)
@@ -510,9 +535,9 @@ class PVPositionerIsClose(PVPositionerComparator):
         """
         kwargs = {}
         if self.atol is not None:
-            kwargs['atol'] = self.atol
+            kwargs["atol"] = self.atol
         if self.rtol is not None:
-            kwargs['rtol'] = self.rtol
+            kwargs["rtol"] = self.rtol
         return np.isclose(readback, setpoint, **kwargs)
 
 
@@ -559,7 +584,8 @@ class PVPositionerDone(PVPositioner):
         used for put completion.  Otherwise, the `setpoint` will be used.  See
         the `-c` option from `caput` for more information.
     """
-    setpoint = Cpt(EpicsSignal, '', kind='hinted')
+
+    setpoint = Cpt(EpicsSignal, "", kind="hinted")
 
     done = Cpt(InternalSignal, value=0)
     done_value = 1

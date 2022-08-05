@@ -3,7 +3,7 @@ import calendar
 
 
 def makedirs(path, *, mode=0o777, mode_base=None):
-    '''Recursively make directories and set permissions
+    """Recursively make directories and set permissions
 
     Parameters
     ----------
@@ -14,7 +14,7 @@ def makedirs(path, *, mode=0o777, mode_base=None):
     mode_base : str, optional
         If specified, only try to set mode after this directory
         Full base path
-    '''
+    """
     # Permissions not working with os.makedirs -
     # See: http://stackoverflow.com/questions/5231901
     if not path or os.path.exists(path):
@@ -37,7 +37,7 @@ def makedirs(path, *, mode=0o777, mode_base=None):
 
 
 def make_dir_tree(year, *, base_path=None, mode=0o777):
-    '''Make full directory tree for the year
+    """Make full directory tree for the year
 
     Parameters
     ----------
@@ -51,7 +51,7 @@ def make_dir_tree(year, *, base_path=None, mode=0o777):
     -------
     paths : list
         List of directories created
-    '''
+    """
     if base_path is None:
         base_path = os.getcwd()
 
@@ -59,11 +59,11 @@ def make_dir_tree(year, *, base_path=None, mode=0o777):
     paths = []
 
     for month in range(1, 13):
-        month_dir = os.path.join(year_dir, '%02d' % month)
+        month_dir = os.path.join(year_dir, "%02d" % month)
 
         _, num_days = calendar.monthrange(year, month)
         for day in range(1, 1 + num_days):
-            day_path = os.path.join(month_dir, '%02d' % day)
+            day_path = os.path.join(month_dir, "%02d" % day)
             paths.append(day_path)
 
     for path in paths:

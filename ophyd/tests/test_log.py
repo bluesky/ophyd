@@ -49,7 +49,9 @@ def test_logger_adapter_ophyd_object():
 
     ophyd_object = OphydObject(name="testing OphydObject.log")
     ophyd_object.log.info("here is some info")
-    assert log_buffer.getvalue().endswith("[testing OphydObject.log] here is some info\n")
+    assert log_buffer.getvalue().endswith(
+        "[testing OphydObject.log] here is some info\n"
+    )
 
 
 def test_logger_adapter_status():

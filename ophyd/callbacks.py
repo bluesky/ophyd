@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class UidPublish:
-    '''Publishes run start UID of most recently begun run to a given signal
+    """Publishes run start UID of most recently begun run to a given signal
 
     Processed on every start/end document.
 
@@ -35,7 +35,7 @@ class UidPublish:
         Fail if the UID signal is disconnected
     put_kw : kwargs, optional
         Keyword arguments to send to uid_signal.put()
-    '''
+    """
 
     def __init__(self, signal, raise_if_disconnected=False, **put_kw):
         self._uid = None
@@ -46,7 +46,7 @@ class UidPublish:
 
     @property
     def uid(self):
-        '''The uid of the last run'''
+        """The uid of the last run"""
         return self._uid
 
     @uid.setter
@@ -54,30 +54,30 @@ class UidPublish:
         self._uid = uid
 
         if uid is None:
-            uid = ''
+            uid = ""
 
         try:
             self.uid_signal.put(uid, **self.put_kw)
         except (DisconnectedError, TimeoutError):
-            logger.error('UID signal disconnected. Is the IOC running?')
+            logger.error("UID signal disconnected. Is the IOC running?")
             if self.raise_if_disconnected:
                 raise
 
     def clear(self):
-        '''Clear the run uid'''
+        """Clear the run uid"""
         self.uid = None
 
     def __call__(self, name, doc):
-        '''Bluesky callback with document info'''
-        if name == 'start':
+        """Bluesky callback with document info"""
+        if name == "start":
             self.last_start = doc
 
-        if self.last_start and name in ('start', 'stop'):
-            self.uid = self.last_start['uid']
+        if self.last_start and name in ("start", "stop"):
+            self.uid = self.last_start["uid"]
 
 
 class LastUidPublish(UidPublish):
-    '''Publishes run start UID of most recently completed run to a given signal
+    """Publishes run start UID of most recently completed run to a given signal
 
     Processed on every stop document.
 
@@ -106,11 +106,12 @@ class LastUidPublish(UidPublish):
         Fail if the UID signal is disconnected
     put_kw : kwargs, optional
         Keyword arguments to send to uid_signal.put()
-    '''
+    """
+
     def __call__(self, name, doc):
-        '''Bluesky callback with document info'''
-        if name == 'start':
+        """Bluesky callback with document info"""
+        if name == "start":
             self.last_start = doc
 
-        if self.last_start is not None and name == 'stop':
-            self.uid = self.last_start['uid']
+        if self.last_start is not None and name == "stop":
+            self.uid = self.last_start["uid"]

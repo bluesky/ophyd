@@ -26,6 +26,7 @@ class ADTriggerStatus(DeviceStatus):
     A special status object that notifies watches (progress bars)
     based on comparing device.cam.array_counter to  device.cam.num_images.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_ts = ttime.time()
@@ -64,15 +65,17 @@ class ADTriggerStatus(DeviceStatus):
         else:
             time_remaining = time_elapsed / fraction
         for watcher in self._watchers:
-            watcher(name=self._name,
-                    current=current,
-                    initial=initial,
-                    target=target,
-                    unit='images',
-                    precision=0,
-                    fraction=fraction,
-                    time_elapsed=time_elapsed,
-                    time_remaining=time_remaining)
+            watcher(
+                name=self._name,
+                current=current,
+                initial=initial,
+                target=target,
+                unit="images",
+                precision=0,
+                fraction=fraction,
+                time_elapsed=time_elapsed,
+                time_remaining=time_remaining,
+            )
 
 
 class TriggerBase(BlueskyInterface):
@@ -82,15 +85,19 @@ class TriggerBase(BlueskyInterface):
 
     `acquire_changed(self, value=None, old_value=None, **kwargs)`
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # settings
         # careful here: quadEM devices have areadetector components but,
         # they have no 'cam' plugin. See QuadEM initializer.
-        if hasattr(self, 'cam'):
-            self.stage_sigs.update([('cam.acquire', 0),  # If acquiring, stop
-                                    ('cam.image_mode', 1),  # 'Multiple' mode
-                                    ])
+        if hasattr(self, "cam"):
+            self.stage_sigs.update(
+                [
+                    ("cam.acquire", 0),  # If acquiring, stop
+                    ("cam.image_mode", 1),  # 'Multiple' mode
+                ]
+            )
             self._acquisition_signal = self.cam.acquire
 
         self._status = None
@@ -109,12 +116,13 @@ class SingleTrigger(TriggerBase):
     # optionally, customize name of image
     >>> det = SimDetector('..pv..', image_name='fast_detector_image')
     """
+
     _status_type = ADTriggerStatus
 
     def __init__(self, *args, image_name=None, **kwargs):
         super().__init__(*args, **kwargs)
         if image_name is None:
-            image_name = '_'.join([self.name, 'image'])
+            image_name = "_".join([self.name, "image"])
         self._image_name = image_name
 
     def stage(self):
@@ -128,8 +136,10 @@ class SingleTrigger(TriggerBase):
     def trigger(self):
         "Trigger one acquisition."
         if self._staged != Staged.yes:
-            raise RuntimeError("This detector is not ready to trigger."
-                               "Call the stage() method before triggering.")
+            raise RuntimeError(
+                "This detector is not ready to trigger."
+                "Call the stage() method before triggering."
+            )
 
         self._status = self._status_type(self)
         self._acquisition_signal.put(1, wait=False)
@@ -192,8 +202,9 @@ class MultiTrigger(TriggerBase):
     # you need to control the order that they are processed, use
     # OrderedDict instead.
     """
+
     # OphydObj subscriptions
-    _SUB_ACQ_DONE = 'acq_done'
+    _SUB_ACQ_DONE = "acq_done"
 
     def __init__(self, *args, trigger_cycle=None, **kwargs):
         if trigger_cycle is None:
@@ -220,8 +231,10 @@ class MultiTrigger(TriggerBase):
     def trigger(self):
         "Trigger one or more acquisitions."
         if self._staged != Staged.yes:
-            raise RuntimeError("This detector is not ready to trigger."
-                               "Call the stage() method before triggering.")
+            raise RuntimeError(
+                "This detector is not ready to trigger."
+                "Call the stage() method before triggering."
+            )
 
         # For each trigger, we have a list of one of more acquisitions to
         # take. These are names (e.g., 'light' or 'dark') paired with
@@ -236,8 +249,7 @@ class MultiTrigger(TriggerBase):
 
         # When each acquisition finishes, it will immedately start the next
         # one until the desired number has been taken.
-        self.subscribe(self._acquire,
-                       event_type=self._SUB_ACQ_DONE, run=False)
+        self.subscribe(self._acquire, event_type=self._SUB_ACQ_DONE, run=False)
 
         # When *all* the acquisitions are done, increment the trigger counter
         # and kick the status object.
@@ -255,7 +267,7 @@ class MultiTrigger(TriggerBase):
             logger.debug("Trigger cycle is complete.")
             self._status.set_finished()
             return
-        logger.debug('Configuring signals for acquisition labeled %r', key)
+        logger.debug("Configuring signals for acquisition labeled %r", key)
         for sig, val in signals_settings.items():
             sig.set(val).wait()
         self.generate_datum(key, ttime.time(), {})
@@ -263,8 +275,9 @@ class MultiTrigger(TriggerBase):
 
     def _acquire_changed(self, value=None, old_value=None, **kwargs):
         "This is called when the 'acquire' signal changes."
-        logger.debug("_acquire_chaged has been called: old_value %r, value %r",
-                     old_value, value)
+        logger.debug(
+            "_acquire_chaged has been called: old_value %r, value %r", old_value, value
+        )
         if self._status is None:
             return
         if (old_value == 1) and (value == 0):

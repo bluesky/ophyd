@@ -76,8 +76,8 @@ class StatusBase:
     program has moved on.
 
     """
-    def __init__(self, *, timeout=None, settle_time=0,
-                 done=None, success=None):
+
+    def __init__(self, *, timeout=None, settle_time=0, done=None, success=None):
         super().__init__()
         self._tname = None
         self._lock = threading.RLock()
@@ -90,7 +90,7 @@ class StatusBase:
         self._callbacks = deque()
         self._exception = None
 
-        self.log = LoggerAdapter(logger=logger, extra={'status': self})
+        self.log = LoggerAdapter(logger=logger, extra={"status": self})
 
         if settle_time is None:
             settle_time = 0.0
@@ -103,18 +103,19 @@ class StatusBase:
 
         # We cannot know that we are successful if we are not done.
         if success and not done:
-            raise ValueError(
-                "Cannot initialize with done=False but success=True.")
+            raise ValueError("Cannot initialize with done=False but success=True.")
         if done is not None or success is not None:
             warn(
                 "The 'done' and 'success' parameters will be removed in a "
                 "future release. Use the methods set_finished() or "
                 "set_exception(exc) to mark success or failure, respectively, "
                 "after the Status has been instantiated.",
-                DeprecationWarning)
+                DeprecationWarning,
+            )
 
         self._callback_thread = threading.Thread(
-            target=self._run_callbacks, daemon=True, name=self._tname)
+            target=self._run_callbacks, daemon=True, name=self._tname
+        )
         self._callback_thread.start()
 
         if done:
@@ -125,7 +126,8 @@ class StatusBase:
                     f"The status {self!r} has failed. To obtain more specific, "
                     "helpful errors in the future, update the Device to use "
                     "set_exception(...) instead of setting success=False "
-                    "at __init__ time.")
+                    "at __init__ time."
+                )
                 self.set_exception(exc)
 
     @property
@@ -165,7 +167,8 @@ class StatusBase:
             raise RuntimeError(
                 "The done-ness of a status object cannot be changed by "
                 "setting its `done` attribute directly. Call `set_finished()` "
-                "or `set_exception(exc).")
+                "or `set_exception(exc)."
+            )
         warn(
             "Do not set the `done` attribute of a status object directly. "
             "It should only be set indirectly by calling `set_finished()` "
@@ -173,7 +176,8 @@ class StatusBase:
             "Direct setting was never intended to be supported and it will be "
             "disallowed in a future release of ophyd, causing this code path "
             "to fail.",
-            UserWarning)
+            UserWarning,
+        )
 
     @property
     def success(self):
@@ -194,7 +198,8 @@ class StatusBase:
             raise RuntimeError(
                 "The success state of a status object cannot be changed by "
                 "setting its `success` attribute directly. Call "
-                "`set_finished()` or `set_exception(exc)`.")
+                "`set_finished()` or `set_exception(exc)`."
+            )
         warn(
             "Do not set the `success` attribute of a status object directly. "
             "It should only be set indirectly by calling `set_finished()` "
@@ -202,7 +207,8 @@ class StatusBase:
             "Direct setting was never intended to be supported and it will be "
             "disallowed in a future release of ophyd, causing this code path "
             "to fail.",
-            UserWarning)
+            UserWarning,
+        )
 
     def _handle_failure(self):
         pass
@@ -233,7 +239,8 @@ class StatusBase:
                 # the lock.
                 if self._exception is None:
                     exc = StatusTimeoutError(
-                        f"Status {self!r} failed to complete in specified timeout.")
+                        f"Status {self!r} failed to complete in specified timeout."
+                    )
                     self._exception = exc
         # Mark this as "settled".
         try:
@@ -241,8 +248,7 @@ class StatusBase:
         except Exception:
             # No alternative but to log this. We can't supersede set_exception,
             # and we have to continue and run the callbacks.
-            self.log.exception(
-                "%r encountered error during _settled()", self)
+            self.log.exception("%r encountered error during _settled()", self)
         # Now we know whether or not we have succeed or failed, either by
         # timeout above or by set_exception(exc), so we can set the Event that
         # will mark this Status as done.
@@ -253,7 +259,8 @@ class StatusBase:
                 self._handle_failure()
             except Exception:
                 self.log.exception(
-                    "%r encountered an error during _handle_failure()", self)
+                    "%r encountered an error during _handle_failure()", self
+                )
         # The callbacks have access to self, from which they can distinguish
         # success or failure.
         for cb in self._callbacks:
@@ -262,7 +269,10 @@ class StatusBase:
             except Exception:
                 self.log.exception(
                     "An error was raised on a background thread while "
-                    "running the callback %r(%r).", cb, self)
+                    "running the callback %r(%r).",
+                    cb,
+                    self,
+                )
         self._callbacks.clear()
 
     def set_exception(self, exc):
@@ -278,8 +288,11 @@ class StatusBase:
         """
         # Since we rely on this being raise-able later, check proactively to
         # avoid potentially very confusing failures.
-        if not (isinstance(exc, Exception)
-                or isinstance(exc, type) and issubclass(exc, Exception)):
+        if not (
+            isinstance(exc, Exception)
+            or isinstance(exc, type)
+            and issubclass(exc, Exception)
+        ):
             # Note that Python allows `raise Exception` or raise Exception()`
             # so we allow a class or an instance here too.
             raise ValueError(f"Expected an Exception, got {exc!r}")
@@ -288,18 +301,23 @@ class StatusBase:
         # would probably never come up except due to some rare user error, but
         # if it did it could be very confusing indeed!
         for exc_class in (StatusTimeoutError, WaitTimeoutError):
-            if (isinstance(exc, exc_class)
-                    or isinstance(exc, type) and issubclass(exc, exc_class)):
+            if (
+                isinstance(exc, exc_class)
+                or isinstance(exc, type)
+                and issubclass(exc, exc_class)
+            ):
                 raise ValueError(
                     f"{exc_class} has special significance and cannot be set "
                     "as the exception. Use a plain TimeoutError or some other "
-                    "subclass thereof.")
+                    "subclass thereof."
+                )
 
         with self._externally_initiated_completion_lock:
             if self._externally_initiated_completion:
                 raise InvalidState(
                     "Either set_finished() or set_exception() has "
-                    f"already been called on {self!r}")
+                    f"already been called on {self!r}"
+                )
             self._externally_initiated_completion = True
             if isinstance(self._exception, StatusTimeoutError):
                 # We have already timed out.
@@ -318,7 +336,8 @@ class StatusBase:
             if self._externally_initiated_completion:
                 raise InvalidState(
                     "Either set_finished() or set_exception() has "
-                    f"already been called on {self!r}")
+                    f"already been called on {self!r}"
+                )
             self._externally_initiated_completion = True
         # Note that in either case, the callbacks themselves are run from the
         # same thread. This just sets an Event, either from this thread (the
@@ -357,7 +376,8 @@ class StatusBase:
             exc = UnknownStatusFailure(
                 f"The status {self!r} has failed. To obtain more specific, "
                 "helpful errors in the future, update the Device to use "
-                "set_exception(...) instead of _finished(success=False).")
+                "set_exception(...) instead of _finished(success=False)."
+            )
             self.set_exception(exc)
 
     def exception(self, timeout=None):
@@ -424,17 +444,22 @@ class StatusBase:
     def finished_cb(self):
         with self._lock:
             if len(self.callbacks) == 1:
-                warn("The property `finished_cb` is deprecated, and must raise "
-                     "an error if a status object has multiple callbacks. Use "
-                     "the `callbacks` property instead.", stacklevel=2)
-                cb, = self.callbacks
+                warn(
+                    "The property `finished_cb` is deprecated, and must raise "
+                    "an error if a status object has multiple callbacks. Use "
+                    "the `callbacks` property instead.",
+                    stacklevel=2,
+                )
+                (cb,) = self.callbacks
                 assert cb is not None
                 return cb
             else:
-                raise UseNewProperty("The deprecated `finished_cb` property "
-                                     "cannot be used for status objects that have "
-                                     "multiple callbacks. Use the `callbacks` "
-                                     "property instead.")
+                raise UseNewProperty(
+                    "The deprecated `finished_cb` property "
+                    "cannot be used for status objects that have "
+                    "multiple callbacks. Use the `callbacks` "
+                    "property instead."
+                )
 
     def add_callback(self, callback):
         """
@@ -474,15 +499,20 @@ class StatusBase:
     def finished_cb(self, cb):
         with self._lock:
             if not self.callbacks:
-                warn("The setter `finished_cb` is deprecated, and must raise "
-                     "an error if a status object already has one callback. Use "
-                     "the `add_callback` method instead.", stacklevel=2)
+                warn(
+                    "The setter `finished_cb` is deprecated, and must raise "
+                    "an error if a status object already has one callback. Use "
+                    "the `add_callback` method instead.",
+                    stacklevel=2,
+                )
                 self.add_callback(cb)
             else:
-                raise UseNewProperty("The deprecated `finished_cb` setter cannot "
-                                     "be used for status objects that already "
-                                     "have one callback. Use the `add_callbacks` "
-                                     "method instead.")
+                raise UseNewProperty(
+                    "The deprecated `finished_cb` setter cannot "
+                    "be used for status objects that already "
+                    "have one callback. Use the `add_callbacks` "
+                    "method instead."
+                )
 
     def __and__(self, other):
         """
@@ -496,6 +526,7 @@ class StatusBase:
 
 class AndStatus(StatusBase):
     "a Status that has composes two other Status objects using logical and"
+
     def __init__(self, left, right, **kwargs):
         super().__init__(**kwargs)
         self.left = left
@@ -532,10 +563,11 @@ class AndStatus(StatusBase):
         return "({self.left!r} & {self.right!r})".format(self=self)
 
     def __str__(self):
-        return ('{0}(done={1.done}, '
-                'success={1.success})'
-                ''.format(self.__class__.__name__, self)
-                )
+        return (
+            "{0}(done={1.done}, "
+            "success={1.success})"
+            "".format(self.__class__.__name__, self)
+        )
 
 
 class Status(StatusBase):
@@ -562,18 +594,20 @@ class Status(StatusBase):
     obj : any or None
         The object
     """
-    def __init__(self, obj=None, timeout=None, settle_time=0,
-                 done=None, success=None):
+
+    def __init__(self, obj=None, timeout=None, settle_time=0, done=None, success=None):
         self.obj = obj
-        super().__init__(timeout=timeout, settle_time=settle_time,
-                         done=done, success=success)
+        super().__init__(
+            timeout=timeout, settle_time=settle_time, done=done, success=success
+        )
 
     def __str__(self):
-        return ('{0}(obj={1.obj}, '
-                'done={1.done}, '
-                'success={1.success})'
-                ''.format(self.__class__.__name__, self)
-                )
+        return (
+            "{0}(obj={1.obj}, "
+            "done={1.done}, "
+            "success={1.success})"
+            "".format(self.__class__.__name__, self)
+        )
 
     __repr__ = __str__
 
@@ -597,6 +631,7 @@ class DeviceStatus(StatusBase):
         The amount of time to wait between the caller specifying that the
         status has completed to running callbacks. Default is 0.
     """
+
     def __init__(self, device, **kwargs):
         self.device = device
         self._watchers = []
@@ -604,14 +639,15 @@ class DeviceStatus(StatusBase):
 
     def _handle_failure(self):
         super()._handle_failure()
-        self.log.debug('Trying to stop %s', repr(self.device))
+        self.log.debug("Trying to stop %s", repr(self.device))
         self.device.stop()
 
     def __str__(self):
-        return ('{0}(device={1.device.name}, done={1.done}, '
-                'success={1.success})'
-                ''.format(self.__class__.__name__, self)
-                )
+        return (
+            "{0}(device={1.device.name}, done={1.done}, "
+            "success={1.success})"
+            "".format(self.__class__.__name__, self)
+        )
 
     def watch(self, func):
         """
@@ -623,9 +659,9 @@ class DeviceStatus(StatusBase):
             func(name=self.device.name)
 
     def _settled(self):
-        '''Hook for when status has completed and settled'''
+        """Hook for when status has completed and settled"""
         for watcher in self._watchers:
-            watcher(name=self.device.name, fraction=0.)
+            watcher(name=self.device.name, fraction=0.0)
 
     __repr__ = __str__
 
@@ -656,8 +692,16 @@ class SubscriptionStatus(DeviceStatus):
     run: bool, optional
         Run the callback now
     """
-    def __init__(self, device, callback, event_type=None,
-                 timeout=None, settle_time=None, run=True):
+
+    def __init__(
+        self,
+        device,
+        callback,
+        event_type=None,
+        timeout=None,
+        settle_time=None,
+        run=True,
+    ):
         # Store device and attribute information
         self.device = device
         self.callback = callback
@@ -666,9 +710,7 @@ class SubscriptionStatus(DeviceStatus):
         super().__init__(device, timeout=timeout, settle_time=settle_time)
 
         # Subscribe callback and run initial check
-        self.device.subscribe(self.check_value,
-                              event_type=event_type,
-                              run=run)
+        self.device.subscribe(self.check_value, event_type=event_type, run=run)
 
     def check_value(self, *args, **kwargs):
         """
@@ -750,9 +792,8 @@ class MoveStatus(DeviceStatus):
         Motion successfully completed
     """
 
-    def __init__(self, positioner, target, *, start_ts=None,
-                 **kwargs):
-        self._tname = 'timeout for {}'.format(positioner.name)
+    def __init__(self, positioner, target, *, start_ts=None, **kwargs):
+        self._tname = "timeout for {}".format(positioner.name)
         if start_ts is None:
             start_ts = time.time()
 
@@ -763,8 +804,8 @@ class MoveStatus(DeviceStatus):
         self.finish_ts = None
         self.finish_pos = None
 
-        self._unit = getattr(self.pos, 'egu', None)
-        self._precision = getattr(self.pos, 'precision', None)
+        self._unit = getattr(self.pos, "egu", None)
+        self._precision = getattr(self.pos, "precision", None)
         self._name = self.pos.name
 
         # call the base class
@@ -773,8 +814,7 @@ class MoveStatus(DeviceStatus):
         # Notify watchers (things like progress bars) of new values
         # at the device's natural update rate.
         if not self.done:
-            self.pos.subscribe(self._notify_watchers,
-                               event_type=self.pos.SUB_READBACK)
+            self.pos.subscribe(self._notify_watchers, event_type=self.pos.SUB_READBACK)
 
     def watch(self, func):
         """
@@ -817,14 +857,16 @@ class MoveStatus(DeviceStatus):
             fraction = None
 
         for watcher in self._watchers:
-            watcher(name=self._name,
-                    current=current,
-                    initial=initial,
-                    target=target,
-                    unit=self._unit,
-                    precision=self._precision,
-                    time_elapsed=time_elapsed,
-                    fraction=fraction)
+            watcher(
+                name=self._name,
+                current=current,
+                initial=initial,
+                target=target,
+                unit=self._unit,
+                precision=self._precision,
+                time_elapsed=time_elapsed,
+                fraction=fraction,
+            )
 
     @property
     def error(self):
@@ -859,11 +901,12 @@ class MoveStatus(DeviceStatus):
             return self.finish_ts - self.start_ts
 
     def __str__(self):
-        return ('{0}(done={1.done}, pos={1.pos.name}, '
-                'elapsed={1.elapsed:.1f}, '
-                'success={1.success}, settle_time={1.settle_time})'
-                ''.format(self.__class__.__name__, self)
-                )
+        return (
+            "{0}(done={1.done}, pos={1.pos.name}, "
+            "elapsed={1.elapsed:.1f}, "
+            "success={1.success}, settle_time={1.settle_time})"
+            "".format(self.__class__.__name__, self)
+        )
 
     __repr__ = __str__
 

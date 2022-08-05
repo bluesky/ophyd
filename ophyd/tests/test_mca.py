@@ -10,40 +10,41 @@ from ophyd.utils import enum, ReadOnlyError
 
 from caproto.tests.conftest import run_example_ioc
 
-MCAMode = enum(PHA='PHA', MCS='MCS', List='List')
-DxpPresetMode = enum(No_preset='No preset',
-                     Real_time='Real time',
-                     Live_time='Live time')
+MCAMode = enum(PHA="PHA", MCS="MCS", List="List")
+DxpPresetMode = enum(
+    No_preset="No preset", Real_time="Real time", Live_time="Live time"
+)
 
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def mca_test_ioc(prefix, request):
-    name = 'test_signal IOC'
-    pvs = dict(mca_prefix=f'{prefix}mca',
-               dxp_prefix=f'{prefix}dxp:'
-               )
+    name = "test_signal IOC"
+    pvs = dict(mca_prefix=f"{prefix}mca", dxp_prefix=f"{prefix}dxp:")
 
-    process = run_example_ioc('ophyd.tests.mca_ioc',
-                              request=request,
-                              pv_to_check=pvs['mca_prefix'],
-                              args=('--prefix', prefix, '-v'))
-    return SimpleNamespace(process=process, prefix=prefix, name=name, pvs=pvs,
-                           type='caproto')
+    process = run_example_ioc(
+        "ophyd.tests.mca_ioc",
+        request=request,
+        pv_to_check=pvs["mca_prefix"],
+        args=("--prefix", prefix, "-v"),
+    )
+    return SimpleNamespace(
+        process=process, prefix=prefix, name=name, pvs=pvs, type="caproto"
+    )
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def mca(cleanup, mca_test_ioc):
-    mca = EpicsMCA(mca_test_ioc.pvs['mca_prefix'], name='mca')
+    mca = EpicsMCA(mca_test_ioc.pvs["mca_prefix"], name="mca")
     mca.wait_for_connection()
     cleanup.add(mca)
     return mca
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def dxp(cleanup, mca_test_ioc):
-    dxp = EpicsDXP(mca_test_ioc.pvs['dxp_prefix'], name='dxp')
+    dxp = EpicsDXP(mca_test_ioc.pvs["dxp_prefix"], name="dxp")
     dxp.wait_for_connection()
     cleanup.add(dxp)
     return dxp
@@ -58,22 +59,22 @@ def test_mca_spectrum(mca):
 
 def test_mca_read_attrs(mca):
     # default read_attrs
-    default_normal_kind = ['preset_real_time', 'elapsed_real_time', 'spectrum']
+    default_normal_kind = ["preset_real_time", "elapsed_real_time", "spectrum"]
     assert set(default_normal_kind) == set(mca.read_attrs)
     # test passing in custom read_attrs (with dots!)
-    r_attrs = ['spectrum', 'rois.roi1.count', 'rois.roi2.count']
+    r_attrs = ["spectrum", "rois.roi1.count", "rois.roi2.count"]
 
     mca.read_attrs = r_attrs
-    expected = set(r_attrs + ['rois.roi1', 'rois.roi2', 'rois'])
+    expected = set(r_attrs + ["rois.roi1", "rois.roi2", "rois"])
     assert expected == set(mca.read_attrs)
 
 
 def test_mca_describe(mca):
     desc = mca.describe()
-    d = desc[mca.name + '_spectrum']
+    d = desc[mca.name + "_spectrum"]
 
-    assert d['dtype'] == 'number'
-    assert d['shape'] == []
+    assert d["dtype"] == "number"
+    assert d["shape"] == []
 
 
 def test_mca_signals(mca):
@@ -94,9 +95,17 @@ def test_rois(mca):
         add_rois(1)
     # check range
     with pytest.raises(ValueError):
-        add_rois([-1, ])
+        add_rois(
+            [
+                -1,
+            ]
+        )
     with pytest.raises(ValueError):
-        add_rois([32, ])
+        add_rois(
+            [
+                32,
+            ]
+        )
     # read-only?
     with pytest.raises(ReadOnlyError):
         mca.rois.roi1.count.put(3.14)
@@ -148,5 +157,6 @@ def test_dxp_signals(dxp):
 def test_mixin_signals():
     class Mercury(Mercury1, SoftDXPTrigger):
         pass
-    mercury = Mercury('Will_Not_Try_To_connect', name='mercury')
-    assert 'count_time' in mercury.component_names
+
+    mercury = Mercury("Will_Not_Try_To_connect", name="mercury")
+    assert "count_time" in mercury.component_names

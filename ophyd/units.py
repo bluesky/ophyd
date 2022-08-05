@@ -95,45 +95,52 @@ class UnitConversionDerivedSignal(DerivedSignal):
     derived_units: str
     original_units: str
 
-    def __init__(self, derived_from, *,
-                 derived_units: str,
-                 original_units: Optional[str] = None,
-                 user_offset: Optional[numbers.Real] = 0,
-                 limits: Optional[Tuple[numbers.Real, numbers.Real]] = None,
-                 **kwargs):
+    def __init__(
+        self,
+        derived_from,
+        *,
+        derived_units: str,
+        original_units: Optional[str] = None,
+        user_offset: Optional[numbers.Real] = 0,
+        limits: Optional[Tuple[numbers.Real, numbers.Real]] = None,
+        **kwargs,
+    ):
         self.derived_units = derived_units
         self.original_units = original_units
         self._user_offset = user_offset
         self._custom_limits = limits
         super().__init__(derived_from, **kwargs)
-        self._metadata['units'] = derived_units
+        self._metadata["units"] = derived_units
 
         # Ensure that we include units in metadata callbacks, even if the
         # original signal does not include them.
-        if 'units' not in self._metadata_keys:
-            self._metadata_keys = self._metadata_keys + ('units', )
+        if "units" not in self._metadata_keys:
+            self._metadata_keys = self._metadata_keys + ("units",)
 
     def forward(self, value):
-        '''Compute derived signal value -> original signal value'''
+        """Compute derived signal value -> original signal value"""
         if self.user_offset is None:
             raise ValueError(
-                f'{self.name}.user_offset must be set to a non-None value.'
+                f"{self.name}.user_offset must be set to a non-None value."
             )
-        return convert_unit(value - self.user_offset,
-                            self.derived_units, self.original_units)
+        return convert_unit(
+            value - self.user_offset, self.derived_units, self.original_units
+        )
 
     def inverse(self, value):
-        '''Compute original signal value -> derived signal value'''
+        """Compute original signal value -> derived signal value"""
         if self.user_offset is None:
             raise ValueError(
-                f'{self.name}.user_offset must be set to a non-None value.'
+                f"{self.name}.user_offset must be set to a non-None value."
             )
-        return convert_unit(value, self.original_units,
-                            self.derived_units) + self.user_offset
+        return (
+            convert_unit(value, self.original_units, self.derived_units)
+            + self.user_offset
+        )
 
     @property
     def limits(self):
-        '''
+        """
         Defaults to limits from the original signal (low, high).
 
         Limit values may be reversed such that ``low <= value <= high`` after
@@ -141,14 +148,12 @@ class UnitConversionDerivedSignal(DerivedSignal):
 
         Limits may also be overridden here without affecting the original
         signal.
-        '''
+        """
         if self._custom_limits is not None:
             return self._custom_limits
 
         # Fall back to the superclass derived_from limits:
-        return tuple(
-            sorted(self.inverse(v) for v in self._derived_from.limits)
-        )
+        return tuple(sorted(self.inverse(v) for v in self._derived_from.limits))
 
     @limits.setter
     def limits(self, value):
@@ -157,7 +162,7 @@ class UnitConversionDerivedSignal(DerivedSignal):
             return
 
         if len(value) != 2 or value[0] >= value[1]:
-            raise ValueError('Custom limits must be a 2-tuple (low, high)')
+            raise ValueError("Custom limits must be a 2-tuple (low, high)")
 
         self._custom_limits = tuple(value)
 
@@ -192,19 +197,19 @@ class UnitConversionDerivedSignal(DerivedSignal):
             self._derived_value_callback(value)
 
     def _derived_metadata_callback(self, *, connected, **kwargs):
-        if connected and 'units' in kwargs:
+        if connected and "units" in kwargs:
             if self.original_units is None:
-                self.original_units = kwargs['units']
+                self.original_units = kwargs["units"]
         # Do not pass through units, as we have our own.
-        kwargs['units'] = self.derived_units
+        kwargs["units"] = self.derived_units
         super()._derived_metadata_callback(connected=connected, **kwargs)
 
     def describe(self):
         full_desc = super().describe()
         desc = full_desc[self.name]
-        desc['units'] = self.derived_units
+        desc["units"] = self.derived_units
         # Note: this should be handled in ophyd:
-        for key in ('lower_ctrl_limit', 'upper_ctrl_limit'):
+        for key in ("lower_ctrl_limit", "upper_ctrl_limit"):
             if key in desc:
                 desc[key] = self.inverse(desc[key])
         return full_desc

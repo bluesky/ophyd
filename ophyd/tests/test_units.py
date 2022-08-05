@@ -33,25 +33,25 @@ class MockCallbackHelper:
         return kwargs
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def unit_conv_signal():
-    orig = ophyd.sim.FakeEpicsSignal('sig', name='orig')
-    assert 'units' in orig.metadata_keys
+    orig = ophyd.sim.FakeEpicsSignal("sig", name="orig")
+    assert "units" in orig.metadata_keys
 
     orig.sim_put(5)
 
     return ophyd.units.UnitConversionDerivedSignal(
         derived_from=orig,
-        original_units='m',
-        derived_units='mm',
-        name='converted',
+        original_units="m",
+        derived_units="mm",
+        name="converted",
     )
 
 
 def test_unit_conversion_signal_units(unit_conv_signal):
-    assert unit_conv_signal.original_units == 'm'
-    assert unit_conv_signal.derived_units == 'mm'
-    assert unit_conv_signal.describe()[unit_conv_signal.name]['units'] == 'mm'
+    assert unit_conv_signal.original_units == "m"
+    assert unit_conv_signal.derived_units == "mm"
+    assert unit_conv_signal.describe()[unit_conv_signal.name]["units"] == "mm"
 
 
 def test_unit_conversion_signal_get_put(unit_conv_signal):
@@ -67,13 +67,13 @@ def test_unit_conversion_signal_value_sub(unit_conv_signal):
     helper.wait(1)
     helper.mock.assert_called_once()
 
-    assert helper.call_kwargs['value'] == 20_000
+    assert helper.call_kwargs["value"] == 20_000
     assert unit_conv_signal.get() == 20_000
 
 
 def test_unit_conversion_signal_metadata_sub(unit_conv_signal):
     helper = MockCallbackHelper()
-    unit_conv_signal.subscribe(helper, run=True, event_type='meta')
+    unit_conv_signal.subscribe(helper, run=True, event_type="meta")
     helper.wait(1)
     helper.mock.assert_called_once()
-    assert helper.call_kwargs['units'] == 'mm'
+    assert helper.call_kwargs["units"] == "mm"

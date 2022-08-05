@@ -7,23 +7,29 @@ import weakref
 
 import numpy as np
 
-from .utils import (ReadOnlyError, LimitError, DestroyedError,
-                    doc_annotation_forwarder)
-from .utils.epics_pvs import (waveform_to_string,
-                              raise_if_disconnected, data_type, data_shape,
-                              AlarmStatus, AlarmSeverity, validate_pv_name, _set_and_wait)
+from .utils import ReadOnlyError, LimitError, DestroyedError, doc_annotation_forwarder
+from .utils.epics_pvs import (
+    waveform_to_string,
+    raise_if_disconnected,
+    data_type,
+    data_shape,
+    AlarmStatus,
+    AlarmSeverity,
+    validate_pv_name,
+    _set_and_wait,
+)
 from .ophydobj import OphydObject, Kind
 from .status import Status
 from . import get_cl
 
 
 # Catch semi-frequent issue with scripts accidentally run from inside module
-if __name__ != 'ophyd.signal':
+if __name__ != "ophyd.signal":
     raise RuntimeError(
-        'A script tried to import ophyd.signal instead of the signal built-in '
-        'module. This usually happens when a script is run from inside the '
-        'ophyd directory and can cause extremely confusing bugs. Please '
-        'run your script elsewhere for better results.'
+        "A script tried to import ophyd.signal instead of the signal built-in "
+        "module. This usually happens when a script is run from inside the "
+        "ophyd directory and can cause extremely confusing bugs. Please "
+        "run your script elsewhere for better results."
     )
 
 
@@ -46,7 +52,7 @@ class ConnectionTimeoutError(TimeoutError):
 
 
 class Signal(OphydObject):
-    r'''A signal, which can have a read-write or read-only value.
+    r"""A signal, which can have a read-write or read-only value.
 
     Parameters
     ----------
@@ -79,25 +85,38 @@ class Signal(OphydObject):
     ----------
     rtolerance : any, optional
         The relative tolerance associated with the value
-    '''
-    SUB_VALUE = 'value'
-    SUB_META = 'meta'
+    """
+    SUB_VALUE = "value"
+    SUB_META = "meta"
     _default_sub = SUB_VALUE
     _metadata_keys = None
-    _core_metadata_keys = ('connected', 'read_access', 'write_access', 'timestamp')
+    _core_metadata_keys = ("connected", "read_access", "write_access", "timestamp")
 
-    def __init__(self, *, name, value=0., timestamp=None, parent=None,
-                 labels=None, kind=Kind.hinted, tolerance=None,
-                 rtolerance=None, metadata=None, cl=None, attr_name=''):
+    def __init__(
+        self,
+        *,
+        name,
+        value=0.0,
+        timestamp=None,
+        parent=None,
+        labels=None,
+        kind=Kind.hinted,
+        tolerance=None,
+        rtolerance=None,
+        metadata=None,
+        cl=None,
+        attr_name="",
+    ):
 
-        super().__init__(name=name, parent=parent, kind=kind, labels=labels,
-                         attr_name=attr_name)
+        super().__init__(
+            name=name, parent=parent, kind=kind, labels=labels, attr_name=attr_name
+        )
 
         if cl is None:
             cl = get_cl()
         self.cl = cl
         self._dispatcher = cl.get_dispatcher()
-        self._metadata_thread_ctx = self._dispatcher.get_thread_context('monitor')
+        self._metadata_thread_ctx = self._dispatcher.get_thread_context("monitor")
         self._readback = value
 
         if timestamp is None:
@@ -128,13 +147,14 @@ class Signal(OphydObject):
         if self._metadata_keys is None:
             self._metadata_keys = tuple(self._metadata.keys())
         else:
-            unset_metadata = {key: None for key in self._metadata_keys
-                              if key not in self._metadata}
+            unset_metadata = {
+                key: None for key in self._metadata_keys if key not in self._metadata
+            }
 
             self._metadata.update(**unset_metadata)
 
     def trigger(self):
-        '''Call that is used by bluesky prior to read()'''
+        """Call that is used by bluesky prior to read()"""
         # NOTE: this is a no-op that exists here for bluesky purposes
         #       it may need to be moved in the future
         d = Status(self)
@@ -142,22 +162,22 @@ class Signal(OphydObject):
         return d
 
     def wait_for_connection(self, timeout=0.0):
-        '''Wait for the underlying signals to initialize or connect'''
+        """Wait for the underlying signals to initialize or connect"""
         pass
 
     @property
     def metadata_keys(self):
-        'Metadata keys that will be passed along on value subscriptions'
+        "Metadata keys that will be passed along on value subscriptions"
         return tuple(self._metadata_keys)
 
     @property
     def timestamp(self):
-        '''Timestamp of the readback value'''
-        return self._metadata['timestamp']
+        """Timestamp of the readback value"""
+        return self._metadata["timestamp"]
 
     @property
     def tolerance(self):
-        '''The absolute tolerance associated with the value.'''
+        """The absolute tolerance associated with the value."""
         return self._tolerance
 
     @tolerance.setter
@@ -165,7 +185,7 @@ class Signal(OphydObject):
         self._tolerance = tolerance
 
     def _repr_info(self):
-        'Yields pairs of (key, value) to generate the Signal repr'
+        "Yields pairs of (key, value) to generate the Signal repr"
         yield from super()._repr_info()
         try:
             value = self._readback
@@ -173,25 +193,33 @@ class Signal(OphydObject):
             value = None
 
         if value is not DEFAULT_EPICSSIGNAL_VALUE:
-            yield ('value', value)
+            yield ("value", value)
 
-        yield ('timestamp', self._metadata['timestamp'])
+        yield ("timestamp", self._metadata["timestamp"])
 
         if self.tolerance is not None:
-            yield ('tolerance', self.tolerance)
+            yield ("tolerance", self.tolerance)
 
         if self.rtolerance is not None:
-            yield ('rtolerance', self.rtolerance)
+            yield ("rtolerance", self.rtolerance)
 
         # yield ('metadata', self._metadata)
 
     def get(self, **kwargs):
-        '''The readback value'''
+        """The readback value"""
         return self._readback
 
-    def put(self, value, *, timestamp=None, force=False, metadata=None,
-            timeout=DEFAULT_WRITE_TIMEOUT, **kwargs):
-        '''
+    def put(
+        self,
+        value,
+        *,
+        timestamp=None,
+        force=False,
+        metadata=None,
+        timeout=DEFAULT_WRITE_TIMEOUT,
+        **kwargs,
+    ):
+        """
         Low-level method for writing to a Signal.
 
         The value is optionally checked first, depending on the value of force.
@@ -212,20 +240,25 @@ class Signal(OphydObject):
         force : bool, optional
             Check the value prior to setting it, defaults to False
 
-        '''
+        """
         self.control_layer_log.debug(
-            'put(value=%s, timestamp=%s, force=%s, metadata=%s)',
-            value, timestamp, force, metadata
+            "put(value=%s, timestamp=%s, force=%s, metadata=%s)",
+            value,
+            timestamp,
+            force,
+            metadata,
         )
 
         if kwargs:
-            warnings.warn('Signal.put no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated. '
-                          f'Received kwargs={kwargs}')
+            warnings.warn(
+                "Signal.put no longer takes keyword arguments; "
+                "These are ignored and will be deprecated. "
+                f"Received kwargs={kwargs}"
+            )
 
         if not force:
             if not self.write_access:
-                raise ReadOnlyError('Signal does not allow write access')
+                raise ReadOnlyError("Signal does not allow write access")
 
             self.check_value(value)
 
@@ -236,24 +269,25 @@ class Signal(OphydObject):
             metadata = {}
 
         if timestamp is None:
-            timestamp = metadata.get('timestamp', time.time())
+            timestamp = metadata.get("timestamp", time.time())
 
         metadata = metadata.copy()
-        metadata['timestamp'] = timestamp
+        metadata["timestamp"] = timestamp
         self._metadata.update(**metadata)
 
-        md_for_callback = {key: metadata[key]
-                           for key in self._metadata_keys
-                           if key in metadata}
+        md_for_callback = {
+            key: metadata[key] for key in self._metadata_keys if key in metadata
+        }
 
-        if 'timestamp' not in self._metadata_keys:
-            md_for_callback['timestamp'] = timestamp
+        if "timestamp" not in self._metadata_keys:
+            md_for_callback["timestamp"] = timestamp
 
-        self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
-                       value=value, **md_for_callback)
+        self._run_subs(
+            sub_type=self.SUB_VALUE, old_value=old_value, value=value, **md_for_callback
+        )
 
     def _set_and_wait(self, value, timeout, **kwargs):
-        '''
+        """
         Overridable hook for subclasses to override :meth:`.set` functionality.
 
         This will be called in a separate thread (`_set_thread`), but will not
@@ -265,15 +299,18 @@ class Signal(OphydObject):
             The value
         timeout : float, optional
             Maximum time to wait for value to be successfully set, or None
-        '''
-        return _set_and_wait(self, value,
-                             timeout=timeout,
-                             atol=self.tolerance,
-                             rtol=self.rtolerance,
-                             **kwargs)
+        """
+        return _set_and_wait(
+            self,
+            value,
+            timeout=timeout,
+            atol=self.tolerance,
+            rtol=self.rtolerance,
+            **kwargs,
+        )
 
     def set(self, value, *, timeout=None, settle_time=None, **kwargs):
-        '''
+        """
         Set the value of the Signal and return a Status object.
 
         Returns
@@ -281,10 +318,13 @@ class Signal(OphydObject):
         st : Status
             This status object will be finished upon return in the
             case of basic soft Signals
-        '''
+        """
         self.log.debug(
-            'set(value=%s, timeout=%s, settle_time=%s, kwargs=%s)',
-            value, timeout, settle_time, kwargs
+            "set(value=%s, timeout=%s, settle_time=%s, kwargs=%s)",
+            value,
+            timeout,
+            settle_time,
+            kwargs,
         )
 
         def set_thread():
@@ -293,23 +333,40 @@ class Signal(OphydObject):
             except TimeoutError:
                 success = False
                 self.log.warning(
-                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)',
-                    self.name, value, timeout, self.tolerance, self.rtolerance, kwargs
+                    "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)",
+                    self.name,
+                    value,
+                    timeout,
+                    self.tolerance,
+                    self.rtolerance,
+                    kwargs,
                 )
             except Exception:
                 success = False
                 self.log.exception(
-                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)',
-                    self.name, value, timeout, self.tolerance, self.rtolerance, kwargs
+                    "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)",
+                    self.name,
+                    value,
+                    timeout,
+                    self.tolerance,
+                    self.rtolerance,
+                    kwargs,
                 )
             else:
                 success = True
                 self.log.debug(
-                    '%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s) succeeded => %s',
-                    self.name, value, timeout, self.tolerance, self.rtolerance, kwargs, self._readback)
+                    "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s) succeeded => %s",
+                    self.name,
+                    value,
+                    timeout,
+                    self.tolerance,
+                    self.rtolerance,
+                    kwargs,
+                    self._readback,
+                )
 
                 if settle_time is not None:
-                    self.log.debug('settling for %d seconds', settle_time)
+                    self.log.debug("settling for %d seconds", settle_time)
                     time.sleep(settle_time)
             finally:
                 # keep a local reference to avoid any GC shenanigans
@@ -320,8 +377,9 @@ class Signal(OphydObject):
                 del th
 
         if self._set_thread is not None:
-            raise RuntimeError('Another set() call is still in progress '
-                               f'for {self.name}')
+            raise RuntimeError(
+                "Another set() call is still in progress " f"for {self.name}"
+            )
 
         st = Status(self)
         self._status = st
@@ -332,45 +390,52 @@ class Signal(OphydObject):
 
     @property
     def value(self):
-        '''The signal's value'''
-        fix_msg = ("We are falling back to calling `.get` and interrogating "
-                   "the underlying control system, however this may cause several "
-                   "other problems:\n"
-                   "   1. This property access may take an arbitrarily long time\n"
-                   "   2. This property access, which you expect to be read only "
-                   "may change other state in the Signal.\n"
-                   "Your options to fix this are:\n"
-                   "  - do not use obj.value.\n"
-                   "    - If you are using this is in a plan you "
-                   "like want to be using bps.read, bps.rd, bpp.reset_positions_decorator, "
-                   "bpp.reset_positions_wrapper, bpp.relative_set_decorator, or "
-                   "bpp.relative_set_wrapper\n"
-                   "    - if you are doing this in an ophyd method use `self.get`\n"
-                   "  - set up the Signal to monitor\n\n"
-                   "This behavior will likely change in the future.")
+        """The signal's value"""
+        fix_msg = (
+            "We are falling back to calling `.get` and interrogating "
+            "the underlying control system, however this may cause several "
+            "other problems:\n"
+            "   1. This property access may take an arbitrarily long time\n"
+            "   2. This property access, which you expect to be read only "
+            "may change other state in the Signal.\n"
+            "Your options to fix this are:\n"
+            "  - do not use obj.value.\n"
+            "    - If you are using this is in a plan you "
+            "like want to be using bps.read, bps.rd, bpp.reset_positions_decorator, "
+            "bpp.reset_positions_wrapper, bpp.relative_set_decorator, or "
+            "bpp.relative_set_wrapper\n"
+            "    - if you are doing this in an ophyd method use `self.get`\n"
+            "  - set up the Signal to monitor\n\n"
+            "This behavior will likely change in the future."
+        )
 
         if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
             # If we are here, then we have never turned the crank on this Signal.  The current
             # behavior is to fallback to poking the control system to get the value, however this
             # is problematic and we may want to change in the future so warn verbosely
             if not os.getenv("OPHYD_SILENCE_VALUE_WARNING") == "1":
-                warnings.warn(f"You have called obj.value on {self} "
-                              f"({self.name}.{self.dotted_name}) "
-                              "which has not gotten value from the control system yet.\n" + fix_msg,
-                              stacklevel=2)
+                warnings.warn(
+                    f"You have called obj.value on {self} "
+                    f"({self.name}.{self.dotted_name}) "
+                    "which has not gotten value from the control system yet.\n"
+                    + fix_msg,
+                    stacklevel=2,
+                )
             return self.get()
         else:
             # if we are in here then we have put/get at least once and/or are monitored
-            has_monitors = (hasattr(self, '_monitors') and
-                            all(v is not None for v in self._monitors.values())
-                            )
+            has_monitors = hasattr(self, "_monitors") and all(
+                v is not None for v in self._monitors.values()
+            )
             if not has_monitors:
                 # If we are not monitored, then warn that this may change in the future.
                 if not os.getenv("OPHYD_SILENCE_VALUE_WARNING") == "1":
-                    warnings.warn(f"You have called obj.value on {self} "
-                                  f"({self.name}.{self.dotted_name}) "
-                                  "which is a non-monitored signal.\n" + fix_msg,
-                                  stacklevel=2)
+                    warnings.warn(
+                        f"You have called obj.value on {self} "
+                        f"({self.name}.{self.dotted_name}) "
+                        "which is a non-monitored signal.\n" + fix_msg,
+                        stacklevel=2,
+                    )
                 return self.get()
 
             # else return our cached value and assume something else is keeping us up-to-date
@@ -383,16 +448,15 @@ class Signal(OphydObject):
 
     @raise_if_disconnected
     def read(self):
-        '''Put the status of the signal into a simple dictionary format
+        """Put the status of the signal into a simple dictionary format
         for data acquisition
 
         Returns
         -------
             dict
-        '''
+        """
         value = self.get()
-        return {self.name: {'value': value,
-                            'timestamp': self.timestamp}}
+        return {self.name: {"value": value, "timestamp": self.timestamp}}
 
     def describe(self):
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
@@ -416,18 +480,20 @@ class Signal(OphydObject):
         try:
             return {
                 self.name: {
-                    'source': 'SIM:{}'.format(self.name),
-                    'dtype': data_type(val),
-                    'shape': data_shape(val)
+                    "source": "SIM:{}".format(self.name),
+                    "dtype": data_type(val),
+                    "shape": data_shape(val),
                 }
             }
         except ValueError as ve:
             # data_type(val) raises ValueError if type(val) is not bluesky-friendly
             # help the humans by reporting self.name in the exception chain
-            raise ValueError(f"failed to describe '{self.name}' with value '{val}'") from ve
+            raise ValueError(
+                f"failed to describe '{self.name}' with value '{val}'"
+            ) from ve
 
     def read_configuration(self):
-        'Dictionary mapping names to value dicts with keys: value, timestamp'
+        "Dictionary mapping names to value dicts with keys: value, timestamp"
         return self.read()
 
     def describe_configuration(self):
@@ -449,62 +515,63 @@ class Signal(OphydObject):
 
     @property
     def limits(self):
-        '''The control limits (low, high), such that low <= value <= high'''
+        """The control limits (low, high), such that low <= value <= high"""
         # NOTE: subclasses are expected to override this property
         # Always override, never extend this
         return (0, 0)
 
     @property
     def low_limit(self):
-        'The low, inclusive control limit for the Signal'
+        "The low, inclusive control limit for the Signal"
         return self.limits[0]
 
     @property
     def high_limit(self):
-        'The high, inclusive control limit for the Signal'
+        "The high, inclusive control limit for the Signal"
         return self.limits[1]
 
     @property
     def hints(self):
-        'Field hints for plotting'
+        "Field hints for plotting"
         if (~Kind.normal & Kind.hinted) & self.kind:
-            return {'fields': [self.name]}
+            return {"fields": [self.name]}
         else:
-            return {'fields': []}
+            return {"fields": []}
 
     @property
     def connected(self):
-        'Is the signal connected to its associated hardware, and ready to use?'
-        return self._metadata['connected'] and not self._destroyed
+        "Is the signal connected to its associated hardware, and ready to use?"
+        return self._metadata["connected"] and not self._destroyed
 
     @property
     def read_access(self):
-        'Can the signal be read?'
-        return self._metadata['read_access']
+        "Can the signal be read?"
+        return self._metadata["read_access"]
 
     @property
     def write_access(self):
-        'Can the signal be written to?'
-        return self._metadata['write_access']
+        "Can the signal be written to?"
+        return self._metadata["write_access"]
 
     @property
     def metadata(self):
-        'A copy of the metadata dictionary associated with the signal'
+        "A copy of the metadata dictionary associated with the signal"
         return self._metadata.copy()
 
     def destroy(self):
-        '''Disconnect the Signal from the underlying control layer; destroy it
+        """Disconnect the Signal from the underlying control layer; destroy it
 
         Clears all subscriptions on this Signal.  Once destroyed, the signal
         may no longer be used.
-        '''
+        """
         self._destroyed = True
         super().destroy()
 
     def _run_metadata_callbacks(self):
-        'Run SUB_META in the appropriate dispatcher thread'
-        self._metadata_thread_ctx.run(self._run_subs, sub_type=self.SUB_META,
-                                      **self._metadata)
+        "Run SUB_META in the appropriate dispatcher thread"
+        self._metadata_thread_ctx.run(
+            self._run_subs, sub_type=self.SUB_META, **self._metadata
+        )
 
 
 class SignalRO(Signal):
@@ -523,9 +590,10 @@ class SignalRO(Signal):
 
 
 class DerivedSignal(Signal):
-    def __init__(self, derived_from, *, write_access=None, name=None,
-                 parent=None, **kwargs):
-        '''A signal which is derived from another one
+    def __init__(
+        self, derived_from, *, write_access=None, name=None, parent=None, **kwargs
+    ):
+        """A signal which is derived from another one
 
         Calculations of the DerivedSignal value can be done in subclasses of
         DerivedSignal, overriding the `forward` and `inverse` methods.
@@ -547,75 +615,82 @@ class DerivedSignal(Signal):
             The signal name
         parent : Device, optional
             The parent device
-        '''
+        """
         if isinstance(derived_from, str):
             derived_from = getattr(parent, derived_from)
 
         # Metadata keys from the class itself take precedence
-        self._metadata_keys = getattr(self, '_metadata_keys', None)
+        self._metadata_keys = getattr(self, "_metadata_keys", None)
 
         # However, if not specified, the keys from the original signal are used
         if self._metadata_keys is None:
-            self._metadata_keys = getattr(derived_from, 'metadata_keys', None)
+            self._metadata_keys = getattr(derived_from, "metadata_keys", None)
             # And failing that, they are the defaults from all signals
 
-        super().__init__(name=name, parent=parent,
-                         metadata=derived_from.metadata, **kwargs)
+        super().__init__(
+            name=name, parent=parent, metadata=derived_from.metadata, **kwargs
+        )
 
         self._derived_from = derived_from
 
-        self._allow_writes = (write_access is not False)
-        self._metadata['write_access'] = (derived_from.write_access and
-                                          self._allow_writes)
+        self._allow_writes = write_access is not False
+        self._metadata["write_access"] = (
+            derived_from.write_access and self._allow_writes
+        )
 
         if self.connected:
             # set up the initial timestamp reporting, if connected
-            self._metadata['timestamp'] = derived_from.timestamp
+            self._metadata["timestamp"] = derived_from.timestamp
 
-        derived_from.subscribe(self._derived_value_callback,
-                               event_type=self.SUB_VALUE,
-                               run=self.connected)
-        derived_from.subscribe(self._derived_metadata_callback,
-                               event_type=self.SUB_META,
-                               run=self.connected)
+        derived_from.subscribe(
+            self._derived_value_callback, event_type=self.SUB_VALUE, run=self.connected
+        )
+        derived_from.subscribe(
+            self._derived_metadata_callback,
+            event_type=self.SUB_META,
+            run=self.connected,
+        )
 
     @property
     def derived_from(self):
-        '''Signal that this one is derived from'''
+        """Signal that this one is derived from"""
         return self._derived_from
 
     def describe(self):
-        '''Description based on the original signal description'''
+        """Description based on the original signal description"""
         desc = super().describe()[self.name]  # Description of this signal
-        desc['derived_from'] = self._derived_from.name
+        desc["derived_from"] = self._derived_from.name
         # Description of the derived signal
         derived_desc = self._derived_from.describe()[self._derived_from.name]
         derived_desc.update(desc)
         return {self.name: derived_desc}
 
     def _update_metadata_from_callback(self, **kwargs):
-        updated_md = {key: kwargs[key] for key in self.metadata_keys
-                      if key in kwargs
-                      }
+        updated_md = {key: kwargs[key] for key in self.metadata_keys if key in kwargs}
 
-        if 'write_access' in updated_md:
-            updated_md['write_access'] = (updated_md['write_access'] and
-                                          self._allow_writes)
+        if "write_access" in updated_md:
+            updated_md["write_access"] = (
+                updated_md["write_access"] and self._allow_writes
+            )
         self._metadata.update(**updated_md)
         return updated_md
 
-    def _derived_metadata_callback(self, *, connected, read_access,
-                                   write_access, timestamp, **kwargs):
-        'Main signal metadata updated - update the DerivedSignal'
-        self._update_metadata_from_callback(connected=connected,
-                                            read_access=read_access,
-                                            write_access=write_access,
-                                            timestamp=timestamp, **kwargs)
+    def _derived_metadata_callback(
+        self, *, connected, read_access, write_access, timestamp, **kwargs
+    ):
+        "Main signal metadata updated - update the DerivedSignal"
+        self._update_metadata_from_callback(
+            connected=connected,
+            read_access=read_access,
+            write_access=write_access,
+            timestamp=timestamp,
+            **kwargs,
+        )
 
         self._run_metadata_callbacks()
 
     def _derived_value_callback(self, value, **kwargs):
-        'Main signal value updated - update the DerivedSignal'
+        "Main signal value updated - update the DerivedSignal"
         # if some how we get cycled with the default value sentinel, just bail
         if value is DEFAULT_EPICSSIGNAL_VALUE:
             return
@@ -625,50 +700,50 @@ class DerivedSignal(Signal):
         self._run_subs(sub_type=self.SUB_VALUE, value=value, **updated_md)
 
     def get(self, **kwargs):
-        'Get the value from the original signal, with `inverse` applied to it'
+        "Get the value from the original signal, with `inverse` applied to it"
         value = self._derived_from.get(**kwargs)
         self._readback = self.inverse(value)
-        self._metadata['timestamp'] = self._derived_from.timestamp
+        self._metadata["timestamp"] = self._derived_from.timestamp
         return self._readback
 
     def inverse(self, value):
-        '''Compute original signal value -> derived signal value'''
+        """Compute original signal value -> derived signal value"""
         return value
 
     def put(self, value, **kwargs):
-        '''Put the value to the original signal'''
+        """Put the value to the original signal"""
         if not self.write_access:
-            raise ReadOnlyError('DerivedSignal is marked as read-only')
+            raise ReadOnlyError("DerivedSignal is marked as read-only")
         value = self.forward(value)
         res = self._derived_from.put(value, **kwargs)
-        self._metadata['timestamp'] = self._derived_from.timestamp
+        self._metadata["timestamp"] = self._derived_from.timestamp
         return res
 
     def forward(self, value):
-        '''Compute derived signal value -> original signal value'''
+        """Compute derived signal value -> original signal value"""
         return value
 
     def wait_for_connection(self, timeout=0.0):
-        '''Wait for the original signal to connect'''
+        """Wait for the original signal to connect"""
         return self._derived_from.wait_for_connection(timeout=timeout)
 
     @property
     def connected(self):
-        '''Mirrors the connection state of the original signal'''
+        """Mirrors the connection state of the original signal"""
         return self._derived_from.connected
 
     @property
     def limits(self):
-        '''Limits from the original signal (low, high), such that low <= value <= high'''
+        """Limits from the original signal (low, high), such that low <= value <= high"""
         return tuple(sorted(self.inverse(v) for v in self._derived_from.limits))
 
     def _repr_info(self):
-        'Yields pairs of (key, value) to generate the Signal repr'
+        "Yields pairs of (key, value) to generate the Signal repr"
         yield from super()._repr_info()
         if self.parent is not None:
-            yield ('derived_from', self._derived_from.dotted_name)
+            yield ("derived_from", self._derived_from.dotted_name)
         else:
-            yield ('derived_from', self._derived_from)
+            yield ("derived_from", self._derived_from)
 
 
 class InternalSignalMixin:
@@ -687,6 +762,7 @@ class InternalSignalMixin:
     or EPICS signals that should be written to by the class but are likely to
     cause issues for external writes due to behavior complexity.
     """
+
     def put(self, *args, internal: bool = False, **kwargs):
         """
         Write protection for an internal signal.
@@ -731,19 +807,20 @@ class InternalSignalError(ReadOnlyError):
     """
     A read-only error sourced from trying to write to an internal signal.
     """
+
     def __init__(self, message=None):
         if message is None:
             message = (
-                'This signal is for internal use only. '
-                'You should not be writing to it from outside '
-                'the parent class. If you do need to write to '
-                'this signal, you can use signal.put(value, internal=True).'
+                "This signal is for internal use only. "
+                "You should not be writing to it from outside "
+                "the parent class. If you do need to write to "
+                "this signal, you can use signal.put(value, internal=True)."
             )
         super().__init__(message)
 
 
 class EpicsSignalBase(Signal):
-    '''A read-only EpicsSignal -- that is, one with no `write_pv`
+    """A read-only EpicsSignal -- that is, one with no `write_pv`
 
     Keyword arguments are passed on to the base class (Signal) initializer
 
@@ -792,7 +869,8 @@ class EpicsSignalBase(Signal):
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
-    '''
+    """
+
     # This is set to True when the first instance is made. It is used to ensure
     # that certain class-global settings can only be made before any
     # instantiation.
@@ -800,38 +878,46 @@ class EpicsSignalBase(Signal):
 
     # See set_defaults() for more on these.
     __default_connection_timeout = 1.0
-    __default_timeout = 2.0         # *read* timeout
+    __default_timeout = 2.0  # *read* timeout
     __default_write_timeout = None  # Wait forever.
     __default_auto_monitor = False
 
     _read_pv_metadata_key_map = dict(
-        status=('status', AlarmStatus),
-        severity=('severity', AlarmSeverity),
-        precision=('precision', None),
-        lower_ctrl_limit=('lower_ctrl_limit', None),
-        upper_ctrl_limit=('upper_ctrl_limit', None),
-        timestamp=('timestamp', None),
-        units=('units', None),
-        enum_strs=('enum_strs', tuple),
+        status=("status", AlarmStatus),
+        severity=("severity", AlarmSeverity),
+        precision=("precision", None),
+        lower_ctrl_limit=("lower_ctrl_limit", None),
+        upper_ctrl_limit=("upper_ctrl_limit", None),
+        timestamp=("timestamp", None),
+        units=("units", None),
+        enum_strs=("enum_strs", tuple),
         # ignored: read_access, write_access, connected, etc.
     )
 
-    _metadata_keys = (Signal._core_metadata_keys +
-                      ('status', 'severity', 'precision', 'lower_ctrl_limit',
-                       'upper_ctrl_limit', 'units', 'enum_strs',
-                       )
-                      )
+    _metadata_keys = Signal._core_metadata_keys + (
+        "status",
+        "severity",
+        "precision",
+        "lower_ctrl_limit",
+        "upper_ctrl_limit",
+        "units",
+        "enum_strs",
+    )
 
-    def __init__(self, read_pv, *,
-                 string=False,
-                 auto_monitor=DEFAULT_AUTO_MONITOR,
-                 name=None,
-                 metadata=None,
-                 all_pvs=None,
-                 timeout=DEFAULT_TIMEOUT,
-                 write_timeout=DEFAULT_WRITE_TIMEOUT,
-                 connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
-                 **kwargs):
+    def __init__(
+        self,
+        read_pv,
+        *,
+        string=False,
+        auto_monitor=DEFAULT_AUTO_MONITOR,
+        name=None,
+        metadata=None,
+        all_pvs=None,
+        timeout=DEFAULT_TIMEOUT,
+        write_timeout=DEFAULT_WRITE_TIMEOUT,
+        connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+        **kwargs,
+    ):
         self._metadata_lock = threading.RLock()
         self._read_pv = None
         self._read_pvname = read_pv
@@ -863,7 +949,7 @@ class EpicsSignalBase(Signal):
             connected=False,
         )
 
-        kwargs.setdefault('value', DEFAULT_EPICSSIGNAL_VALUE)
+        kwargs.setdefault("value", DEFAULT_EPICSSIGNAL_VALUE)
         super().__init__(name=name, metadata=metadata, **kwargs)
 
         validate_pv_name(read_pv)
@@ -884,20 +970,26 @@ class EpicsSignalBase(Signal):
                 self._metadata_key_map[pv] = {}
 
         self._read_pv = self.cl.get_pv(
-            read_pv, auto_monitor=self._auto_monitor,
+            read_pv,
+            auto_monitor=self._auto_monitor,
             connection_callback=self._pv_connected,
-            access_callback=self._pv_access_callback)
+            access_callback=self._pv_access_callback,
+        )
         self._read_pv._reference_count += 1
 
         if not self.__any_instantiated:
-            self.log.debug("This is the first instance of EpicsSignalBase. "
-                           "name={self.name}, id={id(self)}")
+            self.log.debug(
+                "This is the first instance of EpicsSignalBase. "
+                "name={self.name}, id={id(self)}"
+            )
             EpicsSignalBase._mark_as_instantiated()
 
         def finalize(read_pv, cl):
             cl.release_pvs(read_pv)
 
-        self._read_pv_finalizer = weakref.finalize(self, finalize, self._read_pv, self.cl)
+        self._read_pv_finalizer = weakref.finalize(
+            self, finalize, self._read_pv, self.cl
+        )
 
     def destroy(self):
         super().destroy()
@@ -909,12 +1001,14 @@ class EpicsSignalBase(Signal):
         cls.__any_instantiated = True
 
     @classmethod
-    def set_defaults(cls,
-                     *,
-                     timeout=__default_timeout,
-                     connection_timeout=__default_connection_timeout,
-                     write_timeout=__default_write_timeout,
-                     auto_monitor=__default_auto_monitor):
+    def set_defaults(
+        cls,
+        *,
+        timeout=__default_timeout,
+        connection_timeout=__default_connection_timeout,
+        write_timeout=__default_write_timeout,
+        auto_monitor=__default_auto_monitor,
+    ):
         """
         Set class-wide defaults for EPICS CA communications
 
@@ -965,7 +1059,8 @@ class EpicsSignalBase(Signal):
                 "The method EpicsSignalBase.set_defaults may only "
                 "be called before the first instance of EpicsSignalBase is "
                 "created. This is to ensure that all instances are created "
-                "with the same default settings in place.")
+                "with the same default settings in place."
+            )
 
         cls.__default_auto_monitor = auto_monitor
         cls.__default_connection_timeout = connection_timeout
@@ -1004,41 +1099,43 @@ class EpicsSignalBase(Signal):
         args, kwargs = super().__getnewargs_ex__()
         # 'value' shows up in the EpicsSignal repr, but should not be used to
         # copy the Signal
-        kwargs.pop('value', None)
+        kwargs.pop("value", None)
         return (args, kwargs)
 
     def _initial_metadata_callback(self, pvname, cl_metadata):
-        'Control-layer callback: all initial metadata - control and status'
-        self._metadata_changed(pvname, cl_metadata, require_timestamp=True,
-                               update=True, from_monitor=False)
+        "Control-layer callback: all initial metadata - control and status"
+        self._metadata_changed(
+            pvname, cl_metadata, require_timestamp=True, update=True, from_monitor=False
+        )
         self._received_first_metadata[pvname] = True
         self._set_event_if_ready()
 
-    def _metadata_changed(self, pvname, cl_metadata, *, from_monitor,
-                          update, require_timestamp=False):
-        'Notification: the metadata of a single PV has changed'
+    def _metadata_changed(
+        self, pvname, cl_metadata, *, from_monitor, update, require_timestamp=False
+    ):
+        "Notification: the metadata of a single PV has changed"
         metadata = self._get_metadata_from_kwargs(
-            pvname, cl_metadata, require_timestamp=require_timestamp)
+            pvname, cl_metadata, require_timestamp=require_timestamp
+        )
         if update:
             self._metadata.update(**metadata)
         return metadata
 
     def _pv_connected(self, pvname, conn, pv):
-        'Control-layer callback: PV has [dis]connected'
+        "Control-layer callback: PV has [dis]connected"
         if self._destroyed:
             return
 
         was_connected = self.connected
         if not conn:
             self._signal_is_ready.clear()
-            self._metadata['connected'] = False
+            self._metadata["connected"] = False
             self._access_rights_valid[pvname] = False
 
         self._connection_states[pvname] = conn
 
         if conn and not self._received_first_metadata[pvname]:
-            pv.get_all_metadata_callback(self._initial_metadata_callback,
-                                         timeout=10)
+            pv.get_all_metadata_callback(self._initial_metadata_callback, timeout=10)
 
         self._set_event_if_ready()
 
@@ -1047,65 +1144,68 @@ class EpicsSignalBase(Signal):
             self._run_metadata_callbacks()
 
         if self._auto_monitor:
-            if getattr(self, '_read_pvname', None) == pvname:
+            if getattr(self, "_read_pvname", None) == pvname:
                 self._add_callback(pvname, pv, self._read_changed)
-            if getattr(self, '_setpoint_pvname', None) == pvname:
+            if getattr(self, "_setpoint_pvname", None) == pvname:
                 self._add_callback(pvname, pv, self._write_changed)
 
     def _set_event_if_ready(self):
-        '''If connected and access rights received, set the "ready" event used
-        in wait_for_connection.'''
+        """If connected and access rights received, set the "ready" event used
+        in wait_for_connection."""
         with self._metadata_lock:
-            already_connected = self._metadata['connected']
+            already_connected = self._metadata["connected"]
             if self._destroyed or already_connected:
                 return
-            elif not all([*self._connection_states.values(),
-                          *self._access_rights_valid.values(),
-                          *self._received_first_metadata.values()]):
-                if self._metadata['connected']:
-                    self._metadata['connected'] = False
+            elif not all(
+                [
+                    *self._connection_states.values(),
+                    *self._access_rights_valid.values(),
+                    *self._received_first_metadata.values(),
+                ]
+            ):
+                if self._metadata["connected"]:
+                    self._metadata["connected"] = False
                     # subs are run in _pv_connected
                 return
 
-            self._metadata['connected'] = True
+            self._metadata["connected"] = True
             self._signal_is_ready.set()
 
         self._run_metadata_callbacks()
 
     def _pv_access_callback(self, read_access, write_access, pv):
-        'Control-layer callback: PV access rights have changed'
+        "Control-layer callback: PV access rights have changed"
         self._access_rights_valid[pv.pvname] = True
 
     @property
     def as_string(self):
-        '''Attempt to cast the EPICS PV value to a string by default'''
+        """Attempt to cast the EPICS PV value to a string by default"""
         return self._string
 
     @property
     def precision(self):
-        '''The precision of the read PV, as reported by EPICS'''
-        return self._metadata['precision']
+        """The precision of the read PV, as reported by EPICS"""
+        return self._metadata["precision"]
 
     @property
     def enum_strs(self):
         """List of strings if PV is an enum type"""
-        return self._metadata['enum_strs']
+        return self._metadata["enum_strs"]
 
     @property
     def alarm_status(self):
         """PV status"""
-        return self._metadata['status']
+        return self._metadata["status"]
 
     @property
     def alarm_severity(self):
         """PV alarm severity"""
-        return self._metadata['severity']
+        return self._metadata["severity"]
 
     def _add_callback(self, pvname, pv, cb):
         with self._metadata_lock:
             if not self._monitors[pvname]:
-                mon = pv.add_callback(cb,
-                                      run_now=pv.connected)
+                mon = pv.add_callback(cb, run_now=pv.connected)
                 self._monitors[pvname] = mon
 
     @doc_annotation_forwarder(Signal)
@@ -1113,23 +1213,24 @@ class EpicsSignalBase(Signal):
         if event_type is None:
             event_type = self._default_sub
         if event_type == self.SUB_VALUE:
-            self._add_callback(self._read_pvname, self._read_pv,
-                               self._read_changed)
+            self._add_callback(self._read_pvname, self._read_pv, self._read_changed)
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def _ensure_connected(self, *pvs, timeout):
-        'Ensure that `pv` is connected, with access/connection callbacks run'
+        "Ensure that `pv` is connected, with access/connection callbacks run"
         with self._metadata_lock:
             if self.connected:
                 return
             elif self._destroyed:
-                raise DestroyedError('Cannot re-use a destroyed Signal')
+                raise DestroyedError("Cannot re-use a destroyed Signal")
 
         for pv in pvs:
             if not pv.wait_for_connection(timeout=timeout):
-                raise TimeoutError(f"{pv.pvname} could not connect within "
-                                   f"{float(timeout):.3}-second timeout.")
+                raise TimeoutError(
+                    f"{pv.pvname} could not connect within "
+                    f"{float(timeout):.3}-second timeout."
+                )
 
         for pv in pvs:
             if not self._received_first_metadata[pv.pvname]:
@@ -1143,45 +1244,48 @@ class EpicsSignalBase(Signal):
         # Ensure callbacks are run prior to returning, as
         # @raise_if_disconnected can cause issues otherwise.
         if not self._signal_is_ready.wait(timeout):
-            raise TimeoutError(f'Control layer {self.cl.name} failed to send connection and '
-                               f'access rights information within {float(timeout):.1f} sec')
+            raise TimeoutError(
+                f"Control layer {self.cl.name} failed to send connection and "
+                f"access rights information within {float(timeout):.1f} sec"
+            )
 
     def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
-        '''Wait for the underlying signals to initialize or connect'''
+        """Wait for the underlying signals to initialize or connect"""
         if timeout is DEFAULT_CONNECTION_TIMEOUT:
             timeout = self.connection_timeout
         try:
             self._ensure_connected(self._read_pv, timeout=timeout)
         except TimeoutError:
             if self._destroyed:
-                raise DestroyedError('Signal has been destroyed')
+                raise DestroyedError("Signal has been destroyed")
             raise
 
     @property
     def timestamp(self):
-        '''Timestamp of readback PV, according to EPICS'''
-        return self._metadata['timestamp']
+        """Timestamp of readback PV, according to EPICS"""
+        return self._metadata["timestamp"]
 
     @property
     def pvname(self):
-        '''The readback PV name'''
+        """The readback PV name"""
         return self._read_pvname
 
     def _repr_info(self):
-        'Yields pairs of (key, value) to generate the Signal repr'
-        yield ('read_pv', self.pvname)
+        "Yields pairs of (key, value) to generate the Signal repr"
+        yield ("read_pv", self.pvname)
         yield from super()._repr_info()
-        yield ('auto_monitor', self._auto_monitor)
-        yield ('string', self._string)
+        yield ("auto_monitor", self._auto_monitor)
+        yield ("string", self._string)
 
     @property
     def limits(self):
-        '''The PV control limits (low, high), such that low <= value <= high'''
+        """The PV control limits (low, high), such that low <= value <= high"""
         # This overrides the base Signal limits
-        return (self._metadata['lower_ctrl_limit'],
-                self._metadata['upper_ctrl_limit'])
+        return (self._metadata["lower_ctrl_limit"], self._metadata["upper_ctrl_limit"])
 
-    def _get_with_timeout(self, pv, timeout, connection_timeout, as_string, form, use_monitor):
+    def _get_with_timeout(
+        self, pv, timeout, connection_timeout, as_string, form, use_monitor
+    ):
         """
         Utility method implementing a retry loop for get and get_setpoint
 
@@ -1201,33 +1305,42 @@ class EpicsSignalBase(Signal):
         except TimeoutError as err:
             raise ConnectionTimeoutError(
                 f"Failed to connect to {pv.pvname} "
-                f"within {connection_timeout:.2f} sec") from err
+                f"within {connection_timeout:.2f} sec"
+            ) from err
         # Pyepics returns None when a read request times out.  Raise a
         # TimeoutError on its behalf.
         self.control_layer_log.debug(
-            'pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)',
-            pv.pvname, as_string, form, timeout
+            "pv[%s].get_with_metadata(as_string=%s, form=%s, timeout=%s)",
+            pv.pvname,
+            as_string,
+            form,
+            timeout,
         )
         info = pv.get_with_metadata(
             as_string=as_string, form=form, timeout=timeout, use_monitor=use_monitor
         )
-        self.control_layer_log.debug('pv[%s].get_with_metadata(...) returned', pv.pvname)
+        self.control_layer_log.debug(
+            "pv[%s].get_with_metadata(...) returned", pv.pvname
+        )
 
         if info is None:
             raise ReadTimeoutError(
-                f"Failed to read {pv.pvname} "
-                f"within {timeout:.2f} sec")
+                f"Failed to read {pv.pvname} " f"within {timeout:.2f} sec"
+            )
 
         return info
 
-    def get(self, *,
-            as_string=None,
-            timeout=DEFAULT_TIMEOUT,
-            connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
-            form='time',
-            use_monitor=None,
-            **kwargs):
-        '''Get the readback value through an explicit call to EPICS.
+    def get(
+        self,
+        *,
+        as_string=None,
+        timeout=DEFAULT_TIMEOUT,
+        connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+        form="time",
+        use_monitor=None,
+        **kwargs,
+    ):
+        """Get the readback value through an explicit call to EPICS.
 
         Parameters
         ----------
@@ -1250,11 +1363,13 @@ class EpicsSignalBase(Signal):
         form : {'time', 'ctrl'}
             PV form to request
 
-        '''
+        """
         if kwargs:
-            warnings.warn('Signal.get no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated.',
-                          DeprecationWarning)
+            warnings.warn(
+                "Signal.get no longer takes keyword arguments; "
+                "These are ignored and will be deprecated.",
+                DeprecationWarning,
+            )
         if as_string is None:
             as_string = self._string
 
@@ -1265,16 +1380,21 @@ class EpicsSignalBase(Signal):
             self._read_pv, timeout, connection_timeout, as_string, form, use_monitor
         )
 
-        value = info.pop('value')
+        value = info.pop("value")
         if as_string:
             value = waveform_to_string(value)
 
         has_monitor = self._monitors[self.pvname] is not None
-        if form != 'time' or not has_monitor:
+        if form != "time" or not has_monitor:
             # Different form such as 'ctrl' holds additional data not available
             # through the DBR_TIME channel access monitor
-            self._metadata_changed(self.pvname, info, update=True,
-                                   require_timestamp=True, from_monitor=False)
+            self._metadata_changed(
+                self.pvname,
+                info,
+                update=True,
+                require_timestamp=True,
+                from_monitor=False,
+            )
 
         if not has_monitor:
             # No monitor - readback can only be updated here
@@ -1282,40 +1402,52 @@ class EpicsSignalBase(Signal):
         return self._fix_type(value)
 
     def _fix_type(self, value):
-        'Cast the given value according to the data type of this EpicsSignal'
+        "Cast the given value according to the data type of this EpicsSignal"
         if self._string:
             value = waveform_to_string(value)
 
         return value
 
-    def _get_metadata_from_kwargs(self, pvname, cl_metadata, *, require_timestamp=False):
-        'Metadata from the control layer -> metadata for this Signal'
+    def _get_metadata_from_kwargs(
+        self, pvname, cl_metadata, *, require_timestamp=False
+    ):
+        "Metadata from the control layer -> metadata for this Signal"
+
         def fix_value(fixer_function, value):
-            return (fixer_function(value)
-                    if fixer_function is not None and value is not None
-                    else value)
+            return (
+                fixer_function(value)
+                if fixer_function is not None and value is not None
+                else value
+            )
 
-        metadata = {md_key: fix_value(fixer_function, cl_metadata[cl_key])
-                    for cl_key, (md_key, fixer_function)
-                    in self._metadata_key_map[pvname].items()
-                    if cl_metadata.get(cl_key, None) is not None}
+        metadata = {
+            md_key: fix_value(fixer_function, cl_metadata[cl_key])
+            for cl_key, (md_key, fixer_function) in self._metadata_key_map[
+                pvname
+            ].items()
+            if cl_metadata.get(cl_key, None) is not None
+        }
 
-        if require_timestamp and metadata.get('timestamp', None) is None:
-            metadata['timestamp'] = time.time()
+        if require_timestamp and metadata.get("timestamp", None) is None:
+            metadata["timestamp"] = time.time()
         return metadata
 
     def _read_changed(self, value=None, **kwargs):
-        'CA monitor callback indicating that the read value has changed'
-        metadata = self._metadata_changed(self.pvname, kwargs, update=False,
-                                          require_timestamp=True,
-                                          from_monitor=True)
+        "CA monitor callback indicating that the read value has changed"
+        metadata = self._metadata_changed(
+            self.pvname, kwargs, update=False, require_timestamp=True, from_monitor=True
+        )
 
         if self._string and "char_value" in kwargs:
             value = kwargs["char_value"]
 
         # super().put updates self._readback and runs SUB_VALUE
-        super().put(value=value, timestamp=metadata.pop('timestamp'),
-                    metadata=metadata, force=True)
+        super().put(
+            value=value,
+            timestamp=metadata.pop("timestamp"),
+            metadata=metadata,
+            force=True,
+        )
 
     def describe(self):
         """Return the description as a dictionary
@@ -1331,25 +1463,25 @@ class EpicsSignalBase(Signal):
             val = self._readback
         lower_ctrl_limit, upper_ctrl_limit = self.limits
         desc = dict(
-            source='PV:{}'.format(self._read_pvname),
+            source="PV:{}".format(self._read_pvname),
             dtype=data_type(val),
             shape=data_shape(val),
-            units=self._metadata['units'],
+            units=self._metadata["units"],
             lower_ctrl_limit=lower_ctrl_limit,
             upper_ctrl_limit=upper_ctrl_limit,
         )
 
         if self.precision is not None:
-            desc['precision'] = self.precision
+            desc["precision"] = self.precision
 
         if self.enum_strs is not None:
-            desc['enum_strs'] = tuple(self.enum_strs)
+            desc["enum_strs"] = tuple(self.enum_strs)
 
         return {self.name: desc}
 
 
 class EpicsSignalRO(EpicsSignalBase):
-    '''A read-only EpicsSignal -- that is, one with no `write_pv`
+    """A read-only EpicsSignal -- that is, one with no `write_pv`
 
     Keyword arguments are passed on to the base class (Signal) initializer
 
@@ -1393,22 +1525,22 @@ class EpicsSignalRO(EpicsSignalBase):
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
-    '''
+    """
 
     def __init__(self, read_pv, *, string=False, name=None, **kwargs):
         super().__init__(read_pv, string=string, name=name, **kwargs)
-        self._metadata['write_access'] = False
+        self._metadata["write_access"] = False
 
     def put(self, *args, **kwargs):
-        'Disabled for a read-only signal'
-        raise ReadOnlyError('Cannot write to read-only EpicsSignal')
+        "Disabled for a read-only signal"
+        raise ReadOnlyError("Cannot write to read-only EpicsSignal")
 
     def set(self, *args, **kwargs):
-        'Disabled for a read-only signal'
-        raise ReadOnlyError('Read-only signals cannot be set')
+        "Disabled for a read-only signal"
+        raise ReadOnlyError("Read-only signals cannot be set")
 
     def _pv_access_callback(self, read_access, write_access, pv):
-        'Control-layer callback: read PV access rights have changed'
+        "Control-layer callback: read PV access rights have changed"
         # Tweak write access here - this is a read-only signal!
         if self._destroyed:
             return
@@ -1428,7 +1560,7 @@ class EpicsSignalRO(EpicsSignalBase):
 
 
 class EpicsSignalNoValidation(EpicsSignalBase):
-    '''An EpicsSignal that does not verify values on set.
+    """An EpicsSignal that does not verify values on set.
     This signal does support readback, but does not guarantee that
     the readback will match the set value.
 
@@ -1461,9 +1593,10 @@ class EpicsSignalNoValidation(EpicsSignalBase):
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
-    '''
+    """
+
     def set(self, value, *args, **kwargs):
-        '''
+        """
         Set the value of this signal, and return a completed Status
         object, bypassing any readback verification
 
@@ -1471,7 +1604,7 @@ class EpicsSignalNoValidation(EpicsSignalBase):
         -------
         st : Status
             This status object will be finished
-        '''
+        """
         self.put(value)
 
         st = Status(self)
@@ -1481,7 +1614,7 @@ class EpicsSignalNoValidation(EpicsSignalBase):
 
 
 class EpicsSignal(EpicsSignalBase):
-    '''An EPICS signal, comprised of either one or two EPICS PVs
+    """An EPICS signal, comprised of either one or two EPICS PVs
 
     Keyword arguments are passed on to the base class (Signal) initializer
 
@@ -1535,28 +1668,39 @@ class EpicsSignal(EpicsSignalBase):
         configure class defaults.
 
         Explicitly passing None means, "Wait forever."
-    '''
-    SUB_SETPOINT = 'setpoint'
-    SUB_SETPOINT_META = 'setpoint_meta'
+    """
+
+    SUB_SETPOINT = "setpoint"
+    SUB_SETPOINT_META = "setpoint_meta"
 
     _write_pv_metadata_key_map = dict(
-        status=('setpoint_status', AlarmStatus),
-        severity=('setpoint_severity', AlarmSeverity),
-        precision=('setpoint_precision', None),
-        timestamp=('setpoint_timestamp', None),
+        status=("setpoint_status", AlarmStatus),
+        severity=("setpoint_severity", AlarmSeverity),
+        precision=("setpoint_precision", None),
+        timestamp=("setpoint_timestamp", None),
         # Override the readback ones, as we write to the setpoint:
-        lower_ctrl_limit=('lower_ctrl_limit', None),
-        upper_ctrl_limit=('upper_ctrl_limit', None),
+        lower_ctrl_limit=("lower_ctrl_limit", None),
+        upper_ctrl_limit=("upper_ctrl_limit", None),
     )
 
-    _metadata_keys = (EpicsSignalBase._metadata_keys +
-                      ('setpoint_status', 'setpoint_severity',
-                       'setpoint_precision', 'setpoint_timestamp')
-                      )
+    _metadata_keys = EpicsSignalBase._metadata_keys + (
+        "setpoint_status",
+        "setpoint_severity",
+        "setpoint_precision",
+        "setpoint_timestamp",
+    )
 
-    def __init__(self, read_pv, write_pv=None, *, put_complete=False,
-                 string=False, limits=False, name=None,
-                 **kwargs):
+    def __init__(
+        self,
+        read_pv,
+        write_pv=None,
+        *,
+        put_complete=False,
+        string=False,
+        limits=False,
+        name=None,
+        **kwargs,
+    ):
 
         self._write_pv = None
         self._use_limits = bool(limits)
@@ -1576,9 +1720,14 @@ class EpicsSignal(EpicsSignalBase):
 
         self._setpoint_pvname = write_pv
 
-        super().__init__(read_pv, string=string,
-                         name=name, metadata=metadata,
-                         all_pvs={read_pv, write_pv}, **kwargs)
+        super().__init__(
+            read_pv,
+            string=string,
+            name=name,
+            metadata=metadata,
+            all_pvs={read_pv, write_pv},
+            **kwargs,
+        )
 
         if read_pv == write_pv:
             self._write_pv = self._read_pv
@@ -1586,17 +1735,19 @@ class EpicsSignal(EpicsSignalBase):
             validate_pv_name(write_pv)
             self._metadata_key_map = {
                 write_pv: self._write_pv_metadata_key_map,
-                read_pv: {key: value for key, value
-                          in self._metadata_key_map[read_pv].items()
-                          if key not in ('lower_ctrl_limit',
-                                         'upper_ctrl_limit')
-                          }
+                read_pv: {
+                    key: value
+                    for key, value in self._metadata_key_map[read_pv].items()
+                    if key not in ("lower_ctrl_limit", "upper_ctrl_limit")
+                },
             }
 
             self._write_pv = self.cl.get_pv(
-                write_pv, auto_monitor=self._auto_monitor,
+                write_pv,
+                auto_monitor=self._auto_monitor,
                 connection_callback=self._pv_connected,
-                access_callback=self._pv_access_callback)
+                access_callback=self._pv_access_callback,
+            )
 
         self._write_pv._reference_count += 1
 
@@ -1608,7 +1759,9 @@ class EpicsSignal(EpicsSignalBase):
         def finalize(write_pv, cl):
             cl.release_pvs(write_pv)
 
-        self._write_pv_finalizer = weakref.finalize(self, finalize, self._write_pv, self.cl)
+        self._write_pv_finalizer = weakref.finalize(
+            self, finalize, self._write_pv, self.cl
+        )
 
     def destroy(self):
         super().destroy()
@@ -1620,20 +1773,21 @@ class EpicsSignal(EpicsSignalBase):
             event_type = self._default_sub
 
         if event_type == self.SUB_SETPOINT:
-            self._add_callback(self._setpoint_pvname, self._write_pv,
-                               self._write_changed)
+            self._add_callback(
+                self._setpoint_pvname, self._write_pv, self._write_changed
+            )
 
         return super().subscribe(callback, event_type=event_type, run=run)
 
     def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
-        '''Wait for the underlying signals to initialize or connect'''
+        """Wait for the underlying signals to initialize or connect"""
         if timeout is DEFAULT_CONNECTION_TIMEOUT:
             timeout = self.connection_timeout
         self._ensure_connected(self._read_pv, self._write_pv, timeout=timeout)
 
     @property
     def tolerance(self):
-        '''The tolerance of the write PV, as reported by EPICS
+        """The tolerance of the write PV, as reported by EPICS
 
         Can be overidden by the user at the EpicsSignal level.
 
@@ -1643,7 +1797,7 @@ class EpicsSignal(EpicsSignalBase):
         Using the write PV's precision:
             If precision == 0, tolerance will be None
             If precision > 0, calculated to be 10**(-precision)
-        '''
+        """
         # NOTE: overrides Signal.tolerance property
         if self._tolerance is not None:
             return self._tolerance
@@ -1652,7 +1806,7 @@ class EpicsSignal(EpicsSignalBase):
         if precision == 0 or precision is None:
             return None
 
-        return 10. ** (-precision)
+        return 10.0 ** (-precision)
 
     @tolerance.setter
     def tolerance(self, tolerance):
@@ -1660,42 +1814,42 @@ class EpicsSignal(EpicsSignalBase):
 
     @property
     def setpoint_ts(self):
-        '''Timestamp of setpoint PV, according to EPICS'''
-        return self._metadata['setpoint_timestamp']
+        """Timestamp of setpoint PV, according to EPICS"""
+        return self._metadata["setpoint_timestamp"]
 
     @property
     def setpoint_pvname(self):
-        '''The setpoint PV name'''
+        """The setpoint PV name"""
         return self._setpoint_pvname
 
     @property
     def setpoint_alarm_status(self):
         """Setpoint PV status"""
-        return self._metadata['setpoint_status']
+        return self._metadata["setpoint_status"]
 
     @property
     def setpoint_alarm_severity(self):
         """Setpoint PV alarm severity"""
-        return self._metadata['setpoint_severity']
+        return self._metadata["setpoint_severity"]
 
     def _repr_info(self):
-        'Yields pairs of (key, value) to generate the Signal repr'
+        "Yields pairs of (key, value) to generate the Signal repr"
         yield from super()._repr_info()
-        yield ('write_pv', self._setpoint_pvname)
-        yield ('limits', self._use_limits)
-        yield ('put_complete', self._put_complete)
+        yield ("write_pv", self._setpoint_pvname)
+        yield ("limits", self._use_limits)
+        yield ("put_complete", self._put_complete)
 
     def check_value(self, value):
-        '''Check if the value is within the setpoint PV's control limits
+        """Check if the value is within the setpoint PV's control limits
 
         Raises
         ------
         ValueError
-        '''
+        """
         super().check_value(value)
 
         if value is None:
-            raise ValueError('Cannot write None to epics PVs')
+            raise ValueError("Cannot write None to epics PVs")
         if not self._use_limits:
             return
 
@@ -1704,17 +1858,23 @@ class EpicsSignal(EpicsSignalBase):
             return
 
         if not (low_limit <= value <= high_limit):
-            raise LimitError('{}: value {} outside of range: [{}, {}]'
-                             .format(self.name, value, low_limit, high_limit))
+            raise LimitError(
+                "{}: value {} outside of range: [{}, {}]".format(
+                    self.name, value, low_limit, high_limit
+                )
+            )
 
-    def get_setpoint(self, *,
-                     as_string=None,
-                     timeout=DEFAULT_TIMEOUT,
-                     connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
-                     use_monitor=None,
-                     form='time',
-                     **kwargs):
-        '''Get the setpoint value (if setpoint PV and readback PV differ)
+    def get_setpoint(
+        self,
+        *,
+        as_string=None,
+        timeout=DEFAULT_TIMEOUT,
+        connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+        use_monitor=None,
+        form="time",
+        **kwargs,
+    ):
+        """Get the setpoint value (if setpoint PV and readback PV differ)
 
         Parameters
         ----------
@@ -1736,11 +1896,13 @@ class EpicsSignal(EpicsSignalBase):
             for the connection to complete.
         form : {'time', 'ctrl'}
             PV form to request
-        '''
+        """
         if kwargs:
-            warnings.warn('Signal.get_setpoint no longer takes keyword arguments; '
-                          'These are ignored and will be deprecated.',
-                          DeprecationWarning)
+            warnings.warn(
+                "Signal.get_setpoint no longer takes keyword arguments; "
+                "These are ignored and will be deprecated.",
+                DeprecationWarning,
+            )
         if as_string is None:
             as_string = self._string
 
@@ -1751,16 +1913,21 @@ class EpicsSignal(EpicsSignalBase):
             self._write_pv, timeout, connection_timeout, as_string, form, use_monitor
         )
 
-        value = info.pop('value')
+        value = info.pop("value")
         if as_string:
             value = waveform_to_string(value)
 
         has_monitor = self._monitors[self.setpoint_pvname] is not None
-        if form != 'time' or not has_monitor:
+        if form != "time" or not has_monitor:
             # Different form such as 'ctrl' holds additional data not available
             # through the DBR_TIME channel access monitor
-            self._metadata_changed(self.setpoint_pvname, info, update=True,
-                                   from_monitor=False, require_timestamp=True)
+            self._metadata_changed(
+                self.setpoint_pvname,
+                info,
+                update=True,
+                from_monitor=False,
+                require_timestamp=True,
+            )
 
         if not has_monitor:
             # No monitor - setpoint can only be updated here
@@ -1768,16 +1935,16 @@ class EpicsSignal(EpicsSignalBase):
         return self._fix_type(value)
 
     def _pv_access_callback(self, read_access, write_access, pv):
-        'Control-layer callback: PV access rights have changed '
+        "Control-layer callback: PV access rights have changed"
         if self._destroyed:
             return
 
         md_update = {}
         if pv.pvname == self.pvname:
-            md_update['read_access'] = read_access
+            md_update["read_access"] = read_access
 
         if pv.pvname == self.setpoint_pvname:
-            md_update['write_access'] = write_access
+            md_update["write_access"] = write_access
 
         if md_update:
             self._metadata.update(**md_update)
@@ -1788,56 +1955,75 @@ class EpicsSignal(EpicsSignalBase):
         super()._pv_access_callback(read_access, write_access, pv)
         self._set_event_if_ready()
 
-    def _metadata_changed(self, pvname, cl_metadata, *, from_monitor, update,
-                          require_timestamp=False):
-        'Metadata for one PV has changed'
+    def _metadata_changed(
+        self, pvname, cl_metadata, *, from_monitor, update, require_timestamp=False
+    ):
+        "Metadata for one PV has changed"
         metadata = super()._metadata_changed(
-            pvname, cl_metadata, from_monitor=from_monitor, update=update,
-            require_timestamp=require_timestamp)
+            pvname,
+            cl_metadata,
+            from_monitor=from_monitor,
+            update=update,
+            require_timestamp=require_timestamp,
+        )
 
-        if all((from_monitor,
+        if all(
+            (
+                from_monitor,
                 self.setpoint_pvname != self.pvname,
-                self.setpoint_pvname == pvname)):
+                self.setpoint_pvname == pvname,
+            )
+        ):
             # Setpoint has its own metadata
             self._metadata_thread_ctx.run(
                 self._run_subs,
                 sub_type=self.SUB_SETPOINT_META,
-                timestamp=self._metadata['setpoint_timestamp'],
-                status=self._metadata['setpoint_status'],
-                severity=self._metadata['setpoint_severity'],
-                precision=self._metadata['setpoint_precision'],
-                lower_ctrl_limit=self._metadata['lower_ctrl_limit'],
-                upper_ctrl_limit=self._metadata['upper_ctrl_limit'],
-                units=self._metadata['units'],
+                timestamp=self._metadata["setpoint_timestamp"],
+                status=self._metadata["setpoint_status"],
+                severity=self._metadata["setpoint_severity"],
+                precision=self._metadata["setpoint_precision"],
+                lower_ctrl_limit=self._metadata["lower_ctrl_limit"],
+                upper_ctrl_limit=self._metadata["upper_ctrl_limit"],
+                units=self._metadata["units"],
             )
         return metadata
 
     def _write_changed(self, value=None, timestamp=None, **kwargs):
-        'CA monitor: callback indicating the setpoint PV value has changed'
+        "CA monitor: callback indicating the setpoint PV value has changed"
         if timestamp is None:
             timestamp = time.time()
 
-        self._metadata_changed(self.setpoint_pvname, kwargs,
-                               require_timestamp=True, from_monitor=True,
-                               update=True)
+        self._metadata_changed(
+            self.setpoint_pvname,
+            kwargs,
+            require_timestamp=True,
+            from_monitor=True,
+            update=True,
+        )
 
         old_value = self._setpoint
         self._setpoint = self._fix_type(value)
 
-        self._run_subs(sub_type=self.SUB_SETPOINT,
-                       old_value=old_value, value=value,
-                       timestamp=self._metadata['setpoint_timestamp'],
-                       status=self._metadata['setpoint_status'],
-                       severity=self._metadata['setpoint_severity'],
-                       )
+        self._run_subs(
+            sub_type=self.SUB_SETPOINT,
+            old_value=old_value,
+            value=value,
+            timestamp=self._metadata["setpoint_timestamp"],
+            status=self._metadata["setpoint_status"],
+            severity=self._metadata["setpoint_severity"],
+        )
 
-    def put(self, value, force=False,
-            connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
-            callback=None,
-            use_complete=None,
-            timeout=DEFAULT_WRITE_TIMEOUT,
-            **kwargs):
-        '''
+    def put(
+        self,
+        value,
+        force=False,
+        connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+        callback=None,
+        use_complete=None,
+        timeout=DEFAULT_WRITE_TIMEOUT,
+        **kwargs,
+    ):
+        """
         Using channel access, set the write PV to `value`.
 
         Keyword arguments are passed on to callbacks
@@ -1858,7 +2044,7 @@ class EpicsSignal(EpicsSignalBase):
         timeout : float, optional
             Timeout before assuming that put has failed. (Only relevant if
             put completion is used.)
-        '''
+        """
         if not force:
             self.check_value(value)
 
@@ -1871,14 +2057,22 @@ class EpicsSignal(EpicsSignalBase):
             use_complete = self._put_complete
 
         if not self.write_access:
-            raise ReadOnlyError('No write access to underlying EPICS PV')
+            raise ReadOnlyError("No write access to underlying EPICS PV")
 
         self.control_layer_log.debug(
-            '_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)',
-            value, use_complete, callback, kwargs
+            "_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)",
+            value,
+            use_complete,
+            callback,
+            kwargs,
         )
-        self._write_pv.put(value, use_complete=use_complete, callback=callback,
-                           timeout=timeout, **kwargs)
+        self._write_pv.put(
+            value,
+            use_complete=use_complete,
+            callback=callback,
+            timeout=timeout,
+            **kwargs,
+        )
 
         old_value = self._setpoint
         self._setpoint = value
@@ -1886,11 +2080,15 @@ class EpicsSignal(EpicsSignalBase):
         if self.pvname == self.setpoint_pvname:
             timestamp = time.time()
             super().put(value, timestamp=timestamp, force=True)
-            self._run_subs(sub_type=self.SUB_SETPOINT, old_value=old_value,
-                           value=value, timestamp=timestamp)
+            self._run_subs(
+                sub_type=self.SUB_SETPOINT,
+                old_value=old_value,
+                value=value,
+                timestamp=timestamp,
+            )
 
     def set(self, value, *, timeout=DEFAULT_WRITE_TIMEOUT, settle_time=None):
-        '''
+        """
         Set the value of the Signal and return a Status object.
 
         If put completion is used for this EpicsSignal, the status object will
@@ -1916,7 +2114,7 @@ class EpicsSignal(EpicsSignalBase):
         --------
         Signal.set
 
-        '''
+        """
         if timeout is DEFAULT_WRITE_TIMEOUT:
             timeout = self.write_timeout
 
@@ -1935,7 +2133,7 @@ class EpicsSignal(EpicsSignalBase):
 
     @property
     def setpoint(self):
-        '''The setpoint PV value'''
+        """The setpoint PV value"""
         if self._setpoint is not None:
             return self._setpoint
 
@@ -1943,13 +2141,14 @@ class EpicsSignal(EpicsSignalBase):
 
     @setpoint.setter
     def setpoint(self, value):
-        warnings.warn('Setting EpicsSignal.setpoint is deprecated and '
-                      'will be removed')
+        warnings.warn(
+            "Setting EpicsSignal.setpoint is deprecated and " "will be removed"
+        )
         self.put(value)
 
     @property
     def put_complete(self):
-        'Use put completion when writing the value'
+        "Use put completion when writing the value"
         return self._put_complete
 
     @put_complete.setter
@@ -1958,7 +2157,7 @@ class EpicsSignal(EpicsSignalBase):
 
     @property
     def use_limits(self):
-        'Check value against limits prior to sending to EPICS'
+        "Check value against limits prior to sending to EPICS"
         return self._use_limits
 
     @use_limits.setter
@@ -1967,7 +2166,7 @@ class EpicsSignal(EpicsSignalBase):
 
 
 class AttributeSignal(Signal):
-    '''Signal derived from a Python object instance's attribute
+    """Signal derived from a Python object instance's attribute
 
     Parameters
     ----------
@@ -1981,13 +2180,13 @@ class AttributeSignal(Signal):
         Allow read access to the attribute
     write_access : bool, optional
         Allow write access to the attribute
-    '''
-    def __init__(self, attr, *, name=None, parent=None, write_access=True,
-                 **kwargs):
+    """
+
+    def __init__(self, attr, *, name=None, parent=None, write_access=True, **kwargs):
         super().__init__(name=name, parent=parent, **kwargs)
 
-        if '.' in attr:
-            self.attr_base, self.attr = attr.rsplit('.', 1)
+        if "." in attr:
+            self.attr_base, self.attr = attr.rsplit(".", 1)
         else:
             self.attr_base, self.attr = None, attr
 
@@ -1998,56 +2197,62 @@ class AttributeSignal(Signal):
 
     @property
     def full_attr(self):
-        '''The full attribute name'''
+        """The full attribute name"""
         if not self.attr_base:
             return self.attr
         else:
-            return '.'.join((self.attr_base, self.attr))
+            return ".".join((self.attr_base, self.attr))
 
     @property
     def base(self):
-        '''The parent instance which has the final attribute'''
+        """The parent instance which has the final attribute"""
         if self.attr_base is None:
             return self.parent
 
         obj = self.parent
-        for i, part in enumerate(self.attr_base.split('.')):
+        for i, part in enumerate(self.attr_base.split(".")):
             try:
                 obj = getattr(obj, part)
             except AttributeError as ex:
-                raise AttributeError('{}.{} ({})'.format(obj.name, part, ex))
+                raise AttributeError("{}.{} ({})".format(obj.name, part, ex))
 
         return obj
 
     def get(self, **kwargs):
-        'Get the value from the associated attribute'
+        "Get the value from the associated attribute"
         self._readback = getattr(self.base, self.attr)
         return self._readback
 
     def put(self, value, **kwargs):
-        'Write to the associated attribute'
+        "Write to the associated attribute"
         if not self.write_access:
-            raise ReadOnlyError('AttributeSignal is marked as read-only')
+            raise ReadOnlyError("AttributeSignal is marked as read-only")
 
         old_value = self.get()
         setattr(self.base, self.attr, value)
-        self._run_subs(sub_type=self.SUB_VALUE, old_value=old_value,
-                       value=value, timestamp=time.time())
+        self._run_subs(
+            sub_type=self.SUB_VALUE,
+            old_value=old_value,
+            value=value,
+            timestamp=time.time(),
+        )
 
     def describe(self):
         value = self.get()
-        desc = {'source': 'PY:{}.{}'.format(self.parent.name, self.full_attr),
-                'dtype': data_type(value),
-                'shape': data_shape(value),
-                }
+        desc = {
+            "source": "PY:{}.{}".format(self.parent.name, self.full_attr),
+            "dtype": data_type(value),
+            "shape": data_shape(value),
+        }
         return {self.name: desc}
 
 
 class ArrayAttributeSignal(AttributeSignal):
-    '''An AttributeSignal which is cast to an ndarray on get
+    """An AttributeSignal which is cast to an ndarray on get
 
     This is used where data_type and data_shape may otherwise fail to determine
     how to store the data into metadatastore.
-    '''
+    """
+
     def get(self, **kwargs):
         return np.asarray(super().get(**kwargs))

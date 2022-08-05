@@ -66,19 +66,33 @@ class EpicsMotor(Device, PositionerBase):
     direction_of_travel = Cpt(EpicsSignal, ".TDIR", kind="omitted", auto_monitor=True)
 
     # commands
-    motor_stop = Cpt(EpicsSignal, '.STOP', kind='omitted')
-    home_forward = Cpt(EpicsSignal, '.HOMF', kind='omitted')
-    home_reverse = Cpt(EpicsSignal, '.HOMR', kind='omitted')
+    motor_stop = Cpt(EpicsSignal, ".STOP", kind="omitted")
+    home_forward = Cpt(EpicsSignal, ".HOMF", kind="omitted")
+    home_reverse = Cpt(EpicsSignal, ".HOMR", kind="omitted")
 
     # alarm information
     tolerated_alarm = AlarmSeverity.NO_ALARM
 
-    def __init__(self, prefix='', *, name, kind=None, read_attrs=None,
-                 configuration_attrs=None, parent=None, **kwargs):
-        super().__init__(prefix=prefix, name=name, kind=kind,
-                         read_attrs=read_attrs,
-                         configuration_attrs=configuration_attrs,
-                         parent=parent, **kwargs)
+    def __init__(
+        self,
+        prefix="",
+        *,
+        name,
+        kind=None,
+        read_attrs=None,
+        configuration_attrs=None,
+        parent=None,
+        **kwargs
+    ):
+        super().__init__(
+            prefix=prefix,
+            name=name,
+            kind=kind,
+            read_attrs=read_attrs,
+            configuration_attrs=configuration_attrs,
+            parent=parent,
+            **kwargs
+        )
 
         # Make the default alias for the user_readback the name of the
         # motor itself.
@@ -88,11 +102,7 @@ class EpicsMotor(Device, PositionerBase):
             """
             update EpicsSignal object when a limit CA monitor received from EPICS
             """
-            if (
-                self.connected
-                and old_value is not None
-                and value != old_value
-            ):
+            if self.connected and old_value is not None and value != old_value:
                 self.user_setpoint._metadata_changed(
                     self.user_setpoint.pvname,
                     self.user_setpoint._read_pv.get_ctrlvars(),
@@ -105,12 +115,12 @@ class EpicsMotor(Device, PositionerBase):
 
     @property
     def precision(self):
-        '''The precision of the readback PV, as reported by EPICS'''
+        """The precision of the readback PV, as reported by EPICS"""
         return self.user_readback.precision
 
     @property
     def egu(self):
-        '''The engineering units (EGU) for a position'''
+        """The engineering units (EGU) for a position"""
         return self.motor_egu.get()
 
     @property
@@ -121,12 +131,12 @@ class EpicsMotor(Device, PositionerBase):
     @property
     @raise_if_disconnected
     def moving(self):
-        '''Whether or not the motor is moving
+        """Whether or not the motor is moving
 
         Returns
         -------
         moving : bool
-        '''
+        """
         return bool(self.motor_is_moving.get(use_monitor=False))
 
     @raise_if_disconnected
@@ -136,7 +146,7 @@ class EpicsMotor(Device, PositionerBase):
 
     @raise_if_disconnected
     def move(self, position, wait=True, **kwargs):
-        '''Move to a specified position, optionally waiting for motion to
+        """Move to a specified position, optionally waiting for motion to
         complete.
 
         Parameters
@@ -163,7 +173,7 @@ class EpicsMotor(Device, PositionerBase):
             On invalid positions
         RuntimeError
             If motion fails other than timing out
-        '''
+        """
         self._started_moving = False
 
         status = super().move(position, **kwargs)
@@ -180,24 +190,24 @@ class EpicsMotor(Device, PositionerBase):
     @property
     @raise_if_disconnected
     def position(self):
-        '''The current position of the motor in its engineering units
+        """The current position of the motor in its engineering units
 
         Returns
         -------
         position : float
-        '''
+        """
         return self._position
 
     @raise_if_disconnected
     def set_current_position(self, pos):
-        '''Configure the motor user position to the given value
+        """Configure the motor user position to the given value
 
         Parameters
         ----------
         pos
            Position to set.
 
-        '''
+        """
         self.set_use_switch.put(1, wait=True)
         try:
             self.user_setpoint.put(pos, wait=True, force=True)
@@ -206,13 +216,13 @@ class EpicsMotor(Device, PositionerBase):
 
     @raise_if_disconnected
     def home(self, direction, wait=True, **kwargs):
-        '''Perform the default homing function in the desired direction
+        """Perform the default homing function in the desired direction
 
         Parameters
         ----------
         direction : HomeEnum
            Direction in which to perform the home search.
-        '''
+        """
         direction = HomeEnum(direction)
 
         self._started_moving = False
@@ -234,33 +244,38 @@ class EpicsMotor(Device, PositionerBase):
         return status
 
     def check_value(self, pos):
-        '''Check that the position is within the soft limits'''
+        """Check that the position is within the soft limits"""
         self.user_setpoint.check_value(pos)
 
     @required_for_connection
     @user_readback.sub_value
     def _pos_changed(self, timestamp=None, value=None, **kwargs):
-        '''Callback from EPICS, indicating a change in position'''
+        """Callback from EPICS, indicating a change in position"""
         self._set_position(value)
 
     @required_for_connection
     @motor_done_move.sub_value
-    def _move_changed(self, timestamp=None, value=None, sub_type=None,
-                      **kwargs):
-        '''Callback from EPICS, indicating that movement status has changed'''
+    def _move_changed(self, timestamp=None, value=None, sub_type=None, **kwargs):
+        """Callback from EPICS, indicating that movement status has changed"""
         was_moving = self._moving
-        self._moving = (value != 1)
+        self._moving = value != 1
 
         started = False
         if not self._started_moving:
-            started = self._started_moving = (not was_moving and self._moving)
+            started = self._started_moving = not was_moving and self._moving
 
-        self.log.debug('[ts=%s] %s moving: %s (value=%s)', fmt_time(timestamp),
-                       self, self._moving, value)
+        self.log.debug(
+            "[ts=%s] %s moving: %s (value=%s)",
+            fmt_time(timestamp),
+            self,
+            self._moving,
+            value,
+        )
 
         if started:
-            self._run_subs(sub_type=self.SUB_START, timestamp=timestamp,
-                           value=value, **kwargs)
+            self._run_subs(
+                sub_type=self.SUB_START, timestamp=timestamp, value=value, **kwargs
+            )
 
         if was_moving and not self._moving:
             success = True
@@ -281,16 +296,23 @@ class EpicsMotor(Device, PositionerBase):
             if severity != AlarmSeverity.NO_ALARM:
                 status = self.user_readback.alarm_status
                 if severity > self.tolerated_alarm:
-                    self.log.error('Motion failed: %s is in an alarm state '
-                                   'status=%s severity=%s',
-                                   self.name, status, severity)
+                    self.log.error(
+                        "Motion failed: %s is in an alarm state "
+                        "status=%s severity=%s",
+                        self.name,
+                        status,
+                        severity,
+                    )
                     success = False
                 else:
-                    self.log.warning('Motor %s raised an alarm during motion '
-                                     'status=%s severity %s',
-                                     self.name, status, severity)
-            self._done_moving(success=success, timestamp=timestamp,
-                              value=value)
+                    self.log.warning(
+                        "Motor %s raised an alarm during motion "
+                        "status=%s severity %s",
+                        self.name,
+                        status,
+                        severity,
+                    )
+            self._done_moving(success=success, timestamp=timestamp, value=value)
 
     @property
     def report(self):
@@ -298,12 +320,12 @@ class EpicsMotor(Device, PositionerBase):
             rep = super().report
         except DisconnectedError:
             # TODO there might be more in this that gets lost
-            rep = {'position': 'disconnected'}
-        rep['pv'] = self.user_readback.pvname
+            rep = {"position": "disconnected"}
+        rep["pv"] = self.user_readback.pvname
         return rep
 
     def get_lim(self, flag):
-        '''
+        """
         Returns the travel limit of motor
 
         * flag > 0: returns high limit
@@ -318,14 +340,14 @@ class EpicsMotor(Device, PositionerBase):
            Limit of travel in the positive direction.
         low : float
            Limit of travel in the negative direction.
-        '''
+        """
         if flag > 0:
             return self.high_limit_travel.get()
         elif flag < 0:
             return self.low_limit_travel.get()
 
     def set_lim(self, low, high):
-        '''
+        """
         Sets the low and high travel limits of motor
 
         * No action taken if motor is moving.
@@ -340,7 +362,7 @@ class EpicsMotor(Device, PositionerBase):
            Limit of travel in the positive direction.
         low : float
            Limit of travel in the negative direction.
-        '''
+        """
         if not self.moving:
             # update EPICS
             lo = min(low, high)
@@ -354,7 +376,7 @@ class EpicsMotor(Device, PositionerBase):
                     "Could not set motor limits to (%f, %f) at position %g",
                     low,
                     high,
-                    self.position
+                    self.position,
                 )
 
 
@@ -363,4 +385,5 @@ class MotorBundle(Device):
 
     This provides better default behavior for :ref:``hints``.
     """
+
     ...

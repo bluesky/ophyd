@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 def enum(**enums):
-    '''Create an enum from the keyword arguments'''
-    return type('Enum', (object,), enums)
+    """Create an enum from the keyword arguments"""
+    return type("Enum", (object,), enums)
 
 
 class OrderedDefaultDict(OrderedDict):
@@ -22,9 +22,10 @@ class OrderedDefaultDict(OrderedDict):
 
     source: http://stackoverflow.com/a/6190500/1221924
     """
+
     def __init__(self, default_factory=None, *a, **kw):
-        if (default_factory is not None and not callable(default_factory)):
-            raise TypeError('first argument must be callable')
+        if default_factory is not None and not callable(default_factory):
+            raise TypeError("first argument must be callable")
         super().__init__(*a, **kw)
         self.default_factory = default_factory
 
@@ -44,7 +45,7 @@ class OrderedDefaultDict(OrderedDict):
         if self.default_factory is None:
             args = tuple()
         else:
-            args = self.default_factory,
+            args = (self.default_factory,)
         return type(self), args, None, None, self.items()
 
     def copy(self):
@@ -55,20 +56,23 @@ class OrderedDefaultDict(OrderedDict):
 
     def __deepcopy__(self, memo):
         import copy
-        return type(self)(self.default_factory,
-                          copy.deepcopy(self.items()))
+
+        return type(self)(self.default_factory, copy.deepcopy(self.items()))
 
     def __repr__(self):
-        return '%s(%s, %s)' % (self.__class__.__name__, self.default_factory,
-                               super().__repr__())
+        return "%s(%s, %s)" % (
+            self.__class__.__name__,
+            self.default_factory,
+            super().__repr__(),
+        )
 
 
 def doc_annotation_forwarder(base_klass):
     def wrapper(f):
-        f_name = getattr(f, '__name__')
+        f_name = getattr(f, "__name__")
         base_func = getattr(base_klass, f_name)
-        base_docs = getattr(base_func, '__doc__')
-        base_annotation = getattr(base_func, '__annotations__')
+        base_docs = getattr(base_func, "__doc__")
+        base_annotation = getattr(base_func, "__annotations__")
         f.__doc__ = base_docs
         f.__annotations__ = base_annotation
 
@@ -79,13 +83,14 @@ def doc_annotation_forwarder(base_klass):
 
 def _filtered_ip_ns():
     import IPython
-    return {k: v
-            for k, v in IPython.get_ipython().user_ns.items()
-            if not k.startswith('_')}
+
+    return {
+        k: v for k, v in IPython.get_ipython().user_ns.items() if not k.startswith("_")
+    }
 
 
 def instances_from_namespace(classes, *, ns=None):
-    '''Get instances of `classes` from the user namespace
+    """Get instances of `classes` from the user namespace
 
     Parameters
     ----------
@@ -95,15 +100,14 @@ def instances_from_namespace(classes, *, ns=None):
 
     ns : Dict[str, Any], optional
        namespace to pull from, defaults to getting the
-    '''
+    """
     if ns is None:
         ns = _filtered_ip_ns()
-    return [val for val in ns.values()
-            if isinstance(val, classes)]
+    return [val for val in ns.values() if isinstance(val, classes)]
 
 
 def ducks_from_namespace(attrs, *, ns=None):
-    '''Get instances that have all of attributes.
+    """Get instances that have all of attributes.
 
     "Ducks" is a reference to "duck-typing." If it looks like a duck....
 
@@ -111,25 +115,24 @@ def ducks_from_namespace(attrs, *, ns=None):
     ----------
     attr : Union[str, Iterable[str]]
         name of attribute or list of names
-    '''
+    """
     if isinstance(attrs, str):
         attrs = [attrs]
     if ns is None:
         ns = _filtered_ip_ns()
-    return [val for val in ns.values()
-            if all(hasattr(val, attr) for attr in attrs)]
+    return [val for val in ns.values() if all(hasattr(val, attr) for attr in attrs)]
 
 
 def underscores_to_camel_case(underscores):
-    'Convert abc_def_ghi to abcDefGhi'
-    if '_' in underscores and underscores.strip('_') != '':
-        return ''.join(s.capitalize() for s in underscores.split('_'))
+    "Convert abc_def_ghi to abcDefGhi"
+    if "_" in underscores and underscores.strip("_") != "":
+        return "".join(s.capitalize() for s in underscores.split("_"))
 
     return underscores.capitalize()
 
 
 def getattrs(obj, gen):
-    'For each item in the generator `gen`, yields (attr, getattr(obj, attr))'
+    "For each item in the generator `gen`, yields (attr, getattr(obj, attr))"
     for attr in gen:
         yield attr, getattr(obj, attr)
 
@@ -163,7 +166,10 @@ def adapt_old_callback_signature(callback):
             "The signature of a Status callback is now expected to "
             "be cb(status). The signature cb() is "
             "supported, but support will be removed in a future release "
-            "of ophyd.", DeprecationWarning, stacklevel=3)
+            "of ophyd.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
         raw_callback = callback
 
         def callback(status):

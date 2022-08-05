@@ -1,7 +1,7 @@
 import time
 import logging
 import pytest
-from ophyd import (EpicsSignal, EpicsSignalRO)
+from ophyd import EpicsSignal, EpicsSignalRO
 
 from numpy.testing import assert_almost_equal
 
@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 @pytest.mark.motorsim
 def test_read_pv_timestamp_no_monitor(motor):
     motor.set(0, wait=True)
-    sp = EpicsSignal(motor.user_setpoint.pvname, name='test')
-    rbv = EpicsSignalRO(motor.user_readback.pvname, name='test')
+    sp = EpicsSignal(motor.user_setpoint.pvname, name="test")
+    rbv = EpicsSignalRO(motor.user_readback.pvname, name="test")
 
     assert rbv.get() == sp.get()
     rbv_value0 = rbv.get()
     ts0 = rbv.timestamp
     sp.put(sp.get() + 0.1)
-    time.sleep(.5)
+    time.sleep(0.5)
     rbv_value1 = rbv.get()
     ts1 = rbv.timestamp
     assert ts1 > ts0
@@ -31,7 +31,7 @@ def test_read_pv_timestamp_no_monitor(motor):
 @pytest.mark.motorsim
 def test_write_pv_timestamp_no_monitor(motor):
     motor.set(0, wait=True)
-    sp = EpicsSignal(motor.user_setpoint.pvname, name='test')
+    sp = EpicsSignal(motor.user_setpoint.pvname, name="test")
 
     sp_value0 = sp.get()
     ts0 = sp.timestamp
@@ -50,10 +50,8 @@ def test_write_pv_timestamp_no_monitor(motor):
 def test_read_pv_timestamp_monitor(motor):
     motor.set(0, wait=True)
 
-    sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
-                     name='test')
-    rbv = EpicsSignalRO(motor.user_readback.pvname, auto_monitor=True,
-                        name='test')
+    sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True, name="test")
+    rbv = EpicsSignalRO(motor.user_readback.pvname, auto_monitor=True, name="test")
 
     rbv_value0 = rbv.get()
     ts0 = rbv.timestamp
@@ -71,8 +69,7 @@ def test_read_pv_timestamp_monitor(motor):
 @pytest.mark.motorsim
 def test_write_pv_timestamp_monitor(motor):
     motor.set(0, wait=True)
-    sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True,
-                     name='test')
+    sp = EpicsSignal(motor.user_setpoint.pvname, auto_monitor=True, name="test")
 
     sp_value0 = sp.get()
     ts0 = sp.timestamp

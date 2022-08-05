@@ -3,14 +3,14 @@ import logging
 
 from .signal import EpicsSignal
 from .positioner import PositionerBase
-from .status import (MoveStatus, wait as status_wait)
+from .status import MoveStatus, wait as status_wait
 
 
 logger = logging.getLogger(__name__)
 
 
 class SignalPositionerMixin(PositionerBase):
-    '''Mixin to make a Signal a Positioner
+    """Mixin to make a Signal a Positioner
 
     Should be mixed in first, with the Signal second, such that:
         set, move will be from PositionerBase
@@ -26,9 +26,17 @@ class SignalPositionerMixin(PositionerBase):
         Engineering units of positioner
     hold_on_stop : bool, optional
         When stop is called on the positioner
-    '''
-    def __init__(self, *args, set_func, readback_event='value', egu='',
-                 hold_on_stop=False, **kwargs):
+    """
+
+    def __init__(
+        self,
+        *args,
+        set_func,
+        readback_event="value",
+        egu="",
+        hold_on_stop=False,
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self._egu = egu
         self._hold_on_stop = hold_on_stop
@@ -46,21 +54,21 @@ class SignalPositionerMixin(PositionerBase):
 
     @property
     def position(self):
-        '''The current position of the motor in its engineering units
+        """The current position of the motor in its engineering units
 
         Returns
         -------
         position : any
-        '''
+        """
         return self.get()
 
     @property
     def egu(self):
-        '''The engineering units (EGU) for positions'''
+        """The engineering units (EGU) for positions"""
         return self._egu
 
     def move(self, position, wait=True, moved_cb=None, timeout=None):
-        '''Move to a specified position, optionally waiting for motion to
+        """Move to a specified position, optionally waiting for motion to
         complete.
 
         Parameters
@@ -89,7 +97,7 @@ class SignalPositionerMixin(PositionerBase):
             On invalid positions
         RuntimeError
             If motion fails other than timing out
-        '''
+        """
         if timeout is None:
             timeout = self._timeout
 
@@ -110,36 +118,38 @@ class SignalPositionerMixin(PositionerBase):
                 try:
                     moved_cb(obj=self)
                 except Exception as ex:
-                    logger.error('Move callback failed', exc_info=ex)
+                    logger.error("Move callback failed", exc_info=ex)
 
             try:
                 self._external_status._finished(success=success)
             except Exception as ex:
-                logger.error('Status completion failed', exc_info=ex)
+                logger.error("Status completion failed", exc_info=ex)
 
             self._internal_status = None
             self._external_status = None
 
         # this external status object is fully dependent on the internal status
         # object and does not have its own timeout/settle_time settings:
-        self._external_status = MoveStatus(self, target=position,
-                                           settle_time=0.0, timeout=None)
+        self._external_status = MoveStatus(
+            self, target=position, settle_time=0.0, timeout=None
+        )
 
         # set() functionality depends on the signal
-        self._internal_status = self._mixed_set(position, timeout=timeout,
-                                                settle_time=self.settle_time)
+        self._internal_status = self._mixed_set(
+            position, timeout=timeout, settle_time=self.settle_time
+        )
         self._internal_status.add_callback(finished)
 
         if wait:
             try:
                 status_wait(self._external_status)
             except RuntimeError:
-                raise RuntimeError('Motion did not complete successfully')
+                raise RuntimeError("Motion did not complete successfully")
 
         return self._external_status
 
     def stop(self, *, success=False):
-        '''Stops motion'''
+        """Stops motion"""
         if self._hold_on_stop:
             self.move(self.get(), wait=False)
         # TODO status object?
@@ -147,8 +157,8 @@ class SignalPositionerMixin(PositionerBase):
 
     def _repr_info(self):
         yield from super()._repr_info()
-        yield ('egu', self.egu)
-        yield ('hold_on_stop', self._hold_on_stop)
+        yield ("egu", self.egu)
+        yield ("hold_on_stop", self._hold_on_stop)
 
 
 class EpicsSignalPositioner(SignalPositionerMixin, EpicsSignal):

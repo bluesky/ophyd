@@ -3,10 +3,12 @@ import pytest
 import time
 
 from unittest.mock import Mock
-from ophyd.ophydobj import (OphydObject,
-                            register_instances_keyed_on_name,
-                            register_instances_in_weakset)
-from ophyd.status import (StatusBase, DeviceStatus, wait)
+from ophyd.ophydobj import (
+    OphydObject,
+    register_instances_keyed_on_name,
+    register_instances_in_weakset,
+)
+from ophyd.status import StatusBase, DeviceStatus, wait
 from ophyd.utils import WaitTimeoutError
 
 logger = logging.getLogger(__name__)
@@ -73,24 +75,24 @@ def test_status_wait_timeout():
 
 
 def test_ophydobj():
-    parent = OphydObject(name='name', parent=None)
-    child = OphydObject(name='name', parent=parent)
+    parent = OphydObject(name="name", parent=None)
+    child = OphydObject(name="name", parent=parent)
     assert child.parent is parent
 
     with pytest.raises(ValueError):
         child.subscribe(None, event_type=None)
 
     with pytest.raises(KeyError):
-        child.subscribe(lambda *args: None, event_type='unknown_event_type')
+        child.subscribe(lambda *args: None, event_type="unknown_event_type")
 
     assert parent.connected
 
 
 def test_self_removing_cb():
     class TestObj(OphydObject):
-        SUB_TEST = 'value'
+        SUB_TEST = "value"
 
-    test_obj = TestObj(name='name', parent=None)
+    test_obj = TestObj(name="name", parent=None)
 
     hit_A = 0
     hit_B = 0
@@ -104,14 +106,14 @@ def test_self_removing_cb():
         nonlocal hit_B
         hit_B += 1
 
-    test_obj.subscribe(remover, 'value')
-    test_obj.subscribe(sitter, 'value')
-    test_obj._run_subs(sub_type='value')
+    test_obj.subscribe(remover, "value")
+    test_obj.subscribe(sitter, "value")
+    test_obj._run_subs(sub_type="value")
 
     assert hit_A == 1
     assert hit_B == 1
 
-    test_obj._run_subs(sub_type='value')
+    test_obj._run_subs(sub_type="value")
 
     assert hit_A == 1
     assert hit_B == 2
@@ -119,9 +121,9 @@ def test_self_removing_cb():
 
 def test_unsubscribe():
     class TestObj(OphydObject):
-        SUB_TEST = 'value'
+        SUB_TEST = "value"
 
-    test_obj = TestObj(name='name', parent=None)
+    test_obj = TestObj(name="name", parent=None)
 
     hit = 0
 
@@ -129,11 +131,11 @@ def test_unsubscribe():
         nonlocal hit
         hit += 1
 
-    cid = test_obj.subscribe(increment, 'value')
-    test_obj._run_subs(sub_type='value')
+    cid = test_obj.subscribe(increment, "value")
+    test_obj._run_subs(sub_type="value")
     assert hit == 1
     test_obj.unsubscribe(cid)
-    test_obj._run_subs(sub_type='value')
+    test_obj._run_subs(sub_type="value")
     assert hit == 1
 
     # check multi unsubscribe
@@ -144,9 +146,9 @@ def test_unsubscribe():
 
 def test_unsubscribe_all():
     class TestObj(OphydObject):
-        SUB_TEST = 'value'
+        SUB_TEST = "value"
 
-    test_obj = TestObj(name='name', parent=None)
+    test_obj = TestObj(name="name", parent=None)
 
     hit = 0
 
@@ -154,26 +156,26 @@ def test_unsubscribe_all():
         nonlocal hit
         hit += 1
 
-    test_obj.subscribe(increment, 'value')
-    test_obj._run_subs(sub_type='value')
+    test_obj.subscribe(increment, "value")
+    test_obj._run_subs(sub_type="value")
     assert hit == 1
     test_obj.unsubscribe_all()
-    test_obj._run_subs(sub_type='value')
+    test_obj._run_subs(sub_type="value")
     assert hit == 1
 
 
 def test_subscribe_warn(recwarn):
     class TestObj(OphydObject):
-        SUB_TEST = 'value'
+        SUB_TEST = "value"
         _default_sub = SUB_TEST
 
-    test_obj = TestObj(name='name', parent=None)
+    test_obj = TestObj(name="name", parent=None)
     test_obj.subscribe(lambda *args, **kwargs: None)
     assert len(recwarn) == 0
 
 
 def test_subscribe_no_default():
-    o = OphydObject(name='name', parent=None)
+    o = OphydObject(name="name", parent=None)
 
     with pytest.raises(ValueError):
         o.subscribe(lambda *a, **k: None)
@@ -181,16 +183,16 @@ def test_subscribe_no_default():
 
 def test_register_instance():
     weakset = register_instances_in_weakset()
-    test1 = OphydObject(name='test1')
+    test1 = OphydObject(name="test1")
     assert test1 in weakset
-    test2 = OphydObject(name='test1')
+    test2 = OphydObject(name="test1")
     assert test2 in weakset
 
     weakdict = register_instances_keyed_on_name()
-    test1 = OphydObject(name='test1')
-    assert weakdict['test1'] == test1
-    test2 = OphydObject(name='test2')
-    assert weakdict['test2'] == test2
+    test1 = OphydObject(name="test1")
+    assert weakdict["test1"] == test1
+    test2 = OphydObject(name="test2")
+    assert weakdict["test2"] == test2
 
     assert OphydObject._OphydObject__any_instantiated is True
     with pytest.raises(RuntimeError):
