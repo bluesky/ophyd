@@ -41,6 +41,7 @@ __all__ = [
     "PointGreyDetectorCam",
     "ProsilicaDetectorCam",
     "PvcamDetectorCam",
+    "PvcamDetectorCam",
     "RoperDetectorCam",
     "SimDetectorCam",
     "URLDetectorCam",
@@ -1213,6 +1214,16 @@ class ProsilicaDetectorCam(CamBase):
     trigger_event = ADCpt(SignalWithRBV, "TriggerEvent")
     trigger_overlap = ADCpt(SignalWithRBV, "TriggerOverlap")
     trigger_software = ADCpt(EpicsSignal, "TriggerSoftware")
+
+
+class PvaDetectorCam(CamBase):
+    """PvaDriver pulls new image frames via PVAccess."""
+
+    _html_docs = ["pvaDoc.html"]
+
+    input_pv = ADCpt(SignalWithRBV, "PvName", string=True)
+    input_connection = ADCpt(EpicsSignalRO, "PvConnection_RBV", string=True)
+    overrun_counter = ADCpt(SignalWithRBV, "OverrunCounter")
 
 
 class PvcamDetectorCam(CamBase):
