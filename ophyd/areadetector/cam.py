@@ -1218,7 +1218,9 @@ class ProsilicaDetectorCam(CamBase):
 
 class PvaDetectorCam(CamBase):
     """PvaDriver pulls new image frames via PVAccess."""
-    _html_docs = ['pvaDoc.html']
+
+    _html_docs = ["pvaDoc.html"]
+
     input_pv = ADCpt(SignalWithRBV, "PvName", string=True)
     input_connection = ADCpt(EpicsSignalRO, "PvConnection_RBV", string=True)
     overrun_counter = ADCpt(SignalWithRBV, "OverrunCounter")

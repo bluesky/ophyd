@@ -228,8 +228,8 @@ class ProsilicaDetector(DetectorBase):
 
 
 class PvaDetector(DetectorBase):
-    _html_docs = ['pvaDoc.html']
-    cam = C(cam.PvaDetectorCam, 'cam1:')
+    _html_docs = ["pvaDoc.html"]
+    cam = C(cam.PvaDetectorCam, "cam1:")
 
 
 class PvcamDetector(DetectorBase):
