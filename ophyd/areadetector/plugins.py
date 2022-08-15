@@ -21,27 +21,24 @@
 
 import functools
 import logging
-import numpy as np
 import operator
 import re
 import time as ttime
-
 from collections import OrderedDict
 
-from .base import (
-    ADBase,
-    ADComponent as Cpt,
-    EpicsSignalWithRBV as SignalWithRBV,
-    DDC_EpicsSignal,
-    DDC_EpicsSignalRO,
-    DDC_SignalWithRBV,
-    NDDerivedSignal,
-)
-from .. import Device, Component, FormattedComponent as FCpt
-from ..signal import EpicsSignalRO, EpicsSignal, ArrayAttributeSignal
+import numpy as np
+
+from ..device import Component, Device
+from ..device import FormattedComponent as FCpt
 from ..device import GenerateDatumInterface
+from ..signal import ArrayAttributeSignal, EpicsSignal, EpicsSignalRO
 from ..utils import enum
-from ..utils.errors import PluginMisconfigurationError, DestroyedError, UnprimedPlugin
+from ..utils.errors import DestroyedError, PluginMisconfigurationError, UnprimedPlugin
+from .base import ADBase
+from .base import ADComponent as Cpt
+from .base import DDC_EpicsSignal, DDC_EpicsSignalRO, DDC_SignalWithRBV
+from .base import EpicsSignalWithRBV as SignalWithRBV
+from .base import NDDerivedSignal
 from .paths import EpicsPathSignal
 
 logger = logging.getLogger(__name__)

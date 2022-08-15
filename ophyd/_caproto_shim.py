@@ -1,12 +1,12 @@
-import threading
-
 import atexit
 import logging
+import threading
 
 from caproto.threading import pyepics_compat
-from caproto.threading.pyepics_compat import PV as _PV, caput, caget  # noqa
-from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
+from caproto.threading.pyepics_compat import PV as _PV
+from caproto.threading.pyepics_compat import caget, caput  # noqa
 
+from ._dispatch import EventDispatcher, _CallbackThread, wrap_callback
 
 thread_class = threading.Thread
 module_logger = logging.getLogger(__name__)

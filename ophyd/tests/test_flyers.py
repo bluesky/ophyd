@@ -1,21 +1,22 @@
 import time
+
 import pytest
 
+from ophyd import Component as Cpt
 from ophyd import (
-    Component as Cpt,
+    Device,
+    EpicsMotor,
+    ProcessPlugin,
+    ROIPlugin,
     SimDetector,
     SimDetectorCam,
     StatsPlugin,
-    EpicsMotor,
-    ROIPlugin,
-    ProcessPlugin,
-    Device,
 )
 from ophyd.areadetector.base import EpicsSignalWithRBV
 from ophyd.flyers import (
     AreaDetectorTimeseriesCollector,
-    WaveformCollector,
     MonitorFlyerMixin,
+    WaveformCollector,
 )
 from ophyd.status import wait
 

@@ -1,22 +1,17 @@
 from collections import OrderedDict
 
-from . import (
-    EpicsSignalRO,
-    EpicsSignal,
-    Component as Cpt,
-    DynamicDeviceComponent as DDCpt,
-    Signal,
-    Kind,
-    kind_context,
-)
 from .areadetector import (
+    ADBase,
+    DetectorBase,
     EpicsSignalWithRBV,
     ImagePlugin,
-    StatsPlugin,
-    DetectorBase,
     SingleTrigger,
-    ADBase,
+    StatsPlugin,
 )
+from .device import Component as Cpt
+from .device import DynamicDeviceComponent as DDCpt
+from .device import kind_context
+from .signal import EpicsSignal, EpicsSignalRO, Kind, Signal
 from .status import DeviceStatus
 
 

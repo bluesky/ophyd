@@ -1,7 +1,8 @@
-import pytest
 import logging
-from ophyd import Device
 
+import pytest
+
+from ophyd import Device
 
 logger = logging.getLogger(__name__)
 

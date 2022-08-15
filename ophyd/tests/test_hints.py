@@ -1,4 +1,4 @@
-from ophyd import Device, Component, Signal, MotorBundle, Kind
+from ophyd import Component, Device, Kind, MotorBundle, Signal
 from ophyd.sim import SynAxis
 
 

@@ -1,17 +1,14 @@
-import time
 import logging
-
-import pytest
 import operator
-import numpy as np
-
-
+import time
 from copy import copy
 
-from ophyd.epics_motor import EpicsMotor
-from ophyd.pseudopos import PseudoPositioner, PseudoSingle
+import numpy as np
+import pytest
 
 from ophyd import Component as C
+from ophyd.epics_motor import EpicsMotor
+from ophyd.pseudopos import PseudoPositioner, PseudoSingle
 from ophyd.utils import ExceptionBundle
 
 logger = logging.getLogger(__name__)

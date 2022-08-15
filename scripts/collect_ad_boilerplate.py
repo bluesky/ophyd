@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
-import inflection
 import logging
+import os
+
+import inflection
 
 
 def write_detector_class(boilerplate_file, dev_name, det_name, cam_name):

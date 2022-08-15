@@ -5,7 +5,10 @@ caproto[standard] >=0.4.2rc1
 codecov
 databroker>=1.0.0b1
 epics-pypdb
-flake8
+# Upper bound on flake8 while flake8-isort catches up
+# https://github.com/gforcada/flake8-isort/issues/115
+flake8<5.0.0
+flake8-isort
 h5py
 matplotlib
 mypy

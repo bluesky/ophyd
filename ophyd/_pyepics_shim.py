@@ -1,10 +1,11 @@
 import atexit
 import logging
-from packaging.version import parse
+
 import epics
 from epics import ca, caget, caput
+from packaging.version import parse
 
-from ._dispatch import _CallbackThread, EventDispatcher, wrap_callback
+from ._dispatch import EventDispatcher, _CallbackThread, wrap_callback
 
 _min_pyepics = "3.4.2"
 

@@ -1,18 +1,11 @@
 import logging
 import uuid
+from types import SimpleNamespace
 
 import pytest
 
-from types import SimpleNamespace
-
-from ophyd import (
-    set_cl,
-    EpicsMotor,
-    Signal,
-    EpicsSignal,
-    EpicsSignalRO,
-    Component as Cpt,
-)
+from ophyd import Component as Cpt
+from ophyd import EpicsMotor, EpicsSignal, EpicsSignalRO, Signal, set_cl
 from ophyd.utils.epics_pvs import AlarmSeverity, AlarmStatus
 
 logger = logging.getLogger(__name__)

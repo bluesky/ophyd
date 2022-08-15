@@ -19,18 +19,16 @@ To be used like so ::
 
     det = MyDetector(...)
 """
-from collections import deque
-import os
 import logging
-import warnings
+import os
 import uuid
+import warnings
+from collections import defaultdict, deque
+from datetime import datetime
+from itertools import count
 from pathlib import PurePath, PurePosixPath, PureWindowsPath
 
-from datetime import datetime
-from collections import defaultdict
-from itertools import count
-
-from ..device import GenerateDatumInterface, BlueskyInterface, Staged
+from ..device import BlueskyInterface, GenerateDatumInterface, Staged
 
 logger = logging.getLogger(__name__)
 

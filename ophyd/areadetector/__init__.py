@@ -6,7 +6,9 @@ logger = logging.getLogger(__name__)
 
 from .base import *  # noqa: F401, F402, E402, F403
 from .cam import *  # noqa: F401, F402, E402, F403
+from .common_plugins import *  # noqa: F401, F402, E402, F403
 from .detectors import *  # noqa: F401, F402, E402, F403
+from .paths import EpicsPathSignal  # noqa: F401, F402, E402, F403
 
 # NOTE: the following imports are here for backward compatibility with
 # previous ophyd versions. This does not represent all available plugins
@@ -30,7 +32,4 @@ from .plugins import (  # noqa: F401, F402, E402
     plugin_from_pvname,
     register_plugin,
 )
-
-from .common_plugins import *  # noqa: F401, F402, E402, F403
 from .trigger_mixins import *  # noqa: F401, F402, E402, F403
-from .paths import EpicsPathSignal  # noqa: F401, F402, E402, F403

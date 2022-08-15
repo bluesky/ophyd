@@ -1,8 +1,8 @@
-import time
 import functools
 import logging
 import queue
 import threading
+import time
 
 
 class _CallbackThread(threading.Thread):

@@ -1,6 +1,5 @@
 from mypy import api
 
-
 imports = ""
 imports += "import ophyd;"
 imports += "from ophyd import flyers, sim;"

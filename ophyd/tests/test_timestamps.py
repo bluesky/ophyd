@@ -1,10 +1,10 @@
-import time
 import logging
-import pytest
-from ophyd import EpicsSignal, EpicsSignalRO
+import time
 
+import pytest
 from numpy.testing import assert_almost_equal
 
+from ophyd import EpicsSignal, EpicsSignalRO
 
 logger = logging.getLogger(__name__)
 

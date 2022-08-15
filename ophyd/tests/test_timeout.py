@@ -1,8 +1,8 @@
 import logging
-import pytest
-from ophyd import Device, Component
 
-from ophyd import EpicsSignal
+import pytest
+
+from ophyd import Component, Device, EpicsSignal
 
 logger = logging.getLogger(__name__)
 

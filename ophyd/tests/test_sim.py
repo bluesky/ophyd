@@ -1,30 +1,30 @@
+import shutil
+import tempfile
+
+import numpy as np
+import pytest
+
+from ophyd.areadetector.base import EpicsSignalWithRBV
+from ophyd.areadetector.paths import EpicsPathSignal
+from ophyd.device import Component as Cpt
+from ophyd.device import Device
+from ophyd.device import DynamicDeviceComponent as DDCpt
+from ophyd.device import FormattedComponent as FCpt
+from ophyd.signal import EpicsSignal, EpicsSignalRO, Signal
 from ophyd.sim import (
-    SynGauss,
-    Syn2DGauss,
-    SynAxis,
-    make_fake_device,
+    FakeEpicsPathSignal,
     FakeEpicsSignal,
     FakeEpicsSignalRO,
     FakeEpicsSignalWithRBV,
-    FakeEpicsPathSignal,
+    Syn2DGauss,
+    SynAxis,
+    SynGauss,
+    SynSignalWithRegistry,
     clear_fake_device,
     instantiate_fake_device,
-    SynSignalWithRegistry,
+    make_fake_device,
 )
-from ophyd.device import (
-    Device,
-    Component as Cpt,
-    FormattedComponent as FCpt,
-    DynamicDeviceComponent as DDCpt,
-)
-from ophyd.signal import Signal, EpicsSignal, EpicsSignalRO
-from ophyd.areadetector.base import EpicsSignalWithRBV
-from ophyd.areadetector.paths import EpicsPathSignal
-from ophyd.utils import ReadOnlyError, LimitError, DisconnectedError
-import numpy as np
-import pytest
-import tempfile
-import shutil
+from ophyd.utils import DisconnectedError, LimitError, ReadOnlyError
 
 
 def test_random_state_gauss1d():
@@ -129,8 +129,9 @@ def test_synaxis_subcribe():
 
 
 def test_synaxis_timestamps():
-    from ophyd.status import wait
     import time
+
+    from ophyd.status import wait
 
     def time_getter(m):
         return {k: v["timestamp"] for k, v in m.read().items()}

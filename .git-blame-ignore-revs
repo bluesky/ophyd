@@ -4,3 +4,5 @@
 #
 # Run black==22.3.0 on the codebase
 20e1b14b541a0331109158c77bc319248be28989
+# Use isort to sort imports
+881a35b43584103ca572b6f4e472dd8b6fd6ea87

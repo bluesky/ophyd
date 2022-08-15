@@ -5,14 +5,13 @@ from typing import Any, Optional
 
 import numpy as np
 
-from .utils.epics_pvs import fmt_time
-
 from .device import Component as Cpt
 from .device import Device, required_for_connection
 from .ophydobj import Kind
 from .positioner import PositionerBase
 from .signal import EpicsSignal, InternalSignal
 from .status import wait as status_wait
+from .utils.epics_pvs import fmt_time
 
 logger = logging.getLogger(__name__)
 

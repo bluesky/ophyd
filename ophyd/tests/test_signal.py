@@ -1,22 +1,23 @@
-import logging
-import time
 import copy
-import pytest
+import logging
 import threading
+import time
+
+import pytest
 
 from ophyd import get_cl
+from ophyd.areadetector.paths import EpicsPathSignal
 from ophyd.signal import (
-    Signal,
-    EpicsSignal,
-    EpicsSignalRO,
     DerivedSignal,
+    EpicsSignal,
+    EpicsSignalNoValidation,
+    EpicsSignalRO,
     InternalSignal,
     InternalSignalError,
-    EpicsSignalNoValidation,
+    Signal,
 )
-from ophyd.utils import ReadOnlyError, AlarmStatus, AlarmSeverity
 from ophyd.status import wait
-from ophyd.areadetector.paths import EpicsPathSignal
+from ophyd.utils import AlarmSeverity, AlarmStatus, ReadOnlyError
 
 logger = logging.getLogger(__name__)
 

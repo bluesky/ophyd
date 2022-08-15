@@ -1,17 +1,15 @@
-import time
 import logging
-import pytest
+import threading
+import time
 from copy import copy
+
+import pytest
 from numpy.testing import assert_allclose
 
-from ophyd import (
-    EpicsMotor,
-    Component as Cpt,
-    MotorBundle,
-)
-from ophyd.utils.epics_pvs import AlarmSeverity, AlarmStatus
+from ophyd import Component as Cpt
+from ophyd import EpicsMotor, MotorBundle
 from ophyd.utils import UnknownStatusFailure
-import threading
+from ophyd.utils.epics_pvs import AlarmSeverity, AlarmStatus
 
 logger = logging.getLogger(__name__)
 

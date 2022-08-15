@@ -1,16 +1,16 @@
 import logging
 import time
-import pytest
 from copy import copy
 from unittest import mock
 from unittest.mock import Mock
 
+import pytest
+
 from ophyd.mixins import EpicsSignalPositioner
-from ophyd.utils import record_field
 from ophyd.status import wait
+from ophyd.utils import record_field
 
 from .config import motor_recs
-
 
 logger = logging.getLogger(__name__)
 
