@@ -1,0 +1,106 @@
+name: Code CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "00 4 * * *" # daily at 4AM
+
+jobs:
+  lint:
+    # pull requests are a duplicate of a branch push if they are from within the
+    # same repo. Skip these
+    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Lint
+        run: pip install --user .[dev] && tox -e pre-commit
+
+  build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # So we get history for version numbers
+
+      - name: Create Sdist and Wheel
+        # Set SOURCE_DATE_EPOCH from git commit for reproducible build
+        # https://reproducible-builds.org/
+        run: SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) pipx run build --sdist --wheel
+
+      - name: Upload Wheel and Sdist as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
+
+      - name: Install wheel and check cli works
+        run: pip install dist/*.whl && python -m ophyd --version
+
+  test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9"]
+    runs-on: ubuntu-latest
+    env:
+      TEST_CL: pyepics
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # So we get history for version number
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: pip install -e .[dev] && pipdeptree
+
+      - name: Start IOCs in containers.
+        run: |
+          source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
+          source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
+
+      - name: Test with pytest
+        run: pytest -k "${TEST_CL}"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          name: ${{ matrix.python }}
+          files: cov.xml
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    # upload to PyPI and make a release on every tag
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Github Release
+        # We pin to the SHA, not the tag, for security reasons.
+        # https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
+        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # v0.1.14
+        with:
+          files: artifacts/dist/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          # The PYPI_PASSWORD must be a pypi token with the "pypi-" prefix with sufficient permissions to upload this package
+          # https://pypi.org/help/#apitoken
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: pipx run twine upload artifacts/dist/*
