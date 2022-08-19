@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "ophyd/_version.py"
+
+[tool.pytest.ini_options]
+log_format = "%(asctime)s,%(msecs)03d %(levelname)s (%(threadName)s) %(message)s"
+log_date_format = "%H:%M:%S"
+addopts = """
+    --tb=native -vv --strict-markers
+    --cov=ophyd --cov-report term --cov-report xml:cov.xml
+"""
+markers = [
+    "motorsim: require the motorsim IOC to be running",
+    "adsim: require the ADsim IOC to be running",
+]
+# https://iscinumpy.gitlab.io/post/bound-version-constraints/#watch-for-warnings
+filterwarnings = "error"

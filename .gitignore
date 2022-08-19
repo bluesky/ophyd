@@ -41,6 +41,7 @@ htmlcov/
 .pytest_cache
 nosetests.xml
 coverage.xml
+cov.xml
 
 # Translations
 *.mo
@@ -71,3 +72,6 @@ target/
 # generated docs
 docs/source/generated
 docs/source/_as_gen
+
+# generated version number
+ophyd/_version.py
