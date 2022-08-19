@@ -4,6 +4,9 @@ on: [push, pull_request]
 
 jobs:
   docs:
+    # pull requests are a duplicate of a branch push if they are from within the
+    # same repo. Skip these
+    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
     strategy:
       matrix:
         python-version: [3.8]
