@@ -1,4 +1,4 @@
-# show coverage in CI status, not as a comment. 
+# show coverage in CI status, not as a comment.
 comment: false
 coverage:
   status:
@@ -8,3 +8,5 @@ coverage:
     patch:
       default:
         target: auto
+github_checks:
+  annotations: false
