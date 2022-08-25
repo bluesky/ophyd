@@ -98,7 +98,14 @@ def test_random_state_gauss2d():
     assert dlist[0] == dlist[1]
 
 
-def test_synaxis_subcribe():
+@pytest.mark.parametrize("events_per_move", [0, -1, -10])
+def test_synaxis_requires_at_least_1_event_per_move(events_per_move):
+    with pytest.raises(ValueError):
+        SynAxis(name="motor1", events_per_move=0)
+
+
+@pytest.mark.parametrize("events_per_move", [1, 2, 6, 20])
+def test_synaxis_subcribe(events_per_move: int):
     hits = dict.fromkeys(["r", "s", "a"], 0)
     vals = dict.fromkeys(["r", "s", "a"], None)
 
@@ -106,7 +113,7 @@ def test_synaxis_subcribe():
         hits[tar] += 1
         vals[tar] = value
 
-    motor = SynAxis(name="motor1")
+    motor = SynAxis(name="motor1", events_per_move=events_per_move)
     # prime the cb cache so these run an subscription
     motor.set(0)
     motor.subscribe(lambda *, value, _tar="a", **kwargs: p1(_tar, value))
@@ -125,7 +132,9 @@ def test_synaxis_subcribe():
     assert vals["a"] == motor.readback.get()
     assert vals["s"] == motor.setpoint.get()
 
-    assert all(v == 2 for v in hits.values())
+    assert hits["r"] == 1 + events_per_move
+    assert hits["a"] == 1 + events_per_move
+    assert hits["s"] == 2
 
 
 def test_synaxis_timestamps():

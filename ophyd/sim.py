@@ -30,7 +30,7 @@ from .pseudopos import (
     real_position_argument,
 )
 from .signal import EpicsSignal, EpicsSignalRO, Signal
-from .status import DeviceStatus, StatusBase
+from .status import DeviceStatus, MoveStatus, StatusBase
 from .utils import LimitError, ReadOnlyError
 
 # two convenience functions 'vendored' from bluesky.utils
@@ -407,6 +407,10 @@ class SynAxis(Device):
         Used internally if this Signal is made part of a larger Device.
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
+    events_per_move: number of events to push to a Status object for each move.
+        Must be at least 1, more than one will give "moving" statuses that can be
+        used for progress bars etc.
+        Default is 1.
     """
 
     readback = Cpt(_ReadbackSignal, value=0, kind="hinted")
@@ -431,6 +435,8 @@ class SynAxis(Device):
         parent=None,
         labels=None,
         kind=None,
+        events_per_move: int = 1,
+        egu: str = "mm",
         **kwargs,
     ):
         if readback_func is None:
@@ -459,9 +465,14 @@ class SynAxis(Device):
 
         super().__init__(name=name, parent=parent, labels=labels, kind=kind, **kwargs)
         self.readback.name = self.name
+        if events_per_move < 1:
+            raise ValueError("At least 1 event per move is required")
+        self._events_per_move = events_per_move
+        self.egu = egu
 
-    def set(self, value):
+    def set(self, value: float) -> MoveStatus:
         old_setpoint = self.sim_state["setpoint"]
+        distance = value - old_setpoint
         self.sim_state["setpoint"] = value
         self.sim_state["setpoint_ts"] = ttime.time()
         self.setpoint._run_subs(
@@ -471,9 +482,9 @@ class SynAxis(Device):
             timestamp=self.sim_state["setpoint_ts"],
         )
 
-        def update_state():
+        def update_state(position: float) -> None:
             old_readback = self.sim_state["readback"]
-            self.sim_state["readback"] = self._readback_func(value)
+            self.sim_state["readback"] = self._readback_func(position)
             self.sim_state["readback_ts"] = ttime.time()
             self.readback._run_subs(
                 sub_type=self.readback.SUB_VALUE,
@@ -488,18 +499,19 @@ class SynAxis(Device):
                 timestamp=self.sim_state["readback_ts"],
             )
 
-        st = DeviceStatus(device=self)
-        if self.delay:
+        st = MoveStatus(positioner=self, target=value)
 
-            def sleep_and_finish():
-                ttime.sleep(self.delay)
-                update_state()
-                st.set_finished()
-
-            threading.Thread(target=sleep_and_finish, daemon=True).start()
-        else:
-            update_state()
+        def sleep_and_finish():
+            event_delay = self.delay / self._events_per_move
+            for i in range(self._events_per_move):
+                if self.delay:
+                    ttime.sleep(event_delay)
+                position = old_setpoint + (distance * ((i + 1) / self._events_per_move))
+                update_state(position)
             st.set_finished()
+
+        threading.Thread(target=sleep_and_finish, daemon=True).start()
+
         return st
 
     @property
