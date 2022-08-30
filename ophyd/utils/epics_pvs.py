@@ -144,7 +144,9 @@ def records_from_db(fn):
     """
 
     ret = []
-    for line in open(fn, "rt").readlines():
+    with open(fn, "rt") as f:
+        lines = f.readlines()
+    for line in lines:
         line = line.strip()
 
         if line.startswith("#"):

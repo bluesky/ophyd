@@ -1,5 +1,5 @@
-# show coverage in CI status, not as a comment. 
-comment: off
+# show coverage in CI status, not as a comment.
+comment: false
 coverage:
   status:
     project:
@@ -8,3 +8,5 @@ coverage:
     patch:
       default:
         target: auto
+github_checks:
+  annotations: false
