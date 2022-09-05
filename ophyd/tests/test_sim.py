@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from typing import Callable
 
 import numpy as np
 import pytest
@@ -18,6 +19,9 @@ from ophyd.sim import (
     FakeEpicsSignalWithRBV,
     Syn2DGauss,
     SynAxis,
+    SynAxisEmptyHints,
+    SynAxisNoHints,
+    SynAxisNoPosition,
     SynGauss,
     SynSignalWithRegistry,
     clear_fake_device,
@@ -102,6 +106,34 @@ def test_random_state_gauss2d():
 def test_synaxis_requires_at_least_1_event_per_move(events_per_move):
     with pytest.raises(ValueError):
         SynAxis(name="motor1", events_per_move=0)
+
+
+@pytest.mark.parametrize(
+    "motor_factory",
+    [
+        lambda: SynAxis(name="motor", value=0.0),
+        lambda: SynAxisEmptyHints(name="motor", value=0.0),
+        lambda: SynAxisNoHints(name="motor", value=0.0),
+        lambda: SynAxisNoPosition(name="motor", value=0.0),
+    ],
+)
+def test_move_synaxis(motor_factory: Callable[[], SynAxis]):
+    # Test is run twice, once for caproto and once for pyepics, so we need a
+    # factory rather than a global object to preserve state management
+    motor = motor_factory()
+
+    initial_value = motor.readback.get()
+    motor.set(1.0).wait()
+    final_value = motor.readback.get()
+
+    assert initial_value == 0.0
+    assert final_value == 1.0
+
+
+def test_synaxisnoposition_has_no_position():
+    motor = SynAxisNoPosition(name="motor", labels={"motors"})
+    with pytest.raises(AttributeError):
+        motor.position
 
 
 @pytest.mark.parametrize("events_per_move", [1, 2, 6, 20])

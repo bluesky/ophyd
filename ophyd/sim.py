@@ -470,6 +470,9 @@ class SynAxis(Device):
         self._events_per_move = events_per_move
         self.egu = egu
 
+    def _make_status(self, target: float):
+        return MoveStatus(positioner=self, target=target)
+
     def set(self, value: float) -> MoveStatus:
         old_setpoint = self.sim_state["setpoint"]
         distance = value - old_setpoint
@@ -499,7 +502,7 @@ class SynAxis(Device):
                 timestamp=self.sim_state["readback_ts"],
             )
 
-        st = MoveStatus(positioner=self, target=value)
+        st = self._make_status(target=value)
 
         def sleep_and_finish():
             event_delay = self.delay / self._events_per_move
@@ -1143,6 +1146,9 @@ class SPseudo1x3(PseudoPositioner):
 
 
 class SynAxisNoPosition(SynAxis):
+    def _make_status(self, target: float):
+        return DeviceStatus(device=self)
+
     @property
     def position(self):
         raise AttributeError
