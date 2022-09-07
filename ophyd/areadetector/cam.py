@@ -106,7 +106,12 @@ class CamBase(ADBase):
     gain = ADCpt(SignalWithRBV, "Gain")
 
     image_mode = ADCpt(SignalWithRBV, "ImageMode")
+    
     manufacturer = ADCpt(EpicsSignalRO, "Manufacturer_RBV")
+    model = ADCpt(EpicsSignalRO, "Model_RBV")
+    serial_number = ADCpt(EpicsSignalRO, "SerialNumber_RBV")
+    firmware_version = ADCpt(EpicsSignalRO, "FirmwareVersion_RBV")
+    sdk_version = ADCpt(EpicsSignalRO, "SDKVersion_RBV")   
 
     max_size = DDC(
         ad_group(
@@ -118,7 +123,6 @@ class CamBase(ADBase):
 
     min_x = ADCpt(SignalWithRBV, "MinX")
     min_y = ADCpt(SignalWithRBV, "MinY")
-    model = ADCpt(EpicsSignalRO, "Model_RBV")
 
     num_exposures = ADCpt(SignalWithRBV, "NumExposures")
     num_exposures_counter = ADCpt(EpicsSignalRO, "NumExposuresCounter_RBV")
