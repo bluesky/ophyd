@@ -10,7 +10,7 @@ jobs:
   lint:
     # pull requests are a duplicate of a branch push if they are from within the
     # same repo. Skip these
-    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v2
@@ -19,7 +19,7 @@ jobs:
         run: pip install --user .[dev] && tox -e pre-commit
 
   build:
-    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: "ubuntu-latest"
     steps:
       - uses: actions/checkout@v2
@@ -41,7 +41,7 @@ jobs:
         run: pip install dist/*.whl && python -m ophyd --version
 
   test:
-    if: github.event_name != 'pull_request' || github.event.pull_request.repository == github.repository
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -84,15 +84,13 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     steps:
       - uses: actions/download-artifact@v3
-        with:
-          path: artifacts
 
       - name: Github Release
         # We pin to the SHA, not the tag, for security reasons.
         # https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # v0.1.14
         with:
-          files: artifacts/dist/*
+          files: dist/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -103,4 +101,4 @@ jobs:
           # The PYPI_PASSWORD must be a pypi token with the "pypi-" prefix with sufficient permissions to upload this package
           # https://pypi.org/help/#apitoken
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: pipx run twine upload artifacts/dist/*
+        run: pipx run twine upload dist/*
