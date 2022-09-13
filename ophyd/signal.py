@@ -108,7 +108,7 @@ class Signal(OphydObject):
         metadata=None,
         cl=None,
         attr_name="",
-        settle_time=None
+        settle_time=None,
     ):
 
         super().__init__(
