@@ -86,7 +86,8 @@ class Signal(OphydObject):
 
     def __init__(self, *, name, value=0., timestamp=None, parent=None,
                  labels=None, kind=Kind.hinted, tolerance=None,
-                 rtolerance=None, metadata=None, cl=None, attr_name=''):
+                 rtolerance=None, metadata=None, cl=None, attr_name='',
+                 settle_time=None):
 
         super().__init__(name=name, parent=parent, kind=kind, labels=labels,
                          attr_name=attr_name)
@@ -108,6 +109,7 @@ class Signal(OphydObject):
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
+        self._settle_time = settle_time
 
         # Signal defaults to being connected, with full read/write access.
         # Subclasses are expected to clear these on init, if applicable.
@@ -162,6 +164,10 @@ class Signal(OphydObject):
     @tolerance.setter
     def tolerance(self, tolerance):
         self._tolerance = tolerance
+
+    @property
+    def settle_time(self):
+        return self._settle_time
 
     def _repr_info(self):
         'Yields pairs of (key, value) to generate the Signal repr'
@@ -263,6 +269,8 @@ class Signal(OphydObject):
             'set(value=%s, timeout=%s, settle_time=%s)',
             value, timeout, settle_time
         )
+
+        settle_time = settle_time or self.settle_time
 
         def set_thread():
             try:
