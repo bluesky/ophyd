@@ -72,6 +72,9 @@ class Signal(OphydObject):
         Control Layer.  Must provide 'get_pv' and 'thread_class'
     attr_name : str, optional
         The parent Device attribute name that corresponds to this Signal
+    settle_time : float, optional
+        The amount of time to wait after setting the signal to report status
+        completion.
 
     Attributes
     ----------
@@ -167,6 +170,8 @@ class Signal(OphydObject):
 
     @property
     def settle_time(self):
+        """The amount of time to wait after setting the signal to report status
+        completion."""
         return self._settle_time
 
     def _repr_info(self):
