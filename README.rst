@@ -9,7 +9,7 @@ abstraction layer than enables experiment orchestration and data acquisition
 code to operate above the specifics of particular devices and control systems.
 
 Ophyd is typically used with the `Bluesky Run Engine`_ for experiment
-orchestration and data acquistion. It is also sometimes used in a stand-alone
+orchestration and data acquisition. It is also sometimes used in a stand-alone
 fashion.
 
 Many facilities use ophyd to integrate with control systems that use `EPICS`_ ,
@@ -53,3 +53,9 @@ See the tutorials for usage examples.
 .. _Bluesky Run Engine: http://blueskyproject.io/bluesky
 
 .. _EPICS: http://www.aps.anl.gov/epics/
+
+..
+    Anything below this line is used when viewing README.rst and will be replaced
+    when included in index.rst
+
+See https://blueskyproject.io/ophyd for more detailed documentation.
