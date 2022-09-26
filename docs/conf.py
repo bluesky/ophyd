@@ -30,6 +30,10 @@ extensions = [
     "sphinx_design",
 ]
 
+# The name of a reST role (builtin or Sphinx extension) to use as the default
+# role, that is, for text marked up `like this`
+default_role = "any"
+
 # If true, Sphinx will warn about all references where the target cannot
 # be found.
 # nitpicky = True
@@ -101,15 +105,40 @@ html_favicon = "images/ophyd_favicon.svg"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "bluesky": ("https://blueskyproject.io/bluesky/", None),
+    "numpy": ("https://numpy.org/devdocs/", None),
     "databroker": ("https://blueskyproject.io/databroker/", None),
     "event-model": ("https://blueskyproject.io/event-model/", None),
 }
 
-# inheritance_graph_attrs = dict(rankdir="LR")
-# inheritance_node_attrs = dict(fontsize=24)
-autosummary_generate = True
-autodoc_docstring_signature = True
-autoclass_content = "both"
-# numpydoc config
+# If False and a module has the __all__ attribute set, autosummary documents
+# every member listed in __all__ and no others. Default is True
+autosummary_ignore_module_all = False
 
+# Look for signatures in the first line of the docstring (used for C functions)
+autodoc_docstring_signature = True
+
+# Both the class’ and the __init__ method’s docstring are concatenated and
+# inserted into the main body of the autoclass directive
+autoclass_content = "both"
+
+# Order the members by the order they appear in the source code
+autodoc_member_order = "bysource"
+
+# numpydoc config
 numpydoc_show_class_members = False
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ["_templates"]
+
+# Where to put Ipython savefigs
+ipython_savefig_dir = "../build/savefig"
+
+
+def setup(app):
+    # Work around https://github.com/sphinx-doc/sphinx/issues/10809
+    from ophyd.v2 import epics
+
+    for name in epics.__all__:
+        cls = getattr(epics, name)
+        if getattr(cls, "__module__", "").startswith("ophyd.v2._"):
+            cls.__module__ = epics.EpicsSignalR.__module__

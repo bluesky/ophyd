@@ -83,7 +83,7 @@ class TriggerBase(BlueskyInterface):
 
     Subclasses must define a method with this signature:
 
-    `acquire_changed(self, value=None, old_value=None, **kwargs)`
+    ``acquire_changed(self, value=None, old_value=None, **kwargs)``
     """
 
     def __init__(self, *args, **kwargs):
@@ -166,7 +166,7 @@ class MultiTrigger(TriggerBase):
 
     The are two levels of nesting here:
 
-     - cycling through different actions on successive calls to `trigger`
+     - cycling through different actions on successive calls to ``trigger``
      - within each trigger, executing a list of acquisitions with different
        settings
 

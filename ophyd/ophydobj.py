@@ -370,7 +370,7 @@ class OphydObject:
 
     @property
     def event_types(self):
-        """Events that can be subscribed to via `obj.subscribe`"""
+        """Events that can be subscribed to via ``obj.subscribe``"""
         return tuple(self.subscriptions)
 
     def _run_subs(self, *args, sub_type, **kwargs):
@@ -383,7 +383,7 @@ class OphydObject:
         The host object will be injected into kwargs as 'obj' unless that key
         already exists.
 
-        If the `timestamp` is None, then it will be replaced by the current
+        If the ``timestamp`` is None, then it will be replaced by the current
         time.
 
         No exceptions are raised if the callback functions fail.

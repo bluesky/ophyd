@@ -116,7 +116,7 @@ settable in-put port name (``.nd_array_port``).  To connect plugin
 ``downstream`` to plugin ``upstream`` set ``downstream.nd_array_port``
 to ``upstream.port_name``.
 
-The top-level `~base.ADBase` class has several helper methods for
+The top-level :class:`~base.ADBase` class has several helper methods for
 walking and validating the plugin network.
 
 .. autosummary::
@@ -170,9 +170,9 @@ provide the basic methods required for integrating AreaDetector file plugins wit
 
    ~filestore_mixins.FileStorePluginBase.make_filename
 
-`~filestore_mixins.FileStorePluginBase` must be sub-classed to match
+:class:`~filestore_mixins.FileStorePluginBase` must be sub-classed to match
 each file plugin and take care of inserting the correct meta-data into
-`FileStore` and configuring the file plugin.
+FileStore and configuring the file plugin.
 
 .. autosummary::
    :toctree: ../generated

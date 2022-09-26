@@ -51,11 +51,11 @@ information:
 
    time_delta = EpicsSignal("random_walk:dt", name="time_delta")
 
-.. note:: 
+.. note::
 
    It is *conventional* to name the Python variable on the left the same as the
    value of ``name``, but not required. That is, this is conventional...
-   
+
    .. code:: python
 
       a = EpicsSignal("...", name="a")
@@ -70,9 +70,9 @@ information:
 
 Next let's connect to ``random_walk:x``. It happens that this PV is not
 writable---any writes would be rejected by EPICS---so we should use a read-only
-EpicsSignal, `~ophyd.signal.EPICSSignalRO`, to represent it in in ophyd. In
+EpicsSignal, :class:`~ophyd.signal.EPICSSignalRO`, to represent it in in ophyd. In
 EPICS, you just have to "know" this about your hardware. Fortunately if, in our
-ignorance,  we used writable `~ophyd.signal.EpicsSignal` instead, we could
+ignorance,  we used writable :class:`~ophyd.signal.EpicsSignal` instead, we could
 still use it to read the PV. It would just have a vestigial ``set()`` method
 that wouldn't work.
 

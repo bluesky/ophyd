@@ -382,19 +382,19 @@ Features
   :func:`.register_instance_in_weakset` helper functions.
 * Added :attr:`OphydObj.dotted_name` property to get the full attribute name of a
   child component.
-* Added the properties `read_access`, `write_access`, `metadata` to the base
+* Added the properties ``read_access``, ``write_access``, ``metadata`` to the base
   signal class :class:`ophyd.Signal`.
 * Added metadata subscriptions for :class:`ophyd.Signal`.
 * Added :func:`OphydObj.destroy` method to all ophyd objects.
 * Added support for ADLambda X-Spectrum Lambda 750K camera.
 * Improved error message "Another set() call is still in progress" to include
   the name of the device that raised the error.
-* Allowed `ophyd.FormattedComponent` strings to be written like
+* Allowed ``ophyd.FormattedComponent`` strings to be written like
   ``{prefix}{_ch_name}`` as well as the previously-supported and more verbose
   ``{self.prefix}{self._ch_name}``.
 * Made timeouts more configurable, including separately configurable connection
   timeout, write timeout, and read timeout. New method
-  `ophyd.EpicsSignal.set_default_timeout` sets class-wide defaults. Timeouts
+  ``ophyd.EpicsSignal.set_default_timeout`` sets class-wide defaults. Timeouts
   can also be specified per-instance and in a specific action.
 
 API Changes
@@ -416,15 +416,15 @@ API Changes
 * Removed :class:`ophyd.tests.conftest.FakeEpicsPV`,
   :class:`ophyd.tests.conftest.FakeEpicsWaveForm`, and associated helper
   functions.  If you need this class, please vendor it from a previous version
-  of ophyd - or please consider moving to `make_fake_device` or `caproto`-based
+  of ophyd - or please consider moving to ``make_fake_device`` or ``caproto``-based
   simulation IOCs.
 * Removed ``ophyd.tests.AssertTools`` and use standard pytest idioms throughout
   the test suite.
-* Overhauled objects in `ophyd.sim` to inherit from `ophyd.Signal` and
-  `ophyd.Device` and thus behave more like true hardware-connected devices.
-* The `ophyd.StatusBase.done` attribute was formerly settable, but never
+* Overhauled objects in ``ophyd.sim`` to inherit from ``ophyd.Signal`` and
+  ``ophyd.Device`` and thus behave more like true hardware-connected devices.
+* The ``ophyd.StatusBase.done`` attribute was formerly settable, but never
   intended to be. It should only be set by calling
-  `ophyd.StatusBase._finished()`. Now, if it is set from ``False`` to ``True``
+  ``ophyd.StatusBase._finished()``. Now, if it is set from ``False`` to ``True``
   is warns, and if it is set from ``True`` to ``False`` (which does not make
   sense) it raises.
 
@@ -726,7 +726,7 @@ Breaking Changes
   summary was overwhelming when it appeared in error messages and logs, so it
   was moved from ``Device.__str__`` this new method. Now ``Device.__str__``
   gives the same result as ``Device.__repr__``, as it did before v0.7.0.
-* Add (empty) hints to `~ophyd.sim.SynSignalWithRegistry`.
+* Add (empty) hints to ``ophyd.sim.SynSignalWithRegistry``.
 
 Bug Fixes
 ---------
@@ -1027,10 +1027,10 @@ Breaking Changes
 New Features
 ------------
 
-* Add ``pivot`` kwarg to `MonitorFlyierMixin` to optionally provide a
+* Add ``pivot`` kwarg to ``MonitorFlyerMixin`` to optionally provide a
   single event as a time series rather than a time series of many
   events.
-* Add `SignalPositionerMixin` to turn a `Signal` into a positioner.
+* Add ``SignalPositionerMixin`` to turn a `Signal` into a positioner.
 * Add classes for PCO edge
 
 Bug Fixes

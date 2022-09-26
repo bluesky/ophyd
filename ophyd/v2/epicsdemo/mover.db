@@ -1,0 +1,40 @@
+record(ao, "$(P)Setpoint") {
+    field(DESC, "Target value to move to")
+    field(PREC, "$(PREC=3)")
+    field(PINI, "YES")
+    field(EGU,  "$(EGU=mm)")
+}
+
+record(ao, "$(P)Velocity") {
+    field(DESC, "Velocity to move at")
+    field(PREC, "$(PREC=3)")
+    field(PINI, "YES")
+    field(EGU,  "$(EGU=mm)/s")
+    field(VAL,  "$(VELO=100)")
+}
+
+record(calc, "$(P)VelocityDiv") {
+    field(DESC, "Velocity per .1s")
+    field(INPA, "$(P)Velocity CP")
+    field(CALC, "A/10")
+    field(PINI, "YES")
+    field(EGU,  "$(EGU=mm)/s")
+}
+
+record(calc, "$(P)Readback") {
+    field(DESC, "Target value to move to")
+    field(INPA,  "$(P)Setpoint")
+    field(INPB,  "$(P)Readback")
+    field(INPC,  "$(P)VelocityDiv")
+    field(CALC, "ABS(A-B)<C?A:A>B?B+C:B-C")
+    field(SCAN,  ".1 second")
+    field(EGU,  "$(EGU=mm)")
+    field(PREC, "$(PREC=3)")
+}
+
+record(calcout, "$(P)Stop") {
+    field(DESC, "Process this to stop")
+    field(INPA, "$(P)Readback")
+    field(CALC, "A")
+    field(OUT,  "$(P)Setpoint PP")
+}

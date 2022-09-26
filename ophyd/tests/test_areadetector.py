@@ -525,6 +525,7 @@ def h5py():
 
 
 @pytest.mark.adsim
+@pytest.mark.xfail
 @pytest.mark.parametrize(
     "root,wpath,rpath,check_files",
     (

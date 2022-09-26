@@ -58,9 +58,9 @@ class PVPositioner(Device, PositionerBase):
         The value that the done pv should be when motion has completed
     put_complete : bool, optional
         If set, the specified PV should allow for asynchronous put completion
-        to indicate motion has finished.  If `actuate` is specified, it will be
-        used for put completion.  Otherwise, the `setpoint` will be used.  See
-        the `-c` option from `caput` for more information.
+        to indicate motion has finished.  If ``actuate`` is specified, it will be
+        used for put completion.  Otherwise, the ``setpoint`` will be used.  See
+        the `-c` option from ``caput`` for more information.
     """
 
     setpoint = None  # TODO: should add limits=True
@@ -338,7 +338,7 @@ class PVPositionerComparator(PVPositioner):
     allow some flexibility if we want to use other metrics for deciding if
     the PVPositioner is done.
 
-    Internally, this will subscribe to both the `setpoint` and `readback`
+    Internally, this will subscribe to both the ``setpoint`` and `readback`
     signals, updating `done` as appropriate.
 
     Parameters
@@ -374,9 +374,9 @@ class PVPositionerComparator(PVPositioner):
         The value sent to stop_signal when a stop is requested
     put_complete : bool, optional
         If set, the specified PV should allow for asynchronous put completion
-        to indicate motion has finished.  If `actuate` is specified, it will be
-        used for put completion.  Otherwise, the `setpoint` will be used.  See
-        the `-c` option from `caput` for more information.
+        to indicate motion has finished.  If ``actuate`` is specified, it will be
+        used for put completion.  Otherwise, the ``setpoint`` will be used.  See
+        the `-c` option from ``caput`` for more information.
     """
 
     done = Cpt(InternalSignal, value=0)
@@ -491,9 +491,9 @@ class PVPositionerIsClose(PVPositionerComparator):
         The value sent to stop_signal when a stop is requested
     put_complete : bool, optional
         If set, the specified PV should allow for asynchronous put completion
-        to indicate motion has finished.  If `actuate` is specified, it will be
-        used for put completion.  Otherwise, the `setpoint` will be used.  See
-        the `-c` option from `caput` for more information.
+        to indicate motion has finished.  If ``actuate`` is specified, it will be
+        used for put completion.  Otherwise, the ``setpoint`` will be used.  See
+        the `-c` option from ``caput`` for more information.
     atol : float, optional
         A measure of absolute tolerance. If atol is 0.1, then you'd be
         able to be up to 0.1 units away and still count as done.
@@ -579,9 +579,9 @@ class PVPositionerDone(PVPositioner):
         The value sent to stop_signal when a stop is requested
     put_complete : bool, optional
         If set, the specified PV should allow for asynchronous put completion
-        to indicate motion has finished.  If `actuate` is specified, it will be
-        used for put completion.  Otherwise, the `setpoint` will be used.  See
-        the `-c` option from `caput` for more information.
+        to indicate motion has finished.  If ``actuate`` is specified, it will be
+        used for put completion.  Otherwise, the ``setpoint`` will be used.  See
+        the `-c` option from ``caput`` for more information.
     """
 
     setpoint = Cpt(EpicsSignal, "", kind="hinted")

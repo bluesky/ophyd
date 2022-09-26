@@ -43,5 +43,5 @@ a callback registry.
 
 This registry is used to connect to the underlying events from the
 control system and propagate them up to bluesky, either via
-`~status.StatusBase` objects or via direct subscription from the
+:class:`~status.StatusBase` objects or via direct subscription from the
 :class:`~bluesky.run_engine.RunEngine`.
