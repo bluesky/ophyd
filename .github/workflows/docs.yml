@@ -12,6 +12,8 @@ jobs:
         python-version: [3.8]
       fail-fast: false
     runs-on: ubuntu-latest
+    env:
+      TOX_DIRECT: 1
 
     steps:
       - uses: actions/checkout@v2
@@ -30,7 +32,13 @@ jobs:
         run: pip install -e .[dev] && pipdeptree
 
       - name: Build Docs
-        run: make -C docs/ html
+        run: tox -e docs
+
+      - name: Upload built docs as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: build
 
       - name: Set env.REPOSITORY_NAME # just the repo, as opposed to org/repo
         run: echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
