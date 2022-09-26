@@ -51,7 +51,7 @@ jobs:
         with:
           deploy_key: ${{ secrets.ACTIONS_DOCUMENTATION_DEPLOY_KEY }}
           publish_branch: master
-          publish_dir: ./docs/build/html
+          publish_dir: build/html
           external_repository: bluesky/bluesky.github.io
           destination_dir: ${{ env.REPOSITORY_NAME }} # just the repo name, without the "bluesky/"
           keep_files: true # Keep old files.
