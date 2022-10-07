@@ -337,7 +337,7 @@ class Signal(OphydObject):
             kwargs,
         )
 
-        settle_time = settle_time or self.settle_time
+        settle_time = settle_time if settle_time is not None else self.settle_time
 
         def set_thread():
             try:
