@@ -34,7 +34,7 @@ class Energy(Enum):
     high = "High"
 
 
-class Sensor(Configurable, Readable, Device):
+class Sensor(HasReadableSignals, Device):
     """A demo sensor that produces a scalar value based on X and Y Movers"""
 
     def __init__(self, prefix: str, name=None) -> None:
@@ -42,23 +42,17 @@ class Sensor(Configurable, Readable, Device):
         # Define some signals
         self.value = EpicsSignalR(float, "Value")
         self.energy = EpicsSignalRW(Energy, "Energy")
+        # Set the signals that read() etc. will read from
+        self.set_readable_signals(
+            read=[self.value],
+            config=[self.energy],
+        )
         # Goes at the end so signals are named
         self.set_name(name)
 
     async def connect(self, prefix: str = "", sim=False):
+        # Add pv prefix to child Signals and connect them
         await connect_children(self, prefix + self.prefix, sim)
-
-    async def read_configuration(self) -> Dict[str, Reading]:
-        return await self.energy.read()
-
-    async def describe_configuration(self) -> Dict[str, Descriptor]:
-        return await self.energy.describe()
-
-    async def read(self) -> Dict[str, Reading]:
-        return await self.value.read()
-
-    async def describe(self) -> Dict[str, Descriptor]:
-        return await self.value.describe()
 
 
 class Mover(Movable, Stoppable, HasReadableSignals, Device):
