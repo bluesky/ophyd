@@ -160,5 +160,12 @@ async def test_ca_signal_get_put_waveform(ioc) -> None:
 
 async def test_non_existant_errors():
     pv = ChannelCa(NE, str)
+    # Can't use asyncio.wait_for on python3.8 because of
+    # https://github.com/python/cpython/issues/84787
+    done, pending = await asyncio.wait([pv.connect()], timeout=0.1)
+    assert len(done) == 0
+    assert len(pending) == 1
+    t = pending.pop()
+    t.cancel()
     with pytest.raises(NotConnected, match=f"ca://{NE}"):
-        await asyncio.wait_for(pv.connect(), 0.1)
+        await t
