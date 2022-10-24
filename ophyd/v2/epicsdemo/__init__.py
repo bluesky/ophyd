@@ -3,17 +3,10 @@
 import asyncio
 import time
 from enum import Enum
-from typing import Callable, Dict, List
+from typing import Callable, List
 
 import numpy as np
-from bluesky.protocols import (
-    Configurable,
-    Descriptor,
-    Movable,
-    Readable,
-    Reading,
-    Stoppable,
-)
+from bluesky.protocols import Movable, Stoppable
 
 from ophyd.v2.core import (
     AsyncStatus,
