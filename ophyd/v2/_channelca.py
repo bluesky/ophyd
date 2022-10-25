@@ -1,6 +1,6 @@
 from asyncio import CancelledError
 from enum import Enum
-from typing import Any, Dict, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Dict, Tuple, Type, Union
 
 import numpy as np
 from aioca import FORMAT_CTRL, FORMAT_TIME, caget, camonitor, caput, connect
@@ -99,10 +99,11 @@ class ChannelCa(Channel[T]):
         if issubclass(datatype, Enum):
             self._converter = EnumConverter(datatype)
             self.ca_datatype = str
-        elif get_origin(datatype) == np.ndarray:
+        # Can't do get_origin() as numpy has its own GenericAlias class on py<3.9
+        elif getattr(datatype, "__origin__", None) == np.ndarray:
             # datatype = numpy.ndarray[typing.Any, numpy.dtype[numpy.float64]]
             # so extract numpy.float64 from it
-            self.ca_datatype = get_args(get_args(datatype)[1])[0]
+            self.ca_datatype = datatype.__args__[1].__args__[0]  # type: ignore
 
     @property
     def source(self) -> str:
