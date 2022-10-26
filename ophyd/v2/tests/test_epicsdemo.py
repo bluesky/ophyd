@@ -125,7 +125,7 @@ async def test_sensor_disconncted():
 1 Devices did not connect:
   s: NotConnected
     value: ca://PRE:Value
-    energy: ca://PRE:Energy"""
+    mode: ca://PRE:Mode"""
         )
     assert s.name == "sensor"
 
@@ -135,8 +135,10 @@ async def test_assembly_renaming() -> None:
     await thing.connect(sim=True)
     assert thing.x.name == ""
     assert thing.x.velocity.name == ""
+    assert thing.x.stop_.name == ""
     await thing.x.velocity.set(456)
     assert await (thing.x.velocity.get_value()) == 456
     thing.set_name("foo")
     assert thing.x.name == "foo-x"
     assert thing.x.velocity.name == "foo-x-velocity"
+    assert thing.x.stop_.name == "foo-x-stop"

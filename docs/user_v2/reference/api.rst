@@ -27,4 +27,3 @@ This is the internal API reference for ophyd.v2
     ophyd.v2.core
     ophyd.v2.epics
     ophyd.v2.epicsdemo
-    ophyd.v2.magics

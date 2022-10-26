@@ -67,6 +67,7 @@ class EpicsSignalR(SignalR[T], _WithDatatype[T]):
         self._reading_listeners: List[Callback[Dict[str, Reading]]] = []
         self._staged = False
 
+    @property
     def source(self) -> str:
         return self.read_channel.source
 

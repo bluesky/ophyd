@@ -94,29 +94,40 @@ You can now run ipython with this startup file::
 
 This is like a regular python console with the contents of that file executed.
 IPython adds some extra features like tab completion and magics (shortcut
-commands). Ophyd adds some magics of its own that we will explore now.
+commands).
 
-Try some magics
----------------
+Run some plans
+--------------
 
-We can move the ``samp.x`` mover to 100mm using `bluesky.plan_stubs.mv`:
+Ophyd Devices give an interface to the `bluesky.run_engine.RunEngine` so they
+can be used in plans. We can move the ``samp.x`` mover to 100mm using
+`bluesky.plan_stubs.mv`:
 
 .. ipython::
 
-    In [1]: mov samp.x 100
+    In [1]: RE(mov(samp.x, 100))
 
-We can print the primary reading of ``samp.x``, in this case its readback value,
+If this is too verbose to write, we registered a shorthand with
+``bluesky.utils.register_transform``: ``<my_plan(args)`` is translated to
+``RE(my_plan(args))``. The command above can also be run as:
+
+.. ipython::
+
+    In [1]: <mov(samp.x, 100)
+
+
+We can get the primary reading of ``samp.x``, in this case its readback value,
 using `bluesky.plan_stubs.rd`:
 
 .. ipython::
 
-    In [1]: rd samp.x
+    In [1]: <rd(samp.x)
 
 We can do a relative move of ``samp.x`` by 10mm, using `bluesky.plan_stubs.mvr`:
 
 .. ipython::
 
-    In [1]: movr samp.x -10
+    In [1]: <movr(samp.x, -10)
 
 Individual Devices will also expose some of the parameters of the underlying
 hardware on itself. In the case of a `Mover`, we can set and get its
@@ -124,7 +135,7 @@ hardware on itself. In the case of a `Mover`, we can set and get its
 
 .. ipython::
 
-    In [1]: rd samp.x.velocity
+    In [1]: <rd(samp.x.velocity)
 
 Do a scan
 ---------
@@ -135,21 +146,21 @@ can do a `bluesky.plans.grid_scan` of ``x`` and ``y`` and plot ``det``:
 .. ipython::
 
     @savefig grid_scan1.png width=4in
-    In [1]: RE(bp.grid_scan([det], samp.x, 1, 2, 5, samp.y, 1, 2, 5))
+    In [1]: <grid_scan([det], samp.x, 1, 2, 5, samp.y, 1, 2, 5)
 
-There is also an "energy switch" that can be changed to modify the ``det`` output.
+There is also an "energy mode" that can be changed to modify the ``det`` output.
 
 .. ipython::
 
-    In [1]: rd det.energy
+    In [1]: <rd(det.mode)
 
 Although this is an :class:`~enum.Enum` and programmatic code should import and
-use instances of :class:`~ophyd.v2.epicsdemo.Energy`, we can set it using a
+use instances of :class:`~ophyd.v2.epicsdemo.EnergyMode`, we can set it using a
 string value on the commandline:
 
 .. ipython::
 
-    In [1]: mov det.energy "High"
+    In [1]: <mov(det.mode, "High Energy")
 
 The same scan will now give a slightly different output. If we include the v1
 device we can see it gives the same result:
@@ -157,8 +168,8 @@ device we can see it gives the same result:
 .. ipython::
 
     @savefig grid_scan2.png width=4in
-    In [1]: RE(bp.grid_scan([det, det_old], samp.x, 1, 2, 5, samp.y, 1, 2, 5))
+    In [1]: <grid_scan([det, det_old], samp.x, 1, 2, 5, samp.y, 1, 2, 5)
 
 .. seealso::
 
-    How-to `../how-to/make-a-device` to make your own Ophyd v2 Devices.
+    How-to `../how-to/make-a-simple-device` to make your own Ophyd v2 Devices.

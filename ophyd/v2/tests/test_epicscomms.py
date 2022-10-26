@@ -6,7 +6,7 @@ from bluesky.protocols import Descriptor, Reading
 
 from ophyd.v2._channel import Channel, uninstantiatable_channel
 from ophyd.v2._channelsim import SimMonitor
-from ophyd.v2.core import HasReadableSignals, T
+from ophyd.v2.core import SimpleDevice, T
 from ophyd.v2.epics import EpicsSignalR, EpicsSignalRW, Monitor
 
 
@@ -80,19 +80,12 @@ def do_nothing(value):
     pass
 
 
-class MyHasReadableSignals(HasReadableSignals):
-    """To satisfy mypy that name is concrete when instantiating below"""
-
-    name = ""
-
-
 async def test_readable_signals_cached_read() -> None:
     sig = EpicsSignalR(float, "blah")
     with patch("ophyd.v2.epics.ChannelSim", MockPv):
         await sig.connect(sim=True)
     pv = cast(MockPv, sig.read_channel)
-    sc = MyHasReadableSignals()
-    sc.set_readable_signals(read=[sig])
+    sc = SimpleDevice("", read=[sig])
     # To start there is no monitoring
     assert sig._monitor is None
     # Now start caching

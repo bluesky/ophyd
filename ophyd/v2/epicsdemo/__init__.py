@@ -8,68 +8,54 @@ from typing import Callable, List
 import numpy as np
 from bluesky.protocols import Movable, Stoppable
 
-from ophyd.v2.core import (
-    AsyncStatus,
-    Device,
-    HasReadableSignals,
-    connect_children,
-    observe_value,
-)
+from ophyd.v2.core import AsyncStatus, SimpleDevice, observe_value
 from ophyd.v2.epics import EpicsSignalR, EpicsSignalRW, EpicsSignalX
 
 
-class Energy(Enum):
+class EnergyMode(Enum):
     """Energy mode for `Sensor`"""
 
     #: Low energy mode
-    low = "Low"
+    low = "Low Energy"
     #: High energy mode
-    high = "High"
+    high = "High Energy"
 
 
-class Sensor(HasReadableSignals, Device):
+class Sensor(SimpleDevice):
     """A demo sensor that produces a scalar value based on X and Y Movers"""
 
-    def __init__(self, prefix: str, name=None) -> None:
-        self.prefix = prefix
+    def __init__(self, prefix: str, name="") -> None:
         # Define some signals
         self.value = EpicsSignalR(float, "Value")
-        self.energy = EpicsSignalRW(Energy, "Energy")
-        # Set the signals that read() etc. will read from
-        self.set_readable_signals(
+        self.mode = EpicsSignalRW(EnergyMode, "Mode")
+        # Set prefix, name, and signals for read() and read_configuration()
+        super().__init__(
+            prefix=prefix,
+            name=name,
             read=[self.value],
-            config=[self.energy],
+            config=[self.mode],
         )
-        # Goes at the end so signals are named
-        self.set_name(name)
-
-    async def connect(self, prefix: str = "", sim=False):
-        # Add pv prefix to child Signals and connect them
-        await connect_children(self, prefix + self.prefix, sim)
 
 
-class Mover(Movable, Stoppable, HasReadableSignals, Device):
+class Mover(SimpleDevice, Movable, Stoppable):
     """A demo movable that moves based on velocity"""
 
-    def __init__(self, prefix: str, name=None) -> None:
-        self.prefix = prefix
+    def __init__(self, prefix: str, name="") -> None:
         # Define some signals
         self.setpoint = EpicsSignalRW(float, "Setpoint", wait=False)
         self.readback = EpicsSignalR(float, "Readback")
         self.velocity = EpicsSignalRW(float, "Velocity")
         self.units = EpicsSignalR(str, "Readback.EGU")
         self.precision = EpicsSignalR(int, "Readback.PREC")
+        # Signals that collide with standard methods should have a trailing underscore
         self.stop_ = EpicsSignalX("Stop.PROC", write_value=1)
-        # Set the signals that read() etc. will read from
-        self.set_readable_signals(
+        # Set prefix, name, and signals for read() and read_configuration()
+        super().__init__(
+            prefix=prefix,
+            name=name,
             primary=self.readback,
             config=[self.velocity, self.units],
         )
-        # Goes at the end so signals are named
-        self.set_name(name)
-
-    async def connect(self, prefix: str = "", sim=False):
-        await connect_children(self, prefix + self.prefix, sim)
 
     def set(self, new_position: float, timeout: float = None) -> AsyncStatus[float]:
         start = time.time()
@@ -104,19 +90,15 @@ class Mover(Movable, Stoppable, HasReadableSignals, Device):
         await self.stop_.execute()
 
 
-class SampleStage(Device):
+class SampleStage(SimpleDevice):
     """A demo sample stage with X and Y movables"""
 
-    def __init__(self, prefix: str, name=None) -> None:
-        self.prefix = prefix
+    def __init__(self, prefix: str, name="") -> None:
         # Define some child Devices
         self.x = Mover("X:")
         self.y = Mover("Y:")
-        # Goes at the end so signals are named
-        self.set_name(name)
-
-    async def connect(self, prefix: str = "", sim=False):
-        await connect_children(self, prefix + self.prefix, sim)
+        # Set prefix and name
+        super().__init__(prefix, name)
 
 
 def start_ioc_subprocess() -> str:

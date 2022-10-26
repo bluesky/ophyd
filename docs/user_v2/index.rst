@@ -31,7 +31,7 @@ side-bar.
             :caption: How-to Guides
             :maxdepth: 1
 
-            how-to/make-a-device
+            how-to/make-a-simple-device
 
         +++
 

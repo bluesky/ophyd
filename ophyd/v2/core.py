@@ -111,31 +111,23 @@ class AsyncStatus(Status, Generic[T]):
 class Device(HasName):
     """Common base class for all Ophyd.v2 Devices"""
 
-    #: Reference to parent Device if it exists
-    parent: Any = None
-    _name: str = ""
+    #: The parent Device if it exists
+    parent: Optional[Device] = None
 
     @property
+    @abstractmethod
     def name(self) -> str:
-        return self._name
+        """Return the name of the Device"""
 
-    def set_name(self, name: str = "", force=False):
+    @abstractmethod
+    def set_name(self, name: str = ""):
         """Set ``self.name=name`` and each ``self.child.name=name+"-child"``.
 
         Parameters
         ----------
         name:
             New name to set, do nothing if blank or name is all set
-        force:
-            Set name even if it already exists
         """
-        if force or (name and not self._name):
-            self._name = name
-            for attr_name, attr in self.__dict__.items():
-                # TODO: support lists and dicts of devices
-                if isinstance(attr, Device):
-                    attr.set_name(f"{name}-{attr_name}", force)
-                    attr.parent = self
 
     @abstractmethod
     async def connect(self, prefix: str = "", sim=False):
@@ -324,6 +316,15 @@ def _fail(self, other, *args, **kwargs):
 class Signal(Device):
     """Signals are like ophyd Signals, but async"""
 
+    _name = ""
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def set_name(self, name: str = ""):
+        self._name = name
+
     @property
     @abstractmethod
     def source(self) -> str:
@@ -449,28 +450,31 @@ async def merge_gathered_dicts(
     return ret
 
 
-class HasReadableSignals(Readable, Configurable, Stageable):
-    """Mix-in class giving a Readable interface from many Signals.
+class SimpleDevice(Readable, Configurable, Stageable, Device):
+    """Device that owns its children and provides useful default behavior.
 
-    While staged these Signals will be subscribed so `read()` and
-    `read_configuration()` will return the last received monitored value of the
-    Signals.
+    - When its name is set it renames child Devices
+    - Signals can be registered for read() and read_configuration()
+    - These signals will be subscribed for read() between stage() and unstage()
     """
 
-    _read_signals: Tuple[Union[SignalR, _SignalRenamer], ...] = ()
-    _config_signals: Tuple[SignalR, ...] = ()
-    _staged = False
+    _name = ""
 
-    def set_readable_signals(
+    def __init__(
         self,
+        prefix: str,
+        name: str = "",
         primary: SignalR = None,
         read: Sequence[SignalR] = (),
         config: Sequence[SignalR] = (),
     ):
-        """Set the signals that will be grouped.
-
+        """
         Parameters
         ----------
+        prefix:
+            This will be passed as a prefix to all child Device connects
+        name:
+            If set, name the Device and its children
         primary:
             Optional single Signal that will be named self.name
         read:
@@ -478,11 +482,31 @@ class HasReadableSignals(Readable, Configurable, Stageable):
         config:
             Signals to make up `read_configuration()`
         """
-        assert not self._staged, "Can't set signals while staged"
-        self._read_signals = tuple(read)
+        self._init_prefix = prefix
+        self._read_signals: Tuple[Union[SignalR, _SignalRenamer], ...] = tuple(read)
         self._config_signals = tuple(config)
         if primary:
             self._read_signals += (_SignalRenamer(primary, self),)
+        self._staged = False
+        # Call this last so child Signals are renamed
+        self.set_name(name)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def set_name(self, name: str = ""):
+        if name and not self._name:
+            self._name = name
+            for attr_name, attr in self.__dict__.items():
+                # TODO: support lists and dicts of devices
+                if isinstance(attr, Device):
+                    attr.set_name(f"{name}-{attr_name.rstrip('_')}")
+                    attr.parent = self
+
+    async def connect(self, prefix: str = "", sim=False):
+        # Add pv prefix to child Signals and connect them
+        await connect_children(self, prefix + self._init_prefix, sim)
 
     def stage(self) -> List[Any]:
         self._staged = True
