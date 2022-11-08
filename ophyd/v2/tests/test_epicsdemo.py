@@ -154,7 +154,5 @@ def test_mover_in_re(sim_mover: epicsdemo.Mover) -> None:
         return
         yield
 
-    with pytest.raises(
-        AssertionError, match="Will deadlock run engine if run in a plan"
-    ):
+    with pytest.raises(RuntimeError, match="Will deadlock run engine if run in a plan"):
         RE(my_plan())

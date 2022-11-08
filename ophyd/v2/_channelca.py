@@ -51,9 +51,11 @@ class EnumConverter(CaValueConverter):
 
     async def validate(self, pv: str):
         value = await caget(pv, format=FORMAT_CTRL)
-        assert hasattr(value, "enums"), f"{pv} is not an enum"
+        if not hasattr(value, "enums"):
+            raise TypeError(f"{pv} is not an enum")
         unrecognized = set(v.value for v in self.enum_cls) - set(value.enums)
-        assert not unrecognized, f"Enum strings {unrecognized} not in {value.enums}"
+        if unrecognized:
+            raise ValueError(f"Enum strings {unrecognized} not in {value.enums}")
 
     def to_ca(self, value: Union[Enum, str]):
         if isinstance(value, Enum):

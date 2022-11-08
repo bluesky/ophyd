@@ -119,7 +119,7 @@ class BadEnum(Enum):
 
 async def test_ca_signal_with_bad_enum(ioc):
     pv = ChannelCa(MBBO, BadEnum)
-    with pytest.raises(AssertionError) as cm:
+    with pytest.raises(ValueError) as cm:
         await pv.connect()
     assert str(cm.value) == "Enum strings {'Baa'} not in ['Aaa', 'Bbb', 'Ccc']"
 

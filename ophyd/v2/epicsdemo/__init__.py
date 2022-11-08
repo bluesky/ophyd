@@ -83,7 +83,8 @@ class Mover(SimpleDevice, Movable, Stoppable):
         """Commandline only synchronous move of a Motor"""
         from bluesky.run_engine import call_in_bluesky_event_loop, in_bluesky_event_loop
 
-        assert not in_bluesky_event_loop(), "Will deadlock run engine if run in a plan"
+        if in_bluesky_event_loop():
+            raise RuntimeError("Will deadlock run engine if run in a plan")
         call_in_bluesky_event_loop(self._move(new_position))
 
     def set(self, new_position: float, timeout: float = None) -> AsyncStatus[float]:
