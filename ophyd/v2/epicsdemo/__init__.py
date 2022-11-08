@@ -57,34 +57,39 @@ class Mover(SimpleDevice, Movable, Stoppable):
             config=[self.velocity, self.units],
         )
 
-    def set(self, new_position: float, timeout: float = None) -> AsyncStatus[float]:
+    async def _move(self, new_position: float, watchers: List[Callable] = []):
         start = time.time()
+        old_position, units, precision = await asyncio.gather(
+            self.setpoint.get_value(),
+            self.units.get_value(),
+            self.precision.get_value(),
+        )
+        await self.setpoint.set(new_position)
+        async for current_position in observe_value(self.readback):
+            for watcher in watchers:
+                watcher(
+                    name=self.name,
+                    current=current_position,
+                    initial=old_position,
+                    target=new_position,
+                    unit=units,
+                    precision=precision,
+                    time_elapsed=time.time() - start,
+                )
+            if np.isclose(current_position, new_position):
+                break
+
+    def move(self, new_position: float, timeout: float = None):
+        """Commandline only synchronous move of a Motor"""
+        from bluesky.run_engine import call_in_bluesky_event_loop, in_bluesky_event_loop
+
+        assert not in_bluesky_event_loop(), "Will deadlock run engine if run in a plan"
+        call_in_bluesky_event_loop(self._move(new_position))
+
+    def set(self, new_position: float, timeout: float = None) -> AsyncStatus[float]:
         watchers: List[Callable] = []
-
-        async def do_set():
-            old_position, units, precision = await asyncio.gather(
-                self.setpoint.get_value(),
-                self.units.get_value(),
-                self.precision.get_value(),
-            )
-            await self.setpoint.set(new_position)
-
-            async for current_position in observe_value(self.readback):
-                for watcher in watchers:
-                    watcher(
-                        name=self.name,
-                        current=current_position,
-                        initial=old_position,
-                        target=new_position,
-                        unit=units,
-                        precision=precision,
-                        time_elapsed=time.time() - start,
-                    )
-                if np.isclose(current_position, new_position):
-                    break
-
-        status = AsyncStatus(asyncio.wait_for(do_set(), timeout=timeout), watchers)
-        return status
+        coro = asyncio.wait_for(self._move(new_position, watchers), timeout=timeout)
+        return AsyncStatus(coro, watchers)
 
     async def stop(self, success=True):
         await self.stop_.execute()

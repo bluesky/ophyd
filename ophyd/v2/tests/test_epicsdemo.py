@@ -4,6 +4,7 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 from bluesky.protocols import Reading
+from bluesky.run_engine import RunEngine
 
 from ophyd.v2 import epicsdemo
 from ophyd.v2.core import DeviceCollector
@@ -142,3 +143,18 @@ async def test_assembly_renaming() -> None:
     assert thing.x.name == "foo-x"
     assert thing.x.velocity.name == "foo-x-velocity"
     assert thing.x.stop_.name == "foo-x-stop"
+
+
+def test_mover_in_re(sim_mover: epicsdemo.Mover) -> None:
+    RE = RunEngine()
+    sim_mover.move(0)
+
+    def my_plan():
+        sim_mover.move(0)
+        return
+        yield
+
+    with pytest.raises(
+        AssertionError, match="Will deadlock run engine if run in a plan"
+    ):
+        RE(my_plan())

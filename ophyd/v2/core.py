@@ -52,13 +52,16 @@ class AsyncStatus(Status, Generic[T]):
         watchers: Optional[List[Callable]] = None,
     ):
         # Note: this doesn't start until we await it or add callback
-        self._coro = coro
+        self._coro: Optional[Coroutine[None, None, T]] = coro
         self._task: Optional[asyncio.Task[T]] = None
         self._callbacks = cast(List[Callback[Status]], [])
         self._watchers = watchers
 
     def __await__(self):
-        return self._coro.__await__()
+        assert self._coro, "add_callback() or await has already been run"
+        coro = self._coro
+        self._coro = None
+        return coro.__await__()
 
     def _run_callbacks(self, task: asyncio.Task):
         if not task.cancelled():
@@ -67,7 +70,9 @@ class AsyncStatus(Status, Generic[T]):
 
     def add_callback(self, callback: Callback[Status]):
         if self._task is None:
+            assert self._coro, "Can't add_callback() when await has already been run"
             self._task = asyncio.create_task(self._coro)
+            self._coro = None
             self._task.add_done_callback(self._run_callbacks)
         if self.done:
             callback(self)
