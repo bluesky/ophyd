@@ -19,7 +19,7 @@ other control systems.
 * Put the details specific to a device or control system behind a **high-level
   interface** with methods like ``trigger()``, ``read()``, and ``set(...)``.
 * **Group** individual control channels (such as EPICS V3 PVs) into logical
-  "Devices" to be configured and used as units with internal coordiantion.
+  "Devices" to be configured and used as units with internal coordination.
 * Assign readings with **names meaningful for data analysis** that will
   propagate into metadata.
 * **Categorize** readings by "kind" (primary reading, configuration,
