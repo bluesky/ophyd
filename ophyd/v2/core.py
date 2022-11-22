@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import sys
 from abc import abstractmethod
 from contextlib import suppress
+from dataclasses import dataclass
 from typing import (
     Any,
     AsyncGenerator,
@@ -18,12 +20,12 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Protocol,
     Sequence,
     Set,
-    Tuple,
     TypeVar,
-    Union,
     cast,
+    runtime_checkable,
 )
 
 from bluesky.protocols import (
@@ -43,50 +45,35 @@ T = TypeVar("T")
 Callback = Callable[[T], None]
 
 
-class AsyncStatus(Status, Generic[T]):
+class AsyncStatus(Status):
     "Convert asyncio awaitable to bluesky Status interface"
 
     def __init__(
         self,
-        coro: Coroutine[None, None, T],
+        awaitable: Awaitable,
         watchers: Optional[List[Callable]] = None,
     ):
-        # Note: this doesn't start until we await it or add callback
-        self._coro: Optional[Coroutine[None, None, T]] = coro
-        self._task: Optional[asyncio.Task[T]] = None
+        if isinstance(awaitable, asyncio.Task):
+            self.task = awaitable
+        else:
+            self.task = asyncio.create_task(awaitable)  # type: ignore
+        self.task.add_done_callback(self._run_callbacks)
         self._callbacks = cast(List[Callback[Status]], [])
         self._watchers = watchers
 
     def __await__(self):
-        assert self._coro, "add_callback() or await has already been run"
-        coro = self._coro
-        self._coro = None
-        return coro.__await__()
-
-    def _run_callbacks(self, task: asyncio.Task):
-        if not task.cancelled():
-            for callback in self._callbacks:
-                callback(self)
+        return self.task.__await__()
 
     def add_callback(self, callback: Callback[Status]):
-        if self._task is None:
-            assert self._coro, "Can't add_callback() when await has already been run"
-            self._task = asyncio.create_task(self._coro)
-            self._coro = None
-            self._task.add_done_callback(self._run_callbacks)
         if self.done:
             callback(self)
         else:
             self._callbacks.append(callback)
 
-    @property
-    def task(self) -> asyncio.Task[T]:
-        """Assert that add_callback has been called, and return the created Task"""
-        assert self._task, (
-            f"Coroutine {self._coro} has not been converted to a "
-            f"task by calling add_callback"
-        )
-        return self._task
+    def _run_callbacks(self, task: asyncio.Task):
+        if not task.cancelled():
+            for callback in self._callbacks:
+                callback(self)
 
     @property
     def done(self) -> bool:
@@ -103,7 +90,6 @@ class AsyncStatus(Status, Generic[T]):
         else:
             return True
 
-    # TODO: should this be in the protocol?
     def watch(self, watcher: Callable):
         """Add watcher to the list of interested parties.
 
@@ -111,6 +97,14 @@ class AsyncStatus(Status, Generic[T]):
         """
         if self._watchers is not None:
             self._watchers.append(watcher)
+
+    @classmethod
+    def wrap(cls, f: Callable[[T], Coroutine]) -> Callable[[T], AsyncStatus]:
+        @functools.wraps(f)
+        def wrap_f(self) -> AsyncStatus:
+            return AsyncStatus(f(self))
+
+        return wrap_f
 
 
 class Device(HasName):
@@ -226,7 +220,8 @@ class DeviceCollector:
             t1x = motor.Motor("BLxxI-MO-TABLE-01:X")
             t1y = motor.Motor("pva://BLxxI-MO-TABLE-01:Y")
             # Names and connects devices here
-        assert t1x.comm.velocity.source assert t1x.name == "t1x"
+        assert t1x.comm.velocity.source
+        assert t1x.name == "t1x"
 
     """
 
@@ -342,7 +337,7 @@ class Signal(Device):
         return hash(id(self))
 
 
-class SignalR(Signal, Readable, Subscribable, Stageable, Generic[T]):
+class SignalR(Signal, Readable, Stageable, Subscribable, Generic[T]):
     """Signal that can be read from and monitored"""
 
     @abstractmethod
@@ -352,6 +347,14 @@ class SignalR(Signal, Readable, Subscribable, Stageable, Generic[T]):
     @abstractmethod
     async def describe(self) -> Dict[str, Descriptor]:
         """Return a single item dict with the descriptor in it"""
+
+    @abstractmethod
+    def stage(self) -> List[Any]:
+        """Start caching this signal"""
+
+    @abstractmethod
+    def unstage(self) -> List[Any]:
+        """Stop caching this signal"""
 
     @abstractmethod
     async def get_value(self, cached: Optional[bool] = None) -> T:
@@ -369,20 +372,12 @@ class SignalR(Signal, Readable, Subscribable, Stageable, Generic[T]):
     def clear_sub(self, function: Callback) -> None:
         """Remove a subscription."""
 
-    @abstractmethod
-    def stage(self) -> List[Any]:
-        """Start caching this signal"""
-
-    @abstractmethod
-    def unstage(self) -> List[Any]:
-        """Stop caching this signal"""
-
 
 class SignalW(Signal, Movable, Generic[T]):
     """Signal that can be set"""
 
     @abstractmethod
-    def set(self, value: T) -> AsyncStatus:
+    def set(self, value: T, wait=True) -> AsyncStatus:
         """Set the value and return a status saying when it's done"""
 
 
@@ -415,29 +410,94 @@ async def observe_value(signal: SignalR[T]) -> AsyncGenerator[T, None]:
         signal.clear_sub(q.put_nowait)
 
 
-class _SignalRenamer(Readable, Stageable):
-    def __init__(self, signal: SignalR, device: HasName) -> None:
-        self.signal = signal
-        self.device = device
+async def wait_for_value(signal: SignalR[T], match, timeout=None):
+    """Wait for a signal to have a matching value.
 
-    @property
-    def name(self) -> str:
-        return self.signal.name
+    Parameters
+    ----------
+    signal:
+        Call subscribe_value on this at the start, and clear_sub on it at the
+        end
+    match:
+        If a callable, it should return True if the value matches. If not
+        callable then value will be checked for euqlity with match.
+    timeout:
+        How long to wait for the value to match
+
+    Notes
+    -----
+    Example usage::
+
+        wait_for_value(device.acquiring, 1, timeout=1)
+
+    Or::
+
+        wait_for_value(device.num_captured, lambda v: v > 45, timeout=1)
+    """
+
+    async def _wait_for_value():
+        if not callable(match):
+
+            def match(value, match=match):
+                return value == match
+
+        async for value in observe_value(signal):
+            if match(value):
+                return
+
+    _wait_for_value.__name__ = f"wait_for_{signal.name}_to_match_{match}"
+    await asyncio.wait_for(_wait_for_value(), timeout)
+
+
+@runtime_checkable
+class AsyncReadable(Protocol):
+    """Readable narrowed to only be async"""
+
+    @abstractmethod
+    async def read(self) -> Dict[str, Reading]:
+        ...
+
+    @abstractmethod
+    async def describe(self) -> Dict[str, Descriptor]:
+        ...
+
+
+@dataclass
+class _ReadableRenamer(AsyncReadable, Stageable):
+    readable: AsyncReadable
+    device: Device
 
     def _rename(self, d: Dict[str, T]) -> Dict[str, T]:
         return {self.device.name: v for v in d.values()}
 
-    async def read(self, cached: Optional[bool] = None) -> Dict[str, Reading]:
-        return self._rename(await self.signal.read(cached))
+    async def read(self) -> Dict[str, Reading]:
+        return self._rename(await self.readable.read())
 
     async def describe(self) -> Dict[str, Descriptor]:
-        return self._rename(await self.signal.describe())
+        return self._rename(await self.readable.describe())
 
     def stage(self) -> List[Any]:
-        return self.signal.stage()
+        if isinstance(self.readable, Stageable):
+            return self.readable.stage()
+        else:
+            return []
 
     def unstage(self) -> List[Any]:
-        return self.signal.unstage()
+        if isinstance(self.readable, Stageable):
+            return self.readable.unstage()
+        else:
+            return []
+
+
+@dataclass
+class _UncachedSignal(AsyncReadable):
+    signal: SignalR
+
+    async def read(self) -> Dict[str, Reading]:
+        return await self.signal.read(cached=False)
+
+    async def describe(self) -> Dict[str, Descriptor]:
+        return await self.signal.describe()
 
 
 async def merge_gathered_dicts(
@@ -455,7 +515,7 @@ async def merge_gathered_dicts(
     return ret
 
 
-class SimpleDevice(Readable, Configurable, Stageable, Device):
+class StandardReadable(Readable, Configurable, Stageable, Device):
     """Device that owns its children and provides useful default behavior.
 
     - When its name is set it renames child Devices
@@ -469,9 +529,10 @@ class SimpleDevice(Readable, Configurable, Stageable, Device):
         self,
         prefix: str,
         name: str = "",
-        primary: SignalR = None,
-        read: Sequence[SignalR] = (),
-        config: Sequence[SignalR] = (),
+        primary: Optional[SignalR] = None,
+        read: Sequence[AsyncReadable] = (),
+        read_uncached: Sequence[SignalR] = (),
+        config: Sequence[AsyncReadable] = (),
     ):
         """
         Parameters
@@ -483,15 +544,19 @@ class SimpleDevice(Readable, Configurable, Stageable, Device):
         primary:
             Optional single Signal that will be named self.name
         read:
-            Signals to make up `read()`
-        config:
-            Signals to make up `read_configuration()`
+            Signals to make up `read()` that can be cached
+        read_uncached:
+            Signals to make up `read()` that should not be cached
+        conf:
+            Signals to make up `read_configuration()` that can be cached
         """
         self._init_prefix = prefix
-        self._read_signals: Tuple[Union[SignalR, _SignalRenamer], ...] = tuple(read)
-        self._config_signals = tuple(config)
+        self._read_signals = tuple(read) + tuple(
+            _UncachedSignal(sig) for sig in read_uncached
+        )
         if primary:
-            self._read_signals += (_SignalRenamer(primary, self),)
+            self._read_signals = (_ReadableRenamer(primary, self),) + self._read_signals
+        self._conf_signals = tuple(config)
         self._staged = False
         # Call this last so child Signals are renamed
         self.set_name(name)
@@ -516,34 +581,27 @@ class SimpleDevice(Readable, Configurable, Stageable, Device):
     def stage(self) -> List[Any]:
         self._staged = True
         staged = [self]
-        for sig in self._read_signals + self._config_signals:
-            staged += sig.stage()
+        for sig in self._read_signals + self._conf_signals:
+            if isinstance(sig, Stageable):
+                staged += sig.stage()
         return staged
 
     def unstage(self) -> List[Any]:
         self._staged = False
         unstaged = [self]
-        for sig in self._read_signals + self._config_signals:
-            unstaged += sig.unstage()
+        for sig in self._read_signals + self._conf_signals:
+            if isinstance(sig, Stageable):
+                unstaged += sig.unstage()
         return unstaged
 
     async def describe(self) -> Dict[str, Descriptor]:
         return await merge_gathered_dicts(sig.describe() for sig in self._read_signals)
 
     async def read(self) -> Dict[str, Reading]:
-        return await merge_gathered_dicts(
-            sig.read(cached=self._staged) for sig in self._read_signals
-        )
+        return await merge_gathered_dicts(sig.read() for sig in self._read_signals)
 
     async def describe_configuration(self) -> Dict[str, Descriptor]:
-        return await merge_gathered_dicts(
-            sig.describe() for sig in self._config_signals
-        )
+        return await merge_gathered_dicts(sig.describe() for sig in self._conf_signals)
 
     async def read_configuration(self) -> Dict[str, Reading]:
-        return await merge_gathered_dicts(
-            sig.read(cached=self._staged) for sig in self._config_signals
-        )
-
-    def __del__(self):
-        self.unstage()
+        return await merge_gathered_dicts(sig.read() for sig in self._conf_signals)

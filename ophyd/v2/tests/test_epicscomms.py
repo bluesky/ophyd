@@ -6,7 +6,7 @@ from bluesky.protocols import Descriptor, Reading
 
 from ophyd.v2._channel import Channel, uninstantiatable_channel
 from ophyd.v2._channelsim import SimMonitor
-from ophyd.v2.core import SimpleDevice, T
+from ophyd.v2.core import StandardReadable, T
 from ophyd.v2.epics import EpicsSignalR, EpicsSignalRW, Monitor
 
 
@@ -85,7 +85,7 @@ async def test_readable_signals_cached_read() -> None:
     with patch("ophyd.v2.epics.ChannelSim", MockPv):
         await sig.connect(sim=True)
     pv = cast(MockPv, sig.read_channel)
-    sc = SimpleDevice("", read=[sig])
+    sc = StandardReadable("", read=[sig])
     # To start there is no monitoring
     assert sig._monitor is None
     # Now start caching
@@ -128,8 +128,3 @@ async def test_readable_signals_cached_read() -> None:
     assert pv.reading.call_count == 1
     assert pv.monitored.call_count == 2
     assert reading1 != reading3
-    # GC will stop caching
-    del sc
-    await sig.read()
-    assert pv.reading.call_count == 2
-    assert pv.monitored.call_count == 2

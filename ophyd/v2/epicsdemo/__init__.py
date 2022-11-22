@@ -3,12 +3,12 @@
 import asyncio
 import time
 from enum import Enum
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import numpy as np
 from bluesky.protocols import Movable, Stoppable
 
-from ophyd.v2.core import AsyncStatus, SimpleDevice, observe_value
+from ophyd.v2.core import AsyncStatus, StandardReadable, observe_value
 from ophyd.v2.epics import EpicsSignalR, EpicsSignalRW, EpicsSignalX
 
 
@@ -21,7 +21,7 @@ class EnergyMode(Enum):
     high = "High Energy"
 
 
-class Sensor(SimpleDevice):
+class Sensor(StandardReadable):
     """A demo sensor that produces a scalar value based on X and Y Movers"""
 
     def __init__(self, prefix: str, name="") -> None:
@@ -37,12 +37,12 @@ class Sensor(SimpleDevice):
         )
 
 
-class Mover(SimpleDevice, Movable, Stoppable):
+class Mover(StandardReadable, Movable, Stoppable):
     """A demo movable that moves based on velocity"""
 
     def __init__(self, prefix: str, name="") -> None:
         # Define some signals
-        self.setpoint = EpicsSignalRW(float, "Setpoint", wait=False)
+        self.setpoint = EpicsSignalRW(float, "Setpoint")
         self.readback = EpicsSignalR(float, "Readback")
         self.velocity = EpicsSignalRW(float, "Velocity")
         self.units = EpicsSignalR(str, "Readback.EGU")
@@ -64,7 +64,8 @@ class Mover(SimpleDevice, Movable, Stoppable):
             self.units.get_value(),
             self.precision.get_value(),
         )
-        await self.setpoint.set(new_position)
+        # Wait for the value to set, but don't wait for put completion callback
+        await self.setpoint.set(new_position, wait=False)
         async for current_position in observe_value(self.readback):
             for watcher in watchers:
                 watcher(
@@ -79,15 +80,15 @@ class Mover(SimpleDevice, Movable, Stoppable):
             if np.isclose(current_position, new_position):
                 break
 
-    def move(self, new_position: float, timeout: float = None):
+    def move(self, new_position: float, timeout: Optional[float] = None):
         """Commandline only synchronous move of a Motor"""
         from bluesky.run_engine import call_in_bluesky_event_loop, in_bluesky_event_loop
 
         if in_bluesky_event_loop():
             raise RuntimeError("Will deadlock run engine if run in a plan")
-        call_in_bluesky_event_loop(self._move(new_position))
+        call_in_bluesky_event_loop(self._move(new_position), timeout)  # type: ignore
 
-    def set(self, new_position: float, timeout: float = None) -> AsyncStatus[float]:
+    def set(self, new_position: float, timeout: Optional[float] = None) -> AsyncStatus:
         watchers: List[Callable] = []
         coro = asyncio.wait_for(self._move(new_position, watchers), timeout=timeout)
         return AsyncStatus(coro, watchers)
@@ -96,7 +97,7 @@ class Mover(SimpleDevice, Movable, Stoppable):
         await self.stop_.execute()
 
 
-class SampleStage(SimpleDevice):
+class SampleStage(StandardReadable):
     """A demo sample stage with X and Y movables"""
 
     def __init__(self, prefix: str, name="") -> None:

@@ -52,7 +52,7 @@ __all__ = [
 class EpicsSignalR(SignalR[T], _WithDatatype[T]):
     """Readable EPICS Signal backed by a single PV"""
 
-    def __init__(self, datatype: Type[T], read_pv: str = None) -> None:
+    def __init__(self, datatype: Type[T], read_pv: Optional[str] = None) -> None:
         #: Request that underlying PV connection is made using this Python datatype
         self.datatype = datatype
         #: Read PV. Can be prefixed by passing prefix in `connect()`
@@ -161,13 +161,11 @@ class EpicsSignalR(SignalR[T], _WithDatatype[T]):
 class EpicsSignalW(SignalW[T], _WithDatatype[T]):
     """Writeable EPICS Signal backed by a single PV"""
 
-    def __init__(self, datatype: Type[T], write_pv: str = None, wait=True) -> None:
+    def __init__(self, datatype: Type[T], write_pv: Optional[str] = None) -> None:
         #: Request that underlying PV connection is made using this Python datatype
         self.datatype = datatype
         #: Write PV. Can be prefixed by passing prefix in `connect()`
         self.write_pv = write_pv
-        #: Whether to wait for the put to callback before returning from `set()`
-        self.wait = wait
         #: Write `Channel`. A connected instance will be set in `connect()`
         self.write_channel: Channel[T] = DISCONNECTED_CHANNEL
 
@@ -182,8 +180,8 @@ class EpicsSignalW(SignalW[T], _WithDatatype[T]):
         )
         await self.write_channel.connect()
 
-    def set(self, value: T) -> AsyncStatus:
-        return AsyncStatus(self.write_channel.put(value, wait=self.wait))
+    def set(self, value: T, wait=True) -> AsyncStatus:
+        return AsyncStatus(self.write_channel.put(value, wait=wait))
 
 
 class EpicsSignalRW(EpicsSignalW[T], EpicsSignalR[T], SignalRW[T]):
@@ -198,16 +196,17 @@ class EpicsSignalRW(EpicsSignalW[T], EpicsSignalR[T], SignalRW[T]):
     read_channel: Channel[T]
     #: Write PV. Can be prefixed by passing prefix in `connect()`
     write_pv: Optional[str]
-    #: Whether to wait for the put to callback before returning from `set()`
-    wait: bool
     #: Write `Channel`. A connected instance will be set in `connect()`
     write_channel: Channel[T]
 
     def __init__(
-        self, datatype: Type[T], read_pv: str = None, write_pv: str = None, wait=True
+        self,
+        datatype: Type[T],
+        read_pv: Optional[str] = None,
+        write_pv: Optional[str] = None,
     ) -> None:
         EpicsSignalR.__init__(self, datatype, read_pv)
-        EpicsSignalW.__init__(self, datatype, write_pv, wait)
+        EpicsSignalW.__init__(self, datatype, write_pv)
 
     async def connect(self, prefix: str = "", sim=False):
         assert self.read_pv is not None, "Read PV not set"
@@ -230,7 +229,9 @@ class EpicsSignalRW(EpicsSignalW[T], EpicsSignalR[T], SignalRW[T]):
 class EpicsSignalX(Signal):
     """Executable EPICS Signal that puts a set value to a PV on execute()"""
 
-    def __init__(self, write_pv: str = None, write_value: Any = 0, wait=True) -> None:
+    def __init__(
+        self, write_pv: Optional[str] = None, write_value: Any = 0, wait=True
+    ) -> None:
         #: Write PV. Can be prefixed by passing prefix in connect()
         self.write_pv = write_pv
         #: What value to write to the PV on execute()
