@@ -30,6 +30,12 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     # TODO replace this with fancier meta-programming
     # TODO handle control_layer being a module/nampspace directly
     if control_layer == "pyepics":
+        # For v2 aioca compatibility, make sure we use the epicscorelibs
+        # version of libca
+        try:
+            import epicscorelibs.path.pyepics  # noqa
+        except ImportError:
+            pass
         from . import _pyepics_shim as shim
     elif control_layer == "caproto":
         from . import _caproto_shim as shim
