@@ -17,7 +17,7 @@ if parse(epics.__version__) < parse(_min_pyepics):
     )
 
 try:
-    ca.find_libca()
+    print(ca.find_libca())
 except ca.ChannelAccessException:
     raise ImportError("libca not found; pyepics is unavailable")
 else:
