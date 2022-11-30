@@ -153,7 +153,7 @@ is marked finished based on some ophyd event. It reduces this:
                if old_value == 1 and value == 0:
                    status.set_finished()
                    # Clear the subscription.
-                   sself.acquire.clear_sub(check_value)
+                   self.acquire.clear_sub(check_value)
 
            status = DeviceStatus(self.acquire)
            self.acquire.subscribe(check_value)
