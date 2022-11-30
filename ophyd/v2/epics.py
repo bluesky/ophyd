@@ -27,6 +27,12 @@ except ImportError:
     ChannelCa = uninstantiatable_channel("ca")  # type: ignore
 
 
+try:
+    from ._channelp4p import ChannelP4p
+except ImportError:
+    ChannelP4p = uninstantiatable_channel("pva")  # type: ignore
+
+
 class _WithDatatype(Generic[T]):
     datatype: Type[T]
 
@@ -263,7 +269,7 @@ class EpicsTransport(Enum):
     #: Use Channel Access (using aioca library)
     ca = ChannelCa
     #: Use PVAccess (using p4p library)
-    pva = ChannelCa  # TODO change to ChannelPva when Alan's written it
+    pva = ChannelP4p
 
 
 _default_epics_transport = EpicsTransport.ca
