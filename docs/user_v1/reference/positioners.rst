@@ -35,6 +35,58 @@ controller is a kind of positioner, from ophyd's point of view, where the
 
 .. autoclass:: ophyd.pv_positioner.PVPositioner
 
+
+PVPositionerComparator
+----------------------
+
+As an example, take a shutter that has a setpoint PV and a readback
+PV. The setpoint PV takes only CLOSE_VALVE and OPEN_VALVE commands.
+The readback PV goes through the states OPEN -> MOVING -> CLOSED ->
+MOVING and back to OPEN. The ``done_comparator()`` method knows that
+the movement is done when the ``readback`` argument is not the MOVING
+state.
+
+From Bluesky, this device can be moved like
+any other motor.
+
+.. code-block:: python
+
+    from ophyd.pv_positioner import PVPositionerComparator
+    from ophyd import Component, EpicsSignal, EpicsSignalRO
+
+    from enum import IntEnum, unique
+
+    from typing import Any
+
+    @unique
+    class SetpointCmd(IntEnum):
+      CLOSE_VALVE = 1
+      OPEN_VALVE = 2
+
+    @unique
+    class ReadbackStatus(IntEnum):
+      UNKNOWN = 0
+      INVALID = 1
+      CLOSED = 2
+      OPEN = 3
+      MOVING = 4
+
+    class Shutter(PVPositionerComparator):
+      setpoint = Component(EpicsSignal, ":OPEN_CLOSE_CMD")
+      readback = Component(EpicsSignalRO, ":OPEN_CLOSE_STATUS")
+
+      def __init__(self, prefix: str, *, name: str, **kwargs):
+	kwargs.update({"limits": (SetpointCmd.CLOSE_VALVE,
+				  SetpointCmd.OPEN_VALVE)})
+	super().__init__(prefix, name=name, **kwargs)
+
+      def done_comparator(self, readback:Any, setpoint:Any) -> bool:
+	return readback != ReadbackStatus.MOVING
+
+
+.. autoclass:: ophyd.pv_positioner.PVPositionerComparator
+
+
 PseudoPositioner
 ----------------
 
