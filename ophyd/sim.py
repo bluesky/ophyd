@@ -88,6 +88,7 @@ class EnumSignal(Signal):
     def describe(self):
         desc = super().describe()
         desc[self.name]["enum_strs"] = self._enum_strs
+
         return desc
 
 
@@ -423,6 +424,9 @@ class SynAxis(Device):
 
     SUB_READBACK = "readback"
     _default_sub = SUB_READBACK
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name={self.name!r})"
 
     def __init__(
         self,
