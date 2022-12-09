@@ -88,7 +88,7 @@ class EnumSignal(Signal):
     def describe(self):
         desc = super().describe()
         desc[self.name]["enum_strs"] = self._enum_strs
-
+        desc[self.name]['dtype'] = 'string'
         return desc
 
 
