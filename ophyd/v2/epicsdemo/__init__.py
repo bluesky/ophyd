@@ -49,6 +49,7 @@ class Mover(StandardReadable, Movable, Stoppable):
         self.precision = EpicsSignalR(int, "Readback.PREC")
         # Signals that collide with standard methods should have a trailing underscore
         self.stop_ = EpicsSignalX("Stop.PROC", write_value=1)
+        self._success = True
         # Set prefix, name, and signals for read() and read_configuration()
         super().__init__(
             prefix=prefix,
@@ -58,7 +59,9 @@ class Mover(StandardReadable, Movable, Stoppable):
         )
 
     async def _move(self, new_position: float, watchers: List[Callable] = []):
-        start = time.time()
+        self._success = True
+        # time.monotonic won't go backwards in case of NTP corrections
+        start = time.monotonic()
         old_position, units, precision = await asyncio.gather(
             self.setpoint.get_value(),
             self.units.get_value(),
@@ -75,10 +78,12 @@ class Mover(StandardReadable, Movable, Stoppable):
                     target=new_position,
                     unit=units,
                     precision=precision,
-                    time_elapsed=time.time() - start,
+                    time_elapsed=time.monotonic() - start,
                 )
             if np.isclose(current_position, new_position):
                 break
+        if not self._success:
+            raise RuntimeError("Motor was stopped")
 
     def move(self, new_position: float, timeout: Optional[float] = None):
         """Commandline only synchronous move of a Motor"""
@@ -88,12 +93,14 @@ class Mover(StandardReadable, Movable, Stoppable):
             raise RuntimeError("Will deadlock run engine if run in a plan")
         call_in_bluesky_event_loop(self._move(new_position), timeout)  # type: ignore
 
+    # TODO: this fails if we call from the cli, but works if we "ipython await" it
     def set(self, new_position: float, timeout: Optional[float] = None) -> AsyncStatus:
         watchers: List[Callable] = []
         coro = asyncio.wait_for(self._move(new_position, watchers), timeout=timeout)
         return AsyncStatus(coro, watchers)
 
     async def stop(self, success=True):
+        self._success = success
         await self.stop_.execute()
 
 

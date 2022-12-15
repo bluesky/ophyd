@@ -9,7 +9,7 @@ Make a Simple Device
 .. currentmodule:: ophyd.v2.core
 
 To make a simple device using Ophyd.v2, you need to subclass from the
-`SimpleDevice` class, create some `Signal` instances, and optionally implement
+`StandardReadable` class, create some `Signal` instances, and optionally implement
 other suitable Bluesky `Protocols <hardware_interface>` like
 :class:`~bluesky.protocols.Movable`.
 
@@ -34,7 +34,7 @@ its Python type, which could be:
 
 The rest of the arguments are PV connection information, in this case the PV suffix.
 
-Finally `super().__init__() <SimpleDevice>` is called with:
+Finally `super().__init__() <StandardReadable>` is called with:
 
 - PV ``prefix``: will be added to each Signal pv suffix
 - Possibly empty Device ``name``: will also dash-prefix its child Device names is set
@@ -51,7 +51,7 @@ and ``unstage()`` and their cached values returned on ``read()`` and
 Movable
 -------
 
-For a more complicated device like a `Mover`, you can still use `SimpleDevice`
+For a more complicated device like a `Mover`, you can still use `StandardReadable`
 and implement some addition protocols:
 
 .. literalinclude:: ../../../ophyd/v2/epicsdemo/__init__.py
@@ -74,7 +74,7 @@ Compound assemblies can be used to group Devices into larger logical Devices:
 .. literalinclude:: ../../../ophyd/v2/epicsdemo/__init__.py
    :pyobject: SampleStage
 
-This makes use of the prefix nesting that ``SimpleDevice.connect`` offers:
+This makes use of the prefix nesting that ``StandardReadable.connect`` offers:
 
 - SampleStage is passed a prefix like ``DEVICE:``
 - SampleStage.x will append its prefix ``X:`` to get ``DEVICE:X:``
