@@ -126,7 +126,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         checks are applied to it, but ``write_path_template`` is
         returned without any validation.
 
-    This mixin assumes that it's peers provide an `enable` signal
+    This mixin assumes that it's peers provide an ``enable`` signal
 
     Parameters
     ----------
@@ -153,7 +153,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     read_path_template : str, optional
         The read path template, if different from the write path.   See the
-        docstings for `write_path_template` and `root`.
+        docstrings for ``write_path_template`` and ``root``.
 
     reg : Registry
         If None provided, try to import the top-level api from

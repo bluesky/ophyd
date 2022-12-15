@@ -1,3 +1,8 @@
+.. note::
+
+    Ophyd.v2 is included on a provisional basis until the v2.0 release and 
+    may change API on minor release numbers before then
+
 User Guide v2
 =============
 
@@ -14,6 +19,7 @@ side-bar.
             :maxdepth: 1
 
             tutorials/installation
+            tutorials/using-existing-devices
 
         +++
 
@@ -25,7 +31,7 @@ side-bar.
             :caption: How-to Guides
             :maxdepth: 1
 
-            how-to/make-a-device
+            how-to/make-a-simple-device
 
         +++
 

@@ -668,7 +668,7 @@ class DeviceStatus(StatusBase):
 
 class SubscriptionStatus(DeviceStatus):
     """
-    Status updated via `ophyd` events
+    Status updated via ``ophyd`` events
 
     Parameters
     ----------

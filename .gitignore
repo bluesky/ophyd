@@ -70,7 +70,8 @@ target/
 .ipynb_checkpoints
 
 # generated docs
-docs/user_v1/generated
+docs/*/generated
+docs/savefig
 
 # generated version number
 ophyd/_version.py

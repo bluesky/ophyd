@@ -1,0 +1,45 @@
+record(ao, "$(P)ao") {
+  field(PREC, "1")
+  field(EGU, "mm")
+  field(VAL, "3.141")
+  field(PINI, "YES")
+}
+
+record(longout, "$(P)longout") {
+  field(HOPR, "100")
+  field(HIHI, "98")
+  field(HIGH, "96")
+  field(DRVH, "90")
+  field(DRVL, "10")
+  field(LOW, "5")
+  field(LOLO, "2")
+  field(LOPR, "0")
+  field(VAL, "42")
+  field(PINI, "YES")
+}
+
+record(mbbo, "$(P)mbbo") {
+  field(ZRST, "Aaa")
+  field(ZRVL, "5")
+  field(ONST, "Bbb")
+  field(ONVL, "6")
+  field(TWST, "Ccc")
+  field(TWVL, "7")
+  field(VAL, "1")
+  field(PINI, "YES")
+}
+
+record(mbbo, "$(P)mbbi") {
+  field(ZRST, "Aaa")
+  field(ONST, "Bbb")
+  field(TWST, "Ccc")
+  field(VAL, "1")
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)waveform") {
+  field(NELM, "3")
+  field(FTVL, "DOUBLE")
+  field(INP, {const:[1.5, 2.5, 3.5]})
+  field(PINI, "YES")
+}

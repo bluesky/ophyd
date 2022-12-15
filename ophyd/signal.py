@@ -496,7 +496,7 @@ class Signal(OphydObject):
         return self.read()
 
     def describe_configuration(self):
-        """Provide schema & meta-data for `~BlueskyInterface.read_configuration`
+        """Provide schema & meta-data for :meth:`BlueskyInterface.read_configuration`
 
         This keys in the `OrderedDict` this method returns must match the keys
         in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
@@ -1536,7 +1536,7 @@ class EpicsSignalRO(EpicsSignalBase):
 
     def set(self, *args, **kwargs):
         "Disabled for a read-only signal"
-        raise ReadOnlyError("Read-only signals cannot be set")
+        raise ReadOnlyError(f"Read-only signal {self} cannot be set to {args}")
 
     def _pv_access_callback(self, read_access, write_access, pv):
         "Control-layer callback: read PV access rights have changed"
@@ -2023,7 +2023,7 @@ class EpicsSignal(EpicsSignalBase):
         **kwargs,
     ):
         """
-        Using channel access, set the write PV to `value`.
+        Using channel access, set the write PV to ``value``.
 
         Keyword arguments are passed on to callbacks
 

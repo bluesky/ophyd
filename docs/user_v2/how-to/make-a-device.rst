@@ -1,4 +1,0 @@
-Make a Device
-=============
-
-TODO
