@@ -86,6 +86,7 @@ any other motor.
 
 .. autoclass:: ophyd.pv_positioner.PVPositionerComparator
 
+.. autoclass:: ophyd.pv_positioner.PVPositionerIsClose
 
 PseudoPositioner
 ----------------
