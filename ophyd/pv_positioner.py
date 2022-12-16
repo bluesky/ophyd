@@ -338,7 +338,7 @@ class PVPositionerComparator(PVPositioner):
     allow some flexibility if we want to use other metrics for deciding if
     the PVPositioner is done.
 
-    Internally, this will subscribe to both the ``setpoint`` and `readback`
+    Internally, this will subscribe to both the ``setpoint`` and ``readback``
     signals, updating `done` as appropriate.
 
     Parameters
