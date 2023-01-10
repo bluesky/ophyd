@@ -2,7 +2,7 @@ import calendar
 import os
 
 
-def makedirs(path, *, mode=0o777, mode_base=None):
+def makedirs(path, *, mode=0o755, mode_base=None):
     """Recursively make directories and set permissions
 
     Parameters
@@ -36,7 +36,7 @@ def makedirs(path, *, mode=0o777, mode_base=None):
     return ret
 
 
-def make_dir_tree(year, *, base_path=None, mode=0o777):
+def make_dir_tree(year, *, base_path=None, mode=0o755):
     """Make full directory tree for the year
 
     Parameters
@@ -45,7 +45,7 @@ def make_dir_tree(year, *, base_path=None, mode=0o777):
     base_path : str, optional
         If unspecified, defaults to the current directory
     mode : int, optional
-        File mode to set for permissions (default: 0o777)
+        File mode to set for permissions (default: 0o755)
 
     Returns
     -------
