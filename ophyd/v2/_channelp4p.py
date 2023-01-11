@@ -2,8 +2,8 @@ from asyncio import CancelledError
 from enum import Enum
 from functools import partial
 from typing import Any, Dict, Sequence, Tuple, Type, Union
-from numpy import ndarray
 
+import numpy as np
 from p4p.client.asyncio import Context
 from p4p.client.thread import Subscription
 from p4p.wrapper import Value
@@ -44,11 +44,24 @@ class NullConverter(PvaValueConverter):
         return value
 
 
+class TypeCheckConverter(NullConverter):
+    def __init__(self, datatype):
+        self._type = datatype
+
+    async def validate(self, pv: str, value: Value):
+        if isinstance(value, np.ndarray):
+            if not np.issubdtype(value.dtype, self._type):
+                raise TypeError(f"{pv} is not type {self._type}")
+
+        elif not isinstance(value, self._type):
+            raise TypeError(f"{pv} is not type {self._type}")
+
+
 class EnumConverter(PvaValueConverter):
     def __init__(self, enum_cls: Type[Enum]) -> None:
         self.enum_cls = enum_cls
 
-    async def validate(self, value: Value):
+    async def validate(self, pv: str, value: Value):
         if not isinstance(value, ntenum):
             raise TypeError(f"{pv} is not an enum")
         unrecognized = set(v.value for v in self.enum_cls) - set(value.raw.value.choices)
@@ -72,7 +85,7 @@ def make_pva_descriptor(source: str, value: object) -> Descriptor:
     except (KeyError, TypeError):
         assert (
             isinstance(value, list) 
-            or isinstance(value, ndarray)
+            or isinstance(value, np.ndarray)
         ), f"Can't get dtype for {value} with datatype {type(value)}"
         dtype = "array"
         shape = [len(value)]
@@ -100,12 +113,17 @@ class ChannelP4p(Channel[T]):
 
     def __init__(self, pv: str, datatype: Type[T]):
         super().__init__(pv, datatype)
-        self._converter = NullConverter()
-        self.p4p_datatype: type = datatype
-        self._channel = None
-        self._callback = None
+        self._p4p_datatype: type = datatype
+        # Can't do get_origin() as numpy has its own GenericAlias class on py<3.9
+        if getattr(datatype, "__origin__", None) == np.ndarray:
+            # datatype = numpy.ndarray[typing.Any, numpy.dtype[numpy.float64]]
+            # so extract numpy.float64 from it
+            self._p4p_datatype = datatype.__args__[1].__args__[0]  # type: ignore
+        self._converter = TypeCheckConverter(self._p4p_datatype)
         if issubclass(datatype, Enum):
             self._converter = EnumConverter(datatype)
+        self._channel = None
+        self._callback = None
 
 
     @staticmethod
@@ -125,7 +143,7 @@ class ChannelP4p(Channel[T]):
     async def connect(self):
         try:
             value = await self.context.get(self.pv)
-            await self._converter.validate(value)
+            await self._converter.validate(self.pv, value)
         except CancelledError:
             raise NotConnected(self.source)
 

@@ -94,6 +94,18 @@ def ioc():
     softioc.iocInit(dispatcher)
 
 
+async def test_p4p_type_errors(ioc):
+    pv = ChannelP4p(PV_AO, str)
+    with pytest.raises(TypeError) as te:
+        await pv.connect()
+    assert str(te.value) == "{} is not type {}".format(PV_AO, str)
+
+    pv = ChannelP4p(PV_WAVEFORM, npt.NDArray[np.int32])
+    with pytest.raises(TypeError) as te:
+        await pv.connect()
+    assert str(te.value) == "{} is not type {}".format(PV_WAVEFORM, np.int32)
+
+
 async def test_p4p_signal_get_put_long(ioc):
     pv = ChannelP4p(PV_AO, float)
     await pv.connect()
