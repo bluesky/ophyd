@@ -399,7 +399,7 @@ class StatusBase:
             when this method was called, not from the beginning of the action).
         """
         if not self._event.wait(timeout=timeout):
-            raise WaitTimeoutError("Status has not completed yet.")
+            raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
         return self._exception
 
     def wait(self, timeout=None):
@@ -429,7 +429,7 @@ class StatusBase:
             from ``WaitTimeoutError`` above.
         """
         if not self._event.wait(timeout=timeout):
-            raise WaitTimeoutError("Status has not completed yet.")
+            raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
         if self._exception is not None:
             raise self._exception
 
