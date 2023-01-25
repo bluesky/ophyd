@@ -4,8 +4,8 @@ Ophyd
 
 |build_status| |coverage| |pypi_version| |license|
 
-Ophyd is Python library for interfacing with hardware. It provides an
-abstraction layer than enables experiment orchestration and data acquisition
+Ophyd is a Python library for interfacing with hardware. It provides an
+abstraction layer that enables experiment orchestration and data acquisition
 code to operate above the specifics of particular devices and control systems.
 
 Ophyd is typically used with the `Bluesky Run Engine`_ for experiment
@@ -27,7 +27,7 @@ other control systems.
 
 ============== ==============================================================
 PyPI           ``pip install ophyd``
-Conda          ``pip install -c nsls2forge ophyd``
+Conda          ``conda install -c conda-forge ophyd``
 Source code    https://github.com/bluesky/ophyd
 Documentation  https://blueskyproject.io/ophyd
 ============== ==============================================================
