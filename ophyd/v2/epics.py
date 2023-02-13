@@ -205,6 +205,10 @@ class EpicsSignalRW(EpicsSignalW[T], EpicsSignalR[T], SignalRW[T]):
         read_pv: Optional[str] = None,
         write_pv: Optional[str] = None,
     ) -> None:
+        """Sets write_pv to read_pv if not specified."""
+        if read_pv is not None and write_pv is None:
+            write_pv = read_pv
+
         EpicsSignalR.__init__(self, datatype, read_pv)
         EpicsSignalW.__init__(self, datatype, write_pv)
 
