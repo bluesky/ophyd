@@ -31,6 +31,16 @@ async def sim_mover():
     yield sim_mover
 
 
+@pytest.fixture
+async def sim_sensor():
+    async with DeviceCollector(sim=True):
+        sim_sensor = epicsdemo.Sensor("BLxxI-MO-TABLE-01:X")
+        # Signals connected here
+
+    assert sim_sensor.name == "sim_sensor"
+    yield sim_sensor
+
+
 async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
     setpoint = cast(ChannelSim, sim_mover.setpoint.write_channel)
     readback = cast(ChannelSim, sim_mover.readback.read_channel)
@@ -129,6 +139,29 @@ async def test_sensor_disconncted():
     mode: ca://PRE:Mode"""
         )
     assert s.name == "sensor"
+
+
+async def test_read_sensor(sim_sensor: epicsdemo.Sensor):
+    sim_sensor.stage()
+    assert (await sim_sensor.read())["sim_sensor-value"]["value"] == 0
+    assert (await sim_sensor.describe())["sim_sensor-value"][
+        "source"
+    ] == "sim://BLxxI-MO-TABLE-01:XValue"
+    assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
+        "value"
+    ] == epicsdemo.EnergyMode.low
+    assert (await sim_sensor.describe_configuration())["sim_sensor-mode"][
+        "dtype"
+    ] == "string"
+    assert (await sim_sensor.describe_configuration())["sim_sensor-mode"][
+        "choices"
+    ] == ["Low Energy", "High Energy"]
+    mode = cast(ChannelSim, sim_sensor.mode.read_channel)
+    mode.set_value(epicsdemo.EnergyMode.high)
+    assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
+        "value"
+    ] == epicsdemo.EnergyMode.high
+    sim_sensor.unstage()
 
 
 async def test_assembly_renaming() -> None:
