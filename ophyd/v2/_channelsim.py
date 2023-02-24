@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from enum import Enum
 from typing import Dict, Generic, List, Sequence, Type, TypeVar
 
 from bluesky.protocols import Descriptor, Dtype, Reading
@@ -23,9 +24,16 @@ def make_sim_descriptor(source: str, value) -> Descriptor:
         dtype = primitive_dtypes[type(value)]
         shape = []
     except KeyError:
-        assert isinstance(value, Sequence), f"Can't get dtype for {type(value)}"
-        dtype = "array"
-        shape = [len(value)]
+        if isinstance(value, Sequence):
+            dtype = "array"
+            shape = [len(value)]
+        elif isinstance(value, Enum):
+            dtype = "string"
+            shape = []
+            choices = [e.value for e in type(value)]
+            return dict(source=source, dtype=dtype, shape=shape, choices=choices)
+        else:
+            assert False, f"Can't get dtype for {type(value)}"
     return dict(source=source, dtype=dtype, shape=shape)
 
 
@@ -59,7 +67,11 @@ class ChannelSim(Channel[T]):
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
         self._listeners: List[SimMonitor[T]] = []
-        self.set_value(datatype())
+
+        if issubclass(datatype, Enum):
+            self.set_value(list(datatype)[0])
+        else:
+            self.set_value(datatype())
 
     @property
     def source(self) -> str:
