@@ -1,8 +1,6 @@
 import asyncio
 import random
 import string
-import subprocess
-import sys
 import time
 from enum import Enum
 from pathlib import Path
@@ -31,6 +29,7 @@ PV_MBBI = PV_PREFIX + ":" + MBBI
 PV_WAVEFORM = PV_PREFIX + ":" + WAVEFORM
 PV_NE = PV_PREFIX + ":" + NE
 
+
 # Use a module level fixture so it's fast to run tests. This means we need to
 # add a record for every PV that we will modify in tests to stop tests
 # interfering with each other
@@ -43,9 +42,9 @@ def ioc():
     builder.SetDeviceName(PV_PREFIX)
 
     # Create some records
-    ao = records.ao(AO, PREC="1", EGU="mm", VAL="3.141", PINI="YES")
+    records.ao(AO, PREC="1", EGU="mm", VAL="3.141", PINI="YES")
 
-    lo = records.longout(
+    records.longout(
         LONGOUT,
         HOPR="100",
         HIHI="98",
@@ -56,10 +55,10 @@ def ioc():
         LOLO="2",
         LOPR="0",
         VAL="42",
-        PINI="YES"
-        )
+        PINI="YES",
+    )
 
-    mbbo = records.mbbo(
+    records.mbbo(
         MBBO,
         ZRST="Aaa",
         ZRVL="5",
@@ -68,26 +67,14 @@ def ioc():
         TWST="Ccc",
         TWVL="7",
         VAL="1",
-        PINI="YES"
-        )
+        PINI="YES",
+    )
 
-    mbbi = records.mbbi(
-        MBBI,
-        ZRST="Aaa",
-        ONST="Bbb",
-        TWST="Ccc",
-        VAL="1",
-        PINI="YES"
-        )
+    records.mbbi(MBBI, ZRST="Aaa", ONST="Bbb", TWST="Ccc", VAL="1", PINI="YES")
 
-    waveform = records.waveform(
-        WAVEFORM,
-        NELM="3",
-        FTVL="DOUBLE",
-        INP="[1.5, 2.5, 3.5]",
-        PINI="YES"
-        )
-
+    records.waveform(
+        WAVEFORM, NELM="3", FTVL="DOUBLE", INP="[1.5, 2.5, 3.5]", PINI="YES"
+    )
 
     # Boilerplate get the IOC started
     builder.LoadDatabase()

@@ -3,13 +3,11 @@ from enum import Enum
 from typing import Any, Dict, Tuple, Type, Union
 
 import numpy as np
-
 from bluesky.protocols import Descriptor, Dtype, Reading
 from p4p.client.asyncio import Context
 from p4p.nt.enum import ntenum
 from p4p.nt.ndarray import ntndarray
-from p4p.nt.scalar import (NTScalar, ntfloat, ntint, ntnumericarray, ntstr,
-                           ntstringarray)
+from p4p.nt.scalar import NTScalar, ntfloat, ntint, ntnumericarray, ntstr, ntstringarray
 from p4p.wrapper import Value
 
 from ._channel import Channel, Monitor, ReadingValueCallback
@@ -20,7 +18,7 @@ dbr_to_dtype: Dict[NTScalar, Dtype] = {
     NTScalar.typeMap[int]: "integer",
     NTScalar.typeMap[float]: "number",
     NTScalar.typeMap[str]: "string",
-    ntenum: "integer"
+    ntenum: "integer",
 }
 
 
@@ -63,9 +61,13 @@ class EnumConverter(PvaValueConverter):
     async def validate(self, pv: str, value: Value):
         if not isinstance(value, ntenum):
             raise TypeError(f"{pv} is not an enum")
-        unrecognized = set(v.value for v in self.enum_cls) - set(value.raw.value.choices)
+        unrecognized = set(v.value for v in self.enum_cls) - set(
+            value.raw.value.choices
+        )
         if unrecognized:
-            raise ValueError(f"Enum strings {unrecognized} not in {value.raw.value.choices}")
+            raise ValueError(
+                f"Enum strings {unrecognized} not in {value.raw.value.choices}"
+            )
 
     def to_pva(self, value: Union[Enum, str]):
         if isinstance(value, Enum):
@@ -82,9 +84,8 @@ def make_pva_descriptor(source: str, value: object) -> Descriptor:
         dtype = dbr_to_dtype[type(value)]
         shape = []
     except (KeyError, TypeError):
-        assert (
-            isinstance(value, list)
-            or isinstance(value, np.ndarray)
+        assert isinstance(value, list) or isinstance(
+            value, np.ndarray
         ), f"Can't get dtype for {value} with datatype {type(value)}"
         dtype = "array"
         shape = [len(value)]
@@ -92,7 +93,8 @@ def make_pva_descriptor(source: str, value: object) -> Descriptor:
 
 
 def make_pva_reading(
-    value: Union[ntfloat, ntint, ntstr, ntnumericarray, ntstringarray, ntndarray], converter: PvaValueConverter
+    value: Union[ntfloat, ntint, ntstr, ntnumericarray, ntstringarray, ntndarray],
+    converter: PvaValueConverter,
 ) -> Tuple[Reading, Any]:
     conv_value = converter.from_pva(value)
     return (
@@ -127,7 +129,7 @@ class ChannelP4p(Channel[T]):
     @staticmethod
     def get_context():
         if ChannelP4p._context is None:
-            ChannelP4p._context = Context('pva', nt=None)
+            ChannelP4p._context = Context("pva", nt=None)
         return ChannelP4p._context
 
     @property
@@ -149,7 +151,7 @@ class ChannelP4p(Channel[T]):
         await self.context.put(self.pv, self._converter.to_pva(value))
 
     async def get_descriptor(self) -> Descriptor:
-        value = await self.context.get(self.pv, request='field(value,alarm,timestamp)')
+        value = await self.context.get(self.pv, request="field(value,alarm,timestamp)")
         return make_pva_descriptor(self.source, value)
 
     async def get_reading(self) -> Reading:
@@ -163,9 +165,7 @@ class ChannelP4p(Channel[T]):
     def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
         self._callback = callback
         return self.context.monitor(
-            self.pv,
-            self.async_callback,
-            request='field(value,alarm,timestamp)'
+            self.pv, self.async_callback, request="field(value,alarm,timestamp)"
         )
 
     async def async_callback(self, value):
