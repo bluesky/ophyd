@@ -145,6 +145,19 @@ async def test_ca_enum_monitor_reading(ioc):
     m.close()
 
 
+async def test_ca_enum_get_descriptor(ioc):
+    pv = ChannelCa(MBBO, MyEnum)
+    await pv.connect()
+
+    descriptor = await pv.get_descriptor()
+    assert descriptor == {
+        "source": f"ca://{MBBO}",
+        "dtype": "string",
+        "shape": [],
+        "choices": ["Aaa", "Bbb", "Ccc"],
+    }
+
+
 async def test_ca_signal_get_put_waveform(ioc) -> None:
     pv = ChannelCa(WAVEFORM, npt.NDArray[np.float64])
     await pv.connect()
