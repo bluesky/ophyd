@@ -42,6 +42,14 @@ class CaValueConverter:
     def from_ca(self, value):
         return value
 
+    def make_descriptor(self, source: str, value: AugmentedValue) -> Descriptor:
+        dtype = dbr_to_dtype[value.datatype]
+        shape = []
+        if value.element_count > 1:
+            dtype = "array"
+            shape = [value.element_count]
+        return dict(source=source, dtype=dtype, shape=shape)
+
 
 class StrConverter(CaValueConverter):
     async def connect(self, pv: str) -> Dbr:
@@ -79,14 +87,11 @@ class EnumConverter(CaValueConverter):
     def from_ca(self, value: AugmentedValue):
         return self.datatype(value)
 
-
-def make_ca_descriptor(source: str, value: AugmentedValue) -> Descriptor:
-    dtype = dbr_to_dtype[value.datatype]
-    shape = []
-    if value.element_count > 1:
-        dtype = "array"
-        shape = [value.element_count]
-    return dict(source=source, dtype=dtype, shape=shape)
+    def make_descriptor(self, source: str, value: AugmentedValue) -> Descriptor:
+        dtype = "string"
+        shape = []
+        choices = [e.value for e in self.datatype]
+        return dict(source=source, dtype=dtype, shape=shape, choices=choices)
 
 
 def make_ca_reading(
@@ -148,7 +153,7 @@ class ChannelCa(Channel[T]):
     async def get_descriptor(self) -> Descriptor:
         assert self.ca_datatype is not None, f"{self.source} not connected yet"
         value = await caget(self.pv, datatype=self.ca_datatype, format=FORMAT_CTRL)
-        return make_ca_descriptor(self.source, value)
+        return self._converter.make_descriptor(self.source, value)
 
     async def get_reading(self) -> Reading:
         assert self.ca_datatype is not None, f"{self.source} not connected yet"
