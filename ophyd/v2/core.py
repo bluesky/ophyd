@@ -38,6 +38,7 @@ from bluesky.protocols import (
     Stageable,
     Status,
     Subscribable,
+    StatusException,
 )
 from bluesky.run_engine import call_in_bluesky_event_loop
 
@@ -60,6 +61,7 @@ class AsyncStatus(Status):
         self.task.add_done_callback(self._run_callbacks)
         self._callbacks = cast(List[Callback[Status]], [])
         self._watchers = watchers
+        self._exception = None
 
     def __await__(self):
         return self.task.__await__()
@@ -76,6 +78,10 @@ class AsyncStatus(Status):
                 callback(self)
 
     @property
+    def exception(self) -> Optional[StatusException]:
+        return self._exception
+
+    @property
     def done(self) -> bool:
         return self.task.done()
 
@@ -84,8 +90,8 @@ class AsyncStatus(Status):
         assert self.done, "Status has not completed yet"
         try:
             self.task.result()
-        except (Exception, asyncio.CancelledError):
-            logging.exception("Failed status")
+        except (Exception, asyncio.CancelledError) as exc:
+            self._exception = exc
             return False
         else:
             return True
