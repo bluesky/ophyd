@@ -24,6 +24,7 @@ from typing import (
     Sequence,
     Set,
     TypeVar,
+    Union,
     cast,
     runtime_checkable,
 )
@@ -38,7 +39,6 @@ from bluesky.protocols import (
     Stageable,
     Status,
     Subscribable,
-    StatusException,
 )
 from bluesky.run_engine import call_in_bluesky_event_loop
 
@@ -78,7 +78,7 @@ class AsyncStatus(Status):
                 callback(self)
 
     @property
-    def exception(self) -> Optional[StatusException]:
+    def exception(self) -> Optional[Union[Exception, asyncio.CancelledError]]:
         return self._exception
 
     @property
