@@ -61,7 +61,6 @@ class AsyncStatus(Status):
         self.task.add_done_callback(self._run_callbacks)
         self._callbacks = cast(List[Callback[Status]], [])
         self._watchers = watchers
-        self._exception = None
 
     def __await__(self):
         return self.task.__await__()
@@ -79,7 +78,10 @@ class AsyncStatus(Status):
 
     @property
     def exception(self) -> Optional[Union[Exception, asyncio.CancelledError]]:
-        return self._exception
+        try:
+            return self.task.exception()
+        except asyncio.CancelledError as e:
+            return e
 
     @property
     def done(self) -> bool:
@@ -90,8 +92,7 @@ class AsyncStatus(Status):
         assert self.done, "Status has not completed yet"
         try:
             self.task.result()
-        except (Exception, asyncio.CancelledError) as exc:
-            self._exception = exc
+        except (Exception, asyncio.CancelledError):
             return False
         else:
             return True
