@@ -1,8 +1,10 @@
+import asyncio
 import re
 
 import pytest
+from bluesky.protocols import Status
 
-from ophyd.v2.core import Signal
+from ophyd.v2.core import AsyncStatus, Signal
 
 
 class MySignal(Signal):
@@ -29,3 +31,13 @@ def test_signals_equality_raises():
         match=re.escape("'>' not supported between instances of 'MySignal' and 'int'"),
     ):
         s1 > 4
+
+
+async def test_async_status_success():
+    st = AsyncStatus(asyncio.sleep(1))
+    assert isinstance(st, Status)
+    assert not st.done
+    assert not st.success
+    await st
+    assert st.done
+    assert st.success
