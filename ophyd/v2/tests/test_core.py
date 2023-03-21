@@ -34,7 +34,7 @@ def test_signals_equality_raises():
 
 
 async def test_async_status_success():
-    st = AsyncStatus(asyncio.sleep(1))
+    st = AsyncStatus(asyncio.sleep(0.1))
     assert isinstance(st, Status)
     assert not st.done
     assert not st.success
