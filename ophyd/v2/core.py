@@ -78,10 +78,12 @@ class AsyncStatus(Status):
 
     @property
     def exception(self) -> Optional[Union[Exception, asyncio.CancelledError]]:
-        try:
-            return self.task.exception()
-        except asyncio.CancelledError as e:
-            return e
+        if self.task.done():
+            try:
+                return self.task.exception()
+            except asyncio.CancelledError as e:
+                return e
+        return None
 
     @property
     def done(self) -> bool:
