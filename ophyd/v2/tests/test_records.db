@@ -1,3 +1,8 @@
+record(stringout, "$(P)stringout") {
+  field(VAL, "hello")
+  field(PINI, "YES")
+}
+
 record(ao, "$(P)ao") {
   field(PREC, "1")
   field(EGU, "mm")
