@@ -132,3 +132,106 @@ record(lsi, "$(P)longstr2") {
   field(INP, {const:"a string that is just longer than forty characters"})
   field(PINI, "YES")  
 }
+
+record(waveform, "$(P)table:labels") {
+    field(FTVL, "STRING")
+    field(NELM, "5")
+    field(INP, {const:["Bool", "Int", "Float", "Str", "Enum"]})
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)table": {
+            "+id": "epics:nt/NTTable:1.0",
+            "labels": {
+                "+type": "plain",
+                "+channel": "VAL"
+            }
+        }
+    })
+}
+
+record(waveform, "$(P)table:bool")
+{
+    field(FTVL, "UCHAR")
+    field(NELM, "4096")
+    field(INP, {const:[false, false, true, true]})
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)table": {
+            "value.bool": {
+                "+type": "plain",
+                "+channel": "VAL",
+                "+putorder": 1
+            }
+        }
+    })
+}
+
+record(waveform, "$(P)table:int")
+{
+    field(FTVL, "LONG")
+    field(NELM, "4096")
+    field(INP, {const:[1, 8, -9, 32]})
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)table": {
+            "value.int": {
+                "+type": "plain",
+                "+channel": "VAL",
+                "+putorder": 2
+            }
+        }
+    })
+}
+
+record(waveform, "$(P)table:float")
+{
+    field(FTVL, "DOUBLE")
+    field(NELM, "4096")
+    field(INP, {const:[1.8, 8.2, -6, 32.9887]})
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)table": {
+            "value.float": {
+                "+type": "plain",
+                "+channel": "VAL",
+                "+putorder": 3
+            }
+        }
+    })
+}
+
+record(waveform, "$(P)table:str")
+{
+    field(FTVL, "STRING")
+    field(NELM, "4096")
+    field(INP, {const:["Hello", "World", "Foo", "Bar"]})
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)table": {
+            "value.str": {
+                "+type": "plain",
+                "+channel": "VAL",
+                "+putorder": 4
+            }
+        }
+    })
+}
+
+record(waveform, "$(P)table:enum")
+{
+    field(FTVL, "STRING")
+    field(NELM, "4096")
+    field(INP, {const:["Aaa", "Bbb", "Aaa", "Ccc"]})
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)table": {
+            "value.enum": {
+                "+type": "plain",
+                "+channel": "VAL",
+                "+putorder": 5,
+                "+trigger": "*",
+            },
+            "": {"+type": "meta", "+channel": "VAL"}
+        }
+    })
+}

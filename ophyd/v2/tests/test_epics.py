@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Sequence, Tuple, Type
+from typing import Any, Literal, Optional, Sequence, Tuple, Type, TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +28,9 @@ class IOC:
     process: subprocess.Popen
     protocol: Literal["ca", "pva"]
 
-    async def make_backend(self, typ: Type, suff: str, connect=True) -> CaSignalBackend:
+    async def make_backend(
+        self, typ: Optional[Type], suff: str, connect=True
+    ) -> CaSignalBackend:
         # Calculate the pv
         pv = f"{PV_PREFIX}:{self.protocol}:{suff}"
         # Make and connect the backend
@@ -81,12 +83,12 @@ class MonitorQueue:
 
     async def check_updates(self, expected_value):
         expected_reading = {
-            "value": pytest.approx(expected_value),
+            "value": expected_value,
             "timestamp": pytest.approx(time.time(), rel=0.1),
             "alarm_severity": 0,
         }
         reading, value = await self.updates.get()
-        assert value == pytest.approx(expected_value) == await self.backend.get_value()
+        assert value == expected_value == await self.backend.get_value()
         assert reading == expected_reading == await self.backend.get_reading()
 
     def close(self):
@@ -159,10 +161,10 @@ async def test_backend_get_put_monitor(ioc: IOC, typ, suff, initial, put, descri
                 source=f"{ioc.protocol}://{backend.read_pv}", **descriptor
             ) == await backend.get_descriptor()
             # Check initial value
-            await q.check_updates(i)
+            await q.check_updates(pytest.approx(i))
             # Put to new value and check that
             await backend.put(p)
-            await q.check_updates(p)
+            await q.check_updates(pytest.approx(p))
         finally:
             q.close()
 
@@ -197,6 +199,57 @@ async def test_backend_put_enum_string(ioc: IOC) -> None:
     # Don't do this in production code, but allow on CLI
     await backend.put("Ccc")  # type: ignore
     assert MyEnum.c == await backend.get_value()
+
+
+def approx_table(table: dict):
+    return {k: pytest.approx(v) for k, v in table.items()}
+
+
+class MyTable(TypedDict):
+    bool: npt.NDArray[np.bool_]
+    int: npt.NDArray[np.int32]
+    float: npt.NDArray[np.float64]
+    str: Sequence[str]
+    enum: Sequence[MyEnum]
+
+
+async def test_pva_table(ioc: IOC) -> None:
+    if ioc.protocol == "ca":
+        # CA can't do tables
+        return
+    initial = MyTable(
+        bool=np.array([False, False, True, True], np.bool_),
+        int=np.array([1, 8, -9, 32], np.int32),
+        float=np.array([1.8, 8.2, -6, 32.9887], np.float64),
+        str=["Hello", "World", "Foo", "Bar"],
+        enum=[MyEnum.a, MyEnum.b, MyEnum.a, MyEnum.c],
+    )
+    put = MyTable(
+        bool=np.array([True, False], np.bool_),
+        int=np.array([-5, 32], np.int32),
+        float=np.array([8.5, -6.97], np.float64),
+        str=["Hello", "Bat"],
+        enum=[MyEnum.c, MyEnum.b],
+    )
+    # TODO: what should this be for a variable length table?
+    descriptor = dict(dtype="object", shape=[])
+    # Make and connect the backend
+    for t, i, p in [(MyTable, initial, put), (None, put, initial)]:
+        backend = await ioc.make_backend(t, "table")
+        # Make a monitor queue that will monitor for updates
+        q = MonitorQueue(backend)
+        try:
+            # Check descriptor
+            dict(
+                source=f"{ioc.protocol}://{backend.read_pv}", **descriptor
+            ) == await backend.get_descriptor()
+            # Check initial value
+            await q.check_updates(approx_table(i))
+            # Put to new value and check that
+            await backend.put(p)
+            await q.check_updates(approx_table(p))
+        finally:
+            q.close()
 
 
 async def test_non_existant_errors(ioc: IOC):

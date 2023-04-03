@@ -80,6 +80,14 @@ class PvaEnumConverter(PvaConverter):
         return dict(source=source, dtype="string", shape=[], choices=choices)
 
 
+class PvaTableConverter(PvaConverter):
+    def value(self, value):
+        return value["value"].todict()
+
+    def descriptor(self, source: str, value) -> Descriptor:
+        return dict(source=source, dtype="object", shape=[])
+
+
 class DisconnectedPvaConverter(PvaConverter):
     def __getattribute__(self, __name: str) -> Any:
         raise NotImplementedError("No PV has been set as connect() has not been called")
@@ -126,6 +134,8 @@ def make_converter(datatype: Optional[Type], values: Dict[str, Any]) -> PvaConve
         if datatype and not issubclass(typ, datatype):
             raise TypeError(f"{pv} has type {typ.__name__} not {datatype.__name__}")
         return PvaConverter()
+    elif "NTTable" in typeid:
+        return PvaTableConverter()
     else:
         raise TypeError(f"{pv}: Unsupported typeid {typeid}")
 
@@ -147,7 +157,10 @@ class PvaSignalBackend(SignalBackend[T]):
 
             @atexit.register
             def _del_ctxt():
-                del PvaSignalBackend._ctxt
+                # If we don't do this we get messages like this on close:
+                #   Error in sys.excepthook:
+                #   Original exception was:
+                PvaSignalBackend._ctxt = None
 
         return PvaSignalBackend._ctxt
 
@@ -175,7 +188,7 @@ class PvaSignalBackend(SignalBackend[T]):
             write_value = self.initial_values[self.write_pv]
         else:
             write_value = self.converter.write_value(value)
-        coro = self.ctxt.put(self.write_pv, write_value, wait=wait)
+        coro = self.ctxt.put(self.write_pv, dict(value=write_value), wait=wait)
         await asyncio.wait_for(coro, timeout)
 
     async def get_descriptor(self) -> Descriptor:
