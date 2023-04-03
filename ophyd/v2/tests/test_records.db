@@ -1,16 +1,4 @@
-record(stringout, "$(P)stringout") {
-  field(VAL, "hello")
-  field(PINI, "YES")
-}
-
-record(ao, "$(P)ao") {
-  field(PREC, "1")
-  field(EGU, "mm")
-  field(VAL, "3.141")
-  field(PINI, "YES")
-}
-
-record(longout, "$(P)longout") {
+record(longout, "$(P)int") {
   field(HOPR, "100")
   field(HIHI, "98")
   field(HIGH, "96")
@@ -23,7 +11,19 @@ record(longout, "$(P)longout") {
   field(PINI, "YES")
 }
 
-record(mbbo, "$(P)mbbo") {
+record(ao, "$(P)float") {
+  field(PREC, "1")
+  field(EGU, "mm")
+  field(VAL, "3.141")
+  field(PINI, "YES")
+}
+
+record(stringout, "$(P)str") {
+  field(VAL, "hello")
+  field(PINI, "YES")
+}
+
+record(mbbo, "$(P)enum") {
   field(ZRST, "Aaa")
   field(ZRVL, "5")
   field(ONST, "Bbb")
@@ -34,7 +34,7 @@ record(mbbo, "$(P)mbbo") {
   field(PINI, "YES")
 }
 
-record(mbbo, "$(P)mbbi") {
+record(mbbo, "$(P)enum2") {
   field(ZRST, "Aaa")
   field(ONST, "Bbb")
   field(TWST, "Ccc")
@@ -42,9 +42,93 @@ record(mbbo, "$(P)mbbi") {
   field(PINI, "YES")
 }
 
-record(waveform, "$(P)waveform") {
-  field(NELM, "3")
-  field(FTVL, "DOUBLE")
-  field(INP, {const:[1.5, 2.5, 3.5]})
+record(waveform, "$(P)int8a") {
+  field(NELM, "2")
+  field(FTVL, "CHAR")
+  field(INP, {const:[-128, 127]})
   field(PINI, "YES")
+}
+
+record(waveform, "$(P)uint8a") {
+  field(NELM, "2")
+  field(FTVL, "UCHAR")
+  field(INP, {const:[0, 255]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)int16a") {
+  field(NELM, "2")
+  field(FTVL, "SHORT")
+  field(INP, {const:[-32768, 32767]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)uint16a") {
+  field(NELM, "2")
+  field(FTVL, "USHORT")
+  field(INP, {const:[0, 65535]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)int32a") {
+  field(NELM, "2")
+  field(FTVL, "LONG")
+  field(INP, {const:[-2147483648, 2147483647]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)uint32a") {
+  field(NELM, "2")
+  field(FTVL, "ULONG")
+  field(INP, {const:[0, 4294967295]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)int64a") {
+  field(NELM, "2")
+  field(FTVL, "INT64")
+  # Can't do 64-bit int with JSON numbers in a const link...
+  field(INP, {const:[-2147483649, 2147483648]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)uint64a") {
+  field(NELM, "2")
+  field(FTVL, "UINT64")
+  field(INP, {const:[0, 4294967297]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)float32a") {
+  field(NELM, "2")
+  field(FTVL, "FLOAT")
+  field(INP, {const:[0.000002, -123.123]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)float64a") {
+  field(NELM, "2")
+  field(FTVL, "DOUBLE")
+  field(INP, {const:[0.1, -12345678.123]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)stra") {
+  field(NELM, "3")
+  field(FTVL, "STRING")
+  field(INP, {const:["five", "six", "seven"]})
+  field(PINI, "YES")
+}
+
+record(waveform, "$(P)longstr") {
+  field(NELM, "80")
+  field(FTVL, "CHAR")
+  field(INP, {const:"a string that is just longer than forty characters"})
+  field(PINI, "YES")
+}
+
+record(lsi, "$(P)longstr2") {
+  field(SIZV, "80")
+  field(INP, {const:"a string that is just longer than forty characters"})
+  field(PINI, "YES")  
 }

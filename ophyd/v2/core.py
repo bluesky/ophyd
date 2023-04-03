@@ -1,14 +1,15 @@
 """Core Ophyd.v2 functionality like Device and Signal"""
-
 from __future__ import annotations
 
 import asyncio
 import functools
 import logging
 import sys
+import time
 from abc import abstractmethod
 from contextlib import suppress
 from dataclasses import dataclass
+from enum import Enum
 from typing import (
     Any,
     AsyncGenerator,
@@ -23,14 +24,18 @@ from typing import (
     Protocol,
     Sequence,
     Set,
+    Type,
     TypeVar,
+    Union,
     cast,
     runtime_checkable,
 )
 
+import numpy as np
 from bluesky.protocols import (
     Configurable,
     Descriptor,
+    Dtype,
     HasName,
     Movable,
     Readable,
@@ -131,14 +136,11 @@ class Device(HasName):
         """
 
     @abstractmethod
-    async def connect(self, prefix: str = "", sim=False):
+    async def connect(self, sim=False):
         """Connect self and all child Devices.
 
         Parameters
         ----------
-        prefix:
-            Device specific prefix that can be used to nest Devices one within
-            another. For example a PV prefix.
         sim:
             If True then connect in simulation mode.
         """
@@ -163,7 +165,7 @@ async def wait_for_connection(**coros: Awaitable[None]):
     """
     ts = {k: asyncio.create_task(c) for (k, c) in coros.items()}  # type: ignore
     try:
-        await asyncio.wait(ts.values())
+        done, pending = await asyncio.wait(ts.values())
     except asyncio.CancelledError:
         for t in ts.values():
             t.cancel()
@@ -178,18 +180,22 @@ async def wait_for_connection(**coros: Awaitable[None]):
                     lines.append(f"{k}:")
                     lines += [f"  {line}" for line in e.lines]
         raise NotConnected(*lines)
+    else:
+        # Wait for everything to foreground the exceptions
+        for f in list(done) + list(pending):
+            await f
 
 
-async def connect_children(device: Device, prefix: str, sim: bool):
-    """Call ``child.connect(prefix, sim)`` on all child devices in parallel.
+async def connect_children(device: Device, sim: bool):
+    """Call ``child.connect(sim)`` on all child devices in parallel.
 
     Typically used to implement `Device.connect` like this::
 
-        async def connect(self, prefix: str = "", sim=False):
-            await connect_children(self, prefix + self.prefix, sim)
+        async def connect(self, sim=False):
+            await connect_children(self, sim)
     """
     coros = {
-        k: c.connect(prefix, sim)
+        k: c.connect(sim)
         for k, c in device.__dict__.items()
         if k != "parent" and isinstance(c, Device)
     }
@@ -205,12 +211,10 @@ class DeviceCollector:
         If True, call ``device.set_name(variable_name)`` on all collected
         Devices
     connect:
-        If True, call ``device.connect(prefix, sim)`` in parallel on all
+        If True, call ``device.connect(sim)`` in parallel on all
         collected Devices
     sim:
         If True, connect Signals in simulation mode
-    prefix:
-        If passed, pass a global prefix to all device connects
     timeout:
         How long to wait for connect before logging an exception
 
@@ -232,13 +236,11 @@ class DeviceCollector:
         set_name=True,
         connect=True,
         sim=False,
-        prefix: str = "",
         timeout: float = 10.0,
     ):
         self._set_name = set_name
         self._connect = connect
         self._sim = sim
-        self._prefix = prefix
         self._timeout = timeout
         self._names_on_enter: Set[str] = set()
         self._objects_on_exit: Dict[str, Any] = {}
@@ -271,7 +273,7 @@ class DeviceCollector:
                 if self._set_name:
                     obj.set_name(name)
                 if self._connect:
-                    task = asyncio.create_task(obj.connect(self._prefix, self._sim))
+                    task = asyncio.create_task(obj.connect(self._sim))
                     tasks[task] = name
         # Wait for all the signals to have finished
         if tasks:
@@ -279,23 +281,27 @@ class DeviceCollector:
 
     async def _wait_for_tasks(self, tasks: Dict[asyncio.Task, str]):
         done, pending = await asyncio.wait(tasks, timeout=self._timeout)
-        not_connected = list(pending) + list(t for t in done if t.exception())
-        if not_connected:
-            msg = f"{len(not_connected)} Devices did not connect:"
+        if pending:
+            msg = f"{len(pending)} Devices did not connect:"
             for t in pending:
                 t.cancel()
-            for t in pending:
                 with suppress(Exception):
                     await t
-            for task in not_connected:
-                e = task.exception()
-                msg += f"\n  {tasks[task]}: {type(e).__name__}"
+                e = t.exception()
+                msg += f"\n  {tasks[t]}: {type(e).__name__}"
                 lines = str(e).splitlines()
                 if len(lines) <= 1:
-                    msg += str(e)
+                    msg += f": {e}"
                 else:
                     msg += "".join(f"\n    {line}" for line in lines)
             logging.error(msg)
+        raised = [t for t in done if t.exception()]
+        if raised:
+            logging.error(f"{len(raised)} Devices raised an error:")
+            for t in raised:
+                logging.exception(f"  {tasks[t]}:", exc_info=t.exception())
+        if pending or raised:
+            raise NotConnected("Not all Devices connected")
 
     async def __aexit__(self, type, value, traceback):
         self._objects_on_exit = self._caller_locals()
@@ -304,6 +310,168 @@ class DeviceCollector:
     def __exit__(self, type_, value, traceback):
         self._objects_on_exit = self._caller_locals()
         return call_in_bluesky_event_loop(self._on_exit())
+
+
+#: A function that will be called with the Reading and value when the
+#: monitor updates
+ReadingValueCallback = Callable[[Reading, T], None]
+
+
+class Monitor(Protocol):
+    """The kind of handle we expect camonitor/pvmonitor to return"""
+
+    def close(self):
+        """Close the monitor so no more subscription callbacks happen"""
+
+
+class SignalBackend(Generic[T]):
+    """An abstraction to a CA/PVA/Sim channel"""
+
+    datatype: Optional[Type[T]]
+
+    #: Like ca://PV_PREFIX:SIGNAL, or "" if connect hasn't been called
+    source: str = ""
+
+    @abstractmethod
+    async def connect(self):
+        """Connect to underlying hardware"""
+
+    @abstractmethod
+    async def put(self, value: Optional[T], wait=True, timeout=None):
+        """Put a value to the PV, if wait then wait for completion for up to timeout"""
+
+    @abstractmethod
+    async def get_descriptor(self) -> Descriptor:
+        """Metadata like source, dtype, shape, precision, units"""
+
+    @abstractmethod
+    async def get_reading(self) -> Reading:
+        """The current value, timestamp and severity"""
+
+    @abstractmethod
+    async def get_value(self) -> T:
+        """The current value"""
+
+    @abstractmethod
+    def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
+        """Observe changes to the current value, timestamp and severity"""
+
+
+_sim_backends: Dict[Signal, SimSignalBackend] = {}
+
+
+primitive_dtypes: Dict[type, Dtype] = {
+    str: "string",
+    int: "integer",
+    float: "number",
+    bool: "boolean",
+}
+
+
+def make_sim_descriptor(source: str, value) -> Descriptor:
+    try:
+        dtype = primitive_dtypes[type(value)]
+        shape = []
+    except KeyError:
+        if isinstance(value, Sequence):
+            dtype = "array"
+            shape = [len(value)]
+        elif isinstance(value, Enum):
+            dtype = "string"
+            shape = []
+            choices = [e.value for e in type(value)]
+            return dict(source=source, dtype=dtype, shape=shape, choices=choices)
+        else:
+            assert False, f"Can't get dtype for {type(value)}"
+    return dict(source=source, dtype=dtype, shape=shape)
+
+
+class SimMonitor(Generic[T]):
+    def __init__(
+        self, callback: ReadingValueCallback[T], listeners: List[SimMonitor[T]]
+    ):
+        self.callback = callback
+        self._listeners = listeners
+        self._listeners.append(self)
+
+    def close(self):
+        self._listeners.remove(self)
+
+
+class SimSignalBackend(SignalBackend[T]):
+    """An abstraction to a CA/PVA/Sim channel"""
+
+    initial_value: T
+    value: T
+    timestamp: float
+
+    @property
+    def reading(self) -> Reading:
+        return dict(value=self.value, timestamp=self.timestamp)
+
+    def __init__(self, datatype: Optional[Type[T]], name: str) -> None:
+        self.datatype = datatype
+        self.source = f"sim://{name}"
+        #: If cleared, then any `put(wait=True)` will wait until it is set
+        self.put_proceeds = asyncio.Event()
+        self.put_proceeds.set()
+        self.listeners: List[SimMonitor[T]] = []
+        if datatype is None:
+            self.initial_value = None
+        elif issubclass(datatype, Enum):
+            self.initial_value = list(datatype)[0]
+        else:
+            self.initial_value = datatype()
+        self.set_value(self.initial_value)
+
+    async def connect(self):
+        pass
+
+    async def put(self, value: Optional[T], wait=True, timeout=None):
+        if value is None:
+            self.set_value(self.initial_value)
+        else:
+            self.set_value(value)
+        if wait:
+            await asyncio.wait_for(self.put_proceeds.wait(), timeout)
+
+    async def get_descriptor(self) -> Descriptor:
+        return make_sim_descriptor(self.source, self.value)
+
+    async def get_reading(self) -> Reading:
+        return self.reading
+
+    async def get_value(self) -> T:
+        return self.value
+
+    def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
+        callback(self.reading, self.value)
+        return SimMonitor(callback, self.listeners)
+
+    def set_value(self, value: T) -> None:
+        """Set the simulated value, and set timestamp to now"""
+        self.value = value
+        self.timestamp = time.monotonic()
+        for rl in self.listeners:
+            rl.callback(self.reading, self.value)
+
+
+def set_sim_value(signal: Signal[T], value: T):
+    _sim_backends[signal].set_value(value)
+
+
+def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):
+    event = _sim_backends[signal].put_proceeds
+    if proceeds:
+        event.set()
+    else:
+        event.clear()
+
+
+def monitor_sim_value(
+    signal: Signal[T], callback: ReadingValueCallback[T]
+) -> SimMonitor[T]:
+    return _sim_backends[signal].monitor_reading_value(callback)
 
 
 def _fail(self, other, *args, **kwargs):
@@ -315,10 +483,28 @@ def _fail(self, other, *args, **kwargs):
         return NotImplemented
 
 
-class Signal(Device):
+# Types
+# - bool
+# - int
+# - float
+# - str
+# - Enum[str]
+# - npt.NDArray[np.bool_ | np.uint[8,16,32,64] | np.int[8,16,32,64] | np.float[32,64]
+# - Sequence[str | Enum]
+# - Table (TypedDict of Sequence or NDArray above), exploded in reading
+
+DEFAULT_TIMEOUT = 10.0
+
+
+class Signal(Device, Generic[T]):
     """Signals are like ophyd Signals, but async"""
 
-    _name = ""
+    def __init__(
+        self, backend: SignalBackend[T], timeout: Optional[float] = DEFAULT_TIMEOUT
+    ) -> None:
+        self._name = ""
+        self._timeout = timeout
+        self._init_backend = self._backend = backend
 
     @property
     def name(self) -> str:
@@ -327,10 +513,18 @@ class Signal(Device):
     def set_name(self, name: str = ""):
         self._name = name
 
+    async def connect(self, sim=False):
+        if sim:
+            self._backend = SimSignalBackend(self._init_backend.datatype, self.name)
+            _sim_backends[self] = self._backend
+        else:
+            self._backend = self._init_backend
+            _sim_backends.pop(self, None)
+        await self._backend.connect()
+
     @property
-    @abstractmethod
     def source(self) -> str:
-        """Like ca://PV_PREFIX:SIGNAL, or "" if not set"""
+        return self._backend.source
 
     __lt__ = __le__ = __eq__ = __ge__ = __gt__ = __ne__ = _fail
 
@@ -339,52 +533,151 @@ class Signal(Device):
         return hash(id(self))
 
 
-class SignalR(Signal, Readable, Stageable, Subscribable, Generic[T]):
+class _SignalCache(Generic[T]):
+    def __init__(self, backend: SignalBackend[T], signal: Signal):
+        self._signal = signal
+        self._staged = False
+        self._listeners: Dict[Callback, bool] = {}
+        self._valid = asyncio.Event()
+        self._reading: Optional[Reading] = None
+        self._value: Optional[T] = None
+        self._monitor = backend.monitor_reading_value(self._callback)
+
+    def close(self):
+        self._monitor.close()
+
+    async def get_reading(self) -> Reading:
+        await self._valid.wait()
+        assert self._reading is not None, "Monitor not working"
+        return self._reading
+
+    async def get_value(self) -> T:
+        await self._valid.wait()
+        assert self._value is not None, "Monitor not working"
+        return self._value
+
+    def _callback(self, reading: Reading, value: T):
+        self._reading = reading
+        self._value = value
+        self._valid.set()
+        for function, want_value in self._listeners.items():
+            self._notify(function, want_value)
+
+    def _notify(self, function: Callback, want_value: bool):
+        if want_value:
+            function(self._value)
+        else:
+            function({self._signal.name: self._reading})
+
+    def subscribe(self, function: Callback, want_value: bool) -> None:
+        self._listeners[function] = want_value
+        if self._valid.is_set():
+            self._notify(function, want_value)
+
+    def unsubscribe(self, function: Callback) -> bool:
+        self._listeners.pop(function)
+        return self._staged or bool(self._listeners)
+
+    def stage(self):
+        self._staged = True
+
+    def unstage(self) -> bool:
+        self._staged = False
+        return self._staged or bool(self._listeners)
+
+
+def _add_timeout(func):
+    @functools.wraps(func)
+    async def wrapper(self: Signal, *args, **kwargs):
+        return await asyncio.wait_for(func(self, *args, **kwargs), self._timeout)
+
+    return wrapper
+
+
+class SignalR(Signal[T], Readable, Stageable, Subscribable):
     """Signal that can be read from and monitored"""
 
-    @abstractmethod
+    _cache: Optional[_SignalCache] = None
+
+    def _backend_or_cache(
+        self, cached: Optional[bool]
+    ) -> Union[_SignalCache, SignalBackend]:
+        # If cached is None then calculate it based on whether we already have a cache
+        if cached is None:
+            cached = self._cache is not None
+        if cached:
+            assert self._cache, f"{self.source} not being monitored"
+            return self._cache
+        else:
+            return self._backend
+
+    def _get_cache(self) -> _SignalCache:
+        if not self._cache:
+            self._cache = _SignalCache(self._backend, self)
+        return self._cache
+
+    def _del_cache(self, needed: bool):
+        if self._cache and not needed:
+            self._cache.close()
+            self._cache = None
+
+    @_add_timeout
     async def read(self, cached: Optional[bool] = None) -> Dict[str, Reading]:
         """Return a single item dict with the reading in it"""
+        return {self.name: await self._backend_or_cache(cached).get_reading()}
 
-    @abstractmethod
+    @_add_timeout
     async def describe(self) -> Dict[str, Descriptor]:
         """Return a single item dict with the descriptor in it"""
+        return {self.name: await self._backend.get_descriptor()}
 
-    @abstractmethod
-    def stage(self) -> List[Any]:
-        """Start caching this signal"""
-
-    @abstractmethod
-    def unstage(self) -> List[Any]:
-        """Stop caching this signal"""
-
-    @abstractmethod
+    @_add_timeout
     async def get_value(self, cached: Optional[bool] = None) -> T:
         """The current value"""
+        return await self._backend_or_cache(cached).get_value()
 
-    @abstractmethod
     def subscribe_value(self, function: Callback[T]):
         """Subscribe to updates in value of a device"""
+        self._get_cache().subscribe(function, want_value=True)
 
-    @abstractmethod
     def subscribe(self, function: Callback[Dict[str, Reading]]) -> None:
         """Subscribe to updates in the reading"""
+        self._get_cache().subscribe(function, want_value=False)
 
-    @abstractmethod
     def clear_sub(self, function: Callback) -> None:
         """Remove a subscription."""
+        self._del_cache(self._get_cache().unsubscribe(function))
+
+    def stage(self) -> List[Any]:
+        """Start caching this signal"""
+        self._get_cache().stage()
+        return [self]
+
+    def unstage(self) -> List[Any]:
+        """Stop caching this signal"""
+        self._del_cache(self._get_cache().unstage())
+        return [self]
 
 
-class SignalW(Signal, Movable, Generic[T]):
+class SignalW(Signal[T], Movable):
     """Signal that can be set"""
 
-    @abstractmethod
-    def set(self, value: T, wait=True) -> AsyncStatus:
+    def set(self, value: T, wait=True, timeout=None) -> AsyncStatus:
         """Set the value and return a status saying when it's done"""
+        coro = self._backend.put(value, wait=wait, timeout=timeout or self._timeout)
+        return AsyncStatus(coro)
 
 
 class SignalRW(SignalR[T], SignalW[T]):
     """Signal that can be both read and set"""
+
+
+class SignalX(Signal):
+    """Signal that puts the default value"""
+
+    async def execute(self, wait=True, timeout=None):
+        """Execute the action and return a status saying when it's done"""
+        await self._backend.put(None, wait=wait, timeout=timeout or self._timeout)
 
 
 async def observe_value(signal: SignalR[T]) -> AsyncGenerator[T, None]:
@@ -422,7 +715,7 @@ async def wait_for_value(signal: SignalR[T], match, timeout=None):
         end
     match:
         If a callable, it should return True if the value matches. If not
-        callable then value will be checked for euqlity with match.
+        callable then value will be checked for equality with match.
     timeout:
         How long to wait for the value to match
 
@@ -436,18 +729,18 @@ async def wait_for_value(signal: SignalR[T], match, timeout=None):
 
         wait_for_value(device.num_captured, lambda v: v > 45, timeout=1)
     """
+    if callable(match):
+        match_function = match
+    else:
+
+        def match_function(value):
+            return value == match
 
     async def _wait_for_value():
-        if not callable(match):
-
-            def match(value, match=match):
-                return value == match
-
         async for value in observe_value(signal):
-            if match(value):
+            if match_function(value):
                 return
 
-    _wait_for_value.__name__ = f"wait_for_{signal.name}_to_match_{match}"
     await asyncio.wait_for(_wait_for_value(), timeout)
 
 
@@ -529,7 +822,6 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
     def __init__(
         self,
-        prefix: str,
         name: str = "",
         primary: Optional[SignalR] = None,
         read: Sequence[AsyncReadable] = (),
@@ -539,8 +831,6 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         """
         Parameters
         ----------
-        prefix:
-            This will be passed as a prefix to all child Device connects
         name:
             If set, name the Device and its children
         primary:
@@ -552,7 +842,6 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         conf:
             Signals to make up `read_configuration()` that can be cached
         """
-        self._init_prefix = prefix
         self._read_signals = tuple(read) + tuple(
             _UncachedSignal(sig) for sig in read_uncached
         )
@@ -576,9 +865,8 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
                     attr.set_name(f"{name}-{attr_name.rstrip('_')}")
                     attr.parent = self
 
-    async def connect(self, prefix: str = "", sim=False):
-        # Add pv prefix to child Signals and connect them
-        await connect_children(self, prefix + self._init_prefix, sim)
+    async def connect(self, sim=False):
+        await connect_children(self, sim)
 
     def stage(self) -> List[Any]:
         self._staged = True
@@ -607,3 +895,19 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
     async def read_configuration(self) -> Dict[str, Reading]:
         return await merge_gathered_dicts(sig.read() for sig in self._conf_signals)
+
+
+def get_unique(values: Dict[str, T], types: str) -> T:
+    set_values = set(values.values())
+    if len(set_values) != 1:
+        diffs = ", ".join(f"{k} has {v}" for k, v in values.items())
+        raise TypeError(f"Differing {types}: {diffs}")
+    return set_values.pop()
+
+
+def get_dtype(typ: Type) -> Optional[np.dtype]:
+    if getattr(typ, "__origin__", None) == np.ndarray:
+        # datatype = numpy.ndarray[typing.Any, numpy.dtype[numpy.float64]]
+        # so extract numpy.float64 from it
+        return typ.__args__[1].__args__[0]  # type: ignore
+    return None

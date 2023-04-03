@@ -9,7 +9,7 @@ import numpy as np
 from bluesky.protocols import Movable, Stoppable
 
 from ophyd.v2.core import AsyncStatus, StandardReadable, observe_value
-from ophyd.v2.epics import EpicsSignalR, EpicsSignalRW, EpicsSignalX
+from ophyd.v2.epics import epics_signal_r, epics_signal_rw, epics_signal_x
 
 
 class EnergyMode(Enum):
@@ -26,11 +26,10 @@ class Sensor(StandardReadable):
 
     def __init__(self, prefix: str, name="") -> None:
         # Define some signals
-        self.value = EpicsSignalR(float, "Value")
-        self.mode = EpicsSignalRW(EnergyMode, "Mode")
-        # Set prefix, name, and signals for read() and read_configuration()
+        self.value = epics_signal_r(float, prefix + "Value")
+        self.mode = epics_signal_rw(EnergyMode, prefix + "Mode")
+        # Set name and signals for read() and read_configuration()
         super().__init__(
-            prefix=prefix,
             name=name,
             read=[self.value],
             config=[self.mode],
@@ -42,17 +41,16 @@ class Mover(StandardReadable, Movable, Stoppable):
 
     def __init__(self, prefix: str, name="") -> None:
         # Define some signals
-        self.setpoint = EpicsSignalRW(float, "Setpoint")
-        self.readback = EpicsSignalR(float, "Readback")
-        self.velocity = EpicsSignalRW(float, "Velocity")
-        self.units = EpicsSignalR(str, "Readback.EGU")
-        self.precision = EpicsSignalR(int, "Readback.PREC")
+        self.setpoint = epics_signal_rw(float, prefix + "Setpoint")
+        self.readback = epics_signal_r(float, prefix + "Readback")
+        self.velocity = epics_signal_rw(float, prefix + "Velocity")
+        self.units = epics_signal_r(str, prefix + "Readback.EGU")
+        self.precision = epics_signal_r(int, prefix + "Readback.PREC")
         # Signals that collide with standard methods should have a trailing underscore
-        self.stop_ = EpicsSignalX("Stop.PROC", write_value=1)
+        self.stop_ = epics_signal_x(prefix + "Stop.PROC")
         self._success = True
         # Set prefix, name, and signals for read() and read_configuration()
         super().__init__(
-            prefix=prefix,
             name=name,
             primary=self.readback,
             config=[self.velocity, self.units],
@@ -109,10 +107,10 @@ class SampleStage(StandardReadable):
 
     def __init__(self, prefix: str, name="") -> None:
         # Define some child Devices
-        self.x = Mover("X:")
-        self.y = Mover("Y:")
+        self.x = Mover(prefix + "X:")
+        self.y = Mover(prefix + "Y:")
         # Set prefix and name
-        super().__init__(prefix, name)
+        super().__init__(name)
 
 
 def start_ioc_subprocess() -> str:
