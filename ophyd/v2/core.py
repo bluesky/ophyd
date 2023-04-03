@@ -93,7 +93,7 @@ class AsyncStatus(Status):
     def success(self) -> bool:
         if not self.done:
             return False
-        
+
         try:
             self.task.result()
         except (Exception, asyncio.CancelledError):
