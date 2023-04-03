@@ -4,6 +4,7 @@ import re
 import pytest
 
 from ophyd.v2.core import AsyncStatus, Signal
+from unittest.mock import Mock
 
 
 class MySignal(Signal):
@@ -31,17 +32,39 @@ def test_signals_equality_raises():
     ):
         s1 > 4
 
+async def normal_coroutine(time: float):
+    await asyncio.sleep(time)
 
-async def some_coroutine():
-    await asyncio.sleep(0.1)
+async def failing_coroutine(time: float):
+    await normal_coroutine(time)
     raise ValueError()
 
+async def cancelled_coroutine(time: float):
+    await normal_coroutine(time)
+    raise asyncio.CancelledError("")
 
-async def test_async_status_exception():
-    status = AsyncStatus(some_coroutine())
+async def test_async_status_propagates_exception():
+    status = AsyncStatus(failing_coroutine(0.1))
     assert status.exception is None
 
     with pytest.raises(ValueError):
         await status
 
     assert type(status.exception) == ValueError
+
+async def test_async_status_propagates_cancelled_error():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception is None
+
+    status.task.exception = Mock(side_effect= asyncio.CancelledError(""))
+    await status
+        
+    assert type(status.exception) == asyncio.CancelledError
+
+async def test_async_status_has_no_exception_if_coroutine_successful():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception is None
+
+    await status
+
+    assert status.exception is None
