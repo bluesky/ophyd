@@ -91,7 +91,9 @@ class AsyncStatus(Status):
 
     @property
     def success(self) -> bool:
-        assert self.done, "Status has not completed yet"
+        if not self.done:
+            return False
+        
         try:
             self.task.result()
         except (Exception, asyncio.CancelledError):
