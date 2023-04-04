@@ -90,3 +90,19 @@ async def test_async_status_success_if_cancelled():
     await status
 
     assert status.success is False
+
+
+async def test_async_status_wrap():
+    wrapped_coroutine = AsyncStatus.wrap(normal_coroutine)
+    status = wrapped_coroutine(0.1)
+
+    await status
+    assert status.success is True
+
+
+async def test_async_status_initialised_with_a_task():
+    normal_task = asyncio.Task(normal_coroutine(0.1))
+    status = AsyncStatus(normal_task)
+
+    await status
+    assert status.success is True
