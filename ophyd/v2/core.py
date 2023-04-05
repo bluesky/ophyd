@@ -1,7 +1,6 @@
 """Core Ophyd.v2 functionality like Device and Signal"""
 
 from __future__ import annotations
-import abc
 
 import asyncio
 import functools
@@ -621,6 +620,7 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
 KT = TypeVar("KT")
 
+
 class DeviceDict(MutableMapping[KT, Device]):
     def __init__(self, dictionary=None, /, **kwargs) -> None:
         self.data: Dict[KT, Device] = {}
@@ -628,7 +628,7 @@ class DeviceDict(MutableMapping[KT, Device]):
             self.update(dictionary)
         if kwargs:
             self.update(kwargs)
-    
+
     def __contains__(self, key: KT) -> bool:
         return key in self.data
 
@@ -648,17 +648,17 @@ class DeviceDict(MutableMapping[KT, Device]):
 
     def __setitem__(self, key: KT, value: Device) -> None:
         self.data[key] = value
-    
+
     @classmethod
     def fromkeys(cls, iterable: Iterable[KT], value: Device) -> "DeviceDict":
-        """Create a new dictionary with keys from `iterable` and values set 
+        """Create a new dictionary with keys from `iterable` and values set
         to `value`.
 
         Args:
             iterable: A collection of keys.
-            value: The default value. All of the values refer to just a single 
-                instance, so it generally does not make sense for `value` to be a 
-                mutable object such as an empty list. To get distinct values, use 
+            value: The default value. All of the values refer to just a single
+                instance, so it generally does not make sense for `value` to be a
+                mutable object such as an empty list. To get distinct values, use
                 a dict comprehension instead.
 
         Returns:
@@ -691,7 +691,3 @@ class DeviceDict(MutableMapping[KT, Device]):
     async def connect(self, prefix: str, sim: bool):
         for _, device in self.data.items():
             await device.connect(prefix, sim)
-        
-
-    
-    

@@ -1,6 +1,6 @@
 import asyncio
 import re
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 import pytest
 from bluesky.protocols import Status
@@ -98,10 +98,12 @@ class Dummy(DummyDevice):
 class DummyStandardReadable(StandardReadable):
     def __init__(self, prefix: str, name: str = ""):
         self.child1 = DummyDevice("device1")
-        self.dict_with_children: Dict[Union[int, str], DummyDevice] = DeviceDict({
-            "abc": DummyDevice("device2"),
-            123: DummyDevice("device3"),
-        })
+        self.dict_with_children: Dict[Union[int, str], DummyDevice] = DeviceDict(
+            {
+                "abc": DummyDevice("device2"),
+                123: DummyDevice("device3"),
+            }
+        )
         super().__init__(prefix, name)
 
 
@@ -122,6 +124,6 @@ async def test_names_correctly_set_with():
 
     await parent.connect()
 
-    assert parent.child1.connected == True
-    assert parent.dict_with_children[123].connected == True
-    assert parent.dict_with_children["abc"].connected == True
+    assert parent.child1.connected
+    assert parent.dict_with_children[123].connected
+    assert parent.dict_with_children["abc"].connected
