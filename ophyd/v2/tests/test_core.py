@@ -115,7 +115,7 @@ def test_get_device_children():
         assert type(child) == DummyDevice
 
 
-async def test_names_correctly_set_with():
+async def test_children_of_standard_readable_have_set_names_and_get_connected():
     parent = DummyStandardReadable("parent")
     parent.set_name("parent")
     assert parent.child1.name == "parent-child1"
