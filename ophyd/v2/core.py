@@ -1,6 +1,7 @@
 """Core Ophyd.v2 functionality like Device and Signal"""
 
 from __future__ import annotations
+import abc
 
 import asyncio
 import functools
@@ -19,7 +20,9 @@ from typing import (
     Generator,
     Generic,
     Iterable,
+    Iterator,
     List,
+    MutableMapping,
     Optional,
     Protocol,
     Sequence,
@@ -201,12 +204,8 @@ async def connect_children(device: Device, prefix: str, sim: bool):
 
 def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
     for attr_name, attr in device.__dict__.items():
-        if isinstance(attr, Device):
+        if isinstance(attr, Device) or isinstance(attr, DeviceDict):
             yield f"{attr_name.rstrip('_')}", attr
-        elif isinstance(attr, Dict):
-            for dict_key, dict_value in attr.items():
-                if isinstance(dict_value, Device):
-                    yield f"{attr_name.rstrip('_')}-{dict_key}", dict_value
 
 
 class DeviceCollector:
@@ -618,3 +617,81 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
     async def read_configuration(self) -> Dict[str, Reading]:
         return await merge_gathered_dicts(sig.read() for sig in self._conf_signals)
+
+
+KT = TypeVar("KT")
+
+class DeviceDict(MutableMapping[KT, Device]):
+    def __init__(self, dictionary=None, /, **kwargs) -> None:
+        self.data: Dict[KT, Device] = {}
+        if dictionary is not None:
+            self.update(dictionary)
+        if kwargs:
+            self.update(kwargs)
+    
+    def __contains__(self, key: KT) -> bool:
+        return key in self.data
+
+    def __delitem__(self, key: KT) -> None:
+        del self.data[key]
+
+    def __getitem__(self, key: KT) -> Device:
+        if key in self.data:
+            return self.data[key]
+        raise KeyError(key)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterator[KT]:
+        return iter(self.data)
+
+    def __setitem__(self, key: KT, value: Device) -> None:
+        self.data[key] = value
+    
+    @classmethod
+    def fromkeys(cls, iterable: Iterable[KT], value: Device) -> "DeviceDict":
+        """Create a new dictionary with keys from `iterable` and values set 
+        to `value`.
+
+        Args:
+            iterable: A collection of keys.
+            value: The default value. All of the values refer to just a single 
+                instance, so it generally does not make sense for `value` to be a 
+                mutable object such as an empty list. To get distinct values, use 
+                a dict comprehension instead.
+
+        Returns:
+            A new instance of MyDict.
+        """
+        d = cls()
+        for key in iterable:
+            d[key] = value
+        return d
+
+    def update(self, other=(), /, **kwds) -> None:
+        """Updates the dictionary from an iterable or mapping object."""
+        if isinstance(other, MutableMapping):
+            for key in other:
+                self.data[key] = other[key]
+        elif hasattr(other, "keys"):
+            for key in other.keys():
+                self.data[key] = other[key]
+        else:
+            for key, value in other:
+                self.data[key] = value
+        for key, value in kwds.items():
+            self.data[key] = value
+
+    def set_name(self, parent_name: str):
+        for name, device in self.data.items():
+            device.set_name(f"{parent_name}-{name}")
+            device.parent = self
+
+    async def connect(self, prefix: str, sim: bool):
+        for _, device in self.data.items():
+            await device.connect(prefix, sim)
+        
+
+    
+    

@@ -1,5 +1,6 @@
 import asyncio
 import re
+from typing import Dict, Optional, Union
 
 import pytest
 from bluesky.protocols import Status
@@ -8,6 +9,7 @@ from bluesky.run_engine import RunEngine, TransitionError
 from ophyd.v2.core import (
     AsyncStatus,
     Device,
+    DeviceDict,
     Signal,
     StandardReadable,
     get_device_children,
@@ -96,11 +98,10 @@ class Dummy(DummyDevice):
 class DummyStandardReadable(StandardReadable):
     def __init__(self, prefix: str, name: str = ""):
         self.child1 = DummyDevice("device1")
-        self.dict_with_children = {
+        self.dict_with_children: Dict[Union[int, str], DummyDevice] = DeviceDict({
             "abc": DummyDevice("device2"),
             123: DummyDevice("device3"),
-        }
-        self.list_with_children = []
+        })
         super().__init__(prefix, name)
 
 
