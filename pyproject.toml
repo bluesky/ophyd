@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 write_to = "ophyd/_version.py"
 
 [tool.pytest.ini_options]
-timeout = 20
+#timeout = 20
 log_format = "%(asctime)s,%(msecs)03d %(levelname)s (%(threadName)s) %(message)s"
 log_date_format = "%H:%M:%S"
 addopts = """

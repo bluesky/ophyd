@@ -16,6 +16,7 @@ from typing import (
     Callable,
     Coroutine,
     Dict,
+    Generator,
     Generic,
     Iterable,
     List,
@@ -23,6 +24,7 @@ from typing import (
     Protocol,
     Sequence,
     Set,
+    Tuple,
     TypeVar,
     cast,
     runtime_checkable,
@@ -195,6 +197,14 @@ async def connect_children(device: Device, prefix: str, sim: bool):
     }
     await wait_for_connection(**coros)
 
+def get_device_children(device:Device) -> Generator[Tuple[str, Device], None, None]:
+    for attr_name, attr in device.__dict__.items():
+        if isinstance(attr, Device):
+            yield f"{attr_name.rstrip('_')}", attr
+        elif isinstance(attr, Dict):
+            for dict_key, dict_value in attr.items():
+                if isinstance(dict_value, Device):
+                    yield f"{attr_name.rstrip('_')}-{dict_key}", dict_value
 
 class DeviceCollector:
     """Collector of top level Device instances to be used as a context manager
@@ -570,11 +580,9 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
     def set_name(self, name: str = ""):
         if name and not self._name:
             self._name = name
-            for attr_name, attr in self.__dict__.items():
-                # TODO: support lists and dicts of devices
-                if isinstance(attr, Device):
-                    attr.set_name(f"{name}-{attr_name.rstrip('_')}")
-                    attr.parent = self
+            for child_name, child in get_device_children(self):
+                child.set_name(f"{name}-{child_name}")
+                child.parent = self
 
     async def connect(self, prefix: str = "", sim=False):
         # Add pv prefix to child Signals and connect them
