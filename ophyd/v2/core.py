@@ -190,14 +190,16 @@ async def connect_children(device: Device, prefix: str, sim: bool):
         async def connect(self, prefix: str = "", sim=False):
             await connect_children(self, prefix + self.prefix, sim)
     """
+
     coros = {
-        k: c.connect(prefix, sim)
-        for k, c in device.__dict__.items()
-        if k != "parent" and isinstance(c, Device)
+        name: child_device.connect(prefix, sim)
+        for name, child_device in get_device_children(device)
     }
+
     await wait_for_connection(**coros)
 
-def get_device_children(device:Device) -> Generator[Tuple[str, Device], None, None]:
+
+def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
     for attr_name, attr in device.__dict__.items():
         if isinstance(attr, Device):
             yield f"{attr_name.rstrip('_')}", attr
@@ -205,6 +207,7 @@ def get_device_children(device:Device) -> Generator[Tuple[str, Device], None, No
             for dict_key, dict_value in attr.items():
                 if isinstance(dict_value, Device):
                     yield f"{attr_name.rstrip('_')}-{dict_key}", dict_value
+
 
 class DeviceCollector:
     """Collector of top level Device instances to be used as a context manager
