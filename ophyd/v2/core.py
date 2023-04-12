@@ -24,6 +24,7 @@ from typing import (
     Sequence,
     Set,
     TypeVar,
+    Union,
     cast,
     runtime_checkable,
 )
@@ -75,6 +76,21 @@ class AsyncStatus(Status):
             for callback in self._callbacks:
                 callback(self)
 
+    def exception(
+        self, timeout: Optional[float] = 0.0
+    ) -> Optional[Union[Exception, asyncio.CancelledError]]:
+        if timeout != 0.0:
+            raise Exception(
+                "cannot honour any timeout other than 0 in an asynchronous function"
+            )
+
+        if self.task.done():
+            try:
+                return self.task.exception()
+            except asyncio.CancelledError as e:
+                return e
+        return None
+
     @property
     def done(self) -> bool:
         return self.task.done()
@@ -87,7 +103,6 @@ class AsyncStatus(Status):
         try:
             self.task.result()
         except (Exception, asyncio.CancelledError):
-            logging.exception("Failed status")
             return False
         else:
             return True
