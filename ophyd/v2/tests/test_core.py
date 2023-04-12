@@ -4,7 +4,6 @@ from unittest.mock import Mock
 
 import pytest
 from bluesky.protocols import Status
-from bluesky.run_engine import RunEngine, TransitionError
 
 from ophyd.v2.core import (
     AsyncStatus,
@@ -14,26 +13,6 @@ from ophyd.v2.core import (
     StandardReadable,
     get_device_children,
 )
-
-
-@pytest.fixture(scope="function", params=[False, True])
-def RE(request):
-    loop = asyncio.new_event_loop()
-    loop.set_debug(True)
-    RE = RunEngine({}, call_returns_result=request.param, loop=loop)
-
-    def clean_event_loop():
-        if RE.state not in ("idle", "panicked"):
-            try:
-                RE.halt()
-            except TransitionError:
-                pass
-        loop.call_soon_threadsafe(loop.stop)
-        RE._th.join()
-        loop.close()
-
-    request.addfinalizer(clean_event_loop)
-    return RE
 
 
 class MySignal(Signal):
@@ -129,6 +108,7 @@ async def test_children_of_standard_readable_have_set_names_and_get_connected():
     assert parent.child1.connected
     assert parent.dict_with_children[123].connected
     assert parent.dict_with_children["abc"].connected
+
 
 async def normal_coroutine(time: float):
     await asyncio.sleep(time)
