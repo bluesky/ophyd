@@ -76,7 +76,7 @@ def test_pvpos(motor):
 
     motor.move(0.1, wait=True)
     time.sleep(1)
-    assert m.position == 0.1
+    assert m.position == pytest.approx(0.1)
 
     m.stop()
     m.limits

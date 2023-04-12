@@ -1,5 +1,6 @@
 import asyncio
 import re
+from unittest.mock import Mock
 
 import pytest
 from bluesky.protocols import Status
@@ -128,3 +129,66 @@ async def test_children_of_standard_readable_have_set_names_and_get_connected():
     assert parent.child1.connected
     assert parent.dict_with_children[123].connected
     assert parent.dict_with_children["abc"].connected
+
+async def normal_coroutine(time: float):
+    await asyncio.sleep(time)
+
+
+async def failing_coroutine(time: float):
+    await normal_coroutine(time)
+    raise ValueError()
+
+
+async def test_async_status_propagates_exception():
+    status = AsyncStatus(failing_coroutine(0.1))
+    assert status.exception() is None
+
+    with pytest.raises(ValueError):
+        await status
+
+    assert type(status.exception()) == ValueError
+
+
+async def test_async_status_propagates_cancelled_error():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception() is None
+
+    status.task.exception = Mock(side_effect=asyncio.CancelledError(""))
+    await status
+
+    assert type(status.exception()) == asyncio.CancelledError
+
+
+async def test_async_status_has_no_exception_if_coroutine_successful():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception() is None
+
+    await status
+
+    assert status.exception() is None
+
+
+async def test_async_status_success_if_cancelled():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception() is None
+
+    status.task.result = Mock(side_effect=asyncio.CancelledError(""))
+    await status
+
+    assert status.success is False
+
+
+async def test_async_status_wrap():
+    wrapped_coroutine = AsyncStatus.wrap(normal_coroutine)
+    status = wrapped_coroutine(0.1)
+
+    await status
+    assert status.success is True
+
+
+async def test_async_status_initialised_with_a_task():
+    normal_task = asyncio.Task(normal_coroutine(0.1))
+    status = AsyncStatus(normal_task)
+
+    await status
+    assert status.success is True

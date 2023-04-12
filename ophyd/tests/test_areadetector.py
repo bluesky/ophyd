@@ -381,31 +381,6 @@ def test_str_smoke(ad_prefix, cleanup):
     str(det)
 
 
-@pytest.mark.adsim
-def test_default_configuration_smoke(ad_prefix, cleanup):
-    class MyDetector(SimDetector):
-        imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
-        statsplugin = Cpt(StatsPlugin, StatsPlugin._default_suffix)
-        colorconvplugin = Cpt(ColorConvPlugin, ColorConvPlugin._default_suffix)
-        processplugin = Cpt(ProcessPlugin, ProcessPlugin._default_suffix)
-        overlayplugin = Cpt(OverlayPlugin, OverlayPlugin._default_suffix)
-        roiplugin = Cpt(ROIPlugin, ROIPlugin._default_suffix)
-        transformplugin = Cpt(TransformPlugin, TransformPlugin._default_suffix)
-        netcdfplugin = Cpt(NetCDFPlugin, NetCDFPlugin._default_suffix)
-        tiffplugin = Cpt(TIFFPlugin, TIFFPlugin._default_suffix)
-        jpegplugin = Cpt(JPEGPlugin, JPEGPlugin._default_suffix)
-        # nexusplugin = Cpt(NexusPlugin, NexusPlugin._default_suffix)
-        hdf5plugin = Cpt(HDF5Plugin, HDF5Plugin._default_suffix)
-        # magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
-
-    d = MyDetector(ad_prefix, name="d")
-    cleanup.add(d)
-    d.stage()
-    {n: getattr(d, n).read_configuration() for n in d.component_names}
-    {n: getattr(d, n).describe_configuration() for n in d.component_names}
-    d.unstage()
-
-
 @pytest.mark.parametrize("plugin", _recursive_subclasses(PluginBase))
 def test_default_configuration_attrs(plugin):
     configuration_attrs = plugin._default_configuration_attrs
@@ -718,3 +693,28 @@ def test_posix_path(paths, cleanup, ad_prefix):
     st = det.trigger()
     wait(st, timeout=5)
     det.unstage()
+
+
+@pytest.mark.adsim
+def test_default_configuration_smoke(ad_prefix, cleanup):
+    class MyDetector(SimDetector):
+        imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
+        statsplugin = Cpt(StatsPlugin, StatsPlugin._default_suffix)
+        colorconvplugin = Cpt(ColorConvPlugin, ColorConvPlugin._default_suffix)
+        processplugin = Cpt(ProcessPlugin, ProcessPlugin._default_suffix)
+        overlayplugin = Cpt(OverlayPlugin, OverlayPlugin._default_suffix)
+        roiplugin = Cpt(ROIPlugin, ROIPlugin._default_suffix)
+        transformplugin = Cpt(TransformPlugin, TransformPlugin._default_suffix)
+        netcdfplugin = Cpt(NetCDFPlugin, NetCDFPlugin._default_suffix)
+        tiffplugin = Cpt(TIFFPlugin, TIFFPlugin._default_suffix)
+        jpegplugin = Cpt(JPEGPlugin, JPEGPlugin._default_suffix)
+        # nexusplugin = Cpt(NexusPlugin, NexusPlugin._default_suffix)
+        hdf5plugin = Cpt(HDF5Plugin, HDF5Plugin._default_suffix)
+        # magickplugin = Cpt(MagickPlugin, MagickPlugin._default_suffix)
+
+    d = MyDetector(ad_prefix, name="d")
+    cleanup.add(d)
+    d.stage()
+    {n: getattr(d, n).read_configuration() for n in d.component_names}
+    {n: getattr(d, n).describe_configuration() for n in d.component_names}
+    d.unstage()
