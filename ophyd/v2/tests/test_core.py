@@ -1,6 +1,5 @@
 import asyncio
 import re
-from typing import Dict, Union
 
 import pytest
 from bluesky.protocols import Status
@@ -9,7 +8,7 @@ from bluesky.run_engine import RunEngine, TransitionError
 from ophyd.v2.core import (
     AsyncStatus,
     Device,
-    DeviceDict,
+    DeviceVector,
     Signal,
     StandardReadable,
     get_device_children,
@@ -98,7 +97,7 @@ class Dummy(DummyDevice):
 class DummyStandardReadable(StandardReadable):
     def __init__(self, prefix: str, name: str = ""):
         self.child1 = DummyDevice("device1")
-        self.dict_with_children: Dict[Union[int, str], DummyDevice] = DeviceDict(
+        self.dict_with_children: DeviceVector[DummyDevice] = DeviceVector(
             {
                 "abc": DummyDevice("device2"),
                 123: DummyDevice("device3"),
@@ -118,7 +117,9 @@ def test_get_device_children():
 async def test_children_of_standard_readable_have_set_names_and_get_connected():
     parent = DummyStandardReadable("parent")
     parent.set_name("parent")
+    assert parent.name == "parent"
     assert parent.child1.name == "parent-child1"
+    assert parent.dict_with_children.name == "parent-dict_with_children"
     assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
     assert parent.dict_with_children["abc"].name == "parent-dict_with_children-abc"
 
