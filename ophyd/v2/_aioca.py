@@ -1,6 +1,7 @@
 from asyncio import CancelledError
 from dataclasses import dataclass
 from enum import Enum
+import sys
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
 from aioca import FORMAT_CTRL, FORMAT_RAW, FORMAT_TIME, caget, camonitor, caput
@@ -71,7 +72,7 @@ class CaEnumConverter(CaConverter):
 
     def descriptor(self, source: str, value: AugmentedValue) -> Descriptor:
         choices = [e.value for e in self.enum_class]
-        return dict(source=source, dtype="string", shape=[], choices=choices)
+        return dict(source=source, dtype="string", shape=[], choices=choices)  # type: ignore
 
 
 class DisconnectedCaConverter(CaConverter):
@@ -102,7 +103,7 @@ def make_converter(
             if not dtype:
                 raise TypeError(f"{pv} has type [{pv_dtype}] not {datatype.__name__}")
             if dtype != pv_dtype:
-                raise TypeError(f"{pv} has type [{pv_dtype}] not [{dtype().dtype}]")
+                raise TypeError(f"{pv} has type [{pv_dtype}] not [{dtype}]")
         return CaArrayConverter(pv_dbr, None)
     elif pv_dbr == dbr.DBR_ENUM:
         # This is an Enum
@@ -129,6 +130,18 @@ def make_converter(
         return CaConverter(pv_dbr, None)
 
 
+_tried_pyepics = False
+
+
+def _use_pyepics_context_if_imported():
+    global _tried_pyepics
+    if not _tried_pyepics:
+        ca = sys.modules.get("epics.ca", None)
+        if ca:
+            ca.use_initial_context()
+        _tried_pyepics = True
+
+
 class CaSignalBackend(SignalBackend[T]):
     def __init__(self, datatype: Optional[Type[T]], read_pv: str, write_pv: str):
         self.datatype = datatype
@@ -144,6 +157,7 @@ class CaSignalBackend(SignalBackend[T]):
             raise NotConnected(self.source)
 
     async def connect(self):
+        _use_pyepics_context_if_imported()
         self.source = f"ca://{self.read_pv}"
         if self.read_pv != self.write_pv:
             # Different, need to connect both

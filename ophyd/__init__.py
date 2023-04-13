@@ -30,6 +30,14 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     # TODO replace this with fancier meta-programming
     # TODO handle control_layer being a module/nampspace directly
     if control_layer == "pyepics":
+        # If using pyepics and ophyd.v2 (p4p and aioca), need to use the same
+        # libCom and libCa as provided by epicscorelibs
+        # https://github.com/BCDA-APS/apstools/issues/836
+        try:
+            import epicscorelibs.path.pyepics  # noqa
+        except ImportError:
+            # No epicscorelibs, let pyepics use bundled CA
+            pass
         from . import _pyepics_shim as shim
     elif control_layer == "caproto":
         from . import _caproto_shim as shim
