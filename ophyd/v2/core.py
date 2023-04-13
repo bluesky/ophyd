@@ -126,13 +126,13 @@ class Device(HasName):
         """Return the name of the Device"""
 
     @abstractmethod
-    def set_name(self, name: str = ""):
+    def set_name(self, name: str):
         """Set ``self.name=name`` and each ``self.child.name=name+"-child"``.
 
         Parameters
         ----------
         name:
-            New name to set, do nothing if blank or name is all set
+            New name to set
         """
 
     @abstractmethod
@@ -199,7 +199,8 @@ async def connect_children(device: Device, sim: bool):
         for k, c in device.__dict__.items()
         if k != "parent" and isinstance(c, Device)
     }
-    await wait_for_connection(**coros)
+    if coros:
+        await wait_for_connection(**coros)
 
 
 class DeviceCollector:
@@ -270,7 +271,7 @@ class DeviceCollector:
         tasks: Dict[asyncio.Task, str] = {}
         for name, obj in self._objects_on_exit.items():
             if name not in self._names_on_enter and isinstance(obj, Device):
-                if self._set_name:
+                if self._set_name and not obj.name:
                     obj.set_name(name)
                 if self._connect:
                     task = asyncio.create_task(obj.connect(self._sim))
@@ -850,20 +851,20 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         self._conf_signals = tuple(config)
         self._staged = False
         # Call this last so child Signals are renamed
-        self.set_name(name)
+        if name:
+            self.set_name(name)
 
     @property
     def name(self) -> str:
         return self._name
 
-    def set_name(self, name: str = ""):
-        if name and not self._name:
-            self._name = name
-            for attr_name, attr in self.__dict__.items():
-                # TODO: support lists and dicts of devices
-                if isinstance(attr, Device):
-                    attr.set_name(f"{name}-{attr_name.rstrip('_')}")
-                    attr.parent = self
+    def set_name(self, name: str):
+        self._name = name
+        for attr_name, attr in self.__dict__.items():
+            # TODO: support lists and dicts of devices
+            if isinstance(attr, Device):
+                attr.set_name(f"{name}-{attr_name.rstrip('_')}")
+                attr.parent = self
 
     async def connect(self, sim=False):
         await connect_children(self, sim)

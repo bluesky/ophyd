@@ -8,6 +8,7 @@ from bluesky.protocols import Descriptor, Reading, Status
 
 from ophyd.v2.core import (
     AsyncStatus,
+    DeviceCollector,
     Monitor,
     Signal,
     SignalBackend,
@@ -171,3 +172,12 @@ async def test_readable_signals_cached_read() -> None:
     assert backend.reading.call_count == 1
     assert backend.monitored.call_count == 2
     assert reading1 != reading3
+
+
+async def test_dc_naming():
+    async with DeviceCollector(set_name=True):
+        d1 = StandardReadable(name="Detector1")
+        d2 = StandardReadable()
+
+    assert d1.name == "Detector1"
+    assert d2.name == "d2"
