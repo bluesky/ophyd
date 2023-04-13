@@ -17,6 +17,7 @@ from typing import (
     Callable,
     Coroutine,
     Dict,
+    Generator,
     Generic,
     Iterable,
     List,
@@ -24,6 +25,7 @@ from typing import (
     Protocol,
     Sequence,
     Set,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -80,6 +82,19 @@ class AsyncStatus(Status):
             for callback in self._callbacks:
                 callback(self)
 
+    def exception(self, timeout: Optional[float] = 0.0) -> Optional[BaseException]:
+        if timeout != 0.0:
+            raise Exception(
+                "cannot honour any timeout other than 0 in an asynchronous function"
+            )
+
+        if self.task.done():
+            try:
+                return self.task.exception()
+            except asyncio.CancelledError as e:
+                return e
+        return None
+
     @property
     def done(self) -> bool:
         return self.task.done()
@@ -92,7 +107,6 @@ class AsyncStatus(Status):
         try:
             self.task.result()
         except (Exception, asyncio.CancelledError):
-            logging.exception("Failed status")
             return False
         else:
             return True
@@ -115,7 +129,7 @@ class AsyncStatus(Status):
 
     def __repr__(self) -> str:
         if self.done:
-            if self.task.exception() is not None:
+            if self.exception() is not None:
                 status = "errored"
             else:
                 status = "done"
@@ -148,7 +162,7 @@ class Device(HasName):
         """
 
     @abstractmethod
-    async def connect(self, sim=False):
+    async def connect(self, sim: bool = False):
         """Connect self and all child Devices.
 
         Parameters
@@ -206,13 +220,19 @@ async def connect_children(device: Device, sim: bool):
         async def connect(self, sim=False):
             await connect_children(self, sim)
     """
+
     coros = {
-        k: c.connect(sim)
-        for k, c in device.__dict__.items()
-        if k != "parent" and isinstance(c, Device)
+        name: child_device.connect(sim)
+        for name, child_device in get_device_children(device)
     }
     if coros:
         await wait_for_connection(**coros)
+
+
+def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
+    for attr_name, attr in device.__dict__.items():
+        if attr_name != "parent" and isinstance(attr, Device):
+            yield attr_name, attr
 
 
 class DeviceCollector:
@@ -874,11 +894,9 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
     def set_name(self, name: str):
         self._name = name
-        for attr_name, attr in self.__dict__.items():
-            # TODO: support lists and dicts of devices
-            if isinstance(attr, Device):
-                attr.set_name(f"{name}-{attr_name.rstrip('_')}")
-                attr.parent = self
+        for child_name, child in get_device_children(self):
+            child.set_name(f"{name}-{child_name.rstrip('_')}")
+            child.parent = self
 
     async def connect(self, sim=False):
         await connect_children(self, sim)
@@ -910,6 +928,28 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
     async def read_configuration(self) -> Dict[str, Reading]:
         return await merge_gathered_dicts(sig.read() for sig in self._conf_signals)
+
+
+VT = TypeVar("VT", bound=Device)
+
+
+class DeviceVector(Dict[int, VT], Device):
+
+    _name = ""
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def set_name(self, parent_name: str):
+        self._name = parent_name
+        for name, device in self.items():
+            device.set_name(f"{parent_name}-{name}")
+            device.parent = self
+
+    async def connect(self, sim: bool = False):
+        coros = {str(k): d.connect(sim) for k, d in self.items()}
+        await wait_for_connection(**coros)
 
 
 def get_unique(values: Dict[str, T], types: str) -> T:

@@ -8,7 +8,9 @@ from bluesky.protocols import Descriptor, Reading, Status
 
 from ophyd.v2.core import (
     AsyncStatus,
+    Device,
     DeviceCollector,
+    DeviceVector,
     Monitor,
     Signal,
     SignalBackend,
@@ -17,6 +19,7 @@ from ophyd.v2.core import (
     SimSignalBackend,
     StandardReadable,
     T,
+    get_device_children,
     wait_for_value,
 )
 
@@ -181,3 +184,126 @@ async def test_dc_naming():
 
     assert d1.name == "Detector1"
     assert d2.name == "d2"
+
+
+class DummyDevice(Device):
+    def __init__(self, name) -> None:
+        self._name = name
+        self.connected = False
+
+    @property
+    def name(self):
+        return self._name
+
+    def set_name(self, name: str = ""):
+        self._name = name
+
+    async def connect(self, sim=False):
+        self.connected = True
+
+
+class Dummy(DummyDevice):
+    def __init__(self, name) -> None:
+        self.child1 = DummyDevice("device1")
+        self.child2 = DummyDevice("device2")
+        super().__init__(name)
+
+
+class DummyStandardReadable(StandardReadable):
+    def __init__(self, prefix: str, name: str = ""):
+        self.child1 = DummyDevice("device1")
+        self.dict_with_children: DeviceVector[DummyDevice] = DeviceVector(
+            {
+                456: DummyDevice("device2"),
+                123: DummyDevice("device3"),
+            }
+        )
+        super().__init__(prefix, name)
+
+
+def test_get_device_children():
+    parent = Dummy("parent")
+    names = ["child1", "child2"]
+    for idx, (name, child) in enumerate(get_device_children(parent)):
+        assert name == names[idx]
+        assert type(child) == DummyDevice
+
+
+async def test_children_of_standard_readable_have_set_names_and_get_connected():
+    parent = DummyStandardReadable("parent")
+    parent.set_name("parent")
+    assert parent.name == "parent"
+    assert parent.child1.name == "parent-child1"
+    assert parent.dict_with_children.name == "parent-dict_with_children"
+    assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
+    assert parent.dict_with_children[456].name == "parent-dict_with_children-456"
+
+    await parent.connect()
+
+    assert parent.child1.connected
+    assert parent.dict_with_children[123].connected
+    assert parent.dict_with_children[456].connected
+
+
+async def normal_coroutine(time: float):
+    await asyncio.sleep(time)
+
+
+async def failing_coroutine(time: float):
+    await normal_coroutine(time)
+    raise ValueError()
+
+
+async def test_async_status_propagates_exception():
+    status = AsyncStatus(failing_coroutine(0.1))
+    assert status.exception() is None
+
+    with pytest.raises(ValueError):
+        await status
+
+    assert type(status.exception()) == ValueError
+
+
+async def test_async_status_propagates_cancelled_error():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception() is None
+
+    status.task.exception = Mock(side_effect=asyncio.CancelledError(""))
+    await status
+
+    assert type(status.exception()) == asyncio.CancelledError
+
+
+async def test_async_status_has_no_exception_if_coroutine_successful():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception() is None
+
+    await status
+
+    assert status.exception() is None
+
+
+async def test_async_status_success_if_cancelled():
+    status = AsyncStatus(normal_coroutine(0.1))
+    assert status.exception() is None
+
+    status.task.result = Mock(side_effect=asyncio.CancelledError(""))
+    await status
+
+    assert status.success is False
+
+
+async def test_async_status_wrap():
+    wrapped_coroutine = AsyncStatus.wrap(normal_coroutine)
+    status = wrapped_coroutine(0.1)
+
+    await status
+    assert status.success is True
+
+
+async def test_async_status_initialised_with_a_task():
+    normal_task = asyncio.Task(normal_coroutine(0.1))
+    status = AsyncStatus(normal_task)
+
+    await status
+    assert status.success is True
