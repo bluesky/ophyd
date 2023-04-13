@@ -210,7 +210,7 @@ class Dummy(DummyDevice):
 
 
 class DummyStandardReadable(StandardReadable):
-    def __init__(self, prefix: str, name: str = ""):
+    def __init__(self, name: str = ""):
         self.child1 = DummyDevice("device1")
         self.dict_with_children: DeviceVector[DummyDevice] = DeviceVector(
             {
@@ -218,7 +218,7 @@ class DummyStandardReadable(StandardReadable):
                 123: DummyDevice("device3"),
             }
         )
-        super().__init__(prefix, name)
+        super().__init__(name)
 
 
 def test_get_device_children():
@@ -231,7 +231,6 @@ def test_get_device_children():
 
 async def test_children_of_standard_readable_have_set_names_and_get_connected():
     parent = DummyStandardReadable("parent")
-    parent.set_name("parent")
     assert parent.name == "parent"
     assert parent.child1.name == "parent-child1"
     assert parent.dict_with_children.name == "parent-dict_with_children"
