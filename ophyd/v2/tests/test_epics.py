@@ -16,8 +16,8 @@ import pytest
 from aioca import purge_channel_caches
 from bluesky.protocols import Reading
 
-from ophyd.v2.core import NotConnected, get_dtype
-from ophyd.v2.epics import CaSignalBackend, EpicsTransport
+from ophyd.v2.core import NotConnected, SignalBackend, get_dtype
+from ophyd.v2.epics import EpicsTransport
 
 RECORDS = str(Path(__file__).parent / "test_records.db")
 PV_PREFIX = "".join(random.choice(string.ascii_lowercase) for _ in range(12))
@@ -30,7 +30,7 @@ class IOC:
 
     async def make_backend(
         self, typ: Optional[Type], suff: str, connect=True
-    ) -> CaSignalBackend:
+    ) -> SignalBackend:
         # Calculate the pv
         pv = f"{PV_PREFIX}:{self.protocol}:{suff}"
         # Make and connect the backend
@@ -73,7 +73,7 @@ def ioc(request):
 
 
 class MonitorQueue:
-    def __init__(self, backend: CaSignalBackend):
+    def __init__(self, backend: SignalBackend):
         self.backend = backend
         self.subscription = backend.monitor_reading_value(self.add_reading_value)
         self.updates: asyncio.Queue[Tuple[Reading, Any]] = asyncio.Queue()
@@ -144,12 +144,12 @@ ca_dtype_mapping = {
 async def test_backend_get_put_monitor(ioc: IOC, typ, suff, initial, put, descriptor):
     # ca can't support all the types
     dtype = get_dtype(typ)
-    if ioc.protocol == "ca" and dtype in ca_dtype_mapping:
+    if ioc.protocol == "ca" and dtype and dtype.type in ca_dtype_mapping:
         if dtype == np.int8:
             # CA maps uint8 onto int8 rather than upcasting, so we need to change initial
             # array
             initial, put = [np.array(x).astype(np.uint8) for x in (initial, put)]
-        typ = npt.NDArray[ca_dtype_mapping[dtype]]  # type: ignore
+        typ = npt.NDArray[ca_dtype_mapping[dtype.type]]  # type: ignore
     # Make and connect the backend
     for t, i, p in [(typ, initial, put), (None, put, initial)]:
         backend = await ioc.make_backend(t, suff)
@@ -157,9 +157,8 @@ async def test_backend_get_put_monitor(ioc: IOC, typ, suff, initial, put, descri
         q = MonitorQueue(backend)
         try:
             # Check descriptor
-            dict(
-                source=f"{ioc.protocol}://{backend.read_pv}", **descriptor
-            ) == await backend.get_descriptor()
+            source = f"{ioc.protocol}://{PV_PREFIX}:{ioc.protocol}:{suff}"
+            dict(source=source, **descriptor) == await backend.get_descriptor()
             # Check initial value
             await q.check_updates(pytest.approx(i))
             # Put to new value and check that
@@ -201,7 +200,7 @@ async def test_backend_put_enum_string(ioc: IOC) -> None:
     assert MyEnum.c == await backend.get_value()
 
 
-def approx_table(table: dict):
+def approx_table(table):
     return {k: pytest.approx(v) for k, v in table.items()}
 
 
@@ -240,9 +239,7 @@ async def test_pva_table(ioc: IOC) -> None:
         q = MonitorQueue(backend)
         try:
             # Check descriptor
-            dict(
-                source=f"{ioc.protocol}://{backend.read_pv}", **descriptor
-            ) == await backend.get_descriptor()
+            dict(source=backend.source, **descriptor) == await backend.get_descriptor()
             # Check initial value
             await q.check_updates(approx_table(i))
             # Put to new value and check that
@@ -263,5 +260,5 @@ async def test_non_existant_errors(ioc: IOC):
     assert len(pending) == 1
     t = pending.pop()
     t.cancel()
-    with pytest.raises(NotConnected, match=f"{ioc.protocol}://{backend.read_pv}"):
+    with pytest.raises(NotConnected, match=backend.source):
         await t

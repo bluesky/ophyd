@@ -59,20 +59,56 @@ def _make_backend(
 def epics_signal_rw(
     datatype: Type[T], read_pv: str, write_pv: Optional[str] = None
 ) -> SignalRW[T]:
+    """Create a `SignalRW` backed by 1 or 2 EPICS PVs
+
+    Parameters
+    ----------
+    datatype:
+        Check that the PV is of this type
+    read_pv:
+        The PV to read and monitor
+    write_pv:
+        If given, use this PV to write to, otherwise use read_pv
+    """
     backend = _make_backend(datatype, read_pv, write_pv or read_pv)
     return SignalRW(backend)
 
 
 def epics_signal_r(datatype: Type[T], read_pv: str) -> SignalR[T]:
+    """Create a `SignalR` backed by 1 EPICS PV
+
+    Parameters
+    ----------
+    datatype:
+        Check that the PV is of this type
+    read_pv:
+        The PV to read and monitor
+    """
     backend = _make_backend(datatype, read_pv, read_pv)
     return SignalR(backend)
 
 
 def epics_signal_w(datatype: Type[T], write_pv: str) -> SignalW[T]:
+    """Create a `SignalW` backed by 1 EPICS PVs
+
+    Parameters
+    ----------
+    datatype:
+        Check that the PV is of this type
+    write_pv:
+        The PV to write to
+    """
     backend = _make_backend(datatype, write_pv, write_pv)
     return SignalW(backend)
 
 
-def epics_signal_x(read_pv: str) -> SignalX:
-    backend: SignalBackend = _make_backend(None, read_pv, read_pv)
+def epics_signal_x(write_pv: str) -> SignalX:
+    """Create a `SignalX` backed by 1 EPICS PVs
+
+    Parameters
+    ----------
+    write_pv:
+        The PV to write its initial value to on execute
+    """
+    backend: SignalBackend = _make_backend(None, write_pv, write_pv)
     return SignalX(backend)

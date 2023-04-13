@@ -107,7 +107,7 @@ intersphinx_mapping = {
     "bluesky": ("https://blueskyproject.io/bluesky/", None),
     "numpy": ("https://numpy.org/devdocs/", None),
     "databroker": ("https://blueskyproject.io/databroker/", None),
-    "event-model": ("https://blueskyproject.io/event-model/", None),
+    "event-model": ("https://blueskyproject.io/event-model/main", None),
 }
 
 # If False and a module has the __all__ attribute set, autosummary documents
@@ -132,13 +132,3 @@ templates_path = ["_templates"]
 
 # Where to put Ipython savefigs
 ipython_savefig_dir = "../build/savefig"
-
-
-def setup(app):
-    # Work around https://github.com/sphinx-doc/sphinx/issues/10809
-    from ophyd.v2 import epics
-
-    for name in epics.__all__:
-        cls = getattr(epics, name)
-        if getattr(cls, "__module__", "").startswith("ophyd.v2._"):
-            cls.__module__ = epics.EpicsSignalR.__module__

@@ -77,7 +77,7 @@ class PvaEnumConverter(PvaConverter):
 
     def descriptor(self, source: str, value) -> Descriptor:
         choices = [e.value for e in self.enum_class]
-        return dict(source=source, dtype="string", shape=[], choices=choices)
+        return dict(source=source, dtype="string", shape=[], choices=choices)  # type: ignore
 
 
 class PvaTableConverter(PvaConverter):
@@ -85,7 +85,8 @@ class PvaTableConverter(PvaConverter):
         return value["value"].todict()
 
     def descriptor(self, source: str, value) -> Descriptor:
-        return dict(source=source, dtype="object", shape=[])
+        # This is wrong, but defer until we know how to actually describe a table
+        return dict(source=source, dtype="object", shape=[])  # type: ignore
 
 
 class DisconnectedPvaConverter(PvaConverter):
@@ -113,7 +114,7 @@ def make_converter(datatype: Optional[Type], values: Dict[str, Any]) -> PvaConve
             if not dtype:
                 raise TypeError(f"{pv} has type [{pv_dtype}] not {datatype.__name__}")
             if dtype != pv_dtype:
-                raise TypeError(f"{pv} has type [{pv_dtype}] not [{dtype().dtype}]")
+                raise TypeError(f"{pv} has type [{pv_dtype}] not [{dtype}]")
         return PvaArrayConverter()
     elif "NTEnum" in typeid:
         # This is an Enum

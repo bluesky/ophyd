@@ -29,14 +29,13 @@ First some Signals are constructed and stored on the Device. Each one is passed
 its Python type, which could be:
 
 - A primitive (`str`, `int`, `float`)
-- An array (`numpy.typing.NDArray`)
+- An array (`numpy.typing.NDArray` or ``Sequence[str]``)
 - An enum (`enum.Enum`). 
 
 The rest of the arguments are PV connection information, in this case the PV suffix.
 
 Finally `super().__init__() <StandardReadable>` is called with:
 
-- PV ``prefix``: will be added to each Signal pv suffix
 - Possibly empty Device ``name``: will also dash-prefix its child Device names is set
 - Optional ``primary`` signal: a Signal that should be renamed to take the name
   of the Device and output at ``read()``
@@ -74,13 +73,15 @@ Compound assemblies can be used to group Devices into larger logical Devices:
 .. literalinclude:: ../../../ophyd/v2/epicsdemo/__init__.py
    :pyobject: SampleStage
 
-This makes use of the prefix nesting that ``StandardReadable.connect`` offers:
+This applies prefixes on construction:
 
 - SampleStage is passed a prefix like ``DEVICE:``
 - SampleStage.x will append its prefix ``X:`` to get ``DEVICE:X:``
-- SampleStage.x.velocity will append its suffix ``Velocity`` to get ``DEVICE:X:Velocity``
+- SampleStage.x.velocity will append its suffix ``Velocity`` to get
+  ``DEVICE:X:Velocity``
 
-If SampleStage is further nested in another Device another layer of prefix nesting would occur
+If SampleStage is further nested in another Device another layer of prefix
+nesting would occur
 
 .. note::
 

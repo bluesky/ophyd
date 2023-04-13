@@ -1,7 +1,7 @@
+import sys
 from asyncio import CancelledError
 from dataclasses import dataclass
 from enum import Enum
-import sys
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
 from aioca import FORMAT_CTRL, FORMAT_RAW, FORMAT_TIME, caget, camonitor, caput

@@ -152,12 +152,9 @@ async def test_read_sensor(sim_sensor: epicsdemo.Sensor):
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"
     ] == epicsdemo.EnergyMode.low
-    assert (await sim_sensor.describe_configuration())["sim_sensor-mode"][
-        "dtype"
-    ] == "string"
-    assert (await sim_sensor.describe_configuration())["sim_sensor-mode"][
-        "choices"
-    ] == ["Low Energy", "High Energy"]
+    desc = (await sim_sensor.describe_configuration())["sim_sensor-mode"]
+    assert desc["dtype"] == "string"
+    assert desc["choices"] == ["Low Energy", "High Energy"]  # type: ignore
     set_sim_value(sim_sensor.mode, epicsdemo.EnergyMode.high)
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"

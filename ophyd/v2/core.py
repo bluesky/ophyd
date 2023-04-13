@@ -113,6 +113,18 @@ class AsyncStatus(Status):
 
         return wrap_f
 
+    def __repr__(self) -> str:
+        if self.done:
+            if self.task.exception() is not None:
+                status = "errored"
+            else:
+                status = "done"
+        else:
+            status = "pending"
+        return f"<AsyncStatus {status}>"
+
+    __str__ = __repr__
+
 
 class Device(HasName):
     """Common base class for all Ophyd.v2 Devices"""
@@ -258,15 +270,15 @@ class DeviceCollector:
                 caller_frame = caller_frame.f_back
             return caller_frame.f_locals
 
-    def __enter__(self):
+    def __enter__(self) -> DeviceCollector:
         # Stash the names that were defined before we were called
         self._names_on_enter = set(self._caller_locals())
         return self
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> DeviceCollector:
         return self.__enter__()
 
-    async def _on_exit(self):
+    async def _on_exit(self) -> None:
         # Name and kick off connect for devices
         tasks: Dict[asyncio.Task, str] = {}
         for name, obj in self._objects_on_exit.items():
@@ -326,9 +338,10 @@ class Monitor(Protocol):
 
 
 class SignalBackend(Generic[T]):
-    """An abstraction to a CA/PVA/Sim channel"""
+    """A read/write/monitor backend for a Signals"""
 
-    datatype: Optional[Type[T]]
+    #: Datatype of the signal value
+    datatype: Optional[Type[T]] = None
 
     #: Like ca://PV_PREFIX:SIGNAL, or "" if connect hasn't been called
     source: str = ""
@@ -369,25 +382,9 @@ primitive_dtypes: Dict[type, Dtype] = {
 }
 
 
-def make_sim_descriptor(source: str, value) -> Descriptor:
-    try:
-        dtype = primitive_dtypes[type(value)]
-        shape = []
-    except KeyError:
-        if isinstance(value, Sequence):
-            dtype = "array"
-            shape = [len(value)]
-        elif isinstance(value, Enum):
-            dtype = "string"
-            shape = []
-            choices = [e.value for e in type(value)]
-            return dict(source=source, dtype=dtype, shape=shape, choices=choices)
-        else:
-            assert False, f"Can't get dtype for {type(value)}"
-    return dict(source=source, dtype=dtype, shape=shape)
-
-
 class SimMonitor(Generic[T]):
+    """Handle that is returned when monitoring a Signal in sim mode"""
+
     def __init__(
         self, callback: ReadingValueCallback[T], listeners: List[SimMonitor[T]]
     ):
@@ -400,68 +397,85 @@ class SimMonitor(Generic[T]):
 
 
 class SimSignalBackend(SignalBackend[T]):
-    """An abstraction to a CA/PVA/Sim channel"""
+    """An simulated backend to a Signal, created with ``Signal.connect(sim=True)``"""
 
-    initial_value: T
-    value: T
-    timestamp: float
-
-    @property
-    def reading(self) -> Reading:
-        return dict(value=self.value, timestamp=self.timestamp)
+    _initial_value: T
+    _value: T
+    _timestamp: float
 
     def __init__(self, datatype: Optional[Type[T]], name: str) -> None:
         self.datatype = datatype
         self.source = f"sim://{name}"
-        #: If cleared, then any `put(wait=True)` will wait until it is set
+        #: If cleared, then any ``put(wait=True)`` will wait until it is set
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
         self.listeners: List[SimMonitor[T]] = []
         if datatype is None:
-            self.initial_value = None
+            self._initial_value = cast(T, None)
         elif issubclass(datatype, Enum):
-            self.initial_value = list(datatype)[0]
+            self._initial_value = cast(T, list(datatype)[0])
         else:
-            self.initial_value = datatype()
-        self.set_value(self.initial_value)
+            self._initial_value = datatype()
+        self.set_value(self._initial_value)
 
     async def connect(self):
         pass
 
     async def put(self, value: Optional[T], wait=True, timeout=None):
         if value is None:
-            self.set_value(self.initial_value)
+            self.set_value(self._initial_value)
         else:
             self.set_value(value)
         if wait:
             await asyncio.wait_for(self.put_proceeds.wait(), timeout)
 
     async def get_descriptor(self) -> Descriptor:
-        return make_sim_descriptor(self.source, self.value)
+        try:
+            dtype = primitive_dtypes[type(self._value)]
+            shape = []
+        except KeyError:
+            if isinstance(self._value, Sequence):
+                dtype = "array"
+                shape = [len(self._value)]
+            elif isinstance(self._value, Enum):
+                dtype = "string"
+                shape = []
+                choices = [e.value for e in type(self._value)]
+                # Ignore type until https://github.com/bluesky/event-model/issues/235#issuecomment-1497353265
+                return dict(source=self.source, dtype=dtype, shape=shape, choices=choices)  # type: ignore
+            else:
+                assert False, f"Can't get dtype for {type(self._value)}"
+        return dict(source=self.source, dtype=dtype, shape=shape)
+
+    @property
+    def _reading(self) -> Reading:
+        return dict(value=self._value, timestamp=self._timestamp)
 
     async def get_reading(self) -> Reading:
-        return self.reading
+        return self._reading
 
     async def get_value(self) -> T:
-        return self.value
+        return self._value
 
     def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
-        callback(self.reading, self.value)
+        callback(self._reading, self._value)
         return SimMonitor(callback, self.listeners)
 
     def set_value(self, value: T) -> None:
         """Set the simulated value, and set timestamp to now"""
-        self.value = value
-        self.timestamp = time.monotonic()
+        self._value = value
+        self._timestamp = time.monotonic()
         for rl in self.listeners:
-            rl.callback(self.reading, self.value)
+            rl.callback(self._reading, self._value)
 
 
 def set_sim_value(signal: Signal[T], value: T):
+    """Set the value of a signal that is in sim mode"""
     _sim_backends[signal].set_value(value)
 
 
 def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):
+    """Allow or block a put with wait=True from proceeding"""
     event = _sim_backends[signal].put_proceeds
     if proceeds:
         event.set()
@@ -469,9 +483,8 @@ def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):
         event.clear()
 
 
-def monitor_sim_value(
-    signal: Signal[T], callback: ReadingValueCallback[T]
-) -> SimMonitor[T]:
+def monitor_sim_value(signal: Signal[T], callback: ReadingValueCallback[T]) -> Monitor:
+    """Monitor the value of a signal that is in sim mode"""
     return _sim_backends[signal].monitor_reading_value(callback)
 
 
@@ -498,7 +511,7 @@ DEFAULT_TIMEOUT = 10.0
 
 
 class Signal(Device, Generic[T]):
-    """Signals are like ophyd Signals, but async"""
+    """A Device with the concept of a value, with R, RW, W and X flavours"""
 
     def __init__(
         self, backend: SignalBackend[T], timeout: Optional[float] = DEFAULT_TIMEOUT
@@ -525,6 +538,7 @@ class Signal(Device, Generic[T]):
 
     @property
     def source(self) -> str:
+        """Like ca://PV_PREFIX:SIGNAL, or "" if not set"""
         return self._backend.source
 
     __lt__ = __le__ = __eq__ = __ge__ = __gt__ = __ne__ = _fail
@@ -899,6 +913,15 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
 
 def get_unique(values: Dict[str, T], types: str) -> T:
+    """If all values are the same, return that value, otherwise return TypeError
+
+    >>> get_unique({"a": 1, "b": 1}, "integers")
+    1
+    >>> get_unique({"a": 1, "b": 2}, "integers")
+    Traceback (most recent call last):
+     ...
+    TypeError: Differing integers: a has 1, b has 2
+    """
     set_values = set(values.values())
     if len(set_values) != 1:
         diffs = ", ".join(f"{k} has {v}" for k, v in values.items())
@@ -907,8 +930,15 @@ def get_unique(values: Dict[str, T], types: str) -> T:
 
 
 def get_dtype(typ: Type) -> Optional[np.dtype]:
+    """Get the runtime dtype from a numpy ndarray type annotation
+
+    >>> import numpy.typing as npt
+    >>> import numpy as np
+    >>> get_dtype(npt.NDArray[np.int8])
+    dtype('int8')
+    """
     if getattr(typ, "__origin__", None) == np.ndarray:
         # datatype = numpy.ndarray[typing.Any, numpy.dtype[numpy.float64]]
         # so extract numpy.float64 from it
-        return typ.__args__[1].__args__[0]  # type: ignore
+        return np.dtype(typ.__args__[1].__args__[0])  # type: ignore
     return None
