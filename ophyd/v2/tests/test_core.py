@@ -5,7 +5,14 @@ from unittest.mock import Mock
 import pytest
 from bluesky.protocols import Status
 
-from ophyd.v2.core import AsyncStatus, Signal
+from ophyd.v2.core import (
+    AsyncStatus,
+    Device,
+    DeviceVector,
+    Signal,
+    StandardReadable,
+    get_device_children,
+)
 
 
 class MySignal(Signal):
@@ -42,6 +49,65 @@ async def test_async_status_success():
     await st
     assert st.done
     assert st.success
+
+
+class DummyDevice(Device):
+    def __init__(self, name) -> None:
+        self._name = name
+        self.connected = False
+
+    @property
+    def name(self):
+        return self._name
+
+    def set_name(self, name: str = ""):
+        self._name = name
+
+    async def connect(self, prefix: str = "", sim=False):
+        self.connected = True
+
+
+class Dummy(DummyDevice):
+    def __init__(self, name) -> None:
+        self.child1 = DummyDevice("device1")
+        self.child2 = DummyDevice("device2")
+        super().__init__(name)
+
+
+class DummyStandardReadable(StandardReadable):
+    def __init__(self, prefix: str, name: str = ""):
+        self.child1 = DummyDevice("device1")
+        self.dict_with_children: DeviceVector[DummyDevice] = DeviceVector(
+            {
+                "abc": DummyDevice("device2"),
+                123: DummyDevice("device3"),
+            }
+        )
+        super().__init__(prefix, name)
+
+
+def test_get_device_children():
+    parent = Dummy("parent")
+    names = ["child1", "child2"]
+    for idx, (name, child) in enumerate(get_device_children(parent)):
+        assert name == names[idx]
+        assert type(child) == DummyDevice
+
+
+async def test_children_of_standard_readable_have_set_names_and_get_connected():
+    parent = DummyStandardReadable("parent")
+    parent.set_name("parent")
+    assert parent.name == "parent"
+    assert parent.child1.name == "parent-child1"
+    assert parent.dict_with_children.name == "parent-dict_with_children"
+    assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
+    assert parent.dict_with_children["abc"].name == "parent-dict_with_children-abc"
+
+    await parent.connect()
+
+    assert parent.child1.connected
+    assert parent.dict_with_children[123].connected
+    assert parent.dict_with_children["abc"].connected
 
 
 async def normal_coroutine(time: float):

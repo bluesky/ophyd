@@ -16,6 +16,7 @@ from typing import (
     Callable,
     Coroutine,
     Dict,
+    Generator,
     Generic,
     Iterable,
     List,
@@ -23,6 +24,7 @@ from typing import (
     Protocol,
     Sequence,
     Set,
+    Tuple,
     TypeVar,
     Union,
     cast,
@@ -203,12 +205,19 @@ async def connect_children(device: Device, prefix: str, sim: bool):
         async def connect(self, prefix: str = "", sim=False):
             await connect_children(self, prefix + self.prefix, sim)
     """
+
     coros = {
-        k: c.connect(prefix, sim)
-        for k, c in device.__dict__.items()
-        if k != "parent" and isinstance(c, Device)
+        name: child_device.connect(prefix, sim)
+        for name, child_device in get_device_children(device)
     }
+
     await wait_for_connection(**coros)
+
+
+def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
+    for attr_name, attr in device.__dict__.items():
+        if attr_name != "parent" and isinstance(attr, Device):
+            yield attr_name, attr
 
 
 class DeviceCollector:
@@ -585,11 +594,9 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
     def set_name(self, name: str = ""):
         if name and not self._name:
             self._name = name
-            for attr_name, attr in self.__dict__.items():
-                # TODO: support lists and dicts of devices
-                if isinstance(attr, Device):
-                    attr.set_name(f"{name}-{attr_name.rstrip('_')}")
-                    attr.parent = self
+            for child_name, child in get_device_children(self):
+                child.set_name(f"{name}-{child_name.rstrip('_')}")
+                child.parent = self
 
     async def connect(self, prefix: str = "", sim=False):
         # Add pv prefix to child Signals and connect them
@@ -622,3 +629,26 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
 
     async def read_configuration(self) -> Dict[str, Reading]:
         return await merge_gathered_dicts(sig.read() for sig in self._conf_signals)
+
+
+VT = TypeVar("VT", bound=Device)
+
+
+class DeviceVector(Dict[int, VT], Device):
+
+    _name = ""
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def set_name(self, parent_name: str):
+        if parent_name and not self._name:
+            self._name = parent_name
+            for name, device in self.items():
+                device.set_name(f"{parent_name}-{name}")
+                device.parent = self
+
+    async def connect(self, prefix: str, sim: bool):
+        coros = {str(k): d.connect(prefix, sim) for k, d in self.items()}
+        await wait_for_connection(**coros)
