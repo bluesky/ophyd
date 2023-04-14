@@ -12,7 +12,7 @@ from ophyd.v2.core import (
     DeviceVector,
     Signal,
     SimSignalBackend,
-    StandardReadable,
+    DeviceCollector,
     get_device_children,
     wait_for_connection,
 )
@@ -56,58 +56,59 @@ async def test_async_status_success():
     assert st.success
 
 
-class DummyDevice(Device):
-    def __init__(self, name) -> None:
-        self._name = name
+class DummyBaseDevice(Device):
+    def __init__(self) -> None:
         self.connected = False
 
-    @property
-    def name(self):
-        return self._name
-
-    def set_name(self, name: str = ""):
-        self._name = name
-
-    async def connect(self, sim=False):
+    async def connect(self, prefix: str = "", sim=False):
         self.connected = True
 
 
-class Dummy(DummyDevice):
-    def __init__(self, name) -> None:
-        self.child1 = DummyDevice("device1")
-        self.child2 = DummyDevice("device2")
-        super().__init__(name)
-
-
-class DummyStandardReadable(StandardReadable):
-    def __init__(self, name: str = ""):
-        self.child1 = DummyDevice("device1")
-        self.dict_with_children: DeviceVector[DummyDevice] = DeviceVector(
+class DummyDeviceGroup(Device):
+    def __init__(self, name: str) -> None:
+        self.child1 = DummyBaseDevice()
+        self.child2 = DummyBaseDevice()
+        self.dict_with_children: DeviceVector[DummyBaseDevice] = DeviceVector(
             {
-                123: DummyDevice("device3"),
+                123: DummyBaseDevice()
             }
         )
-        super().__init__(name)
+        self.set_name(name)
 
 
 def test_get_device_children():
-    parent = Dummy("parent")
-    names = ["child1", "child2"]
+    parent = DummyDeviceGroup("parent")
+
+    names = ["child1", "child2", "dict_with_children"]
     for idx, (name, child) in enumerate(get_device_children(parent)):
         assert name == names[idx]
-        assert type(child) == DummyDevice
+        assert type(child) == DummyBaseDevice if name.startswith('child') else type(child) == DeviceVector
 
 
-async def test_children_of_standard_readable_have_set_names_and_get_connected():
-    parent = DummyStandardReadable("parent")
-    parent.set_name("parent")
+async def test_children_of_device_have_set_names_and_get_connected():
+    parent = DummyDeviceGroup("parent")
+
     assert parent.name == "parent"
     assert parent.child1.name == "parent-child1"
+    assert parent.child2.name == "parent-child2"
     assert parent.dict_with_children.name == "parent-dict_with_children"
     assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
 
     await parent.connect()
 
+    assert parent.child1.connected
+    assert parent.dict_with_children[123].connected
+
+
+async def test_device_with_device_collector():
+    with DeviceCollector(sim=True):
+        parent = DummyDeviceGroup("parent")
+
+    assert parent.name == "parent"
+    assert parent.child1.name == "parent-child1"
+    assert parent.child2.name == "parent-child2"
+    assert parent.dict_with_children.name == "parent-dict_with_children"
+    assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
     assert parent.child1.connected
     assert parent.dict_with_children[123].connected
 
@@ -177,7 +178,7 @@ async def test_async_status_initialised_with_a_task():
 
 
 async def test_wait_for_connection():
-    class DummyDeviceWithSleep(DummyDevice):
+    class DummyDeviceWithSleep(DummyBaseDevice):
         def __init__(self, name) -> None:
             super().__init__(name)
 
