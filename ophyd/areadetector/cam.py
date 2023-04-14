@@ -1,3 +1,5 @@
+# type: ignore
+
 import logging
 
 from ..device import DynamicDeviceComponent as DDC
