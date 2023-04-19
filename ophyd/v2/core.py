@@ -82,7 +82,9 @@ class AsyncStatus(Status):
             for callback in self._callbacks:
                 callback(self)
 
-    def exception(self, timeout: Optional[float] = 0.0) -> Optional[BaseException]:
+    def exception(
+        self, timeout: Optional[float] = 0.0
+    ) -> Optional[Union[Exception, asyncio.CancelledError]]:
         if timeout != 0.0:
             raise Exception(
                 "cannot honour any timeout other than 0 in an asynchronous function"
@@ -126,18 +128,6 @@ class AsyncStatus(Status):
             return AsyncStatus(f(self))
 
         return wrap_f
-
-    def __repr__(self) -> str:
-        if self.done:
-            if self.exception() is not None:
-                status = "errored"
-            else:
-                status = "done"
-        else:
-            status = "pending"
-        return f"<AsyncStatus {status}>"
-
-    __str__ = __repr__
 
 
 class Device(HasName):
@@ -191,7 +181,7 @@ async def wait_for_connection(**coros: Awaitable[None]):
     """
     ts = {k: asyncio.create_task(c) for (k, c) in coros.items()}  # type: ignore
     try:
-        done, pending = await asyncio.wait(ts.values())
+        await asyncio.wait(ts.values())
     except asyncio.CancelledError:
         for t in ts.values():
             t.cancel()
@@ -206,10 +196,6 @@ async def wait_for_connection(**coros: Awaitable[None]):
                     lines.append(f"{k}:")
                     lines += [f"  {line}" for line in e.lines]
         raise NotConnected(*lines)
-    else:
-        # Wait for everything to foreground the exceptions
-        for f in list(done) + list(pending):
-            await f
 
 
 async def connect_children(device: Device, sim: bool):
