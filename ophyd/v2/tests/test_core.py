@@ -1,5 +1,6 @@
 import asyncio
 import re
+import traceback
 from unittest.mock import Mock
 
 import pytest
@@ -12,6 +13,7 @@ from ophyd.v2.core import (
     Signal,
     StandardReadable,
     get_device_children,
+    wait_for_connection,
 )
 
 
@@ -172,3 +174,30 @@ async def test_async_status_initialised_with_a_task():
 
     await status
     assert status.success is True
+
+
+async def test_wait_for_connection():
+    class DummyDeviceWithSleep(DummyDevice):
+        def __init__(self, name) -> None:
+            super().__init__(name)
+
+        async def connect(self, prefix: str = "", sim=False):
+            asyncio.sleep(0.01)
+            self.connected = True
+
+    device1, device2 = DummyDeviceWithSleep("device1"), DummyDeviceWithSleep("device2")
+
+    normal_coros = {"device1": device1.connect(), "device2": device2.connect()}
+
+    await wait_for_connection(**normal_coros)
+
+    assert device1.connected
+    assert device2.connected
+
+
+async def test_wait_for_connection_propagates_error():
+    failing_coros = {"test": normal_coroutine(0.01), "failing": failing_coroutine(0.01)}
+
+    with pytest.raises(ValueError) as e:
+        await wait_for_connection(**failing_coros)
+        assert traceback.extract_tb(e.__traceback__)[-1].name == "failing_coroutine"
