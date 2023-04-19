@@ -26,7 +26,6 @@ from typing import (
     Set,
     Tuple,
     TypeVar,
-    Union,
     cast,
     runtime_checkable,
 )

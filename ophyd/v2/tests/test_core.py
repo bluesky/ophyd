@@ -188,7 +188,7 @@ async def test_async_status_str_for_failing_coroutine():
     failing_task = asyncio.Task(failing_coroutine(0.01))
     status = AsyncStatus(failing_task)
 
-    assert str(status) == "<AsyncStatus pending>"    
+    assert str(status) == "<AsyncStatus pending>"
     with pytest.raises(ValueError):
         await status
 
