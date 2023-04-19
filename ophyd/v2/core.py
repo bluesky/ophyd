@@ -78,9 +78,7 @@ class AsyncStatus(Status):
             for callback in self._callbacks:
                 callback(self)
 
-    def exception(
-        self, timeout: Optional[float] = 0.0
-    ) -> Optional[Union[Exception, asyncio.CancelledError]]:
+    def exception(self, timeout: Optional[float] = 0.0) -> Optional[BaseException]:
         if timeout != 0.0:
             raise Exception(
                 "cannot honour any timeout other than 0 in an asynchronous function"
@@ -124,6 +122,18 @@ class AsyncStatus(Status):
             return AsyncStatus(f(self))
 
         return wrap_f
+
+    def __repr__(self) -> str:
+        if self.done:
+            if self.exception() is not None:
+                status = "errored"
+            else:
+                status = "done"
+        else:
+            status = "pending"
+        return f"<AsyncStatus {status}>"
+
+    __str__ = __repr__
 
 
 class Device(HasName):
