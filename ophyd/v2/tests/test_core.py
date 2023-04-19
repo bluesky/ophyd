@@ -172,3 +172,24 @@ async def test_async_status_initialised_with_a_task():
 
     await status
     assert status.success is True
+
+
+async def test_async_status_str_for_normal_coroutine():
+    normal_task = asyncio.Task(normal_coroutine(0.01))
+    status = AsyncStatus(normal_task)
+
+    assert str(status) == "<AsyncStatus pending>"
+    await status
+
+    assert str(status) == "<AsyncStatus done>"
+
+
+async def test_async_status_str_for_failing_coroutine():
+    failing_task = asyncio.Task(failing_coroutine(0.01))
+    status = AsyncStatus(failing_task)
+
+    assert str(status) == "<AsyncStatus pending>"    
+    with pytest.raises(ValueError):
+        await status
+
+    assert str(status) == "<AsyncStatus errored>"
