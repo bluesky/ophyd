@@ -189,7 +189,7 @@ async def wait_for_connection(**coros: Awaitable[None]):
     """
     ts = {k: asyncio.create_task(c) for (k, c) in coros.items()}  # type: ignore
     try:
-        await asyncio.wait(ts.values())
+        done, pending = await asyncio.wait(ts.values())
     except asyncio.CancelledError:
         for t in ts.values():
             t.cancel()
@@ -204,6 +204,10 @@ async def wait_for_connection(**coros: Awaitable[None]):
                     lines.append(f"{k}:")
                     lines += [f"  {line}" for line in e.lines]
         raise NotConnected(*lines)
+    else:
+        # Wait for everything to foreground the exceptions
+        for f in list(done) + list(pending):
+            await f
 
 
 async def connect_children(device: Device, prefix: str, sim: bool):
