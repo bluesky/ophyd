@@ -17,7 +17,7 @@ from aioca import purge_channel_caches
 from bluesky.protocols import Reading
 
 from ophyd.v2.core import NotConnected, SignalBackend, get_dtype
-from ophyd.v2.epics import EpicsTransport
+from ophyd.v2.epics import EpicsTransport, _make_backend
 
 RECORDS = str(Path(__file__).parent / "test_records.db")
 PV_PREFIX = "".join(random.choice(string.ascii_lowercase) for _ in range(12))
@@ -262,3 +262,13 @@ async def test_non_existant_errors(ioc: IOC):
     t.cancel()
     with pytest.raises(NotConnected, match=backend.source):
         await t
+
+
+def test_make_backend_fails_for_different_transports():
+    read_pv = "test"
+    write_pv = "pva://test"
+
+    with pytest.raises(TypeError) as err:
+        _make_backend(str, read_pv, write_pv)
+        assert err.args[0] == f"Differing transports: {read_pv} has EpicsTransport.ca,"
+        +" {write_pv} has EpicsTransport.pva"
