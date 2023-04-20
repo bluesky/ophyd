@@ -203,7 +203,7 @@ async def test_wait_for_connection():
             super().__init__(name)
 
         async def connect(self, prefix: str = "", sim=False):
-            asyncio.sleep(0.01)
+            await asyncio.sleep(0.01)
             self.connected = True
 
     device1, device2 = DummyDeviceWithSleep("device1"), DummyDeviceWithSleep("device2")
