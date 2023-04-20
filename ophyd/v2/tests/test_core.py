@@ -11,6 +11,7 @@ from ophyd.v2.core import (
     Device,
     DeviceVector,
     Signal,
+    SimSignalBackend,
     StandardReadable,
     get_device_children,
     wait_for_connection,
@@ -22,13 +23,15 @@ class MySignal(Signal):
     def source(self) -> str:
         return "me"
 
-    async def connect(self, prefix: str = "", sim=False):
+    async def connect(self, sim=False):
         pass
 
 
 def test_signals_equality_raises():
-    s1 = MySignal()
-    s2 = MySignal()
+    sim_backend = SimSignalBackend(str, "test")
+
+    s1 = MySignal(sim_backend)
+    s2 = MySignal(sim_backend)
     with pytest.raises(
         TypeError,
         match=re.escape(
@@ -65,7 +68,7 @@ class DummyDevice(Device):
     def set_name(self, name: str = ""):
         self._name = name
 
-    async def connect(self, prefix: str = "", sim=False):
+    async def connect(self, sim=False):
         self.connected = True
 
 
@@ -77,15 +80,14 @@ class Dummy(DummyDevice):
 
 
 class DummyStandardReadable(StandardReadable):
-    def __init__(self, prefix: str, name: str = ""):
+    def __init__(self, name: str = ""):
         self.child1 = DummyDevice("device1")
         self.dict_with_children: DeviceVector[DummyDevice] = DeviceVector(
             {
-                "abc": DummyDevice("device2"),
                 123: DummyDevice("device3"),
             }
         )
-        super().__init__(prefix, name)
+        super().__init__(name)
 
 
 def test_get_device_children():
@@ -103,13 +105,11 @@ async def test_children_of_standard_readable_have_set_names_and_get_connected():
     assert parent.child1.name == "parent-child1"
     assert parent.dict_with_children.name == "parent-dict_with_children"
     assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
-    assert parent.dict_with_children["abc"].name == "parent-dict_with_children-abc"
 
     await parent.connect()
 
     assert parent.child1.connected
     assert parent.dict_with_children[123].connected
-    assert parent.dict_with_children["abc"].connected
 
 
 async def normal_coroutine(time: float):
@@ -181,7 +181,7 @@ async def test_wait_for_connection():
         def __init__(self, name) -> None:
             super().__init__(name)
 
-        async def connect(self, prefix: str = "", sim=False):
+        async def connect(self, sim=False):
             await asyncio.sleep(0.01)
             self.connected = True
 

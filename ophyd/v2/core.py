@@ -82,9 +82,7 @@ class AsyncStatus(Status):
             for callback in self._callbacks:
                 callback(self)
 
-    def exception(
-        self, timeout: Optional[float] = 0.0
-    ) -> Optional[Union[Exception, asyncio.CancelledError]]:
+    def exception(self, timeout: Optional[float] = 0.0) -> Optional[BaseException]:
         if timeout != 0.0:
             raise Exception(
                 "cannot honour any timeout other than 0 in an asynchronous function"
