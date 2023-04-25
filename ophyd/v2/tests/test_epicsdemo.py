@@ -22,7 +22,7 @@ A_WHILE = 0.001
 @pytest.fixture
 async def sim_mover():
     async with DeviceCollector(sim=True):
-        sim_mover = epicsdemo.Mover("sim_mover-")
+        sim_mover = epicsdemo.Mover("BLxxI-MO-TABLE-01:X:")
         # Signals connected here
 
     assert sim_mover.name == "sim_mover"
@@ -35,7 +35,7 @@ async def sim_mover():
 @pytest.fixture
 async def sim_sensor():
     async with DeviceCollector(sim=True):
-        sim_sensor = epicsdemo.Sensor("sim_mover-")
+        sim_sensor = epicsdemo.Sensor("SIM:SENSOR:")
         # Signals connected here
 
     assert sim_sensor.name == "sim_sensor"
@@ -100,7 +100,7 @@ async def test_read_mover(sim_mover: epicsdemo.Mover):
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.0
     assert (await sim_mover.describe())["sim_mover"][
         "source"
-    ] == "sim://sim_mover-readback"
+    ] == "sim://BLxxI-MO-TABLE-01:X:Readback"
     assert (await sim_mover.read_configuration())["sim_mover-velocity"]["value"] == 1
     assert (await sim_mover.describe_configuration())["sim_mover-units"]["shape"] == []
     set_sim_value(sim_mover.readback, 0.5)
@@ -116,7 +116,7 @@ async def test_set_velocity(sim_mover: epicsdemo.Mover) -> None:
     v = sim_mover.velocity
     assert (await v.describe())["sim_mover-velocity"][
         "source"
-    ] == "sim://sim_mover-velocity"
+    ] == "sim://BLxxI-MO-TABLE-01:X:Velocity"
     q: asyncio.Queue[Dict[str, Reading]] = asyncio.Queue()
     v.subscribe(q.put_nowait)
     assert (await q.get())["sim_mover-velocity"]["value"] == 1.0
@@ -148,7 +148,7 @@ async def test_read_sensor(sim_sensor: epicsdemo.Sensor):
     assert (await sim_sensor.read())["sim_sensor-value"]["value"] == 0
     assert (await sim_sensor.describe())["sim_sensor-value"][
         "source"
-    ] == "sim://sim_sensor-value"
+    ] == "sim://SIM:SENSOR:Value"
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"
     ] == epicsdemo.EnergyMode.low

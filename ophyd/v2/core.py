@@ -351,7 +351,7 @@ class SignalBackend(Generic[T]):
     #: Datatype of the signal value
     datatype: Optional[Type[T]] = None
 
-    #: Like ca://PV_PREFIX:SIGNAL, or "" if connect hasn't been called
+    #: Like ca://PV_PREFIX:SIGNAL
     source: str = ""
 
     @abstractmethod
@@ -411,9 +411,9 @@ class SimSignalBackend(SignalBackend[T]):
     _value: T
     _timestamp: float
 
-    def __init__(self, datatype: Optional[Type[T]], name: str) -> None:
+    def __init__(self, datatype: Optional[Type[T]], source: str) -> None:
         self.datatype = datatype
-        self.source = f"sim://{name}"
+        self.source = f"sim://{source.split('://', 1)[-1]}"
         #: If cleared, then any ``put(wait=True)`` will wait until it is set
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
@@ -537,7 +537,9 @@ class Signal(Device, Generic[T]):
 
     async def connect(self, sim=False):
         if sim:
-            self._backend = SimSignalBackend(self._init_backend.datatype, self.name)
+            self._backend = SimSignalBackend(
+                datatype=self._init_backend.datatype, source=self._init_backend.source
+            )
             _sim_backends[self] = self._backend
         else:
             self._backend = self._init_backend
