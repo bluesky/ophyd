@@ -162,7 +162,7 @@ class Device(HasName):
         sim:
             If True then connect in simulation mode.
         """
-        await connect_children(self, sim)  # TODO: check this.
+        await connect_children(self, sim)
 
 
 class NotConnected(Exception):

@@ -182,7 +182,7 @@ async def test_async_status_initialised_with_a_task():
 async def test_wait_for_connection():
     class DummyDeviceWithSleep(DummyBaseDevice):
         def __init__(self, name) -> None:
-            super().__init__(name)
+            self.set_name(name)
 
         async def connect(self, sim=False):
             await asyncio.sleep(0.01)
