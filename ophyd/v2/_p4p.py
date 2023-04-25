@@ -150,6 +150,7 @@ class PvaSignalBackend(SignalBackend[T]):
         self.write_pv = write_pv
         self.initial_values: Dict[str, Any] = {}
         self.converter: PvaConverter = DisconnectedPvaConverter()
+        self.source = f"pva://{self.read_pv}"
 
     @property
     def ctxt(self) -> Context:
@@ -172,7 +173,6 @@ class PvaSignalBackend(SignalBackend[T]):
             raise NotConnected(self.source)
 
     async def connect(self):
-        self.source = f"pva://{self.read_pv}"
         if self.read_pv != self.write_pv:
             # Different, need to connect both
             await wait_for_connection(

@@ -149,6 +149,7 @@ class CaSignalBackend(SignalBackend[T]):
         self.write_pv = write_pv
         self.initial_values: Dict[str, AugmentedValue] = {}
         self.converter: CaConverter = DisconnectedCaConverter(None, None)
+        self.source = f"ca://{self.read_pv}"
 
     async def _store_initial_value(self, pv):
         try:
@@ -158,7 +159,6 @@ class CaSignalBackend(SignalBackend[T]):
 
     async def connect(self):
         _use_pyepics_context_if_imported()
-        self.source = f"ca://{self.read_pv}"
         if self.read_pv != self.write_pv:
             # Different, need to connect both
             await wait_for_connection(
