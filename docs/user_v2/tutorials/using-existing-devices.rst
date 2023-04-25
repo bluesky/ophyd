@@ -59,7 +59,6 @@ and run the following:
   here we call ``asyncio.wait([det.connect(), samp.connect()])``
 - If ``sim=True`` is passed, then don't connect to PVs, but set Devices into
   simulation mode
-- If ``prefix`` is passed, then use it as a prefix for all PV prefixes.
 
 The Devices we create in this example are a "sample stage" with a couple of
 "movers" called ``x`` and ``y`` and a "sensor" called ``det`` that gives a

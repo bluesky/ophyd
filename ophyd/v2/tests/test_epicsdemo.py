@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, cast
+from typing import Dict
 from unittest.mock import Mock, call, patch
 
 import pytest
@@ -7,34 +7,35 @@ from bluesky.protocols import Reading
 from bluesky.run_engine import RunEngine
 
 from ophyd.v2 import epicsdemo
-from ophyd.v2.core import DeviceCollector
-from ophyd.v2.epics import ChannelSim
+from ophyd.v2.core import (
+    DeviceCollector,
+    NotConnected,
+    monitor_sim_value,
+    set_sim_value,
+)
 
 # Long enough for multiple asyncio event loop cycles to run so
 # all the tasks have a chance to run
-A_BIT = 0.001
+A_WHILE = 0.001
 
 
 @pytest.fixture
 async def sim_mover():
     async with DeviceCollector(sim=True):
-        sim_mover = epicsdemo.Mover("BLxxI-MO-TABLE-01:X")
+        sim_mover = epicsdemo.Mover("sim_mover-")
         # Signals connected here
 
     assert sim_mover.name == "sim_mover"
-    units = cast(ChannelSim, sim_mover.units.read_channel)
-    units.set_value("mm")
-    precision = cast(ChannelSim, sim_mover.precision.read_channel)
-    precision.set_value(3)
-    velocity = cast(ChannelSim, sim_mover.velocity.read_channel)
-    velocity.set_value(1)
+    set_sim_value(sim_mover.units, "mm")
+    set_sim_value(sim_mover.precision, 3)
+    set_sim_value(sim_mover.velocity, 1)
     yield sim_mover
 
 
 @pytest.fixture
 async def sim_sensor():
     async with DeviceCollector(sim=True):
-        sim_sensor = epicsdemo.Sensor("BLxxI-MO-TABLE-01:X")
+        sim_sensor = epicsdemo.Sensor("sim_mover-")
         # Signals connected here
 
     assert sim_sensor.name == "sim_sensor"
@@ -42,14 +43,12 @@ async def sim_sensor():
 
 
 async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
-    setpoint = cast(ChannelSim, sim_mover.setpoint.write_channel)
-    readback = cast(ChannelSim, sim_mover.readback.read_channel)
     s = sim_mover.set(0.55)
     watcher = Mock()
     s.watch(watcher)
     done = Mock()
     s.add_callback(done)
-    await asyncio.sleep(A_BIT)
+    await asyncio.sleep(A_WHILE)
     assert watcher.call_count == 1
     assert watcher.call_args == call(
         name="sim_mover",
@@ -61,12 +60,12 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
         time_elapsed=pytest.approx(0.0, abs=0.05),
     )
     watcher.reset_mock()
-    assert setpoint._value == 0.55
+    assert 0.55 == await sim_mover.setpoint.get_value()
     assert not s.done
     done.assert_not_called()
     await asyncio.sleep(0.1)
-    readback.set_value(0.1)
-    await asyncio.sleep(A_BIT)
+    set_sim_value(sim_mover.readback, 0.1)
+    await asyncio.sleep(A_WHILE)
     assert watcher.call_count == 1
     assert watcher.call_args == call(
         name="sim_mover",
@@ -77,8 +76,8 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
         precision=3,
         time_elapsed=pytest.approx(0.1, abs=0.05),
     )
-    readback.set_value(0.5499999)
-    await asyncio.sleep(A_BIT)
+    set_sim_value(sim_mover.readback, 0.5499999)
+    await asyncio.sleep(A_WHILE)
     assert s.done
     assert s.success
     done.assert_called_once_with(s)
@@ -88,9 +87,12 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
 
 
 async def test_mover_stopped(sim_mover: epicsdemo.Mover):
-    stop = cast(ChannelSim, sim_mover.stop_.write_channel)
+    callbacks = []
+    monitor_sim_value(sim_mover.stop_, lambda r, v: callbacks.append(v))
+    # We get one update as soon as we connect
+    assert callbacks == [None]
     await sim_mover.stop()
-    assert stop._value == 1
+    assert callbacks == [None, None]
 
 
 async def test_read_mover(sim_mover: epicsdemo.Mover):
@@ -98,15 +100,14 @@ async def test_read_mover(sim_mover: epicsdemo.Mover):
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.0
     assert (await sim_mover.describe())["sim_mover"][
         "source"
-    ] == "sim://BLxxI-MO-TABLE-01:XReadback"
+    ] == "sim://sim_mover-readback"
     assert (await sim_mover.read_configuration())["sim_mover-velocity"]["value"] == 1
     assert (await sim_mover.describe_configuration())["sim_mover-units"]["shape"] == []
-    readback = cast(ChannelSim, sim_mover.readback.read_channel)
-    readback.set_value(0.5)
+    set_sim_value(sim_mover.readback, 0.5)
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.5
     sim_mover.unstage()
     # Check we can still read and describe when not staged
-    readback.set_value(0.1)
+    set_sim_value(sim_mover.readback, 0.1)
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.1
     assert await sim_mover.describe()
 
@@ -115,7 +116,7 @@ async def test_set_velocity(sim_mover: epicsdemo.Mover) -> None:
     v = sim_mover.velocity
     assert (await v.describe())["sim_mover-velocity"][
         "source"
-    ] == "sim://BLxxI-MO-TABLE-01:XVelocity"
+    ] == "sim://sim_mover-velocity"
     q: asyncio.Queue[Dict[str, Reading]] = asyncio.Queue()
     v.subscribe(q.put_nowait)
     assert (await q.get())["sim_mover-velocity"]["value"] == 1.0
@@ -129,8 +130,9 @@ async def test_set_velocity(sim_mover: epicsdemo.Mover) -> None:
 
 async def test_sensor_disconncted():
     with patch("ophyd.v2.core.logging") as mock_logging:
-        async with DeviceCollector(timeout=0.1):
-            s = epicsdemo.Sensor("ca://PRE:", name="sensor")
+        with pytest.raises(NotConnected, match="Not all Devices connected"):
+            async with DeviceCollector(timeout=0.1):
+                s = epicsdemo.Sensor("ca://PRE:", name="sensor")
         mock_logging.error.assert_called_once_with(
             """\
 1 Devices did not connect:
@@ -146,18 +148,14 @@ async def test_read_sensor(sim_sensor: epicsdemo.Sensor):
     assert (await sim_sensor.read())["sim_sensor-value"]["value"] == 0
     assert (await sim_sensor.describe())["sim_sensor-value"][
         "source"
-    ] == "sim://BLxxI-MO-TABLE-01:XValue"
+    ] == "sim://sim_sensor-value"
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"
     ] == epicsdemo.EnergyMode.low
-    assert (await sim_sensor.describe_configuration())["sim_sensor-mode"][
-        "dtype"
-    ] == "string"
-    assert (await sim_sensor.describe_configuration())["sim_sensor-mode"][
-        "choices"
-    ] == ["Low Energy", "High Energy"]
-    mode = cast(ChannelSim, sim_sensor.mode.read_channel)
-    mode.set_value(epicsdemo.EnergyMode.high)
+    desc = (await sim_sensor.describe_configuration())["sim_sensor-mode"]
+    assert desc["dtype"] == "string"
+    assert desc["choices"] == ["Low Energy", "High Energy"]  # type: ignore
+    set_sim_value(sim_sensor.mode, epicsdemo.EnergyMode.high)
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"
     ] == epicsdemo.EnergyMode.high
