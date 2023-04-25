@@ -9,10 +9,10 @@ from bluesky.protocols import Status
 from ophyd.v2.core import (
     AsyncStatus,
     Device,
+    DeviceCollector,
     DeviceVector,
     Signal,
     SimSignalBackend,
-    DeviceCollector,
     get_device_children,
     wait_for_connection,
 )
@@ -69,9 +69,7 @@ class DummyDeviceGroup(Device):
         self.child1 = DummyBaseDevice()
         self.child2 = DummyBaseDevice()
         self.dict_with_children: DeviceVector[DummyBaseDevice] = DeviceVector(
-            {
-                123: DummyBaseDevice()
-            }
+            {123: DummyBaseDevice()}
         )
         self.set_name(name)
 
@@ -82,7 +80,11 @@ def test_get_device_children():
     names = ["child1", "child2", "dict_with_children"]
     for idx, (name, child) in enumerate(get_device_children(parent)):
         assert name == names[idx]
-        assert type(child) == DummyBaseDevice if name.startswith('child') else type(child) == DeviceVector
+        assert (
+            type(child) == DummyBaseDevice
+            if name.startswith("child")
+            else type(child) == DeviceVector
+        )
 
 
 async def test_children_of_device_have_set_names_and_get_connected():

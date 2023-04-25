@@ -130,14 +130,14 @@ class AsyncStatus(Status):
 
 class Device(HasName):
     """Common base class for all Ophyd.v2 Devices.
-    
+
     By default, names and connects all Device children.
     """
 
     _name: str = ""
     #: The parent Device if it exists
     parent: Optional[Device] = None
-    
+
     @property
     def name(self) -> str:
         """Return the name of the Device"""
@@ -164,8 +164,7 @@ class Device(HasName):
         sim:
             If True then connect in simulation mode.
         """
-        await connect_children(self, sim) #TODO: check this.
-        
+        await connect_children(self, sim)  # TODO: check this.
 
 
 class NotConnected(Exception):
@@ -230,6 +229,7 @@ def name_children(device: Device, name: str):
     for child_name, child in get_device_children(device):
         child.set_name(f"{name}-{child_name.rstrip('_')}")
         child.parent = device
+
 
 def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
     for attr_name, attr in device.__dict__.items():
