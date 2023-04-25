@@ -60,7 +60,7 @@ class DummyBaseDevice(Device):
     def __init__(self) -> None:
         self.connected = False
 
-    async def connect(self, prefix: str = "", sim=False):
+    async def connect(self, sim=False):
         self.connected = True
 
 

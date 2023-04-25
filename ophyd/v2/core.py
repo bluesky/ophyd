@@ -143,7 +143,6 @@ class Device(HasName):
         """Return the name of the Device"""
         return self._name
 
-    @abstractmethod
     def set_name(self, name: str):
         """Set ``self.name=name`` and each ``self.child.name=name+"-child"``.
 
@@ -155,7 +154,6 @@ class Device(HasName):
         self._name = name
         name_children(self, name)
 
-    @abstractmethod
     async def connect(self, sim: bool = False):
         """Connect self and all child Devices.
 
