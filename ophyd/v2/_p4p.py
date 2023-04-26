@@ -85,7 +85,7 @@ class PvaEnumBoolConverter(PvaConverter):
         return value["value"]["index"]
 
     def descriptor(self, source: str, value) -> Descriptor:
-        return dict(source=source, dtype="number", shape=[])
+        return dict(source=source, dtype="integer", shape=[])
 
 
 class PvaTableConverter(PvaConverter):

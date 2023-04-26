@@ -186,7 +186,7 @@ async def test_backend_get_put_monitor(
     suffix: str,
     initial_value: T,
     put_value: T,
-    descriptor: Callable[[], dict],
+    descriptor: Callable[[Any], dict],
 ):
     # ca can't support all the types
     dtype = get_dtype(datatype)

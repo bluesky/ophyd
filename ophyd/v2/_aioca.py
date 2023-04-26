@@ -54,7 +54,7 @@ class CaConverter:
 
 class CaArrayConverter(CaConverter):
     def descriptor(self, source: str, value: AugmentedValue) -> Descriptor:
-        return dict(source=source, dtype="array", shape=[value.element_count])
+        return dict(source=source, dtype="array", shape=[len(value)])
 
 
 @dataclass
@@ -112,7 +112,7 @@ def make_converter(
         )
         if pv_choices_len != 2:
             raise TypeError(f"{pv} has {pv_choices_len} choices, can't map to bool")
-        return CaConverter(dbr.DBR_CHAR, dbr.DBR_CHAR)
+        return CaConverter(dbr.DBR_SHORT, dbr.DBR_SHORT)
     elif pv_dbr == dbr.DBR_ENUM:
         # This is an Enum
         pv_choices = get_unique(
