@@ -121,6 +121,7 @@ ca_dtype_mapping = {
 @pytest.mark.parametrize(
     "typ, suff, initial, put, descriptor",
     [
+        (bool, "bool", 1, 0, number_d),
         (int, "int", 42, 43, number_d),
         (float, "float", 3.141, 43.5, number_d),
         (str, "str", "hello", "goodbye", string_d),
@@ -152,6 +153,9 @@ async def test_backend_get_put_monitor(ioc: IOC, typ, suff, initial, put, descri
         typ = npt.NDArray[ca_dtype_mapping[dtype.type]]  # type: ignore
     # Make and connect the backend
     for t, i, p in [(typ, initial, put), (None, put, initial)]:
+        if typ is bool and t is None:
+            # IOC can't do bool, we have to tell it explicitly
+            continue
         backend = await ioc.make_backend(t, suff)
         # Make a monitor queue that will monitor for updates
         q = MonitorQueue(backend)

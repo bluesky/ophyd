@@ -1,3 +1,10 @@
+record(bo, "$(P)bool") {
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(VAL, "1")
+  field(PINI, "YES")
+}
+
 record(longout, "$(P)int") {
   field(HOPR, "100")
   field(HIHI, "98")

@@ -80,6 +80,14 @@ class PvaEnumConverter(PvaConverter):
         return dict(source=source, dtype="string", shape=[], choices=choices)  # type: ignore
 
 
+class PvaEnumBoolConverter(PvaConverter):
+    def value(self, value):
+        return value["value"]["index"]
+
+    def descriptor(self, source: str, value) -> Descriptor:
+        return dict(source=source, dtype="number", shape=[])
+
+
 class PvaTableConverter(PvaConverter):
     def value(self, value):
         return value["value"].todict()
@@ -116,6 +124,15 @@ def make_converter(datatype: Optional[Type], values: Dict[str, Any]) -> PvaConve
             if dtype != pv_dtype:
                 raise TypeError(f"{pv} has type [{pv_dtype}] not [{dtype}]")
         return PvaArrayConverter()
+    elif "NTEnum" in typeid and datatype is bool:
+        # Wanted a bool, but database represents as an enum
+        pv_choices_len = get_unique(
+            {k: len(v["value"]["choices"]) for k, v in values.items()},
+            "number of choices",
+        )
+        if pv_choices_len != 2:
+            raise TypeError(f"{pv} has {pv_choices_len} choices, can't map to bool")
+        return PvaEnumBoolConverter()
     elif "NTEnum" in typeid:
         # This is an Enum
         pv_choices = get_unique(

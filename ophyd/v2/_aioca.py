@@ -105,6 +105,14 @@ def make_converter(
             if dtype != pv_dtype:
                 raise TypeError(f"{pv} has type [{pv_dtype}] not [{dtype}]")
         return CaArrayConverter(pv_dbr, None)
+    elif pv_dbr == dbr.DBR_ENUM and datatype is bool:
+        # Database can't do bools, so are often representated as enums, CA can do int tho
+        pv_choices_len = get_unique(
+            {k: len(v.enums) for k, v in values.items()}, "number of choices"
+        )
+        if pv_choices_len != 2:
+            raise TypeError(f"{pv} has {pv_choices_len} choices, can't map to bool")
+        return CaConverter(dbr.DBR_CHAR, dbr.DBR_CHAR)
     elif pv_dbr == dbr.DBR_ENUM:
         # This is an Enum
         pv_choices = get_unique(
