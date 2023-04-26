@@ -103,7 +103,7 @@ async def test_children_of_device_have_set_names_and_get_connected():
 
 
 async def test_device_with_device_collector():
-    with DeviceCollector(sim=True):
+    async with DeviceCollector(sim=True):
         parent = DummyDeviceGroup("parent")
 
     assert parent.name == "parent"
