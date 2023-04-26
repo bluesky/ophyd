@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence, Tuple, Type, TypedDict
+from typing import Any, Literal, Optional, Sequence, Tuple, Type, TypedDict, Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +16,7 @@ import pytest
 from aioca import purge_channel_caches
 from bluesky.protocols import Reading
 
-from ophyd.v2.core import NotConnected, SignalBackend, get_dtype
+from ophyd.v2.core import NotConnected, SignalBackend, get_dtype, T
 from ophyd.v2.epics import EpicsTransport, _make_backend
 
 RECORDS = str(Path(__file__).parent / "test_records.db")
@@ -81,7 +81,7 @@ class MonitorQueue:
     def add_reading_value(self, reading: Reading, value):
         self.updates.put_nowait((reading, value))
 
-    async def check_updates(self, expected_value):
+    async def assert_updates(self, expected_value):
         expected_reading = {
             "value": expected_value,
             "timestamp": pytest.approx(time.time(), rel=0.1),
@@ -95,17 +95,56 @@ class MonitorQueue:
         self.subscription.close()
 
 
+async def assert_monitor_then_put(
+    ioc: IOC,
+    suffix: str,
+    descriptor: dict,
+    initial_value: T,
+    put_value: T,
+    datatype: Optional[Type[T]] = None,
+):
+    backend = await ioc.make_backend(datatype, suffix)
+    # Make a monitor queue that will monitor for updates
+    q = MonitorQueue(backend)
+    try:
+        # Check descriptor
+        source = f"{ioc.protocol}://{PV_PREFIX}:{ioc.protocol}:{suffix}"
+        assert dict(source=source, **descriptor) == await backend.get_descriptor()
+        # Check initial value
+        await q.assert_updates(pytest.approx(initial_value))
+        # Put to new value and check that
+        await backend.put(put_value)
+        await q.assert_updates(pytest.approx(put_value))
+    finally:
+        q.close()
+
+
 class MyEnum(str, Enum):
     a = "Aaa"
     b = "Bbb"
     c = "Ccc"
 
 
-integer_d = dict(dtype="integer", shape=[])
-number_d = dict(dtype="number", shape=[])
-string_d = dict(dtype="string", shape=[])
-enum_d = dict(dtype="string", shape=[], choices=["Aaa", "Bbb", "Ccc"])
-waveform_d = dict(dtype="array", shape=[2])
+def integer_d(value):
+    return dict(dtype="integer", shape=[])
+
+
+def number_d(value):
+    return dict(dtype="number", shape=[])
+
+
+def string_d(value):
+    return dict(dtype="string", shape=[])
+
+
+def enum_d(value):
+    return dict(dtype="string", shape=[], choices=["Aaa", "Bbb", "Ccc"])
+
+
+def waveform_d(value):
+    return dict(dtype="array", shape=[len(value)])
+
+
 ls1 = "a string that is just longer than forty characters"
 ls2 = "another string that is just longer than forty characters"
 
@@ -119,14 +158,13 @@ ca_dtype_mapping = {
 
 
 @pytest.mark.parametrize(
-    "typ, suff, initial, put, descriptor",
+    "datatype, suffix, initial_value, put_value, descriptor",
     [
-        (bool, "bool", 1, 0, number_d),
-        (int, "int", 42, 43, number_d),
+        (int, "int", 42, 43, integer_d),
         (float, "float", 3.141, 43.5, number_d),
         (str, "str", "hello", "goodbye", string_d),
         (MyEnum, "enum", MyEnum.b, MyEnum.c, enum_d),
-        (npt.NDArray[np.int8], "int8a", [-128, 127], [-8], waveform_d),
+        (npt.NDArray[np.int8], "int8a", [-128, 127], [-8, 3, 44], waveform_d),
         (npt.NDArray[np.uint8], "uint8a", [0, 255], [218], waveform_d),
         (npt.NDArray[np.int16], "int16a", [-32768, 32767], [-855], waveform_d),
         (npt.NDArray[np.uint16], "uint16a", [0, 65535], [5666], waveform_d),
@@ -142,34 +180,43 @@ ca_dtype_mapping = {
         # (str, "longstr2.VAL$", ls1, ls2, string_d),
     ],
 )
-async def test_backend_get_put_monitor(ioc: IOC, typ, suff, initial, put, descriptor):
+async def test_backend_get_put_monitor(
+    ioc: IOC,
+    datatype: Type[T],
+    suffix: str,
+    initial_value: T,
+    put_value: T,
+    descriptor: Callable[[], dict],
+):
     # ca can't support all the types
-    dtype = get_dtype(typ)
+    dtype = get_dtype(datatype)
     if ioc.protocol == "ca" and dtype and dtype.type in ca_dtype_mapping:
         if dtype == np.int8:
             # CA maps uint8 onto int8 rather than upcasting, so we need to change initial
             # array
-            initial, put = [np.array(x).astype(np.uint8) for x in (initial, put)]
-        typ = npt.NDArray[ca_dtype_mapping[dtype.type]]  # type: ignore
-    # Make and connect the backend
-    for t, i, p in [(typ, initial, put), (None, put, initial)]:
-        if typ is bool and t is None:
-            # IOC can't do bool, we have to tell it explicitly
-            continue
-        backend = await ioc.make_backend(t, suff)
-        # Make a monitor queue that will monitor for updates
-        q = MonitorQueue(backend)
-        try:
-            # Check descriptor
-            source = f"{ioc.protocol}://{PV_PREFIX}:{ioc.protocol}:{suff}"
-            dict(source=source, **descriptor) == await backend.get_descriptor()
-            # Check initial value
-            await q.check_updates(pytest.approx(i))
-            # Put to new value and check that
-            await backend.put(p)
-            await q.check_updates(pytest.approx(p))
-        finally:
-            q.close()
+            initial_value, put_value = [  # type: ignore
+                np.array(x).astype(np.uint8) for x in (initial_value, put_value)
+            ]
+        datatype = npt.NDArray[ca_dtype_mapping[dtype.type]]  # type: ignore
+    # With the given datatype, check we have the correct initial value and putting works
+    await assert_monitor_then_put(
+        ioc, suffix, descriptor(initial_value), initial_value, put_value, datatype
+    )
+    # With datatype guessed from CA/PVA, check we can set it back to the initial value
+    await assert_monitor_then_put(
+        ioc, suffix, descriptor(put_value), put_value, initial_value, datatype=None
+    )
+
+
+async def test_bool_conversion_of_enum(ioc: IOC) -> None:
+    await assert_monitor_then_put(
+        ioc,
+        suffix="bool",
+        descriptor=integer_d(True),
+        initial_value=True,
+        put_value=False,
+        datatype=bool,
+    )
 
 
 class BadEnum(Enum):
@@ -245,10 +292,10 @@ async def test_pva_table(ioc: IOC) -> None:
             # Check descriptor
             dict(source=backend.source, **descriptor) == await backend.get_descriptor()
             # Check initial value
-            await q.check_updates(approx_table(i))
+            await q.assert_updates(approx_table(i))
             # Put to new value and check that
             await backend.put(p)
-            await q.check_updates(approx_table(p))
+            await q.assert_updates(approx_table(p))
         finally:
             q.close()
 
