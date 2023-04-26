@@ -129,17 +129,20 @@ class AsyncStatus(Status):
 
 
 class Device(HasName):
-    """Common base class for all Ophyd.v2 Devices"""
+    """Common base class for all Ophyd.v2 Devices.
 
+    By default, names and connects all Device children.
+    """
+
+    _name: str = ""
     #: The parent Device if it exists
     parent: Optional[Device] = None
 
     @property
-    @abstractmethod
     def name(self) -> str:
         """Return the name of the Device"""
+        return self._name
 
-    @abstractmethod
     def set_name(self, name: str):
         """Set ``self.name=name`` and each ``self.child.name=name+"-child"``.
 
@@ -148,8 +151,9 @@ class Device(HasName):
         name:
             New name to set
         """
+        self._name = name
+        name_children(self, name)
 
-    @abstractmethod
     async def connect(self, sim: bool = False):
         """Connect self and all child Devices.
 
@@ -158,6 +162,7 @@ class Device(HasName):
         sim:
             If True then connect in simulation mode.
         """
+        await connect_children(self, sim)
 
 
 class NotConnected(Exception):
@@ -215,6 +220,13 @@ async def connect_children(device: Device, sim: bool):
     }
     if coros:
         await wait_for_connection(**coros)
+
+
+def name_children(device: Device, name: str):
+    """Call ``child.set_name(child_name)`` on all child devices in series."""
+    for child_name, child in get_device_children(device):
+        child.set_name(f"{name}-{child_name.rstrip('_')}")
+        child.parent = device
 
 
 def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
@@ -843,8 +855,6 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
     - These signals will be subscribed for read() between stage() and unstage()
     """
 
-    _name = ""
-
     def __init__(
         self,
         name: str = "",
@@ -877,19 +887,6 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         # Call this last so child Signals are renamed
         if name:
             self.set_name(name)
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def set_name(self, name: str):
-        self._name = name
-        for child_name, child in get_device_children(self):
-            child.set_name(f"{name}-{child_name.rstrip('_')}")
-            child.parent = self
-
-    async def connect(self, sim=False):
-        await connect_children(self, sim)
 
     def stage(self) -> List[Any]:
         self._staged = True
@@ -924,13 +921,6 @@ VT = TypeVar("VT", bound=Device)
 
 
 class DeviceVector(Dict[int, VT], Device):
-
-    _name = ""
-
-    @property
-    def name(self) -> str:
-        return self._name
-
     def set_name(self, parent_name: str):
         self._name = parent_name
         for name, device in self.items():
