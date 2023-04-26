@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence, Tuple, Type, TypedDict, Callable
+from typing import Any, Callable, Literal, Optional, Sequence, Tuple, Type, TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -16,7 +16,7 @@ import pytest
 from aioca import purge_channel_caches
 from bluesky.protocols import Reading
 
-from ophyd.v2.core import NotConnected, SignalBackend, get_dtype, T
+from ophyd.v2.core import NotConnected, SignalBackend, T, get_dtype
 from ophyd.v2.epics import EpicsTransport, _make_backend
 
 RECORDS = str(Path(__file__).parent / "test_records.db")
