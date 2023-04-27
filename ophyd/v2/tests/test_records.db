@@ -1,3 +1,10 @@
+record(bo, "$(P)bool") {
+  field(ZNAM, "No")
+  field(ONAM, "Yes")
+  field(VAL, "1")
+  field(PINI, "YES")
+}
+
 record(longout, "$(P)int") {
   field(HOPR, "100")
   field(HIHI, "98")
@@ -43,49 +50,49 @@ record(mbbo, "$(P)enum2") {
 }
 
 record(waveform, "$(P)int8a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "CHAR")
   field(INP, {const:[-128, 127]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)uint8a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "UCHAR")
   field(INP, {const:[0, 255]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)int16a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "SHORT")
   field(INP, {const:[-32768, 32767]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)uint16a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "USHORT")
   field(INP, {const:[0, 65535]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)int32a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "LONG")
   field(INP, {const:[-2147483648, 2147483647]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)uint32a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "ULONG")
   field(INP, {const:[0, 4294967295]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)int64a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "INT64")
   # Can't do 64-bit int with JSON numbers in a const link...
   field(INP, {const:[-2147483649, 2147483648]})
@@ -93,21 +100,21 @@ record(waveform, "$(P)int64a") {
 }
 
 record(waveform, "$(P)uint64a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "UINT64")
   field(INP, {const:[0, 4294967297]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)float32a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "FLOAT")
   field(INP, {const:[0.000002, -123.123]})
   field(PINI, "YES")
 }
 
 record(waveform, "$(P)float64a") {
-  field(NELM, "2")
+  field(NELM, "3")
   field(FTVL, "DOUBLE")
   field(INP, {const:[0.1, -12345678.123]})
   field(PINI, "YES")
