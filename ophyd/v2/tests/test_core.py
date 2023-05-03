@@ -196,7 +196,7 @@ async def test_async_status_str_for_failing_coroutine():
 
     assert str(status) == "<AsyncStatus errored>"
 
-    
+
 async def test_wait_for_connection():
     class DummyDeviceWithSleep(DummyDevice):
         def __init__(self, name) -> None:
