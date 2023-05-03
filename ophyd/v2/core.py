@@ -130,7 +130,7 @@ class AsyncStatus(Status):
                 status = "done"
         else:
             status = "pending"
-        return f"<AsyncStatus {status}>"
+        return f"<{type(self).__name__} {status}>"
 
     __str__ = __repr__
 
