@@ -185,6 +185,43 @@ class EpicsMotor(Device, PositionerBase):
 
         return status
 
+    @raise_if_disconnected
+    def rmove(self, distance, wait=True, **kwargs):
+        """Move a specified distance from the current position
+
+        Parameters
+        ----------
+        distance
+            Distance to move in positive or negative direction
+        moved_cb : callable
+            Call this callback when movement has finished. This callback must
+            accept one keyword argument: 'obj' which will be set to this
+            positioner instance.
+        timeout : float, optional
+            Maximum time to wait for the motion. If None, the default timeout
+            for this positioner is used.
+
+        Returns
+        -------
+        status : MoveStatus
+
+        Raises
+        ------
+        TimeoutError
+            When motion takes longer than `timeout`
+        ValueError
+            On invalid positions
+        RuntimeError
+            If motion fails other than timing out
+        """
+
+        # Simply add the distance to the current position and move to 
+        # new position
+        current_position = self.position
+        position = current_position + distance
+
+        return self.move(position, wait=wait, **kwargs)
+
     @property
     @raise_if_disconnected
     def position(self):
