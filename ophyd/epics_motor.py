@@ -215,7 +215,7 @@ class EpicsMotor(Device, PositionerBase):
             If motion fails other than timing out
         """
 
-        # Simply add the distance to the current position and move to 
+        # Simply add the distance to the current position and move to
         # new position
         current_position = self.position
         position = current_position + distance
