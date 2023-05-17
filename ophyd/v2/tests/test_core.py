@@ -4,6 +4,8 @@ import traceback
 from unittest.mock import Mock
 
 import bluesky.plan_stubs as bps
+import numpy as np
+import numpy.typing as npt
 import pytest
 from bluesky import FailedStatus, RunEngine
 from bluesky.protocols import Movable, Status
@@ -47,6 +49,12 @@ def test_signals_equality_raises():
         match=re.escape("'>' not supported between instances of 'MySignal' and 'int'"),
     ):
         s1 > 4
+
+
+async def test_sim_backend_with_numpy_typing():
+    sim_backend = SimSignalBackend(npt.NDArray[np.float64], source="SOME-IOC:PV")
+    array = await sim_backend.get_value()
+    assert array.shape == (1,)
 
 
 async def test_async_status_success():
