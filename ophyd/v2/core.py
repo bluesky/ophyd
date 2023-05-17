@@ -30,6 +30,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_origin,
     runtime_checkable,
 )
 
@@ -422,6 +423,8 @@ class SimSignalBackend(SignalBackend[T]):
             self._initial_value = cast(T, None)
         elif issubclass(datatype, Enum):
             self._initial_value = cast(T, list(datatype)[0])
+        elif get_origin(datatype) == np.ndarray:
+            self._initial_value = datatype(shape=1)
         else:
             self._initial_value = datatype()
         self.set_value(self._initial_value)
