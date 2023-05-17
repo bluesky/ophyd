@@ -424,7 +424,7 @@ class SimSignalBackend(SignalBackend[T]):
         elif issubclass(datatype, Enum):
             self._initial_value = cast(T, list(datatype)[0])
         elif get_origin(datatype) == np.ndarray:
-            self._initial_value = datatype(shape=1)
+            self._initial_value = datatype(shape=1)  # type: ignore
         else:
             self._initial_value = datatype()
         self.set_value(self._initial_value)
