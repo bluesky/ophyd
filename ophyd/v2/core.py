@@ -422,9 +422,9 @@ class SimSignalBackend(SignalBackend[T]):
         if datatype is None:
             self._initial_value = cast(T, None)
         elif issubclass(datatype, Enum):
-            self._initial_value = cast(T, list(datatype)[0])
+            self._initial_value = cast(T, list(datatype)[0].value)
         elif get_origin(datatype) == np.ndarray:
-            self._initial_value = datatype(shape=1)  # type: ignore
+            self._initial_value = cast(T, datatype(shape=0))  # type: ignore
         else:
             self._initial_value = datatype()
         self.set_value(self._initial_value)
@@ -445,15 +445,15 @@ class SimSignalBackend(SignalBackend[T]):
             dtype = primitive_dtypes[type(self._value)]
             shape = []
         except KeyError:
-            if isinstance(self._value, Sequence):
-                dtype = "array"
-                shape = [len(self._value)]
-            elif isinstance(self._value, Enum):
+            if isinstance(self._value, Enum):
                 dtype = "string"
                 shape = []
                 choices = [e.value for e in type(self._value)]
                 # Ignore type until https://github.com/bluesky/event-model/issues/235#issuecomment-1497353265
                 return dict(source=self.source, dtype=dtype, shape=shape, choices=choices)  # type: ignore
+            elif isinstance(self._value, Sequence):
+                dtype = "array"
+                shape = [len(self._value)]
             else:
                 assert False, f"Can't get dtype for {type(self._value)}"
         return dict(source=self.source, dtype=dtype, shape=shape)
