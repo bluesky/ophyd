@@ -149,7 +149,7 @@ def start_test_ioc():
     run(ioc.pvdb)
 
 
-def test_ioc(f):
+def ioc(f):
     """
     Decorator that starts a test ioc using subproccess,
     calls your function and then cleans up the process.
@@ -164,7 +164,7 @@ def test_ioc(f):
     return wrap
 
 
-@test_ioc
+@ioc
 def test_arraydevice():
     arraydevice = ArrayDevice([ExampleTernary(i) for i in range(10)],
                               name='arraydevice')
