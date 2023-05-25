@@ -406,10 +406,10 @@ primitive_dtypes: Dict[type, Dtype] = {
 
 
 class SimConverter(Generic[T]):
-    def write_value(self, value):
+    def value(self, value: T) -> T:
         return value
 
-    def value(self, value: T) -> Any:
+    def write_value(self, value: T) -> T:
         return value
 
     def reading(self, value: T, timestamp: float, severity: int) -> Reading:
@@ -465,22 +465,6 @@ class SimEnumConverter(SimConverter):
         return cast(T, list(datatype.__members__.values())[0])  # type: ignore
 
 
-class SimTableConverter(SimConverter):
-    def value(self, value):
-        return value.todict()
-
-    def descriptor(self, source: str, value) -> Descriptor:
-        # This is wrong, but defer until we know how to actually describe a table
-        return dict(source=source, dtype="object", shape=[])  # type: ignore
-
-    # this is wrong
-    def make_initial_value(self, datatype: Optional[Type[T]]) -> T:
-        if datatype is None:
-            return cast(T, None)
-
-        return cast(T, list(datatype.__members__.values())[0])  # type: ignore
-
-
 class DisconnectedSimConverter(SimConverter):
     def __getattribute__(self, __name: str) -> Any:
         raise NotImplementedError("No PV has been set as connect() has not been called")
@@ -499,7 +483,6 @@ def make_converter(datatype):
     return SimConverter()
 
 
-
 class SimSignalBackend(SignalBackend[T]):
     """An simulated backend to a Signal, created with ``Signal.connect(sim=True)``"""
 
@@ -509,11 +492,11 @@ class SimSignalBackend(SignalBackend[T]):
     _severity: int
     _reading: Reading
 
-    def __init__(self, datatype: Optional[Type[T]], pv: str) -> None:
+    def __init__(self, datatype: Optional[Type[T]], source: str) -> None:
         self.datatype = datatype
-        self.pv = pv
+        self.pv = source
         self.converter: SimConverter = DisconnectedSimConverter()
-        self.source = f"sim://{self.pv}"
+        self.source = f"sim://{source}"
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
         self.callback: Optional[ReadingValueCallback[T]] = None
@@ -549,6 +532,8 @@ class SimSignalBackend(SignalBackend[T]):
         return self.converter.reading(self._value, self._timestamp, self._severity)
 
     async def get_value(self) -> T:
+        # this goes through a converter.value instead of just returning ._value
+        # because then if connect() hasn't been called it tells you about it.
         return self.converter.value(self._value)
 
     def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
@@ -626,7 +611,7 @@ class Signal(Device, Generic[T]):
     async def connect(self, sim=False):
         if sim:
             self._backend = SimSignalBackend(
-                datatype=self._init_backend.datatype, pv=self._init_backend.source
+                datatype=self._init_backend.datatype, source=self._init_backend.source
             )
             _sim_backends[self] = self._backend
         else:

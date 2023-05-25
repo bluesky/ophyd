@@ -98,16 +98,16 @@ class MonitorQueue:
             "alarm_severity": 0,
         }
         reading, value = await self.updates.get()
-        
+
         backend_value = await self.backend.get_value()
         backend_reading = await self.backend.get_reading()
 
-        assert value == expected_value == backend_value, f"value: {backend_value}"
-        assert reading == expected_reading == backend_reading, f"reading: got {backend_reading} but expected {expected_reading}. got value: {expected_value} but expected {expected_value}"
+        assert value == expected_value == backend_value
+        assert reading == expected_reading == backend_reading
 
     def close(self):
         self.backend.set_callback(None)
-    
+
 
 @pytest.mark.parametrize(
     "datatype, initial_value, put_value, descriptor",
@@ -144,9 +144,14 @@ async def test_backend_get_put_monitor(
     q = MonitorQueue(backend)
     try:
         # Check descriptor
-        assert dict(source="sim://", **descriptor(initial_value)) == await backend.get_descriptor()
+        assert (
+            dict(source="sim://", **descriptor(initial_value))
+            == await backend.get_descriptor()
+        )
         # Check initial value
-        await q.assert_updates(pytest.approx(initial_value) if initial_value != "" else initial_value)
+        await q.assert_updates(
+            pytest.approx(initial_value) if initial_value != "" else initial_value
+        )
         # Put to new value and check that
         await backend.put(put_value)
         await q.assert_updates(pytest.approx(put_value))
@@ -154,8 +159,14 @@ async def test_backend_get_put_monitor(
         q.close()
 
 
+async def test_sim_backend_if_disconnected():
+    sim_backend = SimSignalBackend(npt.NDArray[np.float64], "SOME-IOC:PV")
+    with pytest.raises(NotImplementedError):
+        await sim_backend.get_value()
+
+
 async def test_sim_backend_with_numpy_typing():
-    sim_backend = SimSignalBackend(npt.NDArray[np.float64], pv="SOME-IOC:PV")
+    sim_backend = SimSignalBackend(npt.NDArray[np.float64], "SOME-IOC:PV")
     await sim_backend.connect()
 
     array = await sim_backend.get_value()
