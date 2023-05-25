@@ -43,6 +43,8 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
     s.watch(watcher)
     done = Mock()
     s.add_callback(done)
+
+    await s
     await asyncio.sleep(A_WHILE)
     assert watcher.call_count == 1
     assert watcher.call_args == call(
