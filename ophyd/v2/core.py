@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import inspect
 import logging
 import sys
 import time
 from abc import abstractmethod
+from collections import abc
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum
@@ -403,70 +405,151 @@ primitive_dtypes: Dict[type, Dtype] = {
 }
 
 
+class SimConverter(Generic[T]):
+    def write_value(self, value):
+        return value
+
+    def value(self, value: T) -> Any:
+        return value
+
+    def reading(self, value: T, timestamp: float, severity: int) -> Reading:
+        return Reading(
+            value=value,
+            timestamp=timestamp,
+            alarm_severity=-1 if severity > 2 else severity)
+
+    def descriptor(self, source: str, value) -> Descriptor:
+        assert type(value) in primitive_dtypes.keys(), f"invalid converter for value of type {type(value)}"
+        dtype = primitive_dtypes[type(value)]
+        return dict(source=source, dtype=dtype, shape=[])
+
+    def make_initial_value(self, datatype: Optional[Type[T]]) -> T:
+        if datatype is None:
+            return cast(T, None)
+
+        return datatype()
+
+
+class SimArrayConverter(SimConverter):
+    def descriptor(self, source: str, value) -> Descriptor:
+        return dict(source=source, dtype="array", shape=[len(value)])
+
+    def make_initial_value(self, datatype: Optional[Type[T]]) -> T:
+        if datatype is None:
+            return cast(T, None)
+
+        if get_origin(datatype) == abc.Sequence:
+            return cast(T, [])
+
+        return cast(T, datatype(shape=0))  # type: ignore
+
+
+@dataclass
+class SimEnumConverter(SimConverter):
+    enum_class: Type[Enum]
+
+    def write_value(self, value: Union[Enum, str]):
+        if isinstance(value, Enum):
+            return value.value
+        else:
+            return value
+
+    def descriptor(self, source: str, value) -> Descriptor:
+        choices = [e.value for e in self.enum_class]
+        return dict(source=source, dtype="string", shape=[], choices=choices)  # type: ignore
+
+    def make_initial_value(self, datatype: Optional[Type[T]]) -> T:
+        if datatype is None:
+            return cast(T, None)
+
+        return cast(T, list(datatype.__members__.values())[0])  # type: ignore
+
+
+class SimTableConverter(SimConverter):
+    def value(self, value):
+        return value.todict()
+
+    def descriptor(self, source: str, value) -> Descriptor:
+        # This is wrong, but defer until we know how to actually describe a table
+        return dict(source=source, dtype="object", shape=[])  # type: ignore
+
+    # this is wrong
+    def make_initial_value(self, datatype: Optional[Type[T]]) -> T:
+        if datatype is None:
+            return cast(T, None)
+
+        return cast(T, list(datatype.__members__.values())[0])  # type: ignore
+
+
+class DisconnectedSimConverter(SimConverter):
+    def __getattribute__(self, __name: str) -> Any:
+        raise NotImplementedError("No PV has been set as connect() has not been called")
+
+
+def make_converter(datatype):
+    is_array = get_origin(datatype) == np.ndarray
+    is_sequence = get_origin(datatype) == abc.Sequence
+    is_enum = issubclass(datatype, Enum) if inspect.isclass(datatype) else False
+
+    if is_array or is_sequence:
+        return SimArrayConverter()
+    if is_enum:
+        return SimEnumConverter(datatype)
+
+    return SimConverter()
+
+
+
 class SimSignalBackend(SignalBackend[T]):
     """An simulated backend to a Signal, created with ``Signal.connect(sim=True)``"""
 
-    _initial_value: T
     _value: T
+    _initial_value: T
     _timestamp: float
+    _severity: int
+    _reading: Reading
 
-    def __init__(self, datatype: Optional[Type[T]], source: str) -> None:
+    def __init__(self, datatype: Optional[Type[T]], pv: str) -> None:
         self.datatype = datatype
-        self.source = f"sim://{source.split('://', 1)[-1]}"
-        #: If cleared, then any ``put(wait=True)`` will wait until it is set
+        self.pv = pv
+        self.converter: SimConverter = DisconnectedSimConverter()
+        self.source = f"sim://{self.pv}"
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
-
         self.callback: Optional[ReadingValueCallback[T]] = None
 
-        if datatype is None:
-            self._initial_value = cast(T, None)
-        elif issubclass(datatype, Enum):
-            self._initial_value = cast(T, list(datatype)[0].value)
-        elif get_origin(datatype) == np.ndarray:
-            self._initial_value = cast(T, datatype(shape=0))  # type: ignore
-        else:
-            self._initial_value = datatype()
-        self.set_value(self._initial_value)
+    async def connect(self) -> None:
+        self.converter = make_converter(self.datatype)
+        self._initial_value = self.converter.make_initial_value(self.datatype)
+        self._value = self._initial_value
+        self._severity = 0
+        self._reading = self.converter.reading(self._initial_value, time.monotonic(), self._severity)
 
-    async def connect(self):
-        pass
+        await self.put(None)
 
     async def put(self, value: Optional[T], wait=True, timeout=None):
         if value is None:
-            self.set_value(self._initial_value)
+            write_value = self._initial_value
         else:
-            self.set_value(value)
+            write_value = self.converter.write_value(value)
+
+        self._value = write_value
+        self._timestamp = time.monotonic()
+        self._reading = await self.get_reading()
+        if self.callback:
+            self.callback(self._reading, self._value)
+
         if wait:
             await asyncio.wait_for(self.put_proceeds.wait(), timeout)
 
     async def get_descriptor(self) -> Descriptor:
-        try:
-            dtype = primitive_dtypes[type(self._value)]
-            shape = []
-        except KeyError:
-            if isinstance(self._value, Enum):
-                dtype = "string"
-                shape = []
-                choices = [e.value for e in type(self._value)]
-                # Ignore type until https://github.com/bluesky/event-model/issues/235#issuecomment-1497353265
-                return dict(source=self.source, dtype=dtype, shape=shape, choices=choices)  # type: ignore
-            elif isinstance(self._value, Sequence):
-                dtype = "array"
-                shape = [len(self._value)]
-            else:
-                assert False, f"Can't get dtype for {type(self._value)}"
-        return dict(source=self.source, dtype=dtype, shape=shape)
-
-    @property
-    def _reading(self) -> Reading:
-        return dict(value=self._value, timestamp=self._timestamp)
+        return self.converter.descriptor(self.source, self._value)
 
     async def get_reading(self) -> Reading:
-        return self._reading
+        return self.converter.reading(self._value, self._timestamp, self._severity)
 
     async def get_value(self) -> T:
-        return self._value
+        return self.converter.value(self._value)
 
     def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
         if callback:
@@ -482,9 +565,9 @@ class SimSignalBackend(SignalBackend[T]):
             self.callback(self._reading, self._value)
 
 
-def set_sim_value(signal: Signal[T], value: T):
+async def set_sim_value(signal: Signal[T], value: T):
     """Set the value of a signal that is in sim mode"""
-    _sim_backends[signal].set_value(value)
+    await _sim_backends[signal].put(value)
 
 
 def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):
@@ -543,7 +626,7 @@ class Signal(Device, Generic[T]):
     async def connect(self, sim=False):
         if sim:
             self._backend = SimSignalBackend(
-                datatype=self._init_backend.datatype, source=self._init_backend.source
+                datatype=self._init_backend.datatype, pv=self._init_backend.source
             )
             _sim_backends[self] = self._backend
         else:

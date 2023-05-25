@@ -86,7 +86,7 @@ class MonitorQueue:
     def __init__(self, backend: SignalBackend):
         self.backend = backend
         self.updates: asyncio.Queue[Tuple[Reading, Any]] = asyncio.Queue()
-        self.subscription = backend.monitor_reading_value(self.add_reading_value)
+        backend.set_callback(self.add_reading_value)
 
     def add_reading_value(self, reading: Reading, value):
         self.updates.put_nowait((reading, value))
@@ -106,27 +106,27 @@ class MonitorQueue:
         assert reading == expected_reading == backend_reading, f"reading: got {backend_reading} but expected {expected_reading}. got value: {expected_value} but expected {expected_value}"
 
     def close(self):
-        self.subscription.close()
+        self.backend.set_callback(None)
     
 
 @pytest.mark.parametrize(
-    "datatype, suffix, initial_value, put_value, descriptor",
+    "datatype, initial_value, put_value, descriptor",
     [
-        (int, "int", 0, 43, integer_d),
-        (float, "float", 0.0, 43.5, number_d),
-        (str, "str", "h", "goodbye", string_d),
-        (MyEnum, "enum", MyEnum.a, MyEnum.c, enum_d),
-        (npt.NDArray[np.int8], "int8a", [-128, 127], [-8, 3, 44], waveform_d),
-        (npt.NDArray[np.uint8], "uint8a", [0, 255], [218], waveform_d),
-        (npt.NDArray[np.int16], "int16a", [-32768, 32767], [-855], waveform_d),
-        (npt.NDArray[np.uint16], "uint16a", [0, 65535], [5666], waveform_d),
-        (npt.NDArray[np.int32], "int32a", [-2147483648, 2147483647], [-2], waveform_d),
-        (npt.NDArray[np.uint32], "uint32a", [0, 4294967295], [1022233], waveform_d),
-        (npt.NDArray[np.int64], "int64a", [-2147483649, 2147483648], [-3], waveform_d),
-        (npt.NDArray[np.uint64], "uint64a", [0, 4294967297], [995444], waveform_d),
-        (npt.NDArray[np.float32], "float32a", [0.000002, -123.123], [1.0], waveform_d),
-        (npt.NDArray[np.float64], "float64a", [0.1, -12345678.123], [0.2], waveform_d),
-        (Sequence[str], "stra", ["five", "six", "seven"], ["nine", "ten"], waveform_d),
+        (int, 0, 43, integer_d),
+        (float, 0.0, 43.5, number_d),
+        (str, "", "goodbye", string_d),
+        (MyEnum, MyEnum.a, MyEnum.c, enum_d),
+        (npt.NDArray[np.int8], [], [-8, 3, 44], waveform_d),
+        (npt.NDArray[np.uint8], [], [218], waveform_d),
+        (npt.NDArray[np.int16], [], [-855], waveform_d),
+        (npt.NDArray[np.uint16], [], [5666], waveform_d),
+        (npt.NDArray[np.int32], [], [-2], waveform_d),
+        (npt.NDArray[np.uint32], [], [1022233], waveform_d),
+        (npt.NDArray[np.int64], [], [-3], waveform_d),
+        (npt.NDArray[np.uint64], [], [995444], waveform_d),
+        (npt.NDArray[np.float32], [], [1.0], waveform_d),
+        (npt.NDArray[np.float64], [], [0.2], waveform_d),
+        (Sequence[str], [], ["nine", "ten"], waveform_d),
         # Can't do long strings until https://github.com/epics-base/pva2pva/issues/17
         # (str, "longstr", ls1, ls2, string_d),
         # (str, "longstr2.VAL$", ls1, ls2, string_d),
@@ -134,19 +134,19 @@ class MonitorQueue:
 )
 async def test_backend_get_put_monitor(
     datatype: Type[T],
-    suffix: str,
     initial_value: T,
     put_value: T,
     descriptor: Callable[[Any], dict],
 ):
-    backend = SimSignalBackend(datatype, suffix)
+    backend = SimSignalBackend(datatype, "")
+
+    await backend.connect()
     q = MonitorQueue(backend)
     try:
         # Check descriptor
-        source = f"{suffix}"
-        assert dict(source="sim://" + source, **descriptor(initial_value)) == await backend.get_descriptor()
+        assert dict(source="sim://", **descriptor(initial_value)) == await backend.get_descriptor()
         # Check initial value
-        await q.assert_updates(pytest.approx(initial_value))
+        await q.assert_updates(pytest.approx(initial_value) if initial_value != "" else initial_value)
         # Put to new value and check that
         await backend.put(put_value)
         await q.assert_updates(pytest.approx(put_value))
@@ -155,9 +155,11 @@ async def test_backend_get_put_monitor(
 
 
 async def test_sim_backend_with_numpy_typing():
-    sim_backend = SimSignalBackend(npt.NDArray[np.float64], source="SOME-IOC:PV")
+    sim_backend = SimSignalBackend(npt.NDArray[np.float64], pv="SOME-IOC:PV")
+    await sim_backend.connect()
+
     array = await sim_backend.get_value()
-    assert array.shape == (1,)
+    assert array.shape == (0,)
 
 
 async def test_async_status_success():

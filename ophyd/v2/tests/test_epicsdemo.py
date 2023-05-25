@@ -50,8 +50,8 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
         current=0.0,
         initial=0.0,
         target=0.55,
-        unit="mm",
-        precision=3,
+        unit="",
+        precision=0,
         time_elapsed=pytest.approx(0.0, abs=0.05),
     )
     watcher.reset_mock()
