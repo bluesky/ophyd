@@ -5,6 +5,7 @@ import asyncio
 import functools
 import inspect
 import logging
+import re
 import sys
 import time
 from abc import abstractmethod
@@ -448,11 +449,11 @@ class SimArrayConverter(SimConverter):
 class SimEnumConverter(SimConverter):
     enum_class: Type[Enum]
 
-    def write_value(self, value: Union[Enum, str]):
+    def write_value(self, value: Union[Enum, str]) -> Enum:
         if isinstance(value, Enum):
-            return value.value
-        else:
             return value
+        else:
+            return self.enum_class(value)
 
     def descriptor(self, source: str, value) -> Descriptor:
         choices = [e.value for e in self.enum_class]
@@ -493,10 +494,11 @@ class SimSignalBackend(SignalBackend[T]):
     _reading: Reading
 
     def __init__(self, datatype: Optional[Type[T]], source: str) -> None:
+        pv = re.split(r"://", source)[-1]
+        self.source = f"sim://{pv}"
         self.datatype = datatype
         self.pv = source
         self.converter: SimConverter = DisconnectedSimConverter()
-        self.source = f"sim://{source}"
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
         self.callback: Optional[ReadingValueCallback[T]] = None
@@ -508,7 +510,7 @@ class SimSignalBackend(SignalBackend[T]):
         self._severity = 0
         self._reading = self.converter.reading(self._initial_value, time.monotonic(), self._severity)
 
-        await self.put(None)
+        await self.put(self._initial_value)
 
     async def put(self, value: Optional[T], wait=True, timeout=None):
         if value is None:
@@ -524,6 +526,11 @@ class SimSignalBackend(SignalBackend[T]):
 
         if wait:
             await asyncio.wait_for(self.put_proceeds.wait(), timeout)
+
+    async def _notify_listeners(self) -> None:
+        value = await self.get_value()
+        for func in self.listeners:
+            func(await self.get_reading(), value)
 
     async def get_descriptor(self) -> Descriptor:
         return self.converter.descriptor(self.source, self._value)
@@ -542,12 +549,12 @@ class SimSignalBackend(SignalBackend[T]):
             callback(self._reading, self._value)
         self.callback = callback
 
-    def set_value(self, value: T) -> None:
-        """Set the simulated value, and set timestamp to now"""
-        self._value = value
-        self._timestamp = time.monotonic()
-        if self.callback:
-            self.callback(self._reading, self._value)
+    # def set_value(self, value: T) -> None:
+    #     """Set the simulated value, and set timestamp to now"""
+    #     self._value = value
+    #     self._timestamp = time.monotonic()
+    #     if self.callback:
+    #         self.callback(self._reading, self._value)
 
 
 async def set_sim_value(signal: Signal[T], value: T):
