@@ -28,7 +28,6 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
-    Union,
     cast,
     runtime_checkable,
 )
@@ -126,6 +125,18 @@ class AsyncStatus(Status):
             return AsyncStatus(f(self))
 
         return wrap_f
+
+    def __repr__(self) -> str:
+        if self.done:
+            if self.exception() is not None:
+                status = "errored"
+            else:
+                status = "done"
+        else:
+            status = "pending"
+        return f"<{type(self).__name__} {status}>"
+
+    __str__ = __repr__
 
 
 class Device(HasName):
