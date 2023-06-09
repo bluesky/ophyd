@@ -28,6 +28,7 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    Union,
     cast,
     runtime_checkable,
 )
@@ -81,7 +82,8 @@ class AsyncStatus(Status):
             for callback in self._callbacks:
                 callback(self)
 
-    def exception(self, timeout: Optional[float] = 0.0) -> Optional[BaseException]:
+    # TODO: remove ignore and bump min version when bluesky v1.12.0 is released
+    def exception(self, timeout: Optional[float] = 0.0) -> Optional[BaseException]:  # type: ignore
         if timeout != 0.0:
             raise Exception(
                 "cannot honour any timeout other than 0 in an asynchronous function"
@@ -100,15 +102,9 @@ class AsyncStatus(Status):
 
     @property
     def success(self) -> bool:
-        if not self.done:
-            return False
-
-        try:
-            self.task.result()
-        except (Exception, asyncio.CancelledError):
-            return False
-        else:
-            return True
+        return (
+            self.task.done() and not self.task.cancelled() and not self.task.exception()
+        )
 
     def watch(self, watcher: Callable):
         """Add watcher to the list of interested parties.

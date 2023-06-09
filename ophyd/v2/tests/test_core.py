@@ -3,8 +3,10 @@ import re
 import traceback
 from unittest.mock import Mock
 
+import bluesky.plan_stubs as bps
 import pytest
-from bluesky.protocols import Status
+from bluesky import FailedStatus, RunEngine
+from bluesky.protocols import Movable, Status
 
 from ophyd.v2.core import (
     AsyncStatus,
@@ -156,11 +158,11 @@ async def test_async_status_has_no_exception_if_coroutine_successful():
 async def test_async_status_success_if_cancelled():
     status = AsyncStatus(normal_coroutine(0.1))
     assert status.exception() is None
-
-    status.task.result = Mock(side_effect=asyncio.CancelledError(""))
-    await status
-
+    status.task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await status
     assert status.success is False
+    assert isinstance(status.exception(), asyncio.CancelledError)
 
 
 async def test_async_status_wrap():
@@ -225,3 +227,36 @@ async def test_wait_for_connection_propagates_error():
     with pytest.raises(ValueError) as e:
         await wait_for_connection(**failing_coros)
         assert traceback.extract_tb(e.__traceback__)[-1].name == "failing_coroutine"
+
+
+class FailingMovable(Movable, Device):
+    def _fail(self):
+        raise ValueError("This doesn't work")
+
+    async def _set(self, value):
+        if value:
+            self._fail()
+
+    def set(self, value) -> AsyncStatus:
+        return AsyncStatus(self._set(value))
+
+
+async def test_status_propogates_traceback_under_RE() -> None:
+    expected_call_stack = ["_set", "_fail"]
+    RE = RunEngine()
+    d = FailingMovable()
+    with pytest.raises(FailedStatus) as ctx:
+        RE(bps.mv(d, 3))
+    # We get "The above exception was the direct cause of the following exception:",
+    # so extract that first exception traceback and check
+    assert ctx.value.__cause__
+    assert expected_call_stack == [
+        x.name for x in traceback.extract_tb(ctx.value.__cause__.__traceback__)
+    ]
+    # Check we get the same from the status.exception
+    status: AsyncStatus = ctx.value.args[0]
+    exception = status.exception()
+    assert exception
+    assert expected_call_stack == [
+        x.name for x in traceback.extract_tb(exception.__traceback__)
+    ]
