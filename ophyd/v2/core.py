@@ -465,8 +465,10 @@ class SimSignalBackend(SignalBackend[T]):
     async def get_value(self) -> T:
         return self._value
 
-    def set_callback(self, callback: ReadingValueCallback[T]) -> None:
-        callback(self._reading, self._value)
+    def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
+        if callback:
+            callback(self._reading, self._value)
+
         self.callback = callback
 
     def set_value(self, value: T) -> None:
