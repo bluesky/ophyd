@@ -224,10 +224,10 @@ class PvaSignalBackend(SignalBackend[T]):
         return self.converter.value(value)
 
     def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
-        if self.subscription:
-            self.subscription.close()
-            self.subscription = None
         if callback:
+            assert (
+                not self.subscription
+            ), "Cannot set a callback when one is already set"
 
             async def async_callback(v):
                 callback(self.converter.reading(v), self.converter.value(v))
