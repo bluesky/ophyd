@@ -467,8 +467,8 @@ class SimSignalBackend(SignalBackend[T]):
 
     def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
         if callback:
+            assert not self.callback, "Cannot set a callback when one is already set"
             callback(self._reading, self._value)
-
         self.callback = callback
 
     def set_value(self, value: T) -> None:
