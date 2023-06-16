@@ -6,10 +6,9 @@ from enum import Enum
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
 from bluesky.protocols import Descriptor, Dtype, Reading
-from p4p.client.asyncio import Context
+from p4p.client.asyncio import Context, Subscription
 
 from .core import (
-    Monitor,
     NotConnected,
     ReadingValueCallback,
     SignalBackend,
@@ -168,6 +167,7 @@ class PvaSignalBackend(SignalBackend[T]):
         self.initial_values: Dict[str, Any] = {}
         self.converter: PvaConverter = DisconnectedPvaConverter()
         self.source = f"pva://{self.read_pv}"
+        self.subscription: Optional[Subscription] = None
 
     @property
     def ctxt(self) -> Context:
@@ -223,10 +223,14 @@ class PvaSignalBackend(SignalBackend[T]):
         value = await self.ctxt.get(self.read_pv, "field(value)")
         return self.converter.value(value)
 
-    def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
-        async def async_callback(v):
-            callback(self.converter.reading(v), self.converter.value(v))
+    def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
+        if self.subscription:
+            self.subscription.close()
+            self.subscription = None
+        if callback:
+            async def async_callback(v):
+                callback(self.converter.reading(v), self.converter.value(v))
 
-        return self.ctxt.monitor(
-            self.read_pv, async_callback, request="field(value,alarm,timestamp)"
-        )
+            self.subscription = self.ctxt.monitor(
+                self.read_pv, async_callback, request="field(value,alarm,timestamp)"
+            )

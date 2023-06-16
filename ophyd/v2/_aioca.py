@@ -4,13 +4,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
-from aioca import FORMAT_CTRL, FORMAT_RAW, FORMAT_TIME, caget, camonitor, caput
+from aioca import FORMAT_CTRL, FORMAT_RAW, FORMAT_TIME, Subscription, caget, camonitor, caput
 from aioca.types import AugmentedValue, Dbr, Format
 from bluesky.protocols import Descriptor, Dtype, Reading
 from epicscorelibs.ca import dbr
 
 from .core import (
-    Monitor,
     NotConnected,
     ReadingValueCallback,
     SignalBackend,
@@ -158,6 +157,7 @@ class CaSignalBackend(SignalBackend[T]):
         self.initial_values: Dict[str, AugmentedValue] = {}
         self.converter: CaConverter = DisconnectedCaConverter(None, None)
         self.source = f"ca://{self.read_pv}"
+        self.subscription: Optional[Subscription] = None
 
     async def _store_initial_value(self, pv):
         try:
@@ -211,10 +211,14 @@ class CaSignalBackend(SignalBackend[T]):
         value = await self._caget(FORMAT_RAW)
         return self.converter.value(value)
 
-    def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
-        return camonitor(
-            self.read_pv,
-            lambda v: callback(self.converter.reading(v), self.converter.value(v)),
-            datatype=self.converter.read_dbr,
-            format=FORMAT_TIME,
-        )
+    def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
+        if self.subscription:
+            self.subscription.close()
+            self.subscription = None
+        if callback:
+            self.subscription = camonitor(
+                self.read_pv,
+                lambda v: callback(self.converter.reading(v), self.converter.value(v)),
+                datatype=self.converter.read_dbr,
+                format=FORMAT_TIME,
+            )
