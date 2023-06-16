@@ -7,12 +7,7 @@ from bluesky.protocols import Reading
 from bluesky.run_engine import RunEngine
 
 from ophyd.v2 import epicsdemo
-from ophyd.v2.core import (
-    DeviceCollector,
-    NotConnected,
-    set_sim_callback,
-    set_sim_value,
-)
+from ophyd.v2.core import DeviceCollector, NotConnected, set_sim_callback, set_sim_value
 
 # Long enough for multiple asyncio event loop cycles to run so
 # all the tasks have a chance to run

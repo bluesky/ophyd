@@ -415,7 +415,7 @@ class SimSignalBackend(SignalBackend[T]):
         #: If cleared, then any ``put(wait=True)`` will wait until it is set
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
-        
+
         self.callback: Optional[ReadingValueCallback[T]] = None
 
         if datatype is None:
@@ -493,7 +493,6 @@ def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):
         event.clear()
 
 
-##USED TO BE monitor_sim_value
 def set_sim_callback(signal: Signal[T], callback: ReadingValueCallback[T]) -> None:
     """Monitor the value of a signal that is in sim mode"""
     return _sim_backends[signal].set_callback(callback)

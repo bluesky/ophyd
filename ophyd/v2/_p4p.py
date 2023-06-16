@@ -228,6 +228,7 @@ class PvaSignalBackend(SignalBackend[T]):
             self.subscription.close()
             self.subscription = None
         if callback:
+
             async def async_callback(v):
                 callback(self.converter.reading(v), self.converter.value(v))
 

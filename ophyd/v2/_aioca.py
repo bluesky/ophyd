@@ -4,7 +4,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
-from aioca import FORMAT_CTRL, FORMAT_RAW, FORMAT_TIME, Subscription, caget, camonitor, caput
+from aioca import (
+    FORMAT_CTRL,
+    FORMAT_RAW,
+    FORMAT_TIME,
+    Subscription,
+    caget,
+    camonitor,
+    caput,
+)
 from aioca.types import AugmentedValue, Dbr, Format
 from bluesky.protocols import Descriptor, Dtype, Reading
 from epicscorelibs.ca import dbr
