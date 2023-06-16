@@ -273,3 +273,15 @@ async def test_set_sim_put_proceeds():
     assert sim_signal._backend.put_proceeds.is_set() is False
     set_sim_put_proceeds(sim_signal, True)
     assert sim_signal._backend.put_proceeds.is_set() is True
+
+
+async def test_sim_backend_descriptor_fails_for_invalid_class():
+    class myClass:
+        def __init__(self) -> None:
+            pass
+
+    sim_signal = Signal(SimSignalBackend(myClass, "test"))
+    await sim_signal.connect(sim=True)
+
+    with pytest.raises(AssertionError):
+        await sim_signal._backend.get_descriptor()
