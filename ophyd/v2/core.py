@@ -802,13 +802,13 @@ class _ReadableRenamer(AsyncReadable, Stageable):
 
     def stage(self) -> List[Any]:
         if isinstance(self.readable, Stageable):
-            return self.readable.stage()
+            return self.readable.stage()  # type: ignore
         else:
             return []
 
     def unstage(self) -> List[Any]:
         if isinstance(self.readable, Stageable):
-            return self.readable.unstage()
+            return self.readable.unstage()  # type: ignore
         else:
             return []
 
@@ -885,7 +885,7 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         staged = [self]
         for sig in self._read_signals + self._conf_signals:
             if isinstance(sig, Stageable):
-                staged += sig.stage()
+                staged += sig.stage()  # type: ignore
         return staged
 
     def unstage(self) -> List[Any]:
@@ -893,7 +893,7 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         unstaged = [self]
         for sig in self._read_signals + self._conf_signals:
             if isinstance(sig, Stageable):
-                unstaged += sig.unstage()
+                unstaged += sig.unstage()  # type: ignore
         return unstaged
 
     async def describe(self) -> Dict[str, Descriptor]:
