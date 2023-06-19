@@ -231,4 +231,6 @@ class CaSignalBackend(SignalBackend[T]):
                 format=FORMAT_TIME,
             )
         else:
+            if self.subscription:
+                self.subscription.close()
             self.subscription = None
