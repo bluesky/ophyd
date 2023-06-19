@@ -21,7 +21,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Protocol,
     Sequence,
     Set,
     Tuple,
