@@ -230,3 +230,5 @@ class CaSignalBackend(SignalBackend[T]):
                 datatype=self.converter.read_dbr,
                 format=FORMAT_TIME,
             )
+        else:
+            self.subscription = None

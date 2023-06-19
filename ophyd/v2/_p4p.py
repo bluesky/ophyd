@@ -235,3 +235,5 @@ class PvaSignalBackend(SignalBackend[T]):
             self.subscription = self.ctxt.monitor(
                 self.read_pv, async_callback, request="field(value,alarm,timestamp)"
             )
+        else:
+            self.subscription = None
