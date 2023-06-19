@@ -477,7 +477,7 @@ class DisconnectedSimConverter(SimConverter):
 
 
 def make_converter(datatype):
-    is_array = get_origin(datatype) == np.ndarray
+    is_array = get_dtype(datatype) is not None
     is_sequence = get_origin(datatype) == abc.Sequence
     is_enum = issubclass(datatype, Enum) if inspect.isclass(datatype) else False
 
