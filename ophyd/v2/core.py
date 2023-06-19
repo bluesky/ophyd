@@ -417,10 +417,13 @@ class SimConverter(Generic[T]):
         return Reading(
             value=value,
             timestamp=timestamp,
-            alarm_severity=-1 if severity > 2 else severity)
+            alarm_severity=-1 if severity > 2 else severity,
+        )
 
     def descriptor(self, source: str, value) -> Descriptor:
-        assert type(value) in primitive_dtypes.keys(), f"invalid converter for value of type {type(value)}"
+        assert (
+            type(value) in primitive_dtypes.keys()
+        ), f"invalid converter for value of type {type(value)}"
         dtype = primitive_dtypes[type(value)]
         return dict(source=source, dtype=dtype, shape=[])
 
@@ -508,7 +511,9 @@ class SimSignalBackend(SignalBackend[T]):
         self._initial_value = self.converter.make_initial_value(self.datatype)
         self._value = self._initial_value
         self._severity = 0
-        self._reading = self.converter.reading(self._initial_value, time.monotonic(), self._severity)
+        self._reading = self.converter.reading(
+            self._initial_value, time.monotonic(), self._severity
+        )
 
         await self.put(self._initial_value)
 
@@ -527,11 +532,6 @@ class SimSignalBackend(SignalBackend[T]):
         if wait:
             await asyncio.wait_for(self.put_proceeds.wait(), timeout)
 
-    async def _notify_listeners(self) -> None:
-        value = await self.get_value()
-        for func in self.listeners:
-            func(await self.get_reading(), value)
-
     async def get_descriptor(self) -> Descriptor:
         return self.converter.descriptor(self.source, self._value)
 
@@ -539,8 +539,6 @@ class SimSignalBackend(SignalBackend[T]):
         return self.converter.reading(self._value, self._timestamp, self._severity)
 
     async def get_value(self) -> T:
-        # this goes through a converter.value instead of just returning ._value
-        # because then if connect() hasn't been called it tells you about it.
         return self.converter.value(self._value)
 
     def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
@@ -548,13 +546,6 @@ class SimSignalBackend(SignalBackend[T]):
             assert not self.callback, "Cannot set a callback when one is already set"
             callback(self._reading, self._value)
         self.callback = callback
-
-    # def set_value(self, value: T) -> None:
-    #     """Set the simulated value, and set timestamp to now"""
-    #     self._value = value
-    #     self._timestamp = time.monotonic()
-    #     if self.callback:
-    #         self.callback(self._reading, self._value)
 
 
 async def set_sim_value(signal: Signal[T], value: T):
