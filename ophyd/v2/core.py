@@ -357,13 +357,6 @@ class DeviceCollector:
 ReadingValueCallback = Callable[[Reading, T], None]
 
 
-class Monitor(Protocol):
-    """The kind of handle we expect camonitor/pvmonitor to return"""
-
-    def close(self):
-        """Close the monitor so no more subscription callbacks happen"""
-
-
 class SignalBackend(Generic[T]):
     """A read/write/monitor backend for a Signals"""
 
@@ -394,7 +387,7 @@ class SignalBackend(Generic[T]):
         """The current value"""
 
     @abstractmethod
-    def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
+    def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
         """Observe changes to the current value, timestamp and severity"""
 
 
@@ -407,20 +400,6 @@ primitive_dtypes: Dict[type, Dtype] = {
     float: "number",
     bool: "boolean",
 }
-
-
-class SimMonitor(Generic[T]):
-    """Handle that is returned when monitoring a Signal in sim mode"""
-
-    def __init__(
-        self, callback: ReadingValueCallback[T], listeners: List[SimMonitor[T]]
-    ):
-        self.callback = callback
-        self._listeners = listeners
-        self._listeners.append(self)
-
-    def close(self):
-        self._listeners.remove(self)
 
 
 class SimSignalBackend(SignalBackend[T]):
@@ -436,7 +415,9 @@ class SimSignalBackend(SignalBackend[T]):
         #: If cleared, then any ``put(wait=True)`` will wait until it is set
         self.put_proceeds = asyncio.Event()
         self.put_proceeds.set()
-        self.listeners: List[SimMonitor[T]] = []
+
+        self.callback: Optional[ReadingValueCallback[T]] = None
+
         if datatype is None:
             self._initial_value = cast(T, None)
         elif issubclass(datatype, Enum):
@@ -484,16 +465,18 @@ class SimSignalBackend(SignalBackend[T]):
     async def get_value(self) -> T:
         return self._value
 
-    def monitor_reading_value(self, callback: ReadingValueCallback[T]) -> Monitor:
-        callback(self._reading, self._value)
-        return SimMonitor(callback, self.listeners)
+    def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
+        if callback:
+            assert not self.callback, "Cannot set a callback when one is already set"
+            callback(self._reading, self._value)
+        self.callback = callback
 
     def set_value(self, value: T) -> None:
         """Set the simulated value, and set timestamp to now"""
         self._value = value
         self._timestamp = time.monotonic()
-        for rl in self.listeners:
-            rl.callback(self._reading, self._value)
+        if self.callback:
+            self.callback(self._reading, self._value)
 
 
 def set_sim_value(signal: Signal[T], value: T):
@@ -510,9 +493,9 @@ def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):
         event.clear()
 
 
-def monitor_sim_value(signal: Signal[T], callback: ReadingValueCallback[T]) -> Monitor:
+def set_sim_callback(signal: Signal[T], callback: ReadingValueCallback[T]) -> None:
     """Monitor the value of a signal that is in sim mode"""
-    return _sim_backends[signal].monitor_reading_value(callback)
+    return _sim_backends[signal].set_callback(callback)
 
 
 def _fail(self, other, *args, **kwargs):
@@ -585,10 +568,12 @@ class _SignalCache(Generic[T]):
         self._valid = asyncio.Event()
         self._reading: Optional[Reading] = None
         self._value: Optional[T] = None
-        self._monitor = backend.monitor_reading_value(self._callback)
+
+        self.backend = backend
+        backend.set_callback(self._callback)
 
     def close(self):
-        self._monitor.close()
+        self.backend.set_callback(None)
 
     async def get_reading(self) -> Reading:
         await self._valid.wait()
@@ -817,13 +802,13 @@ class _ReadableRenamer(AsyncReadable, Stageable):
 
     def stage(self) -> List[Any]:
         if isinstance(self.readable, Stageable):
-            return self.readable.stage()
+            return self.readable.stage()  # type: ignore
         else:
             return []
 
     def unstage(self) -> List[Any]:
         if isinstance(self.readable, Stageable):
-            return self.readable.unstage()
+            return self.readable.unstage()  # type: ignore
         else:
             return []
 
@@ -900,7 +885,7 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         staged = [self]
         for sig in self._read_signals + self._conf_signals:
             if isinstance(sig, Stageable):
-                staged += sig.stage()
+                staged += sig.stage()  # type: ignore
         return staged
 
     def unstage(self) -> List[Any]:
@@ -908,7 +893,7 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
         unstaged = [self]
         for sig in self._read_signals + self._conf_signals:
             if isinstance(sig, Stageable):
-                unstaged += sig.unstage()
+                unstaged += sig.unstage()  # type: ignore
         return unstaged
 
     async def describe(self) -> Dict[str, Descriptor]:

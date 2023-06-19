@@ -7,12 +7,7 @@ from bluesky.protocols import Reading
 from bluesky.run_engine import RunEngine
 
 from ophyd.v2 import epicsdemo
-from ophyd.v2.core import (
-    DeviceCollector,
-    NotConnected,
-    monitor_sim_value,
-    set_sim_value,
-)
+from ophyd.v2.core import DeviceCollector, NotConnected, set_sim_callback, set_sim_value
 
 # Long enough for multiple asyncio event loop cycles to run so
 # all the tasks have a chance to run
@@ -88,7 +83,7 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
 
 async def test_mover_stopped(sim_mover: epicsdemo.Mover):
     callbacks = []
-    monitor_sim_value(sim_mover.stop_, lambda r, v: callbacks.append(v))
+    set_sim_callback(sim_mover.stop_, lambda r, v: callbacks.append(v))
     # We get one update as soon as we connect
     assert callbacks == [None]
     await sim_mover.stop()
