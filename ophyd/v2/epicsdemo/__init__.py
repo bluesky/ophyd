@@ -8,7 +8,7 @@ from typing import Callable, List, Optional
 import numpy as np
 from bluesky.protocols import Movable, Stoppable
 
-from ophyd.v2.core import AsyncStatus, StandardReadable, observe_value
+from ophyd.v2.core import AsyncStatus, Device, StandardReadable, observe_value
 from ophyd.v2.epics import epics_signal_r, epics_signal_rw, epics_signal_x
 
 
@@ -29,11 +29,11 @@ class Sensor(StandardReadable):
         self.value = epics_signal_r(float, prefix + "Value")
         self.mode = epics_signal_rw(EnergyMode, prefix + "Mode")
         # Set name and signals for read() and read_configuration()
-        super().__init__(
-            name=name,
+        self.set_readable_signals(
             read=[self.value],
             config=[self.mode],
         )
+        super().__init__(name=name)
 
 
 class Mover(StandardReadable, Movable, Stoppable):
@@ -48,16 +48,22 @@ class Mover(StandardReadable, Movable, Stoppable):
         self.precision = epics_signal_r(int, prefix + "Readback.PREC")
         # Signals that collide with standard methods should have a trailing underscore
         self.stop_ = epics_signal_x(prefix + "Stop.PROC")
-        self._success = True
-        # Set prefix, name, and signals for read() and read_configuration()
-        super().__init__(
-            name=name,
-            primary=self.readback,
+        # Whether set() should complete successfully or not
+        self._set_success = True
+        # Set name and signals for read() and read_configuration()
+        self.set_readable_signals(
+            read=[self.readback],
             config=[self.velocity, self.units],
         )
+        super().__init__(name=name)
+
+    def set_name(self, name: str):
+        super().set_name(name)
+        # Readback should be named the same as its parent in read()
+        self.readback.set_name(name)
 
     async def _move(self, new_position: float, watchers: List[Callable] = []):
-        self._success = True
+        self._set_success = True
         # time.monotonic won't go backwards in case of NTP corrections
         start = time.monotonic()
         old_position, units, precision = await asyncio.gather(
@@ -80,7 +86,7 @@ class Mover(StandardReadable, Movable, Stoppable):
                 )
             if np.isclose(current_position, new_position):
                 break
-        if not self._success:
+        if not self._set_success:
             raise RuntimeError("Motor was stopped")
 
     def move(self, new_position: float, timeout: Optional[float] = None):
@@ -98,19 +104,19 @@ class Mover(StandardReadable, Movable, Stoppable):
         return AsyncStatus(coro, watchers)
 
     async def stop(self, success=True):
-        self._success = success
+        self._set_success = success
         await self.stop_.execute()
 
 
-class SampleStage(StandardReadable):
+class SampleStage(Device):
     """A demo sample stage with X and Y movables"""
 
     def __init__(self, prefix: str, name="") -> None:
         # Define some child Devices
         self.x = Mover(prefix + "X:")
         self.y = Mover(prefix + "Y:")
-        # Set prefix and name
-        super().__init__(name)
+        # Set name of device and child devices
+        super().__init__(name=name)
 
 
 def start_ioc_subprocess() -> str:

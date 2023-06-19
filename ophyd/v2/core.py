@@ -8,7 +8,6 @@ import sys
 import time
 from abc import abstractmethod
 from contextlib import suppress
-from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Any,
@@ -22,7 +21,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Protocol,
     Sequence,
     Set,
     Tuple,
@@ -30,7 +28,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    runtime_checkable,
 )
 
 import numpy as np
@@ -145,6 +142,9 @@ class Device(HasName):
     #: The parent Device if it exists
     parent: Optional[Device] = None
 
+    def __init__(self, name: str = "") -> None:
+        self.set_name(name)
+
     @property
     def name(self) -> str:
         """Return the name of the Device"""
@@ -231,8 +231,9 @@ async def connect_children(device: Device, sim: bool):
 
 def name_children(device: Device, name: str):
     """Call ``child.set_name(child_name)`` on all child devices in series."""
-    for child_name, child in get_device_children(device):
-        child.set_name(f"{name}-{child_name.rstrip('_')}")
+    for attr_name, child in get_device_children(device):
+        child_name = f"{name}-{attr_name.rstrip('_')}" if name else ""
+        child.set_name(child_name)
         child.parent = device
 
 
@@ -607,11 +608,8 @@ class _SignalCache(Generic[T]):
         self._listeners.pop(function)
         return self._staged or bool(self._listeners)
 
-    def stage(self):
-        self._staged = True
-
-    def unstage(self) -> bool:
-        self._staged = False
+    def set_staged(self, staged: bool):
+        self._staged = staged
         return self._staged or bool(self._listeners)
 
 
@@ -677,15 +675,15 @@ class SignalR(Signal[T], Readable, Stageable, Subscribable):
         """Remove a subscription."""
         self._del_cache(self._get_cache().unsubscribe(function))
 
-    def stage(self) -> List[Any]:
+    @AsyncStatus.wrap
+    async def stage(self) -> None:
         """Start caching this signal"""
-        self._get_cache().stage()
-        return [self]
+        self._get_cache().set_staged(True)
 
-    def unstage(self) -> List[Any]:
+    @AsyncStatus.wrap
+    async def unstage(self) -> None:
         """Stop caching this signal"""
-        self._del_cache(self._get_cache().unstage())
-        return [self]
+        self._del_cache(self._get_cache().set_staged(False))
 
 
 class SignalW(Signal[T], Movable):
@@ -773,57 +771,6 @@ async def wait_for_value(signal: SignalR[T], match, timeout=None):
     await asyncio.wait_for(_wait_for_value(), timeout)
 
 
-@runtime_checkable
-class AsyncReadable(Protocol):
-    """Readable narrowed to only be async"""
-
-    @abstractmethod
-    async def read(self) -> Dict[str, Reading]:
-        ...
-
-    @abstractmethod
-    async def describe(self) -> Dict[str, Descriptor]:
-        ...
-
-
-@dataclass
-class _ReadableRenamer(AsyncReadable, Stageable):
-    readable: AsyncReadable
-    device: Device
-
-    def _rename(self, d: Dict[str, T]) -> Dict[str, T]:
-        return {self.device.name: v for v in d.values()}
-
-    async def read(self) -> Dict[str, Reading]:
-        return self._rename(await self.readable.read())
-
-    async def describe(self) -> Dict[str, Descriptor]:
-        return self._rename(await self.readable.describe())
-
-    def stage(self) -> List[Any]:
-        if isinstance(self.readable, Stageable):
-            return self.readable.stage()  # type: ignore
-        else:
-            return []
-
-    def unstage(self) -> List[Any]:
-        if isinstance(self.readable, Stageable):
-            return self.readable.unstage()  # type: ignore
-        else:
-            return []
-
-
-@dataclass
-class _UncachedSignal(AsyncReadable):
-    signal: SignalR
-
-    async def read(self) -> Dict[str, Reading]:
-        return await self.signal.read(cached=False)
-
-    async def describe(self) -> Dict[str, Descriptor]:
-        return await self.signal.describe()
-
-
 async def merge_gathered_dicts(
     coros: Iterable[Awaitable[Dict[str, T]]]
 ) -> Dict[str, T]:
@@ -839,7 +786,7 @@ async def merge_gathered_dicts(
     return ret
 
 
-class StandardReadable(Readable, Configurable, Stageable, Device):
+class StandardReadable(Device, Readable, Configurable, Stageable):
     """Device that owns its children and provides useful default behavior.
 
     - When its name is set it renames child Devices
@@ -847,66 +794,60 @@ class StandardReadable(Readable, Configurable, Stageable, Device):
     - These signals will be subscribed for read() between stage() and unstage()
     """
 
-    def __init__(
+    _read_signals: Tuple[SignalR, ...] = ()
+    _configuration_signals: Tuple[SignalR, ...] = ()
+    _read_uncached_signals: Tuple[SignalR, ...] = ()
+
+    def set_readable_signals(
         self,
-        name: str = "",
-        primary: Optional[SignalR] = None,
-        read: Sequence[AsyncReadable] = (),
+        read: Sequence[SignalR] = (),
+        config: Sequence[SignalR] = (),
         read_uncached: Sequence[SignalR] = (),
-        config: Sequence[AsyncReadable] = (),
     ):
         """
         Parameters
         ----------
-        name:
-            If set, name the Device and its children
-        primary:
-            Optional single Signal that will be named self.name
         read:
-            Signals to make up `read()` that can be cached
-        read_uncached:
-            Signals to make up `read()` that should not be cached
+            Signals to make up `read()`
         conf:
-            Signals to make up `read_configuration()` that can be cached
+            Signals to make up `read_configuration()`
+        read_uncached:
+            Signals to make up `read()` that won't be cached
         """
-        self._read_signals = tuple(read) + tuple(
-            _UncachedSignal(sig) for sig in read_uncached
-        )
-        if primary:
-            self._read_signals = (_ReadableRenamer(primary, self),) + self._read_signals
-        self._conf_signals = tuple(config)
-        self._staged = False
-        # Call this last so child Signals are renamed
-        if name:
-            self.set_name(name)
+        self._read_signals = tuple(read)
+        self._configuration_signals = tuple(config)
+        self._read_uncached_signals = tuple(read_uncached)
 
-    def stage(self) -> List[Any]:
-        self._staged = True
-        staged = [self]
-        for sig in self._read_signals + self._conf_signals:
-            if isinstance(sig, Stageable):
-                staged += sig.stage()  # type: ignore
-        return staged
+    @AsyncStatus.wrap
+    async def stage(self) -> None:
+        for sig in self._read_signals + self._configuration_signals:
+            await sig.stage().task
 
-    def unstage(self) -> List[Any]:
-        self._staged = False
-        unstaged = [self]
-        for sig in self._read_signals + self._conf_signals:
-            if isinstance(sig, Stageable):
-                unstaged += sig.unstage()  # type: ignore
-        return unstaged
-
-    async def describe(self) -> Dict[str, Descriptor]:
-        return await merge_gathered_dicts(sig.describe() for sig in self._read_signals)
-
-    async def read(self) -> Dict[str, Reading]:
-        return await merge_gathered_dicts(sig.read() for sig in self._read_signals)
+    @AsyncStatus.wrap
+    async def unstage(self) -> None:
+        for sig in self._read_signals + self._configuration_signals:
+            await sig.unstage().task
 
     async def describe_configuration(self) -> Dict[str, Descriptor]:
-        return await merge_gathered_dicts(sig.describe() for sig in self._conf_signals)
+        return await merge_gathered_dicts(
+            [sig.describe() for sig in self._configuration_signals]
+        )
 
     async def read_configuration(self) -> Dict[str, Reading]:
-        return await merge_gathered_dicts(sig.read() for sig in self._conf_signals)
+        return await merge_gathered_dicts(
+            [sig.read() for sig in self._configuration_signals]
+        )
+
+    async def describe(self) -> Dict[str, Descriptor]:
+        return await merge_gathered_dicts(
+            [sig.describe() for sig in self._read_signals + self._read_uncached_signals]
+        )
+
+    async def read(self) -> Dict[str, Reading]:
+        return await merge_gathered_dicts(
+            [sig.read() for sig in self._read_signals]
+            + [sig.read(cached=False) for sig in self._read_uncached_signals]
+        )
 
 
 VT = TypeVar("VT", bound=Device)
