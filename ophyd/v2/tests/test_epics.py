@@ -75,7 +75,7 @@ def ioc(request):
 class MonitorQueue:
     def __init__(self, backend: SignalBackend):
         self.backend = backend
-        self.subscription = backend.monitor_reading_value(self.add_reading_value)
+        self.subscription = backend.set_callback(self.add_reading_value)
         self.updates: asyncio.Queue[Tuple[Reading, Any]] = asyncio.Queue()
 
     def add_reading_value(self, reading: Reading, value):
@@ -92,7 +92,7 @@ class MonitorQueue:
         assert reading == expected_reading == await self.backend.get_reading()
 
     def close(self):
-        self.subscription.close()
+        self.backend.set_callback(None)
 
 
 async def assert_monitor_then_put(

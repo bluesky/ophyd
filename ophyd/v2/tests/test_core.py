@@ -16,6 +16,7 @@ from ophyd.v2.core import (
     Signal,
     SimSignalBackend,
     get_device_children,
+    set_sim_put_proceeds,
     wait_for_connection,
 )
 
@@ -260,3 +261,27 @@ async def test_status_propogates_traceback_under_RE() -> None:
     assert expected_call_stack == [
         x.name for x in traceback.extract_tb(exception.__traceback__)
     ]
+
+
+async def test_set_sim_put_proceeds():
+    sim_signal = Signal(SimSignalBackend(str, "test"))
+    await sim_signal.connect(sim=True)
+
+    assert sim_signal._backend.put_proceeds.is_set() is True
+
+    set_sim_put_proceeds(sim_signal, False)
+    assert sim_signal._backend.put_proceeds.is_set() is False
+    set_sim_put_proceeds(sim_signal, True)
+    assert sim_signal._backend.put_proceeds.is_set() is True
+
+
+async def test_sim_backend_descriptor_fails_for_invalid_class():
+    class myClass:
+        def __init__(self) -> None:
+            pass
+
+    sim_signal = Signal(SimSignalBackend(myClass, "test"))
+    await sim_signal.connect(sim=True)
+
+    with pytest.raises(AssertionError):
+        await sim_signal._backend.get_descriptor()
