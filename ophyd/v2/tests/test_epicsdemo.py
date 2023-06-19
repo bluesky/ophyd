@@ -91,7 +91,7 @@ async def test_mover_stopped(sim_mover: epicsdemo.Mover):
 
 
 async def test_read_mover(sim_mover: epicsdemo.Mover):
-    sim_mover.stage()
+    await sim_mover.stage()
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.0
     assert (await sim_mover.describe())["sim_mover"][
         "source"
@@ -100,7 +100,7 @@ async def test_read_mover(sim_mover: epicsdemo.Mover):
     assert (await sim_mover.describe_configuration())["sim_mover-units"]["shape"] == []
     await set_sim_value(sim_mover.readback, 0.5)
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.5
-    sim_mover.unstage()
+    await sim_mover.unstage()
     # Check we can still read and describe when not staged
     await set_sim_value(sim_mover.readback, 0.1)
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.1
@@ -121,6 +121,13 @@ async def test_set_velocity(sim_mover: epicsdemo.Mover) -> None:
     await v.set(3.0)
     assert (await v.read())["sim_mover-velocity"]["value"] == 3.0
     assert q.empty()
+
+
+async def test_mover_disconncted():
+    with pytest.raises(NotConnected, match="Not all Devices connected"):
+        async with DeviceCollector(timeout=0.1):
+            m = epicsdemo.Mover("ca://PRE:", name="mover")
+    assert m.name == "mover"
 
 
 async def test_sensor_disconncted():
@@ -154,7 +161,7 @@ async def test_read_sensor(sim_sensor: epicsdemo.Sensor):
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"
     ] == epicsdemo.EnergyMode.high
-    sim_sensor.unstage()
+    await sim_sensor.unstage()
 
 
 async def test_assembly_renaming() -> None:
@@ -164,7 +171,7 @@ async def test_assembly_renaming() -> None:
     assert thing.x.velocity.name == ""
     assert thing.x.stop_.name == ""
     await thing.x.velocity.set(456)
-    assert await (thing.x.velocity.get_value()) == 456
+    assert await thing.x.velocity.get_value() == 456
     thing.set_name("foo")
     assert thing.x.name == "foo-x"
     assert thing.x.velocity.name == "foo-x-velocity"
