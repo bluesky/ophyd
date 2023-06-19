@@ -11,6 +11,7 @@ import time
 from abc import abstractmethod
 from collections import abc
 from contextlib import suppress
+from dataclasses import dataclass
 from enum import Enum
 from typing import (
     Any,
@@ -31,7 +32,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    get_origin
+    get_origin,
 )
 
 import numpy as np
