@@ -236,4 +236,6 @@ class PvaSignalBackend(SignalBackend[T]):
                 self.read_pv, async_callback, request="field(value,alarm,timestamp)"
             )
         else:
+            if self.subscription:
+                self.subscription.close()
             self.subscription = None
