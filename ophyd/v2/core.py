@@ -424,7 +424,7 @@ class SimConverter(Generic[T]):
 
     def descriptor(self, source: str, value) -> Descriptor:
         assert (
-            type(value) in primitive_dtypes.keys()
+            type(value) in primitive_dtypes
         ), f"invalid converter for value of type {type(value)}"
         dtype = primitive_dtypes[type(value)]
         return dict(source=source, dtype=dtype, shape=[])
