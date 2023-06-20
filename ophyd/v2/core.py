@@ -534,6 +534,15 @@ class SimSignalBackend(SignalBackend[T]):
         if wait:
             await asyncio.wait_for(self.put_proceeds.wait(), timeout)
 
+    def _set_value(self, value: T):
+        """Method to bypass asynchronous logic, designed to only be used in tests."""
+        self._value = value
+        self._timestamp = time.monotonic()
+        self._reading = self.converter.reading(self._value, self._timestamp, self._severity)
+
+        if self.callback:
+            self.callback(self._reading, self._value)
+
     async def get_descriptor(self) -> Descriptor:
         return self.converter.descriptor(self.source, self._value)
 
@@ -550,9 +559,9 @@ class SimSignalBackend(SignalBackend[T]):
         self.callback = callback
 
 
-async def set_sim_value(signal: Signal[T], value: T):
-    """Set the value of a signal that is in sim mode"""
-    await _sim_backends[signal].put(value)
+def set_sim_value(signal: Signal[T], value: T):
+    """Set the value of a signal that is in sim mode."""
+    _sim_backends[signal]._set_value(value)
 
 
 def set_sim_put_proceeds(signal: Signal[T], proceeds: bool):

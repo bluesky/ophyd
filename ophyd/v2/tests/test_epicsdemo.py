@@ -21,9 +21,9 @@ async def sim_mover():
         # Signals connected here
 
     assert sim_mover.name == "sim_mover"
-    await set_sim_value(sim_mover.units, "mm")
-    await set_sim_value(sim_mover.precision, 3)
-    await set_sim_value(sim_mover.velocity, 1)
+    set_sim_value(sim_mover.units, "mm")
+    set_sim_value(sim_mover.precision, 3)
+    set_sim_value(sim_mover.velocity, 1)
     yield sim_mover
 
 
@@ -59,7 +59,7 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
     assert not s.done
     done.assert_not_called()
     await asyncio.sleep(0.1)
-    await set_sim_value(sim_mover.readback, 0.1)
+    set_sim_value(sim_mover.readback, 0.1)
     await asyncio.sleep(A_WHILE)
     assert watcher.call_count == 1
     assert watcher.call_args == call(
@@ -71,7 +71,7 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
         precision=3,
         time_elapsed=pytest.approx(0.1, abs=0.05),
     )
-    await set_sim_value(sim_mover.readback, 0.5499999)
+    set_sim_value(sim_mover.readback, 0.5499999)
     await asyncio.sleep(A_WHILE)
     assert s.done
     assert s.success
@@ -98,11 +98,11 @@ async def test_read_mover(sim_mover: epicsdemo.Mover):
     ] == "sim://BLxxI-MO-TABLE-01:X:Readback"
     assert (await sim_mover.read_configuration())["sim_mover-velocity"]["value"] == 1
     assert (await sim_mover.describe_configuration())["sim_mover-units"]["shape"] == []
-    await set_sim_value(sim_mover.readback, 0.5)
+    set_sim_value(sim_mover.readback, 0.5)
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.5
     await sim_mover.unstage()
     # Check we can still read and describe when not staged
-    await set_sim_value(sim_mover.readback, 0.1)
+    set_sim_value(sim_mover.readback, 0.1)
     assert (await sim_mover.read())["sim_mover"]["value"] == 0.1
     assert await sim_mover.describe()
 
@@ -157,7 +157,7 @@ async def test_read_sensor(sim_sensor: epicsdemo.Sensor):
     desc = (await sim_sensor.describe_configuration())["sim_sensor-mode"]
     assert desc["dtype"] == "string"
     assert desc["choices"] == ["Low Energy", "High Energy"]  # type: ignore
-    await set_sim_value(sim_sensor.mode, epicsdemo.EnergyMode.high)
+    set_sim_value(sim_sensor.mode, epicsdemo.EnergyMode.high)
     assert (await sim_sensor.read_configuration())["sim_sensor-mode"][
         "value"
     ] == epicsdemo.EnergyMode.high
