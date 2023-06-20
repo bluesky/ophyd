@@ -496,7 +496,6 @@ class SimSignalBackend(SignalBackend[T]):
     _initial_value: T
     _timestamp: float
     _severity: int
-    _reading: Reading
 
     def __init__(self, datatype: Optional[Type[T]], source: str) -> None:
         pv = re.split(r"://", source)[-1]
@@ -511,25 +510,17 @@ class SimSignalBackend(SignalBackend[T]):
     async def connect(self) -> None:
         self.converter = make_converter(self.datatype)
         self._initial_value = self.converter.make_initial_value(self.datatype)
-        self._value = self._initial_value
         self._severity = 0
-        self._reading = self.converter.reading(
-            self._initial_value, time.monotonic(), self._severity
-        )
 
-        await self.put(self._initial_value)
+        await self.put(None)
 
     async def put(self, value: Optional[T], wait=True, timeout=None):
-        if value is None:
-            write_value = self._initial_value
-        else:
-            write_value = self.converter.write_value(value)
-
-        self._value = write_value
-        self._timestamp = time.monotonic()
-        self._reading = await self.get_reading()
-        if self.callback:
-            self.callback(self._reading, self._value)
+        write_value = (
+            self.converter.write_value(value)
+            if value is not None
+            else self._initial_value
+        )
+        self._set_value(write_value)
 
         if wait:
             await asyncio.wait_for(self.put_proceeds.wait(), timeout)
@@ -538,10 +529,12 @@ class SimSignalBackend(SignalBackend[T]):
         """Method to bypass asynchronous logic, designed to only be used in tests."""
         self._value = value
         self._timestamp = time.monotonic()
-        self._reading = self.converter.reading(self._value, self._timestamp, self._severity)
+        reading: Reading = self.converter.reading(
+            self._value, self._timestamp, self._severity
+        )
 
         if self.callback:
-            self.callback(self._reading, self._value)
+            self.callback(reading, self._value)
 
     async def get_descriptor(self) -> Descriptor:
         return self.converter.descriptor(self.source, self._value)
@@ -555,7 +548,10 @@ class SimSignalBackend(SignalBackend[T]):
     def set_callback(self, callback: Optional[ReadingValueCallback[T]]) -> None:
         if callback:
             assert not self.callback, "Cannot set a callback when one is already set"
-            callback(self._reading, self._value)
+            reading: Reading = self.converter.reading(
+                self._value, self._timestamp, self._severity
+            )
+            callback(reading, self._value)
         self.callback = callback
 
 
