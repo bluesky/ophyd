@@ -807,7 +807,31 @@ async def observe_value(signal: SignalR[T]) -> AsyncGenerator[T, None]:
         signal.clear_sub(q.put_nowait)
 
 
-async def wait_for_value(signal: SignalR[T], match, timeout=None):
+class _ValueChecker(Generic[T]):
+    def __init__(self, matcher: Callable[[T], bool], matcher_name: str):
+        self._last_value: Optional[T]
+        self._matcher = matcher
+        self._matcher_name = matcher_name
+
+    async def _wait_for_value(self, signal: SignalR[T]):
+        async for value in observe_value(signal):
+            self._last_value = value
+            if self._matcher(value):
+                return
+
+    async def wait_for_value(self, signal: SignalR[T], timeout: float):
+        try:
+            await asyncio.wait_for(self._wait_for_value(signal), timeout)
+        except asyncio.TimeoutError as e:
+            raise TimeoutError(
+                f"{signal.name} didn't match {self._matcher_name} in {timeout}s, "
+                f"last value {self._last_value!r}"
+            ) from e
+
+
+async def wait_for_value(
+    signal: SignalR[T], match: Union[T, Callable[[T], bool]], timeout: float
+):
     """Wait for a signal to have a matching value.
 
     Parameters
@@ -832,18 +856,46 @@ async def wait_for_value(signal: SignalR[T], match, timeout=None):
         wait_for_value(device.num_captured, lambda v: v > 45, timeout=1)
     """
     if callable(match):
-        match_function = match
+        checker = _ValueChecker(match, match.__name__)
     else:
+        checker = _ValueChecker(lambda v: v == match, repr(match))
+    await checker.wait_for_value(signal, timeout)
 
-        def match_function(value):
-            return value == match
 
-    async def _wait_for_value():
-        async for value in observe_value(signal):
-            if match_function(value):
-                return
+async def set_and_wait_for_value(
+    signal: SignalRW[T],
+    value: T,
+    timeout: float = DEFAULT_TIMEOUT,
+    status_timeout: Optional[float] = None,
+) -> AsyncStatus:
+    """Set a signal and monitor it until it has that value.
 
-    await asyncio.wait_for(_wait_for_value(), timeout)
+    Useful for busy record, or other Signals with pattern:
+
+    - Set Signal with wait=True and stash the Status
+    - Read the same Signal to check the operation has started
+    - Return the Status so calling code can wait for operation to complete
+
+    Parameters
+    ----------
+    signal:
+        The signal to set and monitor
+    value:
+        The value to set it to
+    timeout:
+        How long to wait for the signal to have the value
+    status_timeout:
+        How long the returned Status will wait for the set to complete
+
+    Notes
+    -----
+    Example usage::
+
+        set_and_wait_for_value(device.acquire, 1)
+    """
+    status = signal.set(value, timeout=status_timeout)
+    await wait_for_value(signal, value, timeout=timeout)
+    return status
 
 
 async def merge_gathered_dicts(

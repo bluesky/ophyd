@@ -20,11 +20,15 @@ from ophyd.v2.core import (
     DeviceVector,
     Signal,
     SignalBackend,
+    SignalRW,
     SimSignalBackend,
     T,
     get_device_children,
+    set_and_wait_for_value,
     set_sim_put_proceeds,
+    set_sim_value,
     wait_for_connection,
+    wait_for_value,
 )
 
 
@@ -409,3 +413,68 @@ async def test_sim_backend_descriptor_fails_for_invalid_class():
 
     with pytest.raises(AssertionError):
         await sim_signal._backend.get_descriptor()
+
+
+async def time_taken_by(coro) -> float:
+    start = time.monotonic()
+    await coro
+    return time.monotonic() - start
+
+
+async def test_wait_for_value_with_value():
+    sim_signal = SignalRW(SimSignalBackend(str, "test"))
+    sim_signal.set_name("sim_signal")
+    await sim_signal.connect(sim=True)
+    set_sim_value(sim_signal, "blah")
+
+    with pytest.raises(
+        TimeoutError,
+        match="sim_signal didn't match 'something' in 0.1s, last value 'blah'",
+    ):
+        await wait_for_value(sim_signal, "something", timeout=0.1)
+    assert await time_taken_by(wait_for_value(sim_signal, "blah", timeout=2)) < 0.1
+    t = asyncio.create_task(
+        time_taken_by(wait_for_value(sim_signal, "something else", timeout=2))
+    )
+    await asyncio.sleep(0.2)
+    assert not t.done()
+    set_sim_value(sim_signal, "something else")
+    assert 0.2 < await t < 1.0
+
+
+async def test_wait_for_value_with_funcion():
+    sim_signal = SignalRW(SimSignalBackend(float, "test"))
+    sim_signal.set_name("sim_signal")
+    await sim_signal.connect(sim=True)
+    set_sim_value(sim_signal, 45.8)
+
+    def less_than_42(v):
+        return v < 42
+
+    with pytest.raises(
+        TimeoutError,
+        match="sim_signal didn't match less_than_42 in 0.1s, last value 45.8",
+    ):
+        await wait_for_value(sim_signal, less_than_42, timeout=0.1)
+    t = asyncio.create_task(
+        time_taken_by(wait_for_value(sim_signal, less_than_42, timeout=2))
+    )
+    await asyncio.sleep(0.2)
+    assert not t.done()
+    set_sim_value(sim_signal, 41)
+    assert 0.2 < await t < 1.0
+    assert (
+        await time_taken_by(wait_for_value(sim_signal, less_than_42, timeout=2)) < 0.1
+    )
+
+
+async def test_set_and_wait_for_value():
+    sim_signal = SignalRW(SimSignalBackend(int, "test"))
+    sim_signal.set_name("sim_signal")
+    await sim_signal.connect(sim=True)
+    set_sim_value(sim_signal, 0)
+    set_sim_put_proceeds(sim_signal, False)
+    st = await set_and_wait_for_value(sim_signal, 1)
+    assert not st.done
+    set_sim_put_proceeds(sim_signal, True)
+    assert await time_taken_by(st) < 0.1
