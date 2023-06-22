@@ -84,7 +84,7 @@ async def test_mover_moving_well(sim_mover: epicsdemo.Mover) -> None:
 async def test_mover_stopped(sim_mover: epicsdemo.Mover):
     callbacks = []
     set_sim_callback(sim_mover.stop_, lambda r, v: callbacks.append(v))
-    # We get one update as soon as we connect
+
     assert callbacks == [None]
     await sim_mover.stop()
     assert callbacks == [None, None]
