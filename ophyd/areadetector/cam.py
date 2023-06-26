@@ -42,7 +42,7 @@ __all__ = [
     "PixiradDetectorCam",
     "PointGreyDetectorCam",
     "ProsilicaDetectorCam",
-    "PvcamDetectorCam",
+    "PvaDetectorCam",
     "PvcamDetectorCam",
     "RoperDetectorCam",
     "SimDetectorCam",
