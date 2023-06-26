@@ -2,6 +2,69 @@
  Release History
 =================
 
+1.8.0 (2023-06-26)
+==================
+
+Added
+-----
+
+* Add support for EPICS area detector pvaDriver cam
+* Add status repr to ``WaitTimeoutError`` message
+
+
+Changes
+-------
+
+* Make ``SynAxis`` produce an updating ``MoveStatus``
+* Change ``make_dir_tree`` default dir mode to ``755``
+
+Fixes
+-----
+
+* Fix capture signal was always triggered
+* Fix ``SynAxisNoPosition``
+
+API (v2)
+--------
+
+* Ophyd v2 core implementation
+* Let channelsim work with enums
+* Add enum descriptor support to ChannelCa
+* Isinstance calls property success before status object is done
+* Fix some constantly failing tests
+* Add ``_exception`` to ``AsyncStatus`` to propagate errors through ``FailedStatus``
+* Add dict support
+* Propagate errors through ``wait_for_connection``
+* Initial p4p channel implementation
+* Make sim signal source look like real source
+* Make device class concrete
+* Add bool support for 2 element CA/PVA enums
+* Minor async status changes
+* Fix traceback of a failed ``AsyncStatus`` object
+* Remove monitor
+* Make stage/unstage async
+* Add ``set_and_wait_for_value()``
+* Let ``SimSignalBackend`` accept ``npt.NDArray`` datatypes
+
+Documentation
+-------------
+
+* Add a shutter example of a ``PVPositionerComparator``
+* Use pydata docs theme and update docs building process
+* Make a space for v2 docs
+* Fix docs linking
+* Fix typos in the docs
+* Fix install instructions in README
+
+Project infrastructure
+----------------------
+
+* Adopt ``isort``
+* Move settings to ``setup.cfg`` and use ``setuptools-scm``
+* Make CI run on external PRs
+* Update LICENSE
+
+
 1.7.0 (2022-08-04)
 ==================
 
