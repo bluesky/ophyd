@@ -11,16 +11,18 @@ try:
     from ._aioca import CaSignalBackend
 except ImportError as ca_error:
 
-    def CaSignalBackend(*args, ca_error=ca_error, **kwargs):  # type: ignore
-        raise NotImplementedError("CA support not available") from ca_error
+    class CaSignalBackend:  # type: ignore
+        def __init__(*args, ca_error=ca_error, **kwargs):
+            raise NotImplementedError("CA support not available") from ca_error
 
 
 try:
     from ._p4p import PvaSignalBackend
 except ImportError as pva_error:
 
-    def PvaSignalBackend(*args, pva_error=pva_error, **kwargs):  # type: ignore
-        raise NotImplementedError("PVA support not available") from pva_error
+    class PvaSignalBackend:  # type: ignore
+        def __init__(*args, pva_error=pva_error, **kwargs):
+            raise NotImplementedError("PVA support not available") from pva_error
 
 
 class EpicsTransport(Enum):
