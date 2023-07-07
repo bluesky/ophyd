@@ -32,6 +32,11 @@ You can now use ``pip`` to install the library and its dependencies::
 
     $ python3 -m pip install ophyd
 
+If you are an EPICS site, you will require either the ``ca`` or ``pva`` extra,
+so include the extra in square brackets after the ``pip`` command::
+
+    $ python3 -m pip install ophyd[ca]
+
 If you require a feature that is not currently released you can also install
 from github::
 
