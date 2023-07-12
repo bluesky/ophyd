@@ -922,7 +922,7 @@ class NexusPlugin(FilePlugin, version=(1, 9, 1), version_type="ADCore"):
 class BadPixelPlugin(PluginBase, version=(3, 11), version_type="ADCore"):
     _default_suffix = "BadPix1:"
     _suffix_re = r"BadPix\d:"
-    _html_docs = ["NDBadPix.html"]
+    _html_docs = ["NDPluginBadPixel.html"]
     _plugin_type = "NDBadPixel"
 
     badpixel_json_filename = Cpt(EpicsSignal, "FileName")
