@@ -47,6 +47,7 @@ from bluesky.protocols import (
     Stageable,
     Status,
     Subscribable,
+    Locatable
 )
 from bluesky.run_engine import call_in_bluesky_event_loop
 
@@ -770,8 +771,10 @@ class SignalW(Signal[T], Movable):
         return AsyncStatus(coro)
 
 
-class SignalRW(SignalR[T], SignalW[T]):
+class SignalRW(SignalR[T], SignalW[T], Locatable):
     """Signal that can be both read and set"""
+    async def locate(self):
+        return await self.get_value()
 
 
 class SignalX(Signal):
