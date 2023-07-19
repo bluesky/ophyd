@@ -172,3 +172,29 @@ device we can see it gives the same result:
 .. seealso::
 
     How-to `../how-to/make-a-simple-device` to make your own Ophyd v2 Devices.
+
+Awaiting in the IPython terminal
+================================
+Ophyd v2 uses asynchronous logic to operate its devices. In the tutorial above,
+all operations on devices are handled through the bluesky `RunEngine`, which
+insulates users from the nuance of having to deal directly with async logic. 
+
+It is possible to directly access and manipulate the ophyd v2 devices without
+using the run engine, however this requires some familiarity with the python
+async framework and syntax, including `await`, which when used on a coroutine
+will execute it on the running event loop. If a user wishes to do this, they
+also must still instantiate the bluesky event loop by calling the `RunEngine`
+directly.
+
+IPython, and the asynchronous python REPL (launched by running `python -m 
+asyncio`) both allow using the `await` keyword, but will run coroutines called
+with it on the native event loop, not the bluesky event loop. As such, if you
+wish to manipulate devices through either of these mediums without bluesky plans
+you will need to configure the native loop to match up with the bluesky loop:
+
+.. code-block:: python
+
+    from bluesky.run_engine import call_in_bluesky_event_loop
+    from IPython import get_ipython
+
+    get_ipython().run_line_magic("autoawait", "call_in_bluesky_event_loop")
