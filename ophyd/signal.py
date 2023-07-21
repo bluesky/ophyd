@@ -1323,7 +1323,11 @@ class EpicsSignalBase(Signal):
             timeout,
         )
         info = pv.get_with_metadata(
-            as_string=as_string, count=count, form=form, timeout=timeout, use_monitor=use_monitor
+            as_string=as_string,
+            count=count,
+            form=form,
+            timeout=timeout,
+            use_monitor=use_monitor,
         )
         self.control_layer_log.debug(
             "pv[%s].get_with_metadata(...) returned", pv.pvname
