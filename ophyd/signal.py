@@ -1283,7 +1283,7 @@ class EpicsSignalBase(Signal):
         return (self._metadata["lower_ctrl_limit"], self._metadata["upper_ctrl_limit"])
 
     def _get_with_timeout(
-        self, pv, timeout, connection_timeout, as_string, form, use_monitor
+        self, pv, timeout, connection_timeout, count, as_string, form, use_monitor
     ):
         """
         Utility method implementing a retry loop for get and get_setpoint
@@ -1316,7 +1316,7 @@ class EpicsSignalBase(Signal):
             timeout,
         )
         info = pv.get_with_metadata(
-            as_string=as_string, form=form, timeout=timeout, use_monitor=use_monitor
+            as_string=as_string, count=count, form=form, timeout=timeout, use_monitor=use_monitor
         )
         self.control_layer_log.debug(
             "pv[%s].get_with_metadata(...) returned", pv.pvname
@@ -1332,6 +1332,7 @@ class EpicsSignalBase(Signal):
     def get(
         self,
         *,
+        count=None,
         as_string=None,
         timeout=DEFAULT_TIMEOUT,
         connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
@@ -1376,7 +1377,7 @@ class EpicsSignalBase(Signal):
             use_monitor = self._auto_monitor
 
         info = self._get_with_timeout(
-            self._read_pv, timeout, connection_timeout, as_string, form, use_monitor
+            self._read_pv, timeout, connection_timeout, count, as_string, form, use_monitor
         )
 
         value = info.pop("value")
@@ -1866,6 +1867,7 @@ class EpicsSignal(EpicsSignalBase):
     def get_setpoint(
         self,
         *,
+        count=None,
         as_string=None,
         timeout=DEFAULT_TIMEOUT,
         connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
@@ -1909,7 +1911,7 @@ class EpicsSignal(EpicsSignalBase):
             use_monitor = self._auto_monitor
 
         info = self._get_with_timeout(
-            self._write_pv, timeout, connection_timeout, as_string, form, use_monitor
+            self._write_pv, timeout, connection_timeout, count, as_string, form, use_monitor
         )
 
         value = info.pop("value")
