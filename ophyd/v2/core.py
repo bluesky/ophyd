@@ -963,21 +963,11 @@ VT = TypeVar("VT", bound=Device)
 
 
 class DeviceVector(Dict[int, VT], Device):
-    # def set_name(self, parent_name: str):
-    #     self._name = parent_name
-    #     for name, device in self.items():
-    #         device.set_name(f"{parent_name}-{name}")
-    #         device.parent = self
-
     @property
     def children(self) -> Generator[Tuple[str, Device], None, None]:
         for attr_name, attr in self.items():
             if isinstance(attr, Device):
                 yield str(attr_name), attr
-
-    # async def connect(self, sim: bool = False):
-    #     coros = {str(k): d.connect(sim) for k, d in self.items()}
-    #     await wait_for_connection(**coros)
 
 
 def get_unique(values: Dict[str, T], types: str) -> T:
