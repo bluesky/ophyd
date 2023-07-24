@@ -198,3 +198,7 @@ you will need to configure the native loop to match up with the bluesky loop:
     from IPython import get_ipython
 
     get_ipython().run_line_magic("autoawait", "call_in_bluesky_event_loop")
+
+This is done by default in the startup script above, although it is not made use
+of in this tutorial (i.e. devices here are manipulated through bluesky, not 
+ophyd).

@@ -4,7 +4,11 @@ from bluesky import RunEngine
 from bluesky.callbacks.best_effort import BestEffortCallback
 from bluesky.plan_stubs import mov, movr, rd  # noqa
 from bluesky.plans import grid_scan  # noqa
+from bluesky.run_engine import call_in_bluesky_event_loop  # noqa
 from bluesky.utils import ProgressBarManager, register_transform
+from IPython import get_ipython
+
+get_ipython().run_line_magic("autoawait", "call_in_bluesky_event_loop")
 
 from ophyd import Component, Device, EpicsSignal, EpicsSignalRO
 from ophyd.v2 import epicsdemo
