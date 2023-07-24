@@ -23,7 +23,6 @@ from ophyd.v2.core import (
     SignalRW,
     SimSignalBackend,
     T,
-    get_device_children,
     set_and_wait_for_value,
     set_sim_put_proceeds,
     set_sim_value,
@@ -205,17 +204,27 @@ class DummyDeviceGroup(Device):
         self.set_name(name)
 
 
-def test_get_device_children():
+def test_device_children():
     parent = DummyDeviceGroup("parent")
 
     names = ["child1", "child2", "dict_with_children"]
-    for idx, (name, child) in enumerate(get_device_children(parent)):
+    for idx, (name, child) in enumerate(parent.children):
         assert name == names[idx]
         assert (
             type(child) == DummyBaseDevice
             if name.startswith("child")
             else type(child) == DeviceVector
         )
+        assert child.parent == parent
+
+
+def test_device_vector_children():
+    parent = DummyDeviceGroup("root")
+
+    device_vector_children = [
+        (name, child) for name, child in parent.dict_with_children.children
+    ]
+    assert device_vector_children == [("123", parent.dict_with_children[123])]
 
 
 async def test_children_of_device_have_set_names_and_get_connected():
