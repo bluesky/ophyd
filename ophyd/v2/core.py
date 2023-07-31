@@ -1,6 +1,6 @@
 """Core Ophyd.v2 functionality like Device and Signal"""
 from __future__ import annotations
-
+import yaml
 import asyncio
 import functools
 import inspect
@@ -47,7 +47,8 @@ from bluesky.protocols import (
     Stageable,
     Status,
     Subscribable,
-    Locatable
+    Locatable,
+    Savable
 )
 from bluesky.run_engine import call_in_bluesky_event_loop
 
@@ -757,6 +758,63 @@ class SignalRW(SignalR[T], SignalW[T], Locatable):
     """Signal that can be both read and set"""
     async def locate(self):
         return await self.get_value()
+    
+    
+def find_all_signalRWs(device: Device, prefix: str, signalRWs: Dict[str, SignalRW] = {}) -> Dict[str, SignalRW]:
+    """Get all the signalRW's from the device and store with their dotted attribute paths. Used by save and load plans"""
+    for attr_name, attr in device.children:
+        dot = ""
+        # Place a dot inbetween the upper and lower class. Don't do this for highest level class.
+        if prefix:
+            dot = "."
+        dot_path = f"{prefix}{dot}{attr_name}"
+        if type(attr) is SignalRW:
+            signalRWs[dot_path] = attr
+        find_all_signalRWs(attr, prefix=dot_path)
+    return signalRWs
+    
+    
+async def save_device(device: Savable, savename: str):
+    """Locates all RW signals within device and saves them to a yaml file"""
+    
+    signalRWs: Dict[str, SignalRW] = find_all_signalRWs(device, "")
+    
+    if len(signalRWs):
+
+        # Same as signalRWs, but ordered by phase
+        phase_dicts: List[Dict[str, SignalRW]] = device.sort_signal_by_phase(signalRWs)
+
+        # Locate all signals in parallel
+        signal_values: List[SignalRW] = []
+        if len(phase_dicts):
+            for phase in phase_dicts:
+                for value in phase.values():
+                    signal_values.append(value.locate())
+            signal_values = await asyncio.gather(*signal_values)
+                
+        # Hacky way to deal with Enums and PV tables (tables still doesn't work)
+        for index, value in enumerate(signal_values):
+            if isinstance(value, dict):
+                for inner_key, inner_value in value.items():
+                    if isinstance(inner_value, np.ndarray):
+                        value[inner_key] = inner_value.tolist()
+            # Convert enums to their values
+            elif isinstance(signal_values[index], Enum):
+                signal_values[index] = value.value
+                
+        # For each phase, save a dictionary containing the phases' dotted signalRW paths and their values
+        phase_outputs: List[Dict[str, Any]] = []
+        signal_value_index = 0
+        for phase in phase_dicts:
+            signal_name_values: Dict[str, Any] = {}
+            for signal_name in phase.keys():
+                signal_name_values[signal_name] = signal_values[signal_value_index]
+                signal_value_index += 1
+            phase_outputs.append(signal_name_values)
+
+        filename = f"{savename}.yaml"
+        with open(filename, "w") as file:
+            yaml.dump(phase_outputs, file)    
 
 
 class SignalX(Signal):
