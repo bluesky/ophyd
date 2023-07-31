@@ -143,6 +143,17 @@ def test_and():
     # make sure deep recursion works
     st4 = st1 & st3
     st5 = st3 & st4
+
+    assert st1 in st3
+    assert st1 in st4
+    assert st1 in st5
+    assert st2 in st4
+    assert st2 in st5
+
+    unused_status = StatusBase()
+    assert unused_status not in st3
+    unused_status.set_finished()
+
     state1, cb1 = _setup_state_and_cb()
     state2, cb2 = _setup_state_and_cb()
     state3, cb3 = _setup_state_and_cb()

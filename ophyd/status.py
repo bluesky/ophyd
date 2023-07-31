@@ -569,6 +569,16 @@ class AndStatus(StatusBase):
             "".format(self.__class__.__name__, self)
         )
 
+    def __contains__(self, status: StatusBase) -> bool:
+        for child in [self.left, self.right]:
+            if child == status:
+                return True
+            if isinstance(child, AndStatus):
+                if status in child:
+                    return True
+
+        return False
+
 
 class Status(StatusBase):
     """
