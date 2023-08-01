@@ -963,7 +963,6 @@ VT = TypeVar("VT", bound=Device)
 
 
 class DeviceVector(Dict[int, VT], Device):
-    @property
     def children(self) -> Generator[Tuple[str, Device], None, None]:
         for attr_name, attr in self.items():
             if isinstance(attr, Device):
