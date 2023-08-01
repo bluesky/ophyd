@@ -776,9 +776,9 @@ def find_all_signalRWs(device: Device, prefix: str, signalRWs: Dict[str, SignalR
     
 async def save_device(device: Savable, savename: str):
     """Locates all RW signals within device and saves them to a yaml file"""
-    
+
     signalRWs: Dict[str, SignalRW] = find_all_signalRWs(device, "")
-    
+
     if len(signalRWs):
 
         # Same as signalRWs, but ordered by phase
@@ -791,7 +791,7 @@ async def save_device(device: Savable, savename: str):
                 for value in phase.values():
                     signal_values.append(value.locate())
             signal_values = await asyncio.gather(*signal_values)
-                
+
         # Hacky way to deal with Enums and PV tables (tables still doesn't work)
         for index, value in enumerate(signal_values):
             if isinstance(value, dict):
@@ -801,7 +801,7 @@ async def save_device(device: Savable, savename: str):
             # Convert enums to their values
             elif isinstance(signal_values[index], Enum):
                 signal_values[index] = value.value
-                
+
         # For each phase, save a dictionary containing the phases' dotted signalRW paths and their values
         phase_outputs: List[Dict[str, Any]] = []
         signal_value_index = 0
@@ -814,7 +814,65 @@ async def save_device(device: Savable, savename: str):
 
         filename = f"{savename}.yaml"
         with open(filename, "w") as file:
-            yaml.dump(phase_outputs, file)    
+            yaml.dump(phase_outputs, file)
+
+
+async def load_device(device: Savable, savename: str):
+    """Does an abs_set on each signalRW which has differing values to the savefile"""
+    
+    # Locate all signals to later compare with loaded values, then only change differing values
+
+    signalRWs: Dict[str, SignalRW] = find_all_signalRWs(device, "")  # {'device.subdevice.etc: signalRW}
+    signal_name_values = {}  # we want this to be {'device.subdevice.etc: signal location}
+    signals_to_locate = []
+    for sig in signalRWs.values():
+        signals_to_locate.append(sig.locate())
+        
+    signal_values = await asyncio.gather(*signals_to_locate)
+    
+    # Copy logic from save plan to convert enums and np arrays
+    for index, value in enumerate(signal_values):
+        if isinstance(value, dict):
+            for inner_key, inner_value in value.items():
+                if isinstance(inner_value, np.ndarray):
+                    value[inner_key] = inner_value.tolist()
+        # Convert enums to their values
+        elif isinstance(signal_values[index], Enum):
+            signal_values[index] = value.value
+
+    for index, key in enumerate(signalRWs.keys()):
+        signal_name_values[key] = signal_values[index]
+
+    # Get PV info from yaml file
+    filename = f"{savename}.yaml"
+    with open(filename, "r") as file:
+        data_by_phase: List[Dict[str, Any]] = yaml.full_load(file)
+
+        """For each phase, find the location of the SignalRW's in that phase, load them to the correct value,
+        and wait for the load to complete"""
+        for phase_number, phase in enumerate(data_by_phase):
+            phase_load_statuses: List[AsyncStatus] = []
+            for key, value in phase.items():
+
+                # If the values are different then do an abs_set
+                if signal_name_values[key] != value:
+
+                    # Key is subdevices_x.subdevices_x+1.etc.signalname. First get the attribute hierarchy
+                    components = key.split(".")
+                    lowest_device = device
+
+                    # If there are subdevices
+                    if len(components) > 1:
+                        signal_name: str = components[-1]  # Last string is the signal name
+                        for attribute in components[:-1]:
+                            lowest_device = getattr(lowest_device, attribute)
+                    else:
+                        signal_name: str = components[0]
+                    signalRW: SignalRW = getattr(lowest_device, signal_name)
+
+                    phase_load_statuses.append(signalRW.set(value, timeout=5))
+
+            await asyncio.gather(*phase_load_statuses)
 
 
 class SignalX(Signal):
