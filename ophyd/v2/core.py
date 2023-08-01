@@ -23,6 +23,7 @@ from typing import (
     Generator,
     Generic,
     Iterable,
+    Iterator,
     List,
     Optional,
     Sequence,
@@ -155,7 +156,6 @@ class Device(HasName):
         """Return the name of the Device"""
         return self._name
 
-    @property
     def children(self) -> Iterator[Tuple[str, Device]]:
         for attr_name, attr in self.__dict__.items():
             if attr_name != "parent" and isinstance(attr, Device):
@@ -170,7 +170,7 @@ class Device(HasName):
             New name to set
         """
         self._name = name
-        for attr_name, child in self.children:
+        for attr_name, child in self.children():
             child_name = f"{name}-{attr_name.rstrip('_')}" if name else ""
             child.set_name(child_name)
             child.parent = self
@@ -184,7 +184,7 @@ class Device(HasName):
             If True then connect in simulation mode.
         """
         coros = {
-            name: child_device.connect(sim) for name, child_device in self.children
+            name: child_device.connect(sim) for name, child_device in self.children()
         }
         if coros:
             await wait_for_connection(**coros)
