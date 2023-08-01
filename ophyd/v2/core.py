@@ -156,7 +156,7 @@ class Device(HasName):
         return self._name
 
     @property
-    def children(self) -> Generator[Tuple[str, Device], None, None]:
+    def children(self) -> Iterator[Tuple[str, Device]]:
         for attr_name, attr in self.__dict__.items():
             if attr_name != "parent" and isinstance(attr, Device):
                 yield attr_name, attr
