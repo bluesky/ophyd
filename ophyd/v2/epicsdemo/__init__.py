@@ -8,7 +8,13 @@ from typing import Callable, List, Optional
 import numpy as np
 from bluesky.protocols import Movable, Stoppable
 
-from ophyd.v2.core import AsyncStatus, Device, StandardReadable, observe_value
+from ophyd.v2.core import (
+    AsyncStatus,
+    Device,
+    PluggableDevice,
+    add_readable_signals,
+    observe_value,
+)
 from ophyd.v2.epics import epics_signal_r, epics_signal_rw, epics_signal_x
 
 
@@ -21,7 +27,7 @@ class EnergyMode(Enum):
     high = "High Energy"
 
 
-class Sensor(StandardReadable):
+class Sensor(PluggableDevice):
     """A demo sensor that produces a scalar value based on X and Y Movers"""
 
     def __init__(self, prefix: str, name="") -> None:
@@ -29,14 +35,11 @@ class Sensor(StandardReadable):
         self.value = epics_signal_r(float, prefix + "Value")
         self.mode = epics_signal_rw(EnergyMode, prefix + "Mode")
         # Set name and signals for read() and read_configuration()
-        self.set_readable_signals(
-            read=[self.value],
-            config=[self.mode],
-        )
+        add_readable_signals(self, read=[self.value], config=[self.mode])
         super().__init__(name=name)
 
 
-class Mover(StandardReadable, Movable, Stoppable):
+class Mover(PluggableDevice, Movable, Stoppable):
     """A demo movable that moves based on velocity"""
 
     def __init__(self, prefix: str, name="") -> None:
@@ -51,9 +54,8 @@ class Mover(StandardReadable, Movable, Stoppable):
         # Whether set() should complete successfully or not
         self._set_success = True
         # Set name and signals for read() and read_configuration()
-        self.set_readable_signals(
-            read=[self.readback],
-            config=[self.velocity, self.units],
+        add_readable_signals(
+            self, read=[self.readback], config=[self.velocity, self.units]
         )
         super().__init__(name=name)
 
