@@ -21,6 +21,7 @@ from .device import Component as Cpt
 from .device import Device
 from .device import DynamicDeviceComponent as DDCpt
 from .device import Kind
+from .epics_motor import EpicsMotor
 from .log import logger
 from .positioner import SoftPositioner
 from .pseudopos import (
@@ -875,7 +876,6 @@ class MockFlyer:
         return kickoff_st
 
     def collect(self):
-
         with self._lock:
             data = list(self._data)
             self._data.clear()
@@ -1166,6 +1166,11 @@ def make_fake_device(cls):
     EpicsSignalRO subcomponents. If this is not true, this will fail silently
     on class construction and loudly when manipulating an object.
 
+    EpicsMotor is handled as a special case - the motor's .set() and the
+    user_setpoint's .put() and .set() methods are replaced with
+    unittest.mock.MagicMock objects which pass the set values on to
+    the user_readback signal.
+
     Parameters
     ----------
     cls : Device
@@ -1209,6 +1214,8 @@ def make_fake_device(cls):
 
             fake_dict[cpt_name] = fake_cpt
         fake_class = type("Fake{}".format(cls.__name__), (cls,), fake_dict)
+        if cls is EpicsMotor:
+            fake_class = update_FakeEpicsMotor(fake_class)
         fake_device_cache[cls] = fake_class
         logger.debug("fake_device_cache[%s] = %s", cls, fake_class)
     return fake_device_cache[cls]
@@ -1502,6 +1509,48 @@ class FakeEpicsPathSignal(FakeEpicsSignal):
 
     def __init__(self, prefix, path_semantics, **kwargs):
         super().__init__(prefix + "_RBV", write_pv=prefix, **kwargs)
+
+
+def update_FakeEpicsMotor(FakeEpicsMotor):
+    from functools import partial
+    from unittest.mock import DEFAULT, MagicMock
+    from .status import Status
+
+    def side_set_w_return(obj, *args, **kwargs):
+        """Allow MagicMock to have both a return value and a side effect"""
+        obj.sim_put(*args)
+        return DEFAULT
+
+    def mock_transferred_put_or_set(obj_put_or_set: FakeEpicsSignal, return_value):
+        return MagicMock(
+            return_value=return_value,
+            side_effect=partial(side_set_w_return, obj_put_or_set),
+        )
+
+    mock_transferred_put = partial(mock_transferred_put_or_set, return_value=None)
+    mock_transferred_set = partial(
+        mock_transferred_put_or_set, return_value=Status(done=True, success=True)
+    )
+
+    old_init = copy.copy(FakeEpicsMotor.__init__)
+    old_set = copy.copy(FakeEpicsMotor.set)
+
+    def new_set(self: EpicsMotor, position, *args, **kwargs):
+        status: MoveStatus = old_set(self, position, *args, **kwargs)
+        status.set_finished()
+        status._run_callbacks()
+        return status
+
+    def new_init(self: EpicsMotor, *args, **kwargs):
+        old_init(self, *args, **kwargs)
+        self.user_setpoint.sim_set_limits([float("-inf"), float("inf")])
+        self.user_setpoint.put = mock_transferred_put(self.user_readback)
+        self.user_setpoint.set = mock_transferred_set(self.user_readback)
+        self.set(0)
+
+    FakeEpicsMotor.__init__ = new_init
+    FakeEpicsMotor.set = new_set
+    return FakeEpicsMotor
 
 
 fake_device_cache = {
