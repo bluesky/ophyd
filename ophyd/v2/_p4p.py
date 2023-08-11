@@ -110,7 +110,7 @@ def make_converter(datatype: Optional[Type], values: Dict[str, Any]) -> PvaConve
         if datatype and datatype != Sequence[str]:
             raise TypeError(f"{pv} has type [str] not {datatype.__name__}")
         return PvaArrayConverter()
-    elif "NTScalarArray" in typeid:
+    elif "NTScalarArray" in typeid or "NTNDArray" in typeid:
         pv_dtype = get_unique(
             {k: v["value"].dtype for k, v in values.items()}, "dtypes"
         )
@@ -215,7 +215,7 @@ class PvaSignalBackend(SignalBackend[T]):
 
     async def get_reading(self) -> Reading:
         value = await self.ctxt.get(
-            self.read_pv, request="field(value,alarm,timestamp)"
+            self.read_pv, request="field(value,alarm,timeStamp)"
         )
         return self.converter.reading(value)
 
@@ -233,7 +233,7 @@ class PvaSignalBackend(SignalBackend[T]):
                 callback(self.converter.reading(v), self.converter.value(v))
 
             self.subscription = self.ctxt.monitor(
-                self.read_pv, async_callback, request="field(value,alarm,timestamp)"
+                self.read_pv, async_callback, request="field(value,alarm,timeStamp)"
             )
         else:
             if self.subscription:
