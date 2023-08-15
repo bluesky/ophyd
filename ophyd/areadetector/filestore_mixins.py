@@ -26,7 +26,7 @@ import warnings
 from collections import defaultdict, deque
 from datetime import datetime
 from itertools import count
-from pathlib import PurePath, PurePosixPath, PureWindowsPath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 from ..device import BlueskyInterface, GenerateDatumInterface, Staged
 
@@ -241,24 +241,14 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     @property
     def read_path_template(self):
         "Returns write_path_template if read_path_template is not set"
-        rootp = self.reg_root
 
         if self._read_path_template is None:
             ret = PurePath(self.write_path_template)
         else:
             ret = PurePath(self._read_path_template)
 
-        if rootp not in ret.parents:
-            if not ret.is_absolute():
-                ret = rootp / ret
-            else:
-                raise ValueError(
-                    (
-                        "root: {!r} in not consistent with " "read_path_template: {!r}"
-                    ).format(rootp, ret)
-                )
-        ret = os.path.join(ret, "")
-        return str(ret)
+        ret = self._ensure_absolute_under_root(ret)
+        return str(os.path.join(ret, ""))
 
     @read_path_template.setter
     def read_path_template(self, val):
@@ -268,7 +258,6 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     @property
     def write_path_template(self):
-        rootp = self.reg_root
         if self.path_semantics == "posix":
             ret = PurePosixPath(self._write_path_template)
         elif self.path_semantics == "windows":
@@ -281,17 +270,47 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
             # This should never happen, but just for the sake of future-proofing...
             raise ValueError(f"Cannot handle path_semantics={self.path_semantics}")
 
-        if self._read_path_template is None and rootp not in ret.parents:
-            if not ret.is_absolute():
-                ret = rootp / ret
-            else:
-                raise ValueError(
-                    (
-                        "root: {!r} in not consistent with " "read_path_template: {!r}"
-                    ).format(rootp, ret)
-                )
+        # Write path is not checked or validated at all if a read path is supplied.
+        # Write path and read path are allowed to be completely different in case
+        # the detector has a completely different view of the filesystem.
+        if self._read_path_template is None:
+            ret = self._ensure_absolute_under_root(ret)
 
         return str(ret)
+
+    def _ensure_absolute_under_root(self, path: Path) -> Path:
+        """
+        If the given path is not absolute, assume it is supposed to be under the root
+        directory (self.reg_root) and append it. If it is absolute and but not under
+        the root directory, raise an exception as this would break mounting.
+        Otherwise return it as-is.
+
+        Note: The ancestor check is inclusive, root is considered to be under itself.
+        This allows the write path to be ./
+
+        Args:
+            path: The path to check, can be absolute or relative
+
+        Raises:
+            ValueError: If the path is absolute and not a subdirectory (inclusive and recursive)
+                of root.
+
+        Returns:
+            Path: _description_
+        """
+
+        if self.reg_root == path or self.reg_root in path.parents:
+            # If self.reg_root/**/path holds, no sanitation is needed
+            return path
+        elif not path.is_absolute():
+            # If the path is not absolute it should be appended to root.
+            # Here we assume that the user wants to deal with relative
+            # directories beyond a certain point (the root)
+            return self.reg_root / path
+        else:
+            raise ValueError(
+                f"root: {self.reg_root} is not consistent with read_path_template: {path}"
+            )
 
     @write_path_template.setter
     def write_path_template(self, val):
