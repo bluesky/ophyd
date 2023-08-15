@@ -4,9 +4,11 @@ import os
 import shutil
 import time
 import uuid
+from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path, PurePath
-from unittest.mock import Mock
+from typing import Optional
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
@@ -24,6 +26,7 @@ from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.filestore_mixins import (
     FileStoreHDF5,
     FileStoreIterativeWrite,
+    FileStorePluginBase,
     FileStoreTIFF,
 )
 
@@ -580,6 +583,213 @@ def test_fshdf_plugin(
             datum["datum_kwargs"] for datum in fs.datum_by_resource[res_uid]
         ):
             assert Path(fn).exists()
+
+
+@dataclass
+class FileStorePathTestCase:
+    root: Optional[str]
+    write_path_template: str
+    read_path_template: Optional[str]
+    expected_write_path: str
+    expected_resource_root: str
+    expected_resource_path_directory: str
+
+
+class DummyFileStorePlugin(Device, FileStorePluginBase):
+    file_write_mode: Signal = Component(Signal, value="test")
+    file_path: Signal = Component(Signal, value="")
+    file_name: Signal = Component(Signal, value="")
+    file_number: Signal = Component(Signal, value=0)
+    file_path_exists: Signal = Component(Signal, value=1)
+    file_template: Signal = Component(Signal, value="")
+    auto_increment: Signal = Component(Signal, value=0)
+    auto_save: Signal = Component(Signal, value=0)
+    num_capture: Signal = Component(Signal, value=0)
+    array_counter: Signal = Component(Signal, value=0)
+    capture: Signal = Component(Signal, value=0)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filestore_spec = "FS_TEST"  # spec name stored in resource doc
+        self.stage_sigs.update(
+            [
+                ("file_template", "%s%s_%6.6d.h5"),
+                ("file_write_mode", "Stream"),
+                ("capture", 1),
+            ]
+        )
+
+    def stage(self):
+        super().stage()
+        self._generate_resource({})
+
+
+@pytest.fixture
+def mock_now() -> Mock:
+    with patch("ophyd.areadetector.filestore_mixins.datetime") as mock:
+        mock.now.return_value = datetime.datetime(year=2017, month=1, day=2)
+        yield mock
+
+
+FILE_STORE_TEST_CASES = [
+    FileStorePathTestCase(
+        root=None,
+        write_path_template="/tmp/ophyd_file_store_test/data1/%Y/%m/%d",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/2017/01/02",
+        expected_resource_root="/",
+        expected_resource_path_directory="tmp/ophyd_file_store_test/data1/2017/01/02",
+    ),
+    FileStorePathTestCase(
+        root="/",
+        write_path_template="/tmp/ophyd_file_store_test/data1/%Y/%m/%d",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/2017/01/02",
+        expected_resource_root="/",
+        expected_resource_path_directory="tmp/ophyd_file_store_test/data1/2017/01/02",
+    ),
+    FileStorePathTestCase(
+        root="/tmp/ophyd_file_store_test/",
+        write_path_template="data1/%Y/%m/%d",
+        read_path_template="/tmp/ophyd_file_store_test/data1/%Y/%m/%d",
+        expected_write_path="data1/2017/01/02",
+        expected_resource_root="/tmp/ophyd_file_store_test",
+        expected_resource_path_directory="data1/2017/01/02",
+    ),
+    FileStorePathTestCase(
+        root="/tmp/ophyd_file_store_test/",
+        write_path_template="data1/%Y/%m/%d",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/2017/01/02",
+        expected_resource_root="/tmp/ophyd_file_store_test",
+        expected_resource_path_directory="data1/2017/01/02",
+    ),
+    FileStorePathTestCase(
+        root=None,
+        write_path_template="/tmp/ophyd_file_store_test/data1/test_dataset",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/test_dataset",
+        expected_resource_root="/",
+        expected_resource_path_directory="tmp/ophyd_file_store_test/data1/test_dataset",
+    ),
+    FileStorePathTestCase(
+        root="/",
+        write_path_template="/tmp/ophyd_file_store_test/data1/test_dataset",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/test_dataset",
+        expected_resource_root="/",
+        expected_resource_path_directory="tmp/ophyd_file_store_test/data1/test_dataset",
+    ),
+    FileStorePathTestCase(
+        root="/tmp/ophyd_file_store_test/",
+        write_path_template="data1/test_dataset",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/test_dataset",
+        expected_resource_root="/tmp/ophyd_file_store_test",
+        expected_resource_path_directory="data1/test_dataset",
+    ),
+    FileStorePathTestCase(
+        root="/tmp/ophyd_file_store_test",
+        write_path_template=".",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test",
+        expected_resource_root="/tmp/ophyd_file_store_test",
+        expected_resource_path_directory=".",
+    ),
+    FileStorePathTestCase(
+        root="/tmp/ophyd_file_store_test",
+        write_path_template=".",
+        read_path_template=".",
+        expected_write_path=".",
+        expected_resource_root="/tmp/ophyd_file_store_test",
+        expected_resource_path_directory=".",
+    ),
+    FileStorePathTestCase(
+        root="/tmp/ophyd_file_store_test",
+        write_path_template="data1/test_dataset",
+        read_path_template=None,
+        expected_write_path="/tmp/ophyd_file_store_test/data1/test_dataset",
+        expected_resource_root="/tmp/ophyd_file_store_test",
+        expected_resource_path_directory="data1/test_dataset",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", FILE_STORE_TEST_CASES)
+def test_file_store_paths_with_constructor(
+    mock_now: Mock, test_case: FileStorePathTestCase
+) -> None:
+    fs = DummyFS()
+
+    file_store = DummyFileStorePlugin(
+        name="test_file_store",
+        write_path_template=test_case.write_path_template,
+        read_path_template=test_case.read_path_template,
+        root=test_case.root,
+        reg=fs,
+    )
+    check_file_store_paths(file_store, test_case)
+
+
+@pytest.mark.parametrize("test_case", FILE_STORE_TEST_CASES)
+def test_file_store_paths_with_setters(
+    mock_now: Mock, test_case: FileStorePathTestCase
+) -> None:
+    fs = DummyFS()
+
+    file_store = DummyFileStorePlugin(
+        name="test_file_store",
+        write_path_template="",
+        read_path_template="",
+        root=None,
+        reg=fs,
+    )
+    file_store.reg_root = test_case.root
+    file_store.write_path_template = test_case.write_path_template
+    file_store.read_path_template = test_case.read_path_template
+    check_file_store_paths(file_store, test_case)
+
+
+def test_file_store_paths_can_change(mock_now: Mock) -> None:
+    fs = DummyFS()
+
+    file_store = DummyFileStorePlugin(
+        name="test_file_store",
+        write_path_template="",
+        read_path_template="",
+        root=None,
+        reg=fs,
+    )
+
+    for test_case in FILE_STORE_TEST_CASES[0], FILE_STORE_TEST_CASES[1]:
+        file_store.reg_root = test_case.root
+        file_store.write_path_template = test_case.write_path_template
+        file_store.read_path_template = test_case.read_path_template
+        check_file_store_paths(file_store, test_case)
+
+
+def check_file_store_paths(
+    file_store: DummyFileStorePlugin,
+    test_case: FileStorePathTestCase,
+) -> None:
+    file_store.stage()
+    file_store.generate_datum("test", 0, {})
+
+    file_path = file_store.file_path.get()
+    assert file_path == test_case.expected_write_path
+
+    docs = list(file_store.collect_asset_docs())
+
+    assert docs[0][0] == "resource"
+    resource = docs[0][1]
+
+    assert resource["spec"] == "FS_TEST"
+    assert resource["root"] == test_case.expected_resource_root
+
+    resource_path_directory = str(Path(resource["resource_path"]).parent)
+    assert resource_path_directory == test_case.expected_resource_path_directory
+
+    file_store.unstage()
 
 
 @pytest.mark.adsim
