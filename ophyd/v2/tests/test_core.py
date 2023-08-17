@@ -18,6 +18,7 @@ from ophyd.v2.core import (
     Device,
     DeviceCollector,
     DeviceVector,
+    NotConnected,
     Signal,
     SignalBackend,
     SignalRW,
@@ -195,6 +196,16 @@ class DummyBaseDevice(Device):
         self.connected = True
 
 
+class DummyDeviceThatErrorsWhenConnecting(Device):
+    async def connect(self, sim: bool = False):
+        raise IOError("Connection failed")
+
+
+class DummyDeviceThatTimesOutWhenConnecting(Device):
+    async def connect(self, sim: bool = False):
+        await asyncio.Future()
+
+
 class DummyDeviceGroup(Device):
     def __init__(self, name: str) -> None:
         self.child1 = DummyBaseDevice()
@@ -202,6 +213,13 @@ class DummyDeviceGroup(Device):
         self.dict_with_children: DeviceVector[DummyBaseDevice] = DeviceVector(
             {123: DummyBaseDevice()}
         )
+        self.set_name(name)
+
+
+class DummyDeviceGroupThatFailsToConnect(Device):
+    def __init__(self, name: str) -> None:
+        self.child1 = DummyDeviceThatErrorsWhenConnecting()
+        self.child2 = DummyDeviceThatTimesOutWhenConnecting()
         self.set_name(name)
 
 
@@ -244,6 +262,14 @@ async def test_device_with_device_collector():
     assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
     assert parent.child1.connected
     assert parent.dict_with_children[123].connected
+
+
+async def test_device_collector_passes_errors_and_timeouts():
+    with pytest.raises(NotConnected):
+        async with DeviceCollector(sim=False):
+            should_fail = DummyDeviceGroupThatFailsToConnect(  # noqa: F841
+                "should_fail"
+            )
 
 
 async def normal_coroutine(time: float):
