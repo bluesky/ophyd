@@ -300,6 +300,31 @@ async def test_pva_table(ioc: IOC) -> None:
             q.close()
 
 
+async def test_pva_ntdarray(ioc: IOC):
+    if ioc.protocol == "ca":
+        # CA can't do ndarray
+        return
+    initial = np.zeros(4, np.int64)
+    put = np.ones_like(initial)
+
+    descriptor = dict(dtype="array", shape=[4])
+
+    for i, p in [(initial, put), (put, initial)]:
+        backend = await ioc.make_backend(npt.NDArray[np.int64], "ntndarray")
+        # Make a monitor queue that will monitor for updates
+        q = MonitorQueue(backend)
+        try:
+            # Check descriptor
+            assert dict(source=backend.source, **descriptor) == await backend.get_descriptor()
+            # Check initial value
+            await q.assert_updates(pytest.approx(i))
+            # Put to new value and check that
+            await backend.put(p)
+            await q.assert_updates(pytest.approx(p))
+        finally:
+            q.close()
+
+
 async def test_non_existant_errors(ioc: IOC):
     backend = await ioc.make_backend(str, "non-existant", connect=False)
     # Can't use asyncio.wait_for on python3.8 because of

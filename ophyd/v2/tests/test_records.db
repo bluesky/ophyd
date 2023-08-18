@@ -242,3 +242,22 @@ record(waveform, "$(P)table:enum")
         }
     })
 }
+
+record(waveform, "$(P)ntndarray")
+{
+  field(FTVL, "INT64")
+  field(NELM, "4")
+  field(INP, {const:[0, 0, 0, 0]})
+  field(PINI, "YES")
+  info(Q:group, {
+        "$(P)ntndarray":{
+            +id:"epics:nt/NTNDArray:1.0",
+            "value":{
+                +type:"any",
+                +channel:"VAL",
+                +trigger:"*",
+            },
+            "": {+type:"meta", +channel:"VAL"}
+        }
+    })
+}
