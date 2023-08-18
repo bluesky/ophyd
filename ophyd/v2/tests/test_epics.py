@@ -315,7 +315,10 @@ async def test_pva_ntdarray(ioc: IOC):
         q = MonitorQueue(backend)
         try:
             # Check descriptor
-            assert dict(source=backend.source, **descriptor) == await backend.get_descriptor()
+            assert (
+                dict(source=backend.source, **descriptor)
+                == await backend.get_descriptor()
+            )
             # Check initial value
             await q.assert_updates(pytest.approx(i))
             # Put to new value and check that
