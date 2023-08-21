@@ -327,25 +327,24 @@ class DeviceCollector:
 
     async def _wait_for_tasks(self, tasks: Dict[asyncio.Task, str]):
         done, pending = await asyncio.wait(tasks, timeout=self._timeout)
+
+        # Handle all devices where connection has timed out
         if pending:
-            msg = f"{len(pending)} Devices did not connect:"
+            logging.error(f"{len(pending)} Devices did not connect:")
             for t in pending:
                 t.cancel()
                 with suppress(Exception):
                     await t
-                e = t.exception()
-                msg += f"\n  {tasks[t]}: {type(e).__name__}"
-                lines = str(e).splitlines()
-                if len(lines) <= 1:
-                    msg += f": {e}"
-                else:
-                    msg += "".join(f"\n    {line}" for line in lines)
-            logging.error(msg)
+                logging.exception(f"  {tasks[t]}:", exc_info=t.exception())
+
+        # Handle all devices where connection has raised an error before
+        # timeout
         raised = [t for t in done if t.exception()]
         if raised:
             logging.error(f"{len(raised)} Devices raised an error:")
             for t in raised:
                 logging.exception(f"  {tasks[t]}:", exc_info=t.exception())
+
         if pending or raised:
             raise NotConnected("Not all Devices connected")
 
