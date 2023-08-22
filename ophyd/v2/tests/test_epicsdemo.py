@@ -1,6 +1,7 @@
 import asyncio
-from typing import Dict
-from unittest.mock import Mock, call, patch
+import logging
+from typing import Dict, Tuple, Type, cast
+from unittest.mock import Mock, call
 
 import pytest
 from bluesky.protocols import Reading
@@ -130,18 +131,25 @@ async def test_mover_disconncted():
     assert m.name == "mover"
 
 
-async def test_sensor_disconncted():
-    with patch("ophyd.v2.core.logging") as mock_logging:
-        with pytest.raises(NotConnected, match="Not all Devices connected"):
-            async with DeviceCollector(timeout=0.1):
-                s = epicsdemo.Sensor("ca://PRE:", name="sensor")
-        mock_logging.error.assert_called_once_with(
-            """\
-1 Devices did not connect:
-  s: NotConnected
-    value: ca://PRE:Value
-    mode: ca://PRE:Mode"""
-        )
+async def test_sensor_disconncted(caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO)
+    with pytest.raises(NotConnected, match="Not all Devices connected"):
+        async with DeviceCollector(timeout=0.1):
+            s = epicsdemo.Sensor("ca://PRE:", name="sensor")
+
+    # Check log messages
+    assert caplog.records[0].message == "1 Devices did not connect:"
+    assert caplog.records[1].message == "  s:"
+
+    # Check logged exception
+    exception_type, exception, _ = cast(
+        Tuple[Type[Exception], Exception, str],
+        caplog.records[1].exc_info,
+    )
+    assert NotConnected is exception_type
+    assert ("value: ca://PRE:Value", "mode: ca://PRE:Mode") == exception.args
+
+    # Ensure correct device
     assert s.name == "sensor"
 
 
