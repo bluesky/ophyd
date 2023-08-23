@@ -413,8 +413,8 @@ class SynAxis(Device):
         Default is 1.
     """
 
-    readback = Cpt(_ReadbackSignal, value=0, kind="hinted")
-    setpoint = Cpt(_SetpointSignal, value=0, kind="normal")
+    readback = Cpt(_ReadbackSignal, value=0.0, kind="hinted")
+    setpoint = Cpt(_SetpointSignal, value=0.0, kind="normal")
 
     velocity = Cpt(Signal, value=1, kind="config")
     acceleration = Cpt(Signal, value=1, kind="config")
@@ -529,7 +529,7 @@ class SynAxisEmptyHints(SynAxis):
 
 
 class SynAxisNoHints(SynAxis):
-    readback = Cpt(_ReadbackSignal, value=0, kind="omitted")
+    readback = Cpt(_ReadbackSignal, value=0.0, kind="omitted")
 
     @property
     def hints(self):
