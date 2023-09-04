@@ -328,6 +328,17 @@ async def test_pva_ntdarray(ioc: IOC):
             await q.assert_updates(pytest.approx(p))
 
 
+async def test_writing_to_ndarray_raises_typeerror(ioc: IOC):
+    if ioc.protocol == "ca":
+        # CA can't do ndarray
+        return
+
+    backend = await ioc.make_backend(npt.NDArray[np.int64], "ntndarray")
+
+    with pytest.raises(TypeError):
+        await backend.put(np.zeros((6,), dtype=np.int64))
+
+
 async def test_non_existant_errors(ioc: IOC):
     backend = await ioc.make_backend(str, "non-existant", connect=False)
     # Can't use asyncio.wait_for on python3.8 because of
