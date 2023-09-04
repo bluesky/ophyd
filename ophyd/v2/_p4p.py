@@ -58,13 +58,13 @@ class PvaConverter:
 
     def metadata_fields(self) -> List[str]:
         """
-        PVA request string for metadata.
+        Fields to request from PVA for metadata.
         """
         return ["alarm", "timeStamp"]
 
     def value_fields(self) -> List[str]:
         """
-        PVA request string for value only.
+        Fields to request from PVA for the value.
         """
         return ["value"]
 
@@ -260,6 +260,10 @@ class PvaSignalBackend(SignalBackend[T]):
         return self.converter.descriptor(self.source, value)
 
     def _pva_request_string(self, fields: List[str]) -> str:
+        """
+        Converts a list of requested fields into a PVA request string which can be
+        passed to p4p.
+        """
         return f"field({','.join(fields)})"
 
     async def get_reading(self) -> Reading:
@@ -283,8 +287,12 @@ class PvaSignalBackend(SignalBackend[T]):
             async def async_callback(v):
                 callback(self.converter.reading(v), self.converter.value(v))
 
+            request: str = self._pva_request_string(
+                self.converter.value_fields() + self.converter.metadata_fields()
+            )
+
             self.subscription = self.ctxt.monitor(
-                self.read_pv, async_callback, request="field(value,alarm,timeStamp)"
+                self.read_pv, async_callback, request=request
             )
         else:
             if self.subscription:
