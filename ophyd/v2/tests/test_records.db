@@ -243,11 +243,31 @@ record(waveform, "$(P)table:enum")
     })
 }
 
-record(waveform, "$(P)ntndarray")
+record(longout, "$(P)ntndarray:ArraySize0_RBV") {
+    field(VAL, "3")
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)ntndarray":{
+            "dimension[0].size":{+channel:"VAL", +type:"plain", +putorder:0}
+        }
+    })
+}
+
+record(longout, "$(P)ntndarray:ArraySize1_RBV") {
+    field(VAL, "2")
+    field(PINI, "YES")
+    info(Q:group, {
+        "$(P)ntndarray":{
+            "dimension[1].size":{+channel:"VAL", +type:"plain", +putorder:0}
+        }
+    })
+}
+
+record(waveform, "$(P)ntndarray:data")
 {
   field(FTVL, "INT64")
-  field(NELM, "4")
-  field(INP, {const:[0, 0, 0, 0]})
+  field(NELM, "6")
+  field(INP, {const:[0, 0, 0, 0, 0, 0]})
   field(PINI, "YES")
   info(Q:group, {
         "$(P)ntndarray":{
@@ -257,7 +277,7 @@ record(waveform, "$(P)ntndarray")
                 +channel:"VAL",
                 +trigger:"*",
             },
-            "": {+type:"meta", +channel:"VAL"}
+            "": {+type:"meta", +channel:"SEVR"}
         }
     })
 }
