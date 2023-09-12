@@ -1,6 +1,7 @@
 import threading
 import time
 from collections import deque
+from functools import partial
 from logging import LoggerAdapter
 from warnings import warn
 
@@ -756,6 +757,110 @@ class SubscriptionStatus(DeviceStatus):
         # a call to set_exception.
         # Clear callback
         self.device.clear_sub(self.check_value)
+        return super()._handle_failure()
+
+
+class StableSubscriptionStatus(SubscriptionStatus):
+    """
+    Status updated via ``ophyd`` events which will wait for the event to be
+    stable (the callback continuing to return true) until being complete.
+    If the event becomes unstable and then back to stable this timer will
+    be reset.
+
+    Parameters
+    ----------
+    device : obj
+
+    callback : callable
+        Callback that takes event information and returns a boolean. Signature
+        should be ``f(*, old_value, value, **kwargs)``. The arguments
+        old_value and value will be passed in by keyword, so their order does
+        not matter
+
+    stability_time: float
+        How long the event should remain stable for the status to be done
+
+    event_type : str, optional
+        Name of event type to check whether the device has finished succesfully
+
+    timeout : float, optional
+        Maximum timeout to wait to mark the request as a failure
+
+    settle_time : float, optional
+        Time to wait after completion until running callbacks
+
+    run: bool, optional
+        Run the callback now
+    """
+
+    def __init__(
+        self,
+        device,
+        callback,
+        stability_time,
+        event_type=None,
+        timeout=None,
+        settle_time=None,
+        run=True,
+    ):
+        if timeout and stability_time > timeout:
+            raise ValueError(
+                f"Stability time ({stability_time}) must be less than full status timeout ({timeout})"
+            )
+        self._stability_time = stability_time
+        self._stable_timer = threading.Timer(
+            self._stability_time, partial(self._finished, success=True)
+        )
+
+        # Start timeout thread in the background
+        super().__init__(
+            device,
+            callback,
+            event_type,
+            timeout=timeout,
+            settle_time=settle_time,
+            run=run,
+        )
+
+    def check_value(self, *args, **kwargs):
+        """
+        Update the status object
+        """
+        try:
+            success = self.callback(*args, **kwargs)
+
+            # If successfull start a timer for completion
+            if success:
+                if not self._stable_timer.is_alive():
+                    self._stable_timer.start()
+            else:
+                self._stable_timer.cancel()
+                self._stable_timer = threading.Timer(
+                    self._stability_time, partial(self._finished, success=True)
+                )
+
+        # Do not fail silently
+        except Exception as e:
+            self.log.error(e)
+            raise
+
+    def set_finished(self):
+        """
+        Mark as finished successfully.
+
+        This method should generally not be called by the *recipient* of this
+        Status object, but only by the object that created and returned it.
+        """
+        # Cancel timer
+        self._stable_timer.cancel()
+        # Run completion
+        super().set_finished()
+
+    def _handle_failure(self):
+        # This is called whether we fail via the timeout thread or via an
+        # a call to set_exception.
+        # Cancel timer
+        self._stable_timer.cancel()
         return super()._handle_failure()
 
 

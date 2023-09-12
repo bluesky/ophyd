@@ -10,7 +10,7 @@ Added
 
 * Add support for EPICS area detector pvaDriver cam
 * Add status repr to ``WaitTimeoutError`` message
-
+* New ``StableSubscriptionStatus``
 
 Changes
 -------
