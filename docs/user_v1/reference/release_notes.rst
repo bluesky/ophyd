@@ -2,6 +2,23 @@
  Release History
 =================
 
+1.9.0 (2023-09-15)
+==================
+
+Added
+-----
+
+* New ``StableSubscriptionStatus``, client-side dead band
+* Support ``__contains__`` on ``AndStatus``
+
+Fixes
+-----
+
+* In v2, the fallback backends were implemented as functions,
+  can could not be used as Enum members. They are now implemented
+  as classes.
+
+
 1.8.0 (2023-06-26)
 ==================
 
@@ -10,7 +27,6 @@ Added
 
 * Add support for EPICS area detector pvaDriver cam
 * Add status repr to ``WaitTimeoutError`` message
-* New ``StableSubscriptionStatus``
 
 Changes
 -------
