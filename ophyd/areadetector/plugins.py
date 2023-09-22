@@ -824,8 +824,6 @@ class FileBase(Device):
     file_format = Cpt(SignalWithRBV, "FileFormat", kind="config")
     file_name = Cpt(SignalWithRBV, "FileName", string=True, kind="config")
     file_number = Cpt(SignalWithRBV, "FileNumber")
-    file_number_sync = Cpt(EpicsSignal, "FileNumber_Sync")
-    file_number_write = Cpt(EpicsSignal, "FileNumber_write")
     file_path = Cpt(
         EpicsPathSignal, "FilePath", string=True, kind="config", path_semantics="posix"
     )
