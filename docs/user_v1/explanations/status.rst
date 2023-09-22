@@ -184,6 +184,48 @@ Note that ``set_finished``, ``subscribe`` and ``clear_sub`` are gone; they are
 handled automatically, internally. See
 :class:`~ophyd.status.SubscriptionStatus` for additional options.
 
+StableSubscriptionStatus
+------------------------
+
+The :class:`~ophyd.status.StableSubscriptionStatus` is a Status object that is
+similar to the :class:`~ophyd.status.SubscriptionStatus` but is only marked
+finished based on an ophyd event remaining stable for some given time. For
+example, this could be used to ensure a temperature remains in a given range
+for a set amount of time:
+
+.. code:: python
+
+   from ophyd import Device, Component, StableSubscriptionStatus
+
+   class MyTempSensor(Device):
+       ...
+       # The set point and readback of a temperature that
+       # may fluctuate for a second before it can be considered set
+       temp_sp = Component(...)
+       temp_rbv = Component(...)
+       def set(self, set_value):
+           def check_value(*, old_value, value, **kwargs):
+               "Return True when the temperature is in a valid range."
+               return set_value - 0.01 < value < set_value + 0.01
+
+           status = StableSubscriptionStatus(self.temp_rbv, check_value, stability_time=1)
+           self.temp_sp.set(set_value)
+           return status
+
+The timer for ``stability_time`` is started when the callback condition first
+becomes true and stopped if it becomes false. It is then restarted if the
+condition becomes true again. This will continue until either the condition
+stays true for the full ``stability_time``, in which case the Status will succeed,
+or a timeout/exception is reached, in which it will fail.
+
+Note: Before using this status it's recommended you think about implementing
+this check in the server side i.e. as the put callback in the associated IOC.
+This will allow multiple clients to easily share the same logic. However, this
+client-side status can be useful in cases where logic may need to be modified
+often or where different clients may have varying opinions on what stability
+means.
+
+
 Partial Progress Updates
 ------------------------
 

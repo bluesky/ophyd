@@ -4,7 +4,13 @@ from unittest.mock import Mock
 import pytest
 
 from ophyd import Device
-from ophyd.status import MoveStatus, StatusBase, SubscriptionStatus, UseNewProperty
+from ophyd.status import (
+    MoveStatus,
+    StableSubscriptionStatus,
+    StatusBase,
+    SubscriptionStatus,
+    UseNewProperty,
+)
 from ophyd.utils import (
     InvalidState,
     StatusTimeoutError,
@@ -136,6 +142,82 @@ def test_subscription_status():
     assert status.done and status.success
 
 
+def test_given_stability_time_greater_than_timeout_then_exception_on_initialisation():
+    # Arbitrary device
+    d = Device("Tst:Prefix", name="test")
+
+    with pytest.raises(ValueError):
+        StableSubscriptionStatus(
+            d, Mock(), stability_time=2, timeout=1, event_type=d.SUB_ACQ_DONE
+        )
+
+
+def test_given_callback_stays_stable_then_stable_status_eventual_returns_done():
+    # Arbitrary device
+    d = Device("Tst:Prefix", name="test")
+    # Mock callback
+    m = Mock()
+
+    # Full fake callback signature
+    def cb(*args, done=False, **kwargs):
+        # Run mock callback
+        m()
+        # Return finished or not
+        return done
+
+    status = StableSubscriptionStatus(d, cb, 0.2, event_type=d.SUB_ACQ_DONE)
+
+    # Run callbacks that return complete but status waits until stable
+    d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert m.called
+    assert not status.done and not status.success
+
+    time.sleep(0.15)
+    assert status.done and status.success
+
+
+def test_given_callback_fluctuates_and_stabalises_then_stable_status_eventual_returns_done():
+    # Arbitrary device
+    d = Device("Tst:Prefix", name="test")
+    # Mock callback
+    m = Mock()
+
+    # Full fake callback signature
+    def cb(*args, done=False, **kwargs):
+        # Run mock callback
+        m()
+        # Return finished or not
+        return done
+
+    status = StableSubscriptionStatus(d, cb, 0.2, event_type=d.SUB_ACQ_DONE)
+
+    # First start as looking stable
+    d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert m.called
+    assert not status.done and not status.success
+
+    # Then become unstable
+    d._run_subs(sub_type=d.SUB_ACQ_DONE, done=False)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert m.called
+    assert not status.done and not status.success
+
+    # Still not successful
+    time.sleep(0.15)
+    assert not status.done and not status.success
+
+    # Now test properly stable
+    d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
+    time.sleep(0.1)  # Wait for callbacks to run.
+    assert m.called
+    assert not status.done and not status.success
+
+    time.sleep(0.15)
+    assert status.done and status.success
+
+
 def test_and():
     st1 = StatusBase()
     st2 = StatusBase()
@@ -143,6 +225,17 @@ def test_and():
     # make sure deep recursion works
     st4 = st1 & st3
     st5 = st3 & st4
+
+    assert st1 in st3
+    assert st1 in st4
+    assert st1 in st5
+    assert st2 in st4
+    assert st2 in st5
+
+    unused_status = StatusBase()
+    assert unused_status not in st3
+    unused_status.set_finished()
+
     state1, cb1 = _setup_state_and_cb()
     state2, cb2 = _setup_state_and_cb()
     state3, cb3 = _setup_state_and_cb()
