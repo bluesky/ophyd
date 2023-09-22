@@ -1514,6 +1514,7 @@ class FakeEpicsPathSignal(FakeEpicsSignal):
 def update_FakeEpicsMotor(FakeEpicsMotor: EpicsMotor):
     from functools import partial
     from unittest.mock import DEFAULT, MagicMock
+
     from .status import Status
 
     def side_effect_put_w_return(obj_from, obj_to, *args, **kwargs):

@@ -1,9 +1,11 @@
-from ophyd.sim import make_fake_device
-from ophyd.epics_motor import EpicsMotor
-from bluesky.run_engine import RunEngine
-import pytest
-import bluesky.plan_stubs as bps
 from unittest.mock import MagicMock
+
+import bluesky.plan_stubs as bps
+import pytest
+from bluesky.run_engine import RunEngine
+
+from ophyd.epics_motor import EpicsMotor
+from ophyd.sim import make_fake_device
 
 
 @pytest.fixture
