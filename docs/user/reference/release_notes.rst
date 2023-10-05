@@ -1109,7 +1109,7 @@ New Features
 * Add ``pivot`` kwarg to ``MonitorFlyerMixin`` to optionally provide a
   single event as a time series rather than a time series of many
   events.
-* Add ``SignalPositionerMixin`` to turn a `Signal` into a positioner.
+* Add ``SignalPositionerMixin`` to turn a ``Signal`` into a positioner.
 * Add classes for PCO edge
 
 Bug Fixes
