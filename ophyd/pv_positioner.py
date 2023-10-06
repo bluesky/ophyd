@@ -334,12 +334,12 @@ class PVPositionerComparator(PVPositioner):
     The comparison function takes two arguments, readback and setpoint,
     returning True if we are considered done or False if we are not.
 
-    This class is intended to support :py:class:`ophyd.pv_positioner.PVPositionerIsClose`, but exists to
+    This class is intended to support `PVPositionerIsClose`, but exists to
     allow some flexibility if we want to use other metrics for deciding if
     the PVPositioner is done.
 
     Internally, this will subscribe to both the ``setpoint`` and ``readback``
-    signals, updating `done` as appropriate.
+    signals, updating ``done`` as appropriate.
 
     Parameters
     ----------
