@@ -14,11 +14,14 @@ The documentation is split into 2 sections:
         :link: user/index
         :link-type: doc
 
-        The User Guide v1 contains documentation on how to install and use ophyd's original v1 API.
+        The User Guide contains documentation on how to install and use ophyd's API.
 
-        New users should use this API until v2 has stabilized.
+        New users should use this API until `ophyd-async`_ has stabilised.
 
 .. toctree::
     :hidden:
 
     user/index
+
+
+.. _ophyd-async: https://blueskyproject.io/ophyd-async/
