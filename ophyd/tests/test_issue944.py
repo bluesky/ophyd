@@ -19,7 +19,7 @@ pv_base = motor_recs[0]
 def run_test_code(testdir, code):
     testdir.makepyfile(code)
     result = testdir.runpytest_subprocess()
-    result.stdout.fnmatch_lines(["* 1 passed in *"])
+    result.stdout.fnmatch_lines(["* 1 passed*"])
 
 
 def test_local_without_defaults_no_string(testdir):
