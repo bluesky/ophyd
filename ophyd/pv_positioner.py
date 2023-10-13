@@ -339,7 +339,7 @@ class PVPositionerComparator(PVPositioner):
     the PVPositioner is done.
 
     Internally, this will subscribe to both the ``setpoint`` and ``readback``
-    signals, updating `done` as appropriate.
+    signals, updating ``done`` as appropriate.
 
     Parameters
     ----------
@@ -438,7 +438,7 @@ class PVPositionerIsClose(PVPositionerComparator):
 
     Effectively, this will treat our move as complete if the readback is
     sufficiently close to the setpoint. This is generically helpful for
-    PV positioners that don't have a `done` signal built into the hardware.
+    PV positioners that don't have a ``done`` signal built into the hardware.
 
     The arguments atol and rtol can be set as class attributes or passed as
     initialization arguments.

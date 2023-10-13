@@ -11,7 +11,6 @@ log_format = "%(asctime)s,%(msecs)03d %(levelname)s (%(threadName)s) %(message)s
 log_date_format = "%H:%M:%S"
 addopts = """
     --tb=native -vv --strict-markers --doctest-modules --doctest-glob="*.rst"
-    --ignore=docs/user_v2/examples
     --cov=ophyd --cov-report term --cov-report xml:cov.xml
 """
 markers = [

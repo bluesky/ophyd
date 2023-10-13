@@ -8,26 +8,20 @@ How the documentation is structured
 
 The documentation is split into 2 sections:
 
-.. grid:: 2
+.. grid:: 1
 
     .. grid-item-card:: :material-regular:`person;4em`
-        :link: user_v1/index
+        :link: user/index
         :link-type: doc
 
-        The User Guide v1 contains documentation on how to install and use ophyd's original v1 API.
+        The User Guide contains documentation on how to install and use ophyd's API.
 
-        New users should use this API until v2 has stabilized.
-
-    .. grid-item-card:: :material-regular:`person_add;4em`
-        :link: user_v2/index
-        :link-type: doc
-
-        The User Guide v2 contains documentation on how to use ophyd's provisional v2 API.
-
-        Developers may use this to develop v2 Devices against, but the API is subject to change
+        New users should use this API until `ophyd-async`_ has stabilised.
 
 .. toctree::
     :hidden:
 
-    user_v1/index
-    user_v2/index
+    user/index
+
+
+.. _ophyd-async: https://blueskyproject.io/ophyd-async/

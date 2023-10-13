@@ -1,5 +1,5 @@
-User Guide v1
-=============
+User Guide
+==========
 
 Documentation is split into four categories, also accessible from links in the
 side-bar.
