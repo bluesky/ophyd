@@ -9,6 +9,8 @@ from .cam import *  # noqa: F401, F402, E402, F403
 from .common_plugins import *  # noqa: F401, F402, E402, F403
 from .detectors import *  # noqa: F401, F402, E402, F403
 from .paths import EpicsPathSignal  # noqa: F401, F402, E402, F403
+from .detectors_orchestrators import *
+from .plugins_orchestrators import *
 
 # NOTE: the following imports are here for backward compatibility with
 # previous ophyd versions. This does not represent all available plugins
