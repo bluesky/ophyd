@@ -1,9 +1,10 @@
 import asyncio
+import logging
 import re
 import time
 import traceback
 from enum import Enum
-from typing import Any, Callable, Sequence, Tuple, Type
+from typing import Any, Callable, Sequence, Tuple, Type, cast
 from unittest.mock import Mock
 
 import bluesky.plan_stubs as bps
@@ -18,10 +19,12 @@ from ophyd.v2.core import (
     Device,
     DeviceCollector,
     DeviceVector,
+    NotConnected,
     Signal,
     SignalBackend,
     SignalRW,
     SimSignalBackend,
+    StandardReadable,
     T,
     get_device_children,
     set_and_wait_for_value,
@@ -195,6 +198,19 @@ class DummyBaseDevice(Device):
         self.connected = True
 
 
+class DummyDeviceThatErrorsWhenConnecting(Device):
+    async def connect(self, sim: bool = False):
+        raise IOError("Connection failed")
+
+
+class DummyDeviceThatTimesOutWhenConnecting(StandardReadable):
+    async def connect(self, sim: bool = False):
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            raise NotConnected("source: foo")
+
+
 class DummyDeviceGroup(Device):
     def __init__(self, name: str) -> None:
         self.child1 = DummyBaseDevice()
@@ -202,6 +218,25 @@ class DummyDeviceGroup(Device):
         self.dict_with_children: DeviceVector[DummyBaseDevice] = DeviceVector(
             {123: DummyBaseDevice()}
         )
+        self.set_name(name)
+
+
+class DummyDeviceGroupThatTimesOut(Device):
+    def __init__(self, name: str) -> None:
+        self.child1 = DummyDeviceThatTimesOutWhenConnecting()
+        self.set_name(name)
+
+
+class DummyDeviceGroupThatErrors(Device):
+    def __init__(self, name: str) -> None:
+        self.child1 = DummyDeviceThatErrorsWhenConnecting()
+        self.set_name(name)
+
+
+class DummyDeviceGroupThatErrorsAndTimesOut(Device):
+    def __init__(self, name: str) -> None:
+        self.child1 = DummyDeviceThatErrorsWhenConnecting()
+        self.child2 = DummyDeviceThatTimesOutWhenConnecting()
         self.set_name(name)
 
 
@@ -244,6 +279,131 @@ async def test_device_with_device_collector():
     assert parent.dict_with_children[123].name == "parent-dict_with_children-123"
     assert parent.child1.connected
     assert parent.dict_with_children[123].connected
+
+
+@pytest.mark.parametrize(
+    "device_constructor",
+    [
+        DummyDeviceThatErrorsWhenConnecting,
+        DummyDeviceThatTimesOutWhenConnecting,
+        DummyDeviceGroupThatErrors,
+        DummyDeviceGroupThatTimesOut,
+        DummyDeviceGroupThatErrorsAndTimesOut,
+    ],
+)
+async def test_device_collector_propagates_errors_and_timeouts(
+    device_constructor: Callable[[str], Device]
+):
+    await _assert_failing_device_does_not_connect(device_constructor)
+
+
+@pytest.mark.parametrize(
+    "device_constructor_1,device_constructor_2",
+    [
+        (DummyDeviceThatErrorsWhenConnecting, DummyDeviceThatTimesOutWhenConnecting),
+        (DummyDeviceGroupThatErrors, DummyDeviceGroupThatTimesOut),
+        (DummyDeviceGroupThatErrors, DummyDeviceGroupThatErrorsAndTimesOut),
+        (DummyDeviceThatErrorsWhenConnecting, DummyDeviceGroupThatErrors),
+    ],
+)
+async def test_device_collector_propagates_errors_and_timeouts_from_multiple_devices(
+    device_constructor_1: Callable[[str], Device],
+    device_constructor_2: Callable[[str], Device],
+):
+    await _assert_failing_devices_do_not_connect(
+        device_constructor_1,
+        device_constructor_2,
+    )
+
+
+async def test_device_collector_logs_exceptions_for_raised_errors(
+    caplog: pytest.LogCaptureFixture,
+):
+    caplog.set_level(logging.INFO)
+    await _assert_failing_device_does_not_connect(DummyDeviceGroupThatErrors)
+    assert caplog.records[0].message == "1 Devices raised an error:"
+    assert caplog.records[1].message == "  should_fail:"
+    assert_exception_type_and_message(
+        caplog.records[1],
+        OSError,
+        "Connection failed",
+    )
+
+
+async def test_device_collector_logs_exceptions_for_timeouts(
+    caplog: pytest.LogCaptureFixture,
+):
+    caplog.set_level(logging.INFO)
+    await _assert_failing_device_does_not_connect(DummyDeviceGroupThatTimesOut)
+    assert caplog.records[0].message == "1 Devices did not connect:"
+    assert caplog.records[1].message == "  should_fail:"
+    assert_exception_type_and_message(
+        caplog.records[1],
+        NotConnected,
+        "child1: source: foo",
+    )
+
+
+async def test_device_collector_logs_exceptions_for_multiple_devices(
+    caplog: pytest.LogCaptureFixture,
+):
+    caplog.set_level(logging.INFO)
+    await _assert_failing_devices_do_not_connect(
+        DummyDeviceGroupThatErrorsAndTimesOut, DummyDeviceGroupThatErrors
+    )
+    assert caplog.records[0].message == "1 Devices did not connect:"
+    assert caplog.records[1].message == "  should_fail_1:"
+    assert_exception_type_and_message(
+        caplog.records[1],
+        OSError,
+        "Connection failed",
+    )
+    assert caplog.records[2].message == "1 Devices raised an error:"
+    assert caplog.records[3].message == "  should_fail_2:"
+    assert_exception_type_and_message(
+        caplog.records[3],
+        OSError,
+        "Connection failed",
+    )
+
+
+async def _assert_failing_device_does_not_connect(
+    device_constructor: Callable[[str], Device]
+) -> pytest.ExceptionInfo[NotConnected]:
+    with pytest.raises(NotConnected) as excepton_info:
+        async with DeviceCollector(
+            sim=False,
+            timeout=1.0,
+        ):
+            should_fail = device_constructor("should_fail")  # noqa: F841
+    return excepton_info
+
+
+async def _assert_failing_devices_do_not_connect(
+    device_constructor_1: Callable[[str], Device],
+    device_constructor_2: Callable[[str], Device],
+) -> pytest.ExceptionInfo[NotConnected]:
+    with pytest.raises(NotConnected) as excepton_info:
+        async with DeviceCollector(
+            sim=False,
+            timeout=1.0,
+        ):
+            should_fail_1 = device_constructor_1("should_fail_1")  # noqa: F841
+            should_fail_2 = device_constructor_2("should_fail_2")  # noqa: F841
+    return excepton_info
+
+
+def assert_exception_type_and_message(
+    record: logging.LogRecord,
+    expected_type: Type[Exception],
+    expected_message: str,
+):
+    exception_type, exception, _ = cast(
+        Tuple[Type[Exception], Exception, str],
+        record.exc_info,
+    )
+    assert expected_type is exception_type
+    assert (expected_message,) == exception.args
 
 
 async def normal_coroutine(time: float):
