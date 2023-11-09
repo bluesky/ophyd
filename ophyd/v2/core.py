@@ -23,6 +23,7 @@ from typing import (
     Generator,
     Generic,
     Iterable,
+    Iterator,
     List,
     Optional,
     Sequence,
@@ -155,6 +156,11 @@ class Device(HasName):
         """Return the name of the Device"""
         return self._name
 
+    def children(self) -> Iterator[Tuple[str, Device]]:
+        for attr_name, attr in self.__dict__.items():
+            if attr_name != "parent" and isinstance(attr, Device):
+                yield attr_name, attr
+
     def set_name(self, name: str):
         """Set ``self.name=name`` and each ``self.child.name=name+"-child"``.
 
@@ -164,7 +170,10 @@ class Device(HasName):
             New name to set
         """
         self._name = name
-        name_children(self, name)
+        for attr_name, child in self.children():
+            child_name = f"{name}-{attr_name.rstrip('_')}" if name else ""
+            child.set_name(child_name)
+            child.parent = self
 
     async def connect(self, sim: bool = False):
         """Connect self and all child Devices.
@@ -174,7 +183,11 @@ class Device(HasName):
         sim:
             If True then connect in simulation mode.
         """
-        await connect_children(self, sim)
+        coros = {
+            name: child_device.connect(sim) for name, child_device in self.children()
+        }
+        if coros:
+            await wait_for_connection(**coros)
 
 
 class NotConnected(Exception):
@@ -215,37 +228,6 @@ async def wait_for_connection(**coros: Awaitable[None]):
         # Wait for everything to foreground the exceptions
         for f in list(done) + list(pending):
             await f
-
-
-async def connect_children(device: Device, sim: bool):
-    """Call ``child.connect(sim)`` on all child devices in parallel.
-
-    Typically used to implement `Device.connect` like this::
-
-        async def connect(self, sim=False):
-            await connect_children(self, sim)
-    """
-
-    coros = {
-        name: child_device.connect(sim)
-        for name, child_device in get_device_children(device)
-    }
-    if coros:
-        await wait_for_connection(**coros)
-
-
-def name_children(device: Device, name: str):
-    """Call ``child.set_name(child_name)`` on all child devices in series."""
-    for attr_name, child in get_device_children(device):
-        child_name = f"{name}-{attr_name.rstrip('_')}" if name else ""
-        child.set_name(child_name)
-        child.parent = device
-
-
-def get_device_children(device: Device) -> Generator[Tuple[str, Device], None, None]:
-    for attr_name, attr in device.__dict__.items():
-        if attr_name != "parent" and isinstance(attr, Device):
-            yield attr_name, attr
 
 
 class DeviceCollector:
@@ -981,15 +963,10 @@ VT = TypeVar("VT", bound=Device)
 
 
 class DeviceVector(Dict[int, VT], Device):
-    def set_name(self, parent_name: str):
-        self._name = parent_name
-        for name, device in self.items():
-            device.set_name(f"{parent_name}-{name}")
-            device.parent = self
-
-    async def connect(self, sim: bool = False):
-        coros = {str(k): d.connect(sim) for k, d in self.items()}
-        await wait_for_connection(**coros)
+    def children(self) -> Generator[Tuple[str, Device], None, None]:
+        for attr_name, attr in self.items():
+            if isinstance(attr, Device):
+                yield str(attr_name), attr
 
 
 def get_unique(values: Dict[str, T], types: str) -> T:
