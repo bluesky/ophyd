@@ -7,7 +7,7 @@ one exposed by the hardware. One important use case is HKL scanning.
 
 ```py
 
-from ophyd.psuedopos import (
+from ophyd.pseudopos import (
     PseudoPositioner,
     PseudoSingle,
     pseudo_position_argument,
