@@ -39,7 +39,7 @@ customize ``stage_sigs`` in the device's ``__init__`` method, like so:
 .. code:: python
 
     class MyMotor(EpicsMotor):
-        def __init__(*args, **kwargs):
+        def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.stage_sigs[self.user_offset] = 5
 
