@@ -768,6 +768,29 @@ def test_file_store_paths_can_change(mock_now: Mock) -> None:
         check_file_store_paths(file_store, test_case)
 
 
+def test_no_relative_root(mock_now: Mock) -> None:
+    fs = DummyFS()
+
+    file_store = DummyFileStorePlugin(
+        name="test_file_store",
+        write_path_template="",
+        read_path_template="",
+        root=None,
+        reg=fs,
+    )
+    with pytest.raises(ValueError, match="The root part of the path must be absolute"):
+        file_store.reg_root = "."
+
+    with pytest.raises(ValueError, match="The root part of the path must be absolute"):
+        file_store = DummyFileStorePlugin(
+            name="test_file_store",
+            write_path_template="",
+            read_path_template="",
+            root=".",
+            reg=fs,
+        )
+
+
 def check_file_store_paths(
     file_store: DummyFileStorePlugin,
     test_case: FileStorePathTestCase,

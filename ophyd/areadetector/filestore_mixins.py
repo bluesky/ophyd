@@ -225,6 +225,9 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def reg_root(self, val):
         if val is None:
             val = os.path.sep
+        root = PurePath(val)
+        if not root.is_absolute():
+            raise ValueError(f"The root part of the path must be absolute not {root=}.")
         self._root = PurePath(val)
 
     @property
