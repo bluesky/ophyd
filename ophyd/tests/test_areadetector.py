@@ -49,6 +49,7 @@ from ophyd.areadetector.plugins import (  # FilePlugin
 from ophyd.areadetector.util import stub_templates
 from ophyd.device import Component as Cpt
 from ophyd.signal import Signal
+from ophyd.sim import make_fake_device
 from ophyd.utils.paths import make_dir_tree
 
 logger = logging.getLogger(__name__)
@@ -951,3 +952,27 @@ def test_default_configuration_smoke(ad_prefix, cleanup):
     {n: getattr(d, n).read_configuration() for n in d.component_names}
     {n: getattr(d, n).describe_configuration() for n in d.component_names}
     d.unstage()
+
+
+def test_ADTriggerStatus_gives_correct_fraction():
+    class MyDetector(SingleTrigger, SimDetector):
+        pass
+
+    FakeMyDetector = make_fake_device(MyDetector)
+
+    det: MyDetector = FakeMyDetector("", name="test")
+    det.cam.num_images.put(5)
+    det.cam.array_counter.put(0)
+
+    det.stage()
+    st = det.trigger()
+
+    watcher = Mock()
+    st.watch(watcher)
+
+    det.cam.array_counter.put(1)
+    mock_called_kwargs = watcher.call_args[1]
+    assert mock_called_kwargs["initial"] == 0
+    assert mock_called_kwargs["target"] == 5
+    assert mock_called_kwargs["current"] == 1
+    assert mock_called_kwargs["fraction"] == 4 / 5

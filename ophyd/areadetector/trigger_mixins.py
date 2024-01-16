@@ -56,9 +56,9 @@ class ADTriggerStatus(DeviceStatus):
         initial = 0
         time_elapsed = ttime.time() - self.start_ts
         try:
-            fraction = (current - initial) / (target - initial)
+            fraction = 1 - (current - initial) / (target - initial)
         except ZeroDivisionError:
-            fraction = 1
+            fraction = 0
         except Exception:
             fraction = None
             time_remaining = None
