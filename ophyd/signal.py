@@ -915,13 +915,14 @@ class EpicsSignalBase(Signal):
         timeout=DEFAULT_TIMEOUT,
         write_timeout=DEFAULT_WRITE_TIMEOUT,
         connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
+        fix_byteorder=True,
         **kwargs,
     ):
         self._metadata_lock = threading.RLock()
         self._read_pv = None
         self._read_pvname = read_pv
         self._string = bool(string)
-
+        self._fixbyteorder = fix_byteorder
         self._signal_is_ready = threading.Event()
         self._first_connection = True
 
@@ -1422,6 +1423,8 @@ class EpicsSignalBase(Signal):
         "Cast the given value according to the data type of this EpicsSignal"
         if self._string:
             value = waveform_to_string(value)
+        if self._fixbyteorder and isinstance(value, np.ndarray) and value.dtype.byteorder == ">":
+            value = value.byteswap().newbyteorder()
 
         return value
 
