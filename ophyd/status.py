@@ -114,10 +114,13 @@ class StatusBase:
                 DeprecationWarning,
             )
 
-        self._callback_thread = threading.Thread(
-            target=self._run_callbacks, daemon=True, name=self._tname
-        )
-        self._callback_thread.start()
+        if timeout is None:
+            self._callback_thread = None
+        else:
+            self._callback_thread = threading.Thread(
+                target=self._run_callbacks, daemon=True, name=self._tname
+            )
+            self._callback_thread.start()
 
         if done:
             if success:
@@ -326,6 +329,9 @@ class StatusBase:
             self._exception = exc
             self._settled_event.set()
 
+        if self._callback_thread is None:
+            self._run_callbacks()
+
     def set_finished(self):
         """
         Mark as finished successfully.
@@ -344,9 +350,20 @@ class StatusBase:
         # same thread. This just sets an Event, either from this thread (the
         # one calling set_finished) or the thread created below.
         if self.settle_time > 0:
-            threading.Timer(self.settle_time, self._settled_event.set).start()
+            if self._callback_thread is None:
+
+                def settle_done():
+                    self._settled_event.set()
+                    self._run_callbacks()
+
+                threading.Timer(self.settle_time, settle_done).start()
+            else:
+                threading.Timer(self.settle_time, self._settled_event.set).start()
         else:
             self._settled_event.set()
+
+            if self._callback_thread is None:
+                self._run_callbacks()
 
     def _finished(self, success=True, **kwargs):
         """
