@@ -24,7 +24,12 @@ class ADTriggerStatus(DeviceStatus):
     A Status for AreaDetector triggers
 
     A special status object that notifies watches (progress bars)
-    based on comparing device.cam.array_counter to  device.cam.num_images.
+    based on comparing the two signal values counter_signal and
+    target_signal passed to the object instance at __init__. Once the
+    value of counter_signal reaches target_signal, the operation is considered done. 
+    If these two signals are passed in as None or not passed in at all (default),
+    then the standard device.cam.array_counter signal is used as the 
+    progress indicator, and device.cam.num_images is used as the target.
     """
 
     def __init__(self, *args, counter_signal = None, target_signal = None, **kwargs):
