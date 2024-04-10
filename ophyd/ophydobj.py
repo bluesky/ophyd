@@ -348,7 +348,7 @@ class OphydObject:
         else:
             return self._name
 
-    @name.setter
+    @long_name.setter
     def long_name(self, name):
         self._long_name = name
 
