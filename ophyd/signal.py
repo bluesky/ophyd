@@ -134,10 +134,11 @@ class Signal(OphydObject):
         metadata=None,
         cl=None,
         attr_name="",
+        long_name=None,
     ):
 
         super().__init__(
-            name=name, parent=parent, kind=kind, labels=labels, attr_name=attr_name
+            name=name, parent=parent, kind=kind, labels=labels, attr_name=attr_name, long_name=long_name
         )
 
         if cl is None:
