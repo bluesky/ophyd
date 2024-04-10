@@ -445,6 +445,29 @@ def test_status_timeout_with_settle_time():
         st.wait(2)
 
 
+def test_status_timeout_infinite_with_settle_time():
+    """
+    When no timeout is specified, a "_run_callbacks" thread is not started,
+    it is called upon termination of the status ("set_finished" or exception).
+    However, if settle_time is given the callbacks will be called only
+    after the settle time has expired (from a timer thread).
+    """
+    cb = Mock()
+    st = StatusBase(settle_time=1)
+    st.add_callback(cb)
+
+    # there is no timeout, explicitely set finished ;
+    # the callback should be called after "settle_time"
+    st.set_finished()
+
+    assert cb.call_count == 0
+    with pytest.raises(WaitTimeoutError):
+        # not ready yet
+        st.wait(0.5)
+    st.wait(0.6)
+    cb.assert_called_once()
+
+
 def test_external_timeout():
     """
     A TimeoutError is raised, not StatusTimeoutError or WaitTimeoutError,
