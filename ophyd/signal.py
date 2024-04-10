@@ -1423,7 +1423,11 @@ class EpicsSignalBase(Signal):
         "Cast the given value according to the data type of this EpicsSignal"
         if self._string:
             value = waveform_to_string(value)
-        if self._fixbyteorder and isinstance(value, np.ndarray) and value.dtype.byteorder == ">":
+        if (
+            self._fixbyteorder
+            and isinstance(value, np.ndarray)
+            and value.dtype.byteorder == ">"
+        ):
             value = value.byteswap().newbyteorder()
 
         return value
