@@ -36,7 +36,6 @@ try:
         ...
 
 except ImportError:
-
     IFBase = IntFlag
 
 
