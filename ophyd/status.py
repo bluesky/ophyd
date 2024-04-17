@@ -6,6 +6,7 @@ from logging import LoggerAdapter
 from warnings import warn
 
 import numpy as np
+from opentelemetry import trace
 
 from .log import logger
 from .utils import (
@@ -15,6 +16,8 @@ from .utils import (
     WaitTimeoutError,
     adapt_old_callback_signature,
 )
+
+tracer = trace.get_tracer(__name__)
 
 
 class UseNewProperty(RuntimeError):
@@ -80,6 +83,7 @@ class StatusBase:
 
     def __init__(self, *, timeout=None, settle_time=0, done=None, success=None):
         super().__init__()
+        self._tracing_span = tracer.start_span("ophyd status")
         self._tname = None
         self._lock = threading.RLock()
         self._event = threading.Event()  # state associated with done-ness
@@ -133,6 +137,9 @@ class StatusBase:
                     "at __init__ time."
                 )
                 self.set_exception(exc)
+
+        self._tracing_span.set_attribute("type", self.__class__.__name__)
+        self._tracing_span.set_attribute("object_repr", repr(self))
 
     @property
     def timeout(self):
@@ -278,6 +285,7 @@ class StatusBase:
                     self,
                 )
         self._callbacks.clear()
+        self._tracing_span.end()
 
     def set_exception(self, exc):
         """
@@ -329,6 +337,7 @@ class StatusBase:
             self._exception = exc
             self._settled_event.set()
 
+        self._tracing_span.end()
         if self._callback_thread is None:
             self._run_callbacks()
 
@@ -349,6 +358,7 @@ class StatusBase:
         # Note that in either case, the callbacks themselves are run from the
         # same thread. This just sets an Event, either from this thread (the
         # one calling set_finished) or the thread created below.
+        self._tracing_span.end()
         if self.settle_time > 0:
             if self._callback_thread is None:
 
@@ -420,6 +430,7 @@ class StatusBase:
             raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
         return self._exception
 
+    @tracer.start_as_current_span("ophyd status wait")
     def wait(self, timeout=None):
         """
         Block until the action completes.
@@ -446,6 +457,7 @@ class StatusBase:
             indicates that the action itself raised ``TimeoutError``, distinct
             from ``WaitTimeoutError`` above.
         """
+        trace.get_current_span().set_attribute("object_repr", repr(self))
         if not self._event.wait(timeout=timeout):
             raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
         if self._exception is not None:
@@ -546,9 +558,11 @@ class AndStatus(StatusBase):
     "a Status that has composes two other Status objects using logical and"
 
     def __init__(self, left, right, **kwargs):
-        super().__init__(**kwargs)
         self.left = left
         self.right = right
+        super().__init__(**kwargs)
+        self._tracing_span.set_attribute("left", repr(self.left))
+        self._tracing_span.set_attribute("right", repr(self.right))
 
         def inner(status):
             with self._lock:
@@ -628,6 +642,11 @@ class Status(StatusBase):
         super().__init__(
             timeout=timeout, settle_time=settle_time, done=done, success=success
         )
+        (
+            self._tracing_span.set_attribute("obj", obj)
+            if obj
+            else self._tracing_span.set_attribute("no_obj_given", True)
+        )
 
     def __str__(self):
         return (
@@ -664,6 +683,7 @@ class DeviceStatus(StatusBase):
         self.device = device
         self._watchers = []
         super().__init__(**kwargs)
+        self._tracing_span.set_attribute("device", repr(self.device))
 
     def _handle_failure(self):
         super()._handle_failure()
@@ -671,10 +691,11 @@ class DeviceStatus(StatusBase):
         self.device.stop()
 
     def __str__(self):
+        device_name = self.device.name if self.device else "None"
         return (
-            "{0}(device={1.device.name}, done={1.done}, "
+            "{0}(device={2}, done={1.done}, "
             "success={1.success})"
-            "".format(self.__class__.__name__, self)
+            "".format(self.__class__.__name__, self, device_name)
         )
 
     def watch(self, func):
