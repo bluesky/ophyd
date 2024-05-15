@@ -69,7 +69,7 @@ jobs:
           source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
 
       - name: Test with pytest
-        run: pytest -k "${TEST_CL} or /v2/"
+        run: pytest -k "${TEST_CL}"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
