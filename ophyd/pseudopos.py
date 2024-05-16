@@ -545,7 +545,7 @@ class PseudoPositioner(Device, SoftPositioner):
     def _get_real_positioners(cls):
         """Inspect the components and find the real positioners
 
-        All `Positioner` components which are not `PseudoSingle`s will be
+        All ``Positioner`` components which are not ``PseudoSingle`` objects will be
         returned, by default.
 
         The built-in mechanism to override the list of real positioners on a
