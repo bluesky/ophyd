@@ -166,7 +166,7 @@ class PseudoSingle(Device, SoftPositioner):
     def move(self, pos, **kwargs):
         """Move this pseudo axis to a specific position.
 
-        See `PseudoPositioner.move_single` for more information.
+        See ``PseudoPositioner.move_single`` for more information.
 
         Parameters
         ----------
@@ -522,11 +522,11 @@ class PseudoPositioner(Device, SoftPositioner):
     def _get_pseudo_positioners(cls):
         """Inspect the components and find the pseudo positioners
 
-        All `PseudoSingle` (and subclassed) components will be returned, by
+        All ``PseudoSingle`` (and subclassed) components will be returned, by
         default.
 
         The built-in mechanism to override the list of pseudo positioners on a
-        PseudoPositioner is to define '_pseudo' on the class-level.  It should
+        ``PseudoPositioner`` is to define ``_pseudo`` on the class-level.  It should
         be a list of attribute names.
 
         Yields
@@ -549,7 +549,7 @@ class PseudoPositioner(Device, SoftPositioner):
         returned, by default.
 
         The built-in mechanism to override the list of real positioners on a
-        PseudoPositioner is to define '_real' on the class-level.  It should be
+        ``PseudoPositioner`` is to define ``_real`` on the class-level.  It should be
         a list of attribute names. This allows you to group real motors
         logically on the device but not have them included in motions or
         calculations.
@@ -748,7 +748,7 @@ class PseudoPositioner(Device, SoftPositioner):
         """Callback: A single real positioner has finished moving.
 
         Used for asynchronous motion, if all have finished moving then fire a
-        callback (via `Positioner._done_moving`)
+        callback (via ``Positioner._done_moving``)
         """
         with self._finished_lock:
             real = obj
@@ -765,7 +765,7 @@ class PseudoPositioner(Device, SoftPositioner):
 
         All other positioners will use their current setpoint/target value, if
         available. Failing that, their current readback value will be used (see
-        `PseudoSingle.sync` and `PseudoSingle.target`).
+        ``PseudoSingle.sync`` and ``PseudoSingle.target``).
 
         Parameters
         ----------
@@ -878,7 +878,7 @@ class PseudoPositioner(Device, SoftPositioner):
         Raises
         ------
         TimeoutError
-            When motion takes longer than `timeout`
+            When motion takes longer than ``timeout``
         ValueError
             On invalid positions
         RuntimeError
@@ -902,7 +902,7 @@ class PseudoPositioner(Device, SoftPositioner):
         Parameters
         ----------
         position : PseudoPosition
-            Position to move to (already verified by `check_value`)
+            Position to move to (already verified by ``check_value``)
         status : MoveStatus
             Status object created by PositionerBase.move()
         """
