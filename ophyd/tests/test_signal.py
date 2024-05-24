@@ -398,9 +398,7 @@ def test_describe(bool_enum_signal):
     )
     desc = sig.describe()["my_pv"]
     assert desc["dtype"] == "array"
-    assert desc["shape"] == [
-        1,
-    ]
+    assert desc["shape"] == [1]
 
 
 def test_set_method():
