@@ -370,7 +370,7 @@ def test_describe(bool_enum_signal):
     sig.put(1)
     desc = sig.describe()["bool_enum"]
     assert desc["dtype"] == "integer"
-    assert desc["shape"] == []
+    assert desc["shape"] == ()
     # assert 'precision' in desc
     assert desc["enum_strs"] == ("Off", "On")
     assert "upper_ctrl_limit" in desc
@@ -380,12 +380,12 @@ def test_describe(bool_enum_signal):
     sig.put("Off")
     desc = sig.describe()["my_pv"]
     assert desc["dtype"] == "string"
-    assert desc["shape"] == []
+    assert desc["shape"] == ()
 
     sig.put(3.14)
     desc = sig.describe()["my_pv"]
     assert desc["dtype"] == "number"
-    assert desc["shape"] == []
+    assert desc["shape"] == ()
 
     import numpy as np
 
@@ -398,9 +398,7 @@ def test_describe(bool_enum_signal):
     )
     desc = sig.describe()["my_pv"]
     assert desc["dtype"] == "array"
-    assert desc["shape"] == [
-        1,
-    ]
+    assert desc["shape"] == (1,)
 
 
 def test_set_method():
