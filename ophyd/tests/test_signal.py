@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 
+import numpy
 import pytest
 
 from ophyd import get_cl
@@ -14,6 +15,7 @@ from ophyd.signal import (
     EpicsSignalRO,
     InternalSignal,
     InternalSignalError,
+    NumericValueInfo,
     Signal,
 )
 from ophyd.status import wait
@@ -693,3 +695,71 @@ def test_import_ro_signal_class():
     from ophyd.signal import SignalRO as SignalRoFromModule
 
     assert SignalRoFromPkg is SignalRoFromModule
+
+
+def test_numeric_value_info(fake_motor_ioc, cleanup):
+    pvs = fake_motor_ioc.pvs
+    sig = EpicsSignal(write_pv=pvs["setpoint"], read_pv=pvs["readback"], name="motor")
+    sig_desc = sig.describe()["motor"]
+    assert sig_desc["dtype"] == "number"
+    assert sig_desc["shape"] == ()
+
+    sig = EpicsSignal(
+        write_pv=pvs["setpoint"],
+        read_pv=pvs["readback"],
+        name="motor",
+        value=NumericValueInfo(float),
+    )
+    sig_desc = sig.describe()["motor"]
+    assert sig_desc["dtype"] == "float64"
+    assert sig_desc["shape"] == ()
+
+    original = Signal(name="original")
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "float64"
+    assert original_desc["shape"] == ()
+    assert pytest.approx(original.get()) == 0.0
+    original = Signal(name="original", value=1)
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "integer"
+    assert original_desc["shape"] == ()
+    assert original.get() == 1
+    original = Signal(name="original", value="On")
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "string"
+    assert original_desc["shape"] == ()
+    assert original.get() == "On"
+    original = Signal(name="original", value=NumericValueInfo(numpy.uint16, (2, 2)))
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "uint16"
+    assert original_desc["shape"] == (2, 2)
+    with pytest.raises(RuntimeError):
+        original.get()
+    original = Signal(
+        name="original",
+        value=NumericValueInfo(numpy.uint16, (2, 2), numpy.array([1, 2, 3, 4])),
+    )
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "uint16"
+    assert original_desc["shape"] == (2, 2)
+    test_arr = numpy.array([1, 2, 3, 4], dtype=numpy.uint16)
+    test_arr.shape = (2, 2)
+    numpy.testing.assert_equal(original.get(), test_arr)
+
+    class TestDerivedSignal(DerivedSignal):
+        def forward(self, value):
+            return value / 2
+
+        def inverse(self, value):
+            return 2 * value
+
+    derived = TestDerivedSignal(
+        derived_from=original,
+        name="derived",
+        value=NumericValueInfo(numpy.uint32, (2, 2)),
+    )
+
+    derived_desc = derived.describe()["derived"]
+    assert derived_desc["dtype"] == "uint32"
+    assert derived_desc["shape"] == (2, 2)
+    assert derived_desc["derived_from"] == original.name
