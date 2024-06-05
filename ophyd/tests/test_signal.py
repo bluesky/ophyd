@@ -376,7 +376,7 @@ def test_describe(bool_enum_signal):
     assert "upper_ctrl_limit" in desc
     assert "lower_ctrl_limit" in desc
 
-    sig = Signal(name="my_pv")
+    sig = Signal(name="my_pv", value="On")
     sig.put("Off")
     desc = sig.describe()["my_pv"]
     assert desc["dtype"] == "string"
