@@ -32,7 +32,7 @@ def set_cl(control_layer=None, *, pv_telemetry=False):
     # TODO replace this with fancier meta-programming
     # TODO handle control_layer being a module/nampspace directly
     if control_layer == "pyepics":
-        # If using pyepics and ophyd.v2 (p4p and aioca), need to use the same
+        # If using pyepics and ophyd-async (p4p and aioca), need to use the same
         # libCom and libCa as provided by epicscorelibs
         # https://github.com/BCDA-APS/apstools/issues/836
         try:
