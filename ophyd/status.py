@@ -18,7 +18,7 @@ from .utils import (
 )
 
 tracer = trace.get_tracer(__name__)
-
+_TRACE_PREFIX = "Ophyd Status"
 
 class UseNewProperty(RuntimeError):
     ...
@@ -83,7 +83,7 @@ class StatusBase:
 
     def __init__(self, *, timeout=None, settle_time=0, done=None, success=None):
         super().__init__()
-        self._tracing_span = tracer.start_span("ophyd status")
+        self._tracing_span = tracer.start_span(_TRACE_PREFIX)
         self._tname = None
         self._lock = threading.RLock()
         self._event = threading.Event()  # state associated with done-ness
@@ -138,8 +138,12 @@ class StatusBase:
                 )
                 self.set_exception(exc)
 
-        self._tracing_span.set_attribute("type", self.__class__.__name__)
-        self._tracing_span.set_attribute("object_repr", repr(self))
+        self._trace_attributes = {
+            "status_type": self.__class__.__name__,
+            "object_repr": repr(self),
+            "timeout": self._timeout,
+            "settle_time": self._settle_time
+        }
 
     @property
     def timeout(self):
@@ -285,7 +289,7 @@ class StatusBase:
                     self,
                 )
         self._callbacks.clear()
-        self._tracing_span.end()
+        self._close_trace()
 
     def set_exception(self, exc):
         """
@@ -298,6 +302,7 @@ class StatusBase:
         ----------
         exc: Exception
         """
+        self._trace_attributes["exception"] = exc
         # Since we rely on this being raise-able later, check proactively to
         # avoid potentially very confusing failures.
         if not (
@@ -337,7 +342,7 @@ class StatusBase:
             self._exception = exc
             self._settled_event.set()
 
-        self._tracing_span.end()
+        self._close_trace()
         if self._callback_thread is None:
             self._run_callbacks()
 
@@ -358,7 +363,7 @@ class StatusBase:
         # Note that in either case, the callbacks themselves are run from the
         # same thread. This just sets an Event, either from this thread (the
         # one calling set_finished) or the thread created below.
-        self._tracing_span.end()
+        self._close_trace()
         if self.settle_time > 0:
             if self._callback_thread is None:
 
@@ -430,7 +435,7 @@ class StatusBase:
             raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
         return self._exception
 
-    @tracer.start_as_current_span("ophyd status wait")
+    @tracer.start_as_current_span(f"{_TRACE_PREFIX} wait")
     def wait(self, timeout=None):
         """
         Block until the action completes.
@@ -457,7 +462,7 @@ class StatusBase:
             indicates that the action itself raised ``TimeoutError``, distinct
             from ``WaitTimeoutError`` above.
         """
-        trace.get_current_span().set_attribute("object_repr", repr(self))
+        _set_trace_attributes(trace.get_current_span(), self._trace_attributes)
         if not self._event.wait(timeout=timeout):
             raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
         if self._exception is not None:
@@ -544,6 +549,14 @@ class StatusBase:
                     "method instead."
                 )
 
+
+    def _update_trace_attributes(self):
+        _set_trace_attributes(self._tracing_span, self._trace_attributes)
+
+    def _close_trace(self):
+        self._update_trace_attributes()
+        self._tracing_span.end()
+
     def __and__(self, other):
         """
         Returns a new 'composite' status object, AndStatus,
@@ -561,9 +574,8 @@ class AndStatus(StatusBase):
         self.left = left
         self.right = right
         super().__init__(**kwargs)
-        self._tracing_span.set_attribute("left", repr(self.left))
-        self._tracing_span.set_attribute("right", repr(self.right))
-
+        self._trace_attributes["left"] = self.left._trace_attributes
+        self._trace_attributes["right"] = self.right._trace_attributes
         def inner(status):
             with self._lock:
                 if self._externally_initiated_completion:
@@ -642,11 +654,8 @@ class Status(StatusBase):
         super().__init__(
             timeout=timeout, settle_time=settle_time, done=done, success=success
         )
-        (
-            self._tracing_span.set_attribute("obj", obj)
-            if obj
-            else self._tracing_span.set_attribute("no_obj_given", True)
-        )
+        self._trace_attributes["obj"] = obj
+        self._trace_attributes["no_obj_given"] = not bool(obj)
 
     def __str__(self):
         return (
@@ -683,7 +692,11 @@ class DeviceStatus(StatusBase):
         self.device = device
         self._watchers = []
         super().__init__(**kwargs)
-        self._tracing_span.set_attribute("device", repr(self.device))
+        self._trace_attributes["device"] = (
+            {"name": device.name, "type": device.__class__.__name__}
+            if device else "None"
+        )
+        self._trace_attributes["kwargs"] = kwargs
 
     def _handle_failure(self):
         super()._handle_failure()
@@ -867,7 +880,7 @@ class StableSubscriptionStatus(SubscriptionStatus):
         try:
             success = self.callback(*args, **kwargs)
 
-            # If successfull start a timer for completion
+            # If successful start a timer for completion
             if success:
                 if not self._stable_timer.is_alive():
                     self._stable_timer.start()
@@ -969,6 +982,15 @@ class MoveStatus(DeviceStatus):
         if not self.done:
             self.pos.subscribe(self._notify_watchers, event_type=self.pos.SUB_READBACK)
 
+        self._trace_attributes.update({
+            "positioner" : self.pos,
+            "target" : target,
+            "start_time" : start_ts,
+            "start_pos ": self.pos.position,
+            "unit": self._unit,
+            "positioner_name": self._name
+        })
+
     def watch(self, func):
         """
         Subscribe to notifications about partial progress.
@@ -1044,6 +1066,10 @@ class MoveStatus(DeviceStatus):
         self._watchers.clear()
         self.finish_ts = time.time()
         self.finish_pos = self.pos.position
+        self._trace_attributes.update({
+            "finish_time" : self.finish_ts,
+            "finish_pos" : self.finish_pos,
+        })
 
     @property
     def elapsed(self):
@@ -1063,6 +1089,9 @@ class MoveStatus(DeviceStatus):
 
     __repr__ = __str__
 
+def _set_trace_attributes(span, trace_attributes):
+    for k, v in trace_attributes.items():
+        span.set_attribute(k, v)
 
 def wait(status, timeout=None, *, poll_rate="DEPRECATED"):
     """(Blocking) wait for the status object to complete
