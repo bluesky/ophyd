@@ -84,6 +84,11 @@ class StatusBase:
     def __init__(self, *, timeout=None, settle_time=0, done=None, success=None):
         super().__init__()
         self._tracing_span = tracer.start_span(_TRACE_PREFIX)
+        self._trace_attributes = {
+            "status_type": self.__class__.__name__,
+            "timeout": timeout,
+            "settle_time": settle_time,
+        }
         self._tname = None
         self._lock = threading.RLock()
         self._event = threading.Event()  # state associated with done-ness
@@ -138,12 +143,7 @@ class StatusBase:
                 )
                 self.set_exception(exc)
 
-        self._trace_attributes = {
-            "status_type": self.__class__.__name__,
-            "object_repr": repr(self),
-            "timeout": self._timeout,
-            "settle_time": self._settle_time,
-        }
+        self._trace_attributes["object_repr"] = (repr(self),)
 
     @property
     def timeout(self):
