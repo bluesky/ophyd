@@ -21,7 +21,8 @@ tracer = trace.get_tracer(__name__)
 _TRACE_PREFIX = "Ophyd Status"
 
 
-class UseNewProperty(RuntimeError): ...
+class UseNewProperty(RuntimeError):
+    ...
 
 
 class StatusBase:
@@ -143,7 +144,7 @@ class StatusBase:
                 )
                 self.set_exception(exc)
 
-        self._trace_attributes["object_repr"] = (repr(self),)
+        self._trace_attributes["object_repr"] = repr(self)
 
     @property
     def timeout(self):
