@@ -20,8 +20,8 @@ from .utils import (
 tracer = trace.get_tracer(__name__)
 _TRACE_PREFIX = "Ophyd Status"
 
-class UseNewProperty(RuntimeError):
-    ...
+
+class UseNewProperty(RuntimeError): ...
 
 
 class StatusBase:
@@ -142,7 +142,7 @@ class StatusBase:
             "status_type": self.__class__.__name__,
             "object_repr": repr(self),
             "timeout": self._timeout,
-            "settle_time": self._settle_time
+            "settle_time": self._settle_time,
         }
 
     @property
@@ -549,7 +549,6 @@ class StatusBase:
                     "method instead."
                 )
 
-
     def _update_trace_attributes(self):
         _set_trace_attributes(self._tracing_span, self._trace_attributes)
 
@@ -576,6 +575,7 @@ class AndStatus(StatusBase):
         super().__init__(**kwargs)
         self._trace_attributes["left"] = self.left._trace_attributes
         self._trace_attributes["right"] = self.right._trace_attributes
+
         def inner(status):
             with self._lock:
                 if self._externally_initiated_completion:
@@ -694,7 +694,8 @@ class DeviceStatus(StatusBase):
         super().__init__(**kwargs)
         self._trace_attributes["device"] = (
             {"name": device.name, "type": device.__class__.__name__}
-            if device else "None"
+            if device
+            else "None"
         )
         self._trace_attributes["kwargs"] = kwargs
 
@@ -982,14 +983,16 @@ class MoveStatus(DeviceStatus):
         if not self.done:
             self.pos.subscribe(self._notify_watchers, event_type=self.pos.SUB_READBACK)
 
-        self._trace_attributes.update({
-            "positioner" : self.pos,
-            "target" : target,
-            "start_time" : start_ts,
-            "start_pos ": self.pos.position,
-            "unit": self._unit,
-            "positioner_name": self._name
-        })
+        self._trace_attributes.update(
+            {
+                "positioner": self.pos,
+                "target": target,
+                "start_time": start_ts,
+                "start_pos ": self.pos.position,
+                "unit": self._unit,
+                "positioner_name": self._name,
+            }
+        )
 
     def watch(self, func):
         """
@@ -1066,10 +1069,12 @@ class MoveStatus(DeviceStatus):
         self._watchers.clear()
         self.finish_ts = time.time()
         self.finish_pos = self.pos.position
-        self._trace_attributes.update({
-            "finish_time" : self.finish_ts,
-            "finish_pos" : self.finish_pos,
-        })
+        self._trace_attributes.update(
+            {
+                "finish_time": self.finish_ts,
+                "finish_pos": self.finish_pos,
+            }
+        )
 
     @property
     def elapsed(self):
@@ -1089,9 +1094,11 @@ class MoveStatus(DeviceStatus):
 
     __repr__ = __str__
 
+
 def _set_trace_attributes(span, trace_attributes):
     for k, v in trace_attributes.items():
         span.set_attribute(k, v)
+
 
 def wait(status, timeout=None, *, poll_rate="DEPRECATED"):
     """(Blocking) wait for the status object to complete
