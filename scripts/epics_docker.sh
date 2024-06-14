@@ -3,9 +3,9 @@
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $SCRIPTS_DIR/epics_exports.sh
 
-MOTOR_DOCKERIMAGE="nsls2/epics-docker:latest"
-PE_DOCKERIMAGE="nsls2/pyepics-docker:latest"
-AD_DOCKERIMAGE="prjemian/synapps-6.1-ad-3.7:latest"
+MOTOR_DOCKERIMAGE="docker.io/nsls2/epics-docker:latest"
+PE_DOCKERIMAGE="docker.io/nsls2/pyepics-docker:latest"
+AD_DOCKERIMAGE="docker.io/prjemian/synapps-6.1-ad-3.7:latest"
 
 docker pull ${MOTOR_DOCKERIMAGE}
 docker pull ${PE_DOCKERIMAGE}
