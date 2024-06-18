@@ -2,7 +2,6 @@ As decided in the [governance](https://github.com/bluesky/governance#summary) th
 
 * Max Rakitin (@mrakitin), NSLS-II
 * Thomas Caswell (@tacaswell), NSLS-II
-* Thomas Cobb (@coretl), DLS
 * Dominic Oram (@DominicOram), DLS
 * Blaise Thompson (@untzag), UW Madison
 * Ken Lauer (@klauer), LCLS
