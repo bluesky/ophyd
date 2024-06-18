@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from collections import deque
@@ -87,9 +88,9 @@ class StatusBase:
         self._tracing_span = tracer.start_span(_TRACE_PREFIX)
         self._trace_attributes = {
             "status_type": self.__class__.__name__,
-            "timeout": timeout,
             "settle_time": settle_time,
         }
+        self._trace_attributes.update({"timeout": timeout} if timeout else {"no_timeout_given": True})
         self._tname = None
         self._lock = threading.RLock()
         self._event = threading.Event()  # state associated with done-ness
@@ -290,7 +291,6 @@ class StatusBase:
                     self,
                 )
         self._callbacks.clear()
-        self._close_trace()
 
     def set_exception(self, exc):
         """
@@ -364,7 +364,6 @@ class StatusBase:
         # Note that in either case, the callbacks themselves are run from the
         # same thread. This just sets an Event, either from this thread (the
         # one calling set_finished) or the thread created below.
-        self._close_trace()
         if self.settle_time > 0:
             if self._callback_thread is None:
 
@@ -380,6 +379,8 @@ class StatusBase:
 
             if self._callback_thread is None:
                 self._run_callbacks()
+        self._close_trace()
+
 
     def _finished(self, success=True, **kwargs):
         """
@@ -693,12 +694,12 @@ class DeviceStatus(StatusBase):
         self.device = device
         self._watchers = []
         super().__init__(**kwargs)
-        self._trace_attributes["device"] = (
-            {"name": device.name, "type": device.__class__.__name__}
+        self._trace_attributes.update(
+            {"device_name": device.name, "device_type": device.__class__.__name__}
             if device
-            else "None"
+            else {"no_device_given" : True}
         )
-        self._trace_attributes["kwargs"] = kwargs
+        self._trace_attributes["kwargs"] = json.dumps(kwargs)
 
     def _handle_failure(self):
         super()._handle_failure()
@@ -986,7 +987,6 @@ class MoveStatus(DeviceStatus):
 
         self._trace_attributes.update(
             {
-                "positioner": self.pos,
                 "target": target,
                 "start_time": start_ts,
                 "start_pos ": self.pos.position,
@@ -994,6 +994,8 @@ class MoveStatus(DeviceStatus):
                 "positioner_name": self._name,
             }
         )
+        self._trace_attributes.update(                {"positioner": repr(self.pos)} if self.pos else {"no_positioner_given":True}
+)
 
     def watch(self, func):
         """
