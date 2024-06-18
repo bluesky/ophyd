@@ -700,7 +700,7 @@ class DeviceStatus(StatusBase):
             if device
             else {"no_device_given": True}
         )
-        self._trace_attributes["kwargs"] = json.dumps(kwargs)
+        self._trace_attributes["kwargs"] = json.dumps(kwargs, default=repr)
 
     def _handle_failure(self):
         super()._handle_failure()
