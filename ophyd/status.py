@@ -90,7 +90,9 @@ class StatusBase:
             "status_type": self.__class__.__name__,
             "settle_time": settle_time,
         }
-        self._trace_attributes.update({"timeout": timeout} if timeout else {"no_timeout_given": True})
+        self._trace_attributes.update(
+            {"timeout": timeout} if timeout else {"no_timeout_given": True}
+        )
         self._tname = None
         self._lock = threading.RLock()
         self._event = threading.Event()  # state associated with done-ness
@@ -696,7 +698,7 @@ class DeviceStatus(StatusBase):
         self._trace_attributes.update(
             {"device_name": device.name, "device_type": device.__class__.__name__}
             if device
-            else {"no_device_given" : True}
+            else {"no_device_given": True}
         )
         self._trace_attributes["kwargs"] = json.dumps(kwargs)
 
@@ -994,7 +996,9 @@ class MoveStatus(DeviceStatus):
             }
         )
         self._trace_attributes.update(
-            {"positioner": repr(self.pos)} if self.pos else {"no_positioner_given": True}
+            {"positioner": repr(self.pos)}
+            if self.pos
+            else {"no_positioner_given": True}
         )
 
     def watch(self, func):
