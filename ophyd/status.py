@@ -381,7 +381,6 @@ class StatusBase:
                 self._run_callbacks()
         self._close_trace()
 
-
     def _finished(self, success=True, **kwargs):
         """
         Inform the status object that it is done and if it succeeded.
@@ -994,8 +993,9 @@ class MoveStatus(DeviceStatus):
                 "positioner_name": self._name,
             }
         )
-        self._trace_attributes.update(                {"positioner": repr(self.pos)} if self.pos else {"no_positioner_given":True}
-)
+        self._trace_attributes.update(
+            {"positioner": repr(self.pos)} if self.pos else {"no_positioner_given": True}
+        )
 
     def watch(self, func):
         """
