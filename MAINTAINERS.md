@@ -4,7 +4,6 @@ As decided in the [governance](https://github.com/bluesky/governance#summary) th
 * Thomas Caswell (@tacaswell), NSLS-II
 * Dominic Oram (@DominicOram), DLS
 * Blaise Thompson (@untzag), UW Madison
-* Ken Lauer (@klauer), LCLS
 * Zach Lentz (@ZLLentz), LCLS
 * Robert Tang-Kong (@tangkong), LCLS
 * Pete Jemian (@prjemian), APS
