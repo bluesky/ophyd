@@ -585,6 +585,7 @@ class Signal(OphydObject):
                 "source": self.source_name,
                 "dtype": dtype,
                 "shape": list(shape),
+                "long_name": self.long_name,
             }
         }
         if dtype_numpy:
@@ -1585,12 +1586,23 @@ class EpicsSignalBase(Signal):
         ret = super().describe()
         desc = ret[self.name]
         lower_ctrl_limit, upper_ctrl_limit = self.limits
+<<<<<<< HEAD
         desc.update(
             dict(
                 units=self._metadata["units"],
                 lower_ctrl_limit=lower_ctrl_limit,
                 upper_ctrl_limit=upper_ctrl_limit,
             )
+=======
+        desc = dict(
+            source="PV:{}".format(self._read_pvname),
+            dtype=data_type(val),
+            shape=data_shape(val),
+            units=self._metadata["units"],
+            lower_ctrl_limit=lower_ctrl_limit,
+            upper_ctrl_limit=upper_ctrl_limit,
+            long_name=self.long_name,
+>>>>>>> 50a53625 (long_name added to signal class)
         )
 
         if self.precision is not None:
@@ -2369,6 +2381,19 @@ class AttributeSignal(Signal):
             timestamp=time.time(),
         )
 
+<<<<<<< HEAD
+=======
+    def describe(self):
+        value = self.get()
+        desc = {
+            "source": "PY:{}.{}".format(self.parent.name, self.full_attr),
+            "dtype": data_type(value),
+            "shape": data_shape(value),
+            "long_name": self.long_name
+        }
+        return {self.name: desc}
+
+>>>>>>> 50a53625 (long_name added to signal class)
 
 class ArrayAttributeSignal(AttributeSignal):
     """An AttributeSignal which is cast to an ndarray on get
