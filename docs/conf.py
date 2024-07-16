@@ -103,11 +103,11 @@ html_favicon = "images/ophyd_favicon.svg"
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
+    "python": ("https://docs.python.org/3/", None),
     "bluesky": ("https://blueskyproject.io/bluesky/main/", None),
     "numpy": ("https://numpy.org/devdocs/", None),
     "databroker": ("https://blueskyproject.io/databroker/", None),
-    "event-model": ("https://blueskyproject.io/event-model/main", None),
+    "event-model": ("https://blueskyproject.io/event-model/main/", None),
 }
 
 # If False and a module has the __all__ attribute set, autosummary documents

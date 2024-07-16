@@ -1,0 +1,4 @@
+Tracing with Opentelemetry
+==========================
+
+Ophyd is instrumented with [OpenTelemetry](https://opentelemetry.io/) tracing span hooks on the lifetime of `Status` objects and their `.wait()` method. Please see the [Bluesky documentation](https://blueskyproject.io/bluesky/main/otel_tracing.html) for examples of how to make use of this.
