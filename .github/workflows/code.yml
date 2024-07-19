@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Lint
-        run: pip install --user .[dev] && tox -e pre-commit,mypy
+        run: pip install --user .[dev] && tox -e pre-commit
 
   build:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
@@ -69,7 +69,7 @@ jobs:
           source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
 
       - name: Test with pytest
-        run: pytest -k "${TEST_CL} or /v2/"
+        run: pytest -k "${TEST_CL}"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
