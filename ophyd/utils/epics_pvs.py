@@ -340,7 +340,7 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
         a = np.array(a)  # target
         b = np.array(b)  # reported by EPICS
         if len(a.shape) == 1 and len(b.shape) == 1 and len(a) < len(b):
-            b = b[:len(a)]  # cut 1-D EPICS array down to requested size
+            b = b[: len(a)]  # cut 1-D EPICS array down to requested size
 
         if a.shape != b.shape:
             return False
