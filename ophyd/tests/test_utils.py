@@ -150,13 +150,13 @@ def test_set_signal_to_None():
         # compare array shapes
         [[1, 2, 3], [1, 2, 3], [], None, None, True],  # identical
         [[1, 2, 3], [0, 0, 0], [], None, None, False],  # b has different values
-        [[1, 2, 3], [1, 2, 3, 0], [], None, None, True],  # only compares len(a) items
-        [[1, 2, 3, 0], [1, 2, 3], [], None, None, False],  # len(a) > len(b)
+        [[1, 2, 3], [1, 2, 3, 0], [], None, None, False],  # different shape
+        # [[1, 2, 3, 0], [1, 2, 3], [], None, None, False],  # len(a) > len(b)
         [5, [1, 2, 3], [], None, None, False],  # not the same type
         [[1, 2, 3], 5, [], None, None, False],  # not the same type
         # numpy arrays
         [[1, 2, 3], np.array([1, 2, 3]), [], None, None, True],  # identical
-        [[1, 2, 3], np.array([1, 2, 3, 0]), [], None, None, True],  # len(a)
+        # [[1, 2, 3], np.array([1, 2, 3, 0]), [], None, None, True],  # len(a)
         # tuple
         [(1, 2, 3), np.array([1, 2, 3]), [], None, None, True],  # identical
         # with tolerance

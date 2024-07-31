@@ -267,7 +267,9 @@ def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=Non
     TimeoutError if timeout is exceeded
     """
     expiration_time = ttime.time() + timeout if timeout is not None else None
-    current_value = signal.get()
+    array_like = (list, np.ndarray, tuple)
+    item_count = None if not isinstance(val, array_like) else len(val)
+    current_value = signal.get(count=item_count)
 
     if atol is None and hasattr(signal, "tolerance"):
         atol = signal.tolerance
@@ -305,7 +307,7 @@ def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=Non
         ttime.sleep(poll_time)
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
-        current_value = signal.get()
+        current_value = signal.get(count=item_count)
         if expiration_time is not None and ttime.time() > expiration_time:
             raise TimeoutError(
                 "Attempted to set %r to value %r and timed "
@@ -335,15 +337,15 @@ def _compare_maybe_enum(a, b, enums, atol, rtol):
         # then compare the strings
         return a == b
 
-    array_like = (list, np.ndarray, tuple)
-    if isinstance(a, array_like) and isinstance(b, array_like):
-        a = np.array(a)  # target
-        b = np.array(b)  # reported by EPICS
-        if len(a.shape) == 1 and len(b.shape) == 1 and len(a) < len(b):
-            b = b[: len(a)]  # cut 1-D EPICS array down to requested size
+    # array_like = (list, np.ndarray, tuple)
+    # if isinstance(a, array_like) and isinstance(b, array_like):
+    #     a = np.array(a)  # target
+    #     b = np.array(b)  # reported by EPICS
+    #     if len(a.shape) == 1 and len(b.shape) == 1 and len(a) < len(b):
+    #         b = b[: len(a)]  # cut 1-D EPICS array down to requested size
 
-        if a.shape != b.shape:
-            return False
+    #     if a.shape != b.shape:
+    #         return False
 
     # if either relative/absolute tolerance is used, use numpy
     # to compare:
