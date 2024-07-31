@@ -267,9 +267,11 @@ def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=Non
     TimeoutError if timeout is exceeded
     """
     expiration_time = ttime.time() + timeout if timeout is not None else None
-    array_like = (list, np.ndarray, tuple)
-    item_count = None if not isinstance(val, array_like) else len(val)
-    current_value = signal.get(count=item_count)
+    is_array = isinstance(val, (list, np.ndarray, tuple))
+    if is_array:
+        current_value = signal.get(count=len(val))
+    else:
+        current_value = signal.get()
 
     if atol is None and hasattr(signal, "tolerance"):
         atol = signal.tolerance
@@ -307,7 +309,10 @@ def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=Non
         ttime.sleep(poll_time)
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
-        current_value = signal.get(count=item_count)
+        if is_array:
+            current_value = signal.get(count=len(val))
+        else:
+            current_value = signal.get()
         if expiration_time is not None and ttime.time() > expiration_time:
             raise TimeoutError(
                 "Attempted to set %r to value %r and timed "
