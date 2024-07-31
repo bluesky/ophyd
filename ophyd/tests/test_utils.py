@@ -151,9 +151,9 @@ def test_set_signal_to_None():
         [[1, 2, 3], [1, 2, 3], [], None, None, True],  # identical
         [[1, 2, 3], [0, 0, 0], [], None, None, False],  # b has different values
         [[1, 2, 3], [1, 2, 3, 0], [], None, None, True],  # only compares len(a) items
-        [[1, 2, 3, 0], [1, 2, 3], [], None, None, False],  # (unexpected) len(a) > len(b)
-        [5, [1, 2, 3], [], None, None, False],  # (unexpected) not the same type
-        [[1, 2, 3], 5, [], None, None, False],  # (unexpected) not the same type
+        [[1, 2, 3, 0], [1, 2, 3], [], None, None, False],  # len(a) > len(b)
+        [5, [1, 2, 3], [], None, None, False],  # not the same type
+        [[1, 2, 3], 5, [], None, None, False],  # not the same type
         # with tolerance
         [[1, 2, 3.0], [1, 2, 3.12345], [], 0.01, None, False],
         [[1, 2, 3.0], [1, 2, 3.12345], [], 0.2, None, True],
