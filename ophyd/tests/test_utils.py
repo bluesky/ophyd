@@ -136,7 +136,7 @@ def test_set_signal_to_None():
 
 
 @pytest.mark.parametrize(
-    "a, b, enums, atol, rtol, expected", 
+    "a, b, enums, atol, rtol, expected",
     [
         # compare enums
         [0, 0, "NO YES".split(), None, None, True],
