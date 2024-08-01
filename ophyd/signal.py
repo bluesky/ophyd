@@ -2389,7 +2389,7 @@ class AttributeSignal(Signal):
             "source": "PY:{}.{}".format(self.parent.name, self.full_attr),
             "dtype": data_type(value),
             "shape": data_shape(value),
-            "long_name": self.long_name
+            "long_name": self.long_name,
         }
         return {self.name: desc}
 
