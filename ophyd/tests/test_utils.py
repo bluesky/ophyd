@@ -133,3 +133,44 @@ def test_none_signal():
 def test_set_signal_to_None():
     s = Signal(value="0", name="bob")
     s.set(None).wait(timeout=1)
+
+
+@pytest.mark.parametrize(
+    "a, b, enums, atol, rtol, expected",
+    [
+        # compare enums
+        [0, 0, "NO YES".split(), None, None, True],
+        [0, 1, "NO YES".split(), None, None, False],
+        ["NO", 0, "NO YES".split(), None, None, True],
+        ["NO", 1, "NO YES".split(), None, None, False],
+        [0, "YES", "NO YES".split(), None, None, False],
+        [1, "YES", "NO YES".split(), None, None, True],
+        ["NO", "YES", "NO YES".split(), None, None, False],
+        ["YES", "YES", "NO YES".split(), None, None, True],
+        # compare array shapes
+        [[1, 2, 3], [1, 2, 3], [], None, None, True],  # identical
+        [[1, 2, 3], [0, 0, 0], [], None, None, False],  # b has different values
+        [[1, 2, 3], [1, 2, 3, 0], [], None, None, False],  # different shape
+        # [[1, 2, 3], [1, 2, 3, 0], [], None, 1e-8, False],  # raises ValueError
+        [5, [1, 2, 3], [], None, None, False],  # not the same type
+        [[1, 2, 3], 5, [], None, None, False],  # not the same type
+        # numpy arrays
+        [[1, 2, 3], np.array([1, 2, 3]), [], None, None, True],  # identical
+        # tuple
+        [(1, 2, 3), np.array([1, 2, 3]), [], None, None, True],  # identical
+        # with tolerance
+        [[1, 2, 3.0], [1, 2, 3.12345], [], 0.01, None, False],
+        [[1, 2, 3.0], [1, 2, 3.12345], [], 0.2, None, True],
+        # absolute tolerance
+        [3, 3.12345, [], None, 0.01, False],
+        [3, 3.12345, [], None, 0.2, True],
+        [True, False, [], None, None, False],  # booleans
+        [1, 1, [], None, None, True],  # integers
+        # relative tolerance
+        [3, 3.12345, [], 0.01, None, False],
+        [3, 3.12345, [], 0.2, None, True],
+    ],
+)
+def test_compare_maybe_enum(a, b, enums, atol, rtol, expected):
+    result = epics_utils._compare_maybe_enum(a, b, enums, atol, rtol)
+    assert result == expected
