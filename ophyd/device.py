@@ -258,6 +258,10 @@ class Component(typing.Generic[K]):
             attr_name=self.attr,
         )
 
+        _long_name = kwargs.get("long_name", self.attr)
+        _parent_long_name = getattr(instance, "long_name", instance.name)
+        kwargs["long_name"] = f"{_parent_long_name} {_long_name}"
+
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
@@ -1785,7 +1789,6 @@ def required_for_connection(func=None, *, description=None, device=None):
 def _wait_for_connection_context(value, doc):
     @contextlib.contextmanager
     def wrapped(dev):
-
         orig = dev.lazy_wait_for_connection
         dev.lazy_wait_for_connection = value
         try:
