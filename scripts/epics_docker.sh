@@ -3,6 +3,14 @@
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $SCRIPTS_DIR/epics_exports.sh
 
+# Override the deprecation warning of V1 images
+# Remove when images are updated
+sudo mkdir -p /etc/systemd/system/docker.service.d
+file="/etc/systemd/system/docker.service.d/extra_env.conf"
+sudo cp $SCRIPTS_DIR/docker.conf $file
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
 MOTOR_DOCKERIMAGE="nsls2/epics-docker:latest"
 PE_DOCKERIMAGE="nsls2/pyepics-docker:latest"
 AD_DOCKERIMAGE="prjemian/synapps-6.1-ad-3.7:latest"
