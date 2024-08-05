@@ -72,7 +72,7 @@ def test_mca_describe(mca):
     d = desc[mca.name + "_spectrum"]
 
     assert d["dtype"] == "number"
-    assert d["shape"] == []
+    assert d["shape"] == ()
 
 
 def test_mca_signals(mca):

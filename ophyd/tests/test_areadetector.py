@@ -881,7 +881,7 @@ def test_ndderivedsignal_with_scalars():
     shaped.derived_ndims == 2
     assert shaped.get().shape == (4, 3)
     # Describe returns list
-    assert shaped.describe()[shaped.name]["shape"] == [4, 3]
+    assert shaped.describe()[shaped.name]["shape"] == (4, 3)
     shaped.put(np.ones((4, 3)))
     assert all(sig.get() == np.ones(12))
 
