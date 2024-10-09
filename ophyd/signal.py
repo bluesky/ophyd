@@ -105,10 +105,15 @@ class Signal(OphydObject):
         metadata=None,
         cl=None,
         attr_name="",
+        long_name=None,
     ):
-
         super().__init__(
-            name=name, parent=parent, kind=kind, labels=labels, attr_name=attr_name
+            name=name,
+            parent=parent,
+            kind=kind,
+            labels=labels,
+            attr_name=attr_name,
+            long_name=long_name,
         )
 
         if cl is None:
@@ -482,6 +487,7 @@ class Signal(OphydObject):
                     "source": "SIM:{}".format(self.name),
                     "dtype": data_type(val),
                     "shape": data_shape(val),
+                    "long_name": self.long_name,
                 }
             }
         except ValueError as ve:
@@ -1486,6 +1492,7 @@ class EpicsSignalBase(Signal):
             units=self._metadata["units"],
             lower_ctrl_limit=lower_ctrl_limit,
             upper_ctrl_limit=upper_ctrl_limit,
+            long_name=self.long_name,
         )
 
         if self.precision is not None:
@@ -1718,7 +1725,6 @@ class EpicsSignal(EpicsSignalBase):
         name=None,
         **kwargs,
     ):
-
         self._write_pv = None
         self._use_limits = bool(limits)
         self._put_complete = put_complete
@@ -2267,6 +2273,7 @@ class AttributeSignal(Signal):
             "source": "PY:{}.{}".format(self.parent.name, self.full_attr),
             "dtype": data_type(value),
             "shape": data_shape(value),
+            "long_name": self.long_name,
         }
         return {self.name: desc}
 
