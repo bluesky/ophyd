@@ -19,6 +19,7 @@ To be used like so ::
 
     det = MyDetector(...)
 """
+
 import logging
 import os
 import uuid

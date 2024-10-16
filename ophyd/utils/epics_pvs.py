@@ -212,8 +212,15 @@ class AbandonedSet(OpException):
 
 
 def _set_and_wait(
-    signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None,
-        *, poison_pill=None, **kwargs
+    signal,
+    val,
+    poll_time=0.01,
+    timeout=10,
+    rtol=None,
+    atol=None,
+    *,
+    poison_pill=None,
+    **kwargs,
 ):
     """Set a signal to a value and wait until it reads correctly.
 
@@ -245,13 +252,18 @@ def _set_and_wait(
     """
     signal.put(val, **kwargs)
     _wait_for_value(
-        signal, val, poll_time=poll_time, timeout=timeout, rtol=rtol, atol=atol,
-        poison_pill=poison_pill
+        signal,
+        val,
+        poll_time=poll_time,
+        timeout=timeout,
+        rtol=rtol,
+        atol=atol,
+        poison_pill=poison_pill,
     )
 
 
 def _wait_for_value(
-        signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None, *, poison_pill
+    signal, val, poll_time=0.01, timeout=10, rtol=None, atol=None, *, poison_pill
 ):
     """Wait for a signal to match a value.
 
@@ -306,10 +318,15 @@ def _wait_for_value(
         within_str = ""
 
     while (val is not None and current_value is None) or not _compare_maybe_enum(
-            val, current_value, enum_strings, atol, rtol
+        val, current_value, enum_strings, atol, rtol
     ):
-        logger.debug("Waiting for %s to be set from %r to %r%s...",
-                     signal.name, current_value, val, within_str)
+        logger.debug(
+            "Waiting for %s to be set from %r to %r%s...",
+            signal.name,
+            current_value,
+            val,
+            within_str,
+        )
         # Sleep.
         if poison_pill is None:
             ttime.sleep(poll_time)
@@ -317,7 +334,8 @@ def _wait_for_value(
             # This set operation has been abandoned.
             raise AbandonedSet(
                 f"The signal {signal} was set to {val} but it does not seem "
-                "to have finished. We are no longer watching for it.")
+                "to have finished. We are no longer watching for it."
+            )
         if poll_time < 0.1:
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get(**get_kwargs)

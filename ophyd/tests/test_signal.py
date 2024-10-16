@@ -731,7 +731,7 @@ def test_signal_another_call_to_set_in_progress():
     sig = Signal(name="sig", value=1)
     sig.wait_for_connection()
 
-    st1 = sig.set(28, settle_time=.2)
+    st1 = sig.set(28, settle_time=0.2)
     # trap the RuntimeError when "Another set() call " ...
     with pytest.raises(RuntimeError):
         # TODO: verify the message text startswith?
@@ -753,7 +753,7 @@ def test_signal_clear_set():
     sig = Signal(name="sig", value=1)
     sig.wait_for_connection()
 
-    st1 = sig.set(28, settle_time=.2)
+    st1 = sig.set(28, settle_time=0.2)
     with pytest.raises(RuntimeError):
         assert not st1.done
         sig.set(-1)
@@ -771,6 +771,7 @@ def test_signal_clear_set():
 def test_epicssignal_abandonedset():
     class BrokenPutSignal(Signal):
         """put(value) ends with same ._readback value as before."""
+
         def put(self, value, **kwargs):
             previous_value = self._readback
             super().put(value, **kwargs)

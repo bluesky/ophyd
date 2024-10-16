@@ -1,4 +1,5 @@
 """PV names for tests"""
+
 import os
 
 epics_base = os.environ.get("EPICS_BASE", "/usr/lib/epics")

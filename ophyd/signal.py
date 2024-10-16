@@ -85,6 +85,7 @@ class Signal(OphydObject):
     rtolerance : any, optional
         The relative tolerance associated with the value
     """
+
     SUB_VALUE = "value"
     SUB_META = "meta"
     _default_sub = SUB_VALUE
@@ -387,7 +388,8 @@ class Signal(OphydObject):
                 f"Another set() call is still in progress for {self.name}. "
                 "If this is due to some transient failure, verify that the "
                 "device is configured the way you expect, and use clear_set() "
-                "to ignore and abandon the previous set() operation.")
+                "to ignore and abandon the previous set() operation."
+            )
 
         st = Status(self)
         self._status = st
@@ -411,7 +413,8 @@ class Signal(OphydObject):
         self._set_thread.join()  # Wait for that to take effect.
         warnings.warn(
             "A previous set() operation is being ignored. Only do this "
-            "when debugging or recovering from a hardware failure.")
+            "when debugging or recovering from a hardware failure."
+        )
 
     @property
     def value(self):
