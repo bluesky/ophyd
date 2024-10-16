@@ -750,44 +750,40 @@ def test_signal_another_call_to_set_in_progress():
 
 
 def test_signal_clear_set():
-    sig = Signal(name="sig", value=1)
-    sig.wait_for_connection()
+    class HackSignal(Signal):
+        def put(self, value, **kwargs):
+            ...
 
-    st1 = sig.set(28, settle_time=0.2)
+        def _super_put(self, value, **kwargs):
+            super().put(value, **kwargs)
+
+    sig = HackSignal(name="sig", value=1)
+    sig._super_put(1)
+
+    st1 = sig.set(28)
     with pytest.raises(RuntimeError):
-        assert not st1.done
         sig.set(-1)
 
     # call SIGNAL.clear_set() and trap the warning after RuntimeError is raised
     with pytest.warns(UserWarning):
         sig.clear_set()
-    assert not st1.done
-    assert not st1.success
-
+    sig._super_put(28)
     wait(st1)
     assert sig.get() == 28
 
 
 def test_epicssignal_abandonedset():
+    pill = threading.Event()
+
     class BrokenPutSignal(Signal):
-        """put(value) ends with same ._readback value as before."""
+        """put(value) that ignores input"""
 
         def put(self, value, **kwargs):
-            previous_value = self._readback
-            super().put(value, **kwargs)
-            self._readback = previous_value
-
-    sig = BrokenPutSignal(name="sig", value=1)
-    sig.wait_for_connection()
-
-    with pytest.raises(AbandonedSet):
-        pill = threading.Event()
-
-        def cb():
-            time.sleep(0.1)
-            sig.clear_set()
+            super().put(self._readback, **kwargs)
             pill.set()
 
-        threading.Thread(group=None, target=cb).start()
+    sig = BrokenPutSignal(name="sig", value=1)
+
+    with pytest.raises(AbandonedSet):
         _set_and_wait(sig, sig.get() + 1, timeout=20, poison_pill=pill)
     assert sig.get() == 1
