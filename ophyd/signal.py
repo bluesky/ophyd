@@ -85,6 +85,7 @@ class Signal(OphydObject):
     rtolerance : any, optional
         The relative tolerance associated with the value
     """
+
     SUB_VALUE = "value"
     SUB_META = "meta"
     _default_sub = SUB_VALUE
@@ -124,6 +125,9 @@ class Signal(OphydObject):
         self._destroyed = False
 
         self._set_thread = None
+        self._poison_pill = None
+        self._set_thread_finalizer = None
+
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
@@ -326,9 +330,11 @@ class Signal(OphydObject):
             kwargs,
         )
 
+        poison_pill = threading.Event()
+
         def set_thread():
             try:
-                self._set_and_wait(value, timeout, **kwargs)
+                self._set_and_wait(value, timeout, poison_pill=poison_pill, **kwargs)
             except TimeoutError:
                 success = False
                 self.log.warning(
@@ -372,12 +378,17 @@ class Signal(OphydObject):
                 th = self._set_thread
                 # these two must be in this order to avoid a race condition
                 self._set_thread = None
+                self._set_thread_finalizer = None
+                self._poison_pill = None
                 st._finished(success=success)
                 del th
 
         if self._set_thread is not None:
             raise RuntimeError(
-                "Another set() call is still in progress " f"for {self.name}"
+                f"Another set() call is still in progress for {self.name}. "
+                "If this is due to some transient failure, verify that the "
+                "device is configured the way you expect, and use clear_set() "
+                "to ignore and abandon the previous set() operation."
             )
 
         st = Status(self)
@@ -385,7 +396,25 @@ class Signal(OphydObject):
         self._set_thread = self.cl.thread_class(target=set_thread)
         self._set_thread.daemon = True
         self._set_thread.start()
+        self._poison_pill = poison_pill
+        # If we get gc-ed, stop the thread. This helps ensure that the process
+        # exits cleanly without dangling threads.
+        self._set_thread_finalizer = weakref.finalize(self, poison_pill.set)
         return self._status
+
+    def clear_set(self):
+        """
+        Escape 'Another set in progress'.
+        """
+        if self._poison_pill is None:
+            # Nothing to do
+            return
+        self._poison_pill.set()  # Break the polling loop in set_and_wait.
+        self._set_thread.join()  # Wait for that to take effect.
+        warnings.warn(
+            "A previous set() operation is being ignored. Only do this "
+            "when debugging or recovering from a hardware failure."
+        )
 
     @property
     def value(self):
