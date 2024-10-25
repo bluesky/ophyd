@@ -70,7 +70,7 @@ jobs:
 
       - name: Install prereleases of certain dependencies.
         run: pip install --upgrade --pre bluesky event-model
-        when: ${{ matrix.prerelease }}
+        if: ${{ matrix.prerelease }}
 
       - name: Start IOCs in containers.
         run: |
