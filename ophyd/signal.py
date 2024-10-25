@@ -4,6 +4,7 @@ import threading
 import time
 import warnings
 import weakref
+from collections import namedtuple
 
 import numpy as np
 
@@ -39,7 +40,9 @@ DEFAULT_TIMEOUT = object()
 DEFAULT_WRITE_TIMEOUT = object()
 
 # Sentinel to identify if we have never turned the crank on updating a PV
-DEFAULT_EPICSSIGNAL_VALUE = object()
+UNSET_VALUE = object()
+# for backward compatibility: before it was called DEFAULT_EPICSSIGNAL_VALUE
+DEFAULT_EPICSSIGNAL_VALUE = UNSET_VALUE
 
 
 class ReadTimeoutError(TimeoutError):
@@ -50,14 +53,19 @@ class ConnectionTimeoutError(TimeoutError):
     ...
 
 
+NumericValueInfo = namedtuple(
+    "NumericValueInfo", ("dtype", "shape", "default"), defaults=(float, (), UNSET_VALUE)
+)
+
+
 class Signal(OphydObject):
     r"""A signal, which can have a read-write or read-only value.
 
     Parameters
     ----------
     name : string, keyword only
-    value : any, optional
-        The initial value
+    value : any acceptable value or a NumericValueInfo object, optional
+        The initial value, or the NumericValueInfo structure to characterize the value
     kind : a member the Kind IntEnum (or equivalent integer), optional
         Default is Kind.normal. See Kind for options.
     parent : Device, optional
@@ -85,6 +93,7 @@ class Signal(OphydObject):
     rtolerance : any, optional
         The relative tolerance associated with the value
     """
+
     SUB_VALUE = "value"
     SUB_META = "meta"
     _default_sub = SUB_VALUE
@@ -95,7 +104,7 @@ class Signal(OphydObject):
         self,
         *,
         name,
-        value=0.0,
+        value=NumericValueInfo(float, (), 0.0),
         timestamp=None,
         parent=None,
         labels=None,
@@ -116,7 +125,19 @@ class Signal(OphydObject):
         self.cl = cl
         self._dispatcher = cl.get_dispatcher()
         self._metadata_thread_ctx = self._dispatcher.get_thread_context("monitor")
-        self._readback = value
+        if isinstance(value, NumericValueInfo):
+            self._value_dtype_str = np.dtype(value.dtype).name
+            self._value_shape = value.shape
+            if value.default is UNSET_VALUE:
+                self._readback = UNSET_VALUE
+            else:
+                # ensure default value corresponds to dtype and shape...
+                self._readback = np.asanyarray(value.default, value.dtype)
+                self._readback.shape = value.shape
+        else:
+            self._value_dtype_str = None
+            self._value_shape = None
+            self._readback = value
 
         if timestamp is None:
             timestamp = time.time()
@@ -152,6 +173,10 @@ class Signal(OphydObject):
 
             self._metadata.update(**unset_metadata)
 
+    @property
+    def source_name(self):
+        return "SIM:{}".format(self.name)
+
     def trigger(self):
         """Call that is used by bluesky prior to read()"""
         # NOTE: this is a no-op that exists here for bluesky purposes
@@ -186,12 +211,9 @@ class Signal(OphydObject):
     def _repr_info(self):
         "Yields pairs of (key, value) to generate the Signal repr"
         yield from super()._repr_info()
-        try:
-            value = self._readback
-        except Exception:
-            value = None
 
-        if value is not DEFAULT_EPICSSIGNAL_VALUE:
+        value = self._readback
+        if value is not UNSET_VALUE:
             yield ("value", value)
 
         yield ("timestamp", self._metadata["timestamp"])
@@ -206,6 +228,8 @@ class Signal(OphydObject):
 
     def get(self, **kwargs):
         """The readback value"""
+        if self._readback is UNSET_VALUE:
+            raise RuntimeError("Signal value has never been read yet")
         return self._readback
 
     def put(
@@ -408,7 +432,7 @@ class Signal(OphydObject):
             "This behavior will likely change in the future."
         )
 
-        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
+        if self._readback is UNSET_VALUE:
             # If we are here, then we have never turned the crank on this Signal.  The current
             # behavior is to fallback to poking the control system to get the value, however this
             # is problematic and we may want to change in the future so warn verbosely
@@ -457,6 +481,30 @@ class Signal(OphydObject):
         value = self.get()
         return {self.name: {"value": value, "timestamp": self.timestamp}}
 
+    def _infer_value_kind(
+        self, kind, inference_funcs={"dtype": data_type, "shape": data_shape}
+    ):
+        func = inference_funcs.get(kind)
+        if callable(func):
+            if self._readback is UNSET_VALUE:
+                val = self.get()
+            else:
+                val = self._readback
+            try:
+                inferred_kind = func(val)
+            except ValueError as ve:
+                # raises ValueError if type(val) is not bluesky-friendly
+                # help the humans by reporting self.name in the exception chain
+                raise ValueError(
+                    f"failed to describe '{self.name}' with value '{val}'"
+                ) from ve
+            else:
+                return inferred_kind
+        else:
+            raise ValueError(
+                f"failed to describe '{self.name}', cannot infer '{kind}' (must be one of 'dtype' or 'shape')"
+            )
+
     def describe(self):
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
 
@@ -472,24 +520,23 @@ class Signal(OphydObject):
             The keys must be strings and the values must be dict-like
             with the ``event_model.event_descriptor.data_key`` schema.
         """
-        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
-            val = self.get()
-        else:
-            val = self._readback
-        try:
-            return {
-                self.name: {
-                    "source": "SIM:{}".format(self.name),
-                    "dtype": data_type(val),
-                    "shape": data_shape(val),
-                }
+        dtype = (
+            self._value_dtype_str
+            if self._value_dtype_str is not None
+            else self._infer_value_kind("dtype")
+        )
+        shape = (
+            self._value_shape
+            if self._value_shape is not None
+            else tuple(self._infer_value_kind("shape"))
+        )
+        return {
+            self.name: {
+                "source": self.source_name,
+                "dtype": dtype,
+                "shape": shape,
             }
-        except ValueError as ve:
-            # data_type(val) raises ValueError if type(val) is not bluesky-friendly
-            # help the humans by reporting self.name in the exception chain
-            raise ValueError(
-                f"failed to describe '{self.name}' with value '{val}'"
-            ) from ve
+        }
 
     def read_configuration(self):
         "Dictionary mapping names to value dicts with keys: value, timestamp"
@@ -690,8 +737,8 @@ class DerivedSignal(Signal):
 
     def _derived_value_callback(self, value, **kwargs):
         "Main signal value updated - update the DerivedSignal"
-        # if some how we get cycled with the default value sentinel, just bail
-        if value is DEFAULT_EPICSSIGNAL_VALUE:
+        # if somehow we get cycled with the default value sentinel, just bail
+        if value is UNSET_VALUE:
             return
         value = self.inverse(value)
         self._readback = value
@@ -948,7 +995,7 @@ class EpicsSignalBase(Signal):
             connected=False,
         )
 
-        kwargs.setdefault("value", DEFAULT_EPICSSIGNAL_VALUE)
+        kwargs.setdefault("value", UNSET_VALUE)
         super().__init__(name=name, metadata=metadata, **kwargs)
 
         validate_pv_name(read_pv)
@@ -1269,6 +1316,10 @@ class EpicsSignalBase(Signal):
         """The readback PV name"""
         return self._read_pvname
 
+    @property
+    def source_name(self):
+        return "PV:{}".format(self._read_pvname)
+
     def _repr_info(self):
         "Yields pairs of (key, value) to generate the Signal repr"
         yield ("read_pv", self.pvname)
@@ -1474,18 +1525,14 @@ class EpicsSignalBase(Signal):
         dict
             Dictionary of name and formatted description string
         """
-        if self._readback is DEFAULT_EPICSSIGNAL_VALUE:
-            val = self.get()
-        else:
-            val = self._readback
+        desc = super().describe()[self.name]
         lower_ctrl_limit, upper_ctrl_limit = self.limits
-        desc = dict(
-            source="PV:{}".format(self._read_pvname),
-            dtype=data_type(val),
-            shape=data_shape(val),
-            units=self._metadata["units"],
-            lower_ctrl_limit=lower_ctrl_limit,
-            upper_ctrl_limit=upper_ctrl_limit,
+        desc.update(
+            dict(
+                units=self._metadata["units"],
+                lower_ctrl_limit=lower_ctrl_limit,
+                upper_ctrl_limit=upper_ctrl_limit,
+            )
         )
 
         if self.precision is not None:
@@ -2228,6 +2275,10 @@ class AttributeSignal(Signal):
             return ".".join((self.attr_base, self.attr))
 
     @property
+    def source_name(self):
+        return "PY:{}.{}".format(self.parent.name, self.full_attr)
+
+    @property
     def base(self):
         """The parent instance which has the final attribute"""
         if self.attr_base is None:
@@ -2260,15 +2311,6 @@ class AttributeSignal(Signal):
             value=value,
             timestamp=time.time(),
         )
-
-    def describe(self):
-        value = self.get()
-        desc = {
-            "source": "PY:{}.{}".format(self.parent.name, self.full_attr),
-            "dtype": data_type(value),
-            "shape": data_shape(value),
-        }
-        return {self.name: desc}
 
 
 class ArrayAttributeSignal(AttributeSignal):
