@@ -46,6 +46,11 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        prerelease: [false]
+        # Add one more job that runs on prereleases
+        include:
+          - python-version: "3.12"
+            prerelease: true
     runs-on: ubuntu-latest
     env:
       TEST_CL: pyepics
@@ -62,6 +67,10 @@ jobs:
 
       - name: Install dependencies
         run: pip install --upgrade setuptools && pip install -e .[dev] && pipdeptree
+
+      - name: Install prereleases of certain dependencies.
+        run: pip install --upgrade --pre bluesky event-model
+        when: matrix.prerelease
 
       - name: Start IOCs in containers.
         run: |
