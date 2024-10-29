@@ -950,7 +950,7 @@ def test_annotated_device():
     "initial, after",
     [
         [False, True],
-        [0, 0],
+        [0, 1],
         ["", "1!"],
     ],
 )
