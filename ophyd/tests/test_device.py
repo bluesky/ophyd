@@ -49,16 +49,19 @@ class FakeSignal(Signal):
 
 class FakeBoolTriggerableDevice(Device):
     """Common trigger signals expect value=1"""
+
     strigger = Component(Signal, value=False, trigger_value=True)
 
 
 class FakeIntTriggerableDevice(Device):
     """Common trigger signals expect value=1"""
+
     strigger = Component(Signal, value=0, trigger_value=1)
 
 
 class FakeStrTriggerableDevice(Device):
     """Some FPGA triggers on a custom string value."""
+
     strigger = Component(Signal, value="", trigger_value="1!")
 
 
