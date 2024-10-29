@@ -947,7 +947,7 @@ def test_annotated_device():
 
 
 @pytest.mark.parametrize(
-    "before, after, expected",
+    "before, after",
     [
         [False, True, True],
         [0, 1, True],
@@ -955,7 +955,7 @@ def test_annotated_device():
         ["", "1!", True],
     ],
 )
-def test_trigger_value(before, after, expected):
+def test_trigger_value(before, after):
     """Ensure the configured trigger_value is used."""
 
     class FakeTriggerableDevice(Device):
