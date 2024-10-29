@@ -47,6 +47,11 @@ class FakeSignal(Signal):
         return {self.name + "_conf": {"value": 0}}
 
 
+class FakeBoolTriggerableDevice(Device):
+    """Common trigger signals expect value=1"""
+    strigger = Component(Signal, value=False, trigger_value=True)
+
+
 class FakeIntTriggerableDevice(Device):
     """Common trigger signals expect value=1"""
     strigger = Component(Signal, value=0, trigger_value=1)
@@ -959,12 +964,20 @@ def test_annotated_device():
 @pytest.mark.parametrize(
     "klass, before, after, expected",
     [
+        [FakeBoolTriggerableDevice, False, True, True],
+        [FakeBoolTriggerableDevice, False, False, False],
+        [FakeBoolTriggerableDevice, False, 1, True],  # odd, but True
+        [FakeBoolTriggerableDevice, False, "1", False],
         [FakeIntTriggerableDevice, 0, 1, True],
+        [FakeIntTriggerableDevice, 0, "1", False],
+        [FakeIntTriggerableDevice, 0, "1!", False],
         [FakeStrTriggerableDevice, "", "1!", True],
         [FakeStrTriggerableDevice, "", 1, False],
+        [FakeStrTriggerableDevice, "", "1", False],
     ]
 )
 def test_trigger_value(klass, before, after, expected):
+    """Ensure the configured trigger_value is used."""
     d = klass("", name="test")
     assert len(d.trigger_signals) == 1
     assert [d.strigger] == d.trigger_signals
