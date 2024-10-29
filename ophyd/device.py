@@ -1457,7 +1457,8 @@ class Device(BlueskyInterface, OphydObject):
             # has finished
             self._done_acquiring()
 
-        acq_signal.put(1, wait=False, callback=done_acquisition)
+        trigger_value = self._sig_attrs[acq_signal.attr_name].trigger_value
+        acq_signal.put(trigger_value, wait=False, callback=done_acquisition)
         return status
 
     def stop(self, *, success=False):

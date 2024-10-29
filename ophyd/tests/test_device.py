@@ -944,3 +944,28 @@ def test_annotated_device():
     assert MyDevice.cpt3._get_class_from_annotation() is SignalRO
     assert MyDevice.cpt3.cls is SignalRO
     assert MyDevice.cpt4._get_class_from_annotation() is None
+
+
+@pytest.mark.parametrize(
+    "initial, after",
+    [
+        [False, True],
+        [0, 1],
+        ["", "1!"],
+    ],
+)
+def test_trigger_value(initial, after):
+    """Ensure the configured trigger_value is used."""
+
+    class FakeTriggerableDevice(Device):
+        """Common trigger signals expect value=1"""
+
+        strigger = Component(Signal, value=initial, trigger_value=after)
+
+    d = FakeTriggerableDevice("", name="test")
+    assert len(d.trigger_signals) == 1
+    assert [d.strigger] == d.trigger_signals
+    assert d.strigger.get() == initial
+
+    d.trigger()
+    assert d.strigger.get() == after
