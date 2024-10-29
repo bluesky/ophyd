@@ -47,6 +47,16 @@ class FakeSignal(Signal):
         return {self.name + "_conf": {"value": 0}}
 
 
+class FakeIntTriggerableDevice(Device):
+    """Common trigger signals expect value=1"""
+    strigger = Component(Signal, value=0, trigger_value=1)
+
+
+class FakeStrTriggerableDevice(Device):
+    """Some FPGA triggers on a custom string value."""
+    strigger = Component(Signal, value="", trigger_value="1!")
+
+
 def test_device_state():
     d = Device("test", name="test")
 
@@ -944,3 +954,21 @@ def test_annotated_device():
     assert MyDevice.cpt3._get_class_from_annotation() is SignalRO
     assert MyDevice.cpt3.cls is SignalRO
     assert MyDevice.cpt4._get_class_from_annotation() is None
+
+
+@pytest.mark.parametrize(
+    "klass, before, after, expected",
+    [
+        [FakeIntTriggerableDevice, 0, 1, True],
+        [FakeStrTriggerableDevice, "", "1!", True],
+        [FakeStrTriggerableDevice, "", 1, False],
+    ]
+)
+def test_trigger_value(klass, before, after, expected):
+    d = klass("", name="test")
+    assert len(d.trigger_signals) == 1
+    assert [d.strigger] == d.trigger_signals
+    assert d.strigger.get() == before
+
+    d.trigger()
+    assert (d.strigger.get() == after) == expected
