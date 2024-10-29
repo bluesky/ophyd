@@ -947,26 +947,25 @@ def test_annotated_device():
 
 
 @pytest.mark.parametrize(
-    "before, after",
+    "initial, after",
     [
-        [False, True, True],
-        [0, 1, True],
-        [0, 0, False],
-        ["", "1!", True],
+        [False, True],
+        [0, 0],
+        ["", "1!"],
     ],
 )
-def test_trigger_value(before, after):
+def test_trigger_value(initial, after):
     """Ensure the configured trigger_value is used."""
 
     class FakeTriggerableDevice(Device):
         """Common trigger signals expect value=1"""
 
-        strigger = Component(Signal, value=before, trigger_value=after)
+        strigger = Component(Signal, value=initial, trigger_value=after)
 
     d = FakeTriggerableDevice("", name="test")
     assert len(d.trigger_signals) == 1
     assert [d.strigger] == d.trigger_signals
-    assert d.strigger.get() == before
+    assert d.strigger.get() == initial
 
     d.trigger()
     assert d.strigger.get() == after
