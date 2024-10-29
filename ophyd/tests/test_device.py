@@ -974,7 +974,7 @@ def test_annotated_device():
         [FakeStrTriggerableDevice, "", "1!", True],
         [FakeStrTriggerableDevice, "", 1, False],
         [FakeStrTriggerableDevice, "", "1", False],
-    ]
+    ],
 )
 def test_trigger_value(klass, before, after, expected):
     """Ensure the configured trigger_value is used."""
