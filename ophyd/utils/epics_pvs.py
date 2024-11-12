@@ -401,12 +401,12 @@ def data_shape(val):
         ``list(np.ndarray.shape)``
     """
     if data_type(val) != "array":
-        return []
+        return ()
 
     try:
-        return list(val.shape)
+        return tuple(val.shape)
     except AttributeError:
-        return [len(val)]
+        return (len(val),)
 
 
 # Vendored from pyepics v3.3.0

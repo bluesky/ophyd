@@ -48,15 +48,15 @@ def test_records_from_db():
 @pytest.mark.parametrize(
     "value, dtype, shape",
     [
-        [1, "integer", []],
-        [1.0, "number", []],
-        [1e-3, "number", []],
-        ["foo", "string", []],
-        [np.array([1, 2, 3]), "array", [3]],
-        [np.array([[1, 2], [3, 4]]), "array", [2, 2]],
-        [(1, 2, 3), "array", [3]],
-        [[1, 2, 3], "array", [3]],
-        [[], "array", [0]],
+        [1, "integer", ()],
+        [1.0, "number", ()],
+        [1e-3, "number", ()],
+        ["foo", "string", ()],
+        [np.array([1, 2, 3]), "array", (3,)],
+        [np.array([[1, 2], [3, 4]]), "array", (2, 2)],
+        [(1, 2, 3), "array", (3,)],
+        [[1, 2, 3], "array", (3,)],
+        [[], "array", (0,)],
     ],
 )
 def test_data_type_and_shape(value, dtype, shape):

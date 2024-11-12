@@ -2,7 +2,9 @@ import copy
 import logging
 import threading
 import time
+from unittest import mock
 
+import numpy
 import pytest
 
 from ophyd import get_cl
@@ -398,9 +400,7 @@ def test_describe(bool_enum_signal):
     )
     desc = sig.describe()["my_pv"]
     assert desc["dtype"] == "array"
-    assert desc["shape"] == [
-        1,
-    ]
+    assert desc["shape"] == [1]
 
 
 def test_set_method():
@@ -695,3 +695,111 @@ def test_import_ro_signal_class():
     from ophyd.signal import SignalRO as SignalRoFromModule
 
     assert SignalRoFromPkg is SignalRoFromModule
+
+
+def test_signal_dtype_shape_info(fake_motor_ioc, cleanup):
+    pvs = fake_motor_ioc.pvs
+    sig = EpicsSignal(write_pv=pvs["setpoint"], read_pv=pvs["readback"], name="motor")
+    sig_desc = sig.describe()["motor"]
+    assert sig_desc["dtype"] == "number"
+    assert sig_desc["shape"] == []
+
+    sig = EpicsSignal(
+        write_pv=pvs["setpoint"], read_pv=pvs["readback"], name="motor", dtype=float
+    )
+    sig_desc = sig.describe()["motor"]
+    assert sig_desc["dtype"] == "number"
+    assert sig_desc["dtype_numpy"] == "float64"
+    assert sig_desc["shape"] == []
+
+    original = Signal(name="original")
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "number"
+    assert "dtype_numpy" not in original_desc
+    assert original_desc["shape"] == []
+    assert pytest.approx(original.get()) == 0.0
+    original = Signal(name="original", value=1)
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "integer"
+    assert "dtype_numpy" not in original_desc
+    assert original_desc["shape"] == []
+    assert original.get() == 1
+    original = Signal(name="original", value="On")
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "string"
+    assert "dtype_numpy" not in original_desc
+    assert original_desc["shape"] == []
+    assert original.get() == "On"
+    original = Signal(name="original", dtype=numpy.uint16, shape=(2, 2))
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "array"
+    assert original_desc["dtype_numpy"] == "uint16"
+    assert original_desc["shape"] == [2, 2]
+    with pytest.raises(RuntimeError):
+        original.get()
+    original = Signal(
+        name="original",
+        value=numpy.array([[1, 2], [3, 4]]),
+        dtype=numpy.uint16,
+        shape=(2, 2),
+    )
+    original_desc = original.describe()["original"]
+    assert original_desc["dtype"] == "array"
+    assert original_desc["dtype_numpy"] == "uint16"
+    assert original_desc["shape"] == [2, 2]
+    test_arr = numpy.array([1, 2, 3, 4], dtype=numpy.uint16)
+    test_arr.shape = (2, 2)
+    numpy.testing.assert_equal(original.get(), test_arr)
+
+    class TestDerivedSignal(DerivedSignal):
+        def forward(self, value):
+            return value / 2
+
+        def inverse(self, value):
+            return 2 * value
+
+    derived = TestDerivedSignal(
+        derived_from=original, name="derived", dtype=numpy.uint32, shape=(2, 2)
+    )
+
+    derived_desc = derived.describe()["derived"]
+    assert derived_desc["dtype"] == "array"
+    assert derived_desc["dtype_numpy"] == "uint32"
+    assert derived_desc["shape"] == [2, 2]
+    assert derived_desc["derived_from"] == original.name
+
+    string_signal_with_value = Signal(
+        name="string_signal", dtype="string", value="test"
+    )
+    desc = string_signal_with_value.describe()["string_signal"]
+    assert desc["dtype"] == "string"
+    assert "dtype_numpy" not in desc
+    assert desc["shape"] == []
+    assert string_signal_with_value.get() == "test"
+
+    string_signal = Signal(name="string_signal", dtype="string")
+    with mock.patch.object(
+        string_signal, "get", return_value="StringSignal"
+    ) as mocked_get:
+        desc = string_signal.describe()["string_signal"]
+    mocked_get.assert_called_once()
+    assert desc["dtype"] == "string"
+    assert "dtype_numpy" not in desc
+    assert desc["shape"] == []
+
+    with pytest.raises(TypeError):
+        # bad default vs dtype
+        Signal(name="bad_value", dtype="uint16", value=[0.3, 1])
+    ok_conversion_default_to_dtype = Signal(
+        name="ok_value", dtype="uint16", value=[1, 2]
+    )
+    assert ok_conversion_default_to_dtype._value_dtype_str == "uint16"
+    with pytest.raises(TypeError):
+        # bad default vs shape
+        Signal(
+            name="bad_value", dtype="int64", shape=(2, 2), value=[[1, 2, 3], [4, 5, 6]]
+        )
+    ok_default_shape = Signal(
+        name="ok_value", dtype="int64", shape=(2, 2), value=[[1, 2], [3, 4]]
+    )
+    assert ok_default_shape._value_shape == (2, 2)

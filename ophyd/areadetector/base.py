@@ -24,7 +24,13 @@ import numpy as np
 
 from ..device import Component, Device, DynamicDeviceComponent
 from ..ophydobj import Kind, OphydObject
-from ..signal import ArrayAttributeSignal, DerivedSignal, EpicsSignal, EpicsSignalRO
+from ..signal import (
+    UNSET_VALUE,
+    ArrayAttributeSignal,
+    DerivedSignal,
+    EpicsSignal,
+    EpicsSignalRO,
+)
 from . import docs
 
 
@@ -92,6 +98,9 @@ class NDDerivedSignal(DerivedSignal):
         if isinstance(num_dimensions, str):
             num_dimensions = getattr(parent, num_dimensions)
         self._num_dimensions = num_dimensions
+        kwargs.setdefault("value", UNSET_VALUE)
+        kwargs.setdefault("dtype", None)
+        kwargs.setdefault("shape", shape)
         super().__init__(derived_from=derived_from, parent=parent, **kwargs)
 
     @property
