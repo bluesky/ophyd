@@ -10,6 +10,7 @@ Needs this set in the top-most conftest.py file to enable 'testdir':
 
     echo "pytest_plugins = 'pytester'" >> conftest.py
 """
+import pytest
 
 from .config import motor_recs
 
@@ -22,6 +23,7 @@ def run_test_code(testdir, code):
     result.stdout.fnmatch_lines(["* 1 passed*"])
 
 
+@pytest.mark.motorsim
 def test_local_without_defaults_no_string(testdir):
     from ophyd import EpicsSignal
 
@@ -32,6 +34,7 @@ def test_local_without_defaults_no_string(testdir):
     assert desc["signal"]["dtype"] == "integer"
 
 
+@pytest.mark.motorsim
 def test_without_defaults_no_string(testdir):
     run_test_code(
         testdir,
@@ -51,6 +54,7 @@ def test_without_defaults_no_string(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_without_defaults_as_string(testdir):
     run_test_code(
         testdir,
@@ -70,6 +74,7 @@ def test_without_defaults_as_string(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_with_all_defaults_no_string(testdir):
     run_test_code(
         testdir,
@@ -96,6 +101,7 @@ def test_with_all_defaults_no_string(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_with_all_defaults_as_string(testdir):
     run_test_code(
         testdir,
@@ -123,6 +129,7 @@ def test_with_all_defaults_as_string(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_with_all_defaults_auto_monitor(testdir):
     run_test_code(
         testdir,
@@ -147,6 +154,7 @@ def test_with_all_defaults_auto_monitor(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_with_all_defaults_connection_timeout(testdir):
     run_test_code(
         testdir,
@@ -171,6 +179,7 @@ def test_with_all_defaults_connection_timeout(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_with_all_defaults_timeout(testdir):
     run_test_code(
         testdir,
@@ -195,6 +204,7 @@ def test_with_all_defaults_timeout(testdir):
     )
 
 
+@pytest.mark.motorsim
 def test_with_all_defaults_write_timeout(testdir):
     run_test_code(
         testdir,
