@@ -20,3 +20,4 @@ markers = [
 asyncio_mode = "auto"
 # https://iscinumpy.gitlab.io/post/bound-version-constraints/#watch-for-warnings
 # filterwarnings = "error"
+python_files = "test_*.py"
