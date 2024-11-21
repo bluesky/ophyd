@@ -2,6 +2,27 @@
  Release History
 =================
 
+1.10.0 (2024-11-21)
+===================
+
+Added
+-----
+
+* ``count`` parameter to Signal.get (same as pv.get)
+* ``.locate()` method to EpicsMotor, returning setpoint and readback
+* ``dtype`` and ``shape`` keywords can be specified in Signal constructor to avoid type inference
+* ``describe()`` returns ``dtype_numpy``, if available
+
+Fixes
+-----
+
+* Allow write path template on FileStoreBase to include ``.``
+* Enforce FileStoreBase root path to be absolute
+* Fixed fraction in ADTriggerStatus to match docs
+* Status objects do not create threads when timeout is None
+* Enforce configured Component.trigger_value is used for acquisition signal
+
+
 1.9.0 (2023-09-15)
 ==================
 
