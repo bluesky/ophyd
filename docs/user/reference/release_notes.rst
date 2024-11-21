@@ -9,7 +9,7 @@ Added
 -----
 
 * ``count`` parameter to Signal.get (same as pv.get)
-* ``.locate()` method to EpicsMotor, returning setpoint and readback
+* ``.locate()`` method to EpicsMotor, returning setpoint and readback
 * ``dtype`` and ``shape`` keywords can be specified in Signal constructor to avoid type inference
 * ``describe()`` returns ``dtype_numpy``, if available
 
