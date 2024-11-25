@@ -234,7 +234,7 @@ class Component(typing.Generic[K]):
             suffix from.
 
         kw : str
-            The key of associated with the suffix.  If this key is
+            The key of associated with the suffix.  If this key is in
             self.add_prefix than prepend the prefix to the suffix and
             return, else just return the suffix.
 
