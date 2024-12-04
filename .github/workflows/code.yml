@@ -102,7 +102,10 @@ jobs:
       - name: Github Release
         # We pin to the SHA, not the tag, for security reasons.
         # https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
-        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # v0.1.14
+        # Refs:
+        # - https://github.com/softprops/action-gh-release/commit/01570a1f39cb168c169c802c3bceb9e93fb10974 which is
+        # - https://github.com/softprops/action-gh-release/releases/tag/v2.1.0
+        uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974  # v2.1.0
         with:
           files: dist/*
           generate_release_notes: true
