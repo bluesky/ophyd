@@ -234,7 +234,7 @@ class Component(typing.Generic[K]):
             suffix from.
 
         kw : str
-            The key of associated with the suffix.  If this key is
+            The key of associated with the suffix.  If this key is in
             self.add_prefix than prepend the prefix to the suffix and
             return, else just return the suffix.
 
@@ -253,10 +253,12 @@ class Component(typing.Generic[K]):
         "Instantiate the object described by this Component for a Device"
         kwargs = self.kwargs.copy()
         kwargs.update(
-            name=f"{instance.name}_{self.attr}",
+            name=f"{instance.name}{instance._child_name_separator}{self.attr}",
             kind=instance._component_kinds[self.attr],
             attr_name=self.attr,
         )
+        if issubclass(self.cls, Device):
+            kwargs.setdefault("child_name_separator", instance._child_name_separator)
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
@@ -839,10 +841,11 @@ class Device(BlueskyInterface, OphydObject):
         read_attrs=None,
         configuration_attrs=None,
         parent=None,
+        child_name_separator="_",
         **kwargs,
     ):
         self._destroyed = False
-
+        self._child_name_separator = child_name_separator
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
