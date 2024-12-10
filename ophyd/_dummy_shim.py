@@ -48,7 +48,7 @@ def caput(*args, **kwargs):
 
 
 def get_pv(*args, **kwargs):
-    raise NotImplementedError
+    raise NotImplementedError("Missing install for either pyepics or caproto.")
 
 
 def release_pvs(*args, **kwargs):
