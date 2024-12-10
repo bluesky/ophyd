@@ -40,19 +40,19 @@ def setup(logger):
 
 
 def caget(*args, **kwargs):
-    raise NotImplementedError
+    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
 
 
 def caput(*args, **kwargs):
-    raise NotImplementedError
+    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
 
 
 def get_pv(*args, **kwargs):
-    raise NotImplementedError("Missing install for either pyepics or caproto.")
+    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
 
 
 def release_pvs(*args, **kwargs):
-    raise NotImplementedError
+    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
 
 
 def get_dispatcher():
