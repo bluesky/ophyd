@@ -6,8 +6,7 @@ class DummyDispatcherThreadContext:
     event_type = None
     event_thread = None
 
-    def run(self, *args, **kwargs):
-        ...
+    def run(self, *args, **kwargs): ...
 
     __call__ = run
 
@@ -19,11 +18,9 @@ class DummyDispatcher:
     timeout = 0.1
     threads = {}
 
-    def stop(self):
-        ...
+    def stop(self): ...
 
-    def schedule_utility_task(self, callback, *args, **kwargs):
-        ...
+    def schedule_utility_task(self, callback, *args, **kwargs): ...
 
     def get_thread_context(self, name):
         return DummyDispatcherThreadContext()
@@ -35,24 +32,31 @@ name = "dummy"
 _dispatcher = DummyDispatcher()
 
 
-def setup(logger):
-    ...
+def setup(logger): ...
 
 
 def caget(*args, **kwargs):
-    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
+    raise NotImplementedError(
+        "Dummy control layer in-use. Try installing either pyepics or caproto."
+    )
 
 
 def caput(*args, **kwargs):
-    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
+    raise NotImplementedError(
+        "Dummy control layer in-use. Try installing either pyepics or caproto."
+    )
 
 
 def get_pv(*args, **kwargs):
-    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
+    raise NotImplementedError(
+        "Dummy control layer in-use. Try installing either pyepics or caproto."
+    )
 
 
 def release_pvs(*args, **kwargs):
-    raise NotImplementedError("Dummy control layer in-use. Try installing either pyepics or caproto.")
+    raise NotImplementedError(
+        "Dummy control layer in-use. Try installing either pyepics or caproto."
+    )
 
 
 def get_dispatcher():
