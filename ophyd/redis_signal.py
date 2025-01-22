@@ -8,12 +8,10 @@ from ophyd.status import Status
 from ophyd.utils.epics_pvs import data_shape, data_type
 
 
-class NoKey(KeyError):
-    ...
+class NoKey(KeyError): ...
 
 
-class NoEventNotifications(EnvironmentError):
-    ...
+class NoEventNotifications(EnvironmentError): ...
 
 
 class RedisSignal(OphydObject):
@@ -40,14 +38,22 @@ class RedisSignal(OphydObject):
 
     """
 
-    SUB_VALUE = 'value'
-    SUB_META = 'meta'
+    SUB_VALUE = "value"
+    SUB_META = "meta"
     _default_sub = SUB_VALUE
     _metadata_keys = None
-    _core_metadata_keys = ('connected', 'timestamp')
+    _core_metadata_keys = ("connected", "timestamp")
 
     def __init__(
-        self, key, *, r, initial_value=None, serializer_deserializer=None, name=None, timestamp=None, **kwargs
+        self,
+        key,
+        *,
+        r,
+        initial_value=None,
+        serializer_deserializer=None,
+        name=None,
+        timestamp=None,
+        **kwargs,
     ):
         if name is None:
             name = key
@@ -93,13 +99,13 @@ class RedisSignal(OphydObject):
 
     @property
     def timestamp(self):
-        '''Timestamp of the readback value'''
-        return self._metadata['timestamp']
+        """Timestamp of the readback value"""
+        return self._metadata["timestamp"]
 
     @property
     def connected(self):
-        'Is the signal connected to its associated hardware, and ready to use?'
-        return self._metadata['connected']  # and not self._destroyed
+        "Is the signal connected to its associated hardware, and ready to use?"
+        return self._metadata["connected"]  # and not self._destroyed
 
     def set(self, value):
         """Set value of signal. Sets value of redis key to the serialized dictionary of value and timestamp.
@@ -123,7 +129,7 @@ class RedisSignal(OphydObject):
         return st
 
     def get(self):
-        return self.read()[self.name]['value']
+        return self.read()[self.name]["value"]
 
     def put(self, value):
         self.set(value)
@@ -182,7 +188,7 @@ class RedisSignal(OphydObject):
             callback
         """
         events = self._r.config_get()["notify-keyspace-events"]
-        if not search("^(?=.*(A|\$))(?=.*K)", events):
+        if not search(r"^(?=.*(A|\$))(?=.*K)", events):
             raise NoEventNotifications
 
         if self._pubsub is None:
@@ -192,7 +198,9 @@ class RedisSignal(OphydObject):
         if self._subscription_thread is not None:
             if self._subscription_thread.is_alive():
                 return
-        self._subscription_thread = self._pubsub.run_in_thread(sleep_time=None, daemon=True)
+        self._subscription_thread = self._pubsub.run_in_thread(
+            sleep_time=None, daemon=True
+        )
 
         cid = super().subscribe(*args, **kwargs)
 
@@ -242,7 +250,10 @@ class RedisSignalFactory:
 
     def get_signals_pattern(self, pattern: str):
         """Returns dictionary of signals with keys matching pattern"""
-        return {k.decode('utf-8'): self.get(k.decode('utf-8')) for k in self._redis.scan_iter(pattern)}
+        return {
+            k.decode("utf-8"): self.get(k.decode("utf-8"))
+            for k in self._redis.scan_iter(pattern)
+        }
 
 
 # class StructuredRedisSignal(RedisSignal):

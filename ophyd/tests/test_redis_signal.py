@@ -1,7 +1,8 @@
 import time
 import fakeredis
 
-from ophyd import RedisSignal
+from ophyd.redis_signal import RedisSignal
+
 
 def test_redis_signal():
 
@@ -9,8 +10,8 @@ def test_redis_signal():
 
     r = fakeredis.FakeStrictRedis()
 
-    key = 'test_key'
-    value = 'test_value'
+    key = "test_key"
+    value = "test_value"
     new_value = 10
 
     signal = RedisSignal(key, r=r, initial_value=value, timestamp=start_t)
@@ -37,6 +38,6 @@ def test_redis_signal():
 
 if __name__ == "__main__":
 
-    print(f'Testing: test_redis_signal')
+    print(f"Testing: test_redis_signal")
     test_redis_signal()
-    print('Done.')
+    print("Done.")
