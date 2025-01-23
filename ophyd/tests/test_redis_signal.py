@@ -27,9 +27,9 @@ def test_redis_signal():
     # reset value
     signal.put(value)
     assert signal.read()[key]["value"] == value
-    # signal.describe()
-    # signal.read_configuration()
-    # signal.describe_configuration()
+    signal.describe()
+    signal.read_configuration()
+    signal.describe_configuration()
 
     # eval(repr(signal))
 
