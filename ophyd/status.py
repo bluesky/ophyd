@@ -592,9 +592,9 @@ class AndStatus(StatusBase):
                         # At least one is done.
                         # If it failed, do not wait for the second one.
                         if (not l_success) and l_done:
-                            self._finished(success=False)
+                            self.set_exception(self.left.exception())
                         elif (not r_success) and r_done:
-                            self._finished(success=False)
+                            self.set_exception(self.right.exception())
 
                         elif l_success and r_success and l_done and r_done:
                             # Both are done, successfully.

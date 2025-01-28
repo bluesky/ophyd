@@ -394,10 +394,12 @@ class Signal(OphydObject):
         )
 
         def set_thread():
+            _exception = None
+
             try:
                 self._set_and_wait(value, timeout, **kwargs)
-            except TimeoutError:
-                success = False
+            except TimeoutError as e:
+                _exception = e
                 self.log.warning(
                     "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)",
                     self.name,
@@ -407,8 +409,8 @@ class Signal(OphydObject):
                     self.rtolerance,
                     kwargs,
                 )
-            except Exception:
-                success = False
+            except Exception as e:
+                _exception = e
                 self.log.exception(
                     "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)",
                     self.name,
@@ -419,7 +421,6 @@ class Signal(OphydObject):
                     kwargs,
                 )
             else:
-                success = True
                 self.log.debug(
                     "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s) succeeded => %s",
                     self.name,
@@ -439,7 +440,12 @@ class Signal(OphydObject):
                 th = self._set_thread
                 # these two must be in this order to avoid a race condition
                 self._set_thread = None
-                st._finished(success=success)
+
+                if _exception is not None:
+                    st.set_exception(_exception)
+                else:
+                    st.set_finished()
+
                 del th
 
         if self._set_thread is not None:
