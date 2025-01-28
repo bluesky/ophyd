@@ -225,7 +225,7 @@ class Signal(OphydObject):
         # NOTE: this is a no-op that exists here for bluesky purposes
         #       it may need to be moved in the future
         d = Status(self)
-        d._finished()
+        d.set_finished()
         return d
 
     def wait_for_connection(self, timeout=0.0):
@@ -2247,7 +2247,7 @@ class EpicsSignal(EpicsSignalBase):
         st = Status(self, timeout=timeout, settle_time=settle_time)
 
         def put_callback(**kwargs):
-            st._finished(success=True)
+            st.set_finished()
 
         self.put(value, use_complete=True, callback=put_callback)
         return st

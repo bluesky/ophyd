@@ -2,7 +2,6 @@ import json
 import threading
 import time
 from collections import deque
-from functools import partial
 from logging import LoggerAdapter
 from warnings import warn
 
@@ -599,7 +598,7 @@ class AndStatus(StatusBase):
 
                         elif l_success and r_success and l_done and r_done:
                             # Both are done, successfully.
-                            self._finished(success=True)
+                            self.set_finished()
                         # Else one is done, successfully, and we wait for #2,
                         # when this function will be called again.
 
@@ -793,7 +792,7 @@ class SubscriptionStatus(DeviceStatus):
 
         # If successfull indicate completion
         if success:
-            self._finished(success=True)
+            self.set_finished()
 
     def set_finished(self):
         """
@@ -863,9 +862,7 @@ class StableSubscriptionStatus(SubscriptionStatus):
                 f"Stability time ({stability_time}) must be less than full status timeout ({timeout})"
             )
         self._stability_time = stability_time
-        self._stable_timer = threading.Timer(
-            self._stability_time, partial(self._finished, success=True)
-        )
+        self._stable_timer = threading.Timer(self._stability_time, self.set_finished)
 
         # Start timeout thread in the background
         super().__init__(
@@ -891,7 +888,7 @@ class StableSubscriptionStatus(SubscriptionStatus):
             else:
                 self._stable_timer.cancel()
                 self._stable_timer = threading.Timer(
-                    self._stability_time, partial(self._finished, success=True)
+                    self._stability_time, self.set_finished
                 )
 
         # Do not fail silently
