@@ -180,6 +180,9 @@ class Signal(OphydObject):
                     f"The value {value} does not have the required shape {shape}."
                 )
 
+        if isinstance(value, _DefaultFloat):
+            value = float(value)
+
         self._readback = value
 
         if timestamp is None:
