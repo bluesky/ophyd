@@ -264,10 +264,6 @@ class Component(typing.Generic[K]):
         _parent_long_name = getattr(instance, "long_name", instance.name)
         kwargs["long_name"] = f"{_parent_long_name} {_long_name}"
 
-        _long_name = kwargs.get("long_name", self.attr)
-        _parent_long_name = getattr(instance, "long_name", instance.name)
-        kwargs["long_name"] = f"{_parent_long_name} {_long_name}"
-
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
 
