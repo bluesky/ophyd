@@ -2370,6 +2370,7 @@ class AttributeSignal(Signal):
             timestamp=time.time(),
         )
 
+
 class ArrayAttributeSignal(AttributeSignal):
     """An AttributeSignal which is cast to an ndarray on get
 
