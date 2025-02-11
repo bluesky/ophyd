@@ -1602,7 +1602,10 @@ class EpicsSignalBase(Signal):
             lower_ctrl_limit=lower_ctrl_limit,
             upper_ctrl_limit=upper_ctrl_limit,
             long_name=self.long_name,
+<<<<<<< HEAD
 >>>>>>> 50a53625 (long_name added to signal class)
+=======
+>>>>>>> 884bf05923b1ac65056d49f81fd6499b1c6a8679
         )
 
         if self.precision is not None:
