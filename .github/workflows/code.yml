@@ -85,6 +85,9 @@ jobs:
       - name: Start docker containers
         run: docker compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
+      - name: Print docker logs
+        run: docker logs epics-services-for-ophyd_motor-sim_1
+
       - name: Test with pytest
         run: pytest -k "${TEST_CL}"
 
