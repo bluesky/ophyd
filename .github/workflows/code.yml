@@ -73,10 +73,10 @@ jobs:
         if: ${{ matrix.prerelease }}
 
       - name: Source environment for epics containers
-        run: source ../../ophyd/epics-services-for-ophyd/environment.sh
+        run: source ophyd/epics-services-for-ophyd/environment.sh
 
       - name: Start docker containers
-        run: docker-compose -f ../../ophyd/epics-services-for-ophyd/compose.yaml up -d
+        run: docker-compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
       - name: Test with pytest
         run: pytest -k "${TEST_CL}"
