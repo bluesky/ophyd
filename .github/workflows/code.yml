@@ -55,6 +55,10 @@ jobs:
     env:
       TEST_CL: pyepics
 
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,10 +71,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install --upgrade setuptools && pip install -e .[dev] && pipdeptree
+        run: |
+          pip install --upgrade setuptools && pip install -e .[dev] && pipdeptree
 
       - name: Install prereleases of certain dependencies.
-        run: pip install --upgrade --pre bluesky event-model
+        run: |
+          pip install --upgrade --pre bluesky event-model
         if: ${{ matrix.prerelease }}
 
       - name: Start Docker
@@ -79,20 +85,23 @@ jobs:
           docker version
           docker compose --version   
       
-      - name: Source environment for epics containers
-        run: source ophyd/epics-services-for-ophyd/environment.sh
-
       - name: Start docker containers
-        run: docker compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
+        run: |
+          source ophyd/epics-services-for-ophyd/environment.sh
+          docker compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
       - name: Wait for docker containers to start
-        run: sleep 20
+        run: |
+          sleep 20
 
       - name: Print docker logs
-        run: docker logs epics-services-for-ophyd-ophyd-motor-sim-1
+        run: |
+          docker logs epics-services-for-ophyd-ophyd-motor-sim-1
 
       - name: Test with pytest
-        run: pytest -k "${TEST_CL}"
+        run: |
+          source ophyd/epics-services-for-ophyd/environment.sh
+          pytest -k "${TEST_CL}"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
