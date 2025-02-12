@@ -72,10 +72,11 @@ jobs:
         run: pip install --upgrade --pre bluesky event-model
         if: ${{ matrix.prerelease }}
 
-      - name: Start IOCs in containers.
-        run: |
-          source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
-          source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
+      - name: Source environment for epics containers
+        run: source ophyd/epics-services-for-ophyd/environment.sh
+
+      - name: Start docker containers
+        run: docker-compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
       - name: Test with pytest
         run: pytest -k "${TEST_CL}"
