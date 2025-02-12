@@ -58,6 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0 # So we get history for version number
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -73,7 +74,9 @@ jobs:
         if: ${{ matrix.prerelease }}
 
       - name: list directory contents for debugging
-        run: ls -l ophyd/epics-services-for-ophyd
+        run: |
+          ls -l ophyd/epics-services-for-ophyd
+          ls -l ophyd/epics-services-for-ophyd/environment.sh
 
       - name: Source environment for epics containers
         run: source ophyd/epics-services-for-ophyd/environment.sh
