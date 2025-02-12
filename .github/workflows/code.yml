@@ -73,7 +73,7 @@ jobs:
         if: ${{ matrix.prerelease }}
 
       - name: list directory contents for debugging
-        run: ls -la ophyd/epics-services-for-ophyd
+        run: ls -l ophyd/epics-services-for-ophyd
 
       - name: Source environment for epics containers
         run: source ophyd/epics-services-for-ophyd/environment.sh
