@@ -72,6 +72,9 @@ jobs:
         run: pip install --upgrade --pre bluesky event-model
         if: ${{ matrix.prerelease }}
 
+      - name: list directory contents for debugging
+        run: ls -l
+
       - name: Source environment for epics containers
         run: source ophyd/epics-services-for-ophyd/environment.sh
 
