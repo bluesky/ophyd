@@ -82,7 +82,7 @@ jobs:
         run: source ophyd/epics-services-for-ophyd/environment.sh
 
       - name: Start docker containers
-        run: docker-compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
+        run: podman-compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
       - name: Test with pytest
         run: pytest -k "${TEST_CL}"
