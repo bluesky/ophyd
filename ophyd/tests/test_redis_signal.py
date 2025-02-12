@@ -34,7 +34,8 @@ def test_redis_signal():
     # eval(repr(signal))
 
     # Need a way to test subscriptions. Look at other redis mocking options.
-
+    # fakeredis does not support config, but does support pubsub.
+    #signal.subscribe()
 
 if __name__ == "__main__":
 
