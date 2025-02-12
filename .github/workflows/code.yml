@@ -85,6 +85,9 @@ jobs:
       - name: Start docker containers
         run: docker compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
+      - name: Wait for docker containers to start
+        run: sleep 20
+
       - name: Print docker logs
         run: docker logs epics-services-for-ophyd-ophyd-motor-sim-1
 
