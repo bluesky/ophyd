@@ -77,13 +77,13 @@ jobs:
         run: |
           sudo systemctl start docker
           docker version
-          docker-compose --version   
+          docker compose --version   
       
       - name: Source environment for epics containers
         run: source ophyd/epics-services-for-ophyd/environment.sh
 
       - name: Start docker containers
-        run: podman-compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
+        run: docker compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
 
       - name: Test with pytest
         run: pytest -k "${TEST_CL}"
