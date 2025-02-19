@@ -88,7 +88,9 @@ jobs:
       - name: Create AD data directories
         run: |
           mkdir -p /tmp/ophyd_AD_test/
+          ls -R /tmp/ophyd_AD_test/
           python scripts/create_directories.py /tmp/ophyd_AD_test/data1
+          ls -R /tmp/ophyd_AD_test/data1
 
       - name: Start docker containers
         run: |
