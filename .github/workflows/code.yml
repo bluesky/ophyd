@@ -83,8 +83,13 @@ jobs:
         run: |
           sudo systemctl start docker
           docker version
-          docker compose --version   
-      
+          docker compose --version 
+
+      - name: Create AD data directories
+        run: |
+          mkdir -p /tmp/ophyd_AD_test/
+          python scripts/create_directories.py /tmp/ophyd_AD_test/data1
+
       - name: Start docker containers
         run: |
           source ophyd/epics-services-for-ophyd/environment.sh
