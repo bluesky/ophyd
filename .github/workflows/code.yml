@@ -94,14 +94,6 @@ jobs:
         run: |
           sleep 20
 
-      - name: Print docker logs
-        run: |
-          docker logs epics-services-for-ophyd-ophyd-motor-sim-1
-
-      - name: Check AreaDetector IOC status
-        run: | 
-          caget XF:31IDA-BI{Cam:Tbl}cam1:Acquire  
-
       - name: Test with pytest
         run: |
           source ophyd/epics-services-for-ophyd/environment.sh
