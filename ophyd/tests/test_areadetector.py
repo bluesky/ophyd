@@ -272,8 +272,7 @@ def test_invalid_plugins(ad_prefix, cleanup):
     assert ["AARDVARK"] == det.missing_plugins()
 
 
-# @pytest.mark.adsim
-@pytest.mark.skip(reason="Overlays are not defined in sim detector container yet")
+@pytest.mark.adsim
 def test_validate_plugins_no_portname(ad_prefix, cleanup):
     class MyDetector(SingleTrigger, SimDetector):
         roi1 = Cpt(ROIPlugin, "ROI1:")
@@ -930,8 +929,7 @@ def test_posix_path(paths, cleanup, ad_prefix):
     det.unstage()
 
 
-# @pytest.mark.adsim
-@pytest.mark.skip(reason="Overlays are not defined in sim detector container yet")
+@pytest.mark.adsim
 def test_default_configuration_smoke(ad_prefix, cleanup):
     class MyDetector(SimDetector):
         imageplugin = Cpt(ImagePlugin, ImagePlugin._default_suffix)
