@@ -90,10 +90,15 @@ jobs:
           mkdir -p /tmp/ophyd_AD_test/
           python scripts/create_directories.py /tmp/ophyd_AD_test/data1
 
+      - name: Clone epics-services-for-ophyd
+        run: |
+          git clone https://github.com/bluesky/epics-services-for-ophyd.git epics-services-for-ophyd
+          cd epics-services-for-ophyd
+
       - name: Start docker containers
         run: |
-          source ophyd/epics-services-for-ophyd/environment.sh
-          docker compose -f ophyd/epics-services-for-ophyd/compose.yaml up -d
+          source epics-services-for-ophyd/environment.sh
+          docker compose -f epics-services-for-ophyd/compose.yaml up -d
 
       - name: Wait for docker containers to start
         run: |
@@ -101,7 +106,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          source ophyd/epics-services-for-ophyd/environment.sh
+          source epics-services-for-ophyd/environment.sh
           pytest -k "${TEST_CL}"
 
       - name: Upload coverage to Codecov
