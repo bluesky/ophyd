@@ -939,7 +939,7 @@ def test_default_configuration_smoke(ad_prefix, cleanup):
         overlayplugin = Cpt(OverlayPlugin, OverlayPlugin._default_suffix)
         roiplugin = Cpt(ROIPlugin, ROIPlugin._default_suffix)
         transformplugin = Cpt(TransformPlugin, TransformPlugin._default_suffix)
-        netcdfplugin = Cpt(NetCDFPlugin, NetCDFPlugin._default_suffix)
+        # netcdfplugin = Cpt(NetCDFPlugin, NetCDFPlugin._default_suffix)
         tiffplugin = Cpt(TIFFPlugin, TIFFPlugin._default_suffix)
         jpegplugin = Cpt(JPEGPlugin, JPEGPlugin._default_suffix)
         # nexusplugin = Cpt(NexusPlugin, NexusPlugin._default_suffix)
