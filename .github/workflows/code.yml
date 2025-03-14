@@ -97,8 +97,8 @@ jobs:
 
       - name: Start docker containers
         run: |
-          source environment.sh
-          docker compose -f compose.yaml up -d
+          source epics-services-for-ophyd/environment.sh
+          docker compose -f epics-services-for-ophyd/compose.yaml up -d
 
       - name: Wait for docker containers to start
         run: |
@@ -106,7 +106,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          source environment.sh
+          source epics-services-for-ophyd/environment.sh
           pytest -k "${TEST_CL}"
 
       - name: Upload coverage to Codecov
