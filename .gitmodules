@@ -1,3 +1,0 @@
-[submodule "ophyd/epics-services-for-ophyd"]
-	path = ophyd/epics-services-for-ophyd
-	url = https://github.com/jennmald/epics-services-for-ophyd
