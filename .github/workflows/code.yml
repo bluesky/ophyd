@@ -62,7 +62,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0 # So we get history for version number
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -92,13 +91,12 @@ jobs:
 
       - name: Clone epics-services-for-ophyd
         run: |
-          git clone https://github.com/bluesky/epics-services-for-ophyd.git epics-services-for-ophyd
-          cd epics-services-for-ophyd
+          git clone https://github.com/bluesky/epics-services-for-ophyd.git ~/epics-services-for-ophyd
 
       - name: Start docker containers
         run: |
-          source epics-services-for-ophyd/environment.sh
-          docker compose -f epics-services-for-ophyd/compose.yaml up -d
+          source ~/epics-services-for-ophyd/environment.sh
+          docker compose -f ~/epics-services-for-ophyd/compose.yaml up -d
 
       - name: Wait for docker containers to start
         run: |
@@ -106,8 +104,13 @@ jobs:
 
       - name: Test with pytest
         run: |
-          source epics-services-for-ophyd/environment.sh
+          source ~/epics-services-for-ophyd/environment.sh
           pytest -k "${TEST_CL}"
+
+      - name: Print Docker Compose Logs
+        if: always()
+        run: |
+          docker compose -f ~/epics-services-for-ophyd/compose.yaml logs
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
