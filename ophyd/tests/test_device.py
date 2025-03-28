@@ -31,7 +31,7 @@ class FakeSignal(Signal):
         self._waited_for_connection = False
         self._subscriptions = []
 
-    def wait_for_connection(self):
+    def wait_for_connection(self, timeout: float = 0.0):
         self._waited_for_connection = True
 
     def subscribe(self, method, event_type, **kw):
