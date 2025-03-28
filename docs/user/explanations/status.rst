@@ -176,7 +176,7 @@ to this:
                "Return True when the acquisition is complete, False otherwise."
                return (old_value == 1 and value == 0)
 
-           status = SubscriptionStatus(self.acquire, check_value)
+           status = SubscriptionStatus(self.acquire, check_value, run=False)
            self.acquire.set(1)
            return status
 
