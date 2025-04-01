@@ -138,6 +138,7 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+          token: ${{ secrets.RELEASE_ON_GH_TOKEN }}
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
