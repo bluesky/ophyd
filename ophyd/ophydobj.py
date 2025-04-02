@@ -235,7 +235,7 @@ class OphydObject:
         cls.subscriptions = frozenset(
             {
                 getattr(cls, key)
-                for key in dir(cls)
+                for key in type.__dir__(cls)
                 if key.startswith("SUB") or key.startswith("_SUB")
             }
         )
