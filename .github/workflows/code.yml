@@ -55,6 +55,10 @@ jobs:
     env:
       TEST_CL: pyepics
 
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,19 +70,47 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install --upgrade setuptools && pip install -e .[dev] && pipdeptree
+        run: |
+          pip install --upgrade setuptools && pip install -e .[dev] && pipdeptree
 
       - name: Install prereleases of certain dependencies.
-        run: pip install --upgrade --pre bluesky event-model
+        run: |
+          pip install --upgrade --pre bluesky event-model
         if: ${{ matrix.prerelease }}
 
-      - name: Start IOCs in containers.
+      - name: Start Docker
         run: |
-          source ${GITHUB_WORKSPACE}/scripts/epics_exports.sh
-          source ${GITHUB_WORKSPACE}/scripts/epics_docker.sh
+          sudo systemctl start docker
+          docker version
+          docker compose --version 
+
+      - name: Create AD data directories
+        run: |
+          mkdir -p /tmp/ophyd_AD_test/
+          python scripts/create_directories.py /tmp/ophyd_AD_test/data1
+
+      - name: Clone epics-services-for-ophyd
+        run: |
+          git clone https://github.com/bluesky/epics-services-for-ophyd.git ~/epics-services-for-ophyd
+
+      - name: Start docker containers
+        run: |
+          source ~/epics-services-for-ophyd/environment.sh
+          docker compose -f ~/epics-services-for-ophyd/compose.yaml up -d
+
+      - name: Wait for docker containers to start
+        run: |
+          sleep 20
 
       - name: Test with pytest
-        run: pytest -k "${TEST_CL}" -m "not motorsim" --strict-markers
+        run: |
+          source ~/epics-services-for-ophyd/environment.sh
+          pytest -k "${TEST_CL}"
+
+      - name: Print Docker Compose Logs
+        if: always()
+        run: |
+          docker compose -f ~/epics-services-for-ophyd/compose.yaml logs
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
@@ -102,12 +134,11 @@ jobs:
       - name: Github Release
         # We pin to the SHA, not the tag, for security reasons.
         # https://docs.github.com/en/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
-        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5 # v0.1.14
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda  # v2.2.1 (2025-01-07)
         with:
           files: dist/*
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_ON_GH_TOKEN }}
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

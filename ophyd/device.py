@@ -172,6 +172,8 @@ class Component(typing.Generic[K]):
     add_prefix: Tuple[str, ...]
     #: Subscription name -> subscriptions marked by decorator.
     _subscriptions: DefaultDict[str, List[Callable]]
+    # timeout for wait_for_connection
+    connection_timeout: float = 10.0
 
     def __init__(
         self,
@@ -183,6 +185,7 @@ class Component(typing.Generic[K]):
         add_prefix: Optional[Sequence[str]] = None,
         doc: Optional[str] = None,
         kind: Union[str, Kind] = Kind.normal,
+        connection_timeout: float = 10.0,
         **kwargs,
     ):
         self.attr = None  # attr is set later by the device when known
@@ -196,6 +199,7 @@ class Component(typing.Generic[K]):
         if add_prefix is None:
             add_prefix = ("suffix", "write_pv")
         self.add_prefix = tuple(add_prefix)
+        self.connection_timeout = connection_timeout
         self._subscriptions = collections.defaultdict(list)
 
     def _get_class_from_annotation(self) -> Optional[Type[K]]:
@@ -275,7 +279,7 @@ class Component(typing.Generic[K]):
 
         if self.lazy and hasattr(self.cls, "wait_for_connection"):
             if getattr(instance, "lazy_wait_for_connection", True):
-                cpt_inst.wait_for_connection()
+                cpt_inst.wait_for_connection(timeout=self.connection_timeout)
 
         return cpt_inst
 
@@ -1250,7 +1254,7 @@ class Device(BlueskyInterface, OphydObject):
 
         return "\n".join(out)
 
-    def wait_for_connection(self, all_signals=False, timeout=2.0):
+    def wait_for_connection(self, all_signals=False, timeout=10.0):
         """Wait for signals to connect
 
         Parameters
