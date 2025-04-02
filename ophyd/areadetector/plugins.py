@@ -89,7 +89,6 @@ _plugin_class = {}
 
 def register_plugin(cls):
     """Register a plugin"""
-    global _plugin_class
 
     _plugin_class[cls._plugin_type] = cls
     return cls
@@ -2723,7 +2722,6 @@ def plugin_from_pvname(pv):
     """Get the plugin class from a pvname,
     using regular expressions defined in the classes (_suffix_re).
     """
-    global _plugin_class
 
     for type_, cls in _plugin_class.items():
         if getattr(cls, "_suffix_re", None) is not None:
