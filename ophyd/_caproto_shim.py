@@ -148,18 +148,21 @@ def get_pv(
         whether to wait for connection (default False)
     context : int, optional
         PV threading context (defaults to current context)
+        Unused because the default context is the only context
+        setup with the event dispatcher
     timeout : float, optional
         connection timeout, in seconds (default 5.0)
     """
-    if context is None:
-        context = PV._default_context
-
+    if context is not None:
+        raise ValueError("context must be None")
+    context = PV.default_context()
     pv = PV(
         pvname,
         form=form,
         connection_callback=connection_callback,
         access_callback=access_callback,
         callback=callback,
+        context=context,
         **kwargs
     )
     pv._reference_count = 0
@@ -199,7 +202,7 @@ def setup(logger):
         _dispatcher = None
 
     logger.debug("Installing event dispatcher")
-    context = PV._default_context.broadcaster
+    context = PV.default_context().broadcaster
     _dispatcher = EventDispatcher(
         thread_class=CaprotoCallbackThread, context=context, logger=logger
     )
