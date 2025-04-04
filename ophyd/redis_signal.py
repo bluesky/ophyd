@@ -202,7 +202,7 @@ class RedisSignal(OphydObject):
             sleep_time=None, daemon=True
         )
 
-        cid = super().subscribe(*args, **kwargs)
+        cid = super().subscribe(self._callback, *args, **kwargs)
 
         return cid
 
