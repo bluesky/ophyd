@@ -283,3 +283,65 @@ class MultiTrigger(TriggerBase):
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
             self._run_subs(sub_type=self._SUB_ACQ_DONE)
+
+
+class ContinuousAcquisitionTrigger(BlueskyInterface):
+    """
+    This trigger mixin class takes frames from a circular buffer filled
+    by continuous acquisitions from the detector.
+
+    We assume that the circular buffer is pre-configured and this is what
+    will be "triggered" instead of the detector.
+
+    In practice, this means that all other plugins should be configured to be
+    downstream of the circular buffer, rathern than the detector driver.
+    """
+
+    def __init__(self, *args, image_name=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if image_name is None:
+            image_name = "_".join([self.name, "image"])
+        self._image_name = image_name
+
+        if not hasattr(self, "cam"):
+            raise RuntimeError("Detector must have a camera configured.")
+
+        if not hasattr(self, "cb"):
+            raise RuntimeError("Detector must have a CircularBuffPlugin configured.")
+
+        self.stage_sigs.update(
+            [
+                ("cam.acquire", 1),  # Start acquiring
+                ("cam.image_mode", 2),  # 'Continuous' mode
+                ("cb.capture", 1),  # Start filling the buffer
+                ("cb.flush_on_soft_trigger", 0),  # Flush the buffer on new image
+            ]
+        )
+        self._trigger_signal = self.cb.trigger_
+        self._status = None
+
+    def stage(self):
+        self._trigger_signal.subscribe(self._trigger_changed)
+        super().stage()
+
+    def unstage(self):
+        super().unstage()
+        self._trigger_signal.clear_sub(self._trigger_changed)
+
+    def trigger(self):
+        if self._staged != Staged.yes:
+            raise RuntimeError(
+                "This detector is not ready to trigger."
+                "Call the stage() method before triggering."
+            )
+        self._status = self._status_type(self)
+        self._trigger_signal.put(1, wait=False)
+        self.generate_datum(self._image_name, ttime.time(), {})
+        return self._status
+
+    def _trigger_changed(self, value=None, old_value=None, **kwargs):
+        if self._status is None:
+            return
+        if (old_value == 1) and (value == 0):
+            self._status.set_finished()
+            self._status = None
