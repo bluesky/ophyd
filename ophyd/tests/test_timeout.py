@@ -1,4 +1,5 @@
 import logging
+import time
 
 import pytest
 
@@ -37,13 +38,27 @@ def test_timeout():
     assert "prefix:3" in ex_msg
 
 
-def test_epics_signal_base_connection_timeout():
-    EpicsSignalBase.set_defaults(connection_timeout=1e-6)
+@pytest.fixture
+def epics_signal_set_defaults():
+    EpicsSignalBase.__any_instantiated = False
+    yield
+    EpicsSignalBase.__any_instantiated = False
+
+
+def test_epics_signal_base_connection_timeout(epics_signal_set_defaults):
+
+    def ensure_connected_mock(*pvs, timeout):
+        time.sleep(1.0)
+        return
+
+    EpicsSignalBase.set_defaults(connection_timeout=1e-8)
+    EpicsSignalBase._ensure_connected = ensure_connected_mock
+
     class MyDevice(Device):
         # Should timeout using default connection timeout
-        cpt1 = Component(EpicsSignal, "1")
+        cpt1 = Component(EpicsSignalBase, "1", lazy=True)
         # Should *not* timeout using custom connection timeout
-        cpt2 = Component(EpicsSignal, "2", connection_timeout=1.0)
+        cpt2 = Component(EpicsSignalBase, "2", lazy=True, connection_timeout=1.0)
 
     device = MyDevice("prefix:", name="dev")
     with pytest.raises(TimeoutError) as cm:
