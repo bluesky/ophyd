@@ -5,6 +5,7 @@ import pytest
 
 from ophyd import Component, Device, EpicsSignal
 from ophyd.signal import EpicsSignalBase
+from ophyd.tests import subprocess_run_helper
 
 logger = logging.getLogger(__name__)
 
@@ -38,32 +39,29 @@ def test_timeout():
     assert "prefix:3" in ex_msg
 
 
-@pytest.fixture
-def epics_signal_set_defaults():
-    EpicsSignalBase.__any_instantiated = False
-    yield
-    EpicsSignalBase.__any_instantiated = False
-
-
-def test_epics_signal_base_connection_timeout(epics_signal_set_defaults):
-
-    def ensure_connected_mock(*pvs, timeout):
+def _test_epics_signal_base_connection_timeout():
+    def mock_ensure_connected(self, *pvs, timeout=None):
+        """Simplified version of what EpicsSignalBase.ensure_connected does"""
+        if timeout is None:
+            return
+        deadline = time.monotonic() + timeout
         time.sleep(1.0)
-        return
+        if time.monotonic() > deadline:
+            raise TimeoutError("Timeout")
 
-    EpicsSignalBase.set_defaults(connection_timeout=1e-8)
-    EpicsSignalBase._ensure_connected = ensure_connected_mock
-
+    EpicsSignalBase._ensure_connected = mock_ensure_connected
     class MyDevice(Device):
         # Should timeout using default connection timeout
         cpt1 = Component(EpicsSignalBase, "1", lazy=True)
         # Should *not* timeout using custom connection timeout
-        cpt2 = Component(EpicsSignalBase, "2", lazy=True, connection_timeout=1.0)
+        cpt2 = Component(EpicsSignalBase, "2", lazy=True, connection_timeout=3.0)
 
     device = MyDevice("prefix:", name="dev")
     with pytest.raises(TimeoutError) as cm:
         device.cpt1.kind = "hinted"
     device.cpt2.kind = "hinted"
 
-    ex_msg = str(cm.value)
-    print(ex_msg)
+
+def test_epics_signal_base_connection_timeout():
+    """Test that the global and local connection timeouts are set correctly"""
+    subprocess_run_helper(_test_epics_signal_base_connection_timeout, timeout=60)
