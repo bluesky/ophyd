@@ -1349,7 +1349,6 @@ class EpicsSignalBase(Signal):
 
     def wait_for_connection(self, timeout=DEFAULT_CONNECTION_TIMEOUT):
         """Wait for the underlying signals to initialize or connect"""
-        print(f"{timeout=}")
         if timeout is DEFAULT_CONNECTION_TIMEOUT:
             timeout = self.connection_timeout
         try:

@@ -3,10 +3,19 @@ import os
 import subprocess
 import sys
 
+logger = logging.getLogger(__name__)
 
-def subprocess_run_for_testing(command, env=None, timeout=60, stdout=None,
-                               stderr=None, check=False, text=True,
-                               capture_output=False):
+
+def subprocess_run_for_testing(
+    command,
+    env=None,
+    timeout=60,
+    stdout=None,
+    stderr=None,
+    check=False,
+    text=True,
+    capture_output=False,
+):
     """
     Create and run a subprocess.
 
@@ -46,20 +55,32 @@ def subprocess_run_for_testing(command, env=None, timeout=60, stdout=None,
         stdout = stderr = subprocess.PIPE
     try:
         proc = subprocess.run(
-            command, env=env,
-            timeout=timeout, check=check,
-            stdout=stdout, stderr=stderr,
+            command,
+            env=env,
+            timeout=timeout,
+            check=check,
+            stdout=stdout,
+            stderr=stderr,
             text=text,
         )
     except BlockingIOError:
         if sys.platform == "cygwin":
             # Might want to make this more specific
             import pytest
+
             pytest.xfail("Fork failure")
         raise
     except subprocess.CalledProcessError as e:
         import pytest
-        pytest.fail(f"Subprocess failed with exit code {e.returncode}:\n{e.stdout}\n{e.stderr}")
+
+        pytest.fail(
+            f"Subprocess failed with exit code {e.returncode}:\n{e.stdout}\n{e.stderr}"
+        )
+    # TODO: How to show this in the test output when `pytest -s` is used?
+    if proc.stdout:
+        logger.info(f"Subprocess output:\n{proc.stdout}")
+    if proc.stderr:
+        logger.error(f"Subprocess error:\n{proc.stderr}")
     return proc
 
 
@@ -89,10 +110,11 @@ def subprocess_run_helper(func, *args, timeout, extra_env=None):
             f"_module = importlib.util.module_from_spec(_spec);"
             f"_spec.loader.exec_module(_module);"
             f"_module.{target}()",
-            *args
+            *args,
         ],
         env={**os.environ, "SOURCE_DATE_EPOCH": "0", **(extra_env or {})},
-        timeout=timeout, check=True,
+        timeout=timeout,
+        check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
