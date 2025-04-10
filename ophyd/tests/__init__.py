@@ -71,12 +71,11 @@ def subprocess_run_for_testing(
             pytest.xfail("Fork failure")
         raise
     except subprocess.CalledProcessError as e:
-        import pytest
-
-        pytest.fail(
-            f"Subprocess failed with exit code {e.returncode}:\n{e.stdout}\n{e.stderr}"
-        )
-    # TODO: How to show this in the test output when `pytest -s` is used?
+        if e.stdout:
+            logger.info(f"Subprocess output:\n{e.stdout}")
+        if e.stderr:
+            logger.error(f"Subprocess error:\n{e.stderr}")
+        raise e
     if proc.stdout:
         logger.info(f"Subprocess output:\n{proc.stdout}")
     if proc.stderr:
