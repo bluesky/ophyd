@@ -334,11 +334,11 @@ class ContinuousAcquisitionTrigger(BlueskyInterface):
         if not hasattr(self, "cb"):
             raise RuntimeError("Detector must have a CircularBuffPlugin configured.")
 
+        # Order of operations is important here.
         self.stage_sigs.update(
             [
                 ("cam.acquire", 1),  # Start acquiring
-                ("cam.image_mode", 2),  # 'Continuous' mode
-                ("cb.capture", 1),  # Start filling the buffer
+                ("cam.image_mode", self.cam.ImageMode.CONTINUOUS),  # 'Continuous' mode
                 ("cb.flush_on_soft_trigger", 0),  # Flush the buffer on new image
                 ("cb.preset_trigger_count", 0), # Keep the buffer capturing forever
                 # TODO: Figure out why this leaks an extra frame
@@ -346,6 +346,7 @@ class ContinuousAcquisitionTrigger(BlueskyInterface):
                 # the file when `pre_count` is non-zero.
                 # Possibly a bug in the NDCircularBuff plugin?
                 ("cb.pre_count", 0), # The number of frames to take before the trigger
+                ("cb.capture", 1),  # Start filling the buffer
             ]
         )
         self._trigger_signal = self.cb.trigger_
