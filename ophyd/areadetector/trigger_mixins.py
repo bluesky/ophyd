@@ -16,8 +16,8 @@ import logging
 import time as ttime
 
 from ..device import BlueskyInterface, Staged
-from ..status import DeviceStatus
 from ..signal import Signal
+from ..status import DeviceStatus
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,10 @@ class TriggerStatus(DeviceStatus):
     """
     A Status for AreaDetector triggers
     """
-    def __init__(self, tracking_signal: Signal, target_signal: Signal, device, *args, **kwargs):
+
+    def __init__(
+        self, tracking_signal: Signal, target_signal: Signal, device, *args, **kwargs
+    ):
         super().__init__(device, *args, **kwargs)
         self.start_ts = ttime.time()
         self.tracking_signal = tracking_signal
@@ -84,8 +87,12 @@ class NDCircularBuffTriggerStatus(TriggerStatus):
 
     def __init__(self, device, *args, **kwargs):
         if not hasattr(device, "cb"):
-            raise RuntimeError("NDCircularBuffTriggerStatus must be initialized with a device that has a CircularBuffPlugin")
-        super().__init__(device.cb.post_trigger_qty, device.cb.post_count, device, *args, **kwargs)
+            raise RuntimeError(
+                "NDCircularBuffTriggerStatus must be initialized with a device that has a CircularBuffPlugin"
+            )
+        super().__init__(
+            device.cb.post_trigger_qty, device.cb.post_count, device, *args, **kwargs
+        )
 
 
 class ADTriggerStatus(TriggerStatus):
@@ -98,8 +105,12 @@ class ADTriggerStatus(TriggerStatus):
 
     def __init__(self, device, *args, **kwargs):
         if not hasattr(device, "cam"):
-            raise RuntimeError("ADTriggerStatus must be initialized with a device that has a camera")
-        super().__init__(device.cam.array_counter, device.cam.num_images, device, *args, **kwargs)
+            raise RuntimeError(
+                "ADTriggerStatus must be initialized with a device that has a camera"
+            )
+        super().__init__(
+            device.cam.array_counter, device.cam.num_images, device, *args, **kwargs
+        )
 
 
 class TriggerBase(BlueskyInterface):
@@ -320,6 +331,7 @@ class ContinuousAcquisitionTrigger(BlueskyInterface):
     In practice, this means that all other plugins should be configured to be
     downstream of the circular buffer, rathern than the detector driver.
     """
+
     _status_type = NDCircularBuffTriggerStatus
 
     def __init__(self, *args, image_name=None, **kwargs):
@@ -340,12 +352,12 @@ class ContinuousAcquisitionTrigger(BlueskyInterface):
                 ("cam.acquire", 1),  # Start acquiring
                 ("cam.image_mode", self.cam.ImageMode.CONTINUOUS),  # 'Continuous' mode
                 ("cb.flush_on_soft_trigger", 0),  # Flush the buffer on new image
-                ("cb.preset_trigger_count", 0), # Keep the buffer capturing forever
+                ("cb.preset_trigger_count", 0),  # Keep the buffer capturing forever
                 # TODO: Figure out why this leaks an extra frame
                 # Tested this with the HDF5 plugin and it writes an extra frame to
                 # the file when `pre_count` is non-zero.
                 # Possibly a bug in the NDCircularBuff plugin?
-                ("cb.pre_count", 0), # The number of frames to take before the trigger
+                ("cb.pre_count", 0),  # The number of frames to take before the trigger
                 ("cb.capture", 1),  # Start filling the buffer
             ]
         )

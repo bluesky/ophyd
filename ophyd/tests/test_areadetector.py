@@ -225,7 +225,7 @@ def test_continuous_acquisition_trigger(ad_prefix, cleanup):
         cb = Cpt(CircularBuffPlugin_V34, suffix="CB1:", name="cb")
 
     det = MyDetector(ad_prefix, name="det")
-    
+
     # Save original values before staging
     original_pre_count = det.cb.pre_count.get()
     original_capture = det.cb.capture.get()
