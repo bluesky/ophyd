@@ -916,10 +916,6 @@ class Device(BlueskyInterface, OphydObject):
             self.configuration_attrs = list(configuration_attrs)
 
         if not self.__any_instantiated:
-            self.log.debug(
-                "This is the first instance of Device. "
-                "name={self.name}, id={id(self)}"
-            )
             Device._mark_as_instantiated()
 
         with do_not_wait_for_lazy_connection(self):

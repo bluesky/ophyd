@@ -23,9 +23,12 @@ def subprocess_run_for_testing(
     mark fork() failures on Cygwin as expected failures: not a
     success, but not indicating a problem with the code either.
 
+    Borrowed from
+    https://github.com/matplotlib/matplotlib/blob/e1887b8d0d44d66103f0e3c787cfe7281daa7c63/lib/matplotlib/testing/__init__.py#L55
+
     Parameters
     ----------
-    args : list of str
+    command : list of str
     env : dict[str, str]
     timeout : float
     stdout, stderr
@@ -86,6 +89,9 @@ def subprocess_run_for_testing(
 def subprocess_run_helper(func, *args, timeout, extra_env=None):
     """
     Run a function in a sub-process.
+
+    Borrowed from
+    https://github.com/matplotlib/matplotlib/blob/e1887b8d0d44d66103f0e3c787cfe7281daa7c63/lib/matplotlib/testing/__init__.py#L111
 
     Parameters
     ----------

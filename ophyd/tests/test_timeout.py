@@ -39,6 +39,19 @@ def test_timeout():
 
 
 def _test_epics_signal_base_connection_timeout():
+    """
+    Tests that the connection timeout is applied correctly to EpicsSignalBase.
+
+    We mock the ensure_connected method to raise a TimeoutError if the timeout
+    is less than 1.0 seconds which tests that the default connection timeout
+    is applied correctly.
+
+    We also test that the default connection timeout can be overidden by individual
+    Component connection timeouts.
+
+    NOTE: This test does NOT try to connect to a running IOC.
+    """
+
     def mock_ensure_connected(self, *pvs, timeout=None):
         """Assume that the connection occurs in 1.0 seconds"""
         if timeout < 1.0:
@@ -53,6 +66,7 @@ def _test_epics_signal_base_connection_timeout():
         # Should *not* timeout using custom connection timeout
         cpt2 = Component(EpicsSignalBase, "2", lazy=True, connection_timeout=3.0)
 
+    # Connect to fake device
     device = MyDevice("prefix:", name="dev")
     with pytest.raises(TimeoutError):
         device.cpt1.kind = "hinted"
@@ -65,6 +79,18 @@ def test_epics_signal_base_connection_timeout():
 
 
 def _test_device_connection_timeout():
+    """
+    Tests that the connection timeout is applied correctly to Device.
+
+    We mock the connected property of the underlying EpicsSignalBase
+    to raise a TimeoutError if the number of connections exceeds a limit
+    which tests that the default connection timeout is applied correctly.
+
+    We also test that the default connection timeout can be overidden by individual
+    Component connection timeouts.
+
+    NOTE: This test does NOT try to connect to a running IOC.
+    """
     # Track connection property access counts
     access_counts = {}
 
@@ -103,6 +129,7 @@ def _test_device_connection_timeout():
         # Should *not* timeout using custom connection timeout
         dev2 = Component(SubDevice, "dev2:", lazy=True, connection_timeout=1.0)
 
+    # Connect to fake device
     device = MyDevice("prefix:", name="dev")
 
     # This should fail - default timeout is too short for ATTEMPTS_BEFORE_CONNECTED checks
