@@ -28,7 +28,7 @@ class TriggerStatus(DeviceStatus):
     """
 
     def __init__(
-        self, tracking_signal: Signal, target_signal: Signal, device, *args, **kwargs
+        self, tracking_signal: Signal, target: Signal | int | float, device, *args, **kwargs
     ):
         super().__init__(device, *args, **kwargs)
         self.start_ts = ttime.time()
@@ -41,7 +41,7 @@ class TriggerStatus(DeviceStatus):
             # some state needed only by self._notify_watchers
             self._name = self.device.name
             self._initial_count = self.tracking_signal.get()
-            self._target_count = target_signal.get()
+            self._target_count = target.get() if isinstance(target, Signal) else target
 
     def watch(self, func):
         self._watchers.append(func)
