@@ -385,13 +385,13 @@ def test_get_plugin_by_asyn_port_nested(ad_prefix, cleanup):
     assert tiff is nested_det.get_plugin_by_asyn_port(tiff.port_name.get())
 
 
-#  @pytest.mark.adsim
-#  def test_visualize_asyn_digraph_smoke(ad_prefix, cleanup):
-#      # setup sim detector
-#      det = SimDetector(ad_prefix, name="test")
-#      cleanup.add(det)
-#      # smoke test
-#      det.visualize_asyn_digraph()
+@pytest.mark.adsim
+def test_visualize_asyn_digraph_smoke(ad_prefix, cleanup):
+    # setup sim detector
+    det = SimDetector(ad_prefix, name="test")
+    cleanup.add(det)
+    # smoke test
+    det.visualize_asyn_digraph()
 
 
 @pytest.mark.adsim
