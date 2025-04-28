@@ -28,7 +28,12 @@ class TriggerStatus(DeviceStatus):
     """
 
     def __init__(
-        self, tracking_signal: Signal, target: Signal | int | float, device, *args, **kwargs
+        self,
+        tracking_signal: Signal,
+        target: Signal | int | float,
+        device,
+        *args,
+        **kwargs
     ):
         super().__init__(device, *args, **kwargs)
         self.start_ts = ttime.time()
