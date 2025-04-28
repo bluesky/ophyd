@@ -22,8 +22,7 @@ tracer = trace.get_tracer(__name__)
 _TRACE_PREFIX = "Ophyd Status"
 
 
-class UseNewProperty(RuntimeError):
-    ...
+class UseNewProperty(RuntimeError): ...
 
 
 class StatusBase:
@@ -610,10 +609,8 @@ class AndStatus(StatusBase):
         return "({self.left!r} & {self.right!r})".format(self=self)
 
     def __str__(self):
-        return (
-            "{0}(done={1.done}, "
-            "success={1.success})"
-            "".format(self.__class__.__name__, self)
+        return "{0}(done={1.done}, success={1.success})".format(
+            self.__class__.__name__, self
         )
 
     def __contains__(self, status: StatusBase) -> bool:
@@ -661,11 +658,8 @@ class Status(StatusBase):
         self._trace_attributes["no_obj_given"] = not bool(obj)
 
     def __str__(self):
-        return (
-            "{0}(obj={1.obj}, "
-            "done={1.done}, "
-            "success={1.success})"
-            "".format(self.__class__.__name__, self)
+        return "{0}(obj={1.obj}, done={1.done}, success={1.success})".format(
+            self.__class__.__name__, self
         )
 
     __repr__ = __str__
@@ -705,14 +699,13 @@ class DeviceStatus(StatusBase):
     def _handle_failure(self):
         super()._handle_failure()
         self.log.debug("Trying to stop %s", repr(self.device))
-        self.device.stop()
+        if hasattr(self.device, "stop"):
+            self.device.stop()
 
     def __str__(self):
         device_name = self.device.name if self.device else "None"
-        return (
-            "{0}(device={2}, done={1.done}, "
-            "success={1.success})"
-            "".format(self.__class__.__name__, self, device_name)
+        return "{0}(device={2}, done={1.done}, success={1.success})".format(
+            self.__class__.__name__, self, device_name
         )
 
     def watch(self, func):
