@@ -14,6 +14,7 @@ To be used like so ::
 import itertools
 import logging
 import time as ttime
+from typing import Union
 
 from ..device import BlueskyInterface, Staged
 from ..signal import Signal
@@ -30,7 +31,7 @@ class TriggerStatus(DeviceStatus):
     def __init__(
         self,
         tracking_signal: Signal,
-        target: Signal | int | float,
+        target: Union[Signal, int, float],
         device,
         *args,
         **kwargs
