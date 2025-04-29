@@ -22,7 +22,8 @@ tracer = trace.get_tracer(__name__)
 _TRACE_PREFIX = "Ophyd Status"
 
 
-class UseNewProperty(RuntimeError): ...
+class UseNewProperty(RuntimeError):
+    ...
 
 
 class StatusBase:

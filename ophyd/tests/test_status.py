@@ -294,7 +294,8 @@ def test_notify_watchers():
     hw = hw()
     mst = MoveStatus(hw.motor, 10)
 
-    def callback(*args, **kwargs): ...
+    def callback(*args, **kwargs):
+        ...
 
     mst.watch(callback)
     mst.target = 0
@@ -393,7 +394,8 @@ def test_set_exception_special_banned_exceptions():
 def test_exception_fail_path():
     st = StatusBase()
 
-    class LocalException(Exception): ...
+    class LocalException(Exception):
+        ...
 
     exc = LocalException()
     st.set_exception(exc)
@@ -408,7 +410,8 @@ def test_exception_fail_path_with_class():
     """
     st = StatusBase()
 
-    class LocalException(Exception): ...
+    class LocalException(Exception):
+        ...
 
     st.set_exception(LocalException)
     assert LocalException is st.exception()
@@ -533,7 +536,8 @@ def test_set_exception_after_timeout():
     time.sleep(0.1)
     assert isinstance(st.exception(), StatusTimeoutError)
 
-    class LocalException(Exception): ...
+    class LocalException(Exception):
+        ...
 
     # External callback reports failure, too late.
     st.set_exception(LocalException())
