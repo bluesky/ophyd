@@ -705,7 +705,8 @@ class DeviceStatus(StatusBase):
     def _handle_failure(self):
         super()._handle_failure()
         self.log.debug("Trying to stop %s", repr(self.device))
-        self.device.stop()
+        if hasattr(self.device, "stop"):
+            self.device.stop()
 
     def __str__(self):
         device_name = self.device.name if self.device else "None"
