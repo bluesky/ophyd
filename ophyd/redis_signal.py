@@ -8,10 +8,12 @@ from ophyd.status import Status
 from ophyd.utils.epics_pvs import data_shape, data_type
 
 
-class NoKey(KeyError): ...
+class NoKey(KeyError):
+    ...
 
 
-class NoEventNotifications(EnvironmentError): ...
+class NoEventNotifications(EnvironmentError):
+    ...
 
 
 class RedisSignal(OphydObject):
@@ -113,7 +115,8 @@ class RedisSignal(OphydObject):
         Returns
         -------
         st : Status
-            The status object is set to finished on successful write to redis, or an exception is set if redis.ConnectionError is raised.
+            The status object is set to finished on successful write to redis, or an exception
+            is set if redis.ConnectionError is raised.
         """
         st = Status(self)
         try:

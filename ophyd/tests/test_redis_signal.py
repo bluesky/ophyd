@@ -68,6 +68,6 @@ def test_redis_subscribe():
 
 if __name__ == "__main__":
 
-    print(f"Testing: test_redis_signal")
+    print("Testing: test_redis_signal")
     test_redis_signal()
     print("Done.")
