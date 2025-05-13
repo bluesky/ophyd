@@ -2,13 +2,20 @@
  Release History
 =================
 
-1.10.1 (2024-12-04)
+1.10.5 (2025-04-01)
 ===================
+
+Added
+-----
+
+* Ability to configure `wait_for_connection` timeout (#1236)
 
 Fixes
 -----
 
-* Fix CI to release the package on PyPI
+* CI to release the package on PyPI
+
+**Full Changelog**: https://github.com/bluesky/ophyd/compare/v1.10.0...v1.10.5
 
 
 1.10.0 (2024-12-03)
