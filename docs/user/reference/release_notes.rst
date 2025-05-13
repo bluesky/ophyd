@@ -2,13 +2,36 @@
  Release History
 =================
 
-1.10.1 (2024-12-04)
+1.10.6 (2025-05-13)
 ===================
+
+What's Changed
+--------------
+
+* Remove unnecessary global _plugin_class usage by @thomashopkins32 in https://github.com/bluesky/ophyd/pull/1239
+* Incompatiblity with caproto v1.2.0 by @thomashopkins32 in https://github.com/bluesky/ophyd/pull/1241
+* EpicsSignalBase connection timeout fix + Device connection timeout by @thomashopkins32 in https://github.com/bluesky/ophyd/pull/1243
+* Do not stop devices that cannot be stopped on Status failure by @DominicOram in https://github.com/bluesky/ophyd/pull/1245
+
+
+**Full Changelog**: https://github.com/bluesky/ophyd/compare/v1.10.5...v1.10.6
+
+
+1.10.5 (2025-04-01)
+===================
+
+Added
+-----
+
+* Ability to configure ``wait_for_connection`` timeout (https://github.com/bluesky/ophyd/pull/1236)
 
 Fixes
 -----
 
-* Fix CI to release the package on PyPI
+* CI to release the package on PyPI
+
+
+**Full Changelog**: https://github.com/bluesky/ophyd/compare/v1.10.0...v1.10.5
 
 
 1.10.0 (2024-12-03)
