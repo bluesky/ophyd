@@ -12,8 +12,11 @@ from collections import OrderedDict, deque
 from functools import partial
 from tempfile import mkdtemp
 from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
+
+from ophyd.utils.types import Hints
 
 from .areadetector.base import EpicsSignalWithRBV
 from .areadetector.paths import EpicsPathSignal
@@ -524,7 +527,7 @@ class SynAxis(Device):
 
 class SynAxisEmptyHints(SynAxis):
     @property
-    def hints(self):
+    def hints(self) -> Hints:
         return {}
 
 
@@ -532,7 +535,7 @@ class SynAxisNoHints(SynAxis):
     readback = Cpt(_ReadbackSignal, value=0.0, kind="omitted")
 
     @property
-    def hints(self):
+    def hints(self) -> Hints:
         raise AttributeError
 
 
@@ -761,7 +764,7 @@ class TrivialFlyer:
     name = "trivial_flyer"
     parent = None
 
-    def kickoff(self):
+    def kickoff(self) -> Any:
         return NullStatus()
 
     def describe_collect(self):
@@ -773,7 +776,7 @@ class TrivialFlyer:
     def describe_configuration(self):
         return OrderedDict()
 
-    def complete(self):
+    def complete(self) -> Any:
         return NullStatus()
 
     def collect(self):
@@ -902,8 +905,12 @@ class MockFlyer:
             with self._lock:
                 self._data.append(event)
 
-    def stop(self, *, success=False):
+    def stop(self, success=False):
         pass
+
+    # Placeholder required for components to conform to the Bluesky Moveable protocol
+    def set(self, *args, **kwargs) -> Any:
+        return super().set(*args, **kwargs)
 
 
 class SynSignalWithRegistry(SynSignal):
