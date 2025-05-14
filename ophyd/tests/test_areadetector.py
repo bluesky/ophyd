@@ -15,6 +15,7 @@ import pytest
 
 from ophyd import (
     Component,
+    ContinuousAcquisitionTrigger,
     Device,
     DynamicDeviceComponent,
     Kind,
@@ -33,6 +34,7 @@ from ophyd.areadetector.filestore_mixins import (
 # we do not have nexus installed on our test IOC
 # from ophyd.areadetector.plugins import NexusPlugin
 from ophyd.areadetector.plugins import (  # FilePlugin
+    CircularBuffPlugin_V34,
     ColorConvPlugin,
     HDF5Plugin,
     ImagePlugin,
@@ -205,6 +207,56 @@ def test_tiff_plugin(ad_prefix, cleanup):
 
     plugin.array_pixels
     plugin
+
+
+@pytest.mark.adsim
+def test_continuous_acquisition_trigger_missing_cb(ad_prefix, cleanup):
+    class MyDetector(ContinuousAcquisitionTrigger, SimDetector):
+        ...
+
+    with pytest.raises(RuntimeError):
+        det = MyDetector(ad_prefix, name="det")
+        cleanup.add(det)
+
+
+@pytest.mark.adsim
+def test_continuous_acquisition_trigger(ad_prefix, cleanup):
+    class MyDetector(ContinuousAcquisitionTrigger, SimDetector):
+        cb = Cpt(CircularBuffPlugin_V34, suffix="CB1:", name="cb")
+
+    det = MyDetector(ad_prefix, name="det")
+
+    # Save original values before staging
+    original_pre_count = det.cb.pre_count.get()
+    original_capture = det.cb.capture.get()
+    original_flush_on_soft_trigger = det.cb.flush_on_soft_trigger.get()
+    original_preset_trigger_count = det.cb.preset_trigger_count.get()
+    original_image_mode = det.cam.image_mode.get()
+    original_acquire = det.cam.acquire.get()
+
+    det.stage()
+
+    assert det.cb.pre_count.get() == 0
+    assert det.cb.capture.get() == 1
+    assert det.cb.flush_on_soft_trigger.get() == "OnNewImage"
+    assert det.cb.preset_trigger_count.get() == 0
+    assert det.cam.image_mode.get() == det.cam.ImageMode.CONTINUOUS
+    assert det.cam.acquire.get() == 1
+
+    det.trigger()
+    det.trigger()
+    det.trigger()
+    det.unstage()
+
+    # Assert that unstage puts values back to what they were
+    assert det.cb.pre_count.get() == original_pre_count
+    assert det.cb.capture.get() == original_capture
+    assert det.cb.flush_on_soft_trigger.get() == original_flush_on_soft_trigger
+    assert det.cb.preset_trigger_count.get() == original_preset_trigger_count
+    assert det.cam.image_mode.get() == original_image_mode
+    assert det.cam.acquire.get() == original_acquire
+
+    cleanup.add(det)
 
 
 @pytest.mark.adsim
