@@ -4,6 +4,7 @@ import time
 from collections import deque
 from functools import partial
 from logging import LoggerAdapter
+from typing import Any
 from warnings import warn
 
 import numpy as np
@@ -416,7 +417,7 @@ class StatusBase:
             )
             self.set_exception(exc)
 
-    def exception(self, timeout=None):
+    def exception(self, timeout=None) -> Any:
         """
         Return the exception raised by the action.
 
