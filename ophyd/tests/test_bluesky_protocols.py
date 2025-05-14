@@ -95,7 +95,6 @@ def test_movable(run):
     run(cmd + "foo: Movable = hw.flyer1")
     run(cmd + "foo: Movable = ophyd.Component(ophyd.Signal, 'prefix')")
     run(cmd + "foo: Movable = ophyd.Device(name='test')")
-    run(cmd + "foo: Movable = ophyd.Component(ophyd.Signal, 'prefix')")
 
 
 def test_pausable(run):
