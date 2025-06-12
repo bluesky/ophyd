@@ -62,6 +62,7 @@ class PyepicsShimPV(epics.PV):
         connection_callback=None,
         connection_timeout=None,
         access_callback=None,
+        default_monitor=None,
     ):
         connection_callback = wrap_callback(
             _dispatcher, "metadata", connection_callback
