@@ -31,8 +31,8 @@ import numpy as np
 from ..device import Component, Device
 from ..device import FormattedComponent as FCpt
 from ..device import GenerateDatumInterface
-from ..signal import ArrayAttributeSignal, EpicsSignal, EpicsSignalRO
-from ..utils import enum
+from ..signal import ArrayAttributeSignal, EpicsSignal, EpicsSignalRO, Signal
+from ..utils import enum, ReadOnlyError
 from ..utils.errors import DestroyedError, PluginMisconfigurationError, UnprimedPlugin
 from .base import ADBase
 from .base import ADComponent as Cpt
@@ -2794,3 +2794,63 @@ def get_areadetector_plugin(prefix, **kwargs):
         raise ValueError("Unable to determine plugin type")
 
     return cls(prefix, **kwargs)
+
+def _resolve_dotted_attr(obj, dotted_name):
+    """Resolve a dotted attribute name on an object.
+
+    Args:
+        obj (Object): The object on which to resolve the attribute.
+        dotted_name (str): The dotted attribute name to resolve.
+
+    Returns:
+        Any: The resolved attribute value, or None if not found.
+    """
+    for part in dotted_name.split('.'):
+        part = part.lstrip('_')  # Optionally remove leading underscores
+        obj = getattr(obj, part, None)
+        if obj is None:
+            return None
+    return obj
+
+def copy_plugin(source, target, include=None, exclude=None):
+    """ Copy signals from one plugin to another
+
+    Args:
+        source (Device): source plugin from which to copy signals
+        target (Device): target plugin to which signals will be copied
+        include (list, optional): list of signal names to include. Defaults to None.
+        exclude (list, optional): list of signal names to exclude. Defaults to None.
+
+    Raises:
+        TypeError: If source and target are not the same type
+        ValueError: If both include and exclude lists are specified, only one should be used
+    """
+    if type(source) is not type(target):
+        raise TypeError(
+            f"Source plugin and target plugin must be of the same type, "
+            f"got {type(source)} and {type(target)}"
+        )
+    if include is not None and exclude is not None:
+        raise ValueError("Cannot specify both include and exclude lists, choose one.")
+
+    include_set = set(include) if include is not None else set()
+    exclude_set = set(exclude) if exclude is not None else set()
+
+    for walk in source.walk_signals():
+        dotted_name = walk.dotted_name
+        if exclude_set and dotted_name in exclude_set:
+            continue
+        if include_set and dotted_name not in include_set:
+            continue
+        src_sig = walk.item
+        tgt_sig = _resolve_dotted_attr(target, dotted_name)
+        # Only copy if tgt_sig is a real ophyd Signal and is writable
+        if isinstance(tgt_sig, Signal) and getattr(tgt_sig, "write_access", True):
+            value = src_sig.get()
+            try:
+                tgt_sig.put(value)
+            except Exception:
+                #print(f"Failed to copy {dotted_name} from {source.name} to {target.name}")
+                # Optionally log or handle the error here
+                pass
+
