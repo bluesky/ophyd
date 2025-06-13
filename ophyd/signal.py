@@ -2373,5 +2373,9 @@ class ArrayAttributeSignal(AttributeSignal):
     how to store the data into metadatastore.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._metadata.update(write_access=False)
+
     def get(self, **kwargs):
         return np.asarray(super().get(**kwargs))

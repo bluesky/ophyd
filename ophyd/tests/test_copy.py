@@ -11,14 +11,14 @@ def test_copy_plugin_values_all():
     tgt = FakeStats2("TGT:", name="tgt")
 
     # Set a value on the source device
-    src.compute_centroid.sim_put(1)
-    src.hist_max.sim_put(123)
-    src.hist_min.sim_put(10)
+    src.compute_centroid.put(1)
+    src.hist_max.put(123)
+    src.hist_min.put(10)
 
     # Target should have different values before copy
-    tgt.compute_centroid.sim_put(0)
-    tgt.hist_max.sim_put(0)
-    tgt.hist_min.sim_put(0)
+    tgt.compute_centroid.put(0)
+    tgt.hist_max.put(0)
+    tgt.hist_min.put(0)
 
     # Copy all values from src to tgt
     copy_plugin(src, tgt)
@@ -48,7 +48,7 @@ def test_copy_plugin_include():
 
     # Test include/exclude
     src_inc.hist_max.sim_put(555)
-    copy_plugin(src_inc, tgt_inc, include=["hist_max"])
+    copy_plugin(src_inc, tgt_inc, include={src_inc.hist_max})
     assert tgt_inc.hist_max.get() == 555
     # hist_min and compute_centroid should remain unchanged
     assert tgt_inc.hist_min.get() == 0
@@ -71,7 +71,7 @@ def test_copy_plugin_exclude():
     tgt_exc.hist_max.sim_put(0)
     tgt_exc.hist_min.sim_put(0)
 
-    copy_plugin(src_exc, tgt_exc, exclude=["hist_max"])
+    copy_plugin(src_exc, tgt_exc, exclude={src_exc.hist_max})
     # hist_max should remain unchanged
     assert tgt_exc.hist_max.get() == 0
     # hist_min and compute_centroid should be updated
