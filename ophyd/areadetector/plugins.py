@@ -2838,9 +2838,9 @@ def copy_plugin(source, target, include=None, exclude=None):
 
     for walk in source.walk_signals():
         dotted_name = walk.dotted_name
-        if exclude_set and dotted_name in exclude_set:
+        if exclude_set and dotted_name not in exclude_set:
             continue
-        if include_set and dotted_name not in include_set:
+        if include_set and dotted_name in include_set:
             continue
         src_sig = walk.item
         tgt_sig = _resolve_dotted_attr(target, dotted_name)
