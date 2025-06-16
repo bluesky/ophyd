@@ -26,12 +26,22 @@ logger = logging.getLogger(__name__)
 class TriggerStatus(DeviceStatus):
     """
     A Status for AreaDetector triggers
+
+    Parameters
+    ----------
+    tracking_signal : Signal
+        The signal to track.
+    target : Union[Signal, int]
+        The target to wait for.
+    device : Device
+        The device to track.
+    *args, **kwargs : Any
     """
 
     def __init__(
         self,
         tracking_signal: Signal,
-        target: Union[Signal, int, float],
+        target: Union[Signal, int],
         device,
         *args,
         **kwargs
