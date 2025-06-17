@@ -365,14 +365,10 @@ class ContinuousAcquisitionTrigger(BlueskyInterface):
         # Order of operations is important here.
         self.stage_sigs.update(
             [
-                ("cam.acquire", 1),  # Start acquiring
                 ("cam.image_mode", self.cam.ImageMode.CONTINUOUS),  # 'Continuous' mode
+                ("cam.acquire", 1),  # Start acquiring
                 ("cb.flush_on_soft_trigger", 0),  # Flush the buffer on new image
                 ("cb.preset_trigger_count", 0),  # Keep the buffer capturing forever
-                # TODO: Figure out why this leaks an extra frame
-                # Tested this with the HDF5 plugin and it writes an extra frame to
-                # the file when `pre_count` is non-zero.
-                # Possibly a bug in the NDCircularBuff plugin?
                 ("cb.pre_count", 0),  # The number of frames to take before the trigger
                 ("cb.capture", 1),  # Start filling the buffer
             ]
