@@ -1676,7 +1676,7 @@ class EpicsSignalRO(EpicsSignalBase):
             self._run_metadata_callbacks()
 
 
-class EpicsSignalNoValidation(EpicsSignalBase):
+class EpicsSignalNoValidation(EpicsSignal):
     """An EpicsSignal that does not verify values on set.
     This signal does support readback, but does not guarantee that
     the readback will match the set value.
@@ -1685,8 +1685,10 @@ class EpicsSignalNoValidation(EpicsSignalBase):
 
     Parameters
     ----------
-    write_pv : str
-        The PV to write to
+    read_pv : str
+        The PV to read from
+    write_pv : str, optional
+        The PV to write to if different from the read PV
     name : str, optional
         Name of signal.  If not given defaults to write_pv
     write_timeout : float or None, optional
