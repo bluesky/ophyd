@@ -1,6 +1,5 @@
-from ophyd.sim import make_fake_device
 from ophyd.areadetector.plugins import StatsPlugin, copy_plugin
-
+from ophyd.sim import make_fake_device
 
 def test_copy_plugin_values_all():
     # Create a fake StatsPlugin device class
