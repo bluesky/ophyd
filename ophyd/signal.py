@@ -1676,60 +1676,6 @@ class EpicsSignalRO(EpicsSignalBase):
             self._run_metadata_callbacks()
 
 
-class EpicsSignalNoValidation(EpicsSignalBase):
-    """An EpicsSignal that does not verify values on set.
-    This signal does support readback, but does not guarantee that
-    the readback will match the set value.
-
-    Keyword arguments are passed on to the base class (Signal) initializer
-
-    Parameters
-    ----------
-    write_pv : str
-        The PV to write to
-    name : str, optional
-        Name of signal.  If not given defaults to write_pv
-    write_timeout : float or None, optional
-        The timeout for a reply when put completion is used. This is
-        only applied if the PV is connected within connection_timeout (below).
-
-        This is very different than the connection and read timeouts
-        above. It relates to how long an action takes to complete, such motor
-        motion or data acquisition. Any default value we choose here is likely
-        to cause problems---either by being too short and giving up too early
-        on a lengthy action or being too long and delaying the report of a
-        failure. A finite value can be injected here or, perhaps more usefully,
-        via `set` at the Device level, where a context-appropriate value can be
-        chosen.
-    connection_timeout : float or None, optional
-        Timeout for connection. This includes the time to search and establish
-        a channel.
-
-        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
-        class-wide default." See EpicsSignalBase.set_defaults to
-        configure class defaults.
-
-        Explicitly passing None means, "Wait forever."
-    """
-
-    def set(self, value, *args, **kwargs):
-        """
-        Set the value of this signal, and return a completed Status
-        object, bypassing any readback verification
-
-        Returns
-        -------
-        st : Status
-            This status object will be finished
-        """
-        self.put(value)
-
-        st = Status(self)
-        st.set_finished()
-        st.wait()
-        return st
-
-
 class EpicsSignal(EpicsSignalBase):
     """An EPICS signal, comprised of either one or two EPICS PVs
 
@@ -2287,6 +2233,62 @@ class EpicsSignal(EpicsSignalBase):
     @use_limits.setter
     def use_limits(self, value):
         self._use_limits = bool(value)
+
+
+class EpicsSignalNoValidation(EpicsSignal):
+    """An EpicsSignal that does not verify values on set.
+    This signal does support readback, but does not guarantee that
+    the readback will match the set value.
+
+    Keyword arguments are passed on to the base class (Signal) initializer
+
+    Parameters
+    ----------
+    read_pv : str
+        The PV to read from
+    write_pv : str, optional
+        The PV to write to if different from the read PV
+    name : str, optional
+        Name of signal.  If not given defaults to write_pv
+    write_timeout : float or None, optional
+        The timeout for a reply when put completion is used. This is
+        only applied if the PV is connected within connection_timeout (below).
+
+        This is very different than the connection and read timeouts
+        above. It relates to how long an action takes to complete, such motor
+        motion or data acquisition. Any default value we choose here is likely
+        to cause problems---either by being too short and giving up too early
+        on a lengthy action or being too long and delaying the report of a
+        failure. A finite value can be injected here or, perhaps more usefully,
+        via `set` at the Device level, where a context-appropriate value can be
+        chosen.
+    connection_timeout : float or None, optional
+        Timeout for connection. This includes the time to search and establish
+        a channel.
+
+        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
+        class-wide default." See EpicsSignalBase.set_defaults to
+        configure class defaults.
+
+        Explicitly passing None means, "Wait forever."
+    """
+
+    def set(self, value, *args, **kwargs):
+        """
+        Set the value of this signal, and return a completed Status
+        object, bypassing any readback verification
+
+        Returns
+        -------
+        st : Status
+            This status object will be finished
+        """
+        self.put(value)
+
+        st = Status(self)
+        st.set_finished()
+        st.wait()
+        return st
 
 
 class AttributeSignal(Signal):
