@@ -1571,42 +1571,50 @@ class MagickPlugin_V34(
 
 class NetCDFPlugin_V20(
     FilePlugin_V20, NetCDFPlugin, version=(2, 0), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V21(
     FilePlugin_V21, NetCDFPlugin_V20, version=(2, 1), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V22(
     FilePlugin_V22, NetCDFPlugin_V21, version=(2, 2), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V25(
     FilePlugin_V25, NetCDFPlugin_V22, version=(2, 5), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V26(
     FilePlugin_V26, NetCDFPlugin_V25, version=(2, 6), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V31(
     FilePlugin_V31, NetCDFPlugin_V26, version=(3, 1), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V33(
     FilePlugin_V33, NetCDFPlugin_V31, version=(3, 3), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 class NetCDFPlugin_V34(
     FilePlugin_V34, NetCDFPlugin_V33, version=(3, 4), version_of=NetCDFPlugin
-): ...
+):
+    ...
 
 
 # --- NDFileNexus ---
@@ -1614,42 +1622,50 @@ class NetCDFPlugin_V34(
 
 class NexusPlugin_V20(
     FilePlugin_V20, NexusPlugin, version=(2, 0), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V21(
     FilePlugin_V21, NexusPlugin_V20, version=(2, 1), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V22(
     FilePlugin_V22, NexusPlugin_V21, version=(2, 2), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V25(
     FilePlugin_V25, NexusPlugin_V22, version=(2, 5), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V26(
     FilePlugin_V26, NexusPlugin_V25, version=(2, 6), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V31(
     FilePlugin_V31, NexusPlugin_V26, version=(3, 1), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V33(
     FilePlugin_V33, NexusPlugin_V31, version=(3, 3), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 class NexusPlugin_V34(
     FilePlugin_V34, NexusPlugin_V33, version=(3, 4), version_of=NexusPlugin
-): ...
+):
+    ...
 
 
 # --- NDOverlayN ---
@@ -1693,37 +1709,44 @@ class Overlay_V31(Overlay_V26, version=(3, 1), version_of=Overlay): ...
 
 class OverlayPlugin_V20(
     PluginBase_V20, OverlayPlugin, version=(2, 0), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 class OverlayPlugin_V22(
     PluginBase_V22, OverlayPlugin_V20, version=(2, 2), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 class OverlayPlugin_V25(
     PluginBase_V25, OverlayPlugin_V22, version=(2, 5), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 class OverlayPlugin_V26(
     PluginBase_V26, OverlayPlugin_V25, version=(2, 6), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 class OverlayPlugin_V31(
     PluginBase_V31, OverlayPlugin_V26, version=(3, 1), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 class OverlayPlugin_V33(
     PluginBase_V33, OverlayPlugin_V31, version=(3, 3), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 class OverlayPlugin_V34(
     PluginBase_V34, OverlayPlugin_V33, version=(3, 4), version_of=OverlayPlugin
-): ...
+):
+    ...
 
 
 # --- NDProcess ---
@@ -1731,27 +1754,32 @@ class OverlayPlugin_V34(
 
 class ProcessPlugin_V20(
     PluginBase_V20, ProcessPlugin, version=(2, 0), version_of=ProcessPlugin
-): ...
+):
+    ...
 
 
 class ProcessPlugin_V22(
     PluginBase_V22, ProcessPlugin_V20, version=(2, 2), version_of=ProcessPlugin
-): ...
+):
+    ...
 
 
 class ProcessPlugin_V25(
     PluginBase_V25, ProcessPlugin_V22, version=(2, 5), version_of=ProcessPlugin
-): ...
+):
+    ...
 
 
 class ProcessPlugin_V26(
     PluginBase_V26, ProcessPlugin_V25, version=(2, 6), version_of=ProcessPlugin
-): ...
+):
+    ...
 
 
 class ProcessPlugin_V31(
     PluginBase_V31, ProcessPlugin_V26, version=(3, 1), version_of=ProcessPlugin
-): ...
+):
+    ...
 
 
 class ProcessPlugin_V33(
@@ -1764,7 +1792,8 @@ class ProcessPlugin_V33(
 
 class ProcessPlugin_V34(
     PluginBase_V34, ProcessPlugin_V33, version=(3, 4), version_of=ProcessPlugin
-): ...
+):
+    ...
 
 
 # --- NDROI ---
@@ -1803,17 +1832,20 @@ class ROIPlugin_V26(
 
 class ROIPlugin_V31(
     PluginBase_V31, ROIPlugin_V26, version=(3, 1), version_of=ROIPlugin
-): ...
+):
+    ...
 
 
 class ROIPlugin_V33(
     PluginBase_V33, ROIPlugin_V31, version=(3, 3), version_of=ROIPlugin
-): ...
+):
+    ...
 
 
 class ROIPlugin_V34(
     PluginBase_V34, ROIPlugin_V33, version=(3, 4), version_of=ROIPlugin
-): ...
+):
+    ...
 
 
 # --- NDROIStat ---
@@ -1848,12 +1880,14 @@ class ROIStatPlugin_V23(ROIStatPlugin_V22, version=(2, 3), version_of=ROIStatPlu
 
 class ROIStatPlugin_V25(
     PluginBase_V25, ROIStatPlugin_V23, version=(2, 5), version_of=ROIStatPlugin
-): ...
+):
+    ...
 
 
 class ROIStatPlugin_V26(
     PluginBase_V26, ROIStatPlugin_V25, version=(2, 6), version_of=ROIStatPlugin
-): ...
+):
+    ...
 
 
 class ROIStatPlugin_V31(
@@ -1863,12 +1897,14 @@ class ROIStatPlugin_V31(
 
 class ROIStatPlugin_V33(
     PluginBase_V33, ROIStatPlugin_V31, version=(3, 3), version_of=ROIStatPlugin
-): ...
+):
+    ...
 
 
 class ROIStatPlugin_V34(
     PluginBase_V34, ROIStatPlugin_V33, version=(3, 4), version_of=ROIStatPlugin
-): ...
+):
+    ...
 
 
 # --- NDROIStatN ---
@@ -1914,7 +1950,8 @@ class ROIStatNPlugin_V25(ROIStatNPlugin_V23, version=(2, 5), version_of=ROIStatN
 
 class StatsPlugin_V20(
     PluginBase_V20, StatsPlugin, version=(2, 0), version_of=StatsPlugin
-): ...
+):
+    ...
 
 
 class StatsPlugin_V22(
@@ -1971,7 +2008,8 @@ class StatsPlugin_V26(
 
 class StatsPlugin_V31(
     PluginBase_V31, StatsPlugin_V26, version=(3, 1), version_of=StatsPlugin
-): ...
+):
+    ...
 
 
 class StatsPlugin_V32(StatsPlugin_V31, version=(3, 2), version_of=StatsPlugin):
@@ -1993,7 +2031,8 @@ class StatsPlugin_V33(
 
 class StatsPlugin_V34(
     PluginBase_V34, StatsPlugin_V33, version=(3, 4), version_of=StatsPlugin
-): ...
+):
+    ...
 
 
 # --- NDFileTIFF ---
@@ -2001,42 +2040,50 @@ class StatsPlugin_V34(
 
 class TIFFPlugin_V20(
     FilePlugin_V20, TIFFPlugin, version=(2, 0), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V21(
     FilePlugin_V21, TIFFPlugin_V20, version=(2, 1), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V22(
     FilePlugin_V22, TIFFPlugin_V21, version=(2, 2), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V25(
     FilePlugin_V25, TIFFPlugin_V22, version=(2, 5), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V26(
     FilePlugin_V26, TIFFPlugin_V25, version=(2, 6), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V31(
     FilePlugin_V31, TIFFPlugin_V26, version=(3, 1), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V33(
     FilePlugin_V33, TIFFPlugin_V31, version=(3, 3), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 class TIFFPlugin_V34(
     FilePlugin_V34, TIFFPlugin_V33, version=(3, 4), version_of=TIFFPlugin
-): ...
+):
+    ...
 
 
 # --- NDTransform ---
@@ -2082,32 +2129,38 @@ class TransformPlugin_V21(
 
 class TransformPlugin_V22(
     PluginBase_V22, TransformPlugin_V21, version=(2, 2), version_of=TransformPlugin
-): ...
+):
+    ...
 
 
 class TransformPlugin_V25(
     PluginBase_V25, TransformPlugin_V22, version=(2, 5), version_of=TransformPlugin
-): ...
+):
+    ...
 
 
 class TransformPlugin_V26(
     PluginBase_V26, TransformPlugin_V25, version=(2, 6), version_of=TransformPlugin
-): ...
+):
+    ...
 
 
 class TransformPlugin_V31(
     PluginBase_V31, TransformPlugin_V26, version=(3, 1), version_of=TransformPlugin
-): ...
+):
+    ...
 
 
 class TransformPlugin_V33(
     PluginBase_V33, TransformPlugin_V31, version=(3, 3), version_of=TransformPlugin
-): ...
+):
+    ...
 
 
 class TransformPlugin_V34(
     PluginBase_V34, TransformPlugin_V33, version=(3, 4), version_of=TransformPlugin
-): ...
+):
+    ...
 
 
 # --- NDPva ---
@@ -2128,22 +2181,26 @@ class PvaPlugin_V25(PluginBase_V25, PvaPlugin, version=(2, 5), version_of=PvaPlu
 
 class PvaPlugin_V26(
     PluginBase_V26, PvaPlugin_V25, version=(2, 6), version_of=PvaPlugin
-): ...
+):
+    ...
 
 
 class PvaPlugin_V31(
     PluginBase_V31, PvaPlugin_V26, version=(3, 1), version_of=PvaPlugin
-): ...
+):
+    ...
 
 
 class PvaPlugin_V33(
     PluginBase_V33, PvaPlugin_V31, version=(3, 3), version_of=PvaPlugin
-): ...
+):
+    ...
 
 
 class PvaPlugin_V34(
     PluginBase_V34, PvaPlugin_V33, version=(3, 4), version_of=PvaPlugin
-): ...
+):
+    ...
 
 
 # --- NDFFT ---
@@ -2187,22 +2244,26 @@ class FFTPlugin_V25(PluginBase_V25, FFTPlugin, version=(2, 5), version_of=FFTPlu
 
 class FFTPlugin_V26(
     PluginBase_V26, FFTPlugin_V25, version=(2, 6), version_of=FFTPlugin
-): ...
+):
+    ...
 
 
 class FFTPlugin_V31(
     PluginBase_V31, FFTPlugin_V26, version=(3, 1), version_of=FFTPlugin
-): ...
+): 
+    ...
 
 
 class FFTPlugin_V33(
     PluginBase_V33, FFTPlugin_V31, version=(3, 3), version_of=FFTPlugin
-): ...
+):
+    ...
 
 
 class FFTPlugin_V34(
     PluginBase_V34, FFTPlugin_V33, version=(3, 4), version_of=FFTPlugin
-): ...
+):
+    ...
 
 
 # --- NDScatter ---
@@ -2227,17 +2288,20 @@ class ScatterPlugin_V31(
 
 class ScatterPlugin_V32(
     ScatterPlugin_V31, version=(3, 2), version_of=ScatterPlugin
-): ...
+):
+    ...
 
 
 class ScatterPlugin_V33(
     PluginBase_V33, ScatterPlugin_V32, version=(3, 3), version_of=ScatterPlugin
-): ...
+):
+    ...
 
 
 class ScatterPlugin_V34(
     PluginBase_V34, ScatterPlugin_V33, version=(3, 4), version_of=ScatterPlugin
-): ...
+):
+    ...
 
 
 # --- NDPosPlugin ---
@@ -2274,22 +2338,26 @@ class PosPluginPlugin_V25(
 
 class PosPluginPlugin_V26(
     PluginBase_V26, PosPluginPlugin_V25, version=(2, 6), version_of=PosPlugin
-): ...
+):
+    ...
 
 
 class PosPluginPlugin_V31(
     PluginBase_V31, PosPluginPlugin_V26, version=(3, 1), version_of=PosPlugin
-): ...
+):
+    ...
 
 
 class PosPluginPlugin_V33(
     PluginBase_V33, PosPluginPlugin_V31, version=(3, 3), version_of=PosPlugin
-): ...
+):
+    ...
 
 
 class PosPluginPlugin_V34(
     PluginBase_V34, PosPluginPlugin_V33, version=(3, 4), version_of=PosPlugin
-): ...
+):
+    ...
 
 
 # --- NDCircularBuff ---
@@ -2335,7 +2403,8 @@ class CircularBuffPlugin_V25(
     CircularBuffPlugin_V22,
     version=(2, 5),
     version_of=CircularBuffPlugin,
-): ...
+):
+    ...
 
 
 class CircularBuffPlugin_V26(
@@ -2343,7 +2412,8 @@ class CircularBuffPlugin_V26(
     CircularBuffPlugin_V25,
     version=(2, 6),
     version_of=CircularBuffPlugin,
-): ...
+):
+    ...
 
 
 class CircularBuffPlugin_V31(
@@ -2351,7 +2421,8 @@ class CircularBuffPlugin_V31(
     CircularBuffPlugin_V26,
     version=(3, 1),
     version_of=CircularBuffPlugin,
-): ...
+):
+    ...
 
 
 class CircularBuffPlugin_V33(
@@ -2359,7 +2430,8 @@ class CircularBuffPlugin_V33(
     CircularBuffPlugin_V31,
     version=(3, 3),
     version_of=CircularBuffPlugin,
-): ...
+):
+    ...
 
 
 class CircularBuffPlugin_V34(
@@ -2396,7 +2468,8 @@ class AttributeNPlugin_V22(
 
 class AttributeNPlugin_V26(
     AttributeNPlugin_V22, version=(2, 6), version_of=AttributeNPlugin
-): ...
+):
+    ...
 
 
 # --- NDAttrPlot ---
@@ -2417,12 +2490,14 @@ class AttrPlotPlugin_V31(
 
 class AttrPlotPlugin_V33(
     PluginBase_V33, AttrPlotPlugin_V31, version=(3, 3), version_of=AttrPlotPlugin
-): ...
+):
+    ...
 
 
 class AttrPlotPlugin_V34(
     PluginBase_V34, AttrPlotPlugin_V33, version=(3, 4), version_of=AttrPlotPlugin
-): ...
+):
+    ...
 
 
 # --- NDTimeSeriesN ---
@@ -2478,22 +2553,26 @@ class TimeSeriesPlugin_V25(
 
 class TimeSeriesPlugin_V26(
     PluginBase_V26, TimeSeriesPlugin_V25, version=(2, 6), version_of=TimeSeriesPlugin
-): ...
+):
+    ...
 
 
 class TimeSeriesPlugin_V31(
     PluginBase_V31, TimeSeriesPlugin_V26, version=(3, 1), version_of=TimeSeriesPlugin
-): ...
+):
+    ...
 
 
 class TimeSeriesPlugin_V33(
     PluginBase_V33, TimeSeriesPlugin_V31, version=(3, 3), version_of=TimeSeriesPlugin
-): ...
+):
+    ...
 
 
 class TimeSeriesPlugin_V34(
     PluginBase_V34, TimeSeriesPlugin_V33, version=(3, 4), version_of=TimeSeriesPlugin
-): ...
+):
+    ...
 
 
 # --- NDCodec ---
@@ -2584,7 +2663,8 @@ class AttributePlugin_V22(
 
 class AttributePlugin_V25(
     PluginBase_V25, AttributePlugin_V22, version=(2, 5), version_of=AttributePlugin
-): ...
+):
+    ...
 
 
 class AttributePlugin_V26(
@@ -2621,12 +2701,14 @@ class AttributePlugin_V31(
 
 class AttributePlugin_V33(
     PluginBase_V33, AttributePlugin_V31, version=(3, 3), version_of=AttributePlugin
-): ...
+):
+    ...
 
 
 class AttributePlugin_V34(
     PluginBase_V34, AttributePlugin_V33, version=(3, 4), version_of=AttributePlugin
-): ...
+):
+    ...
 
 
 # --- NDGather / NDGatherN ---

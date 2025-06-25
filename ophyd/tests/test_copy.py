@@ -1,6 +1,7 @@
 from ophyd.sim import make_fake_device
 from ophyd.areadetector.plugins import StatsPlugin, copy_plugin
 
+
 def test_copy_plugin_values_all():
     # Create a fake StatsPlugin device class
     FakeStats1 = make_fake_device(StatsPlugin)
@@ -53,6 +54,7 @@ def test_copy_plugin_include():
     # hist_min and compute_centroid should remain unchanged
     assert tgt_inc.hist_min.get() == 0
     assert tgt_inc.compute_centroid.get() == '0'
+
 
 def test_copy_plugin_exclude():
     FakeStat2 = make_fake_device(StatsPlugin)
