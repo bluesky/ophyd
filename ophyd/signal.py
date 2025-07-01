@@ -903,7 +903,7 @@ class InternalSignal(InternalSignalMixin, Signal):
 
 class InternalSignalError(ReadOnlyError):
     """
-    A read-only error sourced from trying to write to an internal signal.
+    A read-only error raised when trying to write to an internal signal.
     """
 
     def __init__(self, message=None):
