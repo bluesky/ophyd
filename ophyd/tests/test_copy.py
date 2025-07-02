@@ -25,7 +25,7 @@ def test_copy_plugin_values_all():
     copy_plugin(src, tgt)
 
     # Assert that values have been copied
-    assert tgt.compute_centroid.get() == '1'
+    assert tgt.compute_centroid.get() == "1"
     assert tgt.hist_max.get() == 123
     assert tgt.hist_min.get() == 10
 
@@ -53,7 +53,7 @@ def test_copy_plugin_include():
     assert tgt_inc.hist_max.get() == 555
     # hist_min and compute_centroid should remain unchanged
     assert tgt_inc.hist_min.get() == 0
-    assert tgt_inc.compute_centroid.get() == '0'
+    assert tgt_inc.compute_centroid.get() == "0"
 
 
 def test_copy_plugin_exclude():
@@ -78,4 +78,4 @@ def test_copy_plugin_exclude():
     assert tgt_exc.hist_max.get() == 0
     # hist_min and compute_centroid should be updated
     assert tgt_exc.hist_min.get() == 999
-    assert tgt_exc.compute_centroid.get() == '1'
+    assert tgt_exc.compute_centroid.get() == "1"
