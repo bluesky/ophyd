@@ -1701,7 +1701,8 @@ class Overlay_V26(Overlay_V21, version=(2, 6), version_of=Overlay):
     set_hopr = DDC_EpicsSignal(("x", "SetXHOPR"), ("y", "SetYHOPR"), doc="set_hopr")
 
 
-class Overlay_V31(Overlay_V26, version=(3, 1), version_of=Overlay): ...
+class Overlay_V31(Overlay_V26, version=(3, 1), version_of=Overlay):
+    ...
 
 
 # --- NDOverlay ---
@@ -1814,12 +1815,14 @@ class ROIPlugin_V20(PluginBase_V20, ROIPlugin, version=(2, 0), version_of=ROIPlu
 
 class ROIPlugin_V22(
     PluginBase_V22, ROIPlugin_V20, version=(2, 2), version_of=ROIPlugin
-): ...
+):
+    ...
 
 
 class ROIPlugin_V25(
     PluginBase_V25, ROIPlugin_V22, version=(2, 5), version_of=ROIPlugin
-): ...
+):
+    ...
 
 
 class ROIPlugin_V26(
@@ -1892,7 +1895,8 @@ class ROIStatPlugin_V26(
 
 class ROIStatPlugin_V31(
     PluginBase_V31, ROIStatPlugin_V26, version=(3, 1), version_of=ROIStatPlugin
-): ...
+):
+    ...
 
 
 class ROIStatPlugin_V33(
@@ -2250,7 +2254,7 @@ class FFTPlugin_V26(
 
 class FFTPlugin_V31(
     PluginBase_V31, FFTPlugin_V26, version=(3, 1), version_of=FFTPlugin
-): 
+):
     ...
 
 
