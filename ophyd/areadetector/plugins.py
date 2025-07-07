@@ -2839,8 +2839,8 @@ def _resolve_dotted_attr(obj, dotted_name):
 def copy_plugin(
     source: PluginBase,
     target: PluginBase,
-    include: Optional[set[Signal]] = None,
-    exclude: Optional[set[Signal]] = None,
+    include: Optional[Set[Signal]] = None,
+    exclude: Optional[Set[Signal]] = None,
 ):
     """Copy signals from one plugin to another.
 
