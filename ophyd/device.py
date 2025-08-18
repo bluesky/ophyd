@@ -74,6 +74,7 @@ DEVICE_RESERVED_ATTRS = {
     "collect",
     "position",
     "stop",
+    "prepare",
     # from OphydObject
     "subscribe",
     "clear_sub",
