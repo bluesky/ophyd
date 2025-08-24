@@ -24,21 +24,37 @@ class ADTriggerStatus(DeviceStatus):
     A Status for AreaDetector triggers
 
     A special status object that notifies watches (progress bars)
-    based on comparing device.cam.array_counter to  device.cam.num_images.
+    based on comparing the two signal values counter_signal and
+    target_signal passed to the object instance at __init__. Once the
+    value of counter_signal reaches target_signal, the operation is considered done. 
+    If these two signals are passed in as None or not passed in at all (default),
+    then the standard device.cam.array_counter signal is used as the 
+    progress indicator, and device.cam.num_images is used as the target.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, counter_signal = None, target_signal = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_ts = ttime.time()
+
+        # Provide option to override which signals are watched to specify a "done" condition
+        self.counter_signal = counter_signal
+        self.target_signal = target_signal
+
+        # If not specified, just use the default array counter and num images signals.
+        if counter_signal is None:
+            self.counter_signal = self.device.cam.array_counter
+
+        if target_signal is None:
+            self.target_signal = self.device.cam.num_images
 
         # Notify watchers (things like progress bars) of new values
         # at the device's natural update rate.
         if not self.done:
-            self.device.cam.array_counter.subscribe(self._notify_watchers)
+            self.counter_signal.subscribe(self._notify_watchers)
             # some state needed only by self._notify_watchers
             self._name = self.device.name
-            self._initial_count = self.device.cam.array_counter.get()
-            self._target_count = self.device.cam.num_images.get()
+            self._initial_count = self.counter_signal.get()
+            self._target_count = self.target_signal.get()
 
     def watch(self, func):
         self._watchers.append(func)
@@ -46,7 +62,7 @@ class ADTriggerStatus(DeviceStatus):
     def _notify_watchers(self, value, *args, **kwargs):
         # *args and **kwargs catch extra inputs from pyepics, not needed here
         if self.done:
-            self.device.cam.array_counter.clear_sub(self._notify_watchers)
+            self.counter_signal.clear_sub(self._notify_watchers)
         if not self._watchers:
             return
         # Always start progress bar at 0 regardless of starting value of
