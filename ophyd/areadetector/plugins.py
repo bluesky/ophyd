@@ -1389,11 +1389,7 @@ class HDF5Plugin_V34(
 class HDF5Plugin_V35(
     FilePlugin_V35, HDF5Plugin_V34, version=(3, 5), version_of=HDF5Plugin
 ):
-    flush_now = Cpt(
-        EpicsSignal,
-        "FlushNow",
-        string=True,
-        doc="0=Done 1=Flush")
+    flush_now = Cpt(EpicsSignal, "FlushNow", string=True, doc="0=Done 1=Flush")
 
 
 # --- NDStdArrays ---
@@ -2567,7 +2563,7 @@ class CircularBuffPlugin_V35(
     PluginBase_V35,
     CircularBuffPlugin_V34,
     version=(3, 5),
-    version_of=CircularBuffPlugin
+    version_of=CircularBuffPlugin,
 ):
     ...
 
