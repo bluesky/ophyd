@@ -1,6 +1,7 @@
 import functools
 import logging
 import time
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from typing import Any, Callable
 
@@ -13,17 +14,10 @@ from .utils.errors import LimitError
 logger = logging.getLogger(__name__)
 
 
-class PositionerBase(OphydObject):
+class PositionerBase(OphydObject, metaclass=ABCMeta):
     """The positioner base class
 
     Subclass from this to implement your own positioners.
-
-    .. note ::
-
-       Subclasses should add an additional 'wait' keyword argument on
-       the move method. The `MoveStatus` object returned from
-       `PositionerBase` can then be waited on after the subclass
-       finishes the motion configuration.
 
     """
 
@@ -136,9 +130,10 @@ class PositionerBase(OphydObject):
         return rep
 
     @property
+    @abstractmethod
     def egu(self):
         """The engineering units (EGU) for positions"""
-        raise NotImplementedError("Subclass must implement egu")
+        pass
 
     @property
     def limits(self):
@@ -152,7 +147,8 @@ class PositionerBase(OphydObject):
     def high_limit(self):
         return self.limits[1]
 
-    def move(self, position, moved_cb=None, timeout=None):
+    @abstractmethod
+    def move(self, position, wait=False, moved_cb=None, timeout=None):
         """Move to a specified position, optionally waiting for motion to
         complete.
 
@@ -175,6 +171,8 @@ class PositionerBase(OphydObject):
         timeout : float, optional
             Maximum time to wait for the motion. If None, the default timeout
             for this positioner is used.
+        wait : bool, optional
+            Wait for the Status object to be complete (False by default)
 
         Returns
         -------
@@ -207,6 +205,9 @@ class PositionerBase(OphydObject):
             # the status object will run this callback when finished
 
         self.subscribe(status._finished, event_type=self._SUB_REQ_DONE, run=False)
+
+        if wait:
+            status.wait()
 
         return status
 
