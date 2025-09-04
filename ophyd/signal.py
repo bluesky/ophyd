@@ -228,7 +228,7 @@ class Signal(OphydObject):
         # NOTE: this is a no-op that exists here for bluesky purposes
         #       it may need to be moved in the future
         d = Status(self)
-        d._finished()
+        d.set_finished()
         return d
 
     def wait_for_connection(self, timeout=0.0):
@@ -397,10 +397,12 @@ class Signal(OphydObject):
         )
 
         def set_thread():
+            _exception = None
+
             try:
                 self._set_and_wait(value, timeout, **kwargs)
-            except TimeoutError:
-                success = False
+            except TimeoutError as e:
+                _exception = e
                 self.log.warning(
                     "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)",
                     self.name,
@@ -410,8 +412,8 @@ class Signal(OphydObject):
                     self.rtolerance,
                     kwargs,
                 )
-            except Exception:
-                success = False
+            except Exception as e:
+                _exception = e
                 self.log.exception(
                     "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s)",
                     self.name,
@@ -422,7 +424,6 @@ class Signal(OphydObject):
                     kwargs,
                 )
             else:
-                success = True
                 self.log.debug(
                     "%s: _set_and_wait(value=%s, timeout=%s, atol=%s, rtol=%s, kwargs=%s) succeeded => %s",
                     self.name,
@@ -442,7 +443,12 @@ class Signal(OphydObject):
                 th = self._set_thread
                 # these two must be in this order to avoid a race condition
                 self._set_thread = None
-                st._finished(success=success)
+
+                if _exception is not None:
+                    st.set_exception(_exception)
+                else:
+                    st.set_finished()
+
                 del th
 
         if self._set_thread is not None:
@@ -2196,7 +2202,7 @@ class EpicsSignal(EpicsSignalBase):
         st = Status(self, timeout=timeout, settle_time=settle_time)
 
         def put_callback(**kwargs):
-            st._finished(success=True)
+            st.set_finished()
 
         self.put(value, use_complete=True, callback=put_callback)
         return st
