@@ -5,40 +5,59 @@ To be used like so ::
     from ophyd.areadetector.detectors import PerkinElmerDetector
     from ophyd.areadetector.trigger_mixins import SingleTrigger
 
-    class MyDetector(PerkinElmerDetector, SingleTrigger):
+    # The order of inheritance is important here, SingleTrigger must be
+    # the first parent class so that is the `trigger` method that is called.
+    class MyDetector(SingleTrigger, PerkinElmerDetector):
         pass
 """
 
 import itertools
 import logging
 import time as ttime
+from typing import Union
 
 from ..device import BlueskyInterface, Staged
+from ..signal import Signal
 from ..status import DeviceStatus
 
 logger = logging.getLogger(__name__)
 
 
-class ADTriggerStatus(DeviceStatus):
+class TriggerStatus(DeviceStatus):
     """
     A Status for AreaDetector triggers
 
-    A special status object that notifies watches (progress bars)
-    based on comparing device.cam.array_counter to  device.cam.num_images.
+    Parameters
+    ----------
+    tracking_signal : Signal
+        The signal to track.
+    target : Union[Signal, int]
+        The target to wait for.
+    device : Device
+        The device to track.
+    *args, **kwargs : Any
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        tracking_signal: Signal,
+        target: Union[Signal, int],
+        device,
+        *args,
+        **kwargs
+    ):
+        super().__init__(device, *args, **kwargs)
         self.start_ts = ttime.time()
+        self.tracking_signal = tracking_signal
 
         # Notify watchers (things like progress bars) of new values
         # at the device's natural update rate.
         if not self.done:
-            self.device.cam.array_counter.subscribe(self._notify_watchers)
+            self.tracking_signal.subscribe(self._notify_watchers)
             # some state needed only by self._notify_watchers
             self._name = self.device.name
-            self._initial_count = self.device.cam.array_counter.get()
-            self._target_count = self.device.cam.num_images.get()
+            self._initial_count = self.tracking_signal.get()
+            self._target_count = target.get() if isinstance(target, Signal) else target
 
     def watch(self, func):
         self._watchers.append(func)
@@ -46,29 +65,28 @@ class ADTriggerStatus(DeviceStatus):
     def _notify_watchers(self, value, *args, **kwargs):
         # *args and **kwargs catch extra inputs from pyepics, not needed here
         if self.done:
-            self.device.cam.array_counter.clear_sub(self._notify_watchers)
+            self.tracking_signal.clear_sub(self._notify_watchers)
         if not self._watchers:
             return
         # Always start progress bar at 0 regardless of starting value of
         # array_counter.
         current = value - self._initial_count
         target = self._target_count
-        initial = 0
         time_elapsed = ttime.time() - self.start_ts
         try:
-            fraction = 1 - (current - initial) / (target - initial)
+            fraction = 1 - (current / target)
         except ZeroDivisionError:
             fraction = 0
         except Exception:
             fraction = None
             time_remaining = None
         else:
-            time_remaining = time_elapsed / fraction
+            time_remaining = time_elapsed / fraction if fraction != 0 else 0
         for watcher in self._watchers:
             watcher(
                 name=self._name,
                 current=current,
-                initial=initial,
+                initial=0,
                 target=target,
                 unit="images",
                 precision=0,
@@ -76,6 +94,39 @@ class ADTriggerStatus(DeviceStatus):
                 time_elapsed=time_elapsed,
                 time_remaining=time_remaining,
             )
+
+
+class NDCircularBuffTriggerStatus(TriggerStatus):
+    """
+    A Status for NDCircularBuff triggers
+    """
+
+    def __init__(self, device, *args, **kwargs):
+        if not hasattr(device, "cb"):
+            raise RuntimeError(
+                "NDCircularBuffTriggerStatus must be initialized with a device that has a CircularBuffPlugin"
+            )
+        super().__init__(
+            device.cb.post_trigger_qty, device.cb.post_count, device, *args, **kwargs
+        )
+
+
+class ADTriggerStatus(TriggerStatus):
+    """
+    A Status for AreaDetector triggers
+
+    A special status object that notifies watches (progress bars)
+    based on comparing device.cam.array_counter to  device.cam.num_images.
+    """
+
+    def __init__(self, device, *args, **kwargs):
+        if not hasattr(device, "cam"):
+            raise RuntimeError(
+                "ADTriggerStatus must be initialized with a device that has a camera"
+            )
+        super().__init__(
+            device.cam.array_counter, device.cam.num_images, device, *args, **kwargs
+        )
 
 
 class TriggerBase(BlueskyInterface):
@@ -283,3 +334,70 @@ class MultiTrigger(TriggerBase):
         if (old_value == 1) and (value == 0):
             # Negative-going edge means an acquisition just finished.
             self._run_subs(sub_type=self._SUB_ACQ_DONE)
+
+
+class ContinuousAcquisitionTrigger(BlueskyInterface):
+    """
+    This trigger mixin class takes frames from a circular buffer filled
+    by continuous acquisitions from the detector.
+
+    We assume that the circular buffer is pre-configured and this is what
+    will be "triggered" instead of the detector.
+
+    In practice, this means that all other plugins should be configured to be
+    downstream of the circular buffer, rathern than the detector driver.
+    """
+
+    _status_type = NDCircularBuffTriggerStatus
+
+    def __init__(self, *args, image_name=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if image_name is None:
+            image_name = "_".join([self.name, "image"])
+        self._image_name = image_name
+
+        if not hasattr(self, "cam"):
+            raise RuntimeError("Detector must have a camera configured.")
+
+        if not hasattr(self, "cb"):
+            raise RuntimeError("Detector must have a CircularBuffPlugin configured.")
+
+        # Order of operations is important here.
+        self.stage_sigs.update(
+            [
+                ("cam.image_mode", self.cam.ImageMode.CONTINUOUS),  # 'Continuous' mode
+                ("cam.acquire", 1),  # Start acquiring
+                ("cb.flush_on_soft_trigger", 0),  # Flush the buffer on new image
+                ("cb.preset_trigger_count", 0),  # Keep the buffer capturing forever
+                ("cb.pre_count", 0),  # The number of frames to take before the trigger
+                ("cb.capture", 1),  # Start filling the buffer
+            ]
+        )
+        self._trigger_signal = self.cb.trigger_
+        self._status = None
+
+    def stage(self):
+        self._trigger_signal.subscribe(self._trigger_changed)
+        super().stage()
+
+    def unstage(self):
+        super().unstage()
+        self._trigger_signal.clear_sub(self._trigger_changed)
+
+    def trigger(self):
+        if self._staged != Staged.yes:
+            raise RuntimeError(
+                "This detector is not ready to trigger."
+                "Call the stage() method before triggering."
+            )
+        self._status = self._status_type(self)
+        self._trigger_signal.put(1, wait=False)
+        self.generate_datum(self._image_name, ttime.time(), {})
+        return self._status
+
+    def _trigger_changed(self, value=None, old_value=None, **kwargs):
+        if self._status is None:
+            return
+        if (old_value == 1) and (value == 0):
+            self._status.set_finished()
+            self._status = None
