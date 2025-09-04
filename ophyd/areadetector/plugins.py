@@ -1125,7 +1125,11 @@ class PluginBase_V34(PluginBase_V33, version=(3, 4), version_of=PluginBase):
     max_array_rate = Cpt(SignalWithRBV, "MaxArrayRate")
     max_array_rate_cout = Cpt(EpicsSignal, "MaxArrayRate_COUT")
     max_byte_rate = Cpt(SignalWithRBV, "MaxByteRate")
-    min_callback_time = Cpt(SignalWithRBV, "MinCallbackTime")
+
+
+class PluginBase_V35(PluginBase_V34, version=(3, 5), version_of=PluginBase):
+    codec = Cpt(EpicsSignalRO, "Codec_RBV", string=True)
+    compressed_size = Cpt(EpicsSignalRO, "CompressedSize_RBV")
 
 
 # --- NDFile ---
@@ -1179,6 +1183,12 @@ class FilePlugin_V34(
     ...
 
 
+class FilePlugin_V35(
+    PluginBase_V35, FilePlugin_V34, version=(3, 5), version_of=FilePlugin
+):
+    ...
+
+
 # --- ColorConvPlugin ---
 
 
@@ -1220,6 +1230,12 @@ class ColorConvPlugin_V33(
 
 class ColorConvPlugin_V34(
     PluginBase_V34, ColorConvPlugin_V33, version=(3, 4), version_of=ColorConvPlugin
+):
+    ...
+
+
+class ColorConvPlugin_V35(
+    PluginBase_V35, ColorConvPlugin_V34, version=(3, 5), version_of=ColorConvPlugin
 ):
     ...
 
@@ -1378,6 +1394,12 @@ class HDF5Plugin_V34(
     ...
 
 
+class HDF5Plugin_V35(
+    FilePlugin_V35, HDF5Plugin_V34, version=(3, 5), version_of=HDF5Plugin
+):
+    flush_now = Cpt(EpicsSignal, "FlushNow", string=True, doc="0=Done 1=Flush")
+
+
 # --- NDStdArrays ---
 
 
@@ -1419,6 +1441,12 @@ class ImagePlugin_V33(
 
 class ImagePlugin_V34(
     PluginBase_V34, ImagePlugin_V33, version=(3, 4), version_of=ImagePlugin
+):
+    ...
+
+
+class ImagePlugin_V35(
+    PluginBase_V35, ImagePlugin_V34, version=(3, 5), version_of=ImagePlugin
 ):
     ...
 
@@ -1472,6 +1500,12 @@ class JPEGPlugin_V34(
     ...
 
 
+class JPEGPlugin_V35(
+    FilePlugin_V35, JPEGPlugin_V34, version=(3, 5), version_of=JPEGPlugin
+):
+    ...
+
+
 # --- Kafka Plugin ---
 
 
@@ -1513,6 +1547,12 @@ class KafkaPlugin_V33(
 
 class KafkaPlugin_V34(
     PluginBase_V34, KafkaPlugin_V33, version=(3, 4), version_of=KafkaPlugin
+):
+    ...
+
+
+class KafkaPlugin_V35(
+    PluginBase_V35, KafkaPlugin_V34, version=(3, 5), version_of=KafkaPlugin
 ):
     ...
 
@@ -1568,6 +1608,12 @@ class MagickPlugin_V34(
     ...
 
 
+class MagickPlugin_V35(
+    FilePlugin_V35, MagickPlugin_V34, version=(3, 5), version_of=MagickPlugin
+):
+    ...
+
+
 # --- NDFileNetCDF ---
 
 
@@ -1619,6 +1665,12 @@ class NetCDFPlugin_V34(
     ...
 
 
+class NetCDFPlugin_V35(
+    FilePlugin_V35, NetCDFPlugin_V34, version=(3, 5), version_of=NetCDFPlugin
+):
+    ...
+
+
 # --- NDFileNexus ---
 
 
@@ -1666,6 +1718,12 @@ class NexusPlugin_V33(
 
 class NexusPlugin_V34(
     FilePlugin_V34, NexusPlugin_V33, version=(3, 4), version_of=NexusPlugin
+):
+    ...
+
+
+class NexusPlugin_V35(
+    FilePlugin_V35, NexusPlugin_V34, version=(3, 5), version_of=NexusPlugin
 ):
     ...
 
@@ -1752,6 +1810,12 @@ class OverlayPlugin_V34(
     ...
 
 
+class OverlayPlugin_V35(
+    PluginBase_V35, OverlayPlugin_V34, version=(3, 5), version_of=OverlayPlugin
+):
+    ...
+
+
 # --- NDProcess ---
 
 
@@ -1795,6 +1859,12 @@ class ProcessPlugin_V33(
 
 class ProcessPlugin_V34(
     PluginBase_V34, ProcessPlugin_V33, version=(3, 4), version_of=ProcessPlugin
+):
+    ...
+
+
+class ProcessPlugin_V35(
+    PluginBase_V35, ProcessPlugin_V34, version=(3, 5), version_of=ProcessPlugin
 ):
     ...
 
@@ -1849,6 +1919,12 @@ class ROIPlugin_V33(
 
 class ROIPlugin_V34(
     PluginBase_V34, ROIPlugin_V33, version=(3, 4), version_of=ROIPlugin
+):
+    ...
+
+
+class ROIPlugin_V35(
+    PluginBase_V35, ROIPlugin_V34, version=(3, 5), version_of=ROIPlugin
 ):
     ...
 
@@ -1908,6 +1984,12 @@ class ROIStatPlugin_V33(
 
 class ROIStatPlugin_V34(
     PluginBase_V34, ROIStatPlugin_V33, version=(3, 4), version_of=ROIStatPlugin
+):
+    ...
+
+
+class ROIStatPlugin_V35(
+    PluginBase_V35, ROIStatPlugin_V34, version=(3, 5), version_of=ROIStatPlugin
 ):
     ...
 
@@ -2039,6 +2121,12 @@ class StatsPlugin_V34(
     ...
 
 
+class StatsPlugin_V35(
+    PluginBase_V35, StatsPlugin_V34, version=(3, 5), version_of=StatsPlugin
+):
+    ...
+
+
 # --- NDFileTIFF ---
 
 
@@ -2084,6 +2172,12 @@ class TIFFPlugin_V33(
 
 class TIFFPlugin_V34(
     FilePlugin_V34, TIFFPlugin_V33, version=(3, 4), version_of=TIFFPlugin
+):
+    ...
+
+
+class TIFFPlugin_V35(
+    FilePlugin_V35, TIFFPlugin_V34, version=(3, 5), version_of=TIFFPlugin
 ):
     ...
 
@@ -2165,6 +2259,12 @@ class TransformPlugin_V34(
     ...
 
 
+class TransformPlugin_V35(
+    PluginBase_V35, TransformPlugin_V34, version=(3, 5), version_of=TransformPlugin
+):
+    ...
+
+
 # --- NDPva ---
 
 
@@ -2200,6 +2300,12 @@ class PvaPlugin_V33(
 
 class PvaPlugin_V34(
     PluginBase_V34, PvaPlugin_V33, version=(3, 4), version_of=PvaPlugin
+):
+    ...
+
+
+class PvaPlugin_V35(
+    PluginBase_V35, PvaPlugin_V34, version=(3, 5), version_of=PvaPlugin
 ):
     ...
 
@@ -2266,6 +2372,12 @@ class FFTPlugin_V34(
     ...
 
 
+class FFTPlugin_V35(
+    PluginBase_V35, FFTPlugin_V34, version=(3, 5), version_of=FFTPlugin
+):
+    ...
+
+
 # --- NDScatter ---
 
 
@@ -2297,6 +2409,12 @@ class ScatterPlugin_V33(
 
 class ScatterPlugin_V34(
     PluginBase_V34, ScatterPlugin_V33, version=(3, 4), version_of=ScatterPlugin
+):
+    ...
+
+
+class ScatterPlugin_V35(
+    PluginBase_V35, ScatterPlugin_V34, version=(3, 5), version_of=ScatterPlugin
 ):
     ...
 
@@ -2352,6 +2470,12 @@ class PosPluginPlugin_V33(
 
 class PosPluginPlugin_V34(
     PluginBase_V34, PosPluginPlugin_V33, version=(3, 4), version_of=PosPlugin
+):
+    ...
+
+
+class PosPluginPlugin_V35(
+    PluginBase_V35, PosPluginPlugin_V34, version=(3, 5), version_of=PosPlugin
 ):
     ...
 
@@ -2443,6 +2567,15 @@ class CircularBuffPlugin_V34(
     )
 
 
+class CircularBuffPlugin_V35(
+    PluginBase_V35,
+    CircularBuffPlugin_V34,
+    version=(3, 5),
+    version_of=CircularBuffPlugin,
+):
+    ...
+
+
 # --- NDAttributeN ---
 
 
@@ -2489,6 +2622,12 @@ class AttrPlotPlugin_V33(
 
 class AttrPlotPlugin_V34(
     PluginBase_V34, AttrPlotPlugin_V33, version=(3, 4), version_of=AttrPlotPlugin
+):
+    ...
+
+
+class AttrPlotPlugin_V35(
+    PluginBase_V35, AttrPlotPlugin_V34, version=(3, 5), version_of=AttrPlotPlugin
 ):
     ...
 
@@ -2566,6 +2705,12 @@ class TimeSeriesPlugin_V34(
     ...
 
 
+class TimeSeriesPlugin_V35(
+    PluginBase_V35, TimeSeriesPlugin_V34, version=(3, 5), version_of=TimeSeriesPlugin
+):
+    ...
+
+
 # --- NDCodec ---
 
 
@@ -2599,6 +2744,14 @@ class CodecPlugin_V34(
     )
     jpeg_quality = Cpt(SignalWithRBV, "JPEGQuality")
     mode = Cpt(SignalWithRBV, "Mode", string=True, doc="0=Compress 1=Decompress")
+
+
+class CodecPlugin_V35(
+    PluginBase_V35, CodecPlugin_V34, version=(3, 5), version_of=CodecPlugin
+):
+    blosc_shuffle = Cpt(
+        SignalWithRBV, "BloscShuffle", string=True, doc="0=None 1=Byte 2=Bit"
+    )
 
 
 @register_plugin
@@ -2698,6 +2851,16 @@ class AttributePlugin_V34(
     PluginBase_V34, AttributePlugin_V33, version=(3, 4), version_of=AttributePlugin
 ):
     ...
+
+
+class AttributePlugin_V35(
+    PluginBase_V35, AttributePlugin_V34, version=(3, 5), version_of=AttributePlugin
+):
+    ts_acquiring = None
+    ts_control = None
+    ts_current_point = None
+    ts_num_points = None
+    ts_read = None
 
 
 # --- NDGather / NDGatherN ---
