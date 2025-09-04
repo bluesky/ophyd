@@ -155,7 +155,11 @@ def get_pv(
     """
     if context is not None:
         raise ValueError("context must be None")
-    context = PV.default_context()
+    if hasattr(PV, "default_context"):
+        context = PV.default_context()
+    else:
+        # Caproto <1.2.0 back-compat
+        context = PV._default_context  # type: ignore
     pv = PV(
         pvname,
         form=form,
@@ -202,7 +206,11 @@ def setup(logger):
         _dispatcher = None
 
     logger.debug("Installing event dispatcher")
-    context = PV.default_context().broadcaster
+    if hasattr(PV, "default_context"):
+        context = PV.default_context().broadcaster
+    else:
+        # Caproto <1.2.0 back-compat
+        context = PV._default_context.broadcaster  # type: ignore
     _dispatcher = EventDispatcher(
         thread_class=CaprotoCallbackThread, context=context, logger=logger
     )
