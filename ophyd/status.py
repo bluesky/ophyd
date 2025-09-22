@@ -691,9 +691,10 @@ class DeviceStatus(StatusBase):
         status has completed to running callbacks. Default is 0.
     """
 
-    def __init__(self, device, **kwargs):
+    def __init__(self, device, call_stop_on_failure: bool = True, **kwargs):
         self.device = device
         self._watchers = []
+        self._call_stop_on_failure = call_stop_on_failure if isinstance(call_stop_on_failure, bool) else True
         super().__init__(**kwargs)
         self._trace_attributes.update(
             {"device_name": device.name, "device_type": device.__class__.__name__}
@@ -705,7 +706,7 @@ class DeviceStatus(StatusBase):
     def _handle_failure(self):
         super()._handle_failure()
         self.log.debug("Trying to stop %s", repr(self.device))
-        if hasattr(self.device, "stop"):
+        if hasattr(self.device, "stop") and self._call_stop_on_failure:
             self.device.stop()
 
     def __str__(self):
