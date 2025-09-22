@@ -1,13 +1,20 @@
+from __future__ import annotations
+
 import json
+import operator
 import threading
 import time
 from collections import deque
 from functools import partial
 from logging import LoggerAdapter
+from typing import Literal
 from warnings import warn
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 from opentelemetry import trace
+
 
 from .log import logger
 from .utils import (
@@ -17,6 +24,11 @@ from .utils import (
     WaitTimeoutError,
     adapt_old_callback_signature,
 )
+
+if TYPE_CHECKING:
+    from ophyd.device import Device
+    from ophyd.signal import Signal
+
 
 tracer = trace.get_tracer(__name__)
 _TRACE_PREFIX = "Ophyd Status"
@@ -1138,3 +1150,279 @@ def wait(status, timeout=None, *, poll_rate="DEPRECATED"):
         from ``WaitTimeoutError`` above.
     """
     return status.wait(timeout)
+
+
+class CompareStatus(SubscriptionStatus):
+    """
+    Status class to compare a signal value against a given value.
+    The comparison is done using the specified operation, which can be one of
+    '==', '!=', '<', '<=', '>', '>='. If the value is a string, only '==' and '!=' are allowed.
+    One may also define a value or list of values that will result in an exception if encountered.
+    The status is finished when the comparison is either true or an exception is raised.
+
+    Parameters
+    ----------
+    signal: The device signal to compare.
+    value: The value to compare against.
+    raise_exc_value: A value or list of values that will raise an exception if encountered. Defaults to None.
+    operation: The operation to use for comparison. Defaults to '=='.
+    event_type: The type of event to trigger on comparison. Defaults to None (default sub).
+    timeout: The timeout for the status. Defaults to None (indefinite).
+    settle_time: The time to wait for the signal to settle before comparison. Defaults to 0.
+    run: Whether to run the status callback on creation or not. Defaults to True.
+    """
+
+    OP_MAP = {
+        "==": operator.eq,
+        "!=": operator.ne,
+        "<": operator.lt,
+        "<=": operator.le,
+        ">": operator.gt,
+        ">=": operator.ge,
+    }
+
+    def __init__(
+        self,
+        signal: Signal,
+        value: float | int | str,
+        *,
+        operation: Literal["==", "!=", "<", "<=", ">", ">="] = "==",
+        raise_exc_value: float | int | str | list[float | int | str] | None = None,
+        event_type=None,
+        timeout: float = None,
+        settle_time: float = 0,
+        run: bool = True,
+    ):
+        if isinstance(value, str):
+            if operation not in ("==", "!="):
+                raise ValueError(f"Invalid operation: {operation} for string comparison. Must be '==' or '!='.")
+        if operation not in ("==", "!=", "<", "<=", ">", ">="):
+            raise ValueError(f"Invalid operation: {operation}. Must be one of '==', '!=', '<', '<=', '>', '>='.")
+        self._signal = signal
+        self._value = value
+        self._operation = operation
+        if raise_exc_value is None:
+            self._raise_exc_values = []
+        elif isinstance(raise_exc_value, (float, int, str)):
+            self._raise_exc_values = [raise_exc_value]
+        elif isinstance(raise_exc_value, list):
+            self._raise_exc_values = raise_exc_value
+        else:
+            raise ValueError(
+                f"raise_exc_value must be a float, int, str, list or None. Received: {raise_exc_value}"
+            )
+        super().__init__(
+            device=signal,
+            callback=self._compare_callback,
+            timeout=timeout,
+            settle_time=settle_time,
+            event_type=event_type,
+            run=run,
+        )
+
+    def _compare_callback(self, value, **kwargs) -> bool:
+        """Callback for subscription status"""
+        if value in self._raise_exc_values:
+            self.set_exception(
+                ValueError(
+                    f"CompareStatus for signal {self._signal.name} "
+                    f"did not reach the desired state {self._operation} {self._value}. "
+                    f"But instead reached {value} in {self._raise_exc_values}, which is set to raise an exception."
+                )
+            )
+            return False
+        return self.OP_MAP[self._operation](value, self._value)
+
+
+class TransitionStatus(SubscriptionStatus):
+    """
+    Status class to monitor transitions of a signal value through a list of specified transitions.
+    The status is finished when all transitions have been observed in order. The keyword argument
+    `strict` determines whether the transitions must occur in strict order or not.
+    If `raise_states` is provided, the status will raise an exception if the signal value matches
+    any of the values in `raise_states`.
+
+    Parameters
+    ----------
+    signal: The device signal to monitor.
+    transitions: A list of values to transition through.
+    strict: Whether the transitions must occur in strict order. Defaults to True.
+    raise_states: A list of values that will raise an exception if encountered. Defaults to None.
+    run: Whether to run the status callback on creation or not. Defaults to True.
+    event_type: The type of event to trigger on transition. Defaults to None (default sub).
+    timeout: The timeout for the status. Defaults to None (indefinite).
+    settle_time: The time to wait for the signal to settle before comparison. Defaults to 0.
+    """
+
+    def __init__(
+        self,
+        signal: Signal,
+        transitions: list[float | int | str],
+        *,
+        strict: bool = True,
+        raise_states: list[float | int | str] | None = None,
+        run: bool = True,
+        event_type=None,
+        timeout: float = None,
+        settle_time: float = 0,
+    ):
+        self._signal = signal
+        if not isinstance(transitions, list):
+            raise ValueError(f"Transitions must be a list of values. Received: {transitions}")
+        self._transitions = transitions
+        self._index = 0
+        self._strict = strict
+        self._raise_states = raise_states if raise_states else []
+        super().__init__(
+            device=signal,
+            callback=self._compare_callback,
+            timeout=timeout,
+            settle_time=settle_time,
+            event_type=event_type,
+            run=run,
+        )
+
+    def _compare_callback(self, old_value, value, **kwargs) -> bool:
+        """Callback for subscription Status"""
+        if value in self._raise_states:
+            self.set_exception(
+                ValueError(
+                    f"Transition Status for {self._signal.name} resulted in a value: {value}. "
+                    f"marked to raise {self._raise_states}. Expected transitions: {self._transitions}."
+                )
+            )
+            return False
+        if self._index == 0:
+            if value == self._transitions[0]:
+                self._index += 1
+        else:
+            if self._strict:
+                if old_value == self._transitions[self._index - 1] and value == self._transitions[self._index]:
+                    self._index += 1
+            else:
+                if value == self._transitions[self._index]:
+                    self._index += 1
+        return self._is_finished()
+
+    def _is_finished(self) -> bool:
+        """Check if the status is finished"""
+        return self._index >= len(self._transitions)
+
+
+class AndAllStatus(DeviceStatus):
+    """
+    A status that combines mutiple status objects in a list using logical and.
+    The status is finished when all status objects in the list are finished.
+    If any status object fails, the combined status will also fail and
+    set the exception from the first failed status on all sub-statuses.
+
+    Parameters
+    ----------
+    device: Device
+    status_list: A list of StatusBase or DeviceStatus objects to combine.
+    """
+
+    def __init__(self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs):
+        self.status_list = status_list
+        super().__init__(device=device, **kwargs)
+        self._trace_attributes["all"] = [st._trace_attributes for st in self.status_list]
+
+        def inner(status):
+            with self._lock:
+                if self._externally_initiated_completion:
+                    return
+                if self.done:  # Return if status is already done.. It must be resolved already
+                    return
+
+                for st in self.status_list:
+                    with st._lock:
+                        if st.done and not st.success:
+                            self.set_exception(st.exception())  # st._exception
+                            return
+
+                if all(st.done for st in self.status_list) and all(st.success for st in self.status_list):
+                    self.set_finished()
+
+        for st in self.status_list:
+            with st._lock:
+                st.add_callback(inner)
+
+    def set_exception(self, exc):
+        with self._lock:
+            if self._externally_initiated_completion or self.done:
+                return
+            super().set_exception(exc)
+
+    def __repr__(self):
+        status_reprs = ", ".join(repr(s) for s in self.status_list)
+        return f"{self.__class__.__name__}([{status_reprs}])"
+
+    def __str__(self):
+        status_strs = ", ".join(str(s) for s in self.status_list)
+        return f"AndAllStatus with {len(self.status_list)} statuses: [{status_strs}]"
+
+    def __contains__(self, item):
+        return item in self.status_list
+    
+
+class OrAnyStatus(DeviceStatus):
+    """
+    A status that combines multiple status objects in a list using logical OR.
+    The status is finished when any status object in the list finishes successfully.
+    If all status objects finish and none succeed, the combined status will fail
+    with the exception of the first failure.
+
+    Parameters
+    ----------
+    device: Device
+    status_list: A list of StatusBase or DeviceStatus objects to combine.
+    """
+
+    def __init__(self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs):
+        self.status_list = status_list
+        super().__init__(device=device, **kwargs)
+        self._trace_attributes["all"] = [st._trace_attributes for st in self.status_list]
+
+        def inner(status):
+            with self._lock:
+                if self._externally_initiated_completion:
+                    return
+                if self.done:
+                    return
+
+                if status.done and status.success:
+                    self.set_finished()
+                    return
+
+                if all(st.done for st in self.status_list):
+                    exceptions = [
+                        st.exception()
+                        for st in self.status_list
+                        if st.done and not st.success and st.exception() is not None
+                    ]
+                    combined_exceptions = RuntimeError(
+                        "; ".join(f"{type(exc).__name__}: {exc}" for exc in exceptions)
+                    )
+                    self.set_exception(combined_exceptions)
+
+        for st in self.status_list:
+            with st._lock:
+                st.add_callback(inner)
+
+    def set_exception(self, exc):
+        with self._lock:
+            if self._externally_initiated_completion or self.done:
+                return
+            super().set_exception(exc)
+
+    def __repr__(self):
+        status_reprs = ", ".join(repr(s) for s in self.status_list)
+        return f"{self.__class__.__name__}([{status_reprs}])"
+
+    def __str__(self):
+        status_strs = ", ".join(str(s) for s in self.status_list)
+        return f"OrAnyStatus with {len(self.status_list)} statuses: [{status_strs}]"
+
+    def __contains__(self, item):
+        return item in self.status_list
+

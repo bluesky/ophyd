@@ -4,13 +4,16 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from ophyd import Device
-from ophyd.signal import EpicsSignalRO
+from ophyd.signal import EpicsSignalRO, Signal
+from ophyd.sim import FakeEpicsSignalRO
 from ophyd.status import (
     DeviceStatus,
     MoveStatus,
+    OrAnyStatus,
     StableSubscriptionStatus,
     StatusBase,
     SubscriptionStatus,
+    TransitionStatus,
     UseNewProperty,
 )
 from ophyd.utils import (
@@ -607,3 +610,231 @@ def test_error_in_handle_failure_method():
     st.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
     assert state
+
+def test_compare_status_number():
+    """Test CompareStatus with different operations."""
+    sig = Signal(name="test_signal", value=0)
+    status = CompareStatus(signal=sig, value=5, operation="==")
+    assert status.done is False
+    sig.put(1)
+    assert status.done is False
+    sig.put(5)
+    assert status.done is True
+
+    sig.put(5)
+    # Test with different operations
+    status = CompareStatus(signal=sig, value=5, operation="!=")
+    assert status.done is False
+    sig.put(5)
+    assert status.done is False
+    sig.put(6)
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    sig.put(0)
+    status = CompareStatus(signal=sig, value=5, operation=">")
+    assert status.done is False
+    sig.put(5)
+    assert status.done is False
+    sig.put(10)
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+
+def test_compare_status_string():
+    """Test CompareStatus with string values"""
+    sig = Signal(name="test_signal", value="test")
+    status = CompareStatus(signal=sig, value="test", operation="==")
+    assert status.done is False
+    sig.put("test1")
+    assert status.done is False
+    sig.put("test")
+    assert status.done is True
+
+    sig.put("test")
+    # Test with different operations
+    status = CompareStatus(signal=sig, value="test", operation="!=")
+    assert status.done is False
+    sig.put("test")
+    assert status.done is False
+    sig.put("test1")
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test with greater than operation
+    # Raises ValueError for strings
+    sig.put("a")
+    with pytest.raises(ValueError):
+        status = CompareStatus(signal=sig, value="b", operation=">")
+
+
+def test_transition_status():
+    """Test TransitionStatus"""
+    sig = Signal(name="test_signal", value=0)
+
+    # Test strict=True, without intermediate transitions
+    sig.put(0)
+    status = TransitionStatus(signal=sig, transitions=[1, 2, 3], strict=True)
+
+    assert status.done is False
+    sig.put(1)
+    assert status.done is False
+    sig.put(2)
+    assert status.done is False
+    sig.put(3)
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test strict=True, ra
+    sig.put(1)
+    status = TransitionStatus(signal=sig, transitions=[1, 2, 3], strict=True, raise_states=[4])
+    assert status.done is False
+    sig.put(4)
+    with pytest.raises(ValueError):
+        status.wait()
+
+    assert status.done is True
+    assert status.success is False
+    assert isinstance(status.exception(), ValueError)
+
+    # Test strict=False, with intermediate transitions
+    sig.put(0)
+    status = TransitionStatus(signal=sig, transitions=[1, 2, 3], strict=False)
+
+    assert status.done is False
+    sig.put(1)  # entering first transition
+    sig.put(3)
+    sig.put(2)  # transision
+    assert status.done is False
+    sig.put(4)
+    sig.put(2)
+    sig.put(3)  # last transition
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+
+def test_transition_status_strings():
+    """Test TransitionStatus with string values"""
+    sig = Signal(name="test_signal", value="a")
+
+    # Test strict=True, without intermediate transitions
+    sig.put("a")
+    status = TransitionStatus(signal=sig, transitions=["b", "c", "d"], strict=True)
+
+    assert status.done is False
+    sig.put("b")
+    assert status.done is False
+    sig.put("c")
+    assert status.done is False
+    sig.put("d")
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test strict=True with additional intermediate transition
+
+    sig.put("a")
+    status = TransitionStatus(signal=sig, transitions=["b", "c", "d"], strict=True)
+
+    assert status.done is False
+    sig.put("b")  # first transition
+    sig.put("e")
+    sig.put("b")
+    sig.put("c")  # transision
+    assert status.done is False
+    sig.put("f")
+    sig.put("b")
+    sig.put("c")
+    sig.put("d")  # transision
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test strict=False, with intermediate transitions
+    sig.put("a")
+    status = TransitionStatus(signal=sig, transitions=["b", "c", "d"], strict=False)
+
+    assert status.done is False
+    sig.put("b")  # entering first transition
+    sig.put("d")
+    sig.put("c")  # transision
+    assert status.done is False
+    sig.put("e")
+    sig.put("c")
+    sig.put("d")  # last transition
+    assert status.done is True
+    assert status.success is True
+
+def test_and_all_status():
+    """ Test AndAllStatus """
+    dev = Device("Tst:Prefix", name="test")
+    st1 = StatusBase()
+    st2 = StatusBase()
+    st3 = DeviceStatus(dev)
+    and_status = AndAllStatus(dev, [st1, st2, st3])
+
+    # Finish in success
+    assert and_status.done is False
+    st1.set_finished()
+    assert and_status.done is False
+    st2.set_finished()
+    assert and_status.done is False
+    st3.set_finished()
+    assert and_status.done is True
+    assert and_status.success is True
+
+    # Failure
+    st1 = StatusBase()
+    st2 = StatusBase()
+    st3 = DeviceStatus(dev)
+    and_status = AndAllStatus(dev, [st1, st2, st3])
+
+    assert and_status.done is False
+    st1.set_finished()
+    assert and_status.done is False
+    st2.set_exception(Exception("Test exception"))
+    assert and_status.done is True
+    assert and_status.success is False
+    assert st2.success is False
+    assert st3.success is False
+    assert st3.done is False # Not resolved before failure
+    assert st1.success is True # Already resolved before failure
+    # Exception is propagated to all unresolved statuses
+
+def test_or_any_status():
+    """ Test OrAnyStatus """
+    dev = Device("Tst:Prefix", name="test")
+    st1 = StatusBase()
+    st2 = StatusBase()
+    st3 = DeviceStatus(dev)
+    or_status = OrAnyStatus(dev, [st1, st2, st3])
+
+    # Finish in success
+    assert or_status.done is False
+    st1.set_finished()
+    assert or_status.done is True
+    assert or_status.success is True
+
+    st1 = StatusBase()
+    or_status = OrAnyStatus(dev, [st1, st2, st3])
+    assert or_status.done is False
+    assert or_status.success is False
+    st1.set_exception(Exception("Test exception"))
+    assert or_status.done is False
+    assert or_status.success is False
+    st2.set_exception(RuntimeError("Test exception 2"))
+    assert or_status.done is False
+    assert or_status.success is False
+    st3.set_exception(ValueError("Test exception 3"))
+    assert or_status.done is True
+    assert or_status.success is False
+    assert isinstance(or_status.exception(), RuntimeError)
+    assert str(or_status.exception()) == "Exception: Test exception; RuntimeError: Test exception 2; ValueError: Test exception 3"
+
+
+
