@@ -437,6 +437,15 @@ def test_wait_timeout():
     with pytest.raises(WaitTimeoutError):
         st.exception(0.01)
 
+    custom_exception = ValueError("My custom exception")
+    with pytest.raises(ValueError) as exc:
+        st.wait(0.01, timeout_exception=custom_exception)
+        assert exc.value is custom_exception
+
+    # Wrong input should raise WaitTimeoutError
+    with pytest.raises(WaitTimeoutError):
+        st.wait(0.01, timeout_exception="Not an exception")
+
 
 def test_status_timeout():
     """
