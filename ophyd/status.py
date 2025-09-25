@@ -439,9 +439,7 @@ class StatusBase:
         return self._exception
 
     @tracer.start_as_current_span(f"{_TRACE_PREFIX} wait")
-    def wait(
-        self, timeout: float | None = None, timeout_exception: Exception | None = None
-    ):
+    def wait(self, timeout=None, timeout_exception=None):
         """
         Block until the action completes.
 
