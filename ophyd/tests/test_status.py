@@ -5,7 +5,6 @@ import pytest
 
 from ophyd import Device
 from ophyd.signal import EpicsSignalRO, Signal
-from ophyd.sim import FakeEpicsSignalRO
 from ophyd.status import (
     DeviceStatus,
     MoveStatus,
@@ -611,6 +610,7 @@ def test_error_in_handle_failure_method():
     time.sleep(0.1)  # Wait for callbacks to run.
     assert state
 
+
 def test_compare_status_number():
     """Test CompareStatus with different operations."""
     sig = Signal(name="test_signal", value=0)
@@ -689,9 +689,11 @@ def test_transition_status():
     assert status.success is True
     assert status.exception() is None
 
-    # Test strict=True, ra
+    # Test strict=True, raise_states
     sig.put(1)
-    status = TransitionStatus(signal=sig, transitions=[1, 2, 3], strict=True, raise_states=[4])
+    status = TransitionStatus(
+        signal=sig, transitions=[1, 2, 3], strict=True, raise_states=[4]
+    )
     assert status.done is False
     sig.put(4)
     with pytest.raises(ValueError):
@@ -770,8 +772,9 @@ def test_transition_status_strings():
     assert status.done is True
     assert status.success is True
 
+
 def test_and_all_status():
-    """ Test AndAllStatus """
+    """Test AndAllStatus"""
     dev = Device("Tst:Prefix", name="test")
     st1 = StatusBase()
     st2 = StatusBase()
@@ -802,12 +805,16 @@ def test_and_all_status():
     assert and_status.success is False
     assert st2.success is False
     assert st3.success is False
-    assert st3.done is False # Not resolved before failure
-    assert st1.success is True # Already resolved before failure
-    # Exception is propagated to all unresolved statuses
+
+    # Not resolved before failure
+    assert st3.done is False
+
+    # Already resolved before failure
+    assert st1.success is True
+
 
 def test_or_any_status():
-    """ Test OrAnyStatus """
+    """Test OrAnyStatus"""
     dev = Device("Tst:Prefix", name="test")
     st1 = StatusBase()
     st2 = StatusBase()
@@ -834,7 +841,7 @@ def test_or_any_status():
     assert or_status.done is True
     assert or_status.success is False
     assert isinstance(or_status.exception(), RuntimeError)
-    assert str(or_status.exception()) == "Exception: Test exception; RuntimeError: Test exception 2; ValueError: Test exception 3"
-
-
-
+    assert (
+        str(or_status.exception())
+        == "Exception: Test exception; RuntimeError: Test exception 2; ValueError: Test exception 3"
+    )

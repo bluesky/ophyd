@@ -7,14 +7,11 @@ import time
 from collections import deque
 from functools import partial
 from logging import LoggerAdapter
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from warnings import warn
-
-from typing import TYPE_CHECKING
 
 import numpy as np
 from opentelemetry import trace
-
 
 from .log import logger
 from .utils import (
@@ -1195,9 +1192,13 @@ class CompareStatus(SubscriptionStatus):
     ):
         if isinstance(value, str):
             if operation not in ("==", "!="):
-                raise ValueError(f"Invalid operation: {operation} for string comparison. Must be '==' or '!='.")
+                raise ValueError(
+                    f"Invalid operation: {operation} for string comparison. Must be '==' or '!='."
+                )
         if operation not in ("==", "!=", "<", "<=", ">", ">="):
-            raise ValueError(f"Invalid operation: {operation}. Must be one of '==', '!=', '<', '<=', '>', '>='.")
+            raise ValueError(
+                f"Invalid operation: {operation}. Must be one of '==', '!=', '<', '<=', '>', '>='."
+            )
         self._signal = signal
         self._value = value
         self._operation = operation
@@ -1268,7 +1269,9 @@ class TransitionStatus(SubscriptionStatus):
     ):
         self._signal = signal
         if not isinstance(transitions, list):
-            raise ValueError(f"Transitions must be a list of values. Received: {transitions}")
+            raise ValueError(
+                f"Transitions must be a list of values. Received: {transitions}"
+            )
         self._transitions = transitions
         self._index = 0
         self._strict = strict
@@ -1297,7 +1300,10 @@ class TransitionStatus(SubscriptionStatus):
                 self._index += 1
         else:
             if self._strict:
-                if old_value == self._transitions[self._index - 1] and value == self._transitions[self._index]:
+                if (
+                    old_value == self._transitions[self._index - 1]
+                    and value == self._transitions[self._index]
+                ):
                     self._index += 1
             else:
                 if value == self._transitions[self._index]:
@@ -1322,16 +1328,22 @@ class AndAllStatus(DeviceStatus):
     status_list: A list of StatusBase or DeviceStatus objects to combine.
     """
 
-    def __init__(self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs):
+    def __init__(
+        self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs
+    ):
         self.status_list = status_list
         super().__init__(device=device, **kwargs)
-        self._trace_attributes["all"] = [st._trace_attributes for st in self.status_list]
+        self._trace_attributes["all"] = [
+            st._trace_attributes for st in self.status_list
+        ]
 
         def inner(status):
             with self._lock:
                 if self._externally_initiated_completion:
                     return
-                if self.done:  # Return if status is already done.. It must be resolved already
+
+                # Return if status is already done..
+                if self.done:
                     return
 
                 for st in self.status_list:
@@ -1340,7 +1352,9 @@ class AndAllStatus(DeviceStatus):
                             self.set_exception(st.exception())  # st._exception
                             return
 
-                if all(st.done for st in self.status_list) and all(st.success for st in self.status_list):
+                if all(st.done for st in self.status_list) and all(
+                    st.success for st in self.status_list
+                ):
                     self.set_finished()
 
         for st in self.status_list:
@@ -1363,7 +1377,7 @@ class AndAllStatus(DeviceStatus):
 
     def __contains__(self, item):
         return item in self.status_list
-    
+
 
 class OrAnyStatus(DeviceStatus):
     """
@@ -1378,10 +1392,14 @@ class OrAnyStatus(DeviceStatus):
     status_list: A list of StatusBase or DeviceStatus objects to combine.
     """
 
-    def __init__(self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs):
+    def __init__(
+        self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs
+    ):
         self.status_list = status_list
         super().__init__(device=device, **kwargs)
-        self._trace_attributes["all"] = [st._trace_attributes for st in self.status_list]
+        self._trace_attributes["all"] = [
+            st._trace_attributes for st in self.status_list
+        ]
 
         def inner(status):
             with self._lock:
@@ -1425,4 +1443,3 @@ class OrAnyStatus(DeviceStatus):
 
     def __contains__(self, item):
         return item in self.status_list
-
