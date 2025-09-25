@@ -694,7 +694,9 @@ class DeviceStatus(StatusBase):
     def __init__(self, device, call_stop_on_failure: bool = True, **kwargs):
         self.device = device
         self._watchers = []
-        self._call_stop_on_failure = call_stop_on_failure if isinstance(call_stop_on_failure, bool) else True
+        self._call_stop_on_failure = (
+            call_stop_on_failure if isinstance(call_stop_on_failure, bool) else True
+        )
         super().__init__(**kwargs)
         self._trace_attributes.update(
             {"device_name": device.name, "device_type": device.__class__.__name__}
