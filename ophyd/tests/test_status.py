@@ -607,3 +607,82 @@ def test_error_in_handle_failure_method():
     st.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
     assert state
+
+
+def test_and_status():
+    """Test AndStatus"""
+    dev = Device("Tst:Prefix", name="test")
+    st1 = StatusBase()
+    st2 = StatusBase()
+    st3 = DeviceStatus(dev)
+    and_status = st1 & st2 & st3
+
+    # Finish in success
+    assert and_status.done is False
+    st1.set_finished()
+    assert and_status.done is False
+    st2.set_finished()
+    assert and_status.done is False
+    st3.set_finished()
+    assert and_status.done is True
+    assert and_status.success is True
+
+    # Failure
+    st1 = StatusBase()
+    st2 = StatusBase()
+    st3 = DeviceStatus(dev)
+    and_status = st1 & st2 & st3
+
+    assert and_status.done is False
+    st1.set_finished()
+    assert and_status.done is False
+    exc = Exception("Test exception")
+    st2.set_exception(exc)
+    assert and_status.done is True
+    assert and_status.success is False
+    assert st2.success is False
+    assert st3.success is False
+
+    # Not resolved before failure
+    assert st3.done is False
+
+    # Already resolved before failure
+    assert st1.success is True
+    assert isinstance(and_status.exception(), Exception)
+    assert str(and_status.exception()) == "Test exception"
+    assert and_status.exception() == exc
+
+
+def test_or_status():
+    """Test OrStatus"""
+    dev = Device("Tst:Prefix", name="test")
+    st1 = StatusBase()
+    st2 = StatusBase()
+    st3 = DeviceStatus(dev)
+    or_status = st1 | st2 | st3
+
+    # Finish in success
+    assert or_status.done is False
+    st1.set_finished()
+    assert or_status.done is True
+    assert or_status.success is True
+
+    st1 = StatusBase()
+    or_status = st1 | st2 | st3
+    assert or_status.done is False
+    assert or_status.success is False
+    st1.set_exception(Exception("Test exception"))
+    assert or_status.done is False
+    assert or_status.success is False
+    st2.set_exception(RuntimeError("Test exception 2"))
+    assert or_status.done is False
+    assert or_status.success is False
+    st3.set_exception(ValueError("Test exception 3"))
+    assert or_status.done is True
+    assert or_status.success is False
+    assert isinstance(or_status.exception(), RuntimeError)
+    assert str(or_status.exception()) == (
+        "RuntimeError: Exception: Test exception; "
+        "RuntimeError: Test exception 2; "
+        "ValueError: Test exception 3"
+    )
