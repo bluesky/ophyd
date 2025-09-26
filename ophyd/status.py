@@ -681,6 +681,9 @@ class DeviceStatus(StatusBase):
 
     Parameters
     ----------
+    call_stop_on_failure: bool, optional
+        This option determines whether the device's ``stop()`` method is called
+        if the status fails. Default is True.
     timeout: float, optional
         The amount of time to wait before marking the Status as failed.  If
         ``None`` (default) wait forever. It is strongly encouraged to set a
@@ -691,9 +694,10 @@ class DeviceStatus(StatusBase):
         status has completed to running callbacks. Default is 0.
     """
 
-    def __init__(self, device, **kwargs):
+    def __init__(self, device, *, call_stop_on_failure=True, **kwargs):
         self.device = device
         self._watchers = []
+        self._call_stop_on_failure = bool(call_stop_on_failure)
         super().__init__(**kwargs)
         self._trace_attributes.update(
             {"device_name": device.name, "device_type": device.__class__.__name__}
@@ -705,7 +709,7 @@ class DeviceStatus(StatusBase):
     def _handle_failure(self):
         super()._handle_failure()
         self.log.debug("Trying to stop %s", repr(self.device))
-        if hasattr(self.device, "stop"):
+        if self._call_stop_on_failure and hasattr(self.device, "stop"):
             self.device.stop()
 
     def __str__(self):

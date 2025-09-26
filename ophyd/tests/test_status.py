@@ -1,11 +1,12 @@
 import time
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from ophyd import Device
 from ophyd.signal import EpicsSignalRO
 from ophyd.status import (
+    DeviceStatus,
     MoveStatus,
     StableSubscriptionStatus,
     StatusBase,
@@ -424,6 +425,18 @@ def test_exception_success_path():
     st.set_finished()
     assert st.wait(1) is None
     assert st.exception() is None
+
+
+def test_device_status_failure():
+    dev = Device(name="dev")
+    st = DeviceStatus(dev)
+    with patch.object(dev, "stop") as mock_stop:
+        st.set_exception(Exception("fail"))
+        assert mock_stop.call_count == 1
+    st2 = DeviceStatus(dev, call_stop_on_failure=False)
+    with patch.object(dev, "stop") as mock_stop:
+        st2.set_exception(Exception("fail"))
+        assert mock_stop.call_count == 0
 
 
 def test_wait_timeout():
