@@ -1159,14 +1159,22 @@ class CompareStatus(SubscriptionStatus):
 
     Parameters
     ----------
-    signal: The device signal to compare.
-    value: The value to compare against.
-    raise_exc_value: A value or list of values that will raise an exception if encountered. Defaults to None.
-    operation: The operation to use for comparison. Defaults to '=='.
-    event_type: The type of event to trigger on comparison. Defaults to None (default sub).
-    timeout: The timeout for the status. Defaults to None (indefinite).
-    settle_time: The time to wait for the signal to settle before comparison. Defaults to 0.
-    run: Whether to run the status callback on creation or not. Defaults to True.
+    signal: Signal
+        The device signal to compare.
+    value: float | int | str
+        The value to compare against.
+    failure_value: float | int | str | list[float | int | str] | None, optional
+        A value or list of values that will raise an exception if encountered. Defaults to None.
+    operation_success: Literal["==", "!=", "<", "<=", ">", ">="], optional
+        The operation_success to use for comparison. Defaults to '=='.
+    event_type: Optional[Type[Event]]
+        The type of event to trigger on comparison. Defaults to None (default sub).
+    timeout: float | None, optional
+        The timeout for the status. Defaults to None (indefinite).
+    settle_time: float, optional
+        The time to wait for the signal to settle before comparison. Defaults to 0.
+    run: bool, optional
+        Whether to run the status callback on creation or not. Defaults to True.
     """
 
     OP_MAP = {
@@ -1183,34 +1191,39 @@ class CompareStatus(SubscriptionStatus):
         signal: Signal,
         value: float | int | str,
         *,
-        operation: Literal["==", "!=", "<", "<=", ">", ">="] = "==",
-        raise_exc_value: float | int | str | list[float | int | str] | None = None,
+        operation_success: Literal["==", "!=", "<", "<=", ">", ">="] = "==",
+        failure_value: float | int | str | list[float | int | str] | None = None,
+        operation_failure: Literal["==", "!=", "<", "<=", ">", ">="] = "==",
         event_type=None,
         timeout: float = None,
         settle_time: float = 0,
         run: bool = True,
     ):
         if isinstance(value, str):
-            if operation not in ("==", "!="):
+            if operation_success not in ("==", "!=") and operation_failure not in (
+                "==",
+                "!=",
+            ):
                 raise ValueError(
-                    f"Invalid operation: {operation} for string comparison. Must be '==' or '!='."
+                    f"Invalid operation_success: {operation_success} for string comparison. Must be '==' or '!='."
                 )
-        if operation not in ("==", "!=", "<", "<=", ">", ">="):
+        if operation_success not in ("==", "!=", "<", "<=", ">", ">="):
             raise ValueError(
-                f"Invalid operation: {operation}. Must be one of '==', '!=', '<', '<=', '>', '>='."
+                f"Invalid operation_success: {operation_success}. Must be one of '==', '!=', '<', '<=', '>', '>='."
             )
         self._signal = signal
         self._value = value
-        self._operation = operation
-        if raise_exc_value is None:
-            self._raise_exc_values = []
-        elif isinstance(raise_exc_value, (float, int, str)):
-            self._raise_exc_values = [raise_exc_value]
-        elif isinstance(raise_exc_value, list):
-            self._raise_exc_values = raise_exc_value
+        self._operation_success = operation_success
+        self._operation_failure = operation_failure
+        if failure_value is None:
+            self._failure_values = []
+        elif isinstance(failure_value, (float, int, str)):
+            self._failure_values = [failure_value]
+        elif isinstance(failure_value, list):
+            self._failure_values = failure_value
         else:
             raise ValueError(
-                f"raise_exc_value must be a float, int, str, list or None. Received: {raise_exc_value}"
+                f"failure_value must be a float, int, str, list or None. Received: {failure_value}"
             )
         super().__init__(
             device=signal,
@@ -1223,36 +1236,75 @@ class CompareStatus(SubscriptionStatus):
 
     def _compare_callback(self, value, **kwargs) -> bool:
         """Callback for subscription status"""
-        if value in self._raise_exc_values:
-            self.set_exception(
-                ValueError(
-                    f"CompareStatus for signal {self._signal.name} "
-                    f"did not reach the desired state {self._operation} {self._value}. "
-                    f"But instead reached {value} in {self._raise_exc_values}, which is set to raise an exception."
+        try:
+            if isinstance(value, list):
+                # List values are not supported
+                self.set_exception(
+                    ValueError(
+                        f"List values are not supported. Received value: {value}"
+                    )
                 )
-            )
+                return False
+            if any(
+                self.OP_MAP[self._operation_failure](value, failure_value)
+                for failure_value in self._failure_values
+            ):
+                self.set_exception(
+                    ValueError(
+                        f"CompareStatus for signal {self._signal.name} "
+                        f"did not reach the desired state {self._operation_success} {self._value}. "
+                        f"But instead reached {value}, which is in list of failure values: {self._failure_values}"
+                    )
+                )
+                return False
+            return self.OP_MAP[self._operation_success](value, self._value)
+        except Exception as e:
+            # Catch any exception if the value comparison fails
+            # This can be the case if value is None or of an unexpected type
+            # For example a numpy array
+            self.log.error(f"Error in CompareStatus callback: {e}")
+            self.set_exception(e)
             return False
-        return self.OP_MAP[self._operation](value, self._value)
 
 
 class TransitionStatus(SubscriptionStatus):
     """
     Status class to monitor transitions of a signal value through a list of specified transitions.
     The status is finished when all transitions have been observed in order. The keyword argument
-    `strict` determines whether the transitions must occur in strict order or not.
-    If `raise_states` is provided, the status will raise an exception if the signal value matches
-    any of the values in `raise_states`.
+    `strict` determines whether the transitions must occur in strict order or not. The strict option
+    only becomes relevant once the first transition has been observed.
+    If `failure_states` is provided, the status will raise an exception if the signal value matches
+    any of the values in `failure_states`.
 
     Parameters
     ----------
-    signal: The device signal to monitor.
-    transitions: A list of values to transition through.
-    strict: Whether the transitions must occur in strict order. Defaults to True.
-    raise_states: A list of values that will raise an exception if encountered. Defaults to None.
-    run: Whether to run the status callback on creation or not. Defaults to True.
-    event_type: The type of event to trigger on transition. Defaults to None (default sub).
-    timeout: The timeout for the status. Defaults to None (indefinite).
-    settle_time: The time to wait for the signal to settle before comparison. Defaults to 0.
+    signal: Signal
+        The device signal to monitor.
+    transitions: list
+        A list of values to transition through.
+    strict: bool, optional
+        Whether the transitions must occur in strict order. Defaults to True.
+    failure_states: list, optional
+        A list of values that will raise an exception if encountered. Defaults to None.
+    run: bool, optional
+        Whether to run the status callback on creation or not. Defaults to True.
+    event_type: optional
+        The type of event to trigger on transition. Defaults to None (default sub).
+    timeout: float | None, optional
+        The timeout for the status. Defaults to None (indefinite).
+    settle_time: float, optional
+        The time to wait for the signal to settle before checking transitions. Defaults to 0.
+    Notes
+    -----
+    The 'strict' option does not raise if transitions are observed which are out of order.
+    It only determines whether a transition is accepted if it is observed from the
+    previous value in the list of transitions to the next value.
+    For example, with strict=True and transitions=[1, 2, 3], the sequence
+    0 -> 1 -> 2 -> 3 is accepted, but 0 -> 2 -> 1 -> 3 is not and the status will not complete.
+    With strict=False, both sequences are accepted.
+    However, with strict=True, the sequence 0 -> 1 -> 3 -> 1 -> 2 -> 3 is accepted.
+    To raise an exception if an out-of-order transition is observed, use the
+    `failure_states` keyword argument.
     """
 
     def __init__(
@@ -1261,21 +1313,17 @@ class TransitionStatus(SubscriptionStatus):
         transitions: list[float | int | str],
         *,
         strict: bool = True,
-        raise_states: list[float | int | str] | None = None,
+        failure_states: list[float | int | str] | None = None,
         run: bool = True,
         event_type=None,
         timeout: float = None,
         settle_time: float = 0,
     ):
         self._signal = signal
-        if not isinstance(transitions, list):
-            raise ValueError(
-                f"Transitions must be a list of values. Received: {transitions}"
-            )
-        self._transitions = transitions
+        self._transitions = tuple(transitions)
         self._index = 0
         self._strict = strict
-        self._raise_states = raise_states if raise_states else []
+        self._failure_states = failure_states if failure_states else []
         super().__init__(
             device=signal,
             callback=self._compare_callback,
@@ -1287,11 +1335,11 @@ class TransitionStatus(SubscriptionStatus):
 
     def _compare_callback(self, old_value, value, **kwargs) -> bool:
         """Callback for subscription Status"""
-        if value in self._raise_states:
+        if value in self._failure_states:
             self.set_exception(
                 ValueError(
                     f"Transition Status for {self._signal.name} resulted in a value: {value}. "
-                    f"marked to raise {self._raise_states}. Expected transitions: {self._transitions}."
+                    f"marked to raise {self._failure_states}. Expected transitions: {self._transitions}."
                 )
             )
             return False
@@ -1308,10 +1356,6 @@ class TransitionStatus(SubscriptionStatus):
             else:
                 if value == self._transitions[self._index]:
                     self._index += 1
-        return self._is_finished()
-
-    def _is_finished(self) -> bool:
-        """Check if the status is finished"""
         return self._index >= len(self._transitions)
 
 
@@ -1319,18 +1363,16 @@ class AndAllStatus(DeviceStatus):
     """
     A status that combines mutiple status objects in a list using logical and.
     The status is finished when all status objects in the list are finished.
-    If any status object fails, the combined status will also fail and
-    set the exception from the first failed status on all sub-statuses.
 
     Parameters
     ----------
     device: Device
-    status_list: A list of StatusBase or DeviceStatus objects to combine.
+        The parent device for this status
+    status_list: list[StatusBase]
+        A list of StatusBase objects to combine.
     """
 
-    def __init__(
-        self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs
-    ):
+    def __init__(self, device: Device, status_list: list[StatusBase], **kwargs):
         self.status_list = status_list
         super().__init__(device=device, **kwargs)
         self._trace_attributes["all"] = [
@@ -1346,11 +1388,10 @@ class AndAllStatus(DeviceStatus):
                 if self.done:
                     return
 
-                for st in self.status_list:
-                    with st._lock:
-                        if st.done and not st.success:
-                            self.set_exception(st.exception())  # st._exception
-                            return
+                with status._lock:
+                    if status.done and not status.success:
+                        self.set_exception(status.exception())  # st._exception
+                        return
 
                 if all(st.done for st in self.status_list) and all(
                     st.success for st in self.status_list
@@ -1360,12 +1401,6 @@ class AndAllStatus(DeviceStatus):
         for st in self.status_list:
             with st._lock:
                 st.add_callback(inner)
-
-    def set_exception(self, exc):
-        with self._lock:
-            if self._externally_initiated_completion or self.done:
-                return
-            super().set_exception(exc)
 
     def __repr__(self):
         status_reprs = ", ".join(repr(s) for s in self.status_list)
@@ -1426,12 +1461,6 @@ class OrAnyStatus(DeviceStatus):
         for st in self.status_list:
             with st._lock:
                 st.add_callback(inner)
-
-    def set_exception(self, exc):
-        with self._lock:
-            if self._externally_initiated_completion or self.done:
-                return
-            super().set_exception(exc)
 
     def __repr__(self):
         status_reprs = ", ".join(repr(s) for s in self.status_list)
