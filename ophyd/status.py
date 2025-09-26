@@ -23,7 +23,6 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from ophyd.device import Device
     from ophyd.signal import Signal
 
 
@@ -1300,8 +1299,8 @@ class TransitionStatus(SubscriptionStatus):
     It only determines whether a transition is accepted if it is observed from the
     previous value in the list of transitions to the next value.
     For example, with strict=True and transitions=[1, 2, 3], the sequence
-    0 -> 1 -> 2 -> 3 is accepted, but 0 -> 2 -> 1 -> 3 is not and the status will not complete.
-    With strict=False, both sequences are accepted.
+    0 -> 1 -> 2 -> 3 is accepted, but 0 -> 1 -> 3 -> 2 -> 3 is not and the status
+    will not complete. With strict=False, both sequences are accepted.
     However, with strict=True, the sequence 0 -> 1 -> 3 -> 1 -> 2 -> 3 is accepted.
     To raise an exception if an out-of-order transition is observed, use the
     `failure_states` keyword argument.
@@ -1357,118 +1356,3 @@ class TransitionStatus(SubscriptionStatus):
                 if value == self._transitions[self._index]:
                     self._index += 1
         return self._index >= len(self._transitions)
-
-
-class AndAllStatus(DeviceStatus):
-    """
-    A status that combines mutiple status objects in a list using logical and.
-    The status is finished when all status objects in the list are finished.
-
-    Parameters
-    ----------
-    device: Device
-        The parent device for this status
-    status_list: list[StatusBase]
-        A list of StatusBase objects to combine.
-    """
-
-    def __init__(self, device: Device, status_list: list[StatusBase], **kwargs):
-        self.status_list = status_list
-        super().__init__(device=device, **kwargs)
-        self._trace_attributes["all"] = [
-            st._trace_attributes for st in self.status_list
-        ]
-
-        def inner(status):
-            with self._lock:
-                if self._externally_initiated_completion:
-                    return
-
-                # Return if status is already done..
-                if self.done:
-                    return
-
-                with status._lock:
-                    if status.done and not status.success:
-                        self.set_exception(status.exception())  # st._exception
-                        return
-
-                if all(st.done for st in self.status_list) and all(
-                    st.success for st in self.status_list
-                ):
-                    self.set_finished()
-
-        for st in self.status_list:
-            with st._lock:
-                st.add_callback(inner)
-
-    def __repr__(self):
-        status_reprs = ", ".join(repr(s) for s in self.status_list)
-        return f"{self.__class__.__name__}([{status_reprs}])"
-
-    def __str__(self):
-        status_strs = ", ".join(str(s) for s in self.status_list)
-        return f"AndAllStatus with {len(self.status_list)} statuses: [{status_strs}]"
-
-    def __contains__(self, item):
-        return item in self.status_list
-
-
-class OrAnyStatus(DeviceStatus):
-    """
-    A status that combines multiple status objects in a list using logical OR.
-    The status is finished when any status object in the list finishes successfully.
-    If all status objects finish and none succeed, the combined status will fail
-    with the exception of the first failure.
-
-    Parameters
-    ----------
-    device: Device
-    status_list: A list of StatusBase or DeviceStatus objects to combine.
-    """
-
-    def __init__(
-        self, device: Device, status_list: list[StatusBase | DeviceStatus], **kwargs
-    ):
-        self.status_list = status_list
-        super().__init__(device=device, **kwargs)
-        self._trace_attributes["all"] = [
-            st._trace_attributes for st in self.status_list
-        ]
-
-        def inner(status):
-            with self._lock:
-                if self._externally_initiated_completion:
-                    return
-                if self.done:
-                    return
-
-                if status.done and status.success:
-                    self.set_finished()
-                    return
-
-                if all(st.done for st in self.status_list):
-                    exceptions = [
-                        st.exception()
-                        for st in self.status_list
-                        if st.done and not st.success and st.exception() is not None
-                    ]
-                    combined_exceptions = RuntimeError(
-                        "; ".join(f"{type(exc).__name__}: {exc}" for exc in exceptions)
-                    )
-                    self.set_exception(combined_exceptions)
-
-        for st in self.status_list:
-            with st._lock:
-                st.add_callback(inner)
-
-    def __repr__(self):
-        status_reprs = ", ".join(repr(s) for s in self.status_list)
-        return f"{self.__class__.__name__}([{status_reprs}])"
-
-    def __str__(self):
-        status_strs = ", ".join(str(s) for s in self.status_list)
-        return f"OrAnyStatus with {len(self.status_list)} statuses: [{status_strs}]"
-
-    def __contains__(self, item):
-        return item in self.status_list

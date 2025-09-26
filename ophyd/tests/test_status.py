@@ -6,9 +6,9 @@ import pytest
 from ophyd import Device
 from ophyd.signal import EpicsSignalRO, Signal
 from ophyd.status import (
+    CompareStatus,
     DeviceStatus,
     MoveStatus,
-    OrAnyStatus,
     StableSubscriptionStatus,
     StatusBase,
     SubscriptionStatus,
@@ -805,77 +805,3 @@ def test_transition_status_strings():
     sig.put("d")  # last transition
     assert status.done is True
     assert status.success is True
-
-
-def test_and_all_status():
-    """Test AndAllStatus"""
-    dev = Device("Tst:Prefix", name="test")
-    st1 = StatusBase()
-    st2 = StatusBase()
-    st3 = DeviceStatus(dev)
-    and_status = AndAllStatus(dev, [st1, st2, st3])
-
-    # Finish in success
-    assert and_status.done is False
-    st1.set_finished()
-    assert and_status.done is False
-    st2.set_finished()
-    assert and_status.done is False
-    st3.set_finished()
-    assert and_status.done is True
-    assert and_status.success is True
-
-    # Failure
-    st1 = StatusBase()
-    st2 = StatusBase()
-    st3 = DeviceStatus(dev)
-    and_status = AndAllStatus(dev, [st1, st2, st3])
-
-    assert and_status.done is False
-    st1.set_finished()
-    assert and_status.done is False
-    st2.set_exception(Exception("Test exception"))
-    assert and_status.done is True
-    assert and_status.success is False
-    assert st2.success is False
-    assert st3.success is False
-
-    # Not resolved before failure
-    assert st3.done is False
-
-    # Already resolved before failure
-    assert st1.success is True
-
-
-def test_or_any_status():
-    """Test OrAnyStatus"""
-    dev = Device("Tst:Prefix", name="test")
-    st1 = StatusBase()
-    st2 = StatusBase()
-    st3 = DeviceStatus(dev)
-    or_status = OrAnyStatus(dev, [st1, st2, st3])
-
-    # Finish in success
-    assert or_status.done is False
-    st1.set_finished()
-    assert or_status.done is True
-    assert or_status.success is True
-
-    st1 = StatusBase()
-    or_status = OrAnyStatus(dev, [st1, st2, st3])
-    assert or_status.done is False
-    assert or_status.success is False
-    st1.set_exception(Exception("Test exception"))
-    assert or_status.done is False
-    assert or_status.success is False
-    st2.set_exception(RuntimeError("Test exception 2"))
-    assert or_status.done is False
-    assert or_status.success is False
-    st3.set_exception(ValueError("Test exception 3"))
-    assert or_status.done is True
-    assert or_status.success is False
-    assert isinstance(or_status.exception(), RuntimeError)
-    assert (
-        str(or_status.exception())
-        == "Exception: Test exception; RuntimeError: Test exception 2; ValueError: Test exception 3"
-    )
