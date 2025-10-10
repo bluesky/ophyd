@@ -2127,7 +2127,7 @@ class EpicsSignal(EpicsSignalBase):
             use_complete = self._put_complete
 
         if not self.write_access:
-            raise ReadOnlyError("No write access to underlying EPICS PV")
+            raise ReadOnlyError(f"No write access to underlying EPICS PV : {self.name}")
 
         self.control_layer_log.debug(
             "_write_pv.put(value=%s, use_complete=%s, callback=%s, kwargs=%s)",
