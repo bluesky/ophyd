@@ -1,4 +1,5 @@
 # vi: ts=4 sw=4
+"""Ophyd Signal Classes"""
 import os
 import threading
 import time
@@ -669,6 +670,8 @@ class Signal(OphydObject):
 
 
 class SignalRO(Signal):
+    """A read-only Signal -- raises ReadOnlyError when put() or set() are called,"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._metadata.update(
@@ -900,7 +903,7 @@ class InternalSignal(InternalSignalMixin, Signal):
 
 class InternalSignalError(ReadOnlyError):
     """
-    A read-only error sourced from trying to write to an internal signal.
+    A read-only error raised when trying to write to an internal signal.
     """
 
     def __init__(self, message=None):

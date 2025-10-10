@@ -1,3 +1,4 @@
+.. _explain_areadetector:
 .. currentmodule:: ophyd.areadetector
 
 ================
