@@ -2,6 +2,83 @@
 requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "ophyd"
+description = "Bluesky hardware abstraction with an emphasis on EPICS"
+dynamic = ["version"]
+readme = "README.rst"
+requires-python = ">=3.8"
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "networkx>=2.0",
+    "numpy",
+    "opentelemetry-api",
+    "packaging",
+    "pint",
+]
+
+[project.optional-dependencies]
+dev = [
+    "attrs>=19.3.0",
+    "black==22.3.0",
+    "bluesky>=1.11.0",
+    "caproto[standard] >=0.4.2rc1,!=1.2.0",
+    "pytest-codecov",
+    "databroker>=1.0.0b1",
+    "doctr",
+    "epics-pypdb",
+    "flake8",
+    "flake8-isort",
+    "h5py",
+    "inflection",
+    "ipython",
+    "ipywidgets",
+    "matplotlib",
+    "mypy",
+    "myst-parser",
+    "numpydoc",
+    "pre-commit",
+    "pydata-sphinx-theme",
+    "pyepics>=3.4.2,<3.5.7",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-faulthandler",
+    "pytest-rerunfailures",
+    "pytest-timeout",
+    "pipdeptree",
+    "setuptools>=64",
+    "setuptools_scm[toml]>=6.2",
+    "sphinx-autobuild",
+    "sphinx-design",
+    "tox-direct",
+]
+
+[project.urls]
+Homepage = "https://github.com/bluesky/ophyd"
+Documentation = "https://blueskyproject.io/ophyd/"
+Repository = "https://github.com/bluesky/ophyd.git"
+Issues = "https://github.com/bluesky/ophyd/issues"
+Changelog = "https://github.com/bluesky/ophyd/blob/main/docs/user/reference/release_notes.rst"
+
+[project.entry-points."databroker.handlers"]
+NPY_SEQ = "ophyd.sim:NumpySeqHandler"
+
+[tool.setuptools]
+packages = ["ophyd"]
+
+[tool.setuptools.package-data]
+ophyd = ["*.rst"]
+
 [tool.setuptools_scm]
 write_to = "ophyd/_version.py"
 
@@ -21,3 +98,50 @@ asyncio_mode = "auto"
 # https://iscinumpy.gitlab.io/post/bound-version-constraints/#watch-for-warnings
 # filterwarnings = "error"
 python_files = "test_*.py"
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 115
+extend-ignore = [
+    "W504",
+    "W503",
+    "E203",
+    "F811",
+    "F722",
+]
+exclude = [
+    "ui_*",
+    ".tox",
+    ".venv",
+    "docs/source",
+    "ophyd/areadetector/docs.py",
+]
+
+[tool.coverage.run]
+concurrency = [
+    "thread",
+    "multiprocessing",
+]
+data_file = "/tmp/ophyd.coverage"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+skipsdist = True
+
+[testenv:pytest]
+allowlist_externals = pytest
+commands = pytest {posargs}
+
+[testenv:pre-commit]
+allowlist_externals = pre-commit
+commands = pre-commit run --all-files {posargs}
+
+[testenv:docs]
+allowlist_externals =
+    sphinx-build
+    sphinx-autobuild
+commands = sphinx-{posargs:build -EW --keep-going} -T docs build/html
+"""
