@@ -777,7 +777,7 @@ class SubscriptionStatus(DeviceStatus):
         settle_time=None,
         run=True,
         *,
-        subscribe_child=None
+        subscribe_child=None,
     ):
         # Store device and attribute information
         self.device = device
@@ -793,7 +793,7 @@ class SubscriptionStatus(DeviceStatus):
 
         else:
             obj = device
-            for k in subscribe_child.split('.'):
+            for k in subscribe_child.split("."):
                 obj = getattr(obj, k)
             obj.subscribe(self.check_value, event_type=event_type, run=run)
             self._sub_obj = obj

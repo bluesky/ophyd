@@ -154,8 +154,10 @@ def test_subscription_status_1gen():
     # Arbitrary device
     class Dev(Device):
         a = Component(Device)
+
     d = Dev("Tst:Prefix", name="test")
-    _sub_staus_helper(d, d.a, 'a')
+    _sub_staus_helper(d, d.a, "a")
+
 
 def test_subscription_status_2gen():
     # Arbitrary device
@@ -164,8 +166,9 @@ def test_subscription_status_2gen():
 
     class Dev(Device):
         b = Component(Child)
+
     d = Dev("Tst:Prefix", name="test")
-    _sub_staus_helper(d, d.b.a, 'b.a')
+    _sub_staus_helper(d, d.b.a, "b.a")
 
 
 def test_subscription_status_does_not_try_and_stop_ro_device():
