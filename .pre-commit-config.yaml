@@ -14,7 +14,9 @@ repos:
         language: system
         entry: black --check --diff
         types: [python]
-
+      # temporarily disable;
+      # a follow-up PR will replace
+      # flake8 with ruff entirely
       # - id: flake8
       #   name: Run flake8
       #   stages: [pre-commit]
