@@ -8,18 +8,9 @@ repos:
 
   - repo: local
     hooks:
-      - id: black
-        name: Run black
+      - id: ruff
+        name: Run ruff
         stages: [pre-commit]
         language: system
-        entry: black --check --diff
+        entry: ruff check
         types: [python]
-      # temporarily disable;
-      # a follow-up PR will replace
-      # flake8 with ruff entirely
-      # - id: flake8
-      #   name: Run flake8
-      #   stages: [pre-commit]
-      #   language: system
-      #   entry: flake8
-      #   types: [python]

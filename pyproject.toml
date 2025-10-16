@@ -29,15 +29,13 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "attrs>=19.3.0",
-    "black==22.3.0",
     "bluesky>=1.11.0",
     "caproto[standard] >=0.4.2rc1,!=1.2.0",
     "pytest-codecov",
     "databroker>=1.0.0b1",
     "doctr",
     "epics-pypdb",
-    "flake8",
-    "flake8-isort",
+    "ruff",
     "h5py",
     "inflection",
     "ipython",
@@ -99,18 +97,14 @@ asyncio_mode = "auto"
 # filterwarnings = "error"
 python_files = "test_*.py"
 
-[tool.isort]
-profile = "black"
-
-[tool.flake8]
-max-line-length = 115
+[tool.ruff]
+line-length = 115
 extend-ignore = [
-    "W504",
-    "W503",
     "E203",
     "F811",
     "F722",
 ]
+
 exclude = [
     "ui_*",
     ".tox",
