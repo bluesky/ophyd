@@ -3,14 +3,14 @@
 Signals
 *******
 
-In EPICS, **Signal** maybe backed by a read-only PV, a single
-read-write PV, or a pair of read and write PVs, grouped together.  In
+In EPICS, a **Signal** may be backed by a read-only PV, a single
+read-write PV, or a pair of read-write PVs grouped together.  In
 any of those cases, a single value is exposed to `bluesky
 <https://nsls-ii.github.io/bluesky>`_.  For more complex hardware, for
 example a `motor record
 <http://www.aps.anl.gov/bcda/synApps/motor/>`_, the relationships
-between the individual process variables needs to be encoded in a
-:class:`~device.Device` (a :class:`~epics_motor.EpicsMotor` class
+among the individual PVs needs to be encoded in a
+:class:`~device.Device` (an :class:`~epics_motor.EpicsMotor` class
 ships with ophyd for this case).  This includes both what **Signals**
 are grouped together, but also how to manipulate them a coordinated
 fashion to achieve the high-level action (moving a motor, changing a
