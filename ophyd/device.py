@@ -44,7 +44,7 @@ from .utils import (
 
 A, B = TypeVar("A"), TypeVar("B")
 ALL_COMPONENTS = object()
-# This attrs are defined at instanitation time and must not
+# These attrs are defined at instantiation time and must not
 # collide with class attributes.
 DEVICE_INSTANCE_ATTRS = {
     "name",
@@ -412,7 +412,7 @@ class FormattedComponent(Component[K]):
 
 
 class DynamicDeviceComponent(Component["Device"]):
-    """An Device component that dynamically creates an ophyd Device
+    """A Device component that dynamically creates an ophyd Device
 
     Parameters
     ----------
@@ -516,8 +516,8 @@ class DynamicDeviceComponent(Component["Device"]):
         )
 
 
-# These stub 'Interface' classes are the apex of the mro heirarchy for
-# their respective methods. They make multiple interitance more
+# These stub 'Interface' classes are the apex of the mro hierarchy for
+# their respective methods. They make multiple inheritance more
 # forgiving, and let us define classes that customize these methods
 # but are not full Devices.
 
@@ -575,7 +575,7 @@ class BlueskyInterface:
         :meth:`~BlueskyInterface.describe()`.
 
         By convention, the first key in the return is the 'primary' key
-        and maybe used by heuristics in :mod:`bluesky`.
+        and may be used by heuristics in :mod:`bluesky`.
 
         The values in the ordered dictionary must be dict (-likes) with the
         keys ``{'value', 'timestamp'}``.  The ``'value'`` may have any type,
@@ -593,7 +593,7 @@ class BlueskyInterface:
     def describe(self) -> OrderedDictType[str, Dict[str, Any]]:
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`.
 
-        This keys in the `OrderedDict` this method returns must match the
+        The keys in the `OrderedDict` this method returns must match the
         keys in the `OrderedDict` return by :meth:`~BlueskyInterface.read`.
 
         This provides schema related information, (ex shape, dtype), the
@@ -747,11 +747,11 @@ class BlueskyInterface:
         This is called when ever the
         :obj:`~bluesky.run_engine.RunEngine` is interrupted.
 
-        A device may have internal state that means plans can not
+        A device may have internal state that means plans cannot
         safely be re-wound.  This method may: put the device in a
         'paused' state and/or raise
         :obj:`~bluesky.run_engine.NoReplayAllowed` to indicate that
-        the plan can not be rewound.
+        the plan cannot be rewound.
 
         Raises
         ------
@@ -957,7 +957,7 @@ class Device(BlueskyInterface, OphydObject):
 
         # this is so that the _sig_attrs class attribute includes the sigattrs
         # from all of its class-inheritance-parents so we do not have to do
-        # this look up everytime we look at it.
+        # this look up every time we look at it.
         base_devices = [
             base for base in reversed(cls.__bases__) if hasattr(base, "_sig_attrs")
         ]
@@ -1271,7 +1271,7 @@ class Device(BlueskyInterface, OphydObject):
             lambda x: x[0],
         )
 
-        # we are into grand-children, can not be lazy!
+        # we are into grand-children, cannot be lazy!
         for child, cf_list in group:
             cpt = getattr(self, child)
             cpt.kind |= set_kind
