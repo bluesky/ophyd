@@ -16,7 +16,7 @@ from ophyd.pseudopos import (
 from ophyd import Component, SoftPositioner
 
 
-class SPseudo3x3(PseudoPositioner):
+class Pseudo3x3(PseudoPositioner):
     """
     Interface to three positioners in a coordinate system that flips the sign.
     """
@@ -30,7 +30,7 @@ class SPseudo3x3(PseudoPositioner):
 
     @pseudo_position_argument
     def forward(self, pseudo_pos):
-        "Given a position in the psuedo coordinate system, transform to the real coordinate system."
+        "Given a position in the pseudo coordinate system, transform to the real coordinate system."
         return self.RealPosition(
             real1=-pseudo_pos.pseudo1,
             real2=-pseudo_pos.pseudo2,
