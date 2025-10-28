@@ -9,14 +9,14 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: ["3.12"]
       fail-fast: false
     runs-on: ubuntu-latest
     env:
       TOX_DIRECT: 1
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # So we get history for version numbers
 
@@ -24,7 +24,7 @@ jobs:
         run: sudo apt-get install graphviz
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -35,7 +35,7 @@ jobs:
         run: tox -e docs
 
       - name: Upload built docs as artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docs
           path: build
@@ -44,7 +44,7 @@ jobs:
         run: echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
 
       - name: Deploy documentation to blueskyproject.io.
-        if: github.repository_owner == 'bluesky' && github.ref_name == 'master'
+        if: github.repository_owner == 'bluesky' && github.ref_name == 'main'
         # We pin to the SHA, not the tag, for security reasons.
         # https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/security-hardening-for-github-actions#using-third-party-actions
         uses: peaceiris/actions-gh-pages@bbdfb200618d235585ad98e965f4aafc39b4c501 # v3.7.3

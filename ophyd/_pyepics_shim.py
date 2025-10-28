@@ -7,6 +7,10 @@ from packaging.version import parse
 
 from ._dispatch import EventDispatcher, _CallbackThread, wrap_callback
 
+# suspect attempt to monkey-patch printf is causing segfaults
+if hasattr(ca, "WITH_CA_MESSAGES"):
+    ca.WITH_CA_MESSAGES = True
+
 _min_pyepics = "3.4.2"
 
 if parse(epics.__version__) < parse(_min_pyepics):
@@ -58,6 +62,7 @@ class PyepicsShimPV(epics.PV):
         connection_callback=None,
         connection_timeout=None,
         access_callback=None,
+        monitor_delta=None,
     ):
         connection_callback = wrap_callback(
             _dispatcher, "metadata", connection_callback

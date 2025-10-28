@@ -31,7 +31,7 @@ class FakeSignal(Signal):
         self._waited_for_connection = False
         self._subscriptions = []
 
-    def wait_for_connection(self):
+    def wait_for_connection(self, timeout: float = 0.0):
         self._waited_for_connection = True
 
     def subscribe(self, method, event_type, **kw):
@@ -969,3 +969,31 @@ def test_trigger_value(initial, after):
 
     d.trigger()
     assert d.strigger.get() == after
+
+
+def test_child_separator():
+    class Test(Device):
+        a = Component(Signal)
+        b = Component(Signal)
+
+    t = Test(name="bob")
+    assert t.a.name == "bob_a"
+
+    t = Test(name="bob", child_name_separator="-")
+    assert t.a.name == "bob-a"
+
+    class Test2(Device):
+        c = Component(Signal)
+        d = Component(Signal)
+        t = Component(Test)
+        s = Component(Test, child_name_separator="?")
+
+    t2 = Test2(name="bob", child_name_separator="!")
+
+    assert t2.c.name == "bob!c"
+    assert t2.d.name == "bob!d"
+
+    assert t2.t.a.name == "bob!t!a"
+    assert t2.t.b.name == "bob!t!b"
+    assert t2.s.a.name == "bob!s?a"
+    assert t2.s.b.name == "bob!s?b"

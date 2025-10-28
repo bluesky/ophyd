@@ -74,6 +74,7 @@ DEVICE_RESERVED_ATTRS = {
     "collect",
     "position",
     "stop",
+    "prepare",
     # from OphydObject
     "subscribe",
     "clear_sub",
@@ -82,6 +83,8 @@ DEVICE_RESERVED_ATTRS = {
     # for back-compat
     "signal_names",
 }
+
+DEFAULT_CONNECTION_TIMEOUT = object()
 
 
 class OrderedDictType(Dict[A, B]):
@@ -234,7 +237,7 @@ class Component(typing.Generic[K]):
             suffix from.
 
         kw : str
-            The key of associated with the suffix.  If this key is
+            The key of associated with the suffix.  If this key is in
             self.add_prefix than prepend the prefix to the suffix and
             return, else just return the suffix.
 
@@ -253,10 +256,12 @@ class Component(typing.Generic[K]):
         "Instantiate the object described by this Component for a Device"
         kwargs = self.kwargs.copy()
         kwargs.update(
-            name=f"{instance.name}_{self.attr}",
+            name=f"{instance.name}{instance._child_name_separator}{self.attr}",
             kind=instance._component_kinds[self.attr],
             attr_name=self.attr,
         )
+        if issubclass(self.cls, Device):
+            kwargs.setdefault("child_name_separator", instance._child_name_separator)
 
         for kw, val in list(kwargs.items()):
             kwargs[kw] = self.maybe_add_prefix(instance, kw, val)
@@ -800,6 +805,14 @@ class Device(BlueskyInterface, OphydObject):
         ``read_configuration()``) and to adjust via ``configure()``
     parent : instance or None, optional
         The instance of the parent device, if applicable
+    connection_timeout : float or None, optional
+        Timeout for connection of all underlying signals.
+
+        The default value DEFAULT_CONNECTION_TIMEOUT means, "Fall back to
+        class-wide default." See Device.set_defaults to
+        configure class defaults.
+
+        Explicitly passing None means, "Wait forever."
 
     Attributes
     ----------
@@ -817,6 +830,14 @@ class Device(BlueskyInterface, OphydObject):
     """
 
     SUB_ACQ_DONE = "acq_done"  # requested acquire
+
+    # This is set to True when the first instance is made. It is used to ensure
+    # that certain class-global settings can only be made before any
+    # instantiation.
+    __any_instantiated = False
+
+    # See set_defaults() for more on these.
+    __default_connection_timeout = 10.0
 
     # Over-ride in sub-classes to control the default contents of read and
     # configuration attrs lists.
@@ -839,10 +860,12 @@ class Device(BlueskyInterface, OphydObject):
         read_attrs=None,
         configuration_attrs=None,
         parent=None,
+        child_name_separator="_",
+        connection_timeout=DEFAULT_CONNECTION_TIMEOUT,
         **kwargs,
     ):
         self._destroyed = False
-
+        self._child_name_separator = child_name_separator
         # Store EpicsSignal objects (only created once they are accessed)
         self._signals = {}
 
@@ -852,6 +875,10 @@ class Device(BlueskyInterface, OphydObject):
         # Subscriptions to run or general methods necessary to call prior to
         # marking the Device as connected
         self._required_for_connection = self._required_for_connection.copy()
+
+        if connection_timeout is DEFAULT_CONNECTION_TIMEOUT:
+            connection_timeout = self.__default_connection_timeout
+        self._connection_timeout = connection_timeout
 
         self.prefix = prefix
         if self.component_names and prefix is None:
@@ -889,6 +916,9 @@ class Device(BlueskyInterface, OphydObject):
         if configuration_attrs is not None:
             self.configuration_attrs = list(configuration_attrs)
 
+        if not self.__any_instantiated:
+            Device._mark_as_instantiated()
+
         with do_not_wait_for_lazy_connection(self):
             # Instantiate non-lazy signals and lazy signals with subscriptions
             [
@@ -896,6 +926,11 @@ class Device(BlueskyInterface, OphydObject):
                 for attr, cpt in self._sig_attrs.items()
                 if not cpt.lazy or cpt._subscriptions
             ]
+
+    @classmethod
+    def _mark_as_instantiated(cls):
+        "Update state indicated that this class has been instantiated."
+        cls.__any_instantiated = True
 
     @classmethod
     def _initialize_device(cls):
@@ -1003,6 +1038,47 @@ class Device(BlueskyInterface, OphydObject):
                     yield ComponentWalk(
                         ancestors=ancestors, dotted_name=dotted_name, item=walk.item
                     )
+
+    @classmethod
+    def set_defaults(
+        cls,
+        *,
+        connection_timeout=__default_connection_timeout,
+    ):
+        """
+        Set class-wide defaults for device communications
+
+        This may be called only before any instances of Device are
+        made.
+
+        This setting applies to the class it is called on and all its
+        subclasses. For example,
+
+        >>> Device.set_defaults(...)
+
+        will apply to any Device subclass.
+
+        Parameters
+        ----------
+        connection_timeout: float, optional
+            Time (seconds) allocated for establishing a connection with the
+            IOC.
+
+        Raises
+        ------
+        RuntimeError
+            If called after :class:`EpicsSignalBase` has been instantiated for
+            the first time.
+        """
+        if Device.__any_instantiated:
+            raise RuntimeError(
+                "The method EpicsSignalBase.set_defaults may only "
+                "be called before the first instance of EpicsSignalBase is "
+                "created. This is to ensure that all instances are created "
+                "with the same default settings in place."
+            )
+
+        cls.__default_connection_timeout = connection_timeout
 
     def walk_signals(self, *, include_lazy=False):
         """Walk all signals in the Device hierarchy
@@ -1146,6 +1222,10 @@ class Device(BlueskyInterface, OphydObject):
         return val
 
     @property
+    def connection_timeout(self):
+        return self._connection_timeout
+
+    @property
     def read_attrs(self):
         return self.OphydAttrList(self, Kind.normal, Kind.hinted, "read_attrs")
 
@@ -1243,7 +1323,9 @@ class Device(BlueskyInterface, OphydObject):
 
         return "\n".join(out)
 
-    def wait_for_connection(self, all_signals=False, timeout=2.0):
+    def wait_for_connection(
+        self, all_signals=False, timeout=DEFAULT_CONNECTION_TIMEOUT
+    ):
         """Wait for signals to connect
 
         Parameters
@@ -1253,6 +1335,9 @@ class Device(BlueskyInterface, OphydObject):
         timeout : float or None
             Overall timeout
         """
+        if timeout is DEFAULT_CONNECTION_TIMEOUT:
+            timeout = self.connection_timeout
+
         signals = [walk.item for walk in self.walk_signals(include_lazy=all_signals)]
 
         pending_funcs = {

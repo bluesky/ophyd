@@ -803,3 +803,8 @@ def test_signal_dtype_shape_info(fake_motor_ioc, cleanup):
         name="ok_value", dtype="int64", shape=(2, 2), value=[[1, 2], [3, 4]]
     )
     assert ok_default_shape._value_shape == (2, 2)
+
+
+def test_signal_default_type():
+    s = Signal(name="aardvark")
+    assert type(s.read()["aardvark"]["value"]) is float
