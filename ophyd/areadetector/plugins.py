@@ -1935,7 +1935,7 @@ class ROIPlugin_V35(
 
 
 @register_plugin
-class ROIStatPlugin(Device, version_type="ADCore"):
+class ROIStatPlugin(PluginBase, version_type="ADCore"):
     "Serves as a base class for other versions"
     _default_suffix = "ROIStat1:"
     _suffix_re = r"ROIStat\d:"
