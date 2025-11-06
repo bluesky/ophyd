@@ -4,8 +4,11 @@ import threading
 import time
 import warnings
 import weakref
+from typing import Any, OrderedDict
 
 import numpy as np
+
+from ophyd.utils.types import Hints
 
 from . import get_cl
 from .ophydobj import Kind, OphydObject
@@ -516,7 +519,7 @@ class Signal(OphydObject):
         self.put(value)
 
     @raise_if_disconnected
-    def read(self):
+    def read(self) -> OrderedDict[str, Any]:
         """Put the status of the signal into a simple dictionary format
         for data acquisition
 
@@ -547,7 +550,7 @@ class Signal(OphydObject):
         else:
             return inferred_kind
 
-    def describe(self):
+    def describe(self) -> OrderedDict[str, Any]:
         """Provide schema and meta-data for :meth:`~BlueskyInterface.read`
 
         This keys in the `OrderedDict` this method returns must match the
@@ -625,7 +628,7 @@ class Signal(OphydObject):
         return self.limits[1]
 
     @property
-    def hints(self):
+    def hints(self) -> Hints:
         "Field hints for plotting"
         if (~Kind.normal & Kind.hinted) & self.kind:
             return {"fields": [self.name]}
