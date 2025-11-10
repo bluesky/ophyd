@@ -2005,20 +2005,20 @@ class ROIStatNPlugin(Device, version_type="ADCore"):
 
 
 class ROIStatNPlugin_V22(ROIStatNPlugin, version=(2, 2), version_of=ROIStatNPlugin):
-    bgd_width = Cpt(SignalWithRBV, "BgdWidth")
-    max_value = Cpt(EpicsSignalRO, "MaxValue_RBV")
-    mean_value = Cpt(EpicsSignalRO, "MeanValue_RBV")
-    min_value = Cpt(EpicsSignalRO, "MinValue_RBV")
-    name_ = Cpt(EpicsSignal, "Name", string=True)
-    net = Cpt(EpicsSignalRO, "Net_RBV")
-    reset = Cpt(EpicsSignal, "Reset", string=True, doc="")
+    bgd_width = Cpt(SignalWithRBV, "BgdWidth", kind="config")
+    max_value = Cpt(EpicsSignalRO, "MaxValue_RBV", kind="normal")
+    mean_value = Cpt(EpicsSignalRO, "MeanValue_RBV", kind="normal")
+    min_value = Cpt(EpicsSignalRO, "MinValue_RBV", kind="normal")
+    name_ = Cpt(EpicsSignal, "Name", string=True, kind="config")
+    net = Cpt(EpicsSignalRO, "Net_RBV", kind="normal")
+    reset = Cpt(EpicsSignal, "Reset", string=True, doc="", kind="omitted")
     total = Cpt(EpicsSignalRO, "Total_RBV")
-    use = Cpt(SignalWithRBV, "Use", string=True, doc="0='No' 1='Yes'")
+    use = Cpt(SignalWithRBV, "Use", string=True, doc="0='No' 1='Yes'", kind="config")
     max_size = DDC_EpicsSignalRO(
         ("x", "MaxSizeX_RBV"), ("y", "MaxSizeY_RBV"), doc="max_size"
     )
-    min_ = DDC_SignalWithRBV(("x", "MinX"), ("y", "MinY"), doc="min")
-    size = DDC_SignalWithRBV(("x", "SizeX"), ("y", "SizeY"), doc="size")
+    min_ = DDC_SignalWithRBV(("x", "MinX"), ("y", "MinY"), doc="min", kind="config")
+    size = DDC_SignalWithRBV(("x", "SizeX"), ("y", "SizeY"), doc="size", kind="config")
 
 
 class ROIStatNPlugin_V23(ROIStatNPlugin_V22, version=(2, 3), version_of=ROIStatNPlugin):
