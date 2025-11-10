@@ -26,7 +26,7 @@ default, ``None`` means it will wait forever to be marked completed.)
 
 .. code:: python
 
-   from ophyd import Status
+   from ophyd.status import Status
 
    status = Status(timeout=60)
 
