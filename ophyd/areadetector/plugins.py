@@ -1137,9 +1137,7 @@ class PluginBase_V35(PluginBase_V34, version=(3, 5), version_of=PluginBase):
 # --- NDFile ---
 
 
-class FilePlugin_V20(
-    PluginBase_V20, FilePlugin, version=(2, 0), version_of=FilePlugin
-):
+class FilePlugin_V20(PluginBase_V20, FilePlugin, version=(2, 0), version_of=FilePlugin):
     ...
 
 
@@ -1247,9 +1245,7 @@ class ColorConvPlugin_V35(
 # --- NDFileHDF5 ---
 
 
-class HDF5Plugin_V20(
-    FilePlugin_V20, HDF5Plugin, version=(2, 0), version_of=HDF5Plugin
-):
+class HDF5Plugin_V20(FilePlugin_V20, HDF5Plugin, version=(2, 0), version_of=HDF5Plugin):
     ...
 
 
@@ -1460,9 +1456,7 @@ class ImagePlugin_V35(
 # --- NDFileJPEG ---
 
 
-class JPEGPlugin_V20(
-    FilePlugin_V20, JPEGPlugin, version=(2, 0), version_of=JPEGPlugin
-):
+class JPEGPlugin_V20(FilePlugin_V20, JPEGPlugin, version=(2, 0), version_of=JPEGPlugin):
     ...
 
 
@@ -2140,9 +2134,7 @@ class StatsPlugin_V35(
 # --- NDFileTIFF ---
 
 
-class TIFFPlugin_V20(
-    FilePlugin_V20, TIFFPlugin, version=(2, 0), version_of=TIFFPlugin
-):
+class TIFFPlugin_V20(FilePlugin_V20, TIFFPlugin, version=(2, 0), version_of=TIFFPlugin):
     ...
 
 
@@ -2412,9 +2404,7 @@ class ScatterPlugin_V31(
     )
 
 
-class ScatterPlugin_V32(
-    ScatterPlugin_V31, version=(3, 2), version_of=ScatterPlugin
-):
+class ScatterPlugin_V32(ScatterPlugin_V31, version=(3, 2), version_of=ScatterPlugin):
     ...
 
 
