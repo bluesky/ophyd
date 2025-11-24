@@ -762,6 +762,10 @@ class SubscriptionStatus(DeviceStatus):
 
     run: bool, optional
         Run the callback now
+
+    subscribe_child : str, optional
+        The name of the child to actually subscribe to.  May be dotted to go
+        down more than one generation.
     """
 
     def __init__(
@@ -772,6 +776,8 @@ class SubscriptionStatus(DeviceStatus):
         timeout=None,
         settle_time=None,
         run=True,
+        *,
+        subscribe_child=None,
     ):
         # Store device and attribute information
         self.device = device
@@ -781,7 +787,16 @@ class SubscriptionStatus(DeviceStatus):
         super().__init__(device, timeout=timeout, settle_time=settle_time)
 
         # Subscribe callback and run initial check
-        self.device.subscribe(self.check_value, event_type=event_type, run=run)
+        if subscribe_child is None:
+            self.device.subscribe(self.check_value, event_type=event_type, run=run)
+            self._sub_obj = self.device
+
+        else:
+            obj = device
+            for k in subscribe_child.split("."):
+                obj = getattr(obj, k)
+            obj.subscribe(self.check_value, event_type=event_type, run=run)
+            self._sub_obj = obj
 
     def check_value(self, *args, **kwargs):
         """
@@ -808,7 +823,7 @@ class SubscriptionStatus(DeviceStatus):
         Status object, but only by the object that created and returned it.
         """
         # Clear callback
-        self.device.clear_sub(self.check_value)
+        self._sub_obj.clear_sub(self.check_value)
         # Run completion
         super().set_finished()
 
