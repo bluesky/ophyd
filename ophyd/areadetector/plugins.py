@@ -1937,6 +1937,7 @@ class ROIPlugin_V35(
 @register_plugin
 class ROIStatPlugin(PluginBase, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _default_suffix = "ROIStat1:"
     _suffix_re = r"ROIStat\d:"
     _plugin_type = "NDPluginROIStat"
@@ -2001,36 +2002,37 @@ class ROIStatPlugin_V35(
 
 class ROIStatNPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     ...
 
 
 class ROIStatNPlugin_V22(ROIStatNPlugin, version=(2, 2), version_of=ROIStatNPlugin):
-    bgd_width = Cpt(SignalWithRBV, "BgdWidth")
-    max_value = Cpt(EpicsSignalRO, "MaxValue_RBV")
-    mean_value = Cpt(EpicsSignalRO, "MeanValue_RBV")
-    min_value = Cpt(EpicsSignalRO, "MinValue_RBV")
-    name_ = Cpt(EpicsSignal, "Name", string=True)
-    net = Cpt(EpicsSignalRO, "Net_RBV")
-    reset = Cpt(EpicsSignal, "Reset", string=True, doc="")
-    total = Cpt(EpicsSignalRO, "Total_RBV")
-    use = Cpt(SignalWithRBV, "Use", string=True, doc="0='No' 1='Yes'")
+    bgd_width = Cpt(SignalWithRBV, "BgdWidth", kind="config")
+    max_value = Cpt(EpicsSignalRO, "MaxValue_RBV", kind="normal")
+    mean_value = Cpt(EpicsSignalRO, "MeanValue_RBV", kind="normal")
+    min_value = Cpt(EpicsSignalRO, "MinValue_RBV", kind="normal")
+    name_ = Cpt(EpicsSignal, "Name", string=True, kind="config")
+    net = Cpt(EpicsSignalRO, "Net_RBV", kind="normal")
+    reset = Cpt(EpicsSignal, "Reset", string=True, doc="", kind="omitted")
+    total = Cpt(EpicsSignalRO, "Total_RBV", kind="hinted")
+    use = Cpt(SignalWithRBV, "Use", string=True, doc="0='No' 1='Yes'", kind="config")
     max_size = DDC_EpicsSignalRO(
         ("x", "MaxSizeX_RBV"), ("y", "MaxSizeY_RBV"), doc="max_size"
     )
-    min_ = DDC_SignalWithRBV(("x", "MinX"), ("y", "MinY"), doc="min")
-    size = DDC_SignalWithRBV(("x", "SizeX"), ("y", "SizeY"), doc="size")
+    min_ = DDC_SignalWithRBV(("x", "MinX"), ("y", "MinY"), doc="min", kind="config")
+    size = DDC_SignalWithRBV(("x", "SizeX"), ("y", "SizeY"), doc="size", kind="config")
 
 
 class ROIStatNPlugin_V23(ROIStatNPlugin_V22, version=(2, 3), version_of=ROIStatNPlugin):
-    ts_max_value = Cpt(EpicsSignal, "TSMaxValue")
-    ts_mean_value = Cpt(EpicsSignal, "TSMeanValue")
-    ts_min_value = Cpt(EpicsSignal, "TSMinValue")
-    ts_net = Cpt(EpicsSignal, "TSNet")
-    ts_total = Cpt(EpicsSignal, "TSTotal")
+    ts_max_value = Cpt(EpicsSignal, "TSMaxValue", kind="omitted")
+    ts_mean_value = Cpt(EpicsSignal, "TSMeanValue", kind="omitted")
+    ts_min_value = Cpt(EpicsSignal, "TSMinValue", kind="omitted")
+    ts_net = Cpt(EpicsSignal, "TSNet", kind="omitted")
+    ts_total = Cpt(EpicsSignal, "TSTotal", kind="omitted")
 
 
 class ROIStatNPlugin_V25(ROIStatNPlugin_V23, version=(2, 5), version_of=ROIStatNPlugin):
-    ts_timestamp = Cpt(EpicsSignal, "TSTimestamp")
+    ts_timestamp = Cpt(EpicsSignal, "TSTimestamp", kind="omitted")
 
 
 # --- NDStats ---
@@ -2273,6 +2275,7 @@ class TransformPlugin_V35(
 @register_plugin
 class PvaPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _default_suffix = "Pva1:"
     _suffix_re = r"Pva\d:"
     _plugin_type = "NDPluginPva"
@@ -2318,6 +2321,7 @@ class PvaPlugin_V35(
 @register_plugin
 class FFTPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     ...
     _default_suffix = "FFT1:"
     _suffix_re = r"FFT\d:"
@@ -2386,6 +2390,7 @@ class FFTPlugin_V35(
 @register_plugin
 class ScatterPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _default_suffix = "Scatter1:"
     _suffix_re = r"Scatter\d:"
     _plugin_type = "NDPluginScatter"
@@ -2427,6 +2432,7 @@ class ScatterPlugin_V35(
 @register_plugin
 class PosPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _default_suffix = "Pos1:"
     _suffix_re = r"Pos\d:"
     _plugin_type = "NDPosPlugin"
@@ -2488,6 +2494,7 @@ class PosPluginPlugin_V35(
 @register_plugin
 class CircularBuffPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _default_suffix = "CB1:"
     _suffix_re = r"CB\d:"
     _plugin_type = "NDPluginCircularBuff"
@@ -2583,6 +2590,7 @@ class CircularBuffPlugin_V35(
 
 class AttributeNPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     ...
 
 
@@ -2606,6 +2614,7 @@ class AttributeNPlugin_V26(
 
 class AttrPlotPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _plugin_type = "NDAttrPlot"
 
 
@@ -2639,6 +2648,7 @@ class AttrPlotPlugin_V35(
 
 class TimeSeriesNPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     ...
 
 
@@ -2655,6 +2665,7 @@ class TimeSeriesNPlugin_V25(
 @register_plugin
 class TimeSeriesPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _plugin_type = "NDPluginTimeSeries"
 
 
@@ -2719,6 +2730,7 @@ class TimeSeriesPlugin_V35(
 @register_plugin
 class CodecPlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _plugin_type = "NDPluginCodec"
 
 
@@ -2759,6 +2771,7 @@ class CodecPlugin_V35(
 @register_plugin
 class AttributePlugin(Device, version_type="ADCore"):
     "Serves as a base class for other versions"
+
     _default_suffix = "Attr1:"
     _suffix_re = r"Attr\d:"
     _plugin_type = "NDPluginAttribute"
