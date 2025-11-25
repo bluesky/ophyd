@@ -2030,7 +2030,7 @@ class ROIStatNPlugin_V23(ROIStatNPlugin_V22, version=(2, 3), version_of=ROIStatN
     ts_net = Cpt(EpicsSignal, "TSNet", kind="omitted")
     ts_total = Cpt(EpicsSignal, "TSTotal", kind="omitted")
 
-    
+
 class ROIStatNPlugin_V25(ROIStatNPlugin_V23, version=(2, 5), version_of=ROIStatNPlugin):
     ts_timestamp = Cpt(EpicsSignal, "TSTimestamp", kind="omitted")
 
