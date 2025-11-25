@@ -2014,7 +2014,7 @@ class ROIStatNPlugin_V22(ROIStatNPlugin, version=(2, 2), version_of=ROIStatNPlug
     name_ = Cpt(EpicsSignal, "Name", string=True, kind="config")
     net = Cpt(EpicsSignalRO, "Net_RBV", kind="normal")
     reset = Cpt(EpicsSignal, "Reset", string=True, doc="", kind="omitted")
-    total = Cpt(EpicsSignalRO, "Total_RBV")
+    total = Cpt(EpicsSignalRO, "Total_RBV", kind="hinted")
     use = Cpt(SignalWithRBV, "Use", string=True, doc="0='No' 1='Yes'", kind="config")
     max_size = DDC_EpicsSignalRO(
         ("x", "MaxSizeX_RBV"), ("y", "MaxSizeY_RBV"), doc="max_size"
@@ -2024,15 +2024,15 @@ class ROIStatNPlugin_V22(ROIStatNPlugin, version=(2, 2), version_of=ROIStatNPlug
 
 
 class ROIStatNPlugin_V23(ROIStatNPlugin_V22, version=(2, 3), version_of=ROIStatNPlugin):
-    ts_max_value = Cpt(EpicsSignal, "TSMaxValue")
-    ts_mean_value = Cpt(EpicsSignal, "TSMeanValue")
-    ts_min_value = Cpt(EpicsSignal, "TSMinValue")
-    ts_net = Cpt(EpicsSignal, "TSNet")
-    ts_total = Cpt(EpicsSignal, "TSTotal")
+    ts_max_value = Cpt(EpicsSignal, "TSMaxValue", kind="omitted")
+    ts_mean_value = Cpt(EpicsSignal, "TSMeanValue", kind="omitted")
+    ts_min_value = Cpt(EpicsSignal, "TSMinValue", kind="omitted")
+    ts_net = Cpt(EpicsSignal, "TSNet", kind="omitted")
+    ts_total = Cpt(EpicsSignal, "TSTotal", kind="omitted")
 
-
+    
 class ROIStatNPlugin_V25(ROIStatNPlugin_V23, version=(2, 5), version_of=ROIStatNPlugin):
-    ts_timestamp = Cpt(EpicsSignal, "TSTimestamp")
+    ts_timestamp = Cpt(EpicsSignal, "TSTimestamp", kind="omitted")
 
 
 # --- NDStats ---
