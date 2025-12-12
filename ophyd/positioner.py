@@ -4,6 +4,8 @@ import time
 from collections import OrderedDict
 from typing import Any, Callable
 
+from ophyd.utils.types import Hints
+
 from .ophydobj import Kind, OphydObject
 from .status import MoveStatus, StatusBase
 from .status import wait as status_wait
@@ -255,7 +257,7 @@ class PositionerBase(OphydObject):
         yield ("timeout", self._timeout)
 
     @property
-    def hints(self):
+    def hints(self) -> Hints:
         if (~Kind.normal & Kind.hinted) & self.kind:
             return {"fields": [self.name]}
         else:
