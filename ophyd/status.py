@@ -439,7 +439,7 @@ class StatusBase:
         return self._exception
 
     @tracer.start_as_current_span(f"{_TRACE_PREFIX} wait")
-    def wait(self, timeout=None):
+    def wait(self, timeout=None, timeout_exception=None):
         """
         Block until the action completes.
 
@@ -450,6 +450,11 @@ class StatusBase:
         ----------
         timeout: Union[Number, None], optional
             If None (default) wait indefinitely until the status finishes.
+
+        timeout_exception: Exception, optional
+            If None (default), WaitTimeoutError will be raised if the status
+            does not complete within ``timeout``. If this is set to an Exception,
+            that exception will be raised instead.
 
         Raises
         ------
@@ -465,9 +470,14 @@ class StatusBase:
             indicates that the action itself raised ``TimeoutError``, distinct
             from ``WaitTimeoutError`` above.
         """
+        exception_to_raise = (
+            timeout_exception
+            if isinstance(timeout_exception, Exception)
+            else WaitTimeoutError(f"Status {self!r} has not completed yet.")
+        )
         _set_trace_attributes(trace.get_current_span(), self._trace_attributes)
         if not self._event.wait(timeout=timeout):
-            raise WaitTimeoutError(f"Status {self!r} has not completed yet.")
+            raise exception_to_raise
         if self._exception is not None:
             raise self._exception
 
