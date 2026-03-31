@@ -5,7 +5,6 @@
 
 .. _areaDetector: https://areadetector.github.io/master/index.html
 """
-
 import warnings
 
 import numpy as np

@@ -25,7 +25,6 @@ from ophyd import (
 )
 from ophyd.areadetector.base import NDDerivedSignal
 from ophyd.areadetector.detectors import AreaDetector
-from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.filestore_mixins import (
     FileStoreHDF5,
     FileStoreIterativeWrite,
@@ -213,7 +212,8 @@ def test_tiff_plugin(ad_prefix, cleanup):
 
 @pytest.mark.adsim
 def test_continuous_acquisition_trigger_missing_cb(ad_prefix, cleanup):
-    class MyDetector(ContinuousAcquisitionTrigger, SimDetector): ...
+    class MyDetector(ContinuousAcquisitionTrigger, SimDetector):
+        ...
 
     with pytest.raises(RuntimeError):
         det = MyDetector(ad_prefix, name="det")
