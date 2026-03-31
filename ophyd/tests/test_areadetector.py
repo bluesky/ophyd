@@ -24,6 +24,8 @@ from ophyd import (
     wait,
 )
 from ophyd.areadetector.base import NDDerivedSignal
+from ophyd.areadetector.detectors import AreaDetector
+from ophyd.areadetector.cam import AreaDetectorCam
 from ophyd.areadetector.filestore_mixins import (
     FileStoreHDF5,
     FileStoreIterativeWrite,
@@ -211,8 +213,7 @@ def test_tiff_plugin(ad_prefix, cleanup):
 
 @pytest.mark.adsim
 def test_continuous_acquisition_trigger_missing_cb(ad_prefix, cleanup):
-    class MyDetector(ContinuousAcquisitionTrigger, SimDetector):
-        ...
+    class MyDetector(ContinuousAcquisitionTrigger, SimDetector): ...
 
     with pytest.raises(RuntimeError):
         det = MyDetector(ad_prefix, name="det")
@@ -875,7 +876,7 @@ def test_many_connect(ad_prefix, cleanup):
 
     pytest.skipif(
         ophyd.get_cl().name == "pyepics",
-        "This is exposing race conditions in pyepics which " "cause segfaults.",
+        "This is exposing race conditions in pyepics which cause segfaults.",
     )
     import gc
 
@@ -1028,3 +1029,33 @@ def test_ADTriggerStatus_gives_correct_fraction():
     assert mock_called_kwargs["target"] == 5
     assert mock_called_kwargs["current"] == 1
     assert mock_called_kwargs["fraction"] == 4 / 5
+
+
+@pytest.mark.parametrize(
+    "param, expected",
+    [
+        ("Int8", "|i1"),
+        ("UInt8", "|u1"),
+        ("Int16", "<i2"),
+        ("UInt16", "<u2"),
+        ("Int32", "<i4"),
+        ("UInt32", "<u4"),
+        ("Float32", "<f4"),
+        ("Float64", "<f8"),
+    ],
+)
+def test_make_data_key(param, expected):
+    FakeAreaDetector = make_fake_device(AreaDetector)
+    det = FakeAreaDetector("PREFIX:", name="det")
+    det.cam.data_type.sim_put(param)
+    det.cam.num_images.sim_put(100)
+    det.cam.array_size.array_size_y.sim_put(1024)
+    det.cam.array_size.array_size_x.sim_put(1980)
+    data_key = det.make_data_key()
+    assert data_key == dict(
+        shape=(100, 1024, 1980),
+        source="PV:PREFIX:",
+        dtype="array",
+        external="FILESTORE:",
+        dtype_numpy=expected,
+    )

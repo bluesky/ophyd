@@ -5,7 +5,10 @@
 
 .. _areaDetector: https://areadetector.github.io/master/index.html
 """
+
 import warnings
+
+import numpy as np
 
 from . import cam
 from .base import ADBase
@@ -108,7 +111,14 @@ class DetectorBase(ADBase):
             self.cam.array_size.array_size_y.get(),
             self.cam.array_size.array_size_x.get(),
         )
-        return dict(shape=shape, source=source, dtype="array", external="FILESTORE:")
+        dtype_numpy = np.dtype(self.cam.data_type.get(as_string=True).lower()).str
+        return dict(
+            shape=shape,
+            source=source,
+            dtype="array",
+            external="FILESTORE:",
+            dtype_numpy=dtype_numpy,
+        )
 
     def collect_asset_docs(self):
         file_plugins = [
