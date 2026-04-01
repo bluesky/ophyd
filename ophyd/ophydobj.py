@@ -166,6 +166,7 @@ class OphydObject:
             raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
+        self._destroyed = False
 
         # dictionary of wrapped callbacks
         self._callbacks = {k: {} for k in self.subscriptions}
@@ -345,6 +346,7 @@ class OphydObject:
     def destroy(self):
         """Disconnect the object from the underlying control layer"""
         self.unsubscribe_all()
+        self._destroyed = True
 
     @property
     def parent(self):
