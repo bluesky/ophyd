@@ -8,16 +8,9 @@ repos:
 
   - repo: local
     hooks:
-      - id: black
-        name: Run black
+      - id: ruff
+        name: Run ruff
         stages: [pre-commit]
         language: system
-        entry: black --check --diff
-        types: [python]
-
-      - id: flake8
-        name: Run flake8
-        stages: [pre-commit]
-        language: system
-        entry: flake8
+        entry: ruff check
         types: [python]
