@@ -40,6 +40,7 @@ __all__ = [
     "PvcamDetector",
     "RoperDetector",
     "SimDetector",
+    "TimePix3Detector",
     "URLDetector",
     "UVCDetector",
     "Xspress3Detector",
@@ -249,6 +250,11 @@ class PvcamDetector(DetectorBase):
 class RoperDetector(DetectorBase):
     _html_docs = ["RoperDoc.html"]
     cam = C(cam.RoperDetectorCam, "cam1:")
+
+
+class TimePix3Detector(DetectorBase):
+    _html_docs = ['TimePix3Doc.html']
+    cam = C(cam.TimePix3DetectorCam, 'cam1:')
 
 
 class URLDetector(DetectorBase):
