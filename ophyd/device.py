@@ -1354,7 +1354,7 @@ class Device(BlueskyInterface, OphydObject):
             for event_type, functions in cpt._subscriptions.items():
                 for func in functions:
                     method = getattr(self, func.__name__)
-                    sig.subscribe(method, event_type=event_type, run=sig.connected)
+                    sig.subscribe(method, event_type=event_type, run=True)
         except AttributeError as ex:
             # Raise a different Exception, as AttributeError will be shadowed
             # during initial access
