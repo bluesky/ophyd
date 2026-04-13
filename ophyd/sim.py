@@ -1606,7 +1606,7 @@ def hw(save_path=None):
 
     # area detector that stores data in a file
     img = SynSignalWithRegistry(
-        func=lambda: np.array(np.ones((10, 10))),
+        func=lambda: np.array(np.ones((1, 10, 10))),
         name="img",
         labels={"detectors"},
         save_path=save_path,
