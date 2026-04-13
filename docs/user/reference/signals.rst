@@ -1,34 +1,51 @@
 .. _signal_indx:
 
+.. currentmodule:: ophyd.signal
+
 Signals
 *******
 
-In EPICS, **Signal** maybe backed by a read-only PV, a single
-read-write PV, or a pair of read and write PVs, grouped together.  In
+.. FIXME: Start with a non-EPICS description of Signal.
+
+   Signal represents a single value of the hardware system.  (Could be RO, RW, or WO.)
+
+.. TODO: Device is not documented?
+
+In `EPICS <https://epics-controls.org/>`_, :class:`~EpicsSignal` maybe backed by
+a read-only process variable (`PV
+<https://docs.epics-controls.org/en/latest/getting-started/EPICS_Intro.html>`_),
+a single read-write PV, or a pair of read and write PVs, grouped together.  In
 any of those cases, a single value is exposed to `bluesky
-<https://nsls-ii.github.io/bluesky>`_.  For more complex hardware, for
-example a `motor record
-<http://www.aps.anl.gov/bcda/synApps/motor/>`_, the relationships
-between the individual process variables needs to be encoded in a
-:class:`~device.Device` (a :class:`~epics_motor.EpicsMotor` class
-ships with ophyd for this case).  This includes both what **Signals**
-are grouped together, but also how to manipulate them a coordinated
-fashion to achieve the high-level action (moving a motor, changing a
-temperature, opening a valve, or taking data).  More complex devices,
-like a diffractometer or a Area Detector, can be assembled out of
-simpler component devices.
+<https://blueskyproject.io/bluesky>`_.  For more complex hardware, for example
+an EPICS `motor record <http://www.aps.anl.gov/bcda/synApps/motor/>`_, the
+relationships between the individual process variables need to be encoded in a
+:class:`~device.Device` (see the :class:`~ophyd.epics_motor.EpicsMotor` class).
+A :class:`~device.Device` describes which **Signals** are grouped together, and
+how to manipulate them in a coordinated fashion to achieve the high-level action
+(moving a motor, changing a temperature, opening a valve, or taking data).  More
+complex devices, like a `diffractometer <https://blueskyproject.io/hklpy2>`_ or
+an :ref:`area detector <explain_areadetector>`, can be assembled from simpler
+component devices.
 
+.. TODO: Next paragraph should move before the EpicsSignal paragraph above.
+.. FIXME: tree & leaf metaphor does not need EPICS reference
 
-A ``Signal`` is much like a ``Device`` -- they share almost the same
-interface -- but a ``Signal`` has no sub-components. In ophyd's hierarchical,
-tree-like representation of a complex piece of hardware, the signals are
-the leaves. Each one represents a single PV or a read--write pair of PVs.
+A :class:`~Signal` is much like a :class:`~ophyd.device.Device` -- they share
+almost the same interface -- but a :class:`~Signal` has no sub-components. In
+ophyd's hierarchical, tree-like representation of a complex piece of hardware,
+the signals are the leaves. Each one represents a single PV or a read--write
+pair of PVs.
+
+Signal Attributes
+-----------------
+
+All ophyd Signal classes have these attributes:
 
 .. index:: kind attribute
 .. _kind:
 
 :attr:`kind`
--------------
+++++++++++++
 
 The :attr:`kind` attribute is the means to identify a signal that is
 relevant for handling by a callback.
@@ -70,7 +87,7 @@ the :attr:`hints` attribute of the :class:`~device.Device`.
 .. _labels:
 
 :attr:`labels`
---------------
+++++++++++++++
 
 :class:`~signal.Signal` and :class:`~device.Device` now accept
 a :attr:`labels` attribute.  The value is a list of text strings
@@ -125,6 +142,112 @@ Then in an ipython session:
 	  rig.r                                  rig_r
 	  rig.t                                  rig_t
 
+.. _signal_classes:
+
+Signal Classes
+--------------
+
+.. autosummary::
+   :toctree: ../generated
+
+   Signal
+   SignalRO
+   ArrayAttributeSignal
+   AttributeSignal
+   DerivedSignal
+
+.. _signal_classes_epics:
+
+Signal Classes for EPICS
+----------------------------
+
+.. autosummary::
+   :toctree: ../generated
+
+   EpicsSignalBase
+   EpicsSignal
+   EpicsSignalRO
+   EpicsSignalNoValidation
+
+.. _signal_classes_internal:
+
+Signal Classes for Internal Use
+--------------------------------
+
+.. autosummary::
+   :toctree: ../generated
+
+   InternalSignal
+   InternalSignalMixin
+
+.. _signal_exceptions:
+
+Exceptions
+----------
+
+A :class:`~ConnectionTimeoutError` (or :class:`~ReadTimeoutError`) typically
+occurs when an :class:`~EpicsSignal` fails to connect (or respond to a read
+request) within a specified time limit. This can happen due to network issues,
+the EPICS IOC (server) or PV is unresponsive or unavailable, or the PV name is
+incorrect. Here's an example how these exceptions might be used:
+
+.. code-block:: python
+	:linenos:
+
+	from ophyd import EpicsSignal
+	from ophyd.signal import ConnectionTimeoutError, ReadTimeoutError
+
+	signal = EpicsSignal("IOC:pv", name='signal')
+	try:
+		# Set timeouts of 5 seconds.
+		signal.wait_for_connection(timeout=5)
+		value = signal.get(timeout=5)  
+		print(f"{signal.name}={value}")
+	except ConnectionTimeoutError:
+		print("Connection timeout. Please check EPICS PV {signal.pvname!r}.")
+	except ReadTimeoutError:
+		print("Read timeout. Please check EPICS PV {signal.pvname!r}.")
+
+An :class:`~InternalSignalError` is raised when an :class:`~InternalSignal` is
+written from outside of its own parent class (the :class:`~ophyd.device.Device`
+that defined this :class:`~InternalSignal`).  Since an :class:`~InternalSignal`
+is designed to be updated only from within the parent class, any other attempts
+to write (from outside the parent) will raise this exception. All writes must be
+done with ``internal=True``.
+
+.. autoexception:: ConnectionTimeoutError
+.. autoexception:: InternalSignalError
+.. autoexception:: ReadTimeoutError
 
 .. automodule:: ophyd.signal
    :noindex:
+
+----
+
+.. currentmodule:: ophyd.signal
+
+.. rubric:: Signal Classes
+.. autosummary::
+   :toctree: ../generated
+
+   ArrayAttributeSignal
+   AttributeSignal
+   DerivedSignal
+   EpicsSignal
+   EpicsSignalBase
+   EpicsSignalNoValidation
+   EpicsSignalRO
+   InternalSignal
+   InternalSignalMixin
+   Signal
+   SignalRO
+
+------------
+
+.. TODO
+
+.. currentmodule:: ophyd.areadetector.base
+.. autosummary::
+   :toctree: ../generated
+
+   NDDerivedSignal
