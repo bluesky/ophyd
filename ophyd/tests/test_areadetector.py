@@ -1071,10 +1071,18 @@ def test_make_data_key_disabled(param):
     det.cam.array_size.array_size_y.sim_put(1024)
     det.cam.array_size.array_size_x.sim_put(1980)
     data_key = det.make_data_key()
-    assert data_key == dict(
-        shape=(100, 1024, 1980),
-        source="PV:PREFIX:",
-        dtype="array",
-        external="FILESTORE:",
-        dtype_numpy="<f4" if param == 0 else "",
-    )
+    if param == 1:
+        assert data_key == dict(
+            shape=(100, 1024, 1980),
+            source="PV:PREFIX:",
+            dtype="array",
+            external="FILESTORE:",
+        )
+    else:
+        assert data_key == dict(
+            shape=(100, 1024, 1980),
+            source="PV:PREFIX:",
+            dtype="array",
+            external="FILESTORE:",
+            dtype_numpy="<f4",
+        )
