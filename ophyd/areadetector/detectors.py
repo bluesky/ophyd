@@ -118,7 +118,7 @@ class DetectorBase(ADBase):
             external="FILESTORE:",
         )
 
-        # Some IOCs disable the data type, so we can't rely on its value
+        # If the data type isn't disabled, we assume it is accurate
         if self.cam.data_type_disabled.get() == 0:
             ret["dtype_numpy"] = np.dtype(
                 self.cam.data_type.get(as_string=True).lower()
