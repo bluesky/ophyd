@@ -103,6 +103,7 @@ class CamBase(ADBase):
     bin_y = ADCpt(SignalWithRBV, "BinY")
     color_mode = ADCpt(SignalWithRBV, "ColorMode")
     data_type = ADCpt(SignalWithRBV, "DataType")
+    data_type_disabled = ADCpt(EpicsSignalRO, "DataType_RBV.DISA")
     detector_state = ADCpt(EpicsSignalRO, "DetectorState_RBV")
     frame_type = ADCpt(SignalWithRBV, "FrameType")
     gain = ADCpt(SignalWithRBV, "Gain")

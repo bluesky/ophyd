@@ -110,7 +110,12 @@ class DetectorBase(ADBase):
             self.cam.array_size.array_size_y.get(),
             self.cam.array_size.array_size_x.get(),
         )
-        dtype_numpy = np.dtype(self.cam.data_type.get(as_string=True).lower()).str
+        # Some IOCs disable the data type, so we can't rely on its value
+        dtype_numpy = (
+            np.dtype(self.cam.data_type.get(as_string=True).lower()).str
+            if self.cam.data_type_disabled.get() == 0
+            else ""
+        )
         return dict(
             shape=shape,
             source=source,
