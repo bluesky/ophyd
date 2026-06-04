@@ -1060,6 +1060,7 @@ def test_make_data_key(param, expected):
         dtype_numpy=expected,
     )
 
+
 @pytest.mark.parametrize("param", [0, 1])
 def test_make_data_key_disabled(param):
     FakeAreaDetector = make_fake_device(AreaDetector)
