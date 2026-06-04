@@ -110,14 +110,21 @@ class DetectorBase(ADBase):
             self.cam.array_size.array_size_y.get(),
             self.cam.array_size.array_size_x.get(),
         )
-        dtype_numpy = np.dtype(self.cam.data_type.get(as_string=True).lower()).str
-        return dict(
+
+        ret = dict(
             shape=shape,
             source=source,
             dtype="array",
             external="FILESTORE:",
-            dtype_numpy=dtype_numpy,
         )
+
+        # If the data type isn't disabled, we assume it is accurate
+        if self.cam.data_type_disabled.get() == 0:
+            ret["dtype_numpy"] = np.dtype(
+                self.cam.data_type.get(as_string=True).lower()
+            ).str
+
+        return ret
 
     def collect_asset_docs(self):
         file_plugins = [

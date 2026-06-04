@@ -1059,3 +1059,30 @@ def test_make_data_key(param, expected):
         external="FILESTORE:",
         dtype_numpy=expected,
     )
+
+
+@pytest.mark.parametrize("param", [0, 1])
+def test_make_data_key_disabled(param):
+    FakeAreaDetector = make_fake_device(AreaDetector)
+    det = FakeAreaDetector("PREFIX:", name="det")
+    det.cam.data_type.sim_put("Float32")
+    det.cam.data_type_disabled.sim_put(param)
+    det.cam.num_images.sim_put(100)
+    det.cam.array_size.array_size_y.sim_put(1024)
+    det.cam.array_size.array_size_x.sim_put(1980)
+    data_key = det.make_data_key()
+    if param == 1:
+        assert data_key == dict(
+            shape=(100, 1024, 1980),
+            source="PV:PREFIX:",
+            dtype="array",
+            external="FILESTORE:",
+        )
+    else:
+        assert data_key == dict(
+            shape=(100, 1024, 1980),
+            source="PV:PREFIX:",
+            dtype="array",
+            external="FILESTORE:",
+            dtype_numpy="<f4",
+        )
