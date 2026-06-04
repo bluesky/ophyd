@@ -102,6 +102,16 @@ class DetectorBase(ADBase):
 
     dispatch.__doc__ = generate_datum.__doc__
 
+    @property
+    def dtype_numpy(self) -> str | None:
+        """The data type of the image in numpy style"""
+        # If the data type isn't disabled, we assume it is accurate
+        return (
+            np.dtype(self.cam.data_type.get(as_string=True).lower()).str
+            if self.cam.data_type_disabled.get() == 0
+            else None
+        )
+
     def make_data_key(self):
         source = "PV:{}".format(self.prefix)
         # This shape is expected to match arr.shape for the array.
@@ -118,11 +128,9 @@ class DetectorBase(ADBase):
             external="FILESTORE:",
         )
 
-        # If the data type isn't disabled, we assume it is accurate
-        if self.cam.data_type_disabled.get() == 0:
-            ret["dtype_numpy"] = np.dtype(
-                self.cam.data_type.get(as_string=True).lower()
-            ).str
+        dtype_numpy = self.dtype_numpy
+        if dtype_numpy:
+            ret["dtype_numpy"] = dtype_numpy
 
         return ret
 
@@ -226,6 +234,10 @@ class PICamDetector(DetectorBase):
 class PilatusDetector(DetectorBase):
     _html_docs = ["pilatusDoc.html"]
     cam = C(cam.PilatusDetectorCam, "cam1:")
+
+    @property
+    def dtype_numpy(self) -> str | None:
+        return np.dtype(np.int32).str
 
 
 class PixiradDetector(DetectorBase):

@@ -24,7 +24,7 @@ from ophyd import (
     wait,
 )
 from ophyd.areadetector.base import NDDerivedSignal
-from ophyd.areadetector.detectors import AreaDetector
+from ophyd.areadetector.detectors import AreaDetector, PilatusDetector
 from ophyd.areadetector.filestore_mixins import (
     FileStoreHDF5,
     FileStoreIterativeWrite,
@@ -1058,6 +1058,22 @@ def test_make_data_key(param, expected):
         dtype="array",
         external="FILESTORE:",
         dtype_numpy=expected,
+    )
+
+
+def test_make_data_key_pilatus():
+    FakePilatusDetector = make_fake_device(PilatusDetector)
+    det = FakePilatusDetector("PREFIX:", name="det")
+    det.cam.num_images.sim_put(100)
+    det.cam.array_size.array_size_y.sim_put(1024)
+    det.cam.array_size.array_size_x.sim_put(1980)
+    data_key = det.make_data_key()
+    assert data_key == dict(
+        shape=(100, 1024, 1980),
+        source="PV:PREFIX:",
+        dtype="array",
+        external="FILESTORE:",
+        dtype_numpy="<i4",
     )
 
 
