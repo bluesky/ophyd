@@ -82,7 +82,7 @@ jobs:
         run: |
           sudo systemctl start docker
           docker version
-          docker compose --version 
+          docker compose --version
 
       - name: Create AD data directories
         run: |
@@ -138,7 +138,6 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
-          token: ${{ secrets.RELEASE_ON_GH_TOKEN }}
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
