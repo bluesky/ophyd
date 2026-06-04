@@ -129,7 +129,7 @@ class DetectorBase(ADBase):
         )
 
         dtype_numpy = self.dtype_numpy
-        if dtype_numpy:
+        if dtype_numpy is not None:
             ret["dtype_numpy"] = dtype_numpy
 
         return ret
