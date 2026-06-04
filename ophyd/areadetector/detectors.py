@@ -6,6 +6,7 @@
 .. _areaDetector: https://areadetector.github.io/master/index.html
 """
 import warnings
+from typing import Optional
 
 import numpy as np
 
@@ -103,7 +104,7 @@ class DetectorBase(ADBase):
     dispatch.__doc__ = generate_datum.__doc__
 
     @property
-    def dtype_numpy(self) -> str | None:
+    def dtype_numpy(self) -> Optional[str]:
         """The data type of the image in numpy style"""
         # If the data type isn't disabled, we assume it is accurate
         return (
@@ -236,7 +237,7 @@ class PilatusDetector(DetectorBase):
     cam = C(cam.PilatusDetectorCam, "cam1:")
 
     @property
-    def dtype_numpy(self) -> str | None:
+    def dtype_numpy(self) -> Optional[str]:
         return np.dtype(np.int32).str
 
 
