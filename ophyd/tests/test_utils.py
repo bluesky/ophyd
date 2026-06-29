@@ -174,3 +174,38 @@ def test_set_signal_to_None():
 def test_compare_maybe_enum(a, b, enums, atol, rtol, expected):
     result = epics_utils._compare_maybe_enum(a, b, enums, atol, rtol)
     assert result == expected
+
+
+class _StaleCacheSignal:
+    """get() returns a stale cached value; get(use_monitor=False) the truth.
+
+    Models a dropped/late CA monitor: the cache never updated to the value
+    the IOC actually holds.
+    """
+
+    def __init__(self, stale, truth):
+        self._stale = stale
+        self._truth = truth
+        self.name = "stale"
+        self.tolerance = None
+        self.rtolerance = None
+
+    @property
+    def enum_strs(self):
+        return ()
+
+    def get(self, *, use_monitor=None, count=None, **kwargs):
+        return self._truth if use_monitor is False else self._stale
+
+
+def test_wait_for_value_confirms_with_fresh_read():
+    # cache is stale but the IOC (fresh read) holds the target: succeed.
+    sig = _StaleCacheSignal(stale=0.0, truth=42.0)
+    epics_utils._wait_for_value(sig, 42.0, poll_time=0.01, timeout=0.2)
+
+
+def test_wait_for_value_still_times_out_when_truly_unset():
+    # cache and fresh read both disagree with the target: still raise.
+    sig = _StaleCacheSignal(stale=0.0, truth=0.0)
+    with pytest.raises(TimeoutError):
+        epics_utils._wait_for_value(sig, 42.0, poll_time=0.01, timeout=0.2)
