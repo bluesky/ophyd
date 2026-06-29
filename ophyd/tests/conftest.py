@@ -149,6 +149,25 @@ def signal_test_ioc(prefix, request):
 
 
 @pytest.fixture(scope="function")
+def drop_monitor_ioc(prefix, request):
+    name = "drop-monitor IOC"
+    pvs = dict(value=f"{prefix}value", starve=f"{prefix}starve")
+
+    pytest.importorskip("caproto.tests.conftest")
+    from caproto.tests.conftest import run_example_ioc
+
+    process = run_example_ioc(
+        "ophyd.tests.dropmonitor_ioc",
+        request=request,
+        pv_to_check=pvs["value"],
+        args=("--prefix", prefix, "--list-pvs", "-v"),
+    )
+    return SimpleNamespace(
+        process=process, prefix=prefix, name=name, pvs=pvs, type="caproto"
+    )
+
+
+@pytest.fixture(scope="function")
 def cleanup(request):
     "Destroy all items added to the list during the finalizer"
     items = []

@@ -808,3 +808,22 @@ def test_signal_dtype_shape_info(fake_motor_ioc, cleanup):
 def test_signal_default_type():
     s = Signal(name="aardvark")
     assert type(s.read()["aardvark"]["value"]) is float
+
+
+def test_set_succeeds_when_ioc_drops_monitor(cleanup, drop_monitor_ioc):
+    # dropped monitor leaves the cache stale; set() must confirm via fresh read
+    value = EpicsSignal(
+        drop_monitor_ioc.pvs["value"], name="value", auto_monitor=True
+    )
+    starve = EpicsSignal(drop_monitor_ioc.pvs["starve"], name="starve")
+    cleanup.add(value)
+    cleanup.add(starve)
+    value.wait_for_connection()
+    starve.wait_for_connection()
+    value.get()  # prime the monitor cache
+
+    starve.put(1, wait=True)  # next write to value posts no monitor
+    st = value.set(42.0, timeout=2)
+    st.wait(timeout=5)
+    assert st.success
+    assert value.get(use_monitor=False) == 42.0
