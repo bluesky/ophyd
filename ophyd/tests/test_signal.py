@@ -812,9 +812,7 @@ def test_signal_default_type():
 
 def test_set_succeeds_when_ioc_drops_monitor(cleanup, drop_monitor_ioc):
     # dropped monitor leaves the cache stale; set() must confirm via fresh read
-    value = EpicsSignal(
-        drop_monitor_ioc.pvs["value"], name="value", auto_monitor=True
-    )
+    value = EpicsSignal(drop_monitor_ioc.pvs["value"], name="value", auto_monitor=True)
     starve = EpicsSignal(drop_monitor_ioc.pvs["starve"], name="starve")
     cleanup.add(value)
     cleanup.add(starve)
