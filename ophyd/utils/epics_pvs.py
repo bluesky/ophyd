@@ -310,6 +310,14 @@ def _wait_for_value(signal, val, poll_time=0.01, timeout=10, rtol=None, atol=Non
             poll_time *= 2  # logarithmic back-off
         current_value = signal.get(**get_kwargs)
         if expiration_time is not None and ttime.time() > expiration_time:
+            # The monitor cache may be stale if the IOC did not post a
+            # CA monitor update; confirm against the IOC before failing.
+            try:
+                current_value = signal.get(use_monitor=False, **get_kwargs)
+            except TypeError:
+                pass  # signal.get does not support use_monitor
+            if _compare_maybe_enum(val, current_value, enum_strings, atol, rtol):
+                break
             raise TimeoutError(
                 "Attempted to set %r to value %r and timed "
                 "out after %r seconds. Current value is %r."
