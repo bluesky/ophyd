@@ -952,10 +952,7 @@ class SynSignalWithRegistry(SynSignal):
         self._resource_uid = None
         self._datum_counter = None
         self._asset_docs_cache = deque()
-        if save_path is None:
-            self.save_path = mkdtemp()
-        else:
-            self.save_path = save_path
+        self._save_path = save_path
         self._spec = save_spec  # spec name stored in resource doc
 
         self._file_stem = None
@@ -1034,6 +1031,13 @@ class SynSignalWithRegistry(SynSignal):
         self._file_stem = None
         self._path_stem = None
         self._result.clear()
+
+    @property
+    def save_path(self):
+        # delay creation of temp directory until required to prevent littering of empty directories in /tmp
+        if self._save_path is None:
+            self._save_path = mkdtemp(prefix="sim-signal")
+        return self._save_path
 
 
 class NumpySeqHandler:
