@@ -33,7 +33,7 @@ back off (or back to its original setting, whatever that was) at the end.
 For this, ophyd provides a convenience, ``stage_sigs`` --- a dictionary
 mapping signals to desired values. The device reads the initial values
 of these signals, stashes them, changes them to the desired value, and then
-restore the initial value when the device is unstaged. It is best to
+restores the initial value when the device is unstaged. It is best to
 customize ``stage_sigs`` in the device's ``__init__`` method, like so:
 
 .. code:: python
