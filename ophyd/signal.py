@@ -105,6 +105,9 @@ class Signal(OphydObject):
         Control Layer.  Must provide 'get_pv' and 'thread_class'
     attr_name : str, optional
         The parent Device attribute name that corresponds to this Signal
+    settle_time : float, optional
+        The amount of time to wait after setting the signal to report status
+        completion.
 
     Attributes
     ----------
@@ -134,6 +137,7 @@ class Signal(OphydObject):
         metadata=None,
         cl=None,
         attr_name="",
+        settle_time=None,
     ):
 
         super().__init__(
@@ -194,6 +198,7 @@ class Signal(OphydObject):
         self._tolerance = tolerance
         # self.tolerance is a property
         self.rtolerance = rtolerance
+        self._settle_time = settle_time
 
         # Signal defaults to being connected, with full read/write access.
         # Subclasses are expected to clear these on init, if applicable.
@@ -253,6 +258,12 @@ class Signal(OphydObject):
     @tolerance.setter
     def tolerance(self, tolerance):
         self._tolerance = tolerance
+
+    @property
+    def settle_time(self):
+        """The amount of time to wait after setting the signal to report status
+        completion."""
+        return self._settle_time
 
     def _repr_info(self):
         "Yields pairs of (key, value) to generate the Signal repr"
@@ -395,6 +406,8 @@ class Signal(OphydObject):
             settle_time,
             kwargs,
         )
+
+        settle_time = settle_time if settle_time is not None else self.settle_time
 
         def set_thread():
             try:
