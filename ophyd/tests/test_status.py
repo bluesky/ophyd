@@ -4,13 +4,15 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from ophyd import Device
-from ophyd.signal import EpicsSignalRO
+from ophyd.signal import EpicsSignalRO, Signal
 from ophyd.status import (
+    CompareStatus,
     DeviceStatus,
     MoveStatus,
     StableSubscriptionStatus,
     StatusBase,
     SubscriptionStatus,
+    TransitionStatus,
     UseNewProperty,
 )
 from ophyd.utils import (
@@ -607,3 +609,199 @@ def test_error_in_handle_failure_method():
     st.wait(1)
     time.sleep(0.1)  # Wait for callbacks to run.
     assert state
+
+
+def test_compare_status_number():
+    """Test CompareStatus with different operations."""
+    sig = Signal(name="test_signal", value=0)
+    status = CompareStatus(signal=sig, value=5, operation_success="==")
+    assert status.done is False
+    sig.put(1)
+    assert status.done is False
+    sig.put(5)
+    status.wait(timeout=5)
+    assert status.done is True
+
+    sig.put(5)
+    # Test with different operations
+    status = CompareStatus(signal=sig, value=5, operation_success="!=")
+    assert status.done is False
+    sig.put(5)
+    assert status.done is False
+    sig.put(6)
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    sig.put(0)
+    status = CompareStatus(signal=sig, value=5, operation_success=">")
+    assert status.done is False
+    sig.put(5)
+    assert status.done is False
+    sig.put(10)
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Should raise
+    sig.put(0)
+    status = CompareStatus(
+        signal=sig, value=5, operation_success="==", failure_value=[10]
+    )
+    with pytest.raises(ValueError):
+        sig.put(10)
+        status.wait()
+    assert status.done is True
+    assert status.success is False
+    assert isinstance(status.exception(), ValueError)
+
+    # failure_operation
+    sig.put(0)
+    status = CompareStatus(
+        signal=sig,
+        value=5,
+        operation_success="==",
+        failure_value=10,
+        operation_failure=">",
+    )
+    sig.put(10)
+    assert status.done is False
+    assert status.success is False
+    sig.put(11)
+    with pytest.raises(ValueError):
+        status.wait()
+    assert status.done is True
+    assert status.success is False
+
+    # raise if array is returned
+    sig.put(0)
+    status = CompareStatus(signal=sig, value=5, operation_success="==")
+    with pytest.raises(ValueError):
+        sig.put([1, 2, 3])
+        status.wait(timeout=2)
+    assert status.done is True
+    assert status.success is False
+
+
+def test_compare_status_string():
+    """Test CompareStatus with string values"""
+    sig = Signal(name="test_signal", value="test")
+    status = CompareStatus(signal=sig, value="test", operation_success="==")
+    assert status.done is False
+    sig.put("test1")
+    assert status.done is False
+    sig.put("test")
+    assert status.done is True
+
+    sig.put("test")
+    # Test with different operations
+    status = CompareStatus(signal=sig, value="test", operation_success="!=")
+    assert status.done is False
+    sig.put("test")
+    assert status.done is False
+    sig.put("test1")
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+
+def test_transition_status():
+    """Test TransitionStatus"""
+    sig = Signal(name="test_signal", value=0)
+
+    # Test strict=True, without intermediate transitions
+    sig.put(0)
+    status = TransitionStatus(signal=sig, transitions=[1, 2, 3], strict=True)
+
+    assert status.done is False
+    sig.put(1)
+    assert status.done is False
+    sig.put(2)
+    assert status.done is False
+    sig.put(3)
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test strict=True, failure_states
+    sig.put(1)
+    status = TransitionStatus(
+        signal=sig, transitions=[1, 2, 3], strict=True, failure_states=[4]
+    )
+    assert status.done is False
+    sig.put(4)
+    with pytest.raises(ValueError):
+        status.wait()
+
+    assert status.done is True
+    assert status.success is False
+    assert isinstance(status.exception(), ValueError)
+
+    # Test strict=False, with intermediate transitions
+    sig.put(0)
+    status = TransitionStatus(signal=sig, transitions=[1, 2, 3], strict=False)
+
+    assert status.done is False
+    sig.put(1)  # entering first transition
+    sig.put(3)
+    sig.put(2)  # transision
+    assert status.done is False
+    sig.put(4)
+    sig.put(2)
+    sig.put(3)  # last transition
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+
+def test_transition_status_strings():
+    """Test TransitionStatus with string values"""
+    sig = Signal(name="test_signal", value="a")
+
+    # Test strict=True, without intermediate transitions
+    sig.put("a")
+    status = TransitionStatus(signal=sig, transitions=["b", "c", "d"], strict=True)
+
+    assert status.done is False
+    sig.put("b")
+    assert status.done is False
+    sig.put("c")
+    assert status.done is False
+    sig.put("d")
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test strict=True with additional intermediate transition
+
+    sig.put("a")
+    status = TransitionStatus(signal=sig, transitions=["b", "c", "d"], strict=True)
+
+    assert status.done is False
+    sig.put("b")  # first transition
+    sig.put("e")
+    sig.put("b")
+    sig.put("c")  # transision
+    assert status.done is False
+    sig.put("f")
+    sig.put("b")
+    sig.put("c")
+    sig.put("d")  # transision
+    assert status.done is True
+    assert status.success is True
+    assert status.exception() is None
+
+    # Test strict=False, with intermediate transitions
+    sig.put("a")
+    status = TransitionStatus(signal=sig, transitions=["b", "c", "d"], strict=False)
+
+    assert status.done is False
+    sig.put("b")  # entering first transition
+    sig.put("d")
+    sig.put("c")  # transision
+    assert status.done is False
+    sig.put("e")
+    sig.put("c")
+    sig.put("d")  # last transition
+    assert status.done is True
+    assert status.success is True
