@@ -95,8 +95,8 @@ def parse_pv_structure(driver_dir):
                     # Ex:
                     # record(stringin, "$(P)$(R)Description_RBV") Splits into
                     # ['record(stringin, "$(P', '$(R', 'Description_RBV"', '']
-                    # The PV name is the 3rd element, so array index 2, and we remove the last character, '"'
-                    pv_name = line.split(")")[2][:-1]
+                    # The PV name is the 2nd to last element element, so array index -2, and we remove the last character, '"'
+                    pv_name = line.split(")")[-2][:-1]
 
                     # Check if it is a readback PV
                     if pv_name.endswith("_RBV"):
