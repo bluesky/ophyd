@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from ophyd import Device
+from ophyd import Device, Component
 from ophyd.signal import EpicsSignalRO
 from ophyd.status import (
     DeviceStatus,
@@ -117,9 +117,7 @@ def test_direct_done_setting():
         st.done = True  # but for now no-ops warn
 
 
-def test_subscription_status():
-    # Arbitrary device
-    d = Device("Tst:Prefix", name="test")
+def _sub_staus_helper(device, obj, name):
     # Mock callback
     m = Mock()
 
@@ -130,18 +128,47 @@ def test_subscription_status():
         # Return finished or not
         return done
 
-    status = SubscriptionStatus(d, cb, event_type=d.SUB_ACQ_DONE)
+    status = SubscriptionStatus(
+        device, cb, event_type=obj.SUB_ACQ_DONE, subscribe_child=name
+    )
 
     # Run callbacks but do not mark as complete
-    d._run_subs(sub_type=d.SUB_ACQ_DONE, done=False)
+    obj._run_subs(sub_type=obj.SUB_ACQ_DONE, done=False)
     time.sleep(0.1)  # Wait for callbacks to run.
     assert m.called
     assert not status.done and not status.success
 
     # Run callbacks and mark as complete
-    d._run_subs(sub_type=d.SUB_ACQ_DONE, done=True)
+    obj._run_subs(sub_type=obj.SUB_ACQ_DONE, done=True)
     time.sleep(0.1)  # Wait for callbacks to run.
     assert status.done and status.success
+
+
+def test_subscription_status():
+    # Arbitrary device
+    d = Device("Tst:Prefix", name="test")
+    _sub_staus_helper(d, d, None)
+
+
+def test_subscription_status_1gen():
+    # Arbitrary device
+    class Dev(Device):
+        a = Component(Device)
+
+    d = Dev("Tst:Prefix", name="test")
+    _sub_staus_helper(d, d.a, "a")
+
+
+def test_subscription_status_2gen():
+    # Arbitrary device
+    class Child(Device):
+        a = Component(Device)
+
+    class Dev(Device):
+        b = Component(Child)
+
+    d = Dev("Tst:Prefix", name="test")
+    _sub_staus_helper(d, d.b.a, "b.a")
 
 
 def test_subscription_status_does_not_try_and_stop_ro_device():
