@@ -74,7 +74,6 @@ class CamBase(ADBase):
     nd_attributes_file = ADCpt(EpicsSignal, "NDAttributesFile", string=True)
     pool_alloc_buffers = ADCpt(EpicsSignalRO, "PoolAllocBuffers")
     pool_free_buffers = ADCpt(EpicsSignalRO, "PoolFreeBuffers")
-    pool_max_buffers = ADCpt(EpicsSignalRO, "PoolMaxBuffers")
     pool_max_mem = ADCpt(EpicsSignalRO, "PoolMaxMem")
     pool_used_buffers = ADCpt(EpicsSignalRO, "PoolUsedBuffers")
     pool_used_mem = ADCpt(EpicsSignalRO, "PoolUsedMem")
