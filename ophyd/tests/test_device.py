@@ -768,14 +768,14 @@ def test_dotted_name():
     from ophyd.sim import SynSignal
 
     class Inner(Device):
-        x = Cpt(SynSignal)
+        x = Cpt(SynSignal, long_name="Inner X")
         y = Cpt(SynSignal)
 
     class Outer(Device):
-        a = Cpt(Inner)
+        a = Cpt(Inner, long_name="Outer A")
         b = Cpt(Inner)
 
-    o = Outer(name="test")
+    o = Outer(name="test", long_name="Test")
 
     assert o.dotted_name == ""
     assert o.a.dotted_name == "a"
@@ -796,6 +796,14 @@ def test_dotted_name():
 
     assert o.a.y.attr_name == "y"
     assert o.b.y.attr_name == "y"
+
+    assert o.long_name == "Test"
+    assert o.a.long_name == "Test Outer A"
+    assert o.b.long_name == "Test b"
+    assert o.a.x.long_name == "Test Outer A Inner X"
+    assert o.a.y.long_name == "Test Outer A y"
+    assert o.b.x.long_name == "Test b Inner X"
+    assert o.b.y.long_name == "Test b y"
 
 
 def test_create_device():
