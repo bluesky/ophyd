@@ -761,7 +761,7 @@ class SubscriptionStatus(DeviceStatus):
         Time to wait after completion until running callbacks
 
     run: bool, optional
-        Run the callback now
+        Run the callback immediately on cached data.
     """
 
     def __init__(
