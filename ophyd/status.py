@@ -565,12 +565,42 @@ class StatusBase:
         with the same base API.
 
         It will finish when both `self` or `other` finish.
+
+        Parameters
+        ----------
+        other: StatusBase
+            Another status object to combine with this one.
         """
         return AndStatus(self, other)
 
+    def __or__(self, other):
+        """
+        Returns a new 'composite' status object, OrStatus,
+        with the same base API.
+
+        It will finish when either `self` or `other` finishes.
+
+        Parameters
+        ----------
+        other: StatusBase
+            Another status object to combine with this one.
+        """
+        return OrStatus(self, other)
+
 
 class AndStatus(StatusBase):
-    "a Status that has composes two other Status objects using logical and"
+    """
+    A Status that has composes two other Status objects using logical and.
+    If any of the two Status objects fails, the combined status will fail
+    with the exception of the first Status to fail.
+
+    Parameters
+    ----------
+    left: StatusBase
+        The left-hand Status object
+    right: StatusBase
+        The right-hand Status object
+    """
 
     def __init__(self, left, right, **kwargs):
         self.left = left
@@ -583,25 +613,22 @@ class AndStatus(StatusBase):
             with self._lock:
                 if self._externally_initiated_completion:
                     return
-                with self.left._lock:
-                    with self.right._lock:
-                        l_success = self.left.success
-                        r_success = self.right.success
-                        l_done = self.left.done
-                        r_done = self.right.done
 
-                        # At least one is done.
-                        # If it failed, do not wait for the second one.
-                        if (not l_success) and l_done:
-                            self._finished(success=False)
-                        elif (not r_success) and r_done:
-                            self._finished(success=False)
+                # Return if status is already done..
+                if self.done:
+                    return
 
-                        elif l_success and r_success and l_done and r_done:
-                            # Both are done, successfully.
-                            self._finished(success=True)
-                        # Else one is done, successfully, and we wait for #2,
-                        # when this function will be called again.
+                with status._lock:
+                    if status.done and not status.success:
+                        self.set_exception(status.exception())  # st._exception
+                        return
+                if (
+                    self.left.done
+                    and self.right.done
+                    and self.left.success
+                    and self.right.success
+                ):
+                    self.set_finished()
 
         self.left.add_callback(inner)
         self.right.add_callback(inner)
@@ -621,6 +648,81 @@ class AndStatus(StatusBase):
             if child == status:
                 return True
             if isinstance(child, AndStatus):
+                if status in child:
+                    return True
+
+        return False
+
+
+class OrStatus(StatusBase):
+    """
+    A Status that has composes two other Status objects using logical or.
+    If any of the status objects succeeds, the combined status will succeed.
+    It will only fail if both status objects fail, with the exception of all
+    status objects combined.
+
+    Parameters
+    ----------
+    left: StatusBase
+        The left-hand Status object
+    right: StatusBase
+        The right-hand Status object
+    """
+
+    def __init__(self, left, right, **kwargs):
+        self.left = left
+        self.right = right
+        super().__init__(**kwargs)
+        self._trace_attributes["left"] = self.left._trace_attributes
+        self._trace_attributes["right"] = self.right._trace_attributes
+
+        def inner(status):
+            with self._lock:
+                if self._externally_initiated_completion:
+                    return
+
+                # Return if status is already done..
+                if self.done:
+                    return
+
+                with status._lock:
+                    if status.done and status.success:
+                        self.set_finished()
+                        return
+                if (
+                    self.left.done
+                    and not self.left.success
+                    and self.right.done
+                    and not self.right.success
+                ):
+                    exceptions = [
+                        st.exception()
+                        for st in [self.left, self.right]
+                        if st.done and not st.success and st.exception() is not None
+                    ]
+                    combined_exceptions = RuntimeError(
+                        "; ".join(f"{type(exc).__name__}: {exc}" for exc in exceptions)
+                    )
+                    self.set_exception(combined_exceptions)
+
+        self.left.add_callback(inner)
+        self.right.add_callback(inner)
+
+    def __repr__(self):
+        return "({self.left!r} & {self.right!r})".format(self=self)
+
+    def __str__(self):
+        return (
+            "{0}(done={1.done}, "
+            "success={1.success})"
+            "".format(self.__class__.__name__, self)
+        )
+
+    def __contains__(self, status: StatusBase) -> bool:
+        for child in [self.left, self.right]:
+            if child == status:
+                return True
+            if isinstance(child, OrStatus):
                 if status in child:
                     return True
 
