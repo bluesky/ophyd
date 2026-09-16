@@ -6,7 +6,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from io import StringIO
-from pathlib import Path, PurePath
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from typing import Optional
 from unittest.mock import Mock, patch
 
@@ -843,6 +843,90 @@ def test_no_relative_root(mock_now: Mock) -> None:
             root=".",
             reg=fs,
         )
+
+
+@pytest.mark.parametrize(
+    (
+        "path_class",
+        "root",
+        "write_path_template",
+        "read_path_template",
+        "path_semantics",
+        "expected_write_path",
+        "expected_resource_path_directory",
+    ),
+    [
+        (
+            PurePosixPath,
+            "/data",
+            "/ioc/write/%Y/%m/%d",
+            "/data/read/%Y/%m/%d",
+            "posix",
+            "/ioc/write/2017/01/02",
+            "read/2017/01/02",
+        ),
+        (
+            PureWindowsPath,
+            "Z:/data",
+            "Z:/ioc/write/%Y/%m/%d",
+            "Z:/data/read/%Y/%m/%d",
+            "windows",
+            "Z:\\ioc\\write\\2017\\01\\02",
+            "read\\2017\\01\\02",
+        ),
+        (
+            PurePosixPath,
+            "/data",
+            "/data/write/%Y/%m/%d",
+            None,
+            "posix",
+            "/data/write/2017/01/02",
+            "write/2017/01/02",
+        ),
+        (
+            PureWindowsPath,
+            "Z:/data",
+            "Z:/data/write/%Y/%m/%d",
+            None,
+            "windows",
+            "Z:\\data\\write\\2017\\01\\02",
+            "write\\2017\\01\\02",
+        ),
+    ],
+)
+def test_file_store_preserves_explicit_path_flavor(
+    mock_now: Mock,
+    path_class,
+    root: str,
+    write_path_template: str,
+    read_path_template: Optional[str],
+    path_semantics: str,
+    expected_write_path: str,
+    expected_resource_path_directory: str,
+) -> None:
+    fs = DummyFS()
+    file_store = DummyFileStorePlugin(
+        name="test_file_store",
+        write_path_template=path_class(write_path_template),
+        read_path_template=(
+            path_class(read_path_template) if read_path_template is not None else None
+        ),
+        root=path_class(root),
+        path_semantics=path_semantics,
+        reg=fs,
+    )
+
+    file_store.stage()
+    resource = list(file_store.collect_asset_docs())[0][1]
+
+    assert type(file_store.reg_root) is path_class
+    assert file_store.file_path.get() == expected_write_path
+    assert resource["root"] == str(path_class(root))
+    assert str(path_class(resource["resource_path"]).parent) == (
+        expected_resource_path_directory
+    )
+
+    file_store.unstage()
 
 
 def check_file_store_paths(

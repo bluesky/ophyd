@@ -130,13 +130,13 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     Parameters
     ----------
-    write_path_template : str
+    write_path_template : str or pathlib.PurePath
         Template feed to :py:meth:`~datetime.datetime.strftime` to generate the
         path to set the IOC to write saved files to.
 
         See above for interactions with root and read_path_template
 
-    root : str, optional
+    root : str or pathlib.PurePath, optional
         The 'root' of the file path.  This is inserted into filestore and
         enables files to be renamed or re-mounted with only some pain.
 
@@ -151,7 +151,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
 
     path_semantics : {'posix', 'windows'}, optional
 
-    read_path_template : str, optional
+    read_path_template : str or pathlib.PurePath, optional
         The read path template, if different from the write path.   See the
         docstrings for ``write_path_template`` and ``root``.
 
@@ -225,10 +225,10 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
     def reg_root(self, val):
         if val is None:
             val = os.path.sep
-        root = PurePath(val)
+        root = val if isinstance(val, PurePath) else PurePath(val)
         if not root.is_absolute():
             raise ValueError(f"The root part of the path must be absolute not {root=}.")
-        self._root = PurePath(val)
+        self._root = root
 
     @property
     def fs_root(self):
@@ -246,22 +246,30 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         "Returns write_path_template if read_path_template is not set"
 
         if self._read_path_template is None:
-            ret = PurePath(self.write_path_template)
+            ret = self._write_path_template
+            if not isinstance(ret, PurePath):
+                ret = PurePath(self.write_path_template)
         else:
-            ret = PurePath(self._read_path_template)
+            ret = self._read_path_template
+            if not isinstance(ret, PurePath):
+                ret = PurePath(ret)
 
         ret = self._ensure_absolute_under_root(ret)
-        return str(os.path.join(ret, ""))
+        separator = "/" if isinstance(ret, PurePosixPath) else "\\"
+        ret = str(ret)
+        if not ret.endswith(separator):
+            ret += separator
+        return ret
 
     @read_path_template.setter
     def read_path_template(self, val):
-        if val is not None:
-            val = os.path.join(val, "")
         self._read_path_template = val
 
     @property
     def write_path_template(self):
-        if self.path_semantics == "posix":
+        if isinstance(self._write_path_template, PurePath):
+            ret = self._write_path_template
+        elif self.path_semantics == "posix":
             ret = PurePosixPath(self._write_path_template)
         elif self.path_semantics == "windows":
             ret = PureWindowsPath(self._write_path_template)
@@ -327,7 +335,7 @@ class FileStoreBase(BlueskyInterface, GenerateDatumInterface):
         # self._generate_resource(resource_kwrags)
 
     def _generate_resource(self, resource_kwargs):
-        fn = PurePath(self._fn).relative_to(self.reg_root)
+        fn = type(self.reg_root)(self._fn).relative_to(self.reg_root)
         resource, self._datum_factory = resource_factory(
             spec=self.filestore_spec,
             root=str(self.reg_root),
