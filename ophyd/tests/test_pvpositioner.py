@@ -13,6 +13,7 @@ from ophyd import (
     PVPositionerDone,
     PVPositionerIsClose,
     PVPositionerPC,
+    Signal,
     get_cl,
 )
 from ophyd.utils.epics_pvs import _wait_for_value
@@ -302,6 +303,36 @@ def test_pv_positioner_is_close(signal_test_ioc):
     assert status.done
     assert status.success
     assert motor.done.get() == 1
+
+
+def test_pv_positioner_is_close_at_requested_position():
+    class SameValueSilentSignal(Signal):
+        """Signal that emulates a PV with no monitor event for identical writes."""
+
+        def put(self, value, **kwargs):
+            if value != self.get():
+                super().put(value, **kwargs)
+
+    class MyPositioner(PVPositionerIsClose):
+        setpoint = Cpt(SameValueSilentSignal, value=1)
+        readback = Cpt(Signal, value=0)
+
+    motor = MyPositioner("", name="pv_pos_is_close_at_requested_position")
+    motor.setpoint.put(0)
+    motor.readback.put(0)
+    assert motor.done.get() == 1
+    done_values = []
+    motor.done.subscribe(
+        lambda *, value, **kwargs: done_values.append(value), run=False
+    )
+
+    status = motor.set(0)
+
+    status.wait(timeout=1)
+    assert status.done
+    assert status.success
+    assert motor.done.get() == 1
+    assert done_values == [0, 1]
 
 
 def test_pv_positioner_done(signal_test_ioc):

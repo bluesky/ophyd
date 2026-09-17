@@ -409,6 +409,11 @@ class PVPositionerComparator(PVPositioner):
         """
         raise NotImplementedError("Must implement a done comparator!")
 
+    def _setup_move(self, position: Any) -> None:
+        """Update the software done state before writing the setpoint."""
+        self._update_setpoint(value=position)
+        super()._setup_move(position)
+
     def _update_setpoint(self, *args, value: Any, **kwargs) -> None:
         """Callback to cache the setpoint and update done state."""
         self._last_setpoint = value
