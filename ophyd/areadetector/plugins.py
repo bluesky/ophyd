@@ -1005,8 +1005,35 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type="ADCore"):
             ttime.sleep(0.1)
             sig.set(val).wait()
 
+    def _lazy_open_enabled(self):
+        """
+        Will LazyOpen (AD 2.1+) be on while this plugin is staged?
+
+        With LazyOpen the file is not opened until the first frame arrives,
+        so the plugin does not need to be primed first.  A value in
+        ``stage_sigs`` takes precedence over the current PV value, since
+        that is what will be in effect once staged.
+        """
+        try:
+            lazy_open = self.lazy_open
+        except AttributeError:
+            return False  # plugin version predates LazyOpen
+        if lazy_open is None:
+            return False
+
+        for sig, val in self.stage_sigs.items():
+            if sig is lazy_open or sig == "lazy_open":
+                value = val
+                break
+        else:
+            value = lazy_open.get()
+
+        if isinstance(value, str):
+            return value.strip().lower() in ("1", "yes")
+        return bool(value)
+
     def stage(self):
-        if np.array(self.array_size.get()).sum() == 0:
+        if np.array(self.array_size.get()).sum() == 0 and not self._lazy_open_enabled():
             raise UnprimedPlugin(
                 f"The plugin {self.dotted_name} on the "
                 f"area detector with name {self.root.name} "

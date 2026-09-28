@@ -38,6 +38,7 @@ from ophyd.areadetector.plugins import (  # FilePlugin
     CircularBuffPlugin_V34,
     ColorConvPlugin,
     HDF5Plugin,
+    HDF5Plugin_V34,
     ImagePlugin,
     JPEGPlugin,
     NetCDFPlugin,
@@ -53,6 +54,7 @@ from ophyd.areadetector.util import stub_templates
 from ophyd.device import Component as Cpt
 from ophyd.signal import Signal
 from ophyd.sim import make_fake_device
+from ophyd.utils.errors import UnprimedPlugin
 from ophyd.utils.paths import make_dir_tree
 
 logger = logging.getLogger(__name__)
@@ -1102,3 +1104,67 @@ def test_make_data_key_disabled(param):
             external="FILESTORE:",
             dtype_numpy="<f4",
         )
+
+
+def _make_unprimed_hdf5(plugin_cls):
+    class MyDetector(SimDetector):
+        hdf5 = Cpt(plugin_cls, "HDF1:")
+
+    det = make_fake_device(MyDetector)("", name="det")
+    det.hdf5.plugin_type.sim_put(plugin_cls._plugin_type)
+    for dim in ("depth", "height", "width"):
+        getattr(det.hdf5.array_size, dim).sim_put(0)
+    # Only the priming check is under test; the default stage_sigs would
+    # wait on readbacks that fake signals never update.
+    det.hdf5.stage_sigs.clear()
+    return det.hdf5
+
+
+@pytest.mark.parametrize("lazy_open", ["Yes", "1", 1], ids=["Yes", "str-1", "int-1"])
+def test_hdf5_stage_unprimed_with_lazy_open(lazy_open):
+    hdf5 = _make_unprimed_hdf5(HDF5Plugin_V34)
+    hdf5.lazy_open.sim_put(lazy_open)
+    hdf5.stage()
+    hdf5.unstage()
+
+
+@pytest.mark.parametrize("lazy_open", ["No", "0", 0], ids=["No", "str-0", "int-0"])
+def test_hdf5_stage_unprimed_without_lazy_open(lazy_open):
+    hdf5 = _make_unprimed_hdf5(HDF5Plugin_V34)
+    hdf5.lazy_open.sim_put(lazy_open)
+    with pytest.raises(UnprimedPlugin):
+        hdf5.stage()
+
+
+@pytest.mark.parametrize("key", ["lazy_open", "signal"])
+def test_hdf5_stage_unprimed_lazy_open_from_stage_sigs(key):
+    hdf5 = _make_unprimed_hdf5(HDF5Plugin_V34)
+    key = hdf5.lazy_open if key == "signal" else key
+
+    hdf5.lazy_open.sim_put("No")
+    hdf5.stage_sigs[key] = "Yes"
+    hdf5.stage()
+    assert hdf5.lazy_open.get() == "Yes"
+    hdf5.unstage()
+    assert hdf5.lazy_open.get() == "No"
+
+    hdf5.lazy_open.sim_put("Yes")
+    hdf5.stage_sigs[key] = "No"
+    with pytest.raises(UnprimedPlugin):
+        hdf5.stage()
+
+
+def test_hdf5_stage_unprimed_before_lazy_open_exists():
+    # HDF5Plugin (AD 1.9.1) has no LazyOpen PV: priming is still required.
+    hdf5 = _make_unprimed_hdf5(HDF5Plugin)
+    with pytest.raises(UnprimedPlugin):
+        hdf5.stage()
+
+
+def test_hdf5_stage_primed_without_lazy_open():
+    hdf5 = _make_unprimed_hdf5(HDF5Plugin_V34)
+    hdf5.lazy_open.sim_put("No")
+    hdf5.array_size.height.sim_put(1024)
+    hdf5.array_size.width.sim_put(1980)
+    hdf5.stage()
+    hdf5.unstage()
