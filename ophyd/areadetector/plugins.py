@@ -973,6 +973,22 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type="ADCore"):
     )
     zlevel = Cpt(SignalWithRBV, "ZLevel", kind="config")
 
+    @property
+    def warmup_signals(self):
+        """Ordered camera configuration used before the warmup acquisition.
+
+        Subclasses may omit unsupported signals. The acquisition time and
+        acquisition itself are handled by :meth:`warmup`.
+        """
+        return OrderedDict(
+            [
+                (self.parent.cam.array_callbacks, 1),
+                (self.parent.cam.image_mode, "Single"),
+                (self.parent.cam.trigger_mode, "Internal"),
+                (self.parent.cam.acquire_period, 1),
+            ]
+        )
+
     def warmup(self):
         """
         A convenience method for 'priming' the plugin.
@@ -981,17 +997,10 @@ class HDF5Plugin(FilePlugin, version=(1, 9, 1), version_type="ADCore"):
         This sets the array size, etc.
         """
         self.enable.set(1).wait()
-        sigs = OrderedDict(
-            [
-                (self.parent.cam.array_callbacks, 1),
-                (self.parent.cam.image_mode, "Single"),
-                (self.parent.cam.trigger_mode, "Internal"),
-                # just in case tha acquisition time is set very long...
-                (self.parent.cam.acquire_time, 1),
-                (self.parent.cam.acquire_period, 1),
-                (self.parent.cam.acquire, 1),
-            ]
-        )
+        sigs = OrderedDict(self.warmup_signals)
+        # These common steps are required even with custom camera configuration.
+        sigs[self.parent.cam.acquire_time] = 1
+        sigs[self.parent.cam.acquire] = 1
 
         original_vals = {sig: sig.get() for sig in sigs}
 
