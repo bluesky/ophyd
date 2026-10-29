@@ -36,7 +36,6 @@ try:
         ...
 
 except ImportError:
-
     IFBase = IntFlag
 
 
@@ -148,7 +147,16 @@ class OphydObject:
     __any_instantiated = False
     subscriptions: ClassVar[FrozenSet[str]] = frozenset()
 
-    def __init__(self, *, name=None, attr_name="", parent=None, labels=None, kind=None):
+    def __init__(
+        self,
+        *,
+        name=None,
+        attr_name="",
+        parent=None,
+        labels=None,
+        kind=None,
+        long_name=None,
+    ):
         if labels is None:
             labels = set()
         self._ophyd_labels_ = set(labels)
@@ -166,7 +174,7 @@ class OphydObject:
             raise ValueError("name must be a string.")
         self._name = name
         self._parent = parent
-
+        self._long_name = long_name
         # dictionary of wrapped callbacks
         self._callbacks = {k: {} for k in self.subscriptions}
         # this is to maintain api on clear_sub
@@ -330,6 +338,18 @@ class OphydObject:
     @name.setter
     def name(self, name):
         self._name = name
+
+    @property
+    def long_name(self):
+        """name of the device"""
+        if self._long_name is not None:
+            return self._long_name
+        else:
+            return self._name
+
+    @long_name.setter
+    def long_name(self, name):
+        self._long_name = name
 
     @property
     def attr_name(self):
