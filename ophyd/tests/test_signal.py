@@ -413,6 +413,18 @@ def test_set_method():
     assert sig.get() == 28
 
 
+def test_settle_time():
+    sig = Signal(name="sig", settle_time=0.5)
+    start = time.monotonic()
+    st = sig.set(34)
+    wait(st)
+    finish = time.monotonic()
+    assert finish - start > 0.5
+    assert st.done
+    assert st.success
+    assert sig.get() == 34
+
+
 def test_soft_derived():
     timestamp = 1.0
     value = "q"
